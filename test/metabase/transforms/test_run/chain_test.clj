@@ -20,7 +20,9 @@
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.transforms-rest.api.transform]
+   [metabase.transforms-rest.api.util :as api-util]
    [metabase.transforms.test-run.chain :as chain]
+   [metabase.transforms.test-run.core :as test-run.core]
    [metabase.transforms.test-run.scratch :as scratch]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -100,6 +102,11 @@
 (def ^:private enrich-sql
   (str "SELECT o.id AS order_id, o.total AS total, p.state AS state"
        " FROM orders o JOIN people p ON o.user_id = p.id"))
+
+;; Expected output for enrich-sql alone (order_id,total,state for 4 orders).
+;; Used by single-transform assertion tests.
+(def ^:private enrich-expected-csv
+  "order_id,total,state\n1,100.00,CA\n2,50.00,CA\n3,200.00,TX\n4,30.00,CA\n")
 
 (defn- aggregate-sql [enriched-table]
   (str "SELECT state, count(*) AS order_count, sum(total) AS revenue"
@@ -531,6 +538,504 @@
 ;;; Contract: cleanup! runs inside the transform connection context
 ;;; ===========================================================================
 
+;;; ===========================================================================
+;;; Step 10 — Assertions wired into run-chain-test! and run-card-chain-test!
+;;;
+;;; All tests run on :postgres with the standard test-data chain (t1 → t2).
+;;; Assertion SQL is written against the real table names (orders, people,
+;;; t2's real output table) — the harness remaps them to scratch at run time.
+;;; The `test_output` alias is also exercised (Step 10.5).
+;;; ===========================================================================
+
+;;; ---------------------------------------------------------------------------
+;;; Step 10.1 — passing assertion (transform target)
+;;; ---------------------------------------------------------------------------
+
+(deftest chain-assertion-passing-test
+  (testing "run-chain-test! with a passing assertion → :passed + :assertions [{:status :passed}]"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [result (chain/run-chain-test!
+                              (:id t2) #{(:id t1)}
+                              {orders-id orders-f people-id people-f}
+                              expected-f
+                              {:assertions [{:name "revenue_nonneg"
+                                             :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                             :severity :error}]})]
+                  (testing "overall status is :passed"
+                    (is (= :passed (:status result))))
+                  (testing ":assertions is a single-entry vector"
+                    (is (= 1 (count (:assertions result)))))
+                  (testing "assertion status is :passed"
+                    (is (= :passed (get-in result [:assertions 0 :status]))))
+                  (testing "failing_row_count is 0"
+                    (is (zero? (get-in result [:assertions 0 :failing_row_count])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 10.2 — failing assertion (transform target)
+;;; ---------------------------------------------------------------------------
+
+(deftest chain-assertion-failing-test
+  (testing "run-chain-test! with a failing assertion → :failed, positive failing_row_count"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [result (chain/run-chain-test!
+                              (:id t2) #{(:id t1)}
+                              {orders-id orders-f people-id people-f}
+                              expected-f
+                              {:assertions [{:name "always_fails"
+                                             ;; SELECT * FROM <target> returns rows → always fails
+                                             :sql  (str "SELECT * FROM " target-name)
+                                             :severity :error}]})]
+                  (testing "overall status is :failed"
+                    (is (= :failed (:status result))))
+                  (testing "failing_row_count > 0"
+                    (is (pos? (get-in result [:assertions 0 :failing_row_count]))))
+                  (testing "assertion status is :failed"
+                    (is (= :failed (get-in result [:assertions 0 :status])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 10.3 — warn-severity failing assertion does not fail the run
+;;; ---------------------------------------------------------------------------
+
+(deftest chain-assertion-warn-does-not-fail-run-test
+  (testing "warn-severity failing assertion → overall :passed, assertion :warn"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [result (chain/run-chain-test!
+                              (:id t2) #{(:id t1)}
+                              {orders-id orders-f people-id people-f}
+                              expected-f
+                              {:assertions [{:name "warn_always_fails"
+                                             :sql  (str "SELECT * FROM " target-name)
+                                             :severity :warn}]})]
+                  (testing "overall status is :passed (warn does not flip overall)"
+                    (is (= :passed (:status result))))
+                  (testing "assertion status is :warn"
+                    (is (= :warn (get-in result [:assertions 0 :status]))))
+                  (testing "failing_row_count > 0"
+                    (is (pos? (get-in result [:assertions 0 :failing_row_count])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 10.4 — no expected CSV, assertions only
+;;; ---------------------------------------------------------------------------
+
+(deftest chain-assertions-only-no-expected-test
+  (testing "run-chain-test! with no expected CSV and passing assertion → :passed, :diff nil"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f orders-rows
+                                    people-f people-rows]
+                (let [result (chain/run-chain-test!
+                              (:id t2) #{(:id t1)}
+                              {orders-id orders-f people-id people-f}
+                              nil  ; no expected CSV
+                              {:assertions [{:name "revenue_nonneg"
+                                             :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                             :severity :error}]})]
+                  (testing "overall status is :passed"
+                    (is (= :passed (:status result))))
+                  (testing ":diff is nil when no expected CSV"
+                    (is (nil? (:diff result))))
+                  (testing ":assertions entry is present and passed"
+                    (is (= :passed (get-in result [:assertions 0 :status])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 10.5 — test_output alias works in assertions (transform target)
+;;; ---------------------------------------------------------------------------
+
+(deftest chain-assertion-test-output-alias-test
+  (testing "assertion SQL referencing test_output (not the real table name) runs correctly"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [result (chain/run-chain-test!
+                              (:id t2) #{(:id t1)}
+                              {orders-id orders-f people-id people-f}
+                              expected-f
+                              {:assertions [{:name "no_negative_revenue_via_alias"
+                                             ;; Uses test_output alias instead of real table name
+                                             :sql  "SELECT * FROM test_output WHERE revenue < 0"
+                                             :severity :error}]})]
+                  (testing "overall status is :passed"
+                    (is (= :passed (:status result))))
+                  (testing "assertion using test_output alias passes"
+                    (is (= :passed (get-in result [:assertions 0 :status])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 10.6 — card target, assertions via :cte binding (no extra scratch table)
+;;; ---------------------------------------------------------------------------
+
+(deftest card-chain-assertion-cte-binding-test
+  (testing "run-card-chain-test! with assertions via CTE binding — no extra scratch table"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id          (mt/id)
+                orders-id      (mt/id :orders)
+                people-id      (mt/id :people)
+                before-scratch (count-test-scratch-tables db-id "public")]
+            (with-enrich-card [t1 card]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [result (chain/run-card-chain-test!
+                              card #{(:id t1)}
+                              {orders-id orders-f people-id people-f}
+                              expected-f
+                              {:assertions [{:name "result_nonneg_revenue"
+                                             ;; test_output refers to the card's compiled SQL CTE
+                                             :sql  "SELECT * FROM test_output WHERE revenue < 0"
+                                             :severity :error}]})]
+                  (testing "overall status is :passed"
+                    (is (= :passed (:status result))))
+                  (testing "assertion status is :passed"
+                    (is (= :passed (get-in result [:assertions 0 :status]))))
+                  (testing "no extra scratch tables remain (CTE binding creates no tables)"
+                    (is (= before-scratch (count-test-scratch-tables db-id "public")))))))))))))
+
+;;; ===========================================================================
+;;; Step 11 — HTTP endpoint wires assertions
+;;; ===========================================================================
+
+;;; ---------------------------------------------------------------------------
+;;; Step 11.1 — assertions=[] → same response shape as before (regression)
+;;; ---------------------------------------------------------------------------
+
+(deftest subgraph-endpoint-empty-assertions-regression-test
+  (testing "POST /subgraph with assertions=[] → 200 passed, same shape as before"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "sources"                (json/encode [(:id t1)])
+                             "assertions"             (json/encode [])})]
+                  (testing "status is passed"
+                    (is (= "passed" (:status resp))))
+                  (testing "assertions key is nil (no assertions run)"
+                    (is (nil? (:assertions resp)))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 11.2 — assertions + no expected → 200 + assertion results
+;;; ---------------------------------------------------------------------------
+
+(deftest subgraph-endpoint-assertions-no-expected-test
+  (testing "POST /subgraph with assertions and no expected → 200, :assertions in response"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f orders-rows
+                                    people-f people-rows]
+                (let [assertions-json (json/encode
+                                       [{:name "revenue_nonneg"
+                                         :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                         :severity "error"}])
+                      resp (mt/user-http-request
+                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "sources"                (json/encode [(:id t1)])
+                             "assertions"             assertions-json})]
+                  (testing "status is passed"
+                    (is (= "passed" (:status resp))))
+                  (testing ":diff is nil"
+                    (is (nil? (:diff resp))))
+                  (testing ":assertions has one entry"
+                    (is (= 1 (count (:assertions resp)))))
+                  (testing "assertion status is passed"
+                    (is (= "passed" (-> resp :assertions first :status)))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 11.3 — assertions + expected → 200 + diff + assertions
+;;; ---------------------------------------------------------------------------
+
+(deftest subgraph-endpoint-assertions-and-expected-test
+  (testing "POST /subgraph with assertions AND expected → 200, both :diff and :assertions"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [assertions-json (json/encode
+                                       [{:name "no_negative"
+                                         :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                         :severity "error"}])
+                      resp (mt/user-http-request
+                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "sources"                (json/encode [(:id t1)])
+                             "assertions"             assertions-json})]
+                  (testing "status is passed"
+                    (is (= "passed" (:status resp))))
+                  (testing ":diff is present"
+                    (is (some? (:diff resp))))
+                  (testing ":assertions is present"
+                    (is (= 1 (count (:assertions resp)))))
+                  (testing "assertion passed"
+                    (is (= "passed" (-> resp :assertions first :status)))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 11.4 — malformed assertions JSON → 400
+;;; ---------------------------------------------------------------------------
+
+(deftest subgraph-endpoint-malformed-assertions-test
+  (testing "POST /subgraph with malformed assertions JSON → 400"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                enriched-name (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files [expected-f correct-expected-csv]
+                ;; Send invalid JSON as the assertions part.
+                (mt/user-http-request
+                 :crowberto :post 400 (subgraph-test-run-url (:id t2))
+                 multipart-content-type
+                 {"expected"   expected-f
+                  "assertions" "this is not json"})))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 11.5 — assertion referencing a real table → 422
+;;; ---------------------------------------------------------------------------
+
+(deftest subgraph-endpoint-assertion-real-table-reference-test
+  (testing "POST /subgraph with assertion referencing a real (non-scratch) table → 200 with :failed assertion"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                target-name   (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                ;; products is a real table not in the mapping — verify guard 2 fires.
+                ;; Since per-assertion prepare captures this as a terminal error (not a
+                ;; run-level throw), the response is 200 with the assertion as :failed.
+                ;; This is the correct design: a bad assertion is a test-run result, not
+                ;; an HTTP-level error. The 422 path is for run-level errors.
+                (let [assertions-json (json/encode
+                                       [{:name "escapes_to_real_table"
+                                         :sql  "SELECT * FROM products WHERE price < 0"
+                                         :severity "error"}])
+                      resp (mt/user-http-request
+                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "sources"                (json/encode [(:id t1)])
+                             "assertions"             assertions-json})]
+                  (testing "response is 200 (assertion error is a run result, not HTTP error)"
+                    (is (= "failed" (:status resp))
+                        "overall status is failed because the assertion has :failed status"))
+                  (testing "assertion is :failed with an error_message"
+                    (is (= "failed" (-> resp :assertions first :status)))
+                    (is (string? (-> resp :assertions first :error_message)))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 11.6 — no expected and no assertions → 400
+;;; ---------------------------------------------------------------------------
+
+(deftest subgraph-endpoint-no-expected-no-assertions-test
+  (testing "POST /subgraph with no expected and no assertions → 400"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema "public" :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files [orders-f orders-rows
+                                    people-f people-rows]
+                (mt/user-http-request
+                 :crowberto :post 400 (subgraph-test-run-url (:id t2))
+                 multipart-content-type
+                 {(str "input-" orders-id) orders-f
+                  (str "input-" people-id) people-f
+                  "sources"                (json/encode [(:id t1)])})))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; parse-assertions unit tests (no DB needed)
+;;; ---------------------------------------------------------------------------
+
+(deftest parse-assertions-empty-test
+  (testing "nil part → empty vector"
+    (is (= [] (api-util/parse-assertions nil))))
+  (testing "empty array → empty vector"
+    (is (= [] (api-util/parse-assertions "[]")))))
+
+(deftest parse-assertions-valid-test
+  (testing "valid assertions JSON → keyword severity"
+    (let [json-str (json/encode [{:name "a" :sql "SELECT 1" :severity "error"}
+                                 {:name "b" :sql "SELECT 2" :severity "warn"}
+                                 {:name "c" :sql "SELECT 3"}])
+          result   (api-util/parse-assertions json-str)]
+      (is (= 3 (count result)))
+      (is (= :error (:severity (first result))))
+      (is (= :warn  (:severity (second result))))
+      (is (= :error (:severity (nth result 2)))
+          "missing severity defaults to :error"))))
+
+(deftest parse-assertions-missing-name-test
+  (testing "entry without name → 400"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (api-util/parse-assertions (json/encode [{:sql "SELECT 1"}]))))))
+
+(deftest parse-assertions-missing-sql-test
+  (testing "entry without sql → 400"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (api-util/parse-assertions (json/encode [{:name "a"}]))))))
+
+(deftest parse-assertions-bad-severity-test
+  (testing "unknown severity → 400"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (api-util/parse-assertions (json/encode [{:name "a" :sql "SELECT 1" :severity "critical"}]))))))
+
+(deftest parse-assertions-malformed-json-test
+  (testing "non-JSON string → 400"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (api-util/parse-assertions "not json at all")))))
+
+;;; ===========================================================================
+;;; Contract: cleanup! runs inside the transform connection context
+;;; ===========================================================================
+
 (deftest chain-cleanup-runs-inside-transform-connection-test
   ;; CONTRACT (documented in scratch.clj:29-34): every call to scratch/cleanup!
   ;; issued by run-chain-test! must occur while *connection-type* is bound to
@@ -576,3 +1081,169 @@
             (is (every? #{:transform} @captured)
                 (str "every cleanup! call must see *connection-type* = :transform; "
                      "got: " (pr-str @captured)))))))))
+
+;;; ===========================================================================
+;;; Step 12 — Single-transform path (core.clj / POST /:id/test-run) assertions
+;;; ===========================================================================
+
+;;; ---------------------------------------------------------------------------
+;;; Step 12.1 — run-test! with a passing assertion
+;;; ---------------------------------------------------------------------------
+
+(deftest single-transform-assertion-passing-test
+  (testing "run-test! with a passing assertion → :passed + :assertions [{:status :passed}]"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp           (mt/metadata-provider)
+                orders-id    (mt/id :orders)
+                people-id    (mt/id :people)
+                schema       "public"]
+            (mt/with-temp [:model/Transform t
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f enrich-expected-csv]
+                (let [transform-value {:source (:source t) :target (:target t)}
+                      fixtures        {orders-id orders-f people-id people-f}
+                      result          (test-run.core/run-test!
+                                       transform-value fixtures expected-f
+                                       {:assertions [{:name     "state_nonnull"
+                                                      ;; test_output is the synthetic alias for the output.
+                                                      :sql      "SELECT * FROM test_output WHERE state IS NULL"
+                                                      :severity :error}]})]
+                  (testing "overall status is :passed"
+                    (is (= :passed (:status result))))
+                  (testing ":assertions contains one entry"
+                    (is (= 1 (count (:assertions result)))))
+                  (testing "assertion status is :passed"
+                    (is (= :passed (get-in result [:assertions 0 :status]))))
+                  (testing "failing_row_count is 0"
+                    (is (zero? (get-in result [:assertions 0 :failing_row_count])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 12.2 — run-test! with a failing assertion
+;;; ---------------------------------------------------------------------------
+
+(deftest single-transform-assertion-failing-test
+  (testing "run-test! with a failing assertion → :failed + :assertions [{:status :failed}]"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp          (mt/metadata-provider)
+                orders-id   (mt/id :orders)
+                people-id   (mt/id :people)
+                schema      "public"]
+            (mt/with-temp [:model/Transform t
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files [orders-f orders-rows
+                                    people-f people-rows]
+                (let [transform-value {:source (:source t) :target (:target t)}
+                      fixtures        {orders-id orders-f people-id people-f}
+                      result          (test-run.core/run-test!
+                                       transform-value fixtures nil  ; assertions-only mode
+                                       {:assertions [{:name     "always_fails"
+                                                      ;; SELECT * FROM test_output returns all rows → assertion fires
+                                                      :sql      "SELECT * FROM test_output"
+                                                      :severity :error}]})]
+                  (testing "overall status is :failed (assertion fires)"
+                    (is (= :failed (:status result))))
+                  (testing "assertion status is :failed"
+                    (is (= :failed (get-in result [:assertions 0 :status]))))
+                  (testing "failing_row_count > 0"
+                    (is (pos? (get-in result [:assertions 0 :failing_row_count])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 12.3 — run-test! assertions-only (no expected CSV)
+;;; ---------------------------------------------------------------------------
+
+(deftest single-transform-assertions-only-test
+  (testing "run-test! with assertions and no expected CSV → :passed, :diff nil"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp          (mt/metadata-provider)
+                orders-id   (mt/id :orders)
+                people-id   (mt/id :people)
+                target-name (mt/random-name)
+                schema      "public"]
+            (mt/with-temp [:model/Transform t
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema schema :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f orders-rows
+                                    people-f people-rows]
+                (let [transform-value {:source (:source t) :target (:target t)}
+                      fixtures        {orders-id orders-f people-id people-f}
+                      result          (test-run.core/run-test!
+                                       transform-value fixtures nil  ; no expected CSV
+                                       {:assertions [{:name     "state_nonnull"
+                                                      :sql      "SELECT * FROM test_output WHERE state IS NULL"
+                                                      :severity :error}]})]
+                  (testing "overall status is :passed"
+                    (is (= :passed (:status result))))
+                  (testing ":diff is nil when no expected CSV"
+                    (is (nil? (:diff result))))
+                  (testing "assertion status is :passed"
+                    (is (= :passed (get-in result [:assertions 0 :status])))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Step 12.4 — POST /:id/test-run with assertions (HTTP endpoint)
+;;; ---------------------------------------------------------------------------
+
+(defn- single-transform-test-run-url [id]
+  (format "transform/%d/test-run" id))
+
+(deftest single-transform-endpoint-assertion-passing-test
+  (testing "POST /:id/test-run with a passing assertion → 200 passed, :assertions in response"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp          (mt/metadata-provider)
+                orders-id   (mt/id :orders)
+                people-id   (mt/id :people)
+                target-name (mt/random-name)
+                schema      "public"]
+            (mt/with-temp [:model/Transform t
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema schema :type "table" :name target-name}}]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f enrich-expected-csv]
+                (let [assertions-json (json/encode
+                                       [{:name "state_nonnull"
+                                         :sql  "SELECT * FROM test_output WHERE state IS NULL"
+                                         :severity "error"}])
+                      resp (mt/user-http-request
+                            :crowberto :post 200 (single-transform-test-run-url (:id t))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "assertions"             assertions-json})]
+                  (testing "status is passed"
+                    (is (= "passed" (:status resp))))
+                  (testing ":assertions is present and has one entry"
+                    (is (= 1 (count (:assertions resp)))))
+                  (testing "assertion status is passed"
+                    (is (= "passed" (-> resp :assertions first :status)))))))))))))
+
+(deftest single-transform-endpoint-no-expected-no-assertions-test
+  (testing "POST /:id/test-run with no expected and no assertions → 400"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp          (mt/metadata-provider)
+                orders-id   (mt/id :orders)
+                people-id   (mt/id :people)]
+            (mt/with-temp [:model/Transform t
+                           {:source {:type :query :query (lib/native-query mp (str "SELECT id FROM orders"))}
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files [orders-f orders-rows
+                                    people-f people-rows]
+                (mt/user-http-request
+                 :crowberto :post 400 (single-transform-test-run-url (:id t))
+                 multipart-content-type
+                 {(str "input-" orders-id) orders-f
+                  (str "input-" people-id) people-f})))))))))

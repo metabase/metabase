@@ -216,55 +216,71 @@
   throws the typed `::cannot-test-run` error (naming the guard + offending
   refs/token) on any failure.
 
-  - `driver`  — driver keyword (for default-schema + parsing).
-  - `mapping` — `{real-spec → scratch-spec}` from `seed!`.
-  - `final-sql` — the rewritten / override-compiled SQL string."
-  [driver mapping final-sql]
-  (let [refs (sql-tools/referenced-tables-raw driver final-sql)]
-    ;; Guard 1: non-empty refs — but only when mapping is non-empty.
-    ;; A parse error on a rewritten SQL loses refs that existed (guard must fire).
-    ;; A zero-table transform has an empty mapping and empty refs vacuously — safe,
-    ;; nothing to protect; Guard 2 still catches any stray refs if they appear.
-    (when (and (seq mapping) (empty? refs))
-      (cannot-test-run!
-       (str "This transform can't be test-run: the rewritten SQL has no resolvable"
-            " table references (it may have failed to parse).")
-       {:guard ::non-empty-refs :sql final-sql}))
-    ;; Guard 2: every ref ∈ scratch specs.
-    (let [scratch     (scratch-ref-set driver mapping)
-          normalized  (map #(normalize-ref driver %) refs)
-          stray       (remove scratch normalized)]
-      (when (seq stray)
-        (cannot-test-run!
-         (str "This transform can't be test-run: the rewritten SQL references"
-              " table(s) that are not scratch tables: " (pr-str (vec stray))
-              ". An input table was not mapped to a scratch table.")
-         {:guard ::refs-subset-scratch :stray-refs (vec stray) :scratch scratch})))
-    ;; Guard 3: no original schema/table token survives.
-    ;; (a) Parser-based, scope-aware: a dangling table qualifier left behind by a
-    ;;     FROM-only rewrite surfaces as a `:missing-table-alias` error. This is
-    ;;     precise — it never flags legitimate lib-generated join aliases.
-    ;; (b) String-based, case-sensitive: catches a real table token surviving in a
-    ;;     string literal (fail-closed-by-design) without colliding with
-    ;;     case-different quoted identifiers.
-    (let [forbidden    (forbidden-tokens mapping)
-          forbidden-lc (into #{} (map u/lower-case-en) forbidden)
-          dangling     (dangling-qualifier-tokens driver final-sql forbidden-lc)]
-      (when-let [token (first dangling)]
-        (cannot-test-run!
-         (str "This transform can't be test-run: the original table " (pr-str token)
-              " still appears as a dangling column qualifier (e.g. `" token ".col`)"
-              " in the rewritten SQL. The FROM-only rewrite retargeted the table"
-              " source but left the qualifier behind, producing unrunnable SQL.")
-         {:guard ::token-survival :surviving-token token :sql final-sql}))
-      (doseq [token forbidden]
-        (when (token-survives-as-string-literal? token final-sql)
-          (cannot-test-run!
-           (str "This transform can't be test-run: the original identifier "
-                (pr-str token) " still appears in the rewritten SQL (e.g. inside a"
-                " string literal). It cannot be safely test-run.")
-           {:guard ::token-survival :surviving-token token :sql final-sql}))))
-    final-sql))
+  - `driver`       — driver keyword (for default-schema + parsing).
+  - `mapping`      — `{real-spec → scratch-spec}` from `seed!`.
+  - `final-sql`    — the rewritten / override-compiled SQL string.
+  - `safe-aliases` — set of bare table-name strings that are known-safe and
+                     exempt from Guard 2 (they are CTE-bound by the caller, not
+                     real warehouse tables). Default `#{}`. The assertions
+                     subsystem passes `#{\"test_output\"}` here — `test_output` is
+                     bound by the combined-assertion CTE wrapper, not a production
+                     table, so Guard 2 must not flag it."
+  ([driver mapping final-sql]
+   (verify driver mapping final-sql #{}))
+  ([driver mapping final-sql safe-aliases]
+   (let [refs (sql-tools/referenced-tables-raw driver final-sql)]
+     ;; Guard 1: non-empty refs — but only when mapping is non-empty.
+     ;; A parse error on a rewritten SQL loses refs that existed (guard must fire).
+     ;; A zero-table transform has an empty mapping and empty refs vacuously — safe,
+     ;; nothing to protect; Guard 2 still catches any stray refs if they appear.
+     (when (and (seq mapping) (empty? refs))
+       (cannot-test-run!
+        (str "This transform can't be test-run: the rewritten SQL has no resolvable"
+             " table references (it may have failed to parse).")
+        {:guard ::non-empty-refs :sql final-sql}))
+     ;; Guard 2: every ref ∈ scratch specs OR a known-safe alias.
+     ;; safe-aliases are CTE-bound by the caller (e.g. test_output) — they never
+     ;; refer to real warehouse tables so exempting them is safe.
+     (let [scratch    (scratch-ref-set driver mapping)
+           normalized (map #(normalize-ref driver %) refs)
+           safe-lc    (into #{} (map u/lower-case-en) safe-aliases)
+           stray      (remove (fn [{:keys [table] :as ref}]
+                                (or (scratch ref)
+                                    (contains? safe-lc (u/lower-case-en table))))
+                              normalized)]
+       (when (seq stray)
+         (cannot-test-run!
+          (str "This transform can't be test-run: the rewritten SQL references"
+               " table(s) that are not scratch tables: " (pr-str (vec stray))
+               ". An input table was not mapped to a scratch table.")
+          {:guard ::refs-subset-scratch :stray-refs (vec stray) :scratch scratch})))
+     ;; Guard 3: no original schema/table token survives.
+     ;; (a) Parser-based, scope-aware: a dangling table qualifier left behind by a
+     ;;     FROM-only rewrite surfaces as a `:missing-table-alias` error. This is
+     ;;     precise — it never flags legitimate lib-generated join aliases.
+     ;; (b) String-based, case-sensitive: catches a real table token surviving in a
+     ;;     string literal (fail-closed-by-design) without colliding with
+     ;;     case-different quoted identifiers.
+     ;; Note: safe-aliases are caller-bound CTE names, not original table tokens,
+     ;; so they are absent from forbidden-tokens and Guard 3 does not flag them.
+     (let [forbidden    (forbidden-tokens mapping)
+           forbidden-lc (into #{} (map u/lower-case-en) forbidden)
+           dangling     (dangling-qualifier-tokens driver final-sql forbidden-lc)]
+       (when-let [token (first dangling)]
+         (cannot-test-run!
+          (str "This transform can't be test-run: the original table " (pr-str token)
+               " still appears as a dangling column qualifier (e.g. `" token ".col`)"
+               " in the rewritten SQL. The FROM-only rewrite retargeted the table"
+               " source but left the qualifier behind, producing unrunnable SQL.")
+          {:guard ::token-survival :surviving-token token :sql final-sql}))
+       (doseq [token forbidden]
+         (when (token-survives-as-string-literal? token final-sql)
+           (cannot-test-run!
+            (str "This transform can't be test-run: the original identifier "
+                 (pr-str token) " still appears in the rewritten SQL (e.g. inside a"
+                 " string literal). It cannot be safely test-run.")
+            {:guard ::token-survival :surviving-token token :sql final-sql}))))
+     final-sql)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry point

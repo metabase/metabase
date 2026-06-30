@@ -324,29 +324,34 @@
 (defn- run-test-run!
   "Execute a test run for `transform` from parsed multipart params.
 
-  Reads the `expected` file part, parses the `input-<id>` fixture files, parses
-  the `options` JSON part, and delegates to `transforms.core/run-test!`.
+  Reads the `expected` file part (optional when `assertions` is non-empty), the
+  `input-<id>` fixture files, the `options` JSON part, and the `assertions` JSON
+  part, then delegates to `transforms.core/run-test!`.
 
   Returns the HTTP response map directly (status + body). Never throws —
   typed errors are mapped to HTTP statuses from `test-run-error-http-status`;
   unknown errors become 500."
   [transform multipart-params]
-  (let [expected-part (get multipart-params "expected")]
-    (when-not expected-part
-      (throw (ex-info (tru "Missing required multipart part: ''expected''.")
+  (let [expected-part     (get multipart-params "expected")
+        assertions-part   (get multipart-params "assertions")
+        parsed-assertions (api-util/parse-assertions assertions-part)]
+    ;; At least one of expected or assertions must be present.
+    (when (and (nil? expected-part) (empty? parsed-assertions))
+      (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
                       {:status-code 400})))
-    (let [expected-file     (:tempfile expected-part)
-          fixtures-by-id    (api-util/parse-input-table-ids multipart-params)
-          opts              (api-util/parse-test-run-options (get multipart-params "options"))
+    (let [expected-file   (when expected-part (:tempfile expected-part))
+          fixtures-by-id  (api-util/parse-input-table-ids multipart-params #{"assertions"})
+          opts            (assoc (api-util/parse-test-run-options (get multipart-params "options"))
+                                 :assertions parsed-assertions)
           ;; The transform value for run-test! is built from the DB row's :source + :target.
-          transform-value   {:source (:source transform)
-                             :target (:target transform)}]
+          transform-value {:source (:source transform)
+                           :target (:target transform)}]
       (try
         (let [record (transforms.core/run-test! transform-value fixtures-by-id expected-file opts)]
           {:status 200
            :body   (api-util/run-record->response record)})
         (catch clojure.lang.ExceptionInfo e
-          (let [error-type (:error-type (ex-data e))
+          (let [error-type  (:error-type (ex-data e))
                 http-status (get api-util/test-run-error-http-status error-type)]
             (if http-status
               {:status http-status
@@ -366,16 +371,21 @@
     positive integer matching the id of a table in the transform's dependency
     set.
 
-  - `expected` (required): a CSV file containing the expected output rows.
-    Columns are inferred from the actual output schema; the comparison is
-    multiset (order-independent).
+  - `expected` (optional when `assertions` is non-empty): a CSV file containing
+    the expected output rows. Columns are inferred from the actual output schema;
+    the comparison is multiset (order-independent). At least one of `expected`
+    or `assertions` must be provided.
+
+  - `assertions` (optional when `expected` is present): a JSON array of assertion
+    objects `[{name, sql, severity?}]`. Each assertion's SQL must return zero rows
+    to pass. At least one of `expected` or `assertions` must be provided.
 
   - `options` (optional): a JSON object with supported keys:
     - `ignore_columns`: array of column name strings to exclude from the diff.
 
   Error → HTTP status mapping:
-  - 400: missing `expected` part; unknown `input-*` table id; malformed
-         `options` JSON; unknown multipart part name.
+  - 400: missing both `expected` and `assertions`; unknown `input-*` table id;
+         malformed `options` or `assertions` JSON; unknown multipart part name.
   - 402: feature flag off (transforms premium feature not enabled).
   - 422: transform type not supported (e.g. Python); cannot determine input
          tables; referenced table not synced; `replace-names` rewrite fails;
@@ -384,7 +394,7 @@
          failure.
 
   Response shape (all cases):
-  - Passed/failed: `{:status \"passed\"|\"failed\", :diff <report>, :test_run_id nil}`
+  - Passed/failed: `{:status \"passed\"|\"failed\", :diff <report>, :assertions [...], :test_run_id nil}`
   - Error: `{:status \"error\", :error {:type <str>, :message <str>}, :test_run_id nil}`
 
   `:test_run_id` is `nil` here (synchronous); reserved for a future async

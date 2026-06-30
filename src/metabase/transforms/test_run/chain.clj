@@ -45,6 +45,7 @@
    [metabase.query-processor.core :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.transforms.test-run.assertions :as assertions]
    [metabase.transforms.test-run.card-refs :as card-refs]
    [metabase.transforms.test-run.core :as core]
    [metabase.transforms.test-run.diff :as diff]
@@ -194,15 +195,18 @@
   (let [table-ids (card-refs/card->tables card)]
     (into [] (m/distinct-by :id) (map #(inputs/resolve-table-dep {:table %}) table-ids))))
 
-(defn- run-card-query!
-  "Compile the card's query to SQL under the scratch override — MBQL via the
-  metadata provider, native via SQL rewrite — verify it, then execute it.
+(defn- compile-card-sql
+  "Compile the card's query to a verified SQL string under the scratch override.
 
-  `resolve/verify` is the safety proof: it fails closed if any non-scratch table
-  reference survives the rewrite. No DDL guard — the card path issues no CTAS.
+  Native cards are rewritten via `resolve/rewrite-native-sql`; MBQL cards are
+  compiled under a metadata-provider override so the compiler emits
+  scratch-qualified SQL directly.
 
-  Returns the raw QP result `{:status :completed :data {:cols [...] :rows [...]}}`.
-  Throws `::cannot-test-run` on a guard or compile failure."
+  `resolve/verify` is the safety proof — throws `::cannot-test-run` if any
+  non-scratch table reference survives.
+
+  Returns the final SQL string, reused for both card execution and the assertion
+  CTE binding."
   [card db-id drv mapping input-tables]
   (let [backend   (sql-tools/parser-backend)
         dataset-q (:dataset_query card)
@@ -225,17 +229,7 @@
               (:query (qp.compile/compile dataset-q)))))]
     ;; verify: every SQL ref must be a scratch table; no original table token survives.
     (resolve/verify drv mapping final-sql)
-    (log/debug "Running card query under scratch override" {:db-id db-id :drv drv})
-    (let [result (qp/process-query {:database db-id
-                                    :type     :native
-                                    :native   {:query final-sql}})]
-      (when (not= :completed (:status result))
-        (throw (ex-info
-                (str "Card query failed during test run: QP returned " (pr-str (:status result)))
-                {:error-type ::execution-failed
-                 :qp-status  (:status result)
-                 :card-id    (:id card)})))
-      result)))
+    final-sql))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry points
@@ -275,13 +269,17 @@
   - `source-ids`           — set of selected boundary source transform ids.
   - `fixtures-by-table-id` — `{<table-id> <java.io.File>}` CSV files keyed by leaf
                              table id.
-  - `expected-csv-file`    — `java.io.File`, the expected output of the target.
-  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms>}`.
+  - `expected-csv-file`    — `java.io.File` or nil, the expected output of the target.
+                             When nil, the diff is skipped and only assertions determine
+                             the run status (requires `assertions` to be non-empty).
+  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]}`.
+    - `:assertions` — seq of `{:name :sql :severity}` maps (default `[]`).
 
   Returns a run-record map (JSON-serializable):
   ```
   {:status         :passed | :failed
-   :diff           <diff-report>
+   :diff           <diff-report> | nil   ; nil when no expected-csv-file
+   :assertions     [<assertion-result> ...] | nil
    :parser-backend <keyword>
    :order          [<transform-id> ...]   ; topological run order
    :output-table   <string>}              ; the target's scratch output table
@@ -292,6 +290,7 @@
   [target-id source-ids fixtures-by-table-id expected-csv-file opts]
   (let [timeout-ms     (get opts :timeout-ms core/default-test-run-timeout-ms)
         ignore-cols    (get opts :ignore-columns #{})
+        assertion-defs (get opts :assertions [])
         all-transforms (t2/select :model/Transform)
         id->transform  (u/index-by :id all-transforms)
         target         (or (id->transform target-id)
@@ -326,10 +325,20 @@
                 qp-result   (execute/read-back-output db-id drv target-out)
                 actual-cols (get-in qp-result [:data :cols])
                 actual-rows (get-in qp-result [:data :rows])
-                expected    (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))
-                report      (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})]
-            {:status         (:status report)
+                ;; Diff against expected CSV when provided; nil otherwise.
+                report      (when expected-csv-file
+                              (let [expected (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))]
+                                (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
+                ;; Run assertions after the target's scratch output exists:
+                ;; after run-slice-inner!, before cleanup.
+                backend     (sql-tools/parser-backend)
+                binding     (assertions/build-output-binding :transform {:scratch-spec target-out})
+                assertion-results (assertions/run-assertions! db-id drv backend mapping binding assertion-defs)
+                diff-status (or (:status report) :passed)
+                overall     (assertions/overall-status diff-status (or assertion-results []))]
+            {:status         overall
              :diff           report
+             :assertions     assertion-results
              :parser-backend parser-backend
              :order          order
              :output-table   (:table target-out)}))
@@ -352,15 +361,18 @@
   - `source-ids`           — set of selected boundary source transform ids.
   - `fixtures-by-table-id` — `{<table-id> <java.io.File>}` CSV files keyed by leaf
                              table id.
-  - `expected-csv-file`    — `java.io.File`, the expected output of the card's query.
-  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms>}`.
+  - `expected-csv-file`    — `java.io.File` or nil, the expected output of the card.
+                             When nil, only assertions determine the run status.
+  - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]}`.
+    - `:assertions` — seq of `{:name :sql :severity}` maps (default `[]`).
 
   Returns a run-record map (JSON-serializable):
   ```
-  {:status  :passed | :failed
-   :diff    <diff-report>
-   :order   [<transform-id> ...]   ; topological run order of the transform slice
-   :card-id <integer>}             ; the card's id (for debugging)
+  {:status     :passed | :failed
+   :diff       <diff-report> | nil
+   :assertions [<assertion-result> ...] | nil
+   :order      [<transform-id> ...]   ; topological run order of the transform slice
+   :card-id    <integer>}             ; the card's id (for debugging)
   ```
 
   Security: the card is executed via raw `qp/process-query` (no card-caching
@@ -379,26 +391,27 @@
   On error, throws a typed `ex-info` (`:error-type` in ex-data). Cleanup runs in
   `finally` on every path."
   [card source-ids fixtures-by-table-id expected-csv-file opts]
-  (let [timeout-ms    (get opts :timeout-ms core/default-test-run-timeout-ms)
-        ignore-cols   (get opts :ignore-columns #{})
-        card-id       (:id card)
-        db-id         (card-db-id card)
-        _             (when-not db-id
-                        (throw (ex-info
-                                (str "Cannot determine database id from card " card-id
-                                     " dataset_query.")
-                                {:error-type ::missing-database-id :card-id card-id})))
+  (let [timeout-ms     (get opts :timeout-ms core/default-test-run-timeout-ms)
+        ignore-cols    (get opts :ignore-columns #{})
+        assertion-defs (get opts :assertions [])
+        card-id        (:id card)
+        db-id          (card-db-id card)
+        _              (when-not db-id
+                         (throw (ex-info
+                                 (str "Cannot determine database id from card " card-id
+                                      " dataset_query.")
+                                 {:error-type ::missing-database-id :card-id card-id})))
         all-transforms (t2/select :model/Transform)
         id->transform  (u/index-by :id all-transforms)
         {:keys [slice order leaf-deps]} (subgraph/card->necessary-fixtures card source-ids all-transforms)
-        _             (assert-single-database! slice id->transform db-id)
-        db            (t2/select-one :model/Database :id db-id)
-        drv           (keyword (:engine db))
+        _              (assert-single-database! slice id->transform db-id)
+        db             (t2/select-one :model/Database :id db-id)
+        drv            (keyword (:engine db))
         ;; Use the first slice node's target schema as the scratch schema, falling back
         ;; to "public". Consistent with how run-chain-test! derives schema from the target.
-        schema        (or (some-> (first order) id->transform :target :schema) "public")
-        mapping*      (atom {})
-        outputs*      (atom {})]
+        schema         (or (some-> (first order) id->transform :target :schema) "public")
+        mapping*       (atom {})
+        outputs*       (atom {})]
     (driver.conn/with-transform-connection
       (try
         (let [{:keys [mapping outputs]}
@@ -415,15 +428,42 @@
           (reset! outputs* outputs)
           ;; Resolve the card's referenced tables for the override key set.
           (let [input-tables (card-table-infos card)
-                qp-result    (run-card-query! card db-id drv mapping input-tables)
+                ;; compile-card-sql produces the scratch-remapped SQL — reuse it for
+                ;; both card execution and the assertion CTE binding (avoiding a
+                ;; second compile call).
+                card-sql     (compile-card-sql card db-id drv mapping input-tables)
+                qp-result    (do
+                               (log/debug "Running card query under scratch override"
+                                          {:db-id db-id :drv drv})
+                               (let [r (qp/process-query {:database db-id
+                                                          :type     :native
+                                                          :native   {:query card-sql}})]
+                                 (when (not= :completed (:status r))
+                                   (throw (ex-info
+                                           (str "Card query failed during test run: QP returned "
+                                                (pr-str (:status r)))
+                                           {:error-type ::execution-failed
+                                            :qp-status  (:status r)
+                                            :card-id    card-id})))
+                                 r))
                 actual-cols  (get-in qp-result [:data :cols])
                 actual-rows  (get-in qp-result [:data :rows])
-                expected     (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))
-                report       (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})]
-            {:status  (:status report)
-             :diff    report
-             :order   order
-             :card-id card-id}))
+                ;; Diff against expected CSV when provided; nil otherwise.
+                report       (when expected-csv-file
+                               (let [expected (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))]
+                                 (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
+                ;; Run assertions using the compiled card SQL as the test_output CTE:
+                ;; after the card query, before cleanup.
+                backend      (sql-tools/parser-backend)
+                binding      (assertions/build-output-binding :card {:card-sql card-sql})
+                assertion-results (assertions/run-assertions! db-id drv backend mapping binding assertion-defs)
+                diff-status  (or (:status report) :passed)
+                overall      (assertions/overall-status diff-status (or assertion-results []))]
+            {:status     overall
+             :diff       report
+             :assertions assertion-results
+             :order      order
+             :card-id    card-id}))
         (finally
           ;; Drop node output scratch tables (one per slice node).
           (doseq [out-spec (vals @outputs*)]

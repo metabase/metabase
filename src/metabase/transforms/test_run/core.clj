@@ -7,6 +7,8 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.transforms.test-run.assertions :as assertions]
    [metabase.transforms.test-run.diff :as diff]
    [metabase.transforms.test-run.execute :as execute]
    [metabase.transforms.test-run.fixtures :as fixtures]
@@ -38,17 +40,22 @@
   - `transform`            — a `:query` transform value (native SQL or MBQL).
   - `fixtures-by-table-id` — `{<table-id> <java.io.File>}` — multipart CSV files
                              keyed by integer table id (from `input-<table-id>` parts).
-  - `expected-csv-file`    — `java.io.File` — the expected output CSV (the `expected` part).
+  - `expected-csv-file`    — `java.io.File` or nil — the expected output CSV (the
+                             `expected` part). Optional when `:assertions` is non-empty;
+                             at least one of `expected-csv-file` or `[:assertions]` opts
+                             must be provided.
   - `opts`                 — option map:
     - `:ignore-columns`  — `#{\"col-name\" ...}` — columns excluded from the diff.
     - `:timeout-ms`      — statement-level timeout in ms (default: [[default-test-run-timeout-ms]]).
+    - `:assertions`      — seq of `{:name :sql :severity}` maps (default `[]`).
 
   Returns a run-record map (JSON-serializable):
   ```
   {:status          :passed | :failed
-   :diff            <diff-report>   ; from diff/diff
-   :parser-backend  <keyword>       ; the parser backend pinned for this run
-   :output-table    <string>}       ; the scratch output table name (for debugging)
+   :diff            <diff-report> | nil   ; nil when no expected-csv-file
+   :assertions      [<assertion-result> ...] | nil
+   :parser-backend  <keyword>             ; the parser backend pinned for this run
+   :output-table    <string>}             ; the scratch output table name (for debugging)
   ```
 
   On error, throws a typed `ex-info` (`:error-type` in ex-data); see
@@ -58,33 +65,34 @@
   Cleanup (drop all scratch tables) runs in `finally` — success, failure, or
   timeout."
   [transform fixtures-by-table-id expected-csv-file opts]
-  (let [timeout-ms    (get opts :timeout-ms default-test-run-timeout-ms)
-        ignore-cols   (get opts :ignore-columns #{})
+  (let [timeout-ms      (get opts :timeout-ms default-test-run-timeout-ms)
+        ignore-cols     (get opts :ignore-columns #{})
+        assertion-defs  (get opts :assertions [])
         ;; Resolve required tables — strict, fail-closed.
         required-tables (inputs/required-input-tables transform)
         ;; Match fixtures — every required table must have a fixture, no extras.
-        match-plan    (inputs/match-fixtures required-tables (set (keys fixtures-by-table-id)))
+        match-plan      (inputs/match-fixtures required-tables (set (keys fixtures-by-table-id)))
         ;; Parse each fixture CSV against its table's column schema.
-        seed-inputs   (mapv (fn [{:keys [table-info fixture-key]}]
-                              {:table-info table-info
-                               :fixture    (fixtures/parse-fixture
-                                            (get fixtures-by-table-id fixture-key)
-                                            (:columns table-info))})
-                            match-plan)
+        seed-inputs     (mapv (fn [{:keys [table-info fixture-key]}]
+                                {:table-info table-info
+                                 :fixture    (fixtures/parse-fixture
+                                              (get fixtures-by-table-id fixture-key)
+                                              (:columns table-info))})
+                              match-plan)
         ;; Identify the DB we're working against. The transform's source query carries
         ;; :database for both native (lib/native-query) and MBQL (lib/query) shapes.
-        db-id         (-> transform :source :query :database)
-        _             (when-not db-id
-                        (throw (ex-info
-                                "Cannot determine database id from transform source query."
-                                {:error-type ::missing-database-id
-                                 :source     (:source transform)})))
-        db            (t2/select-one :model/Database :id db-id)
-        output-schema (or (-> transform :target :schema) "public")
-        nonce         (scratch/new-nonce)
+        db-id           (-> transform :source :query :database)
+        _               (when-not db-id
+                          (throw (ex-info
+                                  "Cannot determine database id from transform source query."
+                                  {:error-type ::missing-database-id
+                                   :source     (:source transform)})))
+        db              (t2/select-one :model/Database :id db-id)
+        output-schema   (or (-> transform :target :schema) "public")
+        nonce           (scratch/new-nonce)
         ;; Accumulate scratch state so finally can clean up.
-        mapping*     (atom nil)
-        output-spec* (atom nil)]
+        mapping*        (atom nil)
+        output-spec*    (atom nil)]
     (driver.conn/with-transform-connection
       ;; Wrap the whole run in the canonical write-data credentials + :transform
       ;; JDBC pool — seed, DDL, execute, and cleanup all run under it.
@@ -115,13 +123,21 @@
               qp-result    (execute/read-back-output db-id drv output-spec)
               actual-cols  (get-in qp-result [:data :cols])
               actual-rows  (get-in qp-result [:data :rows])
-              ;; Parse expected CSV against the actual output column types.
-              expected-schema   (execute/actual->schema actual-cols)
-              expected-fixture  (fixtures/parse-fixture expected-csv-file expected-schema)
-              report       (diff/diff actual-cols actual-rows expected-fixture
-                                      {:ignore-columns ignore-cols})]
-          {:status         (:status report)
+              ;; Diff against expected CSV when provided; nil otherwise.
+              ;; Runs after read-back-output, before cleanup.
+              report       (when expected-csv-file
+                             (let [expected-schema  (execute/actual->schema actual-cols)
+                                   expected-fixture (fixtures/parse-fixture expected-csv-file expected-schema)]
+                               (diff/diff actual-cols actual-rows expected-fixture
+                                          {:ignore-columns ignore-cols})))
+              backend      (sql-tools/parser-backend)
+              binding      (assertions/build-output-binding :transform {:scratch-spec output-spec})
+              assertion-results (assertions/run-assertions! db-id drv backend mapping binding assertion-defs)
+              diff-status  (or (:status report) :passed)
+              overall      (assertions/overall-status diff-status (or assertion-results []))]
+          {:status         overall
            :diff           report
+           :assertions     assertion-results
            :parser-backend (:parser-backend artifact)
            :output-table   (:table output-spec)})
         (finally

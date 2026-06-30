@@ -50,21 +50,26 @@
   "Execute a chained (sub-graph) test run for target transform `target-id` from
   parsed multipart params.
 
-  Reads the `expected` file part, the `sources` JSON part (selected boundary
-  source ids), the `input-<id>` leaf fixtures, and the `options` JSON part, then
+  Reads the `expected` file part (optional when `assertions` is non-empty), the
+  `sources` JSON part (selected boundary source ids), the `input-<id>` leaf
+  fixtures, the `options` JSON part, and the `assertions` JSON part, then
   delegates to `transforms.core/run-chain-test!`.
 
   Returns the HTTP response map directly. Never throws — typed errors are mapped
   via `api-util/test-run-error-http-status`; unknown errors become 500."
   [target-id multipart-params]
-  (let [expected-part (get multipart-params "expected")]
-    (when-not expected-part
-      (throw (ex-info (tru "Missing required multipart part: ''expected''.")
+  (let [expected-part   (get multipart-params "expected")
+        assertions-part (get multipart-params "assertions")
+        parsed-assertions (api-util/parse-assertions assertions-part)]
+    ;; At least one of expected or assertions must be present.
+    (when (and (nil? expected-part) (empty? parsed-assertions))
+      (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
                       {:status-code 400})))
-    (let [expected-file  (:tempfile expected-part)
+    (let [expected-file  (when expected-part (:tempfile expected-part))
           source-ids     (parse-source-ids (get multipart-params "sources"))
-          fixtures-by-id (api-util/parse-input-table-ids multipart-params #{"sources"})
-          opts           (api-util/parse-test-run-options (get multipart-params "options"))]
+          fixtures-by-id (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
+          opts           (assoc (api-util/parse-test-run-options (get multipart-params "options"))
+                                :assertions parsed-assertions)]
       (try
         (let [record (transforms.core/run-chain-test! target-id source-ids fixtures-by-id expected-file opts)]
           {:status 200
@@ -91,14 +96,18 @@
   Returns the HTTP response map directly. Never throws — typed errors are mapped
   via `api-util/test-run-error-http-status`; unknown errors become 500."
   [card multipart-params]
-  (let [expected-part (get multipart-params "expected")]
-    (when-not expected-part
-      (throw (ex-info (tru "Missing required multipart part: ''expected''.")
+  (let [expected-part   (get multipart-params "expected")
+        assertions-part (get multipart-params "assertions")
+        parsed-assertions (api-util/parse-assertions assertions-part)]
+    ;; At least one of expected or assertions must be present.
+    (when (and (nil? expected-part) (empty? parsed-assertions))
+      (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
                       {:status-code 400})))
-    (let [expected-file  (:tempfile expected-part)
+    (let [expected-file  (when expected-part (:tempfile expected-part))
           source-ids     (parse-source-ids (get multipart-params "sources"))
-          fixtures-by-id (api-util/parse-input-table-ids multipart-params #{"sources"})
-          opts           (api-util/parse-test-run-options (get multipart-params "options"))]
+          fixtures-by-id (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
+          opts           (assoc (api-util/parse-test-run-options (get multipart-params "options"))
+                                :assertions parsed-assertions)]
       (try
         (let [record (transforms.core/run-card-chain-test! card source-ids fixtures-by-id expected-file opts)]
           {:status 200

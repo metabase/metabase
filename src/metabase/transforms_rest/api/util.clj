@@ -6,6 +6,7 @@
   ([[metabase.transforms-rest.api.transform]]) and the generalized chained
   endpoints ([[metabase.transforms-rest.api.transform-test-run]])."
   (:require
+   [clojure.string :as str]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]))
 
@@ -46,7 +47,15 @@
    :metabase.transforms.test-run.subgraph/cycle                   422
    :metabase.transforms.test-run.chain/cross-database-subgraph    422
    :metabase.transforms.test-run.chain/target-not-found           422
-   :metabase.transforms.test-run.chain/missing-database-id        422})
+   :metabase.transforms.test-run.chain/missing-database-id        422
+   ;; Assertion-specific errors.
+   ;; ::assertion-rewrite-failed and ::assertion-execution-failed are per-assertion
+   ;; internal states captured in the response body, not HTTP-level errors; they are
+   ;; mapped here only for the case where one is thrown at the run level.
+   :metabase.transforms.test-run.assertions/assertion-execution-failed  500
+   :metabase.transforms.test-run.assertions/assertion-rewrite-failed    422
+   ;; assertions-parse-error fires at request-parse time (malformed JSON / missing fields).
+   :metabase.transforms-rest.api.util/assertions-parse-error             400})
 
 (defn parse-input-table-ids
   "Extract input fixture files from the multipart params.
@@ -109,15 +118,67 @@
         (:ignore_columns opts)
         (assoc :ignore-columns (set (:ignore_columns opts)))))))
 
-(defn run-record->response
-  "Convert a successful run-record (from `run-test!`) to the HTTP response body.
+(defn parse-assertions
+  "Parse the `assertions` JSON multipart part.
 
-  Status keywords are converted to strings (`\"passed\"` / `\"failed\"`) for
-  JSON serialisation. `:test_run_id` is nil (reserved for a future async polling
-  variant)."
+  Returns a vector of assertion maps:
+  `[{:name <string> :sql <string> :severity :error|:warn} ...]`
+
+  Missing part → `[]`. Throws 400 on malformed JSON, missing required fields
+  (name, sql), or unknown severity."
+  [assertions-part]
+  (if (nil? assertions-part)
+    []
+    (let [raw  (if (map? assertions-part) (:tempfile assertions-part) assertions-part)
+          text (if (instance? java.io.File raw) (slurp raw) (str raw))
+          data (try
+                 (json/decode text)
+                 (catch Exception _
+                   (throw (ex-info (tru "Malformed ''assertions'' part: not valid JSON.")
+                                   {:status-code 400
+                                    :error-type  ::assertions-parse-error
+                                    :raw-text    text}))))]
+      (when-not (sequential? data)
+        (throw (ex-info (tru "''assertions'' must be a JSON array.")
+                        {:status-code 400
+                         :error-type  ::assertions-parse-error})))
+      (mapv (fn [entry]
+              (let [n   (get entry "name")
+                    s   (get entry "sql")
+                    sev (get entry "severity" "error")]
+                (when (or (nil? n) (not (string? n)) (str/blank? n))
+                  (throw (ex-info (tru "Each assertion must have a non-empty ''name'' string.")
+                                  {:status-code 400
+                                   :error-type  ::assertions-parse-error
+                                   :entry       entry})))
+                (when (or (nil? s) (not (string? s)) (str/blank? s))
+                  (throw (ex-info (tru "Each assertion must have a non-empty ''sql'' string.")
+                                  {:status-code 400
+                                   :error-type  ::assertions-parse-error
+                                   :entry       entry})))
+                (when-not (#{"error" "warn"} sev)
+                  (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
+                                  {:status-code 400
+                                   :error-type  ::assertions-parse-error
+                                   :severity    sev})))
+                {:name     n
+                 :sql      s
+                 :severity (keyword sev)}))
+            data))))
+
+(defn run-record->response
+  "Convert a successful run-record (from `run-test!` / `run-chain-test!`) to the
+  HTTP response body.
+
+  Status keywords are converted to strings (`\"passed\"` / `\"failed\"`) for JSON
+  serialisation. `:test_run_id` is nil (reserved for a future async polling variant).
+  `:assertions` is included when assertions were run; nil otherwise."
   [record]
   {:status       (name (:status record))
    :diff         (:diff record)
+   :assertions   (when-let [results (:assertions record)]
+                   ;; Convert per-assertion :status keywords to strings for JSON.
+                   (mapv (fn [r] (update r :status name)) results))
    :test_run_id  nil})
 
 (defn error->response
@@ -140,11 +201,12 @@
   "Malli schema for the test-run HTTP response body.
 
   Covers three shapes:
-  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>, :test_run_id nil}
+  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>, :assertions [...], :test_run_id nil}
   - error:         {:status \"error\",             :error <map>,   :test_run_id nil}"
   [:map {:closed false}
    [:status      [:enum "passed" "failed" "error"]]
-   [:test_run_id [:maybe pos-int?]]])
+   [:test_run_id [:maybe pos-int?]]
+   [:assertions  {:optional true} [:maybe [:sequential :any]]]])
 
 (def InputTableResponse
   "Malli schema for a single entry in the inputs response.
