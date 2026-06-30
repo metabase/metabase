@@ -7,7 +7,8 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.metrics.core :as metrics]))
+   [metabase.metrics.core :as metrics]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -166,13 +167,17 @@
   runner's `finalize-row!`, so a survivor's persisted query carries its path.
   An empty path is a no-op."
   [query filter-path]
-  (reduce (fn [q {:keys [target value]}]
-            (let [ref-clause (normalize-target-ref target)
-                  col        (or (lib/find-matching-column q -1 ref-clause
-                                                           (lib/breakoutable-columns q))
-                                 ref-clause)]
-              (lib/filter q (if (nil? value)
-                              (lib/is-null col)
-                              (lib/= col value)))))
+  (reduce (fn [q {:keys [target value] :as step}]
+            (try
+              (let [ref-clause (normalize-target-ref target)
+                    col        (or (lib/find-matching-column q -1 ref-clause
+                                                             (lib/breakoutable-columns q))
+                                   ref-clause)]
+                (lib/filter q (if (nil? value)
+                                (lib/is-null col)
+                                (lib/= col value))))
+              (catch Throwable e
+                (log/warnf e "apply-filter-path: failed to apply filter step %s" (pr-str step))
+                (throw e))))
           query
           filter-path))

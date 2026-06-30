@@ -443,7 +443,7 @@
   whose aggregation has no cumulative form) — the runner treats nil as a
   row-level error, but the mechanical planner gates these out up front."
   [query variant]
-  (let [agg (first (lib/aggregations query))]
+  (when-let [agg (first (lib/aggregations query))]
     (if (= "cumulative" variant)
       (when-let [cum (lib/cumulative-aggregation agg)]
         (lib/replace-clause query agg cum))

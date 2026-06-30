@@ -23,6 +23,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -176,7 +177,8 @@
                                                  (driver.u/supports?
                                                   (:engine db) :window-functions/offset db)))
        :default-temporal-span-days (some-> default-temp first lib/temporal-column-span-days)})
-    (catch Exception _
+    (catch Exception e
+      (log/warn e "transform-eligibility failed; disabling transform variants for this metric")
       {:single-aggregation?        false
        :cumulable-aggregation?     false
        :supports-window-functions? false
@@ -266,7 +268,7 @@
                           :numeric-max    (get-in dim [:fingerprint :type :type/Number :max])
                           :applicable-to  (vec (get applicable-to dim-id []))}))]
     {:group-id      (:id group)
-     :type          (:type group)
+     :type          (explorations.groups/group-anchor-type group)
      :name          (explorations.groups/group-display-name
                      group (update-vals cards :name))
      :metrics       metrics
@@ -316,7 +318,7 @@
   axis. The metric selection + dim snapshot are read from the row's
   `ExplorationThreadGroup` (the group the planner stamped on the row), not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
-  [{:keys [card_id dimension_id segment_id params group_id]}]
+  [{:keys [id card_id dimension_id segment_id params group_id]}]
   (let [card       (t2/select-one :model/Card :id card_id)
         group      (when group_id (t2/select-one :model/ExplorationThreadGroup :id group_id))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics group))
@@ -338,21 +340,30 @@
             ;; Adaptive-loop drilled survivors carry an accumulating filter path
             ;; (`{:dimension_id :value}` pairs). Resolve each dim's target here,
             ;; where the metric mappings live; the runner folds it onto the query.
-            filter-path  (->> (:filter_path params)
-                              (keep (fn [{:keys [dimension_id value]}]
-                                      (when-let [tgt (qp.mbql/find-dimension-target dimension_id mappings)]
-                                        {:target tgt :value value})))
-                              vec)]
-        {:mp              mp
-         :card            card
-         :target          target
-         :dim             thread-dim
-         :dim-label       (or (:display_name thread-dim) dimension_id)
-         :segment         segment
-         :params          params
-         :filter-path     filter-path
-         :temporal-target t-target
-         :temporal-dim    t-thread-dim}))))
+            raw-path     (:filter_path params)
+            filter-path  (mapv (fn [{:keys [dimension_id value]}]
+                                 (when-let [tgt (qp.mbql/find-dimension-target dimension_id mappings)]
+                                   {:target tgt :value value}))
+                               raw-path)]
+        ;; A step that doesn't resolve must NOT be silently dropped: dropping it widens the
+        ;; query's scope while the chart title still claims the full drill path, so the chart
+        ;; would show rows outside what it says it shows. Fail the row instead (the runner
+        ;; records it as a row-level error).
+        (if (some nil? filter-path)
+          (let [unresolved (mapv :dimension_id (remove #(qp.mbql/find-dimension-target (:dimension_id %) mappings) raw-path))]
+            (log/warnf "Exploration row %s (card %s): filter-path dimension(s) %s did not resolve to a target; failing the row rather than broadening its scope"
+                       id card_id (pr-str unresolved))
+            nil)
+          {:mp              mp
+           :card            card
+           :target          target
+           :dim             thread-dim
+           :dim-label       (or (:display_name thread-dim) dimension_id)
+           :segment         segment
+           :params          params
+           :filter-path     filter-path
+           :temporal-target t-target
+           :temporal-dim    t-thread-dim})))))
 
 (defn- group-prompt-block
   "Render one group's METRICS + DIMENSIONS markdown for `plan.selmer`. Each group is a

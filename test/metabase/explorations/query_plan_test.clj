@@ -17,6 +17,12 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- count-metric-query []
+  (lib/->legacy-MBQL
+   (let [mp (mt/metadata-provider)]
+     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+         (lib/aggregate (lib/count))))))
+
 (deftest pick-planner-test
   (testing ":auto + LLM configured → LLM planner"
     (mt/with-temporary-setting-values [explorations-query-planner :auto]
@@ -62,15 +68,79 @@
   (testing "explorations-query-planner defaults to :adaptive"
     (is (= :adaptive (explorations.settings/explorations-query-planner)))))
 
+(deftest pick-planner-unknown-value-throws-test
+  (testing "an unrecognized value (a new enum entry not wired into the case) throws, rather than
+            silently running mechanical — the setting's setter keeps real writes in the enum, and
+            generate-query-plan!'s catch keeps this from crashing beyond the one thread"
+    (with-redefs [explorations.settings/explorations-query-planner (constantly :bogus)
+                  metabot.settings/llm-metabot-configured?         (constantly false)]
+      (is (thrown? clojure.lang.ExceptionInfo (query-plan/pick-planner!))))))
+
+(deftest planner-setting-rejects-invalid-value-test
+  (testing "setting an invalid planner coerces to the default rather than storing a value that would
+            force pick-planner! onto its fallback every run"
+    (mt/with-temporary-setting-values [explorations-query-planner :bogus]
+      (is (= :adaptive (explorations.settings/explorations-query-planner))))
+    (testing "a valid value is stored unchanged"
+      (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+        (is (= :mechanical (explorations.settings/explorations-query-planner)))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Failure resilience (orchestrator, end-to-end through the DB)
+;;; ---------------------------------------------------------------------------
+
+(defn- one-metric-dim-group!
+  "Insert a single metric×dimension group on `thread-id` (enough for the mechanical
+  matrix to emit items), pairing `metric-card-id` with venues.price as dim d1."
+  [thread-id metric-card-id]
+  (t2/insert! :model/ExplorationThreadGroup
+              {:exploration_thread_id thread-id
+               :metrics    [{:card_id metric-card-id
+                             :dimension_mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                                                   :target ["field" {} (mt/id :venues :price)]}]}]
+               :dimensions [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
+               :position   0}))
+
+(deftest adaptive-failure-falls-back-to-mechanical-test
+  (testing "when an adaptive/LLM planner fails, the orchestrator falls back to the mechanical
+            matrix (which runs no live queries) instead of terminal-failing the exploration"
+    (let [failing-adaptive (reify planner/QueryPlanner
+                             (planner-name [_] :adaptive)
+                             (plan!        [_ _] {:outcome :failed :final-errors ["boom"]}))]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (one-metric-dim-group! (:id t) (:id metric))
+        (with-redefs [query-plan/pick-planner! (constantly failing-adaptive)]
+          (is (= :ok (query-plan/generate-query-plan! (:id t)))
+              "fell back to mechanical and succeeded"))
+        (is (pos? (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+            "mechanical matrix rows were materialized")))))
+
+(deftest emitted-but-unmaterializable-plan-is-failed-not-ok-test
+  (testing "an :ok plan whose items all fail to materialize is treated as a failure, not a silent
+            empty 'success' (which would leave the thread completed with zero charts)"
+    (let [bogus-planner (reify planner/QueryPlanner
+                          ;; :mechanical so this exercises the zero-rows path itself, not the fallback.
+                          (planner-name [_] :mechanical)
+                          (plan!        [_ _] {:outcome :ok
+                                               :plan [{:group_id 999999 :metric_id 999999
+                                                       :dimension_id "nope" :variant "__nonexistent__"}]}))]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (one-metric-dim-group! (:id t) (:id metric))
+        (with-redefs [query-plan/pick-planner! (constantly bogus-planner)]
+          (is (= :failed (query-plan/generate-query-plan! (:id t)))
+              "0 materialized rows → :failed, not :ok"))
+        (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
+            "no rows inserted")
+        (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread :id (:id t)))
+            "thread terminally stamped so the completion machinery doesn't deadlock")))))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Materialization stamps group_id (mechanical planner, end-to-end through the DB)
 ;;; ---------------------------------------------------------------------------
-
-(defn- count-metric-query []
-  (lib/->legacy-MBQL
-   (let [mp (mt/metadata-provider)]
-     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-         (lib/aggregate (lib/count))))))
 
 (deftest materialize-stamps-group-id-test
   (mt/with-temporary-setting-values [explorations-query-planner :mechanical]

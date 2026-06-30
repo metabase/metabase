@@ -1,7 +1,13 @@
 (ns metabase.explorations.settings
   (:require
-   [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]))
+
+(def valid-query-planners
+  "The planners `explorations-query-planner` may name. Single source of truth: the setting's
+   setter validates writes against this, and `query-plan/pick-planner!` asserts against it."
+  #{:auto :llm :mechanical :adaptive})
 
 (defsetting explorations-worker-count
   (deferred-tru "Number of concurrent background workers draining the explorations queue. Ignored on H2 (which is hardcoded to 1 because it lacks SKIP LOCKED).")
@@ -15,4 +21,14 @@
   :type       :keyword
   :default    :adaptive
   :visibility :internal
-  :export?    false)
+  :export?    false
+  ;; Guard the write path: a bad explicit value coerces to the default rather than being
+  ;; stored (an unknown value would otherwise force `pick-planner!` onto its fallback every
+  ;; run). An env-var value bypasses this setter and is caught by `pick-planner!`'s default.
+  :setter     (fn [new-value]
+                (let [kw (some-> new-value keyword)]
+                  (if (or (nil? kw) (valid-query-planners kw))
+                    (setting/set-value-of-type! :keyword :explorations-query-planner kw)
+                    (do (log/warnf "Invalid explorations-query-planner %s; keeping :adaptive (valid: %s)"
+                                   (pr-str new-value) (pr-str valid-query-planners))
+                        (setting/set-value-of-type! :keyword :explorations-query-planner :adaptive))))))

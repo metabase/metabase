@@ -31,7 +31,7 @@
   [{:keys [type]}]
   (case type
     "dimension" :dimension
-    "metric"    :metric
+    "metric" :metric
     (throw (ex-info "Exploration group has no recognized anchor :type"
                     {:type type}))))
 
@@ -405,7 +405,7 @@
   `[metric count avg var]` for a `sum` metric (the extra `avg` recovers the group
   mean a total can't express)."
   [cols]
-  {:dim-idx (first (keep-indexed (fn [i c] (when (= :breakout (:source c)) i)) cols))
+  {:dim-idx  (first (keep-indexed (fn [i c] (when (= :breakout (:source c)) i)) cols))
    :agg-idxs (vec (keep-indexed (fn [i c] (when (= :aggregation (:source c)) i)) cols))})
 
 (defn- metric-variance-aggregations
@@ -425,7 +425,7 @@
       (when-let [col (lib/find-matching-column (nth agg 2) (lib/visible-columns query))]
         (if (= :sum (first agg))
           {:aggs [(lib/avg col) (lib/var col)] :mean? true}
-          {:aggs [(lib/var col)]               :mean? false})))))
+          {:aggs [(lib/var col)] :mean? false})))))
 
 (defn- measure-split*
   "Run `metric × dim` under `filter-path` eagerly through the QP, with an extra
@@ -438,29 +438,34 @@
   Returns `{:cells []}` on any failure."
   [mp card target dim filter-path]
   (try
-    (let [base     (-> (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
-                       (qp.mbql/apply-filter-path filter-path))
+    (let [base       (-> (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
+                         (qp.mbql/apply-filter-path filter-path))
           {var-aggs :aggs mean? :mean?} (metric-variance-aggregations base)
-          q        (reduce lib/aggregate (lib/aggregate base (lib/count)) var-aggs)
-          result   (qp/process-query
-                    (qp/userland-query-with-default-constraints q {:context :exploration}))
-          cols     (get-in result [:data :cols])
-          rows     (get-in result [:data :rows])
+          q          (reduce lib/aggregate (lib/aggregate base (lib/count)) var-aggs)
+          result     (qp/process-query
+                      (qp/userland-query-with-default-constraints q {:context :exploration}))
+          cols       (get-in result [:data :cols])
+          rows       (get-in result [:data :rows])
           {:keys [dim-idx agg-idxs]} (col-indices cols)
           metric-idx (nth agg-idxs 0 nil)
           count-idx  (nth agg-idxs 1 nil)
           mean-idx   (when mean? (nth agg-idxs 2 nil))
           var-idx    (nth agg-idxs (if mean? 3 2) nil)
-          cells    (when (and dim-idx metric-idx count-idx)
-                     (mapv (fn [r] (cond-> {:value  (nth r dim-idx nil)
-                                            :metric (nth r metric-idx nil)
-                                            :count  (nth r count-idx nil)}
-                                     mean-idx (assoc :group-mean (nth r mean-idx nil))
-                                     var-idx  (assoc :variance   (nth r var-idx nil))))
-                           rows))]
-      {:cells (or cells [])})
+          cells      (if (and dim-idx metric-idx count-idx)
+                       (mapv (fn [r] (cond-> {:value  (nth r dim-idx nil)
+                                              :metric (nth r metric-idx nil)
+                                              :count  (nth r count-idx nil)}
+                                       mean-idx (assoc :group-mean (nth r mean-idx nil))
+                                       var-idx (assoc :variance (nth r var-idx nil))))
+                             rows)
+                       ;; Query ran but the result shape is unusable (no breakout / agg column)
+                       (do (log/debugf "Adaptive loop: measurement for dim %s on card %s produced no usable columns (dim-idx %s metric-idx %s count-idx %s)"
+                                       (:dimension_id dim) (:id card) dim-idx metric-idx count-idx)
+                           []))]
+      {:cells cells})
     (catch Throwable e
-      (log/warnf e "Adaptive loop: measurement failed for dim %s" (:dimension_id dim))
+      (log/warnf e "Adaptive loop: measurement failed for dim %s on card %s at depth %d"
+                 (:dimension_id dim) (:id card) (count filter-path))
       {:cells []})))
 
 (defn- real-measure-split
@@ -532,9 +537,9 @@
         eligible   (if forced
                      measured
                      (remove #(leakage-artifact? (:cells %)) measured))
-        chosen     (cond forced        (first measured)
+        chosen     (cond forced (first measured)
                          (seq eligible) (select-split eligible)
-                         :else          nil)]
+                         :else nil)]
     (when chosen
       {:node {:group-id     group-id
               :metric-ctx   metric-ctx
@@ -642,8 +647,8 @@
   [group anchor]
   (let [{:keys [budget-alpha budget-min budget-max]} config
         seed-breadth (case anchor
-                       :metric    (transduce (map (comp count candidate-categorical-dims))
-                                             max 1 (:metrics group))
+                       :metric (transduce (map (comp count candidate-categorical-dims))
+                                          max 1 (:metrics group))
                        :dimension (count (:metrics group)))]
     (-> (* budget-alpha (max 1 seed-breadth))
         (max budget-min)
@@ -677,29 +682,64 @@
   surfaced unconditionally via the shared `group-matrix-items`) **plus** the
   gain-gated, per-anchor best-first descent, which contributes only the drilled
   (depth > 1) survivors the matrix can't express. Adaptive thus emits a strict
-  superset of the mechanical planner's output."
+  superset of the mechanical planner's output. Returns `{:items [...] :spent n}`
+  (`:spent` = measurement-query executions used), so the orchestrator can report
+  planning cost."
   [group]
   (let [anchor (anchor-type group)
         budget (anchor-budget group anchor)
-        {:keys [nodes cost]} (seed-nodes group anchor)]
-    (into (qp.mechanical/group-matrix-items group)
-          (:items (search nodes cost budget)))))
+        {:keys [nodes cost]} (seed-nodes group anchor)
+        {:keys [items spent]} (search nodes cost budget)]
+    {:items (into (qp.mechanical/group-matrix-items group) items)
+     :spent (or spent 0)}))
+
+(defn- plan-group-safe
+  "Plan one group, isolating failures: a group whose planning throws is logged and
+  contributes nothing (returns nil) rather than aborting the whole plan. The
+  remaining groups — and the mechanical matrix they each still emit — survive."
+  [group]
+  (try
+    (plan-group group)
+    (catch Throwable e
+      (log/warnf e "Adaptive planner: skipping group %s after a planning error"
+                 (:group-id group))
+      nil)))
 
 (defn- run-plan!
-  [{:keys [metric-dim-ctx]}]
-  (let [groups (:groups metric-dim-ctx)
-        items  (vec (mapcat plan-group groups))]
-    (if (empty? items)
+  [{:keys [metric-dim-ctx cancelled?]}]
+  (let [groups     (:groups metric-dim-ctx)
+        cancelled? (or cancelled? (constantly false))
+        {:keys [items spent skipped cancelled]}
+        (reduce (fn [acc group]
+                  (if (cancelled?)
+                    (reduced (assoc acc :cancelled true))
+                    (if-let [{:keys [items spent]} (plan-group-safe group)]
+                      (-> acc (update :items into items) (update :spent + spent))
+                      (update acc :skipped inc))))
+                {:items [] :spent 0 :skipped 0 :cancelled false}
+                groups)
+        base       {:strategy       "adaptive"
+                    :n-groups       (count groups)
+                    :groups-skipped skipped
+                    :measurements   spent}]
+    (cond
+      cancelled
       {:outcome    :skip-not-applicable
-       :transcript {:strategy "adaptive" :reason "no survivors" :n-groups (count groups)}}
+       :transcript (assoc base :reason "cancelled")}
+
+      (empty? items)
+      {:outcome    :skip-not-applicable
+       :transcript (assoc base :reason "no survivors")}
+
+      :else
       {:outcome    :ok
        :plan       items
-       :transcript {:strategy "adaptive" :n-items (count items) :n-groups (count groups)}})))
+       :transcript (assoc base :n-items (count items))})))
 
 (defrecord AdaptivePlanner []
   planner/QueryPlanner
   (planner-name [_] :adaptive)
-  (plan!        [_ ctx] (run-plan! ctx)))
+  (plan! [_ ctx] (run-plan! ctx)))
 
 (def planner
   "Singleton `AdaptivePlanner`. Referenced by `pick-planner!` when the

@@ -63,7 +63,8 @@
        :metric-dim-ctx     <output of qp.context/metric-and-dim-context — keyed by :groups>
        :metric-by-key      {[group-id metric-id] metric-context-map}
        :creator-id         long|nil
-       :thread-groups      [ExplorationThreadGroup ...]}
+       :thread-groups      [ExplorationThreadGroup ...]
+       :cancelled?         (fn [] boolean)}   ; cooperative-cancellation probe; optional to honor
 
     Returns a map matching `result-schema`. The orchestrator handles
     materialization, transcript persistence, and failure-doc writing — every

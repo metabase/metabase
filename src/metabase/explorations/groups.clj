@@ -44,7 +44,11 @@
    routes on."
   ([group-id card-id dim-id query-type] (leaf-id group-id card-id dim-id query-type nil))
   ([group-id card-id dim-id query-type fp-key]
-   (str "auto:" group-id ":" card-id ":" dim-id ":" query-type
+   (str "auto:" group-id ":" card-id ":" dim-id
+        ;; The planner always stamps a `query_type`, so production ids are
+        ;; `auto:g:c:d:<query-type>`; only omit the segment when it's absent (hand-built rows)
+        ;; rather than emitting a dangling `:`.
+        (when query-type (str ":" query-type))
         (when fp-key (str ":" (Integer/toHexString (hash fp-key)))))))
 
 (defn chart-page-url
@@ -95,6 +99,16 @@
     "dimension" true
     "metric"    false
     (> (count (:metrics group)) 1)))
+
+(defn group-anchor-type
+  "Canonical anchor resolution for a persisted group: the definite `\"dimension\"` / `\"metric\"`
+   anchor, honoring the FE-supplied `:type` and inferring it for legacy / type-less rows (see
+   [[dimension-anchored?]]). The single place the anchor heuristic lives — the read tree uses
+   `dimension-anchored?` directly and the planner edge (`qp.context/group-context`) calls this to
+   stamp a definite `:type` onto every group context, so a type-less group is resolved the same
+   way everywhere instead of being re-inferred (or, worse, throwing) deep in a planner."
+  [group]
+  (if (dimension-anchored? group) "dimension" "metric"))
 
 (defn- anchor-dimension
   "The dimension a dimension-anchored group is built around (its first/only dimension)."

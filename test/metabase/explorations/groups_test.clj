@@ -5,6 +5,17 @@
    [clojure.test :refer :all]
    [metabase.explorations.groups :as explorations.groups]))
 
+(deftest group-anchor-type-test
+  (testing "an explicit :type is honored"
+    (is (= "metric"    (explorations.groups/group-anchor-type {:type "metric"    :metrics [{} {}]})))
+    (is (= "dimension" (explorations.groups/group-anchor-type {:type "dimension" :metrics [{}]}))))
+  (testing "a legacy / type-less group is inferred — a block crossing several metrics is
+            dimension-anchored, otherwise metric-anchored (never throws)"
+    (is (= "metric"    (explorations.groups/group-anchor-type {:metrics [{}]})))
+    (is (= "metric"    (explorations.groups/group-anchor-type {:type nil :metrics [{}]})))
+    (is (= "dimension" (explorations.groups/group-anchor-type {:type nil :metrics [{} {}]})))
+    (is (= "metric"    (explorations.groups/group-anchor-type {})))))
+
 (deftest filter-path-suffix-test
   (testing "filter-path-suffix renders a resolved drill label, or empty when undrilled"
     (let [labels {"state" "State" "source" "Source"}]

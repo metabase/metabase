@@ -606,12 +606,40 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest anchor-type-test
-  (testing "anchor type is read from the persisted :type"
+  (testing "anchor type reads the (upstream-normalized) :type"
     (is (= :metric    (qp.adaptive/anchor-type {:type "metric"})))
     (is (= :dimension (qp.adaptive/anchor-type {:type "dimension"}))))
-  (testing "a missing / unrecognized :type throws (legacy type-less groups unsupported)"
+  (testing "a stray / absent :type throws — type is normalized at the context edge (see
+            context-test / explorations.groups/group-anchor-type), so an unrecognized value here
+            is a programming error worth surfacing (per-group isolation keeps it from aborting
+            the whole plan — see one-bad-group-does-not-abort-the-plan-test)"
     (is (thrown? clojure.lang.ExceptionInfo (qp.adaptive/anchor-type {:type nil})))
-    (is (thrown? clojure.lang.ExceptionInfo (qp.adaptive/anchor-type {})))))
+    (is (thrown? clojure.lang.ExceptionInfo (qp.adaptive/anchor-type {})))
+    (is (thrown? clojure.lang.ExceptionInfo (qp.adaptive/anchor-type {:type "bogus"})))))
+
+(deftest one-bad-group-does-not-abort-the-plan-test
+  (testing "a group whose planning throws is skipped (logged); the other groups — and the
+            mechanical matrix they emit — still produce charts"
+    (let [good  {:group-id 1 :type "metric" :metrics [(metric-ctx 10 [(text-dim "plan" 5)])]}
+          ;; An unrecognized :type makes `anchor-type` throw inside `plan-group` (it should never
+          ;; happen post-normalization, but simulates a future bug); the per-group catch isolates it.
+          bad   {:group-id 2 :type "bogus" :metrics [(metric-ctx 20 [(text-dim "x" 5)])]}
+          {:keys [outcome plan transcript]}
+          (plan-groups! [bad good] {"plan" [{:value "x" :metric 100 :count 5}
+                                            {:value "y" :metric 100 :count 5}]})]
+      (is (= :ok outcome) "the plan still succeeds on the surviving group")
+      (is (= #{10} (set (map :metric_id plan))) "only the good group's items are emitted")
+      (is (= 1 (:groups-skipped transcript)) "the failed group is counted as skipped"))))
+
+(deftest cancellation-short-circuits-planning-test
+  (testing "a cancelled thread stops the group loop early rather than running every group's
+            (now live) measurements"
+    (let [group  {:group-id 1 :type "metric" :metrics [(metric-ctx 10 [(text-dim "plan" 5)])]}
+          result (planner/plan! qp.adaptive/planner
+                                {:metric-dim-ctx {:groups [group]}
+                                 :cancelled?     (constantly true)})]
+      (is (= :skip-not-applicable (:outcome result)))
+      (is (= "cancelled" (-> result :transcript :reason))))))
 
 (deftest config-centralized-test
   (testing "all tunables live in one config map"

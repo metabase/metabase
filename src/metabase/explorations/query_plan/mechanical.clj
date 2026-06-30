@@ -14,7 +14,8 @@
   needed — every emitted item is well-formed by construction."
   (:require
    [metabase.explorations.query-plan.mbql :as qp.mbql]
-   [metabase.explorations.query-plan.planner :as planner]))
+   [metabase.explorations.query-plan.planner :as planner]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -232,6 +233,18 @@
     (vec (mapcat (partial fan-segments metric)
                  (concat base patterns facet top-n-other transforms)))))
 
+(defn- group-pair-items
+  "[[items-for-pair]] stamped with `group-id`, isolating a build failure: a bad
+  (metric, dim) pair is logged and contributes nothing (returns `[]`) rather than
+  aborting the whole group's matrix (and, via `mapcat`, the whole plan)."
+  [group-id metric dim]
+  (try
+    (mapv #(assoc % :group_id group-id) (items-for-pair metric dim))
+    (catch Throwable e
+      (log/warnf e "Mechanical matrix: skipping (metric %s, dim %s) in group %s after a build error"
+                 (:metric-id metric) (:dimension_id dim) group-id)
+      [])))
+
 (defn group-matrix-items
   "Plan items for one group's full depth-1 matrix: `items-for-pair` for every
   applicable `(metric, selected dim)` pair, stamped with the group id. Metrics are
@@ -246,8 +259,8 @@
   (vec
    (for [metric            (:metrics group)
          [_ {:keys [dim]}] (:applicability metric)
-         item              (items-for-pair metric dim)]
-     (assoc item :group_id (:group-id group)))))
+         item              (group-pair-items (:group-id group) metric dim)]
+     item)))
 
 (defn- run-plan!
   "Walk each group's metric × dim matrix and emit plan items per

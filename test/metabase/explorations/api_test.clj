@@ -776,14 +776,15 @@
             "only the fanning variants get a segment copy")
         (is (every? #(= (:id s) (:segment_id %)) (get by-seg true)))))))
 
-(deftest exploration-create-variants-share-one-sidebar-leaf-test
-  (testing "All variants for a (card, dim) collapse into a single 'page' leaf in auto-groups"
-    (mt/with-temp [:model/User u {:email "groups-collapse@example.com"}
+(deftest exploration-create-variants-get-own-sidebar-leaf-test
+  (testing "Each distinct-query_type variant for a (card, dim) is its own leaf in auto-groups
+            (leaves are keyed by query_type, so variants split rather than collapse)"
+    (mt/with-temp [:model/User u {:email "groups-split@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
                       :target       ["field" {} (mt/id :people :created_at)]}]
-            body    {:name       "collapse"
+            body    {:name       "split"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"
                                    :display_name   "Created"
@@ -791,12 +792,13 @@
             resp    (create-exploration! u body)
             thread  (first (:threads resp))
             queries (:queries thread)
-            leaves  (filter #(= "page" (:display_type %)) (:groups thread))
-            page    (first leaves)]
+            leaves  (remove #(= "sidebar" (:display_type %)) (:groups thread))]
         (is (= 6 (count queries)))
-        (is (= 1 (count leaves)) "all 6 variants collapse into one page leaf")
-        (is (= 6 (count (:query_ids page))))
-        (is (= (set (map :id queries)) (set (:query_ids page))))))))
+        (is (= 6 (count leaves)) "the 6 distinct-query_type variants each get their own leaf")
+        (is (every? #(= "singleton" (:display_type %)) leaves) "one query per leaf")
+        (is (= 6 (count (distinct (map :id leaves)))) "leaf ids are distinct (query_type is in the id)")
+        (is (= (set (map :id queries)) (set (mapcat :query_ids leaves)))
+            "every query is surfaced in exactly one leaf")))))
 
 (deftest exploration-create-without-selections-test
   (testing "POST / works without metrics/dimensions/timelines (drafty exploration)"
@@ -1548,7 +1550,7 @@
            (explorations.groups/chart-page-url 7 9 42 "orders.created_at" "default")))
     (testing "the encoded segment decodes back to the FE-routed leaf id"
       (is (= "auto:9:42:orders.created_at:default"
-             (#'explorations.groups/leaf-id 9 42 "orders.created_at" "default"))))))
+             (explorations.groups/leaf-id 9 42 "orders.created_at" "default"))))))
 
 (deftest ^:parallel append-chart-nodes-test
   (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"
@@ -1778,7 +1780,8 @@
             leaf-nodes    (filter #(not= "sidebar" (:display_type %)) groups)]
         (is (= 9 (count queries))
             "category (default+top-n-other) × 3 + price (default) × 3 = 9 queries")
-        (is (= 3 (count groups)) "1 group node + 2 (card, dim) leaves")
+        (is (= 4 (count groups))
+            "1 group node + 3 (card, dim, query_type) leaves: category-default, category-top-n-other, price-default")
         (testing "group node"
           (is (= 1 (count group-nodes)) "one group — one top-level node")
           (let [[g] group-nodes]
@@ -1839,10 +1842,13 @@
             by-display (group-by :display_type groups)
             group-ids  (set (map :id (get by-display "sidebar")))
             non-sidebar (concat (get by-display "singleton") (get by-display "page"))]
-        ;; Per group: category dim gets default + top-n-other (> 20 distinct) → "page";
-        ;; price dim gets only default (4 distinct) → "singleton". Two groups → 2 of each.
-        (is (= 2 (count (get by-display "singleton"))) "price dim → one singleton leaf per group = 2")
-        (is (= 2 (count (get by-display "page")))      "category dim → one page leaf per group = 2")
+        ;; Leaves are keyed by query_type. Per group, with no segment fan-out: category dim gets
+        ;; default + top-n-other (> 20 distinct) → two singleton leaves (one per query_type);
+        ;; price dim gets only default (4 distinct) → one singleton leaf. Three singleton leaves
+        ;; per group, no pages. Two groups → 6 singletons.
+        (is (= 6 (count (get by-display "singleton")))
+            "category-default + category-top-n-other + price-default per group × 2 groups = 6")
+        (is (empty? (get by-display "page")) "no leaf bundles multiple queries (each variant its own leaf)")
         (is (= 2 (count (get by-display "sidebar")))   "two groups → two top-level nodes")
         (is (= #{"Revenue" "Order count"}
                (set (map :group_name (get by-display "sidebar"))))
@@ -1852,8 +1858,8 @@
           (let [leaves-by-parent (group-by :parent_group_id non-sidebar)]
             (is (= group-ids (set (keys leaves-by-parent)))
                 "every leaf's parent is a known group node id")
-            (is (every? #(= 2 (count %)) (vals leaves-by-parent))
-                "each group parents its own 2 (card, dim) leaves")))))))
+            (is (every? #(= 3 (count %)) (vals leaves-by-parent))
+                "each group parents its own 3 (card, dim, query_type) leaves")))))))
 
 (deftest exploration-get-empty-thread-has-empty-groups-test
   (testing "A thread with no queries gets :groups => []"
