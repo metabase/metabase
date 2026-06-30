@@ -27,7 +27,7 @@ function buildDraftCard(payload: ChartClipboardPayload, draftId: number): Card {
     entity_id: "" as Card["entity_id"],
     created_at: "",
     updated_at: "",
-    description: null,
+    description: payload.description ?? null,
     type: "question",
     public_uuid: null,
     enable_embedding: false,

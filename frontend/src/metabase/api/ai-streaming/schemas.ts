@@ -64,6 +64,7 @@ export type GeneratedCard = {
   type: "card";
   id: string;
   title: string;
+  description?: string;
   query: GeneratedQuery;
   display?: CardDisplayType;
 };

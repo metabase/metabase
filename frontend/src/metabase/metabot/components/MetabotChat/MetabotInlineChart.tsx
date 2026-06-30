@@ -41,7 +41,7 @@ import S from "./MetabotInlineChart.module.css";
  * result; the title bar links out to the full question and lets the user save it.
  */
 export function MetabotInlineChart({
-  value: { title, display, query },
+  value: { title, description, display, query },
 }: {
   value: GeneratedCard;
 }) {
@@ -55,11 +55,12 @@ export function MetabotInlineChart({
     () =>
       serializeChartClipboard({
         name: title,
+        description,
         display: display ?? "table",
         dataset_query: datasetQuery,
         visualization_settings: {},
       }),
-    [title, display, datasetQuery],
+    [title, description, display, datasetQuery],
   );
 
   const handleCopyEvent = (event: React.ClipboardEvent) => {
@@ -78,8 +79,10 @@ export function MetabotInlineChart({
         display: display ?? "table",
         displayIsLocked: display != null,
         visualization_settings: {},
-      }).setDisplayName(title),
-    [datasetQuery, display, title],
+      })
+        .setDisplayName(title)
+        .setDescription(description ?? null),
+    [datasetQuery, display, title, description],
   );
 
   const card = useMemo(() => question.card(), [question]);

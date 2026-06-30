@@ -27,6 +27,7 @@ export function useCollectionChartPaste(collection: Collection) {
       try {
         await createCard({
           name: payload.name,
+          description: payload.description ?? null,
           display: payload.display,
           dataset_query: payload.dataset_query,
           visualization_settings: payload.visualization_settings,
