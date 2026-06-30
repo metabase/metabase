@@ -23,19 +23,6 @@ describe("admin > permissions > sandboxing > misconfiguration", () => {
     H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP, WRITABLE_DB_ID);
     H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP, WRITABLE_DB_ID);
 
-    // The data group gets query-builder-and-native on this database by default.
-    // Sandboxing requires non-native create-queries, so leaving it native makes
-    // the UI prompt an extra "Change access to this database" modal. Drop it to
-    // "no" up front so the sandboxing flow starts from a compatible state.
-    cy.updatePermissionsGraph({
-      [USER_GROUPS.DATA_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "no",
-        },
-      },
-    });
-
     // @ts-expect-error - this isn't typed yet
     cy.createUserFromRawData(gizmoViewer);
 
