@@ -182,7 +182,13 @@ export function ContentDiagnostics({
       style={{ userSelect: isResizing ? "none" : undefined }}
       ref={containerRef}
     >
-      <Stack flex={1} gap="md">
+      <Stack
+        flex={1}
+        miw={0}
+        gap="md"
+        style={{ overflow: "hidden" }}
+        data-testid="content-diagnostics-main"
+      >
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <DiagnosticsHeader title={t`Content diagnostics`} tabs={tabs} />
           <Button

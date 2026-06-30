@@ -141,6 +141,17 @@ describe("StaleContentPage", () => {
     expect(screen.getByText("Sales overview")).toBeInTheDocument();
   });
 
+  it("allows the main content to shrink when the sidebar is open", async () => {
+    setup({ findings: FINDINGS });
+
+    await waitForListToLoad();
+
+    expect(screen.getByTestId("content-diagnostics-main")).toHaveStyle({
+      minWidth: "0rem",
+      overflow: "hidden",
+    });
+  });
+
   it("renders selected stale finding details in the Monitor sidebar outlet", async () => {
     const finding = createMockContentDiagnosticsFinding({
       entity_id: 42,
