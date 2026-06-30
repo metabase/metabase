@@ -53,7 +53,7 @@ function setup({
 
   fetchMock.get(`path:/api/transform/${transform.id}`, transform);
   fetchMock.get({
-    url: "path:/api/indexes",
+    url: "path:/api/index",
     query: { "transform-id": transform.id },
     response: { data: indexes },
   });
