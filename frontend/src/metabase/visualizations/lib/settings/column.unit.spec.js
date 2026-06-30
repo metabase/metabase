@@ -137,18 +137,13 @@ describe("column settings", () => {
 
   describe("table.columns", () => {
     it("should filter stale table column settings against current result columns (#76136)", () => {
-      const series: Series = [
-        createMockSingleSeries(
-          {},
-          {
-            data: {
-              cols: [
-                createMockColumn({ name: "ID" }),
-                createMockColumn({ name: "QUANTITY_RENAMED" }),
-              ],
-            },
+      const series = [
+        {
+          card: {},
+          data: {
+            cols: [{ name: "ID" }, { name: "QUANTITY_RENAMED" }],
           },
-        ),
+        },
       ];
 
       const computed = getComputedSettings(tableColumnSettings(), series, {
