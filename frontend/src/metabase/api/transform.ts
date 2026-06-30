@@ -10,9 +10,6 @@ import type {
   ListTransformsRequest,
   RunInspectorQueryRequest,
   RunTransformResponse,
-  TestRunInput,
-  TestRunResponse,
-  TestRunTransformRequest,
   Transform,
   TransformId,
   UpdateTransformRequest,
@@ -101,23 +98,6 @@ export const transformApi = Api.injectEndpoints({
           patchResult.undo();
         }
       },
-    }),
-    getTransformTestRunInputs: builder.query<TestRunInput[], TransformId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/transform/${id}/test-run/inputs`,
-      }),
-      providesTags: (_, _error, id) => [idTag("transform", id)],
-    }),
-    testRunTransform: builder.mutation<
-      TestRunResponse,
-      TestRunTransformRequest
-    >({
-      query: ({ transformId, formData }) => ({
-        method: "POST",
-        url: `/api/transform/${transformId}/test-run`,
-        body: formData,
-      }),
     }),
     cancelCurrentTransformRun: builder.mutation<void, TransformId>({
       query: (id) => ({
@@ -260,8 +240,6 @@ export const {
   useListTransformRunsQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
-  useGetTransformTestRunInputsQuery,
-  useTestRunTransformMutation,
   useGetInspectorDiscoveryQuery,
   useGetInspectorLensQuery,
   useLazyGetInspectorLensQuery,
