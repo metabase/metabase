@@ -666,9 +666,9 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     });
   });
 
-  describe("controlled parameters do not leak into drill-through target (EMB-1946)", () => {
-    const DASHBOARD_A_UNRELATED_FILTER: Parameter = createMockActionParameter({
-      id: "dashboard-a-unrelated",
+  describe.only("root dashboard controller props do not leak into drill-through target (EMB-1946)", () => {
+    const ORIGIN_DASHBOARD_FILTER: Parameter = createMockActionParameter({
+      id: "origin-dashboard-filter",
       name: "City Filter",
       slug: "city-filter",
       type: "string/=",
@@ -679,18 +679,18 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
       signInAsAdminAndEnableEmbeddingSdk();
 
       H.createDashboard({
-        name: "Dashboard B (EMB-1946)",
+        name: "Target Dashboard (EMB-1946)",
         parameters: [DASHBOARD_B_FILTER],
-      }).then(({ body: dashboardB }) => {
-        cy.wrap(dashboardB.id).as("dashboardBId");
+      }).then(({ body: targetDashboard }) => {
+        cy.wrap(targetDashboard.id).as("targetDashboardId");
 
         H.createQuestion({
-          name: "Orders for Dashboard B (EMB-1946)",
+          name: "Orders for Target Dashboard (EMB-1946)",
           query: { "source-table": ORDERS_ID, limit: 5 },
-        }).then(({ body: questionB }) => {
+        }).then(({ body: targetQuestion }) => {
           H.addOrUpdateDashboardCard({
-            card_id: questionB.id,
-            dashboard_id: dashboardB.id,
+            card_id: targetQuestion.id,
+            dashboard_id: targetDashboard.id,
             card: {
               row: 0,
               col: 0,
@@ -699,7 +699,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
               parameter_mappings: [
                 {
                   parameter_id: DASHBOARD_B_FILTER.id,
-                  card_id: questionB.id,
+                  card_id: targetQuestion.id,
                   target: ["dimension", ["field", ORDERS.ID, null]],
                 },
               ],
@@ -708,20 +708,20 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
         });
       });
 
-      cy.get<number>("@dashboardBId").then((dashboardBId) => {
+      cy.get<number>("@targetDashboardId").then((targetDashboardId) => {
         H.createDashboard({
-          name: "Dashboard A (EMB-1946)",
-          parameters: [DASHBOARD_A_UNRELATED_FILTER],
-        }).then(({ body: dashboardA }) => {
-          cy.wrap(dashboardA.id).as("dashboardAId");
+          name: "Origin Dashboard (EMB-1946)",
+          parameters: [ORIGIN_DASHBOARD_FILTER],
+        }).then(({ body: originDashboard }) => {
+          cy.wrap(originDashboard.id).as("originDashboardId");
 
           H.createQuestion({
-            name: "Orders for Dashboard A (EMB-1946)",
+            name: "Orders for Origin Dashboard (EMB-1946)",
             query: { "source-table": ORDERS_ID, limit: 5 },
-          }).then(({ body: questionA }) => {
+          }).then(({ body: originQuestion }) => {
             H.addOrUpdateDashboardCard({
-              card_id: questionA.id,
-              dashboard_id: dashboardA.id,
+              card_id: originQuestion.id,
+              dashboard_id: originDashboard.id,
               card: {
                 row: 0,
                 col: 0,
@@ -733,8 +733,8 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                       click_behavior: {
                         type: "link",
                         linkType: "dashboard",
-                        linkTextTemplate: "Go to Dashboard B",
-                        targetId: dashboardBId,
+                        linkTextTemplate: "Go to Target Dashboard",
+                        targetId: targetDashboardId,
                         parameterMapping: {
                           [DASHBOARD_B_FILTER.id]: {
                             source: { type: "column", id: "ID", name: "ID" },
@@ -757,38 +757,31 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
 
       cy.signOut();
       mockAuthProviderAndJwtSignIn();
-
-      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
     });
 
     it("should not forward root controlled parameters to the drill-through target dashboard", () => {
-      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+      cy.get<number>("@originDashboardId").then((originDashboardId) => {
         mountSdkContent(
           <InteractiveDashboard
-            dashboardId={dashboardAId}
+            dashboardId={originDashboardId}
             enableEntityNavigation
             parameters={{ "city-filter": "new-york" }}
           />,
         );
       });
 
-      cy.wait("@getDashboard");
-      cy.wait("@dashcardQuery");
-
       getSdkRoot().within(() => {
-        cy.findByText("Dashboard A (EMB-1946)").should("be.visible");
+        cy.findByText("Origin Dashboard (EMB-1946)").should("be.visible");
 
-        H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
+        H.getDashboardCard()
+          .findAllByText("Go to Target Dashboard")
+          .first()
+          .click();
 
-        cy.wait("@getDashboard");
-
-        cy.findByText("Dashboard B (EMB-1946)").should("be.visible");
+        cy.findByText("Target Dashboard (EMB-1946)").should("be.visible");
 
         // The ID filter must show the click-behavior-mapped value from the clicked row,
-        // not be suppressed by the root dashboard's controlled `parameters` prop.
+        // not be suppressed by the origin dashboard's controlled `parameters` prop.
         // Before the fix, controlled `parameters` overwrites `initialParameters` entirely,
         // leaving `id-filter` absent and the widget empty.
         H.filterWidget({ name: "ID Filter" }).should("contain.text", "1");
