@@ -32,15 +32,12 @@ const JUNIT_DIR = process.env.JEST_JUNIT_OUTPUT_DIR || "target/junit";
 const JUNIT_NAME = process.env.JEST_JUNIT_OUTPUT_NAME || "junit.xml";
 
 /**
- * Pick jest-junit's output from a directory listing: prefer the exact file
- * jest's env contract names; fall back to any `*.xml` (covers a templated
- * output name or a dir only this job wrote to).
+ * Pick jest-junit's output from a directory listing by the exact name its env
+ * contract sets (`JEST_JUNIT_OUTPUT_NAME`). An empty match means nothing to
+ * report.
  */
 function selectJestJunit(name: string): (entries: string[]) => string[] {
-  return (entries) => {
-    const exact = entries.filter((entry) => entry.endsWith(name));
-    return exact.length > 0 ? exact : entries.filter((e) => e.endsWith(".xml"));
-  };
+  return (entries) => entries.filter((entry) => entry.endsWith(name));
 }
 
 /**
