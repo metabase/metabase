@@ -195,18 +195,6 @@ describe("InteractiveQuestion", () => {
     mockGetBoundingClientRect();
   });
 
-  it("should render nothing when query is null", () => {
-    renderWithSDKProviders(<InteractiveQuestion query={null} />, {
-      componentProviderProps: {
-        authConfig: createMockSdkConfig(),
-      },
-    });
-
-    expect(
-      screen.queryByTestId("query-visualization-root"),
-    ).not.toBeInTheDocument();
-  });
-
   it("should render an interactive question with the mocked data", async () => {
     await setup();
 

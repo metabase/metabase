@@ -2,12 +2,9 @@ import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-questio
 import type {
   FieldSchema,
   MeasureSchema,
-  MetricSchema,
   SchemaColumn,
   SchemaJavaScriptType,
-  SchemaParameter,
   SegmentSchema,
-  QuestionSchema as SharedQuestionSchema,
   TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
@@ -15,10 +12,8 @@ import type { DatasetColumn, RowValues } from "metabase-types/api";
 export type {
   FieldSchema,
   MeasureSchema,
-  MetricSchema,
   SchemaColumn,
   SchemaJavaScriptType,
-  SchemaParameter,
   SegmentSchema,
   TableSchema,
 };
@@ -27,8 +22,6 @@ export type {
  * A single value returned by Metabase query results or action responses.
  */
 export type RowValue = string | number | null | boolean | object;
-
-export type QuestionSchema = SharedQuestionSchema<QueryQuestionResult["id"]>;
 
 export type SchemaValue<TColumn extends SchemaColumn> =
   TColumn["jsType"] extends "string"

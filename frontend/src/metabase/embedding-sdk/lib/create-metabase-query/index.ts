@@ -1,74 +1,30 @@
-import { getTableIdFromInput } from "embedding-sdk-shared/lib/create-metabase-query/input-accessors";
-import type { DatasetQuery } from "metabase-types/api";
+import { isTableInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import * as Lib from "metabase-lib";
+import type { DatasetQuery, TestQuerySpec } from "metabase-types/api";
 
-import type { MetricQueryInput, TableQueryInput } from "./input-types";
-import { getTableFromInput, isMetricQueryInput } from "./input-utils";
-import {
-  buildMetricDatasetQueryFromInput,
-  buildTableDatasetQueryFromInput,
-} from "./lib-adapter/builder";
-import {
-  validateMetricGeneratedDimensions,
-  validateMetricTableScopedInputs,
-  validateTableScopedInputs,
-} from "./validation";
+import type { TableQueryInput } from "./input-types";
+import { createTableMetadata } from "./lib-adapter/metadata";
+import { validateTableQueryInput } from "./validation";
 
-export type CreateMetabaseQuery = (
-  input: TableQueryInput | MetricQueryInput,
-) => DatasetQuery;
+export type CreateMetabaseQuery = (input: TableQueryInput) => DatasetQuery;
 
 export const createMetabaseQuery: CreateMetabaseQuery = (
-  input: TableQueryInput | MetricQueryInput,
-) => {
-  const datasetQuery = isMetricQueryInput(input)
-    ? buildValidatedMetricQueryFromInput(input)
-    : buildValidatedTableQueryFromInput(input);
-
-  if (datasetQuery) {
-    return datasetQuery;
-  }
-
-  if (isMetricQueryInput(input)) {
-    throw new Error(
-      "Metric query object creation requires the metric's generated schema.",
-    );
-  } else {
-    throw new Error(
-      "Table query object creation requires a table reference with id and databaseId.",
-    );
-  }
-};
-
-function buildValidatedTableQueryFromInput(
   input: TableQueryInput,
-): DatasetQuery | null {
-  const table = getTableFromInput(input);
-
-  if (!table) {
-    return null;
+) => {
+  if (!isTableInput(input)) {
+    throw new Error(
+      "Table query object creation requires a source reference with id and databaseId.",
+    );
   }
 
-  const tableId = getTableIdFromInput(input);
+  validateTableQueryInput(input);
 
-  if (tableId == null) {
-    return null;
-  }
+  const provider = Lib.metadataProvider(
+    input.source.databaseId,
+    createTableMetadata(input.source, input.source.databaseId),
+  );
 
-  validateTableScopedInputs({
-    allowedTableIds: [Number(tableId)],
-    filters: input.filters,
-    measures: input.aggregations ?? input.measures,
-    context: "Table query",
-  });
-
-  return buildTableDatasetQueryFromInput(input, table);
-}
-
-function buildValidatedMetricQueryFromInput(
-  input: MetricQueryInput,
-): DatasetQuery | null {
-  validateMetricTableScopedInputs(input);
-  validateMetricGeneratedDimensions(input);
-
-  return buildMetricDatasetQueryFromInput(input);
-}
+  return Lib.toJsQuery(
+    Lib.createTestQuery(provider, { stages: [input] } satisfies TestQuerySpec),
+  );
+};

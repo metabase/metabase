@@ -166,13 +166,10 @@ export type {
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,
-  MetricSchema,
-  QuestionSchema,
   QueryData,
   RowValue,
   SchemaColumn,
   SchemaJavaScriptType,
-  SchemaParameter,
   SchemaRow,
 } from "./hooks/public/data-schema";
 export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";

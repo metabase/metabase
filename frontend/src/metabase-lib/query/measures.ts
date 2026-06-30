@@ -1,20 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { MeasureId } from "metabase-types/api";
 
-import type { MeasureMetadata, MetadataProvider, Query } from "./types";
+import type { MeasureMetadata, Query } from "./types";
 
 export function availableMeasures(
   query: Query,
   stageIndex: number,
 ): MeasureMetadata[] {
   return ML.available_measures(query, stageIndex);
-}
-
-export function measureMetadata(
-  queryOrMetadataProvider: Query | MetadataProvider,
-  measureId: MeasureId,
-): MeasureMetadata | null {
-  return ML.measure_metadata(queryOrMetadataProvider, measureId);
 }
 
 export function isMeasureMetadata(arg: unknown): arg is MeasureMetadata {

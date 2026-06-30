@@ -178,25 +178,7 @@ hooks — treat it as a separate existing-data-app editing task. Use the agent's
 normal skill-discovery flow from those terms. Do not expand this scaffold skill
 with data-layer authoring rules.
 
-## Step 6 — Confirm what the app should do
-
-Before writing a single component, confirm the app's scope with the user **and check it against the schema you just pulled**. If they haven't described the screens, data, or flow, ask first:
-
-- What are the screen(s) and the rough layout? (single screen, multi-page, etc.)
-- Which Metabase questions, dashboards, or data sources drive each screen?
-- Any specific interactions (filters, drill-downs, write-back via actions)?
-- Branding / theme constraints?
-
-**Schema-matching rule.** Every entity the user references should map to something in `src/metabase.data.ts`:
-
-- **Match exists** → confirm what you found by name. Example: "Your schema has `schema.questions.overview_revenue` and `schema.tables.customers` with the `lifetime_value` measure — is that what you want me to use?"
-- **Topic doesn't match** → don't fabricate. Push back: explain the schema doesn't expose anything for that topic, and ask whether to (1) add it upstream in the Metabase semantic layer first and re-run Step 5, (2) pick a different topic that's already curated, or (3) ship the app without that part. **Don't invent mock data. Don't create new questions from inside the app.** The schema is curated upstream; the app is presentation only.
-
-## Step 7 — Write the actual app
-
-Replace `src/App.tsx`'s starter content with the screens the user described. **Structure the project properly from the start** — don't stuff everything into `App.tsx`. Each screen/page becomes its own file under `src/pages/` (or wherever fits the app's shape), shared UI lives in `src/components/`, data-fetching hooks in `src/hooks/`, derived/computed helpers in `src/lib/`, types in `src/types/`. `App.tsx` should end up small: routing + composition of the page components, not implementation. Vite bundles everything reachable from `src/index.tsx` into the one IIFE.
-
-**Do not modify `src/index.tsx` or `tsconfig.json` unless the change is genuinely required.** The whole build/dev setup lives in the SDK behind `dataAppConfig()` (which also serves the dev HTML shell — there's no `index.html`, `src/dev.tsx`, or local `config/` bundle harness to edit), so `vite.config.ts` is just:
+**Do not modify `src/index.tsx` or `tsconfig.json` unless the change is genuinely required.** The whole build/dev setup lives in the SDK behind `dataAppConfig()` (which also serves the dev HTML shell — there's no `index.html` to edit), so `vite.config.ts` is just:
 
 ```ts
 import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev";
@@ -270,11 +252,7 @@ import { StaticQuestion } from "@metabase/embedding-sdk-react";
 import {
   DataAppRouter,
   DataAppLink,
-  type DatasetQuery,
-  breakout,
-  filter,
   useMetabaseQuery,
-  useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 
 // ❌ wrong — no globalThis pattern; you'd be reading nothing

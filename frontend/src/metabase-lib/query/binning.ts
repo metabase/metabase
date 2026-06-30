@@ -3,11 +3,6 @@ import * as ML from "cljs/metabase.lib.js";
 import { displayInfo } from "./metadata";
 import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
 
-export type BinningOptions =
-  | { strategy: "default" }
-  | { strategy: "num-bins"; "num-bins": number }
-  | { strategy: "bin-width"; "bin-width": number };
-
 export function binning(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.binning(clause);
 }
@@ -30,16 +25,9 @@ export function isBinnable(
 
 export function withBinning(
   column: ColumnMetadata,
-  binningStrategy: Bucket | BinningOptions | null,
+  binningStrategy: Bucket | null,
 ): ColumnMetadata {
   return ML.with_binning(column, binningStrategy);
-}
-
-export function isBinningStrategy(
-  binningStrategy: Bucket,
-  binningOptions: BinningOptions,
-): boolean {
-  return ML.binning_strategy_QMARK_(binningStrategy, binningOptions);
 }
 
 export function withDefaultBinning(
