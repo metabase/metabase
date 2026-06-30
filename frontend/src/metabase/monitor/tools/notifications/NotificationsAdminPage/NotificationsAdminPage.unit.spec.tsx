@@ -39,7 +39,7 @@ import {
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
 import { PAGE_SIZE } from "./constants";
 
-const PATHNAME = "/admin/tools/notifications";
+const PATHNAME = "/monitor/notifications";
 
 const ANN = createMockUserInfo({
   id: 1,
@@ -178,7 +178,7 @@ const setup = ({
 
   return renderWithProviders(
     <Route
-      path="/admin/tools/notifications(/:notificationId)"
+      path="/monitor/notifications(/:notificationId)"
       component={NotificationsAdminPage}
     />,
     { withRouter: true, initialRoute },

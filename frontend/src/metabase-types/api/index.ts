@@ -14,6 +14,7 @@ export * from "./click-behavior";
 export * from "./cloud-add-ons";
 export * from "./collection";
 export * from "./comments";
+export * from "./content-diagnostics";
 export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";

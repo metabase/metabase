@@ -12,6 +12,7 @@ export * from "./card";
 export * from "./cloud-proxy";
 export * from "./collection";
 export * from "./comment";
+export * from "./content-diagnostics";
 export * from "./constants";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";

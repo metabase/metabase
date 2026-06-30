@@ -10,7 +10,11 @@
 
 (def ^:private FindStaleContentArgs
   [:map
-   [:collection-ids [:set {:doc "The set of collection IDs to search for stale content."} [:maybe :int]]]
+   ;; Either an explicit set of collection IDs (collection-scoped), or the `:all` sentinel for an
+   ;; instance-wide sweep that omits the collection predicate entirely (used by Content Diagnostics).
+   [:collection-ids [:or
+                     [:= {:doc "Instance-wide sweep — no collection filter."} :all]
+                     [:set {:doc "The set of collection IDs to search for stale content."} [:maybe :int]]]]
    [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
@@ -52,10 +56,12 @@
              [:= :report_card.enable_embedding false])
            (when (setting/get :enable-public-sharing)
              [:= :report_card.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_card.collection_id nil])
-            [:in :report_card.collection_id (-> args :collection-ids)]]]})
+           ;; instance-wide (`:all`) omits the collection predicate; otherwise scope to the given set.
+           (when-not (= :all (:collection-ids args))
+             [:or
+              (when (contains? (:collection-ids args) nil)
+                [:is :report_card.collection_id nil])
+              [:in :report_card.collection_id (-> args :collection-ids)]])]})
 
 (defmethod find-stale-query :model/Dashboard
   [_model args]
@@ -84,10 +90,12 @@
              [:= :report_dashboard.enable_embedding false])
            (when (setting/get :enable-public-sharing)
              [:= :report_dashboard.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_dashboard.collection_id nil])
-            [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+           ;; instance-wide (`:all`) omits the collection predicate; otherwise scope to the given set.
+           (when-not (= :all (:collection-ids args))
+             [:or
+              (when (contains? (:collection-ids args) nil)
+                [:is :report_dashboard.collection_id nil])
+              [:in :report_dashboard.collection_id (-> args :collection-ids)]])]})
 
 (defn- sort-column [column]
   (case column
@@ -139,7 +147,8 @@
   - `:total` (the total count of stale elements that could be found if you iterated through all pages)
   "
   [{:keys [collection-ids] :as args} :- FindStaleContentArgs]
-  (when (contains? collection-ids :root) (throw (ex-info "not implemented." {:collection-ids collection-ids})))
+  (when (and (set? collection-ids) (contains? collection-ids :root))
+    (throw (ex-info "not implemented." {:collection-ids collection-ids})))
   {:rows (into []
                (comp
                 (map #(select-keys % [:id :model]))

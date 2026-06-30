@@ -11,7 +11,7 @@ import {
 import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
 
-const PATHNAME = "/admin/tools/logs";
+const PATHNAME = "/monitor/logs";
 
 const log = {
   timestamp: "2024-01-10T21:21:58.597Z",

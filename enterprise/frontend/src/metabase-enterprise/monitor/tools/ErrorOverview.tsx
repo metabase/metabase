@@ -1,13 +1,12 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useLazyGetCardQueryQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { fetchDataOrError } from "metabase/dashboard/utils";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Stack } from "metabase/ui";
 import AuditParameters from "metabase-enterprise/audit_app/components/AuditParameters";
 import AuditTable from "metabase-enterprise/audit_app/containers/AuditTable";
 import * as Queries from "metabase-enterprise/audit_app/lib/cards/queries";
@@ -94,7 +93,8 @@ export default function ErrorOverview(props: Record<string, unknown>) {
   };
 
   return (
-    <SettingsPageWrapper title={t`Questions that errored when last run`}>
+    <Stack gap="lg">
+      <MonitorHeaderTitle>{t`Questions that errored when last run`}</MonitorHeaderTitle>
       <SettingsSection>
         <AuditParameters
           parameters={[
@@ -140,6 +140,6 @@ export default function ErrorOverview(props: Record<string, unknown>) {
           )}
         </AuditParameters>
       </SettingsSection>
-    </SettingsPageWrapper>
+    </Stack>
   );
 }

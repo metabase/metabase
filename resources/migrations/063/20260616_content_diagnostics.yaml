@@ -1,0 +1,108 @@
+## Content Diagnostics — detected findings snapshot (scan-snapshot, latest-wins).
+## Persisted table: `content_diagnostics_finding`.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.2026-06-16T00:00:00
+      author: yb
+      comment: Content Diagnostics — content_diagnostics_finding (scan snapshot)
+      changes:
+        - createTable:
+            tableName: content_diagnostics_finding
+            remarks: One detected problem for one entity, from one scan run.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scan_id
+                  type: varchar(36)
+                  remarks: Groups all rows from one scan run (UUID). API serves the newest scan.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: Polymorphic — card/dashboard/document/collection/transform. No FK.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: Polymorphic id of the flagged entity (no FK; paired with entity_type).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finding_type
+                  type: varchar(32)
+                  remarks: stale/duplicated/empty/crowded/sparse/slow/trash-not-emptied
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope_collection_id
+                  type: int
+                  remarks: collection the entity lived in at scan time (filter/sort); no FK
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: JSON evidence — e.g. {threshold_days, last_active_at}
+              - column:
+                  name: detected_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When this finding was detected (per-finding freshness signal).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: true = invalidated (entity fixed/changed since scan); evicted from the served set
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invalidated_at
+                  type: ${timestamp_type}
+                  remarks: when invalidated (audit; null = active)
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:01
+      author: yb
+      comment: Content Diagnostics — unique finding per scan (dedup)
+      changes:
+        - addUniqueConstraint:
+            tableName: content_diagnostics_finding
+            columnNames: scan_id, entity_type, entity_id, finding_type
+            constraintName: idx_uniq_cd_finding
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:02
+      author: yb
+      comment: Content Diagnostics — index findings by scan + finding_type
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_scan
+            columns:
+              - column:
+                  name: scan_id
+              - column:
+                  name: finding_type
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:03
+      author: yb
+      comment: Content Diagnostics — index findings by entity
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_entity
+            columns:
+              - column:
+                  name: entity_type
+              - column:
+                  name: entity_id

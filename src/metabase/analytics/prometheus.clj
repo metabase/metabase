@@ -789,7 +789,19 @@
                         :labels [:stage]})
    (prometheus/gauge :metabase-memoize/cache-size
                      {:description "Number of entries currently held in a monitored in-memory memoization cache."
-                      :labels [:cache]})])
+                      :labels [:cache]})
+   ;; content diagnostics scan metrics
+   (prometheus/histogram :metabase-content-diagnostics/scan-duration-ms
+                         {:description "Duration in milliseconds of a Content Diagnostics scan, by outcome."
+                          :labels [:status]
+                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-content-diagnostics/scans
+                       {:description "Number of Content Diagnostics scans run, by outcome."
+                        :labels [:status]})
+   (prometheus/gauge :metabase-content-diagnostics/scan-findings
+                     {:description "Number of findings produced by the latest successful Content Diagnostics scan."})
+   (prometheus/gauge :metabase-content-diagnostics/scan-entities
+                     {:description "Number of entities swept by the latest successful Content Diagnostics scan."})])
 
 (defn- quartz-collectors
   []

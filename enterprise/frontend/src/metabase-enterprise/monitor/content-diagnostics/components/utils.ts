@@ -1,0 +1,229 @@
+import { t } from "ttag";
+
+import * as Urls from "metabase/urls";
+import {
+  CONTENT_DIAGNOSTICS_FILTER_TYPES,
+  type ContentDiagnosticsCollection,
+  type ContentDiagnosticsEntityType,
+  type ContentDiagnosticsFilterType,
+  type ContentDiagnosticsFinding,
+  type ContentDiagnosticsUser,
+  type IconName,
+} from "metabase-types/api";
+
+import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "./constants";
+import type { ContentDiagnosticsFilterOptions } from "./types";
+
+const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+  ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
+];
+
+const ENTITY_TYPE_ICONS: Record<ContentDiagnosticsEntityType, IconName> = {
+  card: "table2",
+  dashboard: "dashboard",
+};
+
+type ContentDiagnosticsCollectionBreadcrumbEntry =
+  | ContentDiagnosticsCollection
+  | ContentDiagnosticsCollection["effective_ancestors"][number];
+
+export type ContentDiagnosticsBreadcrumbLink = {
+  id: string;
+  label: string;
+  url: string;
+  icon?: IconName;
+};
+
+export function getEntityIcon(
+  entityType: ContentDiagnosticsEntityType,
+): IconName {
+  return ENTITY_TYPE_ICONS[entityType];
+}
+
+export function getEntityTypeLabel(
+  entityType: ContentDiagnosticsEntityType,
+): string {
+  switch (entityType) {
+    case "card":
+      return t`Question`;
+    case "dashboard":
+      return t`Dashboard`;
+  }
+}
+
+export function getEntityName(finding: ContentDiagnosticsFinding): string {
+  return finding.entity_display_name ?? t`Untitled`;
+}
+
+export function getEntityUrl(finding: ContentDiagnosticsFinding): string {
+  const entity = {
+    id: finding.entity_id,
+    name: getEntityName(finding),
+  };
+
+  switch (finding.entity_type) {
+    case "card":
+      return Urls.card(entity);
+    case "dashboard":
+      return Urls.dashboard(entity);
+  }
+}
+
+export function getCollectionPath(
+  collection: ContentDiagnosticsCollection | null,
+): string {
+  if (collection == null) {
+    return t`Our analytics`;
+  }
+  return [...collection.effective_ancestors, collection]
+    .map((entry) => entry.name)
+    .join(" / ");
+}
+
+function getCollectionBreadcrumbUrl(
+  entry: ContentDiagnosticsCollectionBreadcrumbEntry,
+): string {
+  return Urls.collection({ id: entry.id, name: entry.name });
+}
+
+// Breadcrumb for the finding's location — the collection path only (ancestors →
+// parent collection). The entity itself is the sidebar title, so it is not
+// repeated as a trailing breadcrumb link.
+export function getBreadcrumbLinks(
+  finding: ContentDiagnosticsFinding,
+): ContentDiagnosticsBreadcrumbLink[] {
+  if (finding.details.collection == null) {
+    return [
+      {
+        id: "root",
+        label: t`Our analytics`,
+        url: Urls.collection(),
+        icon: "folder" as const,
+      },
+    ];
+  }
+
+  return [
+    ...finding.details.collection.effective_ancestors,
+    finding.details.collection,
+  ].map((entry, index) => ({
+    id: String(entry.id),
+    label: entry.name,
+    url: getCollectionBreadcrumbUrl(entry),
+    icon: index === 0 ? ("folder" as const) : undefined,
+  }));
+}
+
+export function getUserName(user: ContentDiagnosticsUser | null): string {
+  if (user == null) {
+    return "—";
+  }
+  if (user.type === "user") {
+    return user.name ?? user.email ?? "—";
+  }
+  return user.email ?? "—";
+}
+
+export function filterFindingsByName(
+  findings: ContentDiagnosticsFinding[],
+  query: string | undefined,
+): ContentDiagnosticsFinding[] {
+  const trimmed = query?.trim().toLowerCase();
+  if (!trimmed) {
+    return findings;
+  }
+  return findings.filter((finding) =>
+    getEntityName(finding).toLowerCase().includes(trimmed),
+  );
+}
+
+export function getFilterTypeLabel(type: ContentDiagnosticsFilterType): string {
+  switch (type) {
+    case "card":
+      return t`Questions`;
+    case "dashboard":
+      return t`Dashboards`;
+    case "document":
+      return t`Documents`;
+    case "collection":
+      return t`Collections`;
+    case "transform":
+      return t`Transforms`;
+  }
+}
+
+export function getAvailableFilterTypes(): ContentDiagnosticsFilterType[] {
+  return ALL_FILTER_TYPES;
+}
+
+export function getDefaultFilterOptions(): ContentDiagnosticsFilterOptions {
+  return {
+    entityTypes: ALL_FILTER_TYPES,
+    includePersonalCollections: DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+  };
+}
+
+export function getFilterOptions(
+  params: Urls.ContentDiagnosticsParams,
+): ContentDiagnosticsFilterOptions {
+  return {
+    entityTypes: params.entityTypes ?? ALL_FILTER_TYPES,
+    includePersonalCollections:
+      params.includePersonalCollections ?? DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+  };
+}
+
+function areEntityTypesEqual(
+  a: ContentDiagnosticsFilterType[],
+  b: ContentDiagnosticsFilterType[],
+): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const setB = new Set(b);
+  return a.every((type) => setB.has(type));
+}
+
+export function areFilterOptionsEqual(
+  a: ContentDiagnosticsFilterOptions,
+  b: ContentDiagnosticsFilterOptions,
+): boolean {
+  return (
+    areEntityTypesEqual(a.entityTypes, b.entityTypes) &&
+    a.includePersonalCollections === b.includePersonalCollections
+  );
+}
+
+// Strip defaults so the URL stays clean (all types selected / personal
+// collections included → omit from the query string).
+export function getFilterParams(
+  filterOptions: ContentDiagnosticsFilterOptions,
+): Pick<
+  Urls.ContentDiagnosticsParams,
+  "entityTypes" | "includePersonalCollections"
+> {
+  const isAllTypes =
+    filterOptions.entityTypes.length === ALL_FILTER_TYPES.length;
+  const isDefaultPersonal =
+    filterOptions.includePersonalCollections ===
+    DEFAULT_INCLUDE_PERSONAL_COLLECTIONS;
+  return {
+    entityTypes: isAllTypes ? undefined : filterOptions.entityTypes,
+    includePersonalCollections: isDefaultPersonal
+      ? undefined
+      : filterOptions.includePersonalCollections,
+  };
+}
+
+export function filterFindingsByEntityTypes(
+  findings: ContentDiagnosticsFinding[],
+  entityTypes: ContentDiagnosticsFilterType[],
+): ContentDiagnosticsFinding[] {
+  // No-op when every type is selected. `includePersonalCollections` is applied
+  // server-side (a /stale query param), not here.
+  if (entityTypes.length === ALL_FILTER_TYPES.length) {
+    return findings;
+  }
+  const selected = new Set<string>(entityTypes);
+  return findings.filter((finding) => selected.has(finding.entity_type));
+}

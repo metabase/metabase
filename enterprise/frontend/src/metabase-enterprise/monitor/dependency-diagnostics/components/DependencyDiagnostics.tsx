@@ -4,6 +4,7 @@ import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
+import { useMonitorSidebar } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Center, Flex, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import {
@@ -20,12 +21,12 @@ import {
   getDependencyTypes,
   isSameNode,
 } from "metabase-enterprise/dependencies/utils";
+import { DiagnosticsPagination } from "metabase-enterprise/monitor/components";
 import type { DependencyEntry } from "metabase-types/api";
 
 import S from "./DependencyDiagnostics.module.css";
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
-import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import { DiagnosticsSidebar } from "./DiagnosticsSidebar";
 import { DiagnosticsTable } from "./DiagnosticsTable";
 import { PAGE_SIZE } from "./constants";
@@ -56,6 +57,7 @@ export function DependencyDiagnostics({
   isLoadingParams,
   onParamsChange,
 }: DependencyDiagnosticsProps) {
+  const { setSidebar } = useMonitorSidebar();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
@@ -156,6 +158,33 @@ export function DependencyDiagnostics({
     }
   }, [selectedEntry, selectedNode]);
 
+  useLayoutEffect(() => {
+    if (selectedNode == null) {
+      setSidebar(null);
+      return;
+    }
+
+    setSidebar(
+      <DiagnosticsSidebar
+        node={selectedNode}
+        mode={mode}
+        containerWidth={containerWidth}
+        onResizeStart={startResizing}
+        onResizeStop={stopResizing}
+        onClose={() => setSelectedEntry(undefined)}
+      />,
+    );
+
+    return () => setSidebar(null);
+  }, [
+    containerWidth,
+    mode,
+    selectedNode,
+    setSidebar,
+    startResizing,
+    stopResizing,
+  ]);
+
   const onRowClick = (node: DependencyEntry) => {
     setSelectedEntry(node);
     trackDependencyDiagnosticsEntitySelected({
@@ -172,7 +201,7 @@ export function DependencyDiagnostics({
       h="100%"
       wrap="nowrap"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+      <Stack className={S.main} flex={1} gap="md">
         <DiagnosticsHeader />
         <DiagnosticsFilterBar
           mode={mode}
@@ -200,22 +229,13 @@ export function DependencyDiagnostics({
         {!isLoading && error == null && (
           <DiagnosticsPagination
             page={page}
-            pageNodesCount={nodes.length}
-            totalNodesCount={totalNodesCount}
+            pageSize={PAGE_SIZE}
+            pageItemCount={nodes.length}
+            totalCount={totalNodesCount}
             onPageChange={handlePageChange}
           />
         )}
       </Stack>
-      {selectedNode != null && (
-        <DiagnosticsSidebar
-          node={selectedNode}
-          mode={mode}
-          containerWidth={containerWidth}
-          onResizeStart={startResizing}
-          onResizeStop={stopResizing}
-          onClose={() => setSelectedEntry(undefined)}
-        />
-      )}
     </Flex>
   );
 }
