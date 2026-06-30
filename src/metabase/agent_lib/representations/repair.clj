@@ -29,6 +29,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations.metric-joins :as repr.metric-joins]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
@@ -1918,11 +1919,42 @@
 (defn- display-portable [fk]
   (pr-str fk))
 
+(defn- metric-join-target-table-ids
+  "Target table ids reachable through the joins of any metric referenced in `stage`'s
+  `aggregation`. A metric is an aggregation defined on a base table whose definition may carry
+  explicit joins (e.g. to a dimension table); when the consuming query references the metric, the
+  Metabot construct pipeline inherits those joins post-resolve (see
+  [[metabase.metabot.tools.construct/inherit-metric-joins]]). So a breakout/filter field on one of
+  those joined tables is reachable even without a foreign key from the stage's `source-table`, and
+  the implicit-join pass must DEFER (not throw `:no-fk-path`) for it.
+
+  Portable metric clause shape: `[\"metric\" {} \"<entity-id>\"]`. Best-effort: any metric that
+  can't be resolved contributes no tables (returns an empty set), so unrelated failures still
+  surface their normal errors downstream."
+  [stage mp import-resolver]
+  (into #{}
+        (comp
+         (filter (fn [agg]
+                   (and (vector? agg) (= "metric" (nth agg 0 nil)) (string? (nth agg 2 nil)))))
+         (keep (fn [agg]
+                 (try
+                   (some-> (resolve/import-fk import-resolver (nth agg 2) 'Card)
+                           (->> (repr.metric-joins/metric-definition-query mp))
+                           (lib/joins -1))
+                   (catch Exception _ nil))))
+         cat
+         ;; target table of a table-based join lives at stages[0].source-table; card-based joins
+         ;; have no source-table and are dropped by the keep (the dimension case is table joins).
+         (keep (fn [a-join] (get-in a-join [:stages 0 :source-table]))))
+        (get stage "aggregation")))
+
 (defn- maybe-fill-source-field
   "Given a field-clause vector (already known to be a field clause), the stage's source-table-id,
-  and the precomputed outbound-FK map, return either the original clause or a clause with
-  `\"source-field\"` populated. Throws `:no-fk-path` or `:ambiguous-fk` on hard errors."
-  [clause mp import-resolver export-resolver source-table-id outbound-fks-by-target]
+  the precomputed outbound-FK map, and the set of table ids reachable via a same-stage metric's
+  joins, return either the original clause or a clause with `\"source-field\"` populated. Throws
+  `:no-fk-path` or `:ambiguous-fk` on hard errors, except when the field's target table is
+  reachable via a metric join (then the clause is left for post-resolve metric-join inheritance)."
+  [clause mp import-resolver export-resolver source-table-id outbound-fks-by-target metric-join-target-tables]
   (let [opts (nth clause 1)
         fk   (nth clause 2)]
     (cond
@@ -1950,6 +1982,12 @@
 
           ;; Field is on the source table itself: nothing to do.
           (= target-table-id source-table-id)
+          clause
+
+          ;; Reachable via a same-stage metric's joins: defer. The construct pipeline inherits the
+          ;; metric's joins post-resolve and stamps the join-alias onto this field, so wiring a
+          ;; `source-field` here (or throwing) would be wrong.
+          (contains? metric-join-target-tables target-table-id)
           clause
 
           :else
@@ -2004,13 +2042,15 @@
       stage
       (let [outbound  (resolve.mp/outbound-fks-from-table mp source-table-id)
             by-target (group-by :target-table-id outbound)
+            metric-join-target-tables (metric-join-target-table-ids stage mp import-resolver)
             joins     (get stage "joins")
             stage'    (cond-> stage (contains? stage "joins") (dissoc "joins"))
             walked    (walk/postwalk
                        (fn [node]
                          (if (field-clause? node)
                            (maybe-fill-source-field node mp import-resolver export-resolver
-                                                    source-table-id by-target)
+                                                    source-table-id by-target
+                                                    metric-join-target-tables)
                            node))
                        stage')]
         (cond-> walked
