@@ -16,6 +16,7 @@ export type ChartClipboardPayload = {
   type: typeof CHART_CLIPBOARD_TYPE;
   version: 1;
   name: string;
+  description?: string;
   display: CardDisplayType;
   dataset_query: DatasetQuery;
   visualization_settings: VisualizationSettings;

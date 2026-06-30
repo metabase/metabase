@@ -44,6 +44,7 @@ const value: GeneratedCard = {
   type: "card",
   id: "card-1",
   title: "Orders by month",
+  description: "Monthly count of orders.",
   query: { id: "q-1", query: datasetQuery },
   display: "bar",
 };
@@ -151,6 +152,7 @@ describe("MetabotInlineChart", () => {
       const body = JSON.parse((call?.options?.body as string) ?? "{}");
       expect(body.display).toBe("bar");
       expect(body.name).toBe("Orders by month");
+      expect(body.description).toBe("Monthly count of orders.");
       expect(body.dataset_query).toEqual(datasetQuery);
     });
   });
@@ -170,6 +172,7 @@ describe("MetabotInlineChart", () => {
       const payload = parseChartClipboard(writeText.mock.calls[0][0]);
       expect(payload?.display).toBe("bar");
       expect(payload?.name).toBe("Orders by month");
+      expect(payload?.description).toBe("Monthly count of orders.");
       expect(payload?.dataset_query).toEqual(datasetQuery);
     });
   });

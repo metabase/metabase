@@ -150,15 +150,16 @@
   returns a `navigate_to` part that sends the user to the question. Pure: the
   caller passes `inline?` (typically `(shared/inline-viz-capable?)`) and a legacy
   `query`. The caller must supply a distinct `entity-id` (card id), `query-id`,
-  and `title`; `display` is included when present."
-  [{:keys [inline? entity-id query-id query display title link]}]
+  and `title`; `display` and `description` are included when present."
+  [{:keys [inline? entity-id query-id query display title description link]}]
   (if inline?
     (generated-entity-part
      (cond-> {:type  "card"
               :id    entity-id
               :title title
               :query {:id query-id :query query}}
-       display (assoc :display (some-> display name))))
+       display     (assoc :display (some-> display name))
+       description (assoc :description description)))
     (navigate-to-part link)))
 
 ;;; Reaction Conversion
