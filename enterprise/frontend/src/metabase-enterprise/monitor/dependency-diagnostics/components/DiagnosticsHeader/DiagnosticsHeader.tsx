@@ -5,7 +5,8 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { Stack, Title } from "metabase/ui";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
@@ -24,7 +25,7 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
 
   return (
     <Stack gap="md">
-      <Title order={1}>{t`Dependency diagnostics`}</Title>
+      <MonitorHeaderTitle>{t`Dependency diagnostics`}</MonitorHeaderTitle>
       <PaneHeaderTabs tabs={tabs} />
     </Stack>
   );
