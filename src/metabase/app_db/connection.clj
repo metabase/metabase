@@ -146,7 +146,11 @@
 (defn do-after-commit
   "Run `thunk` after the current outermost transaction commits successfully — never on rollback.
   Outside a transaction (autocommit), runs `thunk` immediately — the surrounding write already committed.
-  Use for side effects that must observe committed state (e.g. enqueuing async work that reads the row)."
+  Use to *schedule* post-commit work — enqueue async work, fire a `future`, publish an event — that must
+  observe committed state (e.g. a reconcile that reads the row).
+  Do not do synchronous DB I/O in `thunk`: it runs while the transaction's connection is still checked out,
+  so a query here would hold a second connection and can deadlock a saturated pool. Hand DB work to the
+  async job you schedule, which acquires its own connection."
   [thunk]
   (if-let [callbacks *after-commit-callbacks*]
     (do (swap! callbacks conj thunk) nil)
