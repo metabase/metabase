@@ -136,11 +136,12 @@
 
 (defn- page-node
   [block page queries card-name-by-id]
-  {:id         (:id page)
-   :name       (page-short-name block page queries card-name-by-id)
-   :long_name  (page-long-name page queries card-name-by-id)
-   :query_ids  (mapv :id queries)
-   ::max-score (max-score queries)})
+  {:id          (:id page)
+   :name        (page-short-name block page queries card-name-by-id)
+   :long_name   (page-long-name page queries card-name-by-id)
+   :query_ids   (mapv :id queries)
+   :interesting (:interesting page)
+   ::max-score  (max-score queries)})
 
 (defn blocks-tree
   "Given a thread's persisted `ExplorationBlock` rows (authoring order), its `ExplorationPage`
@@ -154,7 +155,8 @@
                      :name      <short page name, heading-relative>
                      :long_name <full self-describing page name>
                      :position  <0-indexed slot among the block's pages, score-sorted>
-                     :query_ids [<id> <id> ...]}]}]
+                     :query_ids [<id> <id> ...]
+                     :interesting <true | false | nil>}]}]
 
    Pages are sorted by interestingness desc within their block. Pages whose block isn't in
    `blocks` are dropped; queries are matched to their page via `page_id`."

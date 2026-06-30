@@ -295,7 +295,6 @@
    [:error_message                    {:optional true} [:maybe :string]]
    [:started_at                       {:optional true} [:maybe :any]]
    [:finished_at                      {:optional true} [:maybe :any]]
-   [:user_interestingness             {:optional true} [:maybe [:enum 0 1 2]]]
    [:entity_id                        {:optional true} [:maybe :string]]
    [:interestingness_score            {:optional true} [:maybe number?]]
    [:contextual_interestingness_score {:optional true} [:maybe number?]]
@@ -314,9 +313,10 @@
   [:map
    [:id        ms/PositiveInt]
    [:name      [:maybe :string]]
-   [:long_name [:maybe :string]]
-   [:position  ms/IntGreaterThanOrEqualToZero]
-   [:query_ids [:sequential ms/PositiveInt]]])
+   [:long_name   [:maybe :string]]
+   [:position    ms/IntGreaterThanOrEqualToZero]
+   [:query_ids   [:sequential ms/PositiveInt]]
+   [:interesting {:optional true} [:maybe :boolean]]])
 
 (mr/def ::ExplorationBlockNode
   "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is
@@ -677,18 +677,13 @@
    :exploration_query.name :exploration_query.position
    :exploration_query.status :exploration_query.error_message
    :exploration_query.started_at :exploration_query.finished_at
-   :exploration_query.user_interestingness
    :exploration_query.entity_id
    [:exploration_query_result.interestingness_score            :interestingness_score]
    [:exploration_query_result.contextual_interestingness_score :contextual_interestingness_score]])
 
-(defn- query-summary
-  "Fetch a single `::ExplorationQuerySummary` row by `exploration_query.id`."
-  [query-id]
-  (t2/select-one (into [:model/ExplorationQuery] query-summary-columns)
-                 {:left-join [:exploration_query_result
-                              [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
-                  :where     [:= :exploration_query.id query-id]}))
+(defn- get-exploration-page-or-404
+  [page-id]
+  (api/check-404 (t2/select-one :model/ExplorationPage :id page-id)))
 
 (def ^:private document-summary-columns
   [:id :name :exploration_thread_id :creator_id :content_type :created_at :updated_at :archived])
@@ -949,22 +944,21 @@
       {:status 409
        :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
 
-(api.macros/defendpoint :put "/query/:id/interesting" :- ::ExplorationQuerySummary
-  "Set the owner's interestingness rating on an exploration query.
-  `user_interestingness` is `0` (not interesting), `1` (hmm), or `2` (interesting)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   {:keys [user_interestingness]} :- [:map [:user_interestingness [:enum 0 1 2]]]]
-  (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))
-  (t2/update! :model/ExplorationQuery id {:user_interestingness user_interestingness})
-  (query-summary id))
-
-(api.macros/defendpoint :delete "/query/:id/interesting" :- ::ExplorationQuerySummary
-  "Clear the owner's interestingness rating on an exploration query."
+(api.macros/defendpoint :put "/page/:id/interesting" :- :nil
+  "Mark an exploration page as interesting."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))
-  (t2/update! :model/ExplorationQuery id {:user_interestingness nil})
-  (query-summary id))
+  (let [page (get-exploration-page-or-404 id)]
+    (api/write-check page)
+    (t2/update! :model/ExplorationPage id {:interesting true}))
+  nil)
+
+(api.macros/defendpoint :delete "/page/:id/interesting" :- :nil
+  "Clear the user's interestingness flag on an exploration page."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [page (get-exploration-page-or-404 id)]
+    (api/write-check page)
+    (t2/update! :model/ExplorationPage id {:interesting nil}))
+  nil)
 
 ;;; ----------------------------------------- routes -----------------------------------------
 

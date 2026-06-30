@@ -2,6 +2,10 @@
   overflow-wrap: break-word;
 }
 
+.tab.tab {
+  padding: 0.6875rem 1rem;
+}
+
 .tree {
   overflow-y: auto;
   /*

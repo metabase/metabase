@@ -7,7 +7,7 @@ export function useUnresolvedDocumentCommentsCount(
   { skip = false }: { skip?: boolean } = {},
 ) {
   const document = useSelector(getCurrentDocument);
-  const unresolvedCommentsCount = useUnresolvedCommentsCount({
+  const { unresolvedCommentsCount } = useUnresolvedCommentsCount({
     target:
       document != null
         ? {

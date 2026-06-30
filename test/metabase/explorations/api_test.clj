@@ -1130,7 +1130,7 @@
           (is (= 0.83 (:contextual_interestingness_score s))))))))
 
 (deftest exploration-get-includes-interestingness-on-queries-test
-  (testing "GET /:id hydrates user_interestingness and both interestingness scores on each nested query"
+  (testing "GET /:id hydrates both interestingness scores on each nested query"
     (mt/with-temp [:model/User u {:email "get-score@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (create-exploration! u
@@ -1143,14 +1143,12 @@
             fetch-query (fn []
                           (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
                               :threads first :queries first))]
-        (testing "fresh query: scores nil (no result row), user_interestingness nil"
+        (testing "fresh query: scores nil (no result row)"
           (let [q (fetch-query)]
             (is (contains? q :interestingness_score))
             (is (nil? (:interestingness_score q)))
             (is (contains? q :contextual_interestingness_score))
-            (is (nil? (:contextual_interestingness_score q)))
-            (is (contains? q :user_interestingness))
-            (is (nil? (:user_interestingness q)))))
+            (is (nil? (:contextual_interestingness_score q)))))
         (testing "after a result row is inserted, both scores surface via hydration"
           (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
                                                        {:result_data (byte-array [0])}))]
@@ -1161,11 +1159,7 @@
                          :contextual_interestingness_score 0.83}))
           (let [q (fetch-query)]
             (is (= 0.42 (:interestingness_score q)))
-            (is (= 0.83 (:contextual_interestingness_score q)))))
-        (testing "user_interestingness on the query column round-trips through GET /:id"
-          (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)
-                                {:user_interestingness 1})
-          (is (= 1 (:user_interestingness (fetch-query)))))))))
+            (is (= 0.83 (:contextual_interestingness_score q)))))))))
 
 (deftest exploration-list-queries-permissions-test
   (testing "GET /:id/queries enforces the same read-check as the parent exploration"
@@ -1365,79 +1359,50 @@
           (is (= [src-sr-id] (mapv :stored_result_id use-rows))
               "exactly one stored_result_use row, pointing at the source snapshot"))))))
 
-(deftest exploration-user-interestingness-roundtrip-test
-  (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"
-    (mt/with-temp [:model/User u {:email "mark@example.com"}
+(deftest exploration-page-interestingness-roundtrip-test
+  (testing "PUT /page/:id/interesting marks the page; DELETE clears it; both reflected in GET /:id"
+    (mt/with-temp [:model/User u {:email "page-mark@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (create-exploration! u
-                                      {:name "mark"
+                                      {:name "page-mark"
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
-            eid  (:id resp)
-            qid  (-> resp :threads first :queries first :id)
-            put! (fn [level]
-                   (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)
-                                         {:user_interestingness level}))
-            list-one (fn []
-                       (first (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))))]
-        (testing "fresh query has nil rating"
-          (is (nil? (:user_interestingness (list-one)))))
-        (testing "PUT writes each of the three levels and the response reflects it"
-          (doseq [level [0 1 2]]
-            (let [marked (put! level)]
-              (is (= level (:user_interestingness marked)))
-              (is (= qid   (:id marked)))
-              (is (= level (:user_interestingness (list-one)))
-                  (format "summary list reflects level %d" level)))))
-        (testing "PUT overwrites a prior rating (no idempotency carve-out)"
-          (put! 2)
-          (put! 0)
-          (is (= 0 (:user_interestingness (list-one)))))
-        (testing "DELETE clears user_interestingness"
-          (let [cleared (mt/user-http-request u :delete 200 (format "exploration/query/%d/interesting" qid))]
-            (is (nil? (:user_interestingness cleared)))
-            (is (nil? (:user_interestingness (list-one))))))))))
+            eid     (:id resp)
+            page-id (-> resp :threads first :blocks first :pages first :id)
+            fetch-page (fn []
+                         (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+                             :threads first :blocks first :pages first))]
+        (testing "fresh page has nil interesting"
+          (is (contains? (fetch-page) :interesting))
+          (is (nil? (:interesting (fetch-page)))))
+        (testing "PUT marks the page interesting"
+          (mt/user-http-request u :put 204 (format "exploration/page/%d/interesting" page-id))
+          (is (true? (:interesting (fetch-page)))))
+        (testing "DELETE clears interesting"
+          (mt/user-http-request u :delete 204 (format "exploration/page/%d/interesting" page-id))
+          (is (nil? (:interesting (fetch-page)))))))))
 
-(deftest exploration-user-interestingness-rejects-bad-levels-test
-  (testing "PUT /query/:id/interesting rejects values outside {0,1,2}"
-    (mt/with-temp [:model/User u {:email "mark-bad@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (create-exploration! u
-                                      {:name "bad"
-                                       :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
-            qid  (-> resp :threads first :queries first :id)]
-        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
-                              {:user_interestingness 3})
-        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
-                              {:user_interestingness -1})
-        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
-                              {})))))
-
-(deftest exploration-user-interestingness-permissions-test
-  (testing "PUT/DELETE /query/:id/interesting enforce write-check — non-owner gets 403"
-    (mt/with-temp [:model/User owner {:email "mp-owner@example.com"}
-                   :model/User other {:email "mp-other@example.com"}
+(deftest exploration-page-interestingness-permissions-test
+  (testing "PUT/DELETE /page/:id/interesting enforce write-check — non-owner gets 403"
+    (mt/with-temp [:model/User owner {:email "page-mp-owner@example.com"}
+                   :model/User other {:email "page-mp-other@example.com"}
                    :model/Card metric (valid-metric-card (:id owner))]
       (let [resp (create-exploration! owner
-                                      {:name "mark-private"
+                                      {:name "page-mark-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
-            qid  (-> resp :threads first :queries first :id)]
-        (mt/user-http-request other :put 403 (format "exploration/query/%d/interesting" qid)
-                              {:user_interestingness 2})
-        (mt/user-http-request other :delete 403 (format "exploration/query/%d/interesting" qid))))))
+            page-id (-> resp :threads first :blocks first :pages first :id)]
+        (mt/user-http-request other :put 403 (format "exploration/page/%d/interesting" page-id))
+        (mt/user-http-request other :delete 403 (format "exploration/page/%d/interesting" page-id))))))
 
-(deftest exploration-user-interestingness-404-test
-  (testing "PUT/DELETE on a nonexistent query id returns 404"
-    (mt/with-temp [:model/User u {:email "mark-404@example.com"}]
-      (mt/user-http-request u :put 404 "exploration/query/9999999/interesting"
-                            {:user_interestingness 1})
-      (mt/user-http-request u :delete 404 "exploration/query/9999999/interesting"))))
+(deftest exploration-page-interestingness-404-test
+  (testing "PUT/DELETE on a nonexistent page id returns 404"
+    (mt/with-temp [:model/User u {:email "page-mark-404@example.com"}]
+      (mt/user-http-request u :put 404 "exploration/page/9999999/interesting")
+      (mt/user-http-request u :delete 404 "exploration/page/9999999/interesting"))))
 
 (deftest exploration-create-auto-creates-scratchpad-document-test
   (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"

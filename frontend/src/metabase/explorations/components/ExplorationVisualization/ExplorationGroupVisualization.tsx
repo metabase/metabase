@@ -60,8 +60,7 @@ interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGro
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
-  const { page, queries } = props;
-  const groupName = queries[0]?.name ?? page.name ?? t`Group`;
+  const groupName = props.page.name ?? "";
 
   return (
     <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
@@ -286,7 +285,7 @@ function ExplorationGroupVisualizationChart({
         </Box>
         <ActionToolbar
           explorationId={explorationId}
-          pageId={String(page.id)}
+          page={page}
           commentDrafts={commentDrafts}
           setCommentDrafts={setCommentDrafts}
           showTimelineDropdown={showTimelineDropdown ?? false}

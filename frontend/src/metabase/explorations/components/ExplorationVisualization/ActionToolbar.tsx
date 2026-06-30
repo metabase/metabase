@@ -9,6 +9,10 @@ import {
 import { t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
+import {
+  useClearPageInterestingMutation,
+  useMarkPageInterestingMutation,
+} from "metabase/api/exploration";
 import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
@@ -22,6 +26,7 @@ import { ActionIcon, Group, Icon, Menu, Popover } from "metabase/ui";
 import type {
   DocumentContent,
   ExplorationId,
+  ExplorationPageNode,
   ExplorationPageNodeId,
   Timeline,
   TimelineId,
@@ -33,7 +38,7 @@ export type CommentDrafts = Record<ExplorationPageNodeId, DocumentContent>;
 
 interface ActionToolbarProps {
   explorationId: ExplorationId;
-  pageId: ExplorationPageNodeId;
+  page: ExplorationPageNode;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   showTimelineDropdown: boolean;
@@ -45,7 +50,7 @@ interface ActionToolbarProps {
 
 export function ActionToolbar({
   explorationId,
-  pageId,
+  page,
   commentDrafts,
   setCommentDrafts,
   showTimelineDropdown,
@@ -54,6 +59,9 @@ export function ActionToolbar({
   onSelectTimelineId,
   interestingTimelineIds,
 }: ActionToolbarProps) {
+  const [markPageInteresting] = useMarkPageInterestingMutation();
+  const [clearPageInteresting] = useClearPageInterestingMutation();
+
   const [isCommentEditorOpen, setCommentEditorOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
 
@@ -73,9 +81,28 @@ export function ActionToolbar({
     [explorationId, onSelectTimelineId],
   );
 
-  const handleMarkAsInteresting = useCallback(() => {
-    // TODO(stars): mark this page as interesting + add analytics
-  }, []);
+  const handleMarkAsInteresting = useCallback(async () => {
+    try {
+      if (page.interesting) {
+        await clearPageInteresting({ pageId: page.id, explorationId }).unwrap();
+      } else {
+        await markPageInteresting({ pageId: page.id, explorationId }).unwrap();
+      }
+    } catch (error) {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`Failed to update star`,
+      });
+    }
+  }, [
+    page.interesting,
+    clearPageInteresting,
+    markPageInteresting,
+    page.id,
+    explorationId,
+    sendToast,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -119,6 +146,8 @@ export function ActionToolbar({
     handleMarkAsInteresting,
     setCommentEditorOpen,
   ]);
+
+  const pageId = String(page.id);
 
   const handleChangeCommentDraft = (content: DocumentContent) => {
     setCommentDrafts((prev) => ({ ...prev, [pageId]: content }));
@@ -209,9 +238,14 @@ export function ActionToolbar({
         </Menu>
       )}
       <ToolbarButton
-        icon="star"
-        tooltipLabel={t`Star as interesting`}
-        iconProps={{ size: "1.125rem" }}
+        icon={page.interesting ? "star_filled" : "star"}
+        tooltipLabel={
+          page.interesting ? t`Remove star` : t`Star as interesting`
+        }
+        iconProps={{
+          size: "1.125rem",
+          c: page.interesting ? "core-yellow-saturated" : undefined,
+        }}
         onClick={handleMarkAsInteresting}
       />
       <Popover

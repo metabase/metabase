@@ -159,6 +159,28 @@ export const explorationApi = Api.injectEndpoints({
           listTag("revision"),
         ]),
     }),
+    markPageInteresting: builder.mutation<
+      void,
+      { pageId: number; explorationId: ExplorationId }
+    >({
+      query: ({ pageId }) => ({
+        method: "PUT",
+        url: `/api/exploration/page/${pageId}/interesting`,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
+    }),
+    clearPageInteresting: builder.mutation<
+      void,
+      { pageId: number; explorationId: ExplorationId }
+    >({
+      query: ({ pageId }) => ({
+        method: "DELETE",
+        url: `/api/exploration/page/${pageId}/interesting`,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
+    }),
   }),
 });
 
@@ -174,4 +196,6 @@ export const {
   useGetExplorationQueryResultQuery,
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,
+  useMarkPageInterestingMutation,
+  useClearPageInterestingMutation,
 } = explorationApi;

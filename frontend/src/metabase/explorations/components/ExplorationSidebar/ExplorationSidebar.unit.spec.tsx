@@ -18,6 +18,7 @@ import {
   createPage,
   createQuery,
 } from "metabase/explorations/test-utils";
+import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import * as Urls from "metabase/urls";
 import type {
   ExplorationBlockNode,
@@ -27,7 +28,31 @@ import type {
 } from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
-import { getExplorationSidebarTree } from "./utils";
+import {
+  getExplorationSidebarTabsInfo,
+  getExplorationSidebarTree,
+} from "./utils";
+
+function getSidebarTestContext(
+  exploration: ReturnType<typeof createExploration>,
+) {
+  const path = Urls.exploration(exploration.id);
+  const explorationSidebarTabsInfo = getExplorationSidebarTabsInfo(exploration);
+  const selectedSidebarTab: ExplorationSidebarTab = "all";
+  const getSelectedSidebarTabUrl = (tab: ExplorationSidebarTab) =>
+    `${path}?tab=${tab}`;
+  const treeItemFilter =
+    explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
+
+  return {
+    path,
+    explorationSidebarTabsInfo,
+    selectedSidebarTab,
+    getSelectedSidebarTabUrl,
+    treeItemFilter,
+    getTree: () => getExplorationSidebarTree(exploration, treeItemFilter),
+  };
+}
 
 type TestSelectedEntityId =
   | { type: "page"; id: string }
@@ -103,18 +128,27 @@ function setup({
   ) =>
     `${Urls.exploration(exploration.id)}/${entityId.type}/${encodeURIComponent(String(entityId.id))}`;
 
+  const explorationPath = Urls.exploration(exploration.id);
+  const {
+    explorationSidebarTabsInfo,
+    selectedSidebarTab,
+    getSelectedSidebarTabUrl,
+    getTree,
+  } = getSidebarTestContext(exploration);
+
   const sidebar = (
     <ExplorationSidebar
       exploration={exploration}
-      tree={getExplorationSidebarTree(exploration)}
+      explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+      selectedSidebarTab={selectedSidebarTab}
+      getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+      tree={getTree()}
       selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       isOpen
     />
   );
-
-  const explorationPath = Urls.exploration(exploration.id);
 
   renderWithProviders(
     <Route path={explorationPath} component={() => sidebar} />,
@@ -202,6 +236,13 @@ describe("ExplorationSidebar", () => {
         createQuery({ id: 1, name: "Revenue by plan", status: "pending" }),
       ],
     });
+    const {
+      explorationSidebarTabsInfo,
+      selectedSidebarTab,
+      getSelectedSidebarTabUrl,
+      treeItemFilter,
+      getTree,
+    } = getSidebarTestContext(exploration);
     // A later poll: same block/page ids, but the query settled — a deep-different
     // tree, so `useTree`'s data-change effect runs.
     const reloadedTree = getExplorationSidebarTree(
@@ -216,6 +257,7 @@ describe("ExplorationSidebar", () => {
           }),
         ],
       }),
+      treeItemFilter,
     );
 
     const path = Urls.exploration(exploration.id);
@@ -224,6 +266,9 @@ describe("ExplorationSidebar", () => {
     ) => (
       <ExplorationSidebar
         exploration={exploration}
+        explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+        selectedSidebarTab={selectedSidebarTab}
+        getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
         tree={tree}
         selectedEntityId={{ type: "page", id: String(REVENUE_PAGE_ID) }}
         setSelectedEntityId={jest.fn()}
@@ -233,10 +278,7 @@ describe("ExplorationSidebar", () => {
     );
 
     const { rerender } = renderWithProviders(
-      <Route
-        path={path}
-        component={() => sidebarWith(getExplorationSidebarTree(exploration))}
-      />,
+      <Route path={path} component={() => sidebarWith(getTree())} />,
       { withRouter: true, initialRoute: path },
     );
 
@@ -298,13 +340,22 @@ describe("ExplorationSidebar", () => {
       exploration: ReturnType<typeof createExploration>,
       initialSelectedId: string,
     ) {
-      const path = Urls.exploration(exploration.id);
+      const {
+        path,
+        explorationSidebarTabsInfo,
+        selectedSidebarTab,
+        getSelectedSidebarTabUrl,
+        getTree,
+      } = getSidebarTestContext(exploration);
       const sidebarWith = (
         tree: ReturnType<typeof getExplorationSidebarTree>,
         selectedId: string,
       ) => (
         <ExplorationSidebar
           exploration={exploration}
+          explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+          selectedSidebarTab={selectedSidebarTab}
+          getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
           tree={tree}
           selectedEntityId={{ type: "page", id: selectedId }}
           setSelectedEntityId={jest.fn()}
@@ -315,12 +366,7 @@ describe("ExplorationSidebar", () => {
       const { rerender } = renderWithProviders(
         <Route
           path={path}
-          component={() =>
-            sidebarWith(
-              getExplorationSidebarTree(exploration),
-              initialSelectedId,
-            )
-          }
+          component={() => sidebarWith(getTree(), initialSelectedId)}
         />,
         { withRouter: true, initialRoute: path },
       );
@@ -350,6 +396,7 @@ describe("ExplorationSidebar", () => {
           createQuery({ id: 2, name: "B leaf", status: "pending" }),
         ],
       });
+      const { treeItemFilter } = getSidebarTestContext(exploration);
       // A later poll: B's query settles with high interestingness (deep-different
       // tree), so the auto-selection moves to Group B's page.
       const reloadedTree = getExplorationSidebarTree(
@@ -365,6 +412,7 @@ describe("ExplorationSidebar", () => {
             }),
           ],
         }),
+        treeItemFilter,
       );
 
       const { rerenderWith } = renderWithTree(exploration, A_LEAF);
