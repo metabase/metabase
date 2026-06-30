@@ -134,12 +134,12 @@
    :snowflake  {:indexes          [{:kind :clustering :name "by_category" :columns [{:name "category"}]}]
                 :expected         ["category"]
                 :physical-indexes snowflake-clustering}
-   ;; SQL Server: standalone clustered + nonclustered. The clustered key goes on `price` (a heap from SELECT INTO can
-   ;; take one clustered index) since a FLOAT stays under the 900-byte clustered limit; category (VARCHAR(1024)) only
-   ;; fits a nonclustered key (1700-byte limit).
+   ;; SQL Server: standalone clustered + nonclustered, both on `price` (FLOAT). The CTAS path types the text `category`
+   ;; as VARCHAR(1024), but the Python create-table! path makes it NVARCHAR(MAX), which can't be an index key, so only
+   ;; `price` is indexable through both transform paths.
    :sqlserver  {:indexes          [{:kind :clustered :name "by_price" :columns [{:name "price"}]}
-                                   {:kind :nonclustered :name "by_category" :columns [{:name "category"}]}]
-                :expected         #{"by_price" "by_category"}
+                                   {:kind :nonclustered :name "by_price_nc" :columns [{:name "price"}]}]
+                :expected         #{"by_price" "by_price_nc"}
                 :physical-indexes sqlserver-indexes}})
 
 (defn index-test-drivers
