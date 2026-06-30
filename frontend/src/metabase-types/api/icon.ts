@@ -63,6 +63,7 @@ export type IconName =
   | "combine"
   | "company"
   | "comment"
+  | "compass"
   | "currency"
   | "connections"
   | "contract"

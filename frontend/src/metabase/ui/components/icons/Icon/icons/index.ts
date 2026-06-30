@@ -128,6 +128,8 @@ import company_component from "./company.svg?component";
 import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
+import compass_component from "./compass.svg?component";
+import compass_source from "./compass.svg?source";
 import connections_component from "./connections.svg?component";
 import connections_source from "./connections.svg?source";
 import contract_component from "./contract.svg?component";
@@ -828,6 +830,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     comment: {
       component: comment_component,
       source: comment_source,
+    },
+    compass: {
+      component: compass_component,
+      source: compass_source,
     },
     connections: {
       component: connections_component,

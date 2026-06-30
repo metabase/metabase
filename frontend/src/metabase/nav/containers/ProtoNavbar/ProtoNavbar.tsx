@@ -61,7 +61,7 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
 
   const sections: { id: SectionId; label: string; icon: IconName }[] = [
     { id: "collections", label: t`Collections`, icon: "folder" },
-    { id: "explore", label: t`Explore`, icon: "sparkles" },
+    { id: "explore", label: t`Explore`, icon: "compass" },
     { id: "library", label: t`Library`, icon: "repository" },
     { id: "data", label: t`Data`, icon: "database" },
     { id: "monitor", label: t`Monitor`, icon: "gauge" },
