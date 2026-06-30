@@ -410,6 +410,7 @@
     "typescript-plugin-css-modules": "^5.1.0",
     "vite": "^8.0.16",
     "vite-plugin-css-injected-by-js": "^3.5.2",
+    "vite-plugin-svgr": "^5.2.0",
     "web-streams-polyfill": "^4.1.0",
     "webpack": "5.105.0",
     "webpack-bundle-analyzer": "^4.10.1",

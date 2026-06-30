@@ -12,27 +12,16 @@ import { findEnvRoot } from "./config/find-env-root";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 
 /**
- * Everything a Metabase data app needs, as a single Vite plugin — drop it into a
- * normal config:
+ * The contract plugin array used by {@link dataAppConfig}. It bundles the React
+ * plugin, inlines imported CSS, adds SVG-as-component support, runs `npm run dev`
+ * through the real Near-Membrane sandbox (so dev behaves like production), serves
+ * the dev entry, and applies the bundle contract — the IIFE entry/format + the
+ * React/SDK externals/globals — through a `config` hook that Vite merges *over*
+ * the user's config, so it can't be accidentally overridden.
  *
- * ```ts
- * import { defineConfig } from "vite";
- * import { dataAppVitePlugin } from "@metabase/embedding-sdk-react/data-app-dev/server";
- *
- * export default defineConfig({
- *   plugins: [dataAppVitePlugin()],
- *   server: { port: 5174 },
- * });
- * ```
- *
- * It bundles the React plugin, inlines imported CSS, runs `npm run dev` through
- * the real Near-Membrane sandbox (so dev behaves like production), and serves the
- * dev entry. The bundle contract — the IIFE entry/format + the React/SDK
- * externals/globals — is applied through its `config` hook, which Vite merges
- * *over* your config, so it can't be accidentally overridden. Returns an array of
- * plugins (Vite flattens nested plugin arrays).
+ * Internal: apps configure through {@link dataAppConfig}, not this directly.
  */
-export function dataAppVitePlugin(): PluginOption[] {
+function dataAppVitePlugin(): PluginOption[] {
   const appRoot = process.cwd();
   const envDir = findEnvRoot(appRoot);
   const allowedHosts = readAllowedHosts(appRoot);
@@ -65,4 +54,36 @@ export function dataAppVitePlugin(): PluginOption[] {
       }),
     },
   ];
+}
+
+/** Default dev server port; override via `dataAppConfig({ port })`. */
+const DEFAULT_DEV_PORT = 5174;
+
+export interface DataAppConfigOverrides {
+  /** Dev server port. Defaults to 5174. */
+  port?: number;
+}
+
+/**
+ * The complete Vite config for a Metabase data app — the only thing a template
+ * `vite.config.ts` needs:
+ *
+ * ```ts
+ * import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev/server";
+ *
+ * export default dataAppConfig({ port: 5174 });
+ * ```
+ *
+ * `overrides` exposes only a curated set of knobs (currently just `port`). The
+ * `dataAppVitePlugin()` that enforces the bundle contract + sandbox is always
+ * applied and is intentionally NOT overridable — to customize plugins/aliases,
+ * drop down to a hand-written `defineConfig` with `dataAppVitePlugin()` instead.
+ */
+export function dataAppConfig({
+  port = DEFAULT_DEV_PORT,
+}: DataAppConfigOverrides = {}): UserConfig {
+  return {
+    plugins: [dataAppVitePlugin()],
+    server: { port },
+  };
 }
