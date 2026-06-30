@@ -89,10 +89,10 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     ],
   },
   openai: {
-    value: "openai/gpt-4.1-mini",
+    value: "openai/gpt-5.4",
     models: [
-      { id: "gpt-4.1-mini", display_name: "GPT-4.1 mini" },
-      { id: "gpt-4.1", display_name: "GPT-4.1" },
+      { id: "gpt-5.4", display_name: "gpt-5.4" },
+      { id: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
     ],
   },
   openrouter: {
@@ -1536,7 +1536,7 @@ describe("AIProviderSettingsSection", () => {
       isConfigured: false,
       apiKeyValues: { openai: null },
       updateResponse: {
-        value: "openai/gpt-4.1-mini",
+        value: "openai/gpt-5.4",
         models: DEFAULT_RESPONSES.openai.models,
       },
     });
@@ -1562,7 +1562,7 @@ describe("AIProviderSettingsSection", () => {
 
     await screen.findByLabelText("Model");
     await openModelSelector();
-    await userEvent.click(await screen.findByText("GPT-4.1 mini"));
+    await userEvent.click(await screen.findByText("gpt-5.4"));
 
     await waitFor(() => {
       expect(
@@ -1576,7 +1576,7 @@ describe("AIProviderSettingsSection", () => {
       .calls("path:/api/metabot/settings", { method: "PUT" })
       .at(-1);
     expect(modelRequest?.options?.body).toBe(
-      JSON.stringify({ provider: "openai", model: "gpt-4.1-mini" }),
+      JSON.stringify({ provider: "openai", model: "gpt-5.4" }),
     );
 
     expect(
@@ -1586,7 +1586,7 @@ describe("AIProviderSettingsSection", () => {
 
   it("disconnects OpenAI by clearing both the provider and API key settings", async () => {
     await setup({
-      savedProviderValue: "openai/gpt-4.1-mini",
+      savedProviderValue: "openai/gpt-5.4",
       isConfigured: true,
       apiKeyValues: { openai: "**********ey" },
     });
