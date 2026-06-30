@@ -1,29 +1,101 @@
-import type { ReactNode } from "react";
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  createContext,
+  memo,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { Box } from "metabase/ui";
 
+const CONTENT_PADDING_X = "3.5rem";
+const CONTENT_PADDING_RIGHT_WITH_APP_SWITCHER = "7rem";
+
 type MonitorContentProps = {
   children?: ReactNode;
 };
 
-export function MonitorContent({ children }: MonitorContentProps) {
+type MonitorSidebarContextValue = {
+  setSidebar: Dispatch<SetStateAction<ReactNode>>;
+};
+
+const MonitorSidebarContext = createContext<MonitorSidebarContextValue | null>(
+  null,
+);
+
+export function useMonitorSidebar() {
+  const context = useContext(MonitorSidebarContext);
+
+  if (context == null) {
+    throw new Error("useMonitorSidebar must be used within MonitorContent");
+  }
+
+  return context;
+}
+
+const AreaContent = memo(function AreaContent({
+  children,
+}: MonitorContentProps) {
   return (
-    <Box h="100%" pos="relative" bg="background_page-secondary">
-      <Box
-        pos="absolute"
-        top="2rem"
-        right="2rem"
-        bg="background_page-secondary"
-        bdrs="md"
-        style={{ zIndex: 10 }}
-      >
-        <AppSwitcher />
-      </Box>
-      <Box h="100%" p="2rem" style={{ overflowY: "auto" }}>
-        <ErrorBoundary>{children}</ErrorBoundary>
-      </Box>
+    <Box
+      h="100%"
+      pl={CONTENT_PADDING_X}
+      pr={CONTENT_PADDING_RIGHT_WITH_APP_SWITCHER}
+      py="1.5rem"
+      style={{ overflowY: "auto" }}
+    >
+      <ErrorBoundary>{children}</ErrorBoundary>
     </Box>
+  );
+});
+
+export function MonitorContent({ children }: MonitorContentProps) {
+  const [sidebar, setSidebar] = useState<ReactNode>(null);
+  const contextValue = useMemo(() => ({ setSidebar }), [setSidebar]);
+
+  return (
+    <MonitorSidebarContext.Provider value={contextValue}>
+      <Box
+        h="100%"
+        bg="background_page-secondary"
+        display="flex"
+        style={{ overflow: "hidden" }}
+      >
+        <Box
+          data-testid="monitor-main"
+          h="100%"
+          pos="relative"
+          flex="1 1 auto"
+          miw={0}
+        >
+          <Box
+            pos="absolute"
+            top="1.5rem"
+            right={CONTENT_PADDING_X}
+            bg="background_page-secondary"
+            bdrs="50%"
+            style={{ zIndex: 10 }}
+          >
+            <AppSwitcher />
+          </Box>
+          <AreaContent>{children}</AreaContent>
+        </Box>
+        {sidebar != null && (
+          <Box
+            data-testid="monitor-sidebar-region"
+            h="100%"
+            display="flex"
+            flex="0 0 auto"
+          >
+            <ErrorBoundary>{sidebar}</ErrorBoundary>
+          </Box>
+        )}
+      </Box>
+    </MonitorSidebarContext.Provider>
   );
 }

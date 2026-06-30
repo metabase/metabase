@@ -4,6 +4,7 @@ import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
+import { useMonitorSidebar } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { Center, Flex, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import {
@@ -56,6 +57,7 @@ export function DependencyDiagnostics({
   isLoadingParams,
   onParamsChange,
 }: DependencyDiagnosticsProps) {
+  const { setSidebar } = useMonitorSidebar();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
@@ -156,6 +158,33 @@ export function DependencyDiagnostics({
     }
   }, [selectedEntry, selectedNode]);
 
+  useLayoutEffect(() => {
+    if (selectedNode == null) {
+      setSidebar(null);
+      return;
+    }
+
+    setSidebar(
+      <DiagnosticsSidebar
+        node={selectedNode}
+        mode={mode}
+        containerWidth={containerWidth}
+        onResizeStart={startResizing}
+        onResizeStop={stopResizing}
+        onClose={() => setSelectedEntry(undefined)}
+      />,
+    );
+
+    return () => setSidebar(null);
+  }, [
+    containerWidth,
+    mode,
+    selectedNode,
+    setSidebar,
+    startResizing,
+    stopResizing,
+  ]);
+
   const onRowClick = (node: DependencyEntry) => {
     setSelectedEntry(node);
     trackDependencyDiagnosticsEntitySelected({
@@ -206,16 +235,6 @@ export function DependencyDiagnostics({
           />
         )}
       </Stack>
-      {selectedNode != null && (
-        <DiagnosticsSidebar
-          node={selectedNode}
-          mode={mode}
-          containerWidth={containerWidth}
-          onResizeStart={startResizing}
-          onResizeStop={stopResizing}
-          onClose={() => setSelectedEntry(undefined)}
-        />
-      )}
     </Flex>
   );
 }
