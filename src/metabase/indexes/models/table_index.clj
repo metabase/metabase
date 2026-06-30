@@ -165,11 +165,10 @@
   re-applies them against the current schema. Skips `:delete-pending` rows so a pending deletion isn't revived."
   [transform-id]
   (when transform-id
-    (let [ids (map :id (select-applicable-for-transform transform-id))]
-      (when (seq ids)
-        (t2/update! :model/TableIndex
-                    {:id [:in ids]}
-                    {:status :update-pending, :error_message nil})))))
+    (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
+      (t2/update! :model/TableIndex
+                  {:id [:in ids]}
+                  {:status :update-pending, :error_message nil}))))
 
 (defn exists-for-transform?
   "True when `transform-id` already has a request for `index-name`."
