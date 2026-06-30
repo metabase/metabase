@@ -91,11 +91,14 @@
           :metrics (t2/select-one :model/Collection
                                   :type collection/library-metrics-collection-type :location loc)}))
     ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward.
-    (mt/with-temp [:model/Collection library {:name "Library" :type collection/library-collection-type
+    (mt/with-temp [:model/Collection library {:name     "Library"
+                                              :type     collection/library-collection-type
                                               :location "/"}
-                   :model/Collection data    {:name "Data" :type collection/library-data-collection-type
+                   :model/Collection data    {:name     "Data"
+                                              :type     collection/library-data-collection-type
                                               :location (str "/" (:id library) "/")}
-                   :model/Collection metrics {:name "Metrics" :type collection/library-metrics-collection-type
+                   :model/Collection metrics {:name     "Metrics"
+                                              :type     collection/library-metrics-collection-type
                                               :location (str "/" (:id library) "/")}]
       (f {:library library :data data :metrics metrics}))))
 

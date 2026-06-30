@@ -228,26 +228,34 @@
     :collection_description     description
     :collection_authority_level authority_level}))
 
+(defn- drill-in-location-context
+  "The `<pfx>_database_name` / `<pfx>_base_table_fqn` keys a standalone measure/segment drill-in carries so
+  the LLM knows the table to query it against. Omitted when absent, so a nested (definition-only)
+  measure/segment doesn't emit blank location fields."
+  [pfx {:keys [database_name base_table_portable_fk]}]
+  (cond-> {}
+    database_name (assoc (keyword (str pfx "_database_name")) database_name)
+    (vector? base_table_portable_fk)
+    (assoc (keyword (str pfx "_base_table_fqn"))
+           (let [[_db schema table] base_table_portable_fk] (fully-qualified-name schema table)))))
+
 (defn measure->xml
   "Format a measure for LLM consumption.
    Nested table/model measures carry only definition fields; a standalone drill-in
    (read_resource) also carries `:database_name` / `:base_table_portable_fk` so the LLM knows the
    table to query the measure against."
   [{:keys [id name display-name description definition definition-description
-           portable-entity-id portable_entity_id database_name base_table_portable_fk]}]
+           portable-entity-id portable_entity_id] :as m}]
   (render-llm-template
    :measure
-   {:measure_id                 (str id)
-    :measure_name               (or name "")
-    :measure_display_name       (or display-name name "")
-    :measure_description        description
-    :measure_portable_entity_id (or portable-entity-id portable_entity_id)
-    :measure_database_name      database_name
-    :measure_base_table_fqn     (when (vector? base_table_portable_fk)
-                                  (let [[_db schema table] base_table_portable_fk]
-                                    (fully-qualified-name schema table)))
-    :measure_definition         (repr-data->llm-block definition)
-    :measure_definition_description definition-description}))
+   (merge {:measure_id                 (str id)
+           :measure_name               (or name "")
+           :measure_display_name       (or display-name name "")
+           :measure_description        description
+           :measure_portable_entity_id (or portable-entity-id portable_entity_id)
+           :measure_definition         (repr-data->llm-block definition)
+           :measure_definition_description definition-description}
+          (drill-in-location-context "measure" m))))
 
 (defn segment->xml
   "Format a segment for LLM consumption.
@@ -255,20 +263,17 @@
    (read_resource) also carries `:database_name` / `:base_table_portable_fk` so the LLM knows the
    table to query the segment against."
   [{:keys [id name display-name description definition definition-description
-           portable-entity-id portable_entity_id database_name base_table_portable_fk]}]
+           portable-entity-id portable_entity_id] :as m}]
   (render-llm-template
    :segment
-   {:segment_id                 (str id)
-    :segment_name               (or name "")
-    :segment_display_name       (or display-name name "")
-    :segment_description        description
-    :segment_portable_entity_id (or portable-entity-id portable_entity_id)
-    :segment_database_name      database_name
-    :segment_base_table_fqn     (when (vector? base_table_portable_fk)
-                                  (let [[_db schema table] base_table_portable_fk]
-                                    (fully-qualified-name schema table)))
-    :segment_definition         (repr-data->llm-block definition)
-    :segment_definition_description definition-description}))
+   (merge {:segment_id                 (str id)
+           :segment_name               (or name "")
+           :segment_display_name       (or display-name name "")
+           :segment_description        description
+           :segment_portable_entity_id (or portable-entity-id portable_entity_id)
+           :segment_definition         (repr-data->llm-block definition)
+           :segment_definition_description definition-description}
+          (drill-in-location-context "segment" m))))
 
 (defn- related-table->xml
   "Format a related table for LLM consumption."

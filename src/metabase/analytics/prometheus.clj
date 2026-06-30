@@ -451,8 +451,11 @@
    (prometheus/histogram :metabase-entity-retrieval/reconcile-duration-ms
                          {:description "Duration (ms) of a library entity index reconcile run, labelled :scope full | targeted."
                           :labels      [:scope]
-                          ;; 1ms -> 10min
-                          :buckets     [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+                          ;; One shared bucket set has to resolve both scopes, which differ by orders of
+                          ;; magnitude: a `targeted` slice reconcile is typically sub-second, a `full` run
+                          ;; seconds-to-minutes. Fine low-end buckets keep targeted from collapsing into one
+                          ;; bucket; the high end still covers a full run. (~1ms -> 10min)
+                          :buckets     [1 10 50 100 250 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-entity-retrieval/docs-inserted
                        {:description "Number of documents embedded and inserted into the library entity index."})
    (prometheus/counter :metabase-entity-retrieval/docs-deleted
