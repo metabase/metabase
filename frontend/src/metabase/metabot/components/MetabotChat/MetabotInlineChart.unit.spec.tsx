@@ -52,10 +52,14 @@ const value: GeneratedCard = {
 function setup(
   args: Parameters<typeof setupCardDataset>[0] = {},
   valueOverrides: Partial<GeneratedCard> = {},
+  { readonly = false }: { readonly?: boolean } = {},
 ) {
   setupCardDataset(args);
   return renderWithProviders(
-    <MetabotInlineChart value={{ ...value, ...valueOverrides }} />,
+    <MetabotInlineChart
+      value={{ ...value, ...valueOverrides }}
+      readonly={readonly}
+    />,
   );
 }
 
@@ -136,6 +140,13 @@ describe("MetabotInlineChart", () => {
       expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
     });
 
+    it("does not render the Save button in readonly mode", () => {
+      setup({}, {}, { readonly: true });
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("creates a card with the chart's query and display on save", async () => {
       fetchMock.post("path:/api/card", createMockCard({ id: 99 }));
       setup();
@@ -154,6 +165,26 @@ describe("MetabotInlineChart", () => {
       expect(body.name).toBe("Orders by month");
       expect(body.description).toBe("Monthly count of orders.");
       expect(body.dataset_query).toEqual(datasetQuery);
+    });
+
+    it("replaces the Save button with a Saved link after saving", async () => {
+      fetchMock.post("path:/api/card", createMockCard({ id: 99 }));
+      const { store } = setup();
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(
+        screen.getByRole("button", { name: "mock-confirm-save" }),
+      );
+
+      await waitFor(() => {
+        expect(store.getState().metabot.savedChartCardIds["card-1"]).toBe(99);
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("button", { name: "Save" }),
+        ).not.toBeInTheDocument();
+      });
+      expect(await screen.findByText("Saved")).toBeInTheDocument();
     });
   });
 

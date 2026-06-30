@@ -11,7 +11,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { useDispatch } from "metabase/redux";
+import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
   ActionIcon,
@@ -41,15 +42,20 @@ import S from "./MetabotInlineChart.module.css";
  * result; the title bar links out to the full question and lets the user save it.
  */
 export function MetabotInlineChart({
-  value: { title, description, display, query },
+  value: { id: entityId, title, description, display, query },
+  readonly = false,
 }: {
   value: GeneratedCard;
+  readonly?: boolean;
 }) {
   const datasetQuery = query.query;
   const dispatch = useDispatch();
   const clipboard = useClipboard();
   const [createCard] = useCreateCardMutation();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const savedCardId = useSelector((state) =>
+    getSavedChartCardId(state, entityId),
+  );
 
   const clipboardPayload = useMemo(
     () =>
@@ -115,6 +121,7 @@ export function MetabotInlineChart({
       dashboard_tab_id: options?.dashboardTabId,
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
+    dispatch(markChartSaved({ entityId, cardId: created.id }));
     dispatch(
       addUndo({
         icon: "check_filled",
@@ -157,13 +164,29 @@ export function MetabotInlineChart({
             <Icon name="copy" size={16} />
           </ActionIcon>
         </Tooltip>
-        <Button
-          variant="subtle"
-          size="xs"
-          onClick={() => setIsSaveModalOpen(true)}
-        >
-          {t`Save`}
-        </Button>
+        {savedCardId != null && (
+          <Anchor
+            component={ForwardRefLink}
+            to={Urls.question(question.setId(savedCardId))}
+            target="_blank"
+            size="sm"
+            c="text-secondary"
+          >
+            <Flex align="center" gap="xs">
+              <Icon name="check" size={14} />
+              {t`Saved`}
+            </Flex>
+          </Anchor>
+        )}
+        {savedCardId == null && !readonly && (
+          <Button
+            variant="subtle"
+            size="xs"
+            onClick={() => setIsSaveModalOpen(true)}
+          >
+            {t`Save`}
+          </Button>
+        )}
       </Flex>
       <Box className={S.viz}>
         {chartError ? (
