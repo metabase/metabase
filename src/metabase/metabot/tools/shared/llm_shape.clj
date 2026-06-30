@@ -736,11 +736,11 @@
                       :else           type)]
     (render-llm-template
      :search_result
-     {:search_tag_name (search-result-tag-name type)
+     {:search_tag_name (search-result-tag-name type-kw)
       :search_id (str id)
       :search_name name
       :search_uri (metabase-uri type-kw id)
-      :search_is_container (container-type? type)
+      :search_is_container (container-type? type-kw)
       :search_has_verified (some? verified)
       :search_verified verified
       ;; `is_official` is the branch's presence-style flag; it's true when the entity lives in an
