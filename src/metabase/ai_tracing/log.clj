@@ -45,6 +45,11 @@
   and `with-context` restores/removes it afterward so it never leaks onto a pooled thread."
   [node session-id]
   (when session-id
-    (log/with-context {:eval-session-id session-id}
-      (log/info (json/encode (node->entry node session-id)))))
+    (try
+      (log/with-context {:eval-session-id session-id}
+        (log/info (json/encode (node->entry node session-id))))
+      ;; Never let trace serialization break the traced run (the attributes now carry arbitrary
+      ;; request context / agent state, which could in principle contain a non-encodable value).
+      (catch Throwable t
+        (log/warn t "ai-tracing: failed to serialize/emit eval span"))))
   nil)

@@ -1809,9 +1809,18 @@
   [request respond raise]
   ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE). Direct callers get a fresh session;
   ;; the synthetic in-process call from MCP inherits the MCP session and nests under it.
-  ;; Agent-API endpoints are synchronous, so the span closes after the handler returns.
+  ;; Agent-API endpoints are synchronous, so `respond` fires inside the span and the span
+  ;; closes after the handler returns.
   (ait/with-eval-session nil
     (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
-                   {:http/method (some-> (:request-method request) name)
-                    :http/uri    (:uri request)}
-                   (base-routes request respond raise))))
+                   {:http/method  (some-> (:request-method request) name)
+                    :http/uri     (:uri request)
+                    :http/request (:body request)
+                    :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
+                   (base-routes request
+                                (fn eval-traced-respond [response]
+                                  (when (ait/capture-active?)
+                                    (ait/record! {:http/status   (:status response)
+                                                  :http/response (:body response)}))
+                                  (respond response))
+                                raise))))

@@ -102,7 +102,7 @@
   `start` event's `messageId` so the client can correlate streamed messages
   with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
-           assistant-msg-id external-id]}]
+           eval-session-id assistant-msg-id external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
                                                                   :profile-id (keyword profile-id)})
         messages         (concat history [message])]
@@ -121,12 +121,13 @@
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages      messages
-                               :state         state
-                               :metabot-id    metabot-id
-                               :profile-id    (keyword profile-id)
-                               :context       enriched-context
-                               :tracking-opts {:session-id conversation-id}}
+                      (cond-> {:messages        messages
+                               :state           state
+                               :metabot-id      metabot-id
+                               :profile-id      (keyword profile-id)
+                               :context         enriched-context
+                               :eval-session-id eval-session-id
+                               :tracking-opts   {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -186,7 +187,7 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug eval_session_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -211,6 +212,7 @@
         :conversation-id  conversation_id
         :state            state
         :debug?           debug?
+        :eval-session-id  eval_session_id
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id}))))
 
@@ -255,6 +257,8 @@
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
+            ;; eval-only: lets the benchmark harness name the per-session trace file it will read back
+            [:eval_session_id {:optional true} [:maybe :string]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)

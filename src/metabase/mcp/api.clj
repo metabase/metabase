@@ -117,21 +117,28 @@
   ;; session id so an entire conversation's requests append to one `<session-id>.jsonl`, and
   ;; open a per-request root span. Tool/resource/agent-api spans nest under it automatically.
   (ait/with-eval-session session-id
-    (ait/eval-span (str "mcp." method) {:mcp/method method :mcp/request-id id}
-                   (try
-                     (case method
-                       "notifications/initialized" nil
-                       "tools/list"                (handle-tools-list id params session-id token-scopes)
-                       "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
-                       "resources/list"            (handle-resources-list id params token-scopes)
-                       "resources/read"            (handle-resources-read id params session-id token-scopes)
-                       "ping"                      (handle-ping id params)
-                       (if id
-                         (jsonrpc-error id -32601 (str "Method not found: " method))
-                         nil))
-                     (catch Throwable e
-                       (log/error e "Error dispatching JSON-RPC method" method)
-                       (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))))
+    (ait/eval-span (str "mcp." method) {:mcp/method     method
+                                        :mcp/request-id id
+                                        :mcp/params     params
+                                        :mcp/user-id    api/*current-user-id*
+                                        :mcp/scopes     token-scopes}
+                   (let [response (try
+                                    (case method
+                                      "notifications/initialized" nil
+                                      "tools/list"                (handle-tools-list id params session-id token-scopes)
+                                      "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
+                                      "resources/list"            (handle-resources-list id params token-scopes)
+                                      "resources/read"            (handle-resources-read id params session-id token-scopes)
+                                      "ping"                      (handle-ping id params)
+                                      (if id
+                                        (jsonrpc-error id -32601 (str "Method not found: " method))
+                                        nil))
+                                    (catch Throwable e
+                                      (log/error e "Error dispatching JSON-RPC method" method)
+                                      (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))]
+                     ;; record the materialized JSON-RPC result/error (the request's output)
+                     (ait/record! {:mcp/response response})
+                     response))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
 

@@ -524,7 +524,9 @@
                                      reduced-result (reduce (xf rf) result llm-call)]
                                  (when (ait/capture-active?)
                                    (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
-                                                 :ai/tool-io     (summarize-tool-ios @parts-atom)}))
+                                                 :ai/tool-io     (summarize-tool-ios @parts-atom)
+                                                 ;; preserve data parts (e.g. generated_entity) emitted this iteration
+                                                 :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
                                  reduced-result))
           parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
@@ -550,13 +552,13 @@
             (assoc loop-state :result result' :iteration (inc iteration))
 
             :else
-            (do (log/info "Agent loop complete"
-                          {:iterations iteration
-                           ;; TODO: decide if we want this reason to float up to frontend
-                           :reason     (finish-reason iteration max-iter terminal-tools parts)})
-                (assoc loop-state
-                       :status :done
-                       :result (rf result' (final-state-part @memory-atom))))))))))
+            (let [reason (finish-reason iteration max-iter terminal-tools parts)]
+              (log/info "Agent loop complete" {:iterations iteration :reason reason})
+              (assoc loop-state
+                     :status :done
+                     ;; surfaced so run-agent-loop can record it on the turn span
+                     :finish-reason reason
+                     :result (rf result' (final-state-part @memory-atom))))))))))
 
 ;;; Public API
 
@@ -635,6 +637,9 @@
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
+            ;; eval-only: when supplied (e.g. by the benchmark harness), names the per-session
+            ;; trace file so the caller can read it back without parsing the stream
+            [:eval-session-id {:optional true} [:maybe :string]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
@@ -667,18 +672,30 @@
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
                 ;; to the per-session JSONL file as they finish.
-                (ait/with-eval-session nil
+                (ait/with-eval-session (:eval-session-id opts)
                   (let [turn-result
                         (ait/with-agent-turn {:ai/profile-id (name profile-id)
                                               :ai/msg-count  (count (:messages opts))
-                                              :ai/user-input user-input}
-                          (let [agent              (init-agent opts)
-                                {result    :result
-                                 iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
-                                                            (iterate loop-step)
-                                                            (drop-while #(= :continue (:status %)))
-                                                            first)]
+                                              :ai/user-input user-input
+                                              ;; full request — makes the trace a self-contained record
+                                              :ai/messages   (:messages opts)
+                                              :ai/context    (:context opts)
+                                              :ai/state      (:state opts)}
+                          (let [agent      (init-agent opts)
+                                usage-atom (atom {})
+                                {result        :result
+                                 iteration     :iteration
+                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
+                                                                    (iterate loop-step)
+                                                                    (drop-while #(= :continue (:status %)))
+                                                                    first)]
                             (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
+                            ;; Materialized turn-level outputs for evals: token usage, why the loop
+                            ;; stopped, and the final agent state (link registry / generated entities).
+                            (when (ait/capture-active?)
+                              (ait/record! {:ai/finish-reason finish-reason
+                                            :ai/usage         @usage-atom
+                                            :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
                             ;; Emit debug log as a data part if debug mode was active
                             (if (and debug? (seq @*debug-log*))
                               (rf result (debug-log-part @*debug-log*))
