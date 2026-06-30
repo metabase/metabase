@@ -639,12 +639,14 @@
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 
 (deftest construct-native-query-test
-  (testing "Wraps SQL into a base64-encoded native query (same shape as /v2/construct-query output)"
+  (testing "Wraps SQL into a base64-encoded MBQL 5 native query (same shape as /v2/construct-query output)"
     (let [resp    (mt/user-http-request :crowberto :post 200 "agent/v2/construct-native-query"
                                         {:database_id (mt/id)
                                          :sql         "SELECT 1 AS n"})
           decoded (-> resp :query u/decode-base64 json/decode+kw)]
-      (is (=? {:database (mt/id) :type "native" :native {:query "SELECT 1 AS n"}}
+      (is (=? {:database (mt/id)
+               :lib/type "mbql/query"
+               :stages   [{:lib/type "mbql.stage/native" :native "SELECT 1 AS n"}]}
               decoded))))
   (testing "Returns 403 when the caller cannot access the target database"
     (mt/with-no-data-perms-for-all-users!
