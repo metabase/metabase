@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useGetTransformQuery,
@@ -5,6 +7,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -69,9 +72,13 @@ function TransformIndexesContent({
     );
   }
 
-  if (indexes.length === 0) {
-    return <NoIndexes />;
-  }
-
-  return <TransformIndexTable indexes={indexes} />;
+  return (
+    <TitleSection label={t`Indexes`}>
+      {indexes.length === 0 ? (
+        <NoIndexes />
+      ) : (
+        <TransformIndexTable indexes={indexes} />
+      )}
+    </TitleSection>
+  );
 }

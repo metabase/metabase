@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useListUsersQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { useSetting } from "metabase/common/hooks";
-import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
+import { TreeTable, useTreeTableInstance } from "metabase/ui";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, UserId } from "metabase-types/api";
 
@@ -60,13 +60,11 @@ export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
   });
 
   return (
-    <Card p={0} shadow="none" withBorder>
-      <TreeTable
-        instance={treeTableInstance}
-        hierarchical={false}
-        emptyState={<ListEmptyState label={t`No indexes yet`} />}
-        ariaLabel={t`Transform indexes`}
-      />
-    </Card>
+    <TreeTable
+      instance={treeTableInstance}
+      hierarchical={false}
+      emptyState={<ListEmptyState label={t`No indexes yet`} />}
+      ariaLabel={t`Transform indexes`}
+    />
   );
 }
