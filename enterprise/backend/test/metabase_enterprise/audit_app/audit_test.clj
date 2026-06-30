@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
+   [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -407,8 +408,7 @@
                         "customer card must still exist after heal (must not be cascade-deleted)")
                     (let [healed       (t2/select-one :model/Card :id card-id)
                           healed-tid   (:table_id healed)
-                          ;; dataset_query hydrates to pMBQL: field ref is [:field {opts} id], id last
-                          ref-field-id (-> healed :dataset_query :stages first :fields first last)]
+                          ref-field-id (-> healed :dataset_query :stages first :fields first lib/field-ref-id)]
                       (is (some? healed-tid) "card's table_id must not be nil after heal")
                       (is (true? (t2/select-one-fn :active :model/Table :id healed-tid))
                           "card's table_id must reference an active table after heal")

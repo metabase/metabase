@@ -380,11 +380,6 @@
                     [id survivor-field-id])))
           (t2/select [:model/Field :id :name] :table_id orphan-table-id))))
 
-(defn- field-ref?
-  "True for an MBQL `:field` ref clause (the form the Card model hydrates field references to)."
-  [x]
-  (and (vector? x) (= :field (first x)) (map? (second x))))
-
 (defn- repoint-refs
   "Rewrite an MBQL / result-metadata form, moving references off the orphan table onto the survivor:
    `:source-table orphan-table-id` becomes `survivor-table-id`, and id-based `:field` refs are remapped onto the
@@ -393,7 +388,7 @@
   (walk/postwalk
    (fn [x]
      (cond
-       (field-ref? x)
+       (lib/clause-of-type? x :field)
        (if-let [survivor-field-id (some-> (lib/field-ref-id x) field-id-remap)]
          (lib/with-field-ref-id x survivor-field-id)
          x)
