@@ -1,8 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import type Question from "metabase-lib/v1/Question";
+import { createMockCard } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { MetabotInlineChart } from "./MetabotInlineChart";
@@ -12,6 +15,26 @@ import { MetabotInlineChart } from "./MetabotInlineChart";
 jest.mock("metabase/visualizations/components/Visualization", () => ({
   __esModule: true,
   default: () => <div data-testid="visualization" />,
+}));
+
+// The real SaveQuestionModal (with its collection/dashboard picker) is covered by
+// its own spec; here we stub it to assert the open + create wiring only.
+jest.mock("metabase/common/components/SaveQuestionModal", () => ({
+  __esModule: true,
+  SaveQuestionModal: ({
+    question,
+    onCreate,
+    onClose,
+  }: {
+    question: Question;
+    onCreate: (question: Question) => Promise<Question>;
+    onClose: () => void;
+  }) => (
+    <div data-testid="save-question-modal">
+      <button onClick={() => onCreate(question)}>mock-confirm-save</button>
+      <button onClick={onClose}>mock-close</button>
+    </div>
+  ),
 }));
 
 const datasetQuery = createMockStructuredDatasetQuery();
@@ -99,5 +122,35 @@ describe("MetabotInlineChart", () => {
     expect(
       await screen.findByText("Column FOO does not exist"),
     ).toBeInTheDocument();
+  });
+
+  describe("saving", () => {
+    it("opens the save modal when Save is clicked", async () => {
+      setup();
+      expect(
+        screen.queryByTestId("save-question-modal"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
+    });
+
+    it("creates a card with the chart's query and display on save", async () => {
+      fetchMock.post("path:/api/card", createMockCard({ id: 99 }));
+      setup();
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await userEvent.click(
+        screen.getByRole("button", { name: "mock-confirm-save" }),
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/card")).toBe(true);
+      });
+      const call = fetchMock.callHistory.lastCall("path:/api/card");
+      const body = JSON.parse((call?.options?.body as string) ?? "{}");
+      expect(body.display).toBe("bar");
+      expect(body.name).toBe("Orders by month");
+      expect(body.dataset_query).toEqual(datasetQuery);
+    });
   });
 });
