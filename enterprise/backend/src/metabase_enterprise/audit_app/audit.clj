@@ -3,6 +3,7 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -365,13 +366,69 @@
     :h2    [(u/upper-case-en table-name) "PUBLIC"]
     [(u/lower-case-en table-name) "public"]))
 
+(defn- orphan->survivor-field-ids
+  "Map of `orphan-table-id`'s field ids to `survivor-table-id`'s field ids, matched by lower-cased field name.
+   Orphan fields with no same-named survivor field are omitted."
+  [orphan-table-id survivor-table-id]
+  (let [survivor-by-name (into {}
+                               (map (juxt (comp u/lower-case-en :name) :id))
+                               (t2/select [:model/Field :id :name] :table_id survivor-table-id))]
+    (into {}
+          (keep (fn [{:keys [id name]}]
+                  (when-let [survivor-field-id (survivor-by-name (u/lower-case-en name))]
+                    [id survivor-field-id])))
+          (t2/select [:model/Field :id :name] :table_id orphan-table-id))))
+
+(defn- repoint-refs
+  "Rewrite an MBQL / result-metadata form, moving references off the orphan table onto the survivor:
+   `:source-table orphan-table-id` becomes `survivor-table-id`, and field ids are remapped via `field-id-remap`.
+   Handles both pMBQL field refs (`[:field {opts} id]`, id last) and legacy refs (`[:field id {opts}]`,
+   `[:field-id id]`, id second)."
+  [form orphan-table-id survivor-table-id field-id-remap]
+  (walk/postwalk
+   (fn [x]
+     (cond
+       ;; pMBQL field ref: [:field {opts} id]
+       (and (vector? x) (= :field (first x)) (map? (second x)) (contains? field-id-remap (nth x 2 nil)))
+       (assoc x 2 (field-id-remap (nth x 2)))
+
+       ;; legacy field ref: [:field id {opts}] or [:field-id id]
+       (and (vector? x) (#{:field :field-id} (first x)) (contains? field-id-remap (second x)))
+       (assoc x 1 (field-id-remap (second x)))
+
+       (and (map? x) (= orphan-table-id (:source-table x)))
+       (assoc x :source-table survivor-table-id)
+
+       :else x))
+   form))
+
+(defn- repoint-cards-to-survivor!
+  "Move every card that references `orphan-table-id` onto `survivor-table-id` by rewriting its query and result
+   metadata. A card's `table_id` is derived from its `dataset_query` by `populate-query-fields`, so updating the
+   column alone is silently reverted — and the orphan's FK is ON DELETE CASCADE, so a card left behind is destroyed
+   when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
+  [orphan-table-id survivor-table-id]
+  (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)
+        rewrite        #(repoint-refs % orphan-table-id survivor-table-id field-id-remap)]
+    (doseq [card (t2/select :model/Card :table_id orphan-table-id)]
+      (t2/update! :model/Card (:id card)
+                  (cond-> {:dataset_query (rewrite (:dataset_query card))}
+                    (:result_metadata card)
+                    (assoc :result_metadata
+                           (mapv (fn [col]
+                                   (cond-> col
+                                     (contains? field-id-remap (:id col)) (assoc :id (field-id-remap (:id col)))))
+                                 (rewrite (:result_metadata card)))))))))
+
 (defn- reconcile-audit-db-duplicates!
   "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical
   name/schema.
 
   Idempotent: a no-op when there are no duplicates.
 
-  Dedupe by choosing the row other content points at, otherwise the active row, otherwise the lowest id."
+  Dedupe by choosing the row other content points at, otherwise the active row, otherwise the lowest id. Content on
+  the rows being removed is moved onto the survivor (query source-table and field ids rewritten) before they are
+  deleted, so no card is lost to the orphan's ON DELETE CASCADE."
   [audit-db-id]
   ;; sort by id up front so every selection below (including the `referenced?` tiebreak) is deterministic
   ;; regardless of the order the appdb returns rows in
@@ -386,10 +443,10 @@
                                   (first rows))
             [c-name c-schema] (host-canonical-table (:name survivor))
             orphans           (remove #(= (:id %) (:id survivor)) rows)]
-        ;; delete orphans before re-canonicalizing the survivor so the survivor's new (name, schema) can't
-        ;; collide with an orphan still sitting at that slot on idx_unique_table
+        ;; move content off each orphan, then delete it before re-canonicalizing the survivor so the survivor's
+        ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
         (doseq [{orphan-id :id} orphans]
-          (t2/update! :model/Card {:table_id orphan-id} {:table_id (:id survivor)})
+          (repoint-cards-to-survivor! orphan-id (:id survivor))
           (t2/delete! :model/Table orphan-id))
         ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
         ;; NULL — and thus excluded from the index — while the flag is set)
