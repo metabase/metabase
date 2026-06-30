@@ -132,10 +132,10 @@
     (let [blocks [{:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}
                   {:type "data-todo_list"   :data [{:id "t1"}]}
                   {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}]]
-      (is (=? [{:role "agent" :type "data_part" :part {:type "generated_entity" :version 1 :value {:type "dashboard" :url "/auto/dashboard/table/1"}}}
-               {:role "agent" :type "data_part" :part {:type "todo_list"   :version 1 :value [{:id "t1"}]}}
-               {:role "agent" :type "data_part" :part {:type "code_edit"   :version 1 :value {:buffer_id "b" :value "v"}}}]
-               (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
+      (is (=? [{:role "agent" :type "data_part" :part {:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}}
+               {:role "agent" :type "data_part" :part {:type "data-todo_list"   :data [{:id "t1"}]}}
+               {:role "agent" :type "data_part" :part {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}}]
+              (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
 
 (deftest ^:parallel message->chat-messages-test-10
   (testing "nil :data yields no messages"

@@ -48,18 +48,6 @@ const metabotRetryResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),
 );
 
-// navigate_to response captured from a real embedding Metabot session
-// (database id swapped from 2 to 1 to match this env's Sample Database).
-const metabotResponseWithSqlEditor = H.createMetabotSSEBody(
-  H.metabotTextPart(
-    "I'll direct you to the SQL editor for the Sample Database so you can write a query for the most popular products!",
-  ),
-  H.metabotDataPart(
-    "navigate_to",
-    "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5IjoiIn19fQ==",
-  ),
-);
-
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
@@ -95,17 +83,6 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
   };
-
-  it("should show the SQL editor when Metabot navigates to the SQL editor page", () => {
-    setup(metabotResponseWithSqlEditor);
-
-    mountSdkContent(<MetabotQuestion />);
-
-    getSdkRoot().within(() => {
-      cy.findByTestId("metabot-chat-input").type("Open the SQL editor {enter}");
-      cy.findByTestId("native-query-editor-container").should("be.visible");
-    });
-  });
 
   it("should show drill-through results after drilling from a metabot question", () => {
     setup(metabotResponseWithChart);

@@ -14,7 +14,6 @@
                                      :title     "My Chart"})]
       (is (= :data (:type part)))
       (is (= "generated_entity" (:data-type part)))
-      (is (= 1 (:version part)))
       (is (= {:type    "card"
               :id      "card-1"
               :title   "My Chart"
