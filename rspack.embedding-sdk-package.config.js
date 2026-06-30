@@ -146,6 +146,14 @@ const dataAppDevEntryConfig = {
     "@metabase/embedding-sdk-react/data-app",
     DATA_APP_DEV_CONFIG_VIRTUAL_ID,
   ],
+
+  // Leave `import.meta` untouched so the consumer's Vite (not rspack) resolves it
+  // at serve time — `import.meta.env.DATA_APP_MB_*` for auth and `import.meta.hot`
+  // for the soft reload. Without this, rspack evaluates them to `undefined`.
+  module: {
+    ...baseConfig.module,
+    parser: { javascript: { importMeta: false } },
+  },
 };
 
 module.exports = [baseConfig, esmConfig, dataAppDevEntryConfig];
