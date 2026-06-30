@@ -36,7 +36,7 @@ Data apps live inside the Git repository connected to Metabase via remote-sync. 
 
 If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the current `data-app-template`. Check **all** of:
 
-1. `vite.config.ts` is a one-liner: `export default dataAppConfig({ port: 5174 })`
+1. `vite.config.ts` is a one-liner: `export default dataAppConfig()`
    (from `@metabase/embedding-sdk-react/data-app-dev`). There is **no**
    local `config/` directory: the whole bundle contract (externals/globals, the
    dev sandbox entry, CSS/SVG handling) lives inside that SDK config, not the
@@ -178,10 +178,10 @@ Replace `src/App.tsx`'s starter content with the screens the user described. **S
 ```ts
 import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev";
 
-export default dataAppConfig({ port: 5174 });
+export default dataAppConfig();
 ```
 
-`dataAppConfig` exposes only a curated set of overrides (currently just `port`). The whole contract — factory shape, externals/globals, the dev sandbox entry, CSS inlining, and SVG-as-component support — is baked in and **can't** be overridden; that's deliberate, so a data app can't drift from what Metabase loads. There's no local build config to touch, and tweaks to `src/index.tsx`/`index.html` still risk breaking the factory shape or document shell (the iframe doesn't read your `index.html` — the host serves a byte-for-byte template) and silently break drill popups and routing.
+`dataAppConfig` exposes only a curated set of overrides (currently just `port`). The whole contract — factory shape, externals/globals, the dev sandbox entry, CSS inlining, and SVG-as-component support — is baked in and **can't** be overridden; that's deliberate, so a data app can't drift from what Metabase loads. There's no local build config to touch (and no `index.html` — the SDK's dev server serves the HTML shell), and tweaks to `src/index.tsx` still risk breaking the factory shape and silently break drill popups and routing.
 
 There is intentionally **no escape hatch** for extra Vite plugins, aliases, or `define`s — `port` is the only knob. If you think you need more, you almost certainly don't; solve it in `src/` instead.
 

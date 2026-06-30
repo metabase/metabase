@@ -4,8 +4,8 @@
  * externalizes the config module and builds the dev entry) can't drift.
  *
  * NOTE: import specifiers and `declare module` names must be string literals, so a
- * few places have to repeat these by hand (`dev-entry.tsx`, `vite-env.d.ts`, the
- * template's `index.html`) — keep them in sync with the values here.
+ * couple of places repeat these by hand (`dev-entry.tsx`'s config import and
+ * `vite-env.d.ts`'s `declare module`) — keep them in sync with the values here.
  */
 
 /**
