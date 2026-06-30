@@ -241,8 +241,9 @@
 (deftest export-log-captures-extract-warnings-test
   (testing "export.log captures escape-analysis warnings emitted during the eager extract phase (GHY-3802)"
     ;; A dashboard in the exported collection references a card living in a different collection. Escape analysis
-    ;; runs eagerly inside extract/extract (before storage streaming) and warns about the escaped card. That warning
-    ;; must still land in export.log even though extract happens outside the storage logging block.
+    ;; runs eagerly inside extract/extract (before storage streaming) and warns about the escaped card. Under
+    ;; continue-on-error the export still completes, and that warning must land in export.log even though extract
+    ;; happens outside the storage logging block.
     (mt/with-premium-features #{:serialization}
       (mt/with-temp [:model/Collection    target       {:name "Target Collection"}
                      :model/Collection    other        {:name "Other Collection"}
@@ -251,11 +252,30 @@
                      :model/DashboardCard _            {:dashboard_id (:id dash) :card_id (:id outside-card)}]
         (let [res (binding [api.serialization/*additive-logging* false]
                     (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                          :collection (:id target) :data_model false :settings false))
+                                          :collection (:id target) :data_model false :settings false
+                                          :continue_on_error true))
               log (read-export-log res)]
           (is (some? log) "export.log should be present in the archive")
           (is (re-find #"outside requested collections" log)
               "export.log should contain the escape-analysis warning emitted during extract"))))))
+
+(deftest export-aborts-on-escaped-card-test
+  (testing "Export fails loudly with a 4xx instead of silently emitting an empty archive when a referenced card lives outside the requested collections (#75176)"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+        (mt/with-temp [:model/Collection    target       {:name "Target Collection"}
+                       :model/Collection    other        {:name "Other Collection"}
+                       :model/Card          outside-card {:collection_id (:id other) :name "OutsideCard"}
+                       :model/Dashboard     dash         {:collection_id (:id target) :name "DashWithOutsideCard"}
+                       :model/DashboardCard _            {:dashboard_id (:id dash) :card_id (:id outside-card)}]
+          (let [body (binding [api.serialization/*additive-logging* false]
+                       (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                             :collection (:id target) :data_model false :settings false))]
+            (is (re-find #"incomplete export" (str body))
+                "the 4xx body explains that the export would be incomplete")
+            (is (empty? (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
+                                (messages)))
+                "the abort surfaces as a client-side 4xx, not logged as a server error")))))))
 
 (deftest import-restores-entities-test
   (testing "Import restores deleted/renamed entities and updates search index"
