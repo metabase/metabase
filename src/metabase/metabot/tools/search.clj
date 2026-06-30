@@ -335,8 +335,8 @@
 
 (defn- card-refs->results
   "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).
-  Emits one record per ref, so the same card registered under two type strings yields a record for each
-  (rather than collapsing to one and silently dropping the other)."
+  Emits one record per distinct card id, carrying the card's *current* type — so the same card registered
+  under two (possibly stale) type strings collapses to a single record rather than duplicating."
   [refs]
   (let [ids       (distinct (map :id refs))
         ;; only surface cards the current user can read (collection perms) — see table-refs->results
@@ -355,7 +355,7 @@
                     (t2/select-fn-set :moderated_item_id :model/ModerationReview
                                       :moderated_item_id [:in ids] :moderated_item_type "card"
                                       :most_recent true :status "verified"))]
-    (for [{:keys [id]} refs
+    (for [id ids
           :let [c (id->card id)]
           :when c]
       (let [coll (get id->coll (:collection_id c))]
