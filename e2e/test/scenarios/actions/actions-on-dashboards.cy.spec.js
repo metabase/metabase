@@ -1349,7 +1349,7 @@ function createDashboardWithActionButton({
         .first()
         .click();
     });
-    cy.findByRole("listbox").findByText("ID").click();
+    H.popover().findByText("ID").click();
   }
 
   cy.findByRole("dialog").within(() => {

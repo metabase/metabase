@@ -59,6 +59,7 @@ function SelectWrapper<Value extends string | null>(
         props.selectFirstOptionOnChange ?? props.searchable
       }
       onDropdownOpen={handleDropdownOpen}
+      data-element-id="mantine-popover"
     />
   );
 }

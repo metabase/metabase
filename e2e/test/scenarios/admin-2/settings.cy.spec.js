@@ -912,9 +912,9 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.button("Load").click();
     cy.wait("@getGeoJson");
     cy.findByTestId("map-region-key-select").click();
-    cy.findByRole("listbox").contains("NAME").click();
+    H.popover().contains("NAME").click();
     cy.findByTestId("map-region-name-select").click();
-    cy.findByRole("listbox").contains("NAME").click();
+    H.popover().contains("NAME").click();
     cy.button("Add map").click();
     cy.findByTestId("admin-layout-content").within(() => {
       cy.contains("NAME").should("not.exist");
