@@ -199,10 +199,12 @@ describe("parseJunit", () => {
     expect(test.file).toBe(
       "frontend/src/metabase/components/Button/Button.unit.spec.tsx",
     );
-    // The unescaped `>` in the title survives, and the entity-escaped (non-CDATA)
-    // failure body is decoded.
+    // The unescaped `>` in the title survives decoding.
     expect(test.name).toBe("Button when open renders > the label");
-    expect(test.message).toBe("Error: expect(received).toBe(expected)");
+    // No `message` attribute on the <failure> => null. We never derive a
+    // message from the body; the full trace lands in `stack` instead.
+    expect(test.message).toBeNull();
+    expect(test.stack).toContain("Error: expect(received).toBe(expected)");
     expect(test.status).toBe("failure");
   });
 
