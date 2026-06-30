@@ -144,28 +144,37 @@
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
 
 (defn do-after-commit
-  "Run `thunk` after the current outermost transaction commits successfully — never on rollback. Outside a
-  transaction (autocommit), runs `thunk` immediately, since the surrounding write has already committed.
+  "Run `thunk` after the current outermost transaction commits successfully — never on rollback.
+  Outside a transaction (autocommit), runs `thunk` immediately — the surrounding write already committed.
   Use for side effects that must observe committed state (e.g. enqueuing async work that reads the row)."
   [thunk]
   (if-let [callbacks *after-commit-callbacks*]
     (do (swap! callbacks conj thunk) nil)
     (thunk)))
 
-(defn- run-after-commit-callbacks! [callbacks]
-  (binding [t2.conn/*current-connectable* nil
+(defn- run-after-commit-callbacks! [^java.sql.Connection connection callbacks]
+  ;; Reuse the just-committed connection (now back in autocommit) so callbacks don't check out a second
+  ;; pooled connection while this one is still held. Keep *after-commit-callbacks* bound to the same
+  ;; accumulator so a callback that itself calls do-after-commit queues the new thunk for the next drain
+  ;; pass (FIFO) rather than running it re-entrantly mid-loop.
+  (binding [t2.conn/*current-connectable* connection
             *transaction-depth*           0
-            *after-commit-callbacks*      nil]
-    (doseq [thunk @callbacks]
-      ;; the transaction already committed; a failing callback must not unwind it
-      (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
-    (reset! callbacks [])))
+            *after-commit-callbacks*      callbacks]
+    (loop []
+      (let [batch (first (reset-vals! callbacks []))]
+        (when (seq batch)
+          (doseq [thunk batch]
+            ;; the transaction already committed; a failing callback must not unwind it
+            (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
+          (recur))))))
 
 (defn- discard-after-commit-callbacks-after! [callback-count]
   (when-let [callbacks *after-commit-callbacks*]
     (swap! callbacks
            (fn [callbacks]
-             (subvec callbacks 0 (min callback-count (count callbacks)))))))
+             ;; copy rather than return the subvec view, which would retain the discarded callbacks (and their
+             ;; captured closures) through the backing array until the outer transaction finishes
+             (into [] (subvec callbacks 0 (min callback-count (count callbacks))))))))
 
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
@@ -178,10 +187,13 @@
                     (.commit connection))
                   result)
                 (catch Throwable txn-e
+                  ;; the nested body failed, so its callbacks must never fire — discard them before attempting
+                  ;; rollback, otherwise a throwing .rollback would leave them in the shared accumulator to run
+                  ;; at outer-commit time for data that was rolled back
+                  (when callback-count
+                    (discard-after-commit-callbacks-after! callback-count))
                   (try
                     (.rollback connection savepoint)
-                    (when callback-count
-                      (discard-after-commit-callbacks-after! callback-count))
                     (catch Exception rollback-e
                       (throw (ex-info
                               (str "Error rolling back after previous error: " (ex-message txn-e))
@@ -239,7 +251,7 @@
                                *after-commit-callbacks* callbacks]
                        (do-transaction connection f))]
       (when outermost?
-        (run-after-commit-callbacks! callbacks))
+        (run-after-commit-callbacks! connection callbacks))
       result)))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
