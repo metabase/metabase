@@ -51,8 +51,8 @@ export function initMetaplow(config: MetaplowConfig): void {
             ? getSanitizedUrl(payload.url)
             : "",
         id: Settings.get("analytics-uuid") ?? "",
-        referrer: "", // TODO: Is unsetting this still needed?
-        title: "", // TODO: Is unsetting this still needed?
+        referrer: "",
+        title: "",
         hostname: anonymizedHostname,
         data: {
           ...(payload.data as Record<string, unknown> | undefined),
