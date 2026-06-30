@@ -46,24 +46,26 @@
 
 (deftest card-backed-entity-round-trip-test
   (testing "every card-backed entity type stores as \"card\", nests under the Card's path, and imports back"
-    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
-      (doseq [entity-type ["card" "model" "metric" "question"]]
-        (testing entity-type
-          (mt/with-temp [:model/OsiAiContext _ {:ai_context {:instructions "Use it directly." :synonyms [entity-type]}
-                                                :entity_type entity-type :entity_local_id card-id}]
-            (let [extracted (extract-for "card" card-id)]
-              (testing "path nests the row under the Card; ai_context copies verbatim; no entity_id/key fields"
-                (is (=? {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
-                         :serdes/meta [{:model "Card" :id card-eid} {:model "OsiAiContext" :id "ai_context"}]}
-                        extracted))
-                (is (not (contains? extracted :entity_id))))
-              (testing "depends on the referenced Card"
-                (is (= [[{:model "Card" :id card-eid}]] (serdes/dependencies extracted))))
-              (testing "importing resolves the path back to the local card row"
-                (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
-                (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-                (is (=? {:entity_type "card" :entity_local_id card-id}
-                        (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))))))
+    (doseq [entity-type ["card" "model" "metric" "question"]]
+      (testing entity-type
+        ;; a fresh Card per flavor: they all normalize to the same `card` entity_type, so reusing one card
+        ;; would collide on the (card, id) primary key across iterations.
+        (mt/with-temp [:model/Card     {card-id :id card-eid :entity_id} {}
+                       :model/OsiAiContext _ {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
+                                              :entity_type entity-type :entity_local_id card-id}]
+          (let [extracted (extract-for "card" card-id)]
+            (testing "path nests the row under the Card; ai_context copies verbatim; no entity_id/key fields"
+              (is (=? {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
+                       :serdes/meta [{:model "Card" :id card-eid} {:model "OsiAiContext" :id "ai_context"}]}
+                      extracted))
+              (is (not (contains? extracted :entity_id))))
+            (testing "depends on the referenced Card"
+              (is (= [[{:model "Card" :id card-eid}]] (serdes/dependencies extracted))))
+            (testing "importing resolves the path back to the local card row"
+              (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
+              (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+              (is (=? {:entity_type "card" :entity_local_id card-id}
+                      (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))))))))
 
 (deftest measure-segment-entity-round-trip-test
   (testing "measure and segment refs nest under the entity's path and import back"
