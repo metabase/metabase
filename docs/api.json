@@ -4066,7 +4066,7 @@
         "required" : [ "resources", "output" ]
       },
       "metabase.agent-api.api.search-response" : {
-        "description" : "Search results containing tables, metrics, and models matching the query.",
+        "description" : "Search results containing tables, models, metrics, saved questions, dashboards, and\n   collections matching the query.",
         "type" : "object",
         "properties" : {
           "data" : {
@@ -4082,9 +4082,17 @@
         "required" : [ "data", "total_count" ]
       },
       "metabase.agent-api.api.search-result-item" : {
-        "description" : "A table, metric, or model returned from search.",
+        "description" : "A table, model, metric, saved question, dashboard, or collection returned from search.\n   The map is intentionally open: the underlying search enriches results with extra fields\n   (e.g. `:database_name`, `:portable_entity_id`, metric base-table info) that callers may\n   ignore. Only the keys agents commonly rely on are declared here.",
         "type" : "object",
         "properties" : {
+          "collection" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "type" : "integer"
           },
@@ -4094,6 +4102,13 @@
           "verified" : {
             "oneOf" : [ {
               "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "location" : {
+            "oneOf" : [ {
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -4119,7 +4134,14 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "table", "metric", "model" ]
+            "enum" : [ "table", "metric", "model", "question", "dashboard", "collection" ]
+          },
+          "official" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
           },
           "database_schema" : {
             "oneOf" : [ {
@@ -15043,7 +15065,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-search",
         "summary" : "POST /api/agent/v1/search",
-        "description" : "Search for tables, metrics, and models.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
+        "description" : "Search for tables, models, metrics, saved questions, dashboards, and collections.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
