@@ -4,6 +4,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
@@ -99,16 +100,13 @@
   (api/check-superuser)
   (api/check-400 (contains? writable-entity-types entity-type)
                  "entity_type must be one of: measure, metric, model, segment, table")
-  ;; Upsert on the normalized (stored) key so re-posting a relabelled card updates its one row. Check
-  ;; existence explicitly rather than off the update count — an idempotent re-PUT (same ai_context) updates
-  ;; zero rows, which must NOT be read as "missing" and re-inserted into a duplicate-key error.
-  (let [norm-type (entity-retrieval/normalize-entity-type entity-type)]
-    (if (get-entry entity-type entity-local-id)
-      (t2/update! :model/OsiAiContext :entity_type norm-type :entity_local_id entity-local-id
-                  {:ai_context ai_context})
-      (t2/insert! :model/OsiAiContext {:entity_type     norm-type
-                                       :entity_local_id entity-local-id
-                                       :ai_context      ai_context})))
+  ;; Upsert on the normalized (stored) key so re-posting a relabelled card updates its one row.
+  ;; update-or-insert! handles the compound key, the no-op re-PUT, and the concurrent-create race
+  ;; (savepoint + single retry) centrally.
+  (app-db/update-or-insert! :model/OsiAiContext
+                            {:entity_type     (entity-retrieval/normalize-entity-type entity-type)
+                             :entity_local_id entity-local-id}
+                            (constantly {:ai_context ai_context}))
   (get-entry entity-type entity-local-id))
 
 (api.macros/defendpoint :post "/reconcile"

@@ -127,9 +127,11 @@
   ;; Store under a flat top-level directory rather than nesting next to the entity: serdes/storage-path-prefixes
   ;; only knows how to nest under Database/Schema/Table/Field, so a Card/Measure/Segment parent would throw.
   ;; The row's identity still lives in its nested generate-path (the on-disk :serdes/meta); this is only the
-  ;; file's location. The slug encodes the entity ref so files don't collide.
-  (let [ref-ids (map :id (pop (vec (serdes/path entity))))
-        ref     (str/join "-" ref-ids)]
+  ;; file's location. The key includes each parent segment's MODEL, so distinct paths that would otherwise
+  ;; join to the same string — e.g. database "a-b" + table "c" vs database "a" + schema "b" + table "c" —
+  ;; stay distinct and one context can't overwrite another's file.
+  (let [parent (pop (vec (serdes/path entity)))
+        ref    (str/join "/" (map (fn [{:keys [model id]}] (str model ":" id)) parent))]
     [{:label "osi_ai_context"}
      {:label (u/slugify ref {:unicode? true}) :key ref}]))
 
