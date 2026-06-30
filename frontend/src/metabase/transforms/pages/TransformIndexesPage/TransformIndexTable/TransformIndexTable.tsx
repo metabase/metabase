@@ -7,10 +7,11 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
+import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, UserId } from "metabase-types/api";
 
 import type { IndexRow } from "./types";
-import { getColumns, getIndexName } from "./utils";
+import { getColumns, getIndexKey } from "./utils";
 
 type TransformIndexTableProps = {
   indexes: TableIndexEntry[];
@@ -35,13 +36,13 @@ export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
     () =>
       indexes.map((index, position) => {
         const userId = index.request?.created_by;
+        const modifiedBy = !isNullOrUndefined(userId)
+          ? (usersById.get(userId) ?? "")
+          : "";
         return {
           ...index,
-          id:
-            index.request?.id != null
-              ? `request-${index.request.id}`
-              : `index-${getIndexName(index)}-${position}`,
-          modifiedBy: userId != null ? (usersById.get(userId) ?? "") : "",
+          id: getIndexKey(index, position),
+          modifiedBy,
         };
       }),
     [indexes, usersById],

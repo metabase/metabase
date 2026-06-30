@@ -15,6 +15,14 @@ export function getIndexName(index: TableIndexEntry): string {
   return index.name ?? index.kind;
 }
 
+export function getIndexKey(index: TableIndexEntry, position: number): string {
+  if (index.request?.id !== undefined) {
+    return `request-${index.request.id}`;
+  }
+
+  return `index-${getIndexName(index)}-${position}`;
+}
+
 function formatStatus(status: TableIndexRequestStatus | undefined): string {
   switch (status) {
     case "pending":
