@@ -601,3 +601,13 @@
                                     (map (comp first #(str/split % #"\s") :name))))]
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
+
+(deftest card-ref-hydration-emits-current-string-type-test
+  (testing "a card ref hydrates to the Card's CURRENT type as a string — not the stale ref type, not a keyword"
+    ;; regression: a stale index hit across a metric<->model relabel must describe the entity by its current
+    ;; shape, and the type must be the agent-facing string (a :model keyword breaks entity-class + enrichers).
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:type :model}]
+        (let [[result] (search/entity-refs->search-results [{:model "metric" :id card-id}])]
+          (is (= "model" (:type result)))
+          (is (string? (:type result))))))))

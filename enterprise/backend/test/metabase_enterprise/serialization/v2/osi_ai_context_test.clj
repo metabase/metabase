@@ -8,8 +8,6 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase-enterprise.serialization.v2.storage :as storage]
-   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.measures.test-util :as measures.tu]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -107,41 +105,26 @@
           (is (=? {:entity_type "table" :entity_local_id table-id}
                   (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id))))))))
 
-(deftest osi-ai-context-export-scope-test
-  (testing "OsiAiContext exports only on a fully complete export"
-    ;; it's extracted unfiltered, so any partial export pulls every ai_context row in the instance (leaked
-    ;; curator text + dangling deps); gated until reverse-dep export lands.
-    (testing "a complete export (no targets, content + data model) includes it"
-      (is (contains? (#'extract/model-set {}) "OsiAiContext")))
-    (testing "a targeted/selective export excludes it"
-      (is (not (contains? (#'extract/model-set {:targets [["Collection" 1]]}) "OsiAiContext"))))
-    (testing "an untargeted-but-partial export excludes it (referenced entities may be absent)"
-      (is (not (contains? (#'extract/model-set {:no-collections true}) "OsiAiContext")))
-      (is (not (contains? (#'extract/model-set {:no-data-model true}) "OsiAiContext"))))
-    (testing "the explicit opt-out excludes it"
-      (is (not (contains? (#'extract/model-set {:no-osi-ai-context true}) "OsiAiContext"))))))
+(deftest osi-ai-context-excluded-from-default-export-test
+  (testing "OsiAiContext is kept out of the default export set"
+    ;; it's a top-level model extracted unfiltered, so auto-exporting it orphans rows whose entity is in an
+    ;; omitted (personal/analytics) collection — leaked curator text + dangling deps. Excluded until
+    ;; reverse-dependency export lands (BOT-1759), so its row travels with its entity instead.
+    (is (not (contains? (#'extract/model-set {}) "OsiAiContext")))
+    (is (not (contains? (#'extract/model-set {:targets [["Collection" 1]]}) "OsiAiContext")))))
 
-(deftest disk-export-import-round-trip-test
-  (testing "OsiAiContext survives a real on-disk export/import, nested under its Table"
-    ;; Drives extract/model-set (the default-export selection) and ingest/legal-top-level-paths through real YAML.
-    (let [serialized (atom nil)]
-      (ts/with-dbs [source-db dest-db]
-        (ts/with-db source-db
-          (let [db (ts/create! :model/Database :name "Prompt DB")
-                t1 (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")]
-            (ts/create! :model/OsiAiContext
-                        :ai_context {:instructions "orders guidance"}
-                        :entity_type "table" :entity_local_id (:id t1))
-            (reset! serialized (serdes/with-cache (into [] (extract/extract {}))))))
-        (testing "default export selection includes it (guards extract/model-set)"
-          ;; the row nests under its Table, so OsiAiContext is the *last* path segment, not the first.
-          (is (= 1 (count (filter (fn [e] (= "OsiAiContext" (:model (last (:serdes/meta e)))))
-                                  @serialized)))))
-        (ts/with-random-dump-dir [dump-dir "sli-serdes-"]
-          (storage/store! (seq @serialized) (storage.files/file-writer dump-dir))
-          (testing "loads into a fresh appdb with the table ref resolved"
-            (ts/with-db dest-db
-              (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
-              (let [orders (t2/select-one :model/Table :name "ORDERS")
-                    row    (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id (:id orders))]
-                (is (=? {:ai_context {:instructions "orders guidance"}} row))))))))))
+(deftest excluded-from-default-disk-export-test
+  (testing "a real default export omits OsiAiContext while still exporting its parent entity"
+    ;; End-to-end guard through extract/model-set that we don't accidentally re-include it and leak orphans
+    ;; (rows whose entity is in an omitted personal/analytics collection). Re-include via BOT-1759.
+    (ts/with-dbs [source-db]
+      (ts/with-db source-db
+        (let [db (ts/create! :model/Database :name "Prompt DB")
+              t1 (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")]
+          (ts/create! :model/OsiAiContext
+                      :ai_context {:instructions "orders guidance"}
+                      :entity_type "table" :entity_local_id (:id t1))
+          (let [models (set (map (fn [e] (:model (last (:serdes/meta e))))
+                                 (serdes/with-cache (into [] (extract/extract {})))))]
+            (is (contains? models "Table") "the parent entity is exported")
+            (is (not (contains? models "OsiAiContext")) "but its ai_context is not")))))))

@@ -42,19 +42,14 @@
     (conj "EmbeddingTheme")
 
     (not (:no-custom-viz-plugins opts))
-    (conj "CustomVizPlugin")
+    (conj "CustomVizPlugin")))
 
-    ;; OsiAiContext is a top-level model that *depends on* its entity, with no reverse-dependency export yet
-    ;; (see the metabase.osi.models.osi-ai-context TODO). It's extracted unfiltered, so any partial export
-    ;; would pull in every ai_context row in the instance — leaking curator text and creating dangling deps
-    ;; that fail import. Until reverse-dependency export lands, only include it on a *fully* complete export:
-    ;; no targets, and both content (its card/metric/model refs) and the data model (its table/measure/segment
-    ;; refs) included — so every referenced entity is present.
-    (and (not (:no-osi-ai-context opts))
-         (empty? (:targets opts))
-         (not (:no-collections opts))
-         (not (:no-data-model opts)))
-    (conj "OsiAiContext")))
+;; OsiAiContext is intentionally NOT in the default export set. It's a top-level model that *depends on* its
+;; entity, extracted unfiltered, so any export — even an untargeted "full" one, which still omits personal and
+;; analytics collections — would pull ai_context rows whose referenced Card/Table/Measure/Segment is absent,
+;; leaking curator text and creating dangling deps that fail import. It stays out until reverse-dependency
+;; export lands (its row should travel *with* its entity), tracked in
+;; https://linear.app/metabase/issue/BOT-1759; see the metabase.osi.models.osi-ai-context serdes TODO.
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

@@ -361,8 +361,9 @@
       (let [coll (get id->coll (:collection_id c))]
         {:id          id
          ;; the Card's *current* type, not the caller's ref type — a stale index hit kept across a
-         ;; metric<->model relabel must not describe the entity with its old shape.
-         :type        (:type c)
+         ;; metric<->model relabel must not describe the entity with its old shape. Card's :type is a
+         ;; keyword; emit the agent-facing string so downstream string checks and entity-class still match.
+         :type        (some-> (:type c) name)
          :name        (:name c)
          :description (:description c)
          :database_id (:database_id c)
