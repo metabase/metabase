@@ -46,6 +46,12 @@
       "database"
       common-fields
 
+      "collection"
+      ;; A collection has no database/base-table; surface its own curation level and parent location.
+      (-> common-fields
+          (merge {:official official?})
+          (m/assoc-some :location (:location result)))
+
       "table"
       (-> common-fields
           (merge {:name            (:table_name result)
