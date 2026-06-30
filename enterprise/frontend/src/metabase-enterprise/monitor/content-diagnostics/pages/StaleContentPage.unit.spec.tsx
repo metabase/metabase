@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -17,6 +18,7 @@ import * as Urls from "metabase/urls";
 import type {
   ContentDiagnosticsFinding,
   ContentDiagnosticsUserParams,
+  ListStaleFindingsResponse,
 } from "metabase-types/api";
 import {
   createMockContentDiagnosticsCollection,
@@ -46,6 +48,8 @@ type SetupOpts = {
   total?: number;
   urlParams?: Urls.ContentDiagnosticsParams;
   lastUsedParams?: ContentDiagnosticsUserParams;
+  error?: boolean;
+  getResponse?: (url: string) => ListStaleFindingsResponse;
 };
 
 function setup({
@@ -53,13 +57,26 @@ function setup({
   total,
   urlParams = {},
   lastUsedParams = {},
+  error = false,
+  getResponse,
 }: SetupOpts = {}) {
-  setupListStaleFindingsEndpoint(
-    createMockListStaleFindingsResponse({
-      data: findings,
-      total: total ?? findings.length,
-    }),
-  );
+  if (error) {
+    fetchMock.get("path:/api/ee/content-diagnostics/stale", {
+      status: 500,
+      body: { message: "Stale scan failed" },
+    });
+  } else if (getResponse) {
+    fetchMock.get("path:/api/ee/content-diagnostics/stale", ({ url }) =>
+      getResponse(url),
+    );
+  } else {
+    setupListStaleFindingsEndpoint(
+      createMockListStaleFindingsResponse({
+        data: findings,
+        total: total ?? findings.length,
+      }),
+    );
+  }
 
   setupUserKeyValueEndpoints({
     namespace: "content_diagnostics",
@@ -145,7 +162,15 @@ describe("StaleContentPage", () => {
     await userEvent.click(await within(list).findByText("Revenue by category"));
 
     const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+    const sidebarHeader = within(sidebarRegion).getByTestId(
+      "content-diagnostics-sidebar-header",
+    );
     expect(sidebarRegion).toHaveTextContent("Revenue by category");
+    expect(
+      within(sidebarHeader).queryByRole("link", {
+        name: "Revenue by category",
+      }),
+    ).not.toBeInTheDocument();
     expect(sidebarRegion).toHaveTextContent("Our analytics");
     expect(sidebarRegion).toHaveTextContent("Executive dashboards");
     expect(sidebarRegion).toHaveTextContent(
@@ -165,6 +190,45 @@ describe("StaleContentPage", () => {
     await userEvent.click(screen.getByLabelText("Next page"));
 
     expect(history?.getCurrentLocation().query).toEqual({ page: "1" });
+  });
+
+  it("refetches the stale endpoint with the next offset and renders the next page", async () => {
+    const secondPageFinding = createMockContentDiagnosticsFinding({
+      id: 3,
+      entity_type: "card",
+      entity_display_name: "Second page question",
+    });
+    setup({
+      total: 50,
+      getResponse: (url) => {
+        const isSecondPage = url.includes("offset=25");
+        return createMockListStaleFindingsResponse({
+          data: isSecondPage ? [secondPageFinding] : FINDINGS,
+          total: 50,
+        });
+      },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(screen.getByLabelText("Next page"));
+
+    expect(await screen.findByText("Second page question")).toBeInTheDocument();
+    expect(screen.queryByText("Sales overview")).not.toBeInTheDocument();
+
+    const lastCall = fetchMock.callHistory.lastCall(
+      "path:/api/ee/content-diagnostics/stale",
+    );
+    const lastUrl = new URL(String(lastCall?.url), "http://localhost");
+    expect(lastUrl.searchParams.get("limit")).toBe("25");
+    expect(lastUrl.searchParams.get("offset")).toBe("25");
+  });
+
+  it("shows the error state and suppresses the table when the stale request fails", async () => {
+    setup({ error: true });
+
+    expect(await screen.findByText("Stale scan failed")).toBeInTheDocument();
+    expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Next page")).not.toBeInTheDocument();
   });
 
   it("filters the visible rows by entity type via the Filter popover", async () => {

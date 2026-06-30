@@ -99,14 +99,15 @@ export function getBreadcrumbLinks(
             icon: "folder" as const,
           },
         ]
-      : [...finding.details.collection.effective_ancestors, finding.details.collection].map(
-          (entry, index) => ({
-            id: String(entry.id),
-            label: entry.name,
-            url: getCollectionBreadcrumbUrl(entry),
-            icon: index === 0 ? ("folder" as const) : undefined,
-          }),
-        );
+      : [
+          ...finding.details.collection.effective_ancestors,
+          finding.details.collection,
+        ].map((entry, index) => ({
+          id: String(entry.id),
+          label: entry.name,
+          url: getCollectionBreadcrumbUrl(entry),
+          icon: index === 0 ? ("folder" as const) : undefined,
+        }));
 
   return [
     ...collectionLinks,

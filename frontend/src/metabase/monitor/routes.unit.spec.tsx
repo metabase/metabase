@@ -34,6 +34,21 @@ jest.mock("metabase-enterprise/monitor/dependency-diagnostics/pages", () => ({
   UnreferencedDependencyDiagnosticsPage: () => <div>{"Unreferenced page"}</div>,
 }));
 
+jest.mock(
+  "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout",
+  () => ({
+    ContentDiagnosticsSectionLayout: ({
+      children,
+    }: {
+      children?: ReactNode;
+    }) => <div data-testid="content-diagnostics-section">{children}</div>,
+  }),
+);
+
+jest.mock("metabase-enterprise/monitor/content-diagnostics/pages", () => ({
+  StaleContentPage: () => <div>{"Stale page"}</div>,
+}));
+
 // Stub the migrated Admin Tools pages so this stays a focused routing test —
 // the sections/redirects under test don't depend on their data-fetching.
 jest.mock("metabase/monitor/tools/components/Logs", () => ({
@@ -104,6 +119,9 @@ const CanAccessMonitoringTools = ({ children }: { children?: ReactNode }) => (
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
 
+const CONTENT_UPSELL_TITLE =
+  "Find and clean up stale content without hunting it down";
+
 // Render the real Monitor route tree together with the real legacy redirects, so
 // an old `/data-studio/...` URL is resolved by the actual definitions — not a
 // copy of them.
@@ -160,6 +178,52 @@ describe("monitor routes", () => {
         setup("/monitor/dependency-diagnostics");
 
         expect(await screen.findByText("Broken page")).toBeInTheDocument();
+      });
+    });
+
+    describe("Content diagnostics — OSS (disabled)", () => {
+      it("renders the upsell at /monitor/content-diagnostics", async () => {
+        setup("/monitor/content-diagnostics");
+
+        expect(
+          await screen.findByText(CONTENT_UPSELL_TITLE),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("content-diagnostics-section"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("renders the upsell for child paths (e.g. /stale)", async () => {
+        setup("/monitor/content-diagnostics/stale");
+
+        expect(
+          await screen.findByText(CONTENT_UPSELL_TITLE),
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Stale page")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("Content diagnostics — EE (enabled)", () => {
+      it("renders the section and stale child route instead of the upsell", async () => {
+        setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
+
+        setup("/monitor/content-diagnostics/stale");
+
+        expect(
+          await screen.findByTestId("content-diagnostics-section"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Stale page")).toBeInTheDocument();
+        expect(
+          screen.queryByText(CONTENT_UPSELL_TITLE),
+        ).not.toBeInTheDocument();
+      });
+
+      it("redirects the content diagnostics index to the stale route", async () => {
+        setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
+
+        setup("/monitor/content-diagnostics");
+
+        expect(await screen.findByText("Stale page")).toBeInTheDocument();
       });
     });
   });

@@ -1,6 +1,5 @@
-import { useLayoutEffect, useState } from "react";
-
 import { useDisclosure, useElementSize } from "@mantine/hooks";
+import { useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -211,6 +210,11 @@ export function ContentDiagnostics({
             getTypeLabel={getFilterTypeLabel}
             isDisabled={isLoading}
             hasDefaultOptions={hasDefaultFilterOptions}
+            // The /stale endpoint can't filter by personal collections yet and
+            // there's no per-finding signal to do it client-side, so hide the
+            // Location toggle here (kept for Dependency diagnostics, which sends
+            // it server-side) until the backend supports it.
+            showLocationFilter={false}
             buttonTestId="content-diagnostics-filter-button"
             onChange={({ types, includePersonalCollections }) =>
               handleFilterOptionsChange({

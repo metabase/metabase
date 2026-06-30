@@ -1,5 +1,4 @@
-import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, type Ref, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -46,6 +45,27 @@ export function ContentDiagnosticsSidebar({
   onResizeStop,
   onClose,
 }: ContentDiagnosticsSidebarProps) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const entityName = getEntityName(finding);
+
+  // Move focus into the panel when it opens so keyboard/screen-reader users
+  // discover the details, and restore focus to the activating row on close.
+  // The effect runs once per open — selecting a different row reuses this
+  // instance and only swaps the `finding` prop.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement;
+    closeButtonRef.current?.focus();
+
+    return () => {
+      if (
+        previouslyFocused instanceof HTMLElement &&
+        document.contains(previouslyFocused)
+      ) {
+        previouslyFocused.focus();
+      }
+    };
+  }, []);
+
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}
@@ -57,9 +77,15 @@ export function ContentDiagnosticsSidebar({
         p="lg"
         gap="lg"
         bg="background_page-primary"
+        role="region"
+        aria-label={t`Details for ${entityName}`}
         data-testid="content-diagnostics-sidebar"
       >
-        <SidebarHeader finding={finding} onClose={onClose} />
+        <SidebarHeader
+          finding={finding}
+          closeButtonRef={closeButtonRef}
+          onClose={onClose}
+        />
         <LocationSection finding={finding} />
         <InfoSection finding={finding} />
       </Stack>
@@ -69,10 +95,15 @@ export function ContentDiagnosticsSidebar({
 
 type SidebarHeaderProps = {
   finding: ContentDiagnosticsFinding;
+  closeButtonRef: Ref<HTMLButtonElement>;
   onClose: () => void;
 };
 
-function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
+function SidebarHeader({
+  finding,
+  closeButtonRef,
+  onClose,
+}: SidebarHeaderProps) {
   const entityUrl = getEntityUrl(finding);
   const entityType = getEntityTypeLabel(finding.entity_type).toLowerCase();
   const viewLabel = t`View ${entityType}`;
@@ -85,17 +116,9 @@ function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
       justify="space-between"
       data-testid="content-diagnostics-sidebar-header"
     >
-      <Anchor
-        className={cx(CS.textWrap, S.link)}
-        component={ForwardRefLink}
-        fz="h3"
-        fw="bold"
-        lh="h3"
-        to={entityUrl}
-        target="_blank"
-      >
+      <Box className={CS.textWrap} fz="h3" fw="bold" lh="h3">
         {getEntityName(finding)}
-      </Anchor>
+      </Box>
       <Group gap="xs" wrap="nowrap">
         <Tooltip label={viewLabel} openDelay={TOOLTIP_OPEN_DELAY_MS}>
           <ActionIcon
@@ -107,7 +130,11 @@ function SidebarHeader({ finding, onClose }: SidebarHeaderProps) {
             <FixedSizeIcon name="external" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon
+          ref={closeButtonRef}
+          aria-label={t`Close`}
+          onClick={onClose}
+        >
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

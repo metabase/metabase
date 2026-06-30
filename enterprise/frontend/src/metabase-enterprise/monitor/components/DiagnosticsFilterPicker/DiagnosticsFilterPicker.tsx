@@ -27,6 +27,7 @@ type DiagnosticsFilterPickerProps<T extends string> = {
   isCompact?: boolean;
   isDisabled?: boolean;
   hasDefaultOptions?: boolean;
+  showLocationFilter?: boolean;
   buttonTestId?: string;
   onChange: (value: DiagnosticsFilterValue<T>) => void;
 };
@@ -44,6 +45,7 @@ export function DiagnosticsFilterPicker<T extends string>({
   isCompact = false,
   isDisabled = false,
   hasDefaultOptions = false,
+  showLocationFilter = true,
   buttonTestId,
   onChange,
 }: DiagnosticsFilterPickerProps<T>) {
@@ -111,15 +113,17 @@ export function DiagnosticsFilterPicker<T extends string>({
                 </Stack>
               </Checkbox.Group>
             )}
-            <Input.Wrapper label={t`Location`}>
-              <Stack gap="sm" mt="sm">
-                <Checkbox
-                  label={t`Include items in personal collections`}
-                  checked={includePersonalCollections}
-                  onChange={handlePersonalCollectionsChange}
-                />
-              </Stack>
-            </Input.Wrapper>
+            {showLocationFilter && (
+              <Input.Wrapper label={t`Location`}>
+                <Stack gap="sm" mt="sm">
+                  <Checkbox
+                    label={t`Include items in personal collections`}
+                    checked={includePersonalCollections}
+                    onChange={handlePersonalCollectionsChange}
+                  />
+                </Stack>
+              </Input.Wrapper>
+            )}
           </Stack>
         </Box>
       </Popover.Dropdown>
