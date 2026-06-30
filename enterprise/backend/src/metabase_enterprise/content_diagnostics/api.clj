@@ -42,6 +42,57 @@
    [:= :finding_type finding-type]
    [:in :id (latest-per-entity-ids)]])
 
+;;; ------------------------------ per-caller serve filters (shared) ------------------------------------
+;;; The scan is user-less, so the findings table is a permission-agnostic substrate — every per-caller
+;;; concern is resolved **live at serve time** against each finding entity's *current* collection (never the
+;;; scan-time `scope_collection_id`), mirroring Dependency Diagnostics' live filtering over its async graph.
+;;; Two filters compose, both built per entity-type from `detect/entity-type->model`:
+;;;   1. visibility — `visible-findings-where`, ALWAYS applied (a user sees only content they can read).
+;;;   2. personal collections — `exclude-personal-collections-where`, gated by `include-personal-collections`.
+;;; These are the shared filters every per-finding-type endpoint reuses.
+
+(defn- visible-findings-where
+  "Keep only findings whose entity is in a collection the **current user** can read — per-caller, live, and
+  unconditional (the served page is permission-filtered like Dependency Diagnostics). Resolved per
+  entity-type against the entity's current `collection_id` via `collection/visible-collection-filter-clause`,
+  which reads `api/*current-user-id*` / `api/*is-superuser?*`. A finding whose `entity_type` has no
+  collection model is **not** kept (fail-closed — nothing to gate on; all current stale types are
+  collection-bound card/dashboard)."
+  []
+  (into [:or]
+        (for [[etype model] detect/entity-type->model]
+          [:and
+           [:= :entity_type (name etype)]
+           [:in :entity_id {:select [:id]
+                            :from   [(t2/table-name model)]
+                            :where  (collection/visible-collection-filter-clause :collection_id)}]])))
+
+(defn- personal-collection-ids
+  "Live set of every collection id that **is**, or is **nested under**, a personal collection — the same
+  rule `:is_personal` uses (`collection.clj`): a personal root (`personal_owner_id` set) plus any descendant
+  (`location` under a personal root). Empty set when the instance has no personal collections."
+  []
+  (if-let [roots (not-empty (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil]))]
+    (t2/select-pks-set :model/Collection
+                       {:where (into [:or [:in :id roots]]
+                                     (map (fn [pid] [:like :location (str "/" pid "/%")]))
+                                     roots)})
+    #{}))
+
+(defn- exclude-personal-collections-where
+  "WHERE fragment dropping findings whose entity **currently** lives in a personal collection. Resolved live
+  per entity-type (`detect/entity-type->model`) against the entity's current `collection_id`, so root items
+  (`collection_id` nil) and entities in regular collections are kept. Nil when there is nothing to exclude."
+  []
+  (when-let [pids (seq (personal-collection-ids))]
+    (into [:and]
+          (for [[etype model] detect/entity-type->model]
+            [:not [:and
+                   [:= :entity_type (name etype)]
+                   [:in :entity_id {:select [:id]
+                                    :from   [(t2/table-name model)]
+                                    :where  [:in :collection_id pids]}]]]))))
+
 ;;; ----------------------------------- display hydration (shared layer) --------------------------------
 ;;; Every finding's display context — entity name, collection breadcrumb, description, owner, creator —
 ;;; is hydrated **live** (always-current; a renamed/moved entity shows correctly) and **batched per
@@ -170,61 +221,16 @@
   []
   (t2/select-one-fn :detected_at :model/ContentDiagnosticsFinding {:order-by [[:id :desc]]}))
 
-;;; ------------------------------ per-caller collection-visibility filter (D20) ------------------------
-;;; The scan is user-less and nothing is permission-filtered at write time, so the only thing keeping one
-;;; caller's findings from leaking to another is a **live** serve-time filter (never the stale
-;;; `scope_collection_id`). For each entity-type we add `entity_id IN (SELECT id FROM <entity-table> WHERE
-;;; <visible-collection-filter-clause on the entity's LIVE collection_id> [AND <not personal>])` — a SQL
-;;; predicate (so pagination + `total` stay correct), resolved off the current entity tables, mirroring
-;;; Dependency Diagnostics (`dependencies/api.clj` `visible-collection-filter-clause` + `build-optional-filters`).
-
-(defn- personal-root-collection-ids
-  "Ids of the personal-collection roots (`personal_owner_id` set, top-level). Their `location` prefixes
-  (`/<id>/`) identify personal descendants too."
-  []
-  (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
-
-(defn- visible-entity-ids-query
-  "Subquery of `model`'s entity ids whose **live** collection the current caller may read. When
-  `include-personal?` is false, also exclude personal collections (root + descendants, via the
-  `location` prefix), matching deps' personal filter."
-  [model include-personal? personal-root-ids]
-  (let [table      (t2/table-name model)
-        id-field   (keyword (name table) "id")
-        coll-field (keyword (name table) "collection_id")]
-    (cond-> {:select [id-field]
-             :from   [table]
-             :where  [:and (collection/visible-collection-filter-clause coll-field)]}
-      (and (not include-personal?) (seq personal-root-ids))
-      (-> (assoc :left-join [[:collection :cd_coll] [:= coll-field :cd_coll.id]])
-          (update :where conj
-                  [:or
-                   [:= coll-field nil]
-                   [:and
-                    [:= :cd_coll.personal_owner_id nil]
-                    (into [:and] (for [pid personal-root-ids]
-                                   [:not-like :cd_coll.location (str "/" pid "/%")]))]])))))
-
-(defn- visible-entity-clause
-  "Where-clause restricting findings to entities the current caller may read, per entity-type. Personal
-  collections are excluded unless `include-personal?`."
-  [include-personal?]
-  (let [personal-root-ids (when-not include-personal? (personal-root-collection-ids))]
-    (into [:or]
-          (for [[etype model] detect/entity-type->model]
-            [:and
-             [:= :entity_type (name etype)]
-             [:in :entity_id (visible-entity-ids-query model include-personal? personal-root-ids)]]))))
-
 (defn- serve-findings
   "Shared per-finding-type serve: page the active (latest-per-entity, non-invalidated) findings of one
-  `finding-type` **that the current caller may read** (collection-visibility filtered; personal
-  collections excluded unless `include-personal-collections`), batch-hydrate them, and wrap in the
-  standard `{data,total,limit,offset,last_scan_at}` envelope. `total` is the full visible active count."
+  `finding-type` **that the current caller may read**, batch-hydrate them, and wrap in the standard
+  `{data,total,limit,offset,last_scan_at}` envelope. Visibility (`visible-findings-where`) is always
+  applied; personal collections are excluded (`exclude-personal-collections-where`) unless
+  `include-personal-collections`. `total` is the full visible active count."
   [finding-type include-personal-collections]
-  (let [where [:and
-               (active-where finding-type)
-               (visible-entity-clause include-personal-collections)]
+  (let [pers  (when-not include-personal-collections (exclude-personal-collections-where))
+        where (cond-> [:and (active-where finding-type) (visible-findings-where)]
+                pers (conj pers))
         page  (t2/select :model/ContentDiagnosticsFinding
                          (cond-> {:where    where
                                   :order-by [[:id :asc]]}
