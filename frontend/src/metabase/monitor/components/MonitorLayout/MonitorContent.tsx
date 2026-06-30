@@ -3,6 +3,7 @@ import {
   type ReactNode,
   type SetStateAction,
   createContext,
+  memo,
   useContext,
   useMemo,
   useState,
@@ -37,6 +38,22 @@ export function useMonitorSidebar() {
   return context;
 }
 
+const AreaContent = memo(function AreaContent({
+  children,
+}: MonitorContentProps) {
+  return (
+    <Box
+      h="100%"
+      pl={CONTENT_PADDING_X}
+      pr={CONTENT_PADDING_RIGHT_WITH_APP_SWITCHER}
+      py="1.5rem"
+      style={{ overflowY: "auto" }}
+    >
+      <ErrorBoundary>{children}</ErrorBoundary>
+    </Box>
+  );
+});
+
 export function MonitorContent({ children }: MonitorContentProps) {
   const [sidebar, setSidebar] = useState<ReactNode>(null);
   const contextValue = useMemo(() => ({ setSidebar }), [setSidebar]);
@@ -61,20 +78,12 @@ export function MonitorContent({ children }: MonitorContentProps) {
             top="1.5rem"
             right={CONTENT_PADDING_X}
             bg="background_page-secondary"
-            bdrs="md"
+            bdrs="50%"
             style={{ zIndex: 10 }}
           >
             <AppSwitcher />
           </Box>
-          <Box
-            h="100%"
-            pl={CONTENT_PADDING_X}
-            pr={CONTENT_PADDING_RIGHT_WITH_APP_SWITCHER}
-            py="1.5rem"
-            style={{ overflowY: "auto" }}
-          >
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </Box>
+          <AreaContent>{children}</AreaContent>
         </Box>
         {sidebar != null && (
           <Box

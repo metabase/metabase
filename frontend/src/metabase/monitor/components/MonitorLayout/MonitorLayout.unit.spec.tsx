@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
 import { Route } from "react-router";
 
@@ -38,6 +39,21 @@ function TestSidebarSetter() {
   }, [setSidebar]);
 
   return <div data-testid="content">{"Content"}</div>;
+}
+
+function TestSidebarButton({ onRender }: { onRender: () => void }) {
+  const { setSidebar } = useMonitorSidebar();
+  onRender();
+
+  return (
+    <button
+      onClick={() =>
+        setSidebar(<aside data-testid="monitor-sidebar">{"Sidebar"}</aside>)
+      }
+    >
+      {"Open sidebar"}
+    </button>
+  );
 }
 
 const setup = ({
@@ -175,6 +191,21 @@ describe("MonitorLayout", () => {
     expect(screen.getByTestId("monitor-sidebar-region")).toContainElement(
       screen.getByTestId("monitor-sidebar"),
     );
+  });
+
+  it("does not rerender main content when the sidebar outlet changes", async () => {
+    const onRender = jest.fn();
+    setup({ children: <TestSidebarButton onRender={onRender} /> });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+    const renderCount = onRender.mock.calls.length;
+
+    await userEvent.click(screen.getByRole("button", { name: "Open sidebar" }));
+
+    expect(screen.getByTestId("monitor-sidebar")).toBeInTheDocument();
+    expect(onRender).toHaveBeenCalledTimes(renderCount);
   });
 
   const getTabGem = (name: string) =>
