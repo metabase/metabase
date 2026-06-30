@@ -28,6 +28,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
+   [metabase.query-processor.middleware.nest-for-pivot :as qp.nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
@@ -148,20 +149,6 @@
          (assoc :qp.pivot/remapped-breakout-combination breakout-indexes-to-keep))
      breakout-indexes-to-keep)))
 
-(mu/defn- remove-non-aggregation-order-bys :- ::lib.schema/query
-  "Only keep existing aggregations in `:order-by` clauses from the query. Since we're adding our own breakouts (i.e.
-  `GROUP BY` and `ORDER BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work --
-  `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
-  [query :- ::lib.schema/query]
-  (reduce
-   (fn [query [_tag _opts expr :as order-by]]
-     ;; keep any order bys on :aggregation references. Remove all other clauses.
-     (cond-> query
-       (not (lib/clause-of-type? expr :aggregation))
-       (lib/remove-clause order-by)))
-   query
-   (lib/order-bys query)))
-
 (mu/defn- generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
   [query :- ::lib.schema/query
@@ -176,7 +163,7 @@
                                                  (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
                           (-> query
                               (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)
-                              remove-non-aggregation-order-bys
+                              qp.nest-for-pivot/remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)))]
       (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
             (->
@@ -479,7 +466,7 @@
                           (seq viz-settings))
                  (build-pivot-clause query viz-settings))]
     (cond-> query
-      clause (lib.util/update-query-stage -1 assoc :pivot clause))))
+      clause (lib.pivot/with-pivot clause))))
 
 (def ^:private legacy-pivot-keys
   [:pivot-rows :pivot_rows
@@ -513,11 +500,11 @@
             col-uuids   (into [] (keep index->uuid) (or cols-idxs []))]
         (if (and (empty? row-uuids) (empty? col-uuids))
           stripped
-          (lib.util/update-query-stage stripped -1 assoc :pivot
-                                       {:rows               row-uuids
-                                        :columns            col-uuids
-                                        :show-row-totals    (lib.pivot/read-show-flag query :show-row-totals    :show_row_totals)
-                                        :show-column-totals (lib.pivot/read-show-flag query :show-column-totals :show_column_totals)}))))))
+          (lib.pivot/with-pivot stripped
+            {:rows               row-uuids
+             :columns            col-uuids
+             :show-row-totals    (lib.pivot/read-show-flag query :show-row-totals    :show_row_totals)
+             :show-column-totals (lib.pivot/read-show-flag query :show-column-totals :show_column_totals)}))))))
 
 (def ^:private window-fn-aggregation-types
   "Aggregation clause tags that compute over a window of rows: `:cum-count`, `:cum-sum`, `:offset`."
@@ -528,14 +515,6 @@
   [query]
   (boolean (some #(lib.util/clause-of-type? % window-fn-aggregation-types)
                  (lib/aggregations query))))
-
-(defn- has-nested-field-breakout?
-  "True iff any breakout in the last stage of `query` is a nested-field (e.g. JSON-unfolded) column."
-  [query]
-  (boolean (some :nfc-path (lib/breakouts-metadata query))))
-
-;;; TODO: lift the nested-field bail-out by emitting a wrapping subquery that pre-computes JSON path expressions
-;;; as named columns, so the outer `GROUPING SETS` can reference them as plain identifiers.
 
 (defn native-pivot-compatible?
   "True iff the native MBQL5 pivot path can handle `query` end-to-end.
@@ -549,11 +528,7 @@
   ;; Window-function aggregations: a running total over `GROUPING SETS` results would span detail rows AND
   ;; subtotal rows, which is meaningless. The multi-query path runs one query per breakout combination, where
   ;; these aggregations behave as expected.
-  ;;
-  ;; Nested-field (JSON-unfolded) breakouts: Postgres rejects `GROUPING(<json-path-expr>)`; multi-query's per-set
-  ;; `GROUP BY` sidesteps the issue.
-  (not (or (has-window-fn-aggregation? query)
-           (has-nested-field-breakout? query))))
+  (not (has-window-fn-aggregation? query)))
 
 (defn- remapped-field
   [breakout]
@@ -659,16 +634,14 @@
      (frequencies (-> r2 :data :rows))))
 
 (defn- run-native-pivot-query
-  "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause on
-  the last stage, strip user breakout order-bys (keeping aggregation ones so truncation semantics align with the
-  multi-query path), and submit to the standard QP through `rff`."
+  "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
+  on the last stage and submit to the standard QP through `rff`."
   [query rff]
   (let [viz-settings (or (:viz-settings query)
                          (get-in query [:info :visualization-settings]))]
     (-> query
         apply-legacy-pivot-keys
         (apply-pivot-viz-settings viz-settings)
-        remove-non-aggregation-order-bys
         (qp/process-query rff))))
 
 (mu/defn run-pivot-query

@@ -94,7 +94,7 @@
 
 (defmethod sql.qp/apply-top-level-clause [:sql-mbql5 :pivot]
   [driver _ honeysql-form {:keys [breakout pivot]}]
-  (let [hsql-breakouts    (mapv #(sql.qp/->honeysql driver %) breakout)
+  (let [breakout-hsql     (mapv #(sql.qp/->honeysql driver %) breakout)
         non-remap-poss    (non-remap-positions breakout)
         non-remap-bos     (mapv breakout non-remap-poss)
         orig->new         (remap-original->new-field-positions breakout)
@@ -107,10 +107,10 @@
                                                           (get pivot :show-row-totals    true)
                                                           (get pivot :show-column-totals true))
         sets-hsql         (mapv (fn [combo]
-                                  (mapv #(nth hsql-breakouts %)
+                                  (mapv #(nth breakout-hsql %)
                                         (expand-grouping-combo combo non-remap-poss orig->new)))
                                 combos)
-        non-remap-hsql    (mapv hsql-breakouts non-remap-poss)
+        non-remap-hsql    (mapv breakout-hsql non-remap-poss)
         ;; Args reversed so the bitmask convention matches `pivot.common/group-bitmask`: bit 0 = first non-remap breakout.
         grouping-fn       (into [::grouping-fn] (rseq non-remap-hsql))
         grouping-sets     (into [::grouping-sets] sets-hsql)]

@@ -10,13 +10,17 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
@@ -426,7 +430,7 @@
     (testing ":offset aggregation is not compatible"
       (is (not (qp.pivot/native-pivot-compatible?
                 (lib/aggregate base (lib/offset (lib/count) -1)))))))
-  (testing "nested-field (e.g. JSON-unfolded) breakouts are not compatible"
+  (testing "nested-field (e.g. JSON-unfolded) breakouts are compatible"
     (let [json-mp (lib.tu/mock-metadata-provider
                    {:database (assoc meta/database :id 1)
                     :tables   [(merge (meta/table-metadata :venues)
@@ -440,7 +444,226 @@
           query   (-> (lib/query json-mp (lib.metadata/table json-mp 1))
                       (lib/aggregate (lib/count))
                       (lib/breakout (lib.metadata/field json-mp 1)))]
-      (is (not (qp.pivot/native-pivot-compatible? query))))))
+      (is (qp.pivot/native-pivot-compatible? query)))))
+
+;;; ---- wrap-nested-field-breakouts ----
+
+(def ^:private json-mock-metadata-provider
+  "Mock metadata provider with a table whose first field is JSON-unfolded (i.e. has `:nfc-path`)."
+  (lib.tu/mock-metadata-provider
+   {:database (assoc meta/database :id 1)
+    :tables   [(merge (meta/table-metadata :venues)
+                      {:id 1 :db-id 1 :name "json_table" :schema nil})]
+    :fields   [(merge (meta/field-metadata :venues :id)
+                      {:id            1
+                       :table-id      1
+                       :name          "category"
+                       :nfc-path      ["payload" "category"]
+                       :base-type     :type/Text
+                       :effective-type :type/Text
+                       :database-type "text"})
+               (merge (meta/field-metadata :venues :name)
+                      {:id 2 :table-id 1 :name "region"})]}))
+
+(def ^:private json-pivot-query
+  "Single-stage MBQL5 pivot query against [[json-mock-metadata-provider]] with breakouts on the JSON field
+  and the regular field and a `count` aggregation. Pivot rows := first breakout, columns := second."
+  (let [json-col (lib.metadata/field json-mock-metadata-provider 1)
+        reg-col  (lib.metadata/field json-mock-metadata-provider 2)
+        base     (-> (lib/query json-mock-metadata-provider
+                                (lib.metadata/table json-mock-metadata-provider 1))
+                     (lib/breakout json-col)
+                     (lib/breakout reg-col)
+                     (lib/aggregate (lib/count)))
+        bks      (lib/breakouts base)]
+    (lib.util/update-query-stage base -1 assoc :pivot
+                                 {:rows               [(lib.options/uuid (first bks))]
+                                  :columns            [(lib.options/uuid (second bks))]
+                                  :show-row-totals    true
+                                  :show-column-totals true})))
+
+(deftest ^:parallel wrap-nested-field-breakouts-noop-test
+  (testing "queries with no nested-field breakouts are returned unchanged"
+    (let [q (two-breakout-query)]
+      (is (= q (nest-for-pivot/wrap-nested-field-breakouts q))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-shape-test
+  (let [wrapped (nest-for-pivot/wrap-nested-field-breakouts json-pivot-query)
+        [og-json-bo og-region-bo] (lib/breakouts json-pivot-query)]
+    (testing "the result has exactly two stages"
+      (is (= 2 (lib/stage-count wrapped))))
+    (testing "inner stage has the nested-field breakout moved to :expressions and is otherwise empty"
+      (is (= [(-> og-json-bo
+                  (lib.options/update-options assoc
+                                              :lib/uuid (-> (lib/expressions wrapped 0) first lib.options/uuid)
+                                              :lib/expression-name "__mb_pivot_nfc"))]
+             (lib/expressions wrapped 0)))
+      (is (empty? (lib/breakouts wrapped 0)))
+      (is (empty? (lib/aggregations wrapped 0)))
+      (is (empty? (lib/order-bys wrapped 0)))
+      (is (nil? (:pivot (lib.util/query-stage wrapped 0)))))
+    (testing "outer stage has the rewritten breakouts, original aggregations, and original :pivot"
+      (is (= [[:field {:lib/uuid       (lib.options/uuid og-json-bo)
+                       :base-type      :type/Text
+                       :effective-type :type/Text}
+               "__mb_pivot_nfc"]
+              [:field {:lib/uuid       (lib.options/uuid og-region-bo)
+                       :base-type      :type/Text
+                       :effective-type :type/Text}
+               "region"]]
+             (lib/breakouts wrapped)))
+      (is (= (lib/aggregations json-pivot-query)
+             (lib/aggregations wrapped)))
+      (is (= (:pivot (lib.util/query-stage json-pivot-query -1))
+             (:pivot (lib.util/query-stage wrapped -1)))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-with-expression-test
+  (testing "wrap correctly handles a query that has a user-defined :expression referenced by an aggregation"
+    (let [mp        lib.tu/metadata-provider-with-nfc-path
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id))
+          total-col (lib.metadata/field mp (meta/id :orders :total))
+          q (as-> (lib/query mp (lib.metadata/table mp (meta/id :orders))) q
+              (lib/expression q "doubled" (lib/* total-col 2))
+              (lib/breakout q pid-col)
+              (lib/aggregate q (lib/sum (lib/expression-ref q "doubled"))))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            []
+                     :show-row-totals    true
+                     :show-column-totals true})
+          wrapped (nest-for-pivot/wrap-nested-field-breakouts pivot-q)
+          agg (first (lib/aggregations wrapped))
+          inner-arg (last agg)]
+      (testing "the aggregation's argument should be a name-based :field ref to the inner stage's expression"
+        (is (lib.util/field-clause? inner-arg))
+        (is (= "doubled" (last inner-arg)))))))
+
+(deftest ^:parallel nest-for-pivot-handles-remap-to-nested-field-test
+  (testing "wrapping a pivot query where the remap *target* is itself a nested-field column preserves the
+  remap pair on the outer stage. The query has no explicit nested-field breakout — the nested-field column
+  only appears via add-remaps."
+    (let [;; Override people.name to be a nested-field column AND remap orders.user-id to it.
+          mp        (-> lib.tu/metadata-provider-with-nfc-path
+                        (lib.tu/mock-metadata-provider
+                         {:fields [(merge (meta/field-metadata :people :name)
+                                          {:nfc-path       ["payload" "name"]
+                                           :base-type      :type/Text
+                                           :effective-type :type/Text
+                                           :database-type  "text"})]})
+                        (lib.tu/remap-metadata-provider (meta/id :orders :user-id)
+                                                        (meta/id :people :name)))
+          uid-col   (lib.metadata/field mp (meta/id :orders :user-id))
+          q (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                (lib/breakout uid-col)
+                (lib/aggregate (lib/count)))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            []
+                     :show-row-totals    true
+                     :show-column-totals true})
+          with-remaps (qp.add-remaps/add-remapped-columns pivot-q)
+          wrapped (nest-for-pivot/nest-for-pivot with-remaps)
+          outer-breakouts (lib/breakouts wrapped)]
+      (testing "two-stage shape with :pivot preserved"
+        (is (= 2 (lib/stage-count wrapped)))
+        (is (lib.pivot/has-pivot? wrapped)))
+      (testing "the remap pair survives the wrap (the SQL compiler's remap-aware GROUPING-SETS logic still applies)"
+        (is (some #(get (lib.options/options %)
+                        :metabase.query-processor.middleware.add-remaps/new-field-dimension-id)
+                  outer-breakouts))
+        (is (some #(get (lib.options/options %)
+                        :metabase.query-processor.middleware.add-remaps/original-field-dimension-id)
+                  outer-breakouts))))))
+
+(deftest ^:parallel nest-for-pivot-handles-remap-with-nested-field-breakout-test
+  (testing "wrapping a pivot query that has both a nested-field breakout and a FK-remap-paired breakout
+  preserves the remap pair on the outer stage (so the SQL compiler's remap-aware GROUPING-SETS logic still applies)"
+    (let [mp        (-> lib.tu/metadata-provider-with-nfc-path
+                        (lib.tu/remap-metadata-provider (meta/id :orders :user-id)
+                                                        (meta/id :people :name)))
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id)) ; JSON-unfolded
+          uid-col   (lib.metadata/field mp (meta/id :orders :user-id))     ; remap-paired
+          q (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                (lib/breakout pid-col)
+                (lib/breakout uid-col)
+                (lib/aggregate (lib/count)))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            [(lib.options/uuid (second bks))]
+                     :show-row-totals    true
+                     :show-column-totals true})
+          with-remaps (qp.add-remaps/add-remapped-columns pivot-q)
+          wrapped (nest-for-pivot/nest-for-pivot with-remaps)
+          outer-breakouts (lib/breakouts wrapped)]
+      (testing "two-stage shape with :pivot preserved on the outer stage"
+        (is (= 2 (lib/stage-count wrapped)))
+        (is (lib.pivot/has-pivot? wrapped)))
+      (testing "the outer stage has a remap-paired breakout (one with the new-field-dimension-id key)"
+        (is (some #(get (lib.options/options %)
+                        :metabase.query-processor.middleware.add-remaps/new-field-dimension-id)
+                  outer-breakouts))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-aggregation-order-by-test
+  (testing "an :aggregation order-by survives the wrap, since aggregation UUIDs are preserved on the outer stage"
+    (let [mp        lib.tu/metadata-provider-with-nfc-path
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id))
+          q (as-> (lib/query mp (lib.metadata/table mp (meta/id :orders))) q
+              (lib/breakout q pid-col)
+              (lib/aggregate q (lib/count))
+              (lib/order-by q (lib/aggregation-ref q 0) :desc))
+          bks (lib/breakouts q)
+          og-agg-uuid (lib.options/uuid (first (lib/aggregations q)))
+          og-order-by (first (lib.order-by/order-bys q))
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            []
+                     :show-row-totals    true
+                     :show-column-totals true})
+          wrapped (nest-for-pivot/wrap-nested-field-breakouts pivot-q)
+          [new-direction _new-opts new-agg-ref] (first (lib.order-by/order-bys wrapped))
+          new-agg-uuid (lib.options/uuid (first (lib/aggregations wrapped)))
+          [og-direction _og-opts og-agg-ref]    og-order-by]
+      (testing "outer aggregation preserves the original aggregation's :lib/uuid"
+        (is (= og-agg-uuid new-agg-uuid)))
+      (testing "outer order-by has the original direction and points at the original aggregation"
+        (is (= og-direction new-direction))
+        (is (= og-agg-ref new-agg-ref))))))
+
+(deftest ^:parallel wrap-nested-field-breakouts-with-join-test
+  (testing "wrap correctly handles a query that joins another table and aggregates over a joined column"
+    (let [mp        lib.tu/metadata-provider-with-nfc-path
+          pid-col   (lib.metadata/field mp (meta/id :orders :product-id))
+          state-col (lib.metadata/field mp (meta/id :people :state))
+          total-col (lib.metadata/field mp (meta/id :orders :total))
+          q (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                (lib/join (lib/join-clause
+                           (lib.metadata/table mp (meta/id :people))
+                           [(lib/= (lib.metadata/field mp (meta/id :orders :user-id))
+                                   (lib.metadata/field mp (meta/id :people :id)))]))
+                (lib/breakout pid-col)
+                (lib/breakout state-col)
+                (lib/aggregate (lib/sum total-col)))
+          bks (lib/breakouts q)
+          pivot-q (lib.pivot/with-pivot q
+                    {:rows               [(lib.options/uuid (first bks))]
+                     :columns            [(lib.options/uuid (second bks))]
+                     :show-row-totals    true
+                     :show-column-totals true})
+          wrapped (nest-for-pivot/wrap-nested-field-breakouts pivot-q)]
+      (testing "outer breakouts are name-based refs with no :join-alias"
+        (doseq [bo (lib/breakouts wrapped)]
+          (is (lib.util/field-clause? bo))
+          (is (string? (last bo)))
+          (is (not (contains? (lib.options/options bo) :join-alias)))))
+      (testing "the aggregation's inner field ref is a name-based ref with no :join-alias"
+        (let [agg (first (lib/aggregations wrapped))
+              field-ref (last agg)]
+          (is (lib.util/field-clause? field-ref))
+          (is (string? (last field-ref)))
+          (is (not (contains? (lib.options/options field-ref) :join-alias))))))))
 
 (deftest ^:parallel nested-question-pivot-options-test
   (testing "#35025"

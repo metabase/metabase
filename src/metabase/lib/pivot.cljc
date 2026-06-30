@@ -22,10 +22,25 @@
    :base-type  :type/Integer
    :lib/source :source/pivot-grouping})
 
+(mu/defn pivot :- [:maybe [:ref ::lib.schema/pivot]]
+  "Return the `:pivot` clause on `query`'s last stage, or nil if there isn't one."
+  [query :- ::lib.schema/query]
+  (:pivot (lib.util/query-stage query -1)))
+
 (mu/defn has-pivot? :- :boolean
   "True if the query carries a `:pivot` clause on its last stage."
   [query :- ::lib.schema/query]
-  (some? (:pivot (lib.util/query-stage query -1))))
+  (some? (pivot query)))
+
+(mu/defn with-pivot :- ::lib.schema/query
+  "Attach `pivot-clause` to `query`'s last stage, replacing any existing `:pivot`. A nil `pivot-clause`
+  removes the `:pivot`."
+  [query        :- ::lib.schema/query
+   pivot-clause :- [:maybe [:ref ::lib.schema/pivot]]]
+  (lib.util/update-query-stage query -1 (fn [stage]
+                                          (if pivot-clause
+                                            (assoc stage :pivot pivot-clause)
+                                            (dissoc stage :pivot)))))
 
 (defn read-show-flag
   "Read a `show-*-totals` flag from `m`, trying each of `ks` in order. Defaults to `true` when none present. Treats an
