@@ -49,7 +49,9 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development bun run build-pure:cljs
+        uses: ./.github/actions/build-cljs
+        with:
+          node-env: development
 
       - name: Run Loki Visual Tests
         run: bun run test-visual:loki:ci

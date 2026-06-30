@@ -1,0 +1,53 @@
+name: Cleanup CLJS caches
+
+on:
+  # E2E is the last workflow that needs the CLJS cache
+  workflow_run:
+    workflows:
+      - E2E Test
+    types:
+      - completed
+
+  # Clean up branch caches when PR is merged
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  cleanup-commit-cache:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete CLJS caches for this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Cleaning up CLJS caches for commit: $SHA"
+          gh cache list -R "$REPO" --key "cljs-" --json id,key --jq ".[] | select(.key | contains(\"$SHA\")) | .id" |
+            while read -r id; do
+              echo "Deleting cache id: $id"
+              gh cache delete "$id" -R "$REPO" || true
+            done
+
+  cleanup-branch-cache:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete CLJS caches for merged branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Cleaning up CLJS caches for branch: $BRANCH"
+          gh cache list -R "$REPO" --ref "refs/heads/$BRANCH" --key "cljs-" --json id,key --jq '.[].id' |
+            while read -r id; do
+              echo "Deleting cache id: $id"
+              gh cache delete "$id" -R "$REPO" || true
+            done
