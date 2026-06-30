@@ -31,12 +31,12 @@
               "measure" "metric" "segment" "table" "transform"))
 
 (def ^:private metabot-weight-overrides
-  "Per-request weight overrides applied to every metabot search. Nudges curator signals
-   (verified, official-collection, view-count) up from their default of 1 so they act as
-   tie-breakers — the LLM has no implicit affordance to 'trust' results otherwise, and
-   these signals are how a human user would visually distinguish 'safe' content. The boost
-   is deliberately small: against :exact (100) and the :metabot context's :data-layer (33),
-   text relevance still decides the ranking and curation only breaks near-ties."
+  "Per-request weight overrides applied to every metabot search. Nudges the curation badges
+   (:official-collection, :verified — default 1) and popularity (:view-count — default 2) up
+   so they break near-ties: the LLM has no implicit affordance to 'trust' results otherwise,
+   and these signals are how a human user would visually distinguish 'safe', well-trodden
+   content. The boost is deliberately small — against :exact (100) and the :metabot context's
+   :data-layer (33), text relevance still decides the ranking and these only break near-ties."
   {:official-collection 4
    :verified            5
    :view-count          3})
@@ -636,7 +636,6 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "search.selmer"
            :scope     scope/agent-search}
   search-tool
   "Search for tables, models, metrics, measures, segments, dashboards, saved questions, and collections."
@@ -655,7 +654,6 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "sql_search.selmer"
            :scope     scope/agent-search}
   sql-search-tool
   "Search for SQL-queryable data sources (tables and models) within a database."
@@ -673,7 +671,6 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "nlq_search.selmer"
            :scope     scope/agent-search}
   nlq-search-tool
   "Search for NLQ-queryable data sources (tables, models, metrics, measures, segments, questions, and collections)."
@@ -691,7 +688,6 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit}]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "transform_search.selmer"
            :scope     scope/agent-search}
   transform-search-tool
   "Search for transforms, tables, and models."
