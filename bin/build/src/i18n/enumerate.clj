@@ -50,12 +50,16 @@
   "Vars that are looked for for translations strings"
   #{'metabase.util.i18n/trs
     'metabase.util.i18n/tru
-    'metabase.util.i18n/deferred-trs
-    'metabase.util.i18n/deferred-tru
     'metabase.util.i18n/trsn
     'metabase.util.i18n/trun
-    'metabase.util.i18n/deferred-trsn
-    'metabase.util.i18n/deferred-trun})
+    'metabase.util.i18n-be.core/deferred-trs
+    'metabase.util.i18n-be.core/deferred-tru
+    'metabase.util.i18n-be.core/deferred-trsn
+    'metabase.util.i18n-be.core/deferred-trun
+    'metabase.util.i18n-be.macros/deferred-trs
+    'metabase.util.i18n-be.macros/deferred-tru
+    'metabase.util.i18n-be.macros/deferred-trsn
+    'metabase.util.i18n-be.macros/deferred-trun})
 
 (def ^:private plural-translation-macro-names
   #{"trsn" "trun" "deferred-trsn" "deferred-trun"})

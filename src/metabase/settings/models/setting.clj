@@ -1209,7 +1209,7 @@
               (metabase.settings.models.setting/set! setting new-value))))
 
 ;; The next few functions are for validating the Setting description (i.e., docstring) at macroexpansion time. They
-;; check that the docstring is a valid deferred i18n form (e.g. [[metabase.util.i18n/deferred-tru]]) so the Setting
+;; check that the docstring is a valid deferred i18n form (e.g. [[metabase.util.i18n-be.core/deferred-tru]]) so the Setting
 ;; description will be localized properly when it shows up in the FE admin interface.
 
 (def ^:private allowed-deferred-i18n-forms
@@ -1231,7 +1231,7 @@
   (is-form? allowed-deferred-i18n-forms desc))
 
 (defn- validate-description-form*
-  "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]).
+  "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n-be.core/deferred-tru]]).
    If not, return a form for an exception to throw at a later stage.
    The reason for this strange behaviour is that we need to build the exception at compile time, but will only know
    whether we should throw it once all the macro arguments have been evaluated at runtime."

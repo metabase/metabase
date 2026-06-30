@@ -680,8 +680,10 @@
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    metabase.tracing.test-util/with-span-exporter                                                                             hooks.common/with-one-binding
    metabase.users-rest.api-test/with-temp-user-email!                                                                        hooks.common/with-one-binding
-   metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
-   metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
+   metabase.util.i18n-be.core/deferred-trs                                                                                   hooks.metabase.util.i18n/deferred-trs
+   metabase.util.i18n-be.core/deferred-tru                                                                                   hooks.metabase.util.i18n/deferred-tru
+   metabase.util.i18n-be.macros/deferred-trs                                                                                 hooks.metabase.util.i18n/deferred-trs
+   metabase.util.i18n-be.macros/deferred-tru                                                                                 hooks.metabase.util.i18n/deferred-tru
    metabase.util.i18n/trs                                                                                                    hooks.metabase.util.i18n/trs
    metabase.util.i18n/tru                                                                                                    hooks.metabase.util.i18n/tru
    metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
