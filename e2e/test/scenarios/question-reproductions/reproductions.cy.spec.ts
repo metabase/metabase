@@ -1356,9 +1356,18 @@ describe("issue 13347", () => {
     });
 
     // The normal user belongs to the data group, which would otherwise get
-    // query access to this database by default. Block it so the user genuinely
-    // lacks data permissions - the condition this issue is about.
-    H.blockUserGroupPermissions(USER_GROUPS.DATA_GROUP, WRITABLE_DB_ID);
+    // query-builder access to this database by default. Revoke create-queries so
+    // the user cannot build new questions on it - the condition this issue is
+    // about. (Avoid view-data "blocked", which needs the advanced-permissions
+    // token feature this spec doesn't have.)
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.DATA_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
+      },
+    });
 
     cy.signInAsNormalUser();
 
