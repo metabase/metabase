@@ -106,3 +106,16 @@ databaseChangeLog:
                   name: entity_type
               - column:
                   name: entity_id
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:04
+      author: yb
+      comment: Content Diagnostics — last_active_at (frozen staleness anchor, top-level + threshold filter)
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: last_active_at
+                  type: ${timestamp_type}
+                  remarks: Entity's last activity at scan time (card last_used_at / dashboard last_viewed_at); null = never used/ran. Frozen verdict evidence; powers the threshold-days serve filter.

@@ -49,14 +49,14 @@
     (for [{:keys [id model last_used_at]} rows
           :let  [et (model->entity-type model)]
           :when et]
-      {:entity-type  et
-       :entity-id    id
-       :finding-type :stale
-       ;; freeze the scan-time verdict evidence (D17): the activity anchor that crossed the cutoff —
-       ;; `last_used_at` for cards, `last_viewed_at` for dashboards (the stale query aliases both to
-       ;; `last_used_at`). `nil` ⇒ never used/ran. Stored in JSON details, served as an ISO string.
-       :details      {:threshold_days threshold
-                      :last_active_at last_used_at}})))
+      {:entity-type    et
+       :entity-id      id
+       :finding-type   :stale
+       ;; freeze the scan-time activity anchor (D17): `last_used_at` for cards, `last_viewed_at` for
+       ;; dashboards (the stale query aliases both to `last_used_at`). `nil` ⇒ never used/ran. Top-level
+       ;; column (not in `details`) so it's served flat and SQL-filterable by the threshold-days param.
+       :last-active-at last_used_at
+       :details        {:threshold_days threshold}})))
 
 (def checkers
   "Ordered checker registry. Each entry **declares** the finding-types it owns and a 0-arg `:run` fn
@@ -127,12 +127,13 @@
   (doseq [chunk (partition-all insert-batch-size findings)]
     (t2/with-transaction [_conn]
       (t2/insert! :model/ContentDiagnosticsFinding
-                  (for [{:keys [entity-type entity-id finding-type details scope-collection-id]} chunk]
+                  (for [{:keys [entity-type entity-id finding-type details scope-collection-id last-active-at]} chunk]
                     {:scan_id             scan-id
                      :entity_type         entity-type
                      :entity_id           entity-id
                      :finding_type        finding-type
                      :scope_collection_id scope-collection-id
+                     :last_active_at      last-active-at
                      :details             details})))))
 
 (defn scan!

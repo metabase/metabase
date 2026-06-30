@@ -46,21 +46,21 @@
             (testing "every stale temp entity produced a :stale finding; no fresh one did"
               (is (every? found-keys stale-keys))
               (is (empty? (set/intersection found-keys fresh-keys))))
-            (testing "persisted findings carry finding_type + scope_collection_id + details"
+            (testing "persisted findings carry finding_type + scope_collection_id + last_active_at + details"
               (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
                 (is (= :stale (:finding_type row)))
                 ;; scope_collection_id is stamped at scan time from the entity's collection
                 (is (= coll-id (:scope_collection_id row)))
-                ;; details = frozen verdict evidence: threshold + the activity anchor, nothing else
-                (is (= #{:threshold_days :last_active_at} (set (keys (:details row)))))
+                ;; details now holds only the threshold; last_active_at is a top-level column
+                (is (= #{:threshold_days} (set (keys (:details row)))))
                 ;; derive from the setting, not a literal — a default change must not silently desync
                 (is (= (cd.settings/content-diagnostics-stale-threshold-days)
                        (get-in row [:details :threshold_days])))
-                ;; last_active_at frozen from the card's last_used_at (JSON-encoded → ISO string)
-                (is (string? (get-in row [:details :last_active_at])))))
+                ;; last_active_at frozen from the card's last_used_at (top-level column, not in details)
+                (is (some? (:last_active_at row)))))
             (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
               (let [row (first (filter #(and (= :dashboard (:entity_type %)) (= s4 (:entity_id %))) rows))]
-                (is (string? (get-in row [:details :last_active_at])))))
+                (is (some? (:last_active_at row)))))
             (testing "duration histogram recorded one ok observation"
               (is (<= 1 (:count (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms
                                                  {:status "ok"})))))
@@ -133,9 +133,9 @@
                                                                 {:scan_id      scan
                                                                  :entity_type  :card
                                                                  :entity_id    card-id
-                                                                 :finding_type :stale
-                                                                 :details      {:threshold_days threshold
-                                                                                :last_active_at "2025-09-01T08:00:00Z"}})))
+                                                                 :finding_type   :stale
+                                                                 :last_active_at (t/offset-date-time 2025 9 1)
+                                                                 :details        {:threshold_days threshold}})))
                   old-id     (insert "scan-old" 30)
                   new-id     (insert "scan-new" 90)
                   serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")
@@ -153,9 +153,10 @@
                   (is (= "Quarterly Revenue" (:entity_display_name row)))
                   (testing "collection breadcrumb nested under details"
                     (is (= coll-id (get-in row [:details :collection :id]))))
-                  (testing "stored verdict (threshold_days, last_active_at) flows through details"
+                  (testing "threshold_days stays in details; last_active_at is hoisted to a top-level property"
                     (is (= 90 (get-in row [:details :threshold_days])))
-                    (is (= "2025-09-01T08:00:00Z" (get-in row [:details :last_active_at]))))
+                    (is (some? (:last_active_at row)))
+                    (is (not (contains? (:details row) :last_active_at))))
                   (testing "creator hydrated as a normalized user object"
                     (is (= (mt/user->id :rasta) (get-in row [:details :creator :id])))
                     (is (= "user" (get-in row [:details :creator :type]))))
@@ -300,6 +301,60 @@
                 (is (= [card-fid dash-fid] (order :sort-column "detected-at" :sort-direction "desc"))))
               (testing "default sort = detected-at asc"
                 (is (= [dash-fid card-fid] (order)))))))))))
+
+(deftest serve-entity-types-filter-test
+  (testing "GET /stale filters by entity-types (repeatable; omitted = all)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-id :id} {:collection_id coll-id}
+                         :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            {:scan_id "e" :entity_type :card :entity_id card-id
+                                                             :finding_type :stale :details {}}))
+                  dash-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            {:scan_id "e" :entity_type :dashboard :entity_id dash-id
+                                                             :finding_type :stale :details {}}))
+                  ids      (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
+                                                                   "ee/content-diagnostics/stale" kvs)))))]
+              (testing "omitted → all entity types"
+                (is (= #{card-fid dash-fid} (ids))))
+              (testing "single value → only that type"
+                (is (= #{card-fid} (ids :entity-types "card")))
+                (is (= #{dash-fid} (ids :entity-types "dashboard"))))
+              (testing "multiple values → union of the given types"
+                (is (= #{card-fid dash-fid} (ids :entity-types ["card" "dashboard"]))))
+              (testing "a reserved type with no findings → empty"
+                (is (empty? (ids :entity-types "document")))))))))))
+
+(deftest serve-threshold-days-filter-test
+  (testing "GET /stale threshold-days drops findings less stale than the cutoff; never-used always passes"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {c-old :id}    {:collection_id coll-id}
+                         :model/Card {c-recent :id} {:collection_id coll-id}
+                         :model/Card {c-never :id}  {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [insert     (fn [card active-at]
+                               (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                {:scan_id "t" :entity_type :card :entity_id card
+                                                                 :finding_type :stale :details {}
+                                                                 :last_active_at active-at})))
+                  old-fid    (insert c-old    (t/minus (t/offset-date-time) (t/days 400)))
+                  recent-fid (insert c-recent (t/minus (t/offset-date-time) (t/days 100)))
+                  never-fid  (insert c-never  nil)
+                  ids        (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
+                                                                     "ee/content-diagnostics/stale" kvs)))))]
+              (testing "no threshold → all three"
+                (is (= #{old-fid recent-fid never-fid} (ids))))
+              (testing "threshold-days=200 → keeps the 400-day-old + never-used, drops the 100-day-old"
+                (is (= #{old-fid never-fid} (ids :threshold-days "200"))))
+              (testing "threshold-days=50 → all qualify (each ≥50 days stale, or never used)"
+                (is (= #{old-fid recent-fid never-fid} (ids :threshold-days "50")))))))))))
 
 (deftest scan-endpoint-is-feature-gated-test
   (testing "POST /scan runs synchronously for a licensed instance"
