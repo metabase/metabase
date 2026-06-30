@@ -1094,9 +1094,8 @@
               q          (:query structured)
               joins      (get-in q [:stages 0 :joins])
               breakout   (get-in q [:stages 0 :breakout 0])]
-          (testing "the metric's join was materialized into the consumer stage"
-            (is (= 1 (count joins)))
-            (is (= 30 (get-in (first joins) [:stages 0 :source-table])) "join targets CAMPAIGNS"))
+          (testing "exactly one join was materialized into the consumer stage, targeting CAMPAIGNS"
+            (is (=? [{:stages [{:source-table 30}]}] joins)))
           (testing "the breakout field is stamped with the inherited join's alias"
             (let [join-alias (:alias (first joins))]
               (is (some? join-alias))
@@ -1148,6 +1147,84 @@
                                      "aggregation"  [["metric" {} metric-entity-id]]}]}))
               q      (:query (:structured-output result))]
           (is (empty? (get-in q [:stages 0 :joins]))))))))
+
+;;; ============================================================
+;;; Ambiguity: a metric that self-joins ONE dimension under two aliases. The repair pass defers the
+;;; joined-dimension breakout (CAMPAIGNS is a metric-join target), so construct inherits BOTH joins
+;;; and cannot tell which alias the bare field should carry. Rather than leave the field unattributed
+;;; (an opaque execution failure), it must raise the same `:ambiguous-fk-via-join` agent error the
+;;; repair pass raises for explicit-join ambiguity.
+;;; ============================================================
+
+(def ^:private double-join-metric-entity-id "Double2_456DefGhI78XY")
+
+(def ^:private mp-double-join-metric-base
+  "ORDERS(10) with TWO no-FK campaign columns, both pointing at CAMPAIGNS(30)."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"             :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"          :table-id 10 :base-type :type/Float}
+               {:id 102 :name "CAMPAIGN_ID"    :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
+               {:id 103 :name "RE_CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
+               {:id 300 :name "ID"             :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "NAME"           :table-id 30 :base-type :type/Text}]}))
+
+(def ^:private double-join-metric-definition
+  "Count of ORDERS joining CAMPAIGNS TWICE (via CAMPAIGN_ID and RE_CAMPAIGN_ID) under two aliases."
+  (-> (lib/query mp-double-join-metric-base (lib.metadata/table mp-double-join-metric-base 10))
+      (lib/join (lib/join-clause (lib.metadata/table mp-double-join-metric-base 30)
+                                 [(lib/= (lib.metadata/field mp-double-join-metric-base 102)
+                                         (lib.metadata/field mp-double-join-metric-base 300))]))
+      (lib/join (lib/join-clause (lib.metadata/table mp-double-join-metric-base 30)
+                                 [(lib/= (lib.metadata/field mp-double-join-metric-base 103)
+                                         (lib.metadata/field mp-double-join-metric-base 300))]))
+      (lib/aggregate (lib/count))
+      lib.convert/->legacy-MBQL))
+
+(def ^:private mp-double-join-metric
+  (lib.tu/mock-metadata-provider
+   mp-double-join-metric-base
+   {:cards [{:id            702
+             :name          "Order Count by Campaign (×2)"
+             :type          :metric
+             :database-id   1
+             :table-id      10
+             :entity-id     double-join-metric-entity-id
+             :dataset-query double-join-metric-definition}]}))
+
+(defn- with-double-join-metric-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-double-join-metric)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                serdes/lookup-by-id                            (fn [model eid]
+                                                                 (when (and (or (= model 'Card) (= model :model/Card))
+                                                                            (= eid double-join-metric-entity-id))
+                                                                   {:id 702 :database_id 1 :entity_id eid}))
+                api/read-check                                 allow-read-check
+                api/query-check                                allow-read-check]
+    (f)))
+
+(deftest metric-self-join-ambiguous-breakout-errors-test
+  (testing (str "A breakout on a dimension the metric joins under TWO aliases raises a clean "
+                ":ambiguous-fk-via-join agent error instead of leaving the field unattributed")
+    (with-double-join-metric-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["metric" {} double-join-metric-entity-id]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (= :ambiguous-fk-via-join (:error d)))
+              (is (true? (:agent-error? d)))
+              (is (= 2 (count (:aliases d))) "both inherited join aliases are reported"))))))))
 
 ;;; ============================================================
 ;;; Lockstep: the repair deferral must match what construct actually inherits.

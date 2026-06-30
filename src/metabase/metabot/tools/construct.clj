@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.agent-lib.representations :as repr]
@@ -281,7 +282,13 @@
 ;;; no-op) and stamp the matching `:join-alias` onto the bare field refs the LLM authored.
 
 (defn- aggregation-metric-ids
-  "Numeric metric ids referenced directly as aggregation clauses (`[:metric {} id]`) in `aggs`."
+  "Numeric metric ids referenced directly as aggregation clauses (`[:metric {} id]`) in `aggs`.
+
+  Direct aggregation refs ONLY — a metric nested inside an expression (e.g. `[:/ {} [:metric …]
+  [:metric …]]`) is not recognized, and the consumer's joined-dimension field falls through to its
+  normal `:no-fk-path` error. This must stay in lockstep with the repair pass's deferral set
+  ([[metabase.agent-lib.representations.repair/metric-join-target-table-ids]]), which likewise only
+  scans direct aggregation entries — broadening one side without the other breaks the lockstep."
   [aggs]
   (keep (fn [agg]
           (when (and (vector? agg) (= :metric (first agg)) (pos-int? (nth agg 2 nil)))
@@ -320,8 +327,14 @@
 
 (defn- stamp-metric-join-aliases
   "Stamp `:join-alias` onto bare field refs (no `:join-alias`/`:source-field`) in `stage-index`
-  whose field's table matches exactly one inherited join's target table. 0 or >1 matches → leave
-  the field alone (let lib/QP surface any ambiguity)."
+  whose field's table matches exactly one inherited join's target table.
+
+  A field whose table is reached by NO inherited join (count 0) is left alone — it belongs to the
+  source table or to a join handled elsewhere. A field whose table is reached by >1 inherited join
+  (the metric self-joins one dimension under multiple aliases) is genuinely ambiguous: the repair
+  pass already DEFERRED it (its table is a metric-join target), so leaving it bare would trade the
+  clean agent error for an opaque execution failure. We throw the same `:ambiguous-fk-via-join`
+  agent error the repair pass raises for explicit-join ambiguity, asking the LLM to disambiguate."
   [query mp stage-index added-joins]
   (let [target->aliases (reduce (fn [m j]
                                   (if-let [t (join-target-table-id j)]
@@ -339,9 +352,19 @@
             (if (bare-field-ref? node)
               (let [tid     (field-table-id mp node)
                     aliases (get target->aliases tid)]
-                (if (= 1 (count aliases))
-                  (assoc-in node [1 :join-alias] (first aliases))
-                  node))
+                (case (count aliases)
+                  0 node
+                  1 (assoc-in node [1 :join-alias] (first aliases))
+                  (throw (ex-info (tru "Field {0} is reachable from {1} joins inherited from a referenced metric via aliases {2}. Specify the `join-alias` option on the field clause to pick which join to use."
+                                       (pr-str (nth node 2))
+                                       (count aliases)
+                                       (str/join ", " (map pr-str aliases)))
+                                  {:status-code  400
+                                   :error        :ambiguous-fk-via-join
+                                   :agent-error? true
+                                   :field        (nth node 2)
+                                   :target-table tid
+                                   :aliases      (vec aliases)}))))
               node))
           stage))))))
 
