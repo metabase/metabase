@@ -625,7 +625,13 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
     cy.realPress("5");
-    cy.location("pathname").should("contain", "/admin/datamodel");
+    cy.log(
+      "wait for the data model page to finish auto-redirecting to its first schema before the next shortcut, so the pending redirect can't clobber the navigation triggered by pressing 9",
+    );
+    cy.location("pathname").should(
+      "match",
+      /\/admin\/datamodel\/database\/\d+\/schema\//,
+    );
     cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
   });
