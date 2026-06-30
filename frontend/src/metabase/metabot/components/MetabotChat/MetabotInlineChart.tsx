@@ -1,12 +1,18 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { push } from "react-router-redux";
+import { t } from "ttag";
 import { noop } from "underscore";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
+import { useCreateCardMutation, useGetAdhocQueryQuery } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import { Anchor, Box, Center, Flex } from "metabase/ui";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+import { Anchor, Box, Button, Center, Flex } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import {
@@ -14,14 +20,14 @@ import {
   getGenericErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { DashboardTabId } from "metabase-types/api";
 
 import S from "./MetabotInlineChart.module.css";
 
 /**
  * Renders a Metabot-generated `card` entity as a live, read-only chart inline in
  * the conversation: it runs the card's embedded query ad-hoc and renders the
- * result; the title bar links out to the full question.
+ * result; the title bar links out to the full question and lets the user save it.
  */
 export function MetabotInlineChart({
   value: { title, display, query },
@@ -29,17 +35,22 @@ export function MetabotInlineChart({
   value: GeneratedCard;
 }) {
   const datasetQuery = query.query;
+  const dispatch = useDispatch();
+  const [createCard] = useCreateCardMutation();
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
-  const card: Card = useMemo(
+  const question = useMemo(
     () =>
       new Question({
         dataset_query: datasetQuery,
         display: display ?? "table",
         displayIsLocked: display != null,
         visualization_settings: {},
-      }).card(),
-    [datasetQuery, display],
+      }).setDisplayName(title),
+    [datasetQuery, display, title],
   );
+
+  const card = useMemo(() => question.card(), [question]);
 
   const link = useMemo(
     () =>
@@ -60,6 +71,28 @@ export function MetabotInlineChart({
     : undefined;
   const chartError = datasetError ?? requestError;
 
+  const handleCreate = async (
+    newQuestion: Question,
+    options?: { dashboardTabId?: DashboardTabId },
+  ) => {
+    const created = await createCard({
+      ...newQuestion.card(),
+      dashboard_tab_id: options?.dashboardTabId,
+    }).unwrap();
+    const savedQuestion = newQuestion.setId(created.id);
+    dispatch(
+      addUndo({
+        icon: "check_filled",
+        message: t`Saved`,
+        extraAction: {
+          label: t`View`,
+          action: () => dispatch(push(Urls.question(savedQuestion))),
+        },
+      }),
+    );
+    return savedQuestion;
+  };
+
   return (
     <Box className={S.container} data-testid="metabot-inline-chart">
       <Flex className={S.header} align="center" gap="sm">
@@ -69,10 +102,19 @@ export function MetabotInlineChart({
           to={link}
           target="_blank"
           fw="bold"
+          flex={1}
+          miw={0}
           truncate
         >
           {title}
         </Anchor>
+        <Button
+          variant="subtle"
+          size="xs"
+          onClick={() => setIsSaveModalOpen(true)}
+        >
+          {t`Save`}
+        </Button>
       </Flex>
       <Box className={S.viz}>
         {chartError ? (
@@ -89,6 +131,17 @@ export function MetabotInlineChart({
           />
         )}
       </Box>
+      {isSaveModalOpen && (
+        <SaveQuestionModal
+          opened
+          question={question}
+          originalQuestion={null}
+          onCreate={handleCreate}
+          onSave={async () => undefined}
+          onClose={() => setIsSaveModalOpen(false)}
+          closeOnSuccess
+        />
+      )}
     </Box>
   );
 }
