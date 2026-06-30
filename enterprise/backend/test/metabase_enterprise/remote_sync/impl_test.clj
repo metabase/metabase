@@ -1697,9 +1697,9 @@ serdes/meta:
       (let [reconciled (atom nil)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [_ _ _ _ _]
-                                                         {:status :success :version "merged-M"
-                                                          :summary {:added 2 :updated 1 :removed 0}})
+                      impl/merge-and-store!          (fn [_ _ _ _ _]
+                                                       {:status :success :version "merged-M"
+                                                        :summary {:added 2 :updated 1 :removed 0}})
                       impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
                                                          (reset! reconciled (source.p/version snap))
                                                          (when finalize! (finalize!)))]
@@ -1713,18 +1713,42 @@ serdes/meta:
                 "the merged result is loaded back into the local app DB (the pull half)")
             (is (= "merged-M" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
 
+(deftest export!-empty-merge-reports-pull-test
+  (testing "when the merge matches the remote tip (nothing to push), export! folds in remote changes, reports a pull, and advances to the tip"
+    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
+      (let [reconciled (atom nil)]
+        (with-redefs [remote-sync.task/last-version    (constantly "base-B")
+                      spec/extract-entities-for-export (constantly [{:dummy true}])
+                      impl/merge-and-store!            (fn [_ _ _ _ _]
+                                                         {:status :success :version :remote-sync/empty-commit
+                                                          :summary {:added 1 :updated 0 :removed 0}})
+                      impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
+                                                         (reset! reconciled (source.p/version snap))
+                                                         (when finalize! (finalize!)))]
+          (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+                                     :merge? true
+                                     :source (export-test-source)
+                                     :base-snapshot (export-test-snapshot "base-B"))]
+            (is (= :success (:status result)))
+            (is (= "pulled" (get-in result [:outcome :kind]))
+                "an empty merge pushed nothing, so it is reported as a pull rather than a merge")
+            (is (= 1 (get-in result [:outcome :count])) "the pulled count comes from the merge summary")
+            (is (= "remote-R" @reconciled) "the fold-in pull loads from the remote tip")
+            (is (= "remote-R" (:version (t2/select-one :model/RemoteSyncTask :id task-id)))
+                "the version advances to the remote tip")))))))
+
 (deftest export!-blocks-on-genuine-conflict-test
   (testing "when the same entity changed on both sides, export! returns :conflict without advancing the version or reconciling"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [reconciled? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [_ _ _ _ _]
-                                                         {:status :conflict
-                                                          :conflicts [{:key [["Card" "A"]]
-                                                                       :ours {:path "collections/a.yaml" :content "x"}
-                                                                       :theirs {:path "collections/a.yaml" :content "y"}}]
-                                                          :summary {:added 0 :updated 0 :removed 0}})
+                      impl/merge-and-store!          (fn [_ _ _ _ _]
+                                                       {:status :conflict
+                                                        :conflicts [{:key [["Card" "A"]]
+                                                                     :ours {:path "collections/a.yaml" :content "x"}
+                                                                     :theirs {:path "collections/a.yaml" :content "y"}}]
+                                                        :summary {:added 0 :updated 0 :removed 0}})
                       impl/load-snapshot!              (fn [_ _ _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -1748,9 +1772,9 @@ serdes/meta:
                                 (snapshot-at [_ _] nil))]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [_ _ _ _ _]
-                                                         {:status :success :version "merged-M"
-                                                          :summary {:added 1 :updated 0 :removed 0}})
+                      impl/merge-and-store!          (fn [_ _ _ _ _]
+                                                       {:status :success :version "merged-M"
+                                                        :summary {:added 1 :updated 0 :removed 0}})
                       impl/load-snapshot!              (fn [_ _ _ & _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -1779,7 +1803,7 @@ serdes/meta:
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})]
+                      impl/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
@@ -1794,7 +1818,7 @@ serdes/meta:
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/exportable-entities         (constantly {"Card" [999999999]})  ; absent id -> empty extraction; routing is what's under test
-                      source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
+                      impl/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :force? true
                                      :source (export-test-source)
@@ -1813,7 +1837,7 @@ serdes/meta:
         ;; never reaches the merge path.
         (with-redefs [remote-sync.task/last-version    (constantly "remote-R")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
+                      impl/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "remote-R"))]

@@ -629,6 +629,41 @@
       (finally
         (analytics/observe! :metabase-remote-sync/import-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
 
+(defn- commit-staged!
+  "Open a commit on `snapshot`, stage into it via `stage-fn` (passed the open commit; returns the synced
+  write-rows), then finish it — or, when the staged tree is identical to the parent, abort instead of
+  pushing an empty commit. Releases the commit on every path. Returns `[synced version]`, where version is
+  the new commit SHA, or `:remote-sync/empty-commit` when no commit was pushed (the staged content already
+  matched the remote)."
+  [snapshot message stage-fn]
+  (let [commit (source.p/open-commit snapshot)]
+    (try
+      (let [synced  (stage-fn commit)
+            version (if (source.p/empty-commit? commit)
+                      (do (source.p/abort-commit! commit) :remote-sync/empty-commit)
+                      (source.p/finish-commit! commit message))]
+        [synced version])
+      (catch Throwable e
+        (source.p/abort-commit! commit)
+        (throw e)))))
+
+(defn- merge-and-store!
+  "Reconcile freshly serialized local state (`stream`) against a remote branch that has advanced beyond the
+  last sync, via an entity-identity 3-way merge of the merge base (`base-snapshot`), local state, and the
+  remote tip (`snapshot`). On a clean merge, writes the merged file set (wholesale, fast-forwarding onto the
+  remote tip) and returns `{:status :success :version <sha-or-:remote-sync/empty-commit> :summary {...}}`.
+  When the same entity changed on both sides, returns `{:status :conflict :conflicts [..] :summary {..}}`
+  without writing anything."
+  [stream snapshot base-snapshot task-id message]
+  (let [{:keys [merged conflicts summary]} (source/compute-merge stream snapshot base-snapshot task-id)]
+    (if (seq conflicts)
+      {:status :conflict :conflicts conflicts :summary summary}
+      (let [[_ version] (commit-staged! snapshot message
+                                        (fn [commit]
+                                          (source.p/replace-all! commit) ; merged set replaces the managed dirs wholesale
+                                          (run! #(source.p/stage-upsert! commit %) merged)))]
+        {:status :success :version version :summary summary}))))
+
 (defn- export-merged!
   "Export path taken when the remote branch has advanced beyond the last synced version (`base-snapshot`
   is the merge base). Performs an entity-identity 3-way merge of local state against the remote tip:
@@ -639,7 +674,11 @@
   [source snapshot base-snapshot task-id message sync-timestamp models]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
         {:keys [status version conflicts summary]}
-        (source/merge-and-store! models snapshot base-snapshot task-id message)]
+        (merge-and-store! models snapshot base-snapshot task-id message)
+        ;; An empty merge means the merged set already matched the remote tip: nothing was pushed, so
+        ;; reconcile (and advance) against the tip rather than a non-existent merge commit.
+        empty?       (= version :remote-sync/empty-commit)
+        version      (if empty? (source.p/version snapshot) version)]
     (case status
       :conflict
       (let [conflicts (mapv remote-sync.merge/conflict-label conflicts)]
@@ -658,18 +697,21 @@
       ;; the version at the old base and a retry re-merges — the push is idempotent — rather than advancing
       ;; the pointer past un-reconciled local state).
       (if-let [merged-snapshot (source.p/snapshot-at source version)]
-        (do
+        (let [pulled (apply + (vals summary))]
           (load-snapshot! merged-snapshot task-id sync-timestamp
                           :finalize! (fn []
                                        (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
                                        (remote-sync.task/set-version! task-id version)))
-          (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d)"
-                     (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary))
+          (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
+                     pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
           {:status :success :version version :merge-summary summary
-           :outcome {:kind "merged"
-                     :pulled (apply + (vals summary))
-                     :pushed pushed-count
-                     :branch (settings/remote-sync-branch)}})
+           ;; An empty merge pushed nothing: it's a pull when remote changes were folded in, or a no-op
+           ;; when nothing changed on either side.
+           :outcome (cond
+                      (not empty?) {:kind "merged" :pulled pulled :pushed pushed-count
+                                    :branch (settings/remote-sync-branch)}
+                      (pos? pulled) {:kind "pulled" :count pulled :branch (settings/remote-sync-branch)}
+                      :else         {:kind "push-skipped"})})
         ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
         ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
         ;; the version while skipping the reconcile, which would leave local missing the folded-in remote
@@ -699,10 +741,10 @@
   (its transitive `serdes/descendants` + `serdes/required`, including the entity itself)."
   [model-type model-id]
   ;; serdes works in [model-type id] tuples; map the closure keys to {:model_type :model_id} on the way out
-  (map (fn [[mt id]] {:model_type mt :model_id id})
-       (keys (merge-with into
-                         (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))
-                         (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %)))))))
+  (-> #{}
+      (into (keys (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))))
+      (into (keys (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %)))))
+      (->> (map (fn [[mt id]] {:model_type mt :model_id id})))))
 
 (defn- untracked-content-deps
   "The `{:model_type :model_id}` entities in `[model-type model-id]`'s export closure that are remote-sync
@@ -996,29 +1038,21 @@
     (when (empty? export-rows)
       (throw (ex-info "No remote-syncable content available." {})))
     (remote-sync.task/update-progress! task-id 0.3)
-    (let [opts    (serdes/storage-base-context)
-          commit  (source.p/open-commit snapshot)
-          [synced version empty?]
-          (try
-            (source.p/replace-all! commit) ; replace the managed dirs wholesale
-            (let [synced (stage-writes commit opts export-rows)]
-              (if (source.p/empty-commit? commit) ; re-serialized to byte-identical content; don't push an empty commit
-                (do (source.p/abort-commit! commit) [synced nil true])
-                [synced (source.p/finish-commit! commit message) false]))
-            (catch Throwable e
-              (source.p/abort-commit! commit)
-              (throw e)))]
-      ;; Reconcile RSO state on both paths. When empty?, the repo already matches the DB, so this just clears
-      ;; the false-dirty flags (and stale removed/delete rows) that triggered the no-op export.
+    (let [opts             (serdes/storage-base-context)
+          [synced version] (commit-staged! snapshot message
+                                           (fn [commit]
+                                             (source.p/replace-all! commit) ; replace the managed dirs wholesale
+                                             (stage-writes commit opts export-rows)))]
       (t2/with-transaction [_]
-        (when version
+        (when-not (= version :remote-sync/empty-commit)
           (remote-sync.task/set-version! task-id version))
         (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
           (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
         (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
-      (if empty?
-        (do (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
-            {:status :success :outcome {:kind "push-skipped"}})
+      (if (= version :remote-sync/empty-commit)
+        (do
+          (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+          {:status :success :outcome {:kind "push-skipped"}})
         {:status :success
          :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}}))))
 
@@ -1027,27 +1061,20 @@
   (let [{:keys [writes delete-paths removed-ids]} plan
         delete-paths (into (vec delete-paths) disabled-files)]
     (remote-sync.task/update-progress! task-id 0.3)
-    (let [opts   (serdes/storage-base-context)
-          commit (source.p/open-commit snapshot)
-          [synced version empty?]
-          (try
-            (let [synced (stage-writes commit opts writes)]
-              (stage-deletes commit delete-paths)
-              (if (source.p/empty-commit? commit) ; staged writes/deletes net to no tree change; don't push an empty commit
-                (do (source.p/abort-commit! commit) [synced nil true])
-                [synced (source.p/finish-commit! commit message) false]))
-            (catch Throwable e
-              (source.p/abort-commit! commit)
-              (throw e)))]
-      ;; Reconcile on both paths; when empty? this clears the false-dirty flags that triggered the no-op export.
+    (let [opts             (serdes/storage-base-context)
+          [synced version] (commit-staged! snapshot message
+                                           (fn [commit]
+                                             (let [synced (stage-writes commit opts writes)]
+                                               (stage-deletes commit delete-paths)
+                                               synced)))]
       (t2/with-transaction [_]
-        (when version
+        (when-not (= version :remote-sync/empty-commit)
           (remote-sync.task/set-version! task-id version))
         ;; delete departed rows first, then update RSO metadata — same order as full-export!
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
         (mark-rows-synced! (map :id synced) synced sync-timestamp))
-      (if empty?
+      (if (= version :remote-sync/empty-commit)
         (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
         (do
