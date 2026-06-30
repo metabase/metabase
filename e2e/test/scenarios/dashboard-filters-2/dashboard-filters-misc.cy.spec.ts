@@ -210,6 +210,18 @@ describe("pivot tables", () => {
 
     cy.log("filter picker");
 
+    // After exiting edit mode the pivot dashcard re-renders and re-runs its
+    // query. Until that finishes the dashcard title isn't wired to open the
+    // question — its click handler is only attached once the card series has
+    // loaded — so clicking it too early navigates nowhere and the pivot query
+    // never fires. Wait for the card to finish loading before clicking.
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("legend-caption-title")
+      .should("be.visible");
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("loading-indicator")
+      .should("not.exist");
+
     H.getDashboardCard(QUESTION_PIVOT_INDEX)
       .findByTestId("legend-caption-title")
       .click();
