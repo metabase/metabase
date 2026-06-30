@@ -31,7 +31,9 @@
   {:select [:report_card.id
             [(h2x/literal "Card") :model]
             [:report_card.name :name]
-            :last_used_at]
+            :last_used_at
+            [:report_card.created_at :created_at]
+            [:report_card.creator_id :creator_id]]
    :from :report_card
    :left-join [:moderation_review [:and
                                    [:= :moderation_review.moderated_item_id :report_card.id]
@@ -68,7 +70,9 @@
   {:select [:report_dashboard.id
             [(h2x/literal "Dashboard") :model]
             [:report_dashboard.name :name]
-            [:last_viewed_at :last_used_at]]
+            [:last_viewed_at :last_used_at]
+            [:report_dashboard.created_at :created_at]
+            [:report_dashboard.creator_id :creator_id]]
    :from :report_dashboard
    :left-join [:pulse [:and
                        [:= :pulse.archived false]
@@ -107,7 +111,7 @@
     (find-stale-query model args)))
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
-  (cond-> {:select [:id :model :last_used_at]
+  (cond-> {:select [:id :model :last_used_at :name :created_at :creator_id]
            :from [[{:union-all (queries args)} :dummy_alias]]
            :order-by [[(sort-column (:sort-column args))
                        (:sort-direction args)]]}
@@ -127,7 +131,12 @@
                                                   ;; the entity's last-activity anchor (card `last_used_at`,
                                                   ;; dashboard `last_viewed_at`, both aliased to `last_used_at`);
                                                   ;; `nil` is the never-used arm. Optional for back-compat.
-                                                  [:last_used_at {:optional true} [:maybe some?]]]]]
+                                                  [:last_used_at {:optional true} [:maybe some?]]
+                                                  ;; denormalization substrate for Content Diagnostics sort
+                                                  ;; columns (name / created_at / creator). Optional.
+                                                  [:name       {:optional true} [:maybe :string]]
+                                                  [:created_at {:optional true} [:maybe some?]]
+                                                  [:creator_id {:optional true} [:maybe :int]]]]]
                              [:total :int]]
   "Find stale content in the given collections.
 
@@ -156,7 +165,7 @@
     (throw (ex-info "not implemented." {:collection-ids collection-ids})))
   {:rows (into []
                (comp
-                (map #(select-keys % [:id :model :last_used_at]))
+                (map #(select-keys % [:id :model :last_used_at :name :created_at :creator_id]))
                 (map (fn [v] (update v :model #(keyword "model" %)))))
                (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})

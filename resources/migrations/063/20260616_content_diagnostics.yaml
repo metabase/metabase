@@ -119,3 +119,84 @@ databaseChangeLog:
                   name: last_active_at
                   type: ${timestamp_type}
                   remarks: Entity's last activity at scan time (card last_used_at / dashboard last_viewed_at); null = never used/ran. Frozen verdict evidence; powers the threshold-days serve filter.
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:05
+      author: yb
+      comment: Content Diagnostics — denormalized entity_name (sort key)
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: entity_name
+                  type: varchar(254)
+                  remarks: Entity's name at scan time. Denormalized sort key (display still hydrates the live name).
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:06
+      author: yb
+      comment: Content Diagnostics — denormalized entity_created_at (sort + display)
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: entity_created_at
+                  type: ${timestamp_type}
+                  remarks: Entity's created_at (immutable). Denormalized for sort + display.
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:07
+      author: yb
+      comment: Content Diagnostics — denormalized entity_creator_id (sort key)
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: entity_creator_id
+                  type: int
+                  remarks: Entity's creator_id at scan time; no FK (polymorphic, mirrors entity_id). Sort key (groups by creator).
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:08
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_name
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_name
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_name
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:09
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_created_at
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_created
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_created_at
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:10
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + last_active_at
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_active
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: last_active_at

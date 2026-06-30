@@ -61,6 +61,11 @@
             (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
               (let [row (first (filter #(and (= :dashboard (:entity_type %)) (= s4 (:entity_id %))) rows))]
                 (is (some? (:last_active_at row)))))
+            (testing "denormalized sort columns (entity_name/created_at/creator_id) are stamped at scan time"
+              (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
+                (is (some? (:entity_name row)))
+                (is (some? (:entity_created_at row)))
+                (is (some? (:entity_creator_id row)))))
             (testing "duration histogram recorded one ok observation"
               (is (<= 1 (:count (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms
                                                  {:status "ok"})))))
@@ -301,6 +306,38 @@
                 (is (= [card-fid dash-fid] (order :sort-column "detected-at" :sort-direction "desc"))))
               (testing "default sort = detected-at asc"
                 (is (= [dash-fid card-fid] (order)))))))))))
+
+(deftest serve-sort-by-entity-attrs-test
+  (testing "GET /stale sorts by denormalized entity columns (name / created-at / created-by / last-used-at)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-a :id} {:collection_id coll-id}
+                         :model/Card {card-b :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            ;; each attr orders A,B differently so the column under test is isolated
+            (let [insert (fn [card nm created creator active]
+                           (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            {:scan_id "s" :entity_type :card :entity_id card
+                                                             :finding_type      :stale :details {}
+                                                             :entity_name       nm
+                                                             :entity_created_at created
+                                                             :entity_creator_id creator
+                                                             :last_active_at    active})))
+                  a-fid (insert card-a "Alpha" (t/offset-date-time 2025 1 1) 10 (t/offset-date-time 2025 6 1))
+                  b-fid (insert card-b "Beta"  (t/offset-date-time 2025 6 1) 5  (t/offset-date-time 2025 1 1))
+                  order (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                            "ee/content-diagnostics/stale" kvs))))]
+              (testing "name — Alpha < Beta"
+                (is (= [a-fid b-fid] (order :sort-column "name" :sort-direction "asc")))
+                (is (= [b-fid a-fid] (order :sort-column "name" :sort-direction "desc"))))
+              (testing "created-at — Jan before Jun"
+                (is (= [a-fid b-fid] (order :sort-column "created-at" :sort-direction "asc"))))
+              (testing "created-by — creator id 5 before 10"
+                (is (= [b-fid a-fid] (order :sort-column "created-by" :sort-direction "asc"))))
+              (testing "last-used-at — Jan before Jun"
+                (is (= [b-fid a-fid] (order :sort-column "last-used-at" :sort-direction "asc")))))))))))
 
 (deftest serve-entity-types-filter-test
   (testing "GET /stale filters by entity-types (repeatable; omitted = all)"

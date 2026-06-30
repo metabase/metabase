@@ -154,7 +154,7 @@
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
         breadcrumbs (collection-breadcrumbs coll-ids)]
-    (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at last_active_at details]}]
+    (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at last_active_at entity_created_at details]}]
             (let [entity (get-in ctx-by-type [entity_type entity_id])]
               {:id                  id
                :finding_type        finding_type
@@ -163,6 +163,7 @@
                :detected_at         detected_at
                :entity_display_name (:name entity)
                :last_active_at      last_active_at
+               :created_at          entity_created_at
                :details             (merge details
                                            {:collection  (get breadcrumbs (:collection_id entity))
                                             :description (:description entity)
@@ -198,6 +199,8 @@
    [:entity_display_name [:maybe :string]]
    ;; frozen scan-time activity anchor; nil ⇒ never used/ran (top-level, SQL-filterable by threshold-days)
    [:last_active_at      [:maybe some?]]
+   ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
+   [:created_at          [:maybe some?]]
    [:details
     [:map
      [:collection     [:maybe :map]]
@@ -211,10 +214,16 @@
   #{:asc :desc})
 
 (def ^:private sort-column->field
-  "Sortable stale-list params → their `content_diagnostics_finding` column. **Native columns only** (no
-  join): `name`/`location` need a join, so they stay display-only and are never sortable (api-design.md)."
-  {:detected-at :detected_at
-   :entity-type :entity_type})
+  "Sortable stale-list params → their native `content_diagnostics_finding` column. The entity attributes
+  (`name`/`created-at`/`last-used-at`/`created-by`) are **denormalized at scan time** (see
+  `detect/stale-checker`), so sorting stays a plain indexed `ORDER BY` with no join. `created-by` orders by
+  `entity_creator_id` (groups findings by creator; not alphabetical — that would need a `core_user` join)."
+  {:detected-at  :detected_at
+   :entity-type  :entity_type
+   :name         :entity_name
+   :created-at   :entity_created_at
+   :created-by   :entity_creator_id
+   :last-used-at :last_active_at})
 
 (def ^:private stale-entity-types
   "Entity types the `stale` finding type covers per spec. `card`/`dashboard` emit today; `document`/
@@ -254,8 +263,9 @@
   `card`|`dashboard`|`document`|`transform`) narrows to the given entity types (omitted = all).
   `threshold-days` (positive int) keeps only findings at least that stale — `last_active_at` on or before
   `today − threshold-days` (never-used findings always pass). All resolved live at serve time, instance-wide.
-  Sortable by `sort-column` (`detected-at`|`entity-type`, native columns only; default `detected-at`) +
-  `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  Sortable by `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-used-at` —
+  all native columns, the entity attrs denormalized at scan time; default `detected-at`) + `sort-direction`
+  (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types threshold-days]
     :or   {include-personal-collections false
