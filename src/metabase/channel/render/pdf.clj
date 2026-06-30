@@ -750,6 +750,15 @@
   via [[table-border-color]]."
   (Color. 0xF0 0xF0 0xF0))
 
+(def ^:private frame-line-w-pt
+  "Stroke width (points) of the native card frame."
+  0.5)
+
+(def ^:private frame-corner-radius-pt
+  "Corner radius (points) of the native card frame -- also used to clip the content image so its square corners
+  don't spill past the rounded frame."
+  4.0)
+
 (def ^:private table-border-color
   "CSS form of [[table-frame-color]] for the in-image footer divider (`border-top` above the `N rows` row)."
   (format "#%06X" (bit-and (.getRGB ^Color table-frame-color) 0xFFFFFF)))
@@ -916,19 +925,16 @@
                (+ ax (* rc dx2)) (+ ay (* rc dy2))
                (+ ax (* r  dx2)) (+ ay (* r  dy2)))))
 
-(defn- stroke-round-rect!
-  "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
-  at `line-w` points and corner radius `r` points, then reset to a black hairline. Corners are
-  quarter-circle cubic Béziers (see [[corner-to!]])."
-  [^PDPageContentStream cs ^Color color line-w r x top-y w h]
+(defn- round-rect-path!
+  "Append a rounded-rectangle subpath -- top-left `[x, top-y]`, size `w` x `h`, corner radius `r` points -- to the
+  content stream's current path (quarter-circle cubic Béziers, see [[corner-to!]]). The caller strokes or clips it."
+  [^PDPageContentStream cs r x top-y w h]
   (let [l  x
         t  top-y
         rt (+ l w)
         b  (- t h)
         r  (min r (/ w 2.0) (/ h 2.0))
         c  (* r bezier-circle-kappa)]
-    (.setStrokingColor cs color)
-    (.setLineWidth cs (float line-w))
     (move-to!   cs (+ l r) t)
     (line-to!   cs (- rt r) t)               ; top edge
     (corner-to! cs r c rt t   1  0   0 -1)   ; TR
@@ -937,10 +943,18 @@
     (line-to!   cs (+ l r) b)                ; bottom edge
     (corner-to! cs r c l  b  -1  0   0  1)   ; BL
     (line-to!   cs l (- t r))                ; left edge
-    (corner-to! cs r c l  t   0  1   1  0)   ; TL
-    (.stroke cs)
-    (.setStrokingColor cs Color/BLACK)
-    (.setLineWidth cs (float 1.0))))
+    (corner-to! cs r c l  t   0  1   1  0)))  ; TL
+
+(defn- stroke-round-rect!
+  "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
+  at `line-w` points and corner radius `r` points, then reset to a black hairline."
+  [^PDPageContentStream cs ^Color color line-w r x top-y w h]
+  (.setStrokingColor cs color)
+  (.setLineWidth cs (float line-w))
+  (round-rect-path! cs r x top-y w h)
+  (.stroke cs)
+  (.setStrokingColor cs Color/BLACK)
+  (.setLineWidth cs (float 1.0)))
 
 (defn- supersampled-px->pt
   "Points spanned on the page by `px` device pixels of a [[table-supersample]]-rastered image."
@@ -959,8 +973,13 @@
         ;; image is at table-supersample x logical pixels -> divide back to points
         dw  (supersampled-px->pt (.getWidth img))
         dh  (supersampled-px->pt (.getHeight img))]
+    ;; clip the rectangular image to the frame's rounded rect so its square corners can't spill past the arc
+    (.saveGraphicsState cs)
+    (round-rect-path! cs frame-corner-radius-pt x body-top cell-w body-h)
+    (.clip cs)
     (.drawImage cs img (float x) (float (- body-top dh)) (float dw) (float dh))
-    (stroke-round-rect! cs table-frame-color 0.5 4.0 x body-top cell-w body-h)))
+    (.restoreGraphicsState cs)
+    (stroke-round-rect! cs table-frame-color frame-line-w-pt frame-corner-radius-pt x body-top cell-w body-h)))
 
 (def ^:private no-results-image-bytes
   "Raw bytes of the 'no results' sail-boat asset (the same image the email/dashboard empty state uses), read once."

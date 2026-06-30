@@ -665,11 +665,12 @@
          [:tr
           (map-indexed
            (fn [c cell]
-             (let [header? (zero? r)
-                   label?  (and (pos? r) (zero? c))
-                   bg      (cell-bg cell c)]
+             (let [header?    (zero? r)
+                   first-col? (zero? c)
+                   label?     (and (pos? r) first-col?)
+                   bg         (cell-bg cell c)]
                [(if (or header? label?) :th :td)
-                {:style (style/style (style/pivot-cell-style header? label? bg))}
+                {:style (style/style (style/pivot-cell-style header? label? first-col? bg))}
                 (h (pivot-cell->str cell))]))
            row)])
        rows)]]))
