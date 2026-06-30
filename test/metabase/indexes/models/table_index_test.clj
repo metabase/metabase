@@ -89,6 +89,38 @@
       (is (= :failed (t2/select-one-fn :status :model/TableIndex running-id)))
       (is (= "not verified" (t2/select-one-fn :error_message :model/TableIndex update-id))))))
 
+(deftest mark-for-revalidation-test
+  (testing "every applicable request is flipped to :update-pending, clearing stale errors; delete-pending rows untouched"
+    (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)
+                   :model/TableIndex {create-id :id} {:transform_id transform-id
+                                                      :index_name   "create_idx"
+                                                      :structured   {:kind :btree :name "create_idx"
+                                                                     :columns [{:name "a"}]}}
+                   :model/TableIndex {succeeded-id :id} {:transform_id transform-id
+                                                         :index_name   "succeeded_idx"
+                                                         :status       :succeeded
+                                                         :structured   {:kind :btree :name "succeeded_idx"
+                                                                        :columns [{:name "b"}]}}
+                   :model/TableIndex {failed-id :id} {:transform_id transform-id
+                                                      :index_name   "failed_idx"
+                                                      :status       :failed
+                                                      :error_message "old failure"
+                                                      :structured   {:kind :btree :name "failed_idx"
+                                                                     :columns [{:name "c"}]}}
+                   :model/TableIndex {deleted-id :id} {:transform_id transform-id
+                                                       :index_name   "deleted_idx"
+                                                       :status       :delete-pending
+                                                       :structured   {:kind :btree :name "deleted_idx"
+                                                                      :columns [{:name "d"}]}}]
+      (table-index/mark-for-revalidation! transform-id)
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex create-id)))
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex succeeded-id)))
+      (is (= :update-pending (t2/select-one-fn :status :model/TableIndex failed-id)))
+      (is (nil? (t2/select-one-fn :error_message :model/TableIndex failed-id)) "stale error cleared")
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id)) "pending deletion not revived")))
+  (testing "a nil transform-id is a no-op"
+    (is (nil? (table-index/mark-for-revalidation! nil)))))
+
 (deftest select-for-verification-test
   (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)
                  :model/TableIndex {running-id :id} {:transform_id transform-id

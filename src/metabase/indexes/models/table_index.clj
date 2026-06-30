@@ -160,6 +160,16 @@
                  :error_message    message
                  :last_executed_at :%now})))
 
+(defn mark-for-revalidation!
+  "Flip `transform-id`'s applicable index requests to `:update-pending` and clear stale errors, so the next run
+  re-applies them against the current schema. Skips `:delete-pending` rows so a pending deletion isn't revived."
+  [transform-id]
+  (when transform-id
+    (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
+      (t2/update! :model/TableIndex
+                  {:id [:in ids]}
+                  {:status :update-pending, :error_message nil}))))
+
 (defn exists-for-transform?
   "True when `transform-id` already has a request for `index-name`."
   [transform-id index-name]
