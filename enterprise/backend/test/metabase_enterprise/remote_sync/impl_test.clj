@@ -1677,6 +1677,7 @@ serdes/meta:
         (stage-upsert! [_ _] nil)
         (stage-delete! [_ _] nil)
         (replace-all! [_] nil)
+        (empty-commit? [_] false)
         (finish-commit! [_ _] "written-version")
         (abort-commit! [_] nil)))))
 

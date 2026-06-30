@@ -998,20 +998,29 @@
     (remote-sync.task/update-progress! task-id 0.3)
     (let [opts    (serdes/storage-base-context)
           commit  (source.p/open-commit snapshot)
-          [synced version] (try
-                             (source.p/replace-all! commit) ; replace the managed dirs wholesale
-                             [(stage-writes commit opts export-rows)
-                              (source.p/finish-commit! commit message)]
-                             (catch Throwable e
-                               (source.p/abort-commit! commit)
-                               (throw e)))]
+          [synced version empty?]
+          (try
+            (source.p/replace-all! commit) ; replace the managed dirs wholesale
+            (let [synced (stage-writes commit opts export-rows)]
+              (if (source.p/empty-commit? commit) ; re-serialized to byte-identical content; don't push an empty commit
+                (do (source.p/abort-commit! commit) [synced nil true])
+                [synced (source.p/finish-commit! commit message) false]))
+            (catch Throwable e
+              (source.p/abort-commit! commit)
+              (throw e)))]
+      ;; Reconcile RSO state on both paths. When empty?, the repo already matches the DB, so this just clears
+      ;; the false-dirty flags (and stale removed/delete rows) that triggered the no-op export.
       (t2/with-transaction [_]
-        (remote-sync.task/set-version! task-id version)
+        (when version
+          (remote-sync.task/set-version! task-id version))
         (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
           (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
         (mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced sync-timestamp))
-      {:status :success
-       :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))
+      (if empty?
+        (do (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+            {:status :success :outcome {:kind "push-skipped"}})
+        {:status :success
+         :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}}))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1020,24 +1029,33 @@
     (remote-sync.task/update-progress! task-id 0.3)
     (let [opts   (serdes/storage-base-context)
           commit (source.p/open-commit snapshot)
-          [synced version] (try
-                             (let [synced (stage-writes commit opts writes)]
-                               (stage-deletes commit delete-paths)
-                               [synced (source.p/finish-commit! commit message)])
-                             (catch Throwable e
-                               (source.p/abort-commit! commit)
-                               (throw e)))]
+          [synced version empty?]
+          (try
+            (let [synced (stage-writes commit opts writes)]
+              (stage-deletes commit delete-paths)
+              (if (source.p/empty-commit? commit) ; staged writes/deletes net to no tree change; don't push an empty commit
+                (do (source.p/abort-commit! commit) [synced nil true])
+                [synced (source.p/finish-commit! commit message) false]))
+            (catch Throwable e
+              (source.p/abort-commit! commit)
+              (throw e)))]
+      ;; Reconcile on both paths; when empty? this clears the false-dirty flags that triggered the no-op export.
       (t2/with-transaction [_]
-        (remote-sync.task/set-version! task-id version)
+        (when version
+          (remote-sync.task/set-version! task-id version))
         ;; delete departed rows first, then update RSO metadata — same order as full-export!
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-        (mark-rows-synced! (map :id synced) synced sync-timestamp)))
-    (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
-    {:status :success
-     :outcome {:kind "pushed"
-               :count (+ (count writes) (count delete-paths))
-               :branch (settings/remote-sync-branch)}}))
+        (mark-rows-synced! (map :id synced) synced sync-timestamp))
+      (if empty?
+        (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
+            {:status :success :outcome {:kind "push-skipped"}})
+        (do
+          (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
+          {:status :success
+           :outcome {:kind "pushed"
+                     :count (+ (count writes) (count delete-paths))
+                     :branch (settings/remote-sync-branch)}})))))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.
