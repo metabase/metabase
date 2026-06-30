@@ -417,14 +417,13 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-### Custom visualizations only render in Metabase
+### Custom visualizations don't render in embeds or public links
 
-Custom visualizations won't be used in the following contexts:
+[Embeds](../embedding/introduction.md) and [public links](../embedding/public-links.md) (to questions, dashboards, and documents) don't render custom visualizations. Any card that uses one falls back to the default visualization (a table).
 
-- [Embeds](../embedding/introduction.md), as well as [public links](../embedding/public-links.md) to questions, dashboards, and documents.
-- Static renders, like charts in alerts or dashboard subscriptions.
+### Custom visualizations don't render in exports and subscriptions
 
-In these cases, Metabase will render charts with custom visualizations as tables.
+Static renders—like charts in alerts or dashboard subscriptions—fall back to a table for any card that uses a custom visualization.
 
 ## Example plugins
 
