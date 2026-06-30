@@ -420,10 +420,12 @@
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts]}]
   (let [context      (assign-context-ids context)
+        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
+        ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/get-tools-for-profile profile-id capabilities)
+        base-tools   (profiles/profile->tools profile capabilities)
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)

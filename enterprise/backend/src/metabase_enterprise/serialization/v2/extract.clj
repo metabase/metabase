@@ -42,10 +42,14 @@
     (conj "EmbeddingTheme")
 
     (not (:no-custom-viz-plugins opts))
-    (conj "CustomVizPlugin")
+    (conj "CustomVizPlugin")))
 
-    (not (:no-curated-search opts))
-    (conj "CuratedSearchEntry")))
+;; OsiAiContext is intentionally NOT in the default export set. It's a top-level model that *depends on* its
+;; entity, extracted unfiltered, so any export — even an untargeted "full" one, which still omits personal and
+;; analytics collections — would pull ai_context rows whose referenced Card/Table/Measure/Segment is absent,
+;; leaking curator text and creating dangling deps that fail import. It stays out until reverse-dependency
+;; export lands (its row should travel *with* its entity), tracked in
+;; https://linear.app/metabase/issue/BOT-1759; see the metabase.osi.models.osi-ai-context serdes TODO.
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

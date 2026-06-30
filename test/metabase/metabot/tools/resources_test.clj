@@ -119,6 +119,9 @@
    ["metabase://metric/6"                                  :metric                     ["6"]]
    ["metabase://metric/6/dimensions"                       :metric-dimensions          ["6"]]
    ["metabase://metric/6/dimensions/dim-1"                 :metric-dimension           ["6" "dim-1"]]
+   ;; ----- Measure / Segment -----
+   ["metabase://measure/9"                                 :measure                    ["9"]]
+   ["metabase://segment/10"                                :segment                    ["10"]]
    ;; ----- Transform -----
    ["metabase://transform/7"                               :transform                  ["7"]]
    ["metabase://transform/7/sources"                       :transform-sources          ["7"]]
@@ -154,6 +157,8 @@
                     read-resource/fetch-metric                     (spy :metric)
                     read-resource/fetch-metric-dimensions          (spy :metric-dimensions)
                     read-resource/fetch-metric-dimension           (spy :metric-dimension)
+                    read-resource/fetch-measure                    (spy :measure)
+                    read-resource/fetch-segment                    (spy :segment)
                     read-resource/fetch-transform                  (spy :transform)
                     read-resource/fetch-transform-sources          (spy :transform-sources)
                     read-resource/fetch-transform-target           (spy :transform-target)
@@ -569,6 +574,83 @@
           (let [{:keys [output]} (read-resource/read-resource
                                   {:uris [(str "metabase://question/" q-from-model-id "/sources")]})]
             (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
+
+(defn- measure-definition
+  "An MBQL5 measure definition: the sum of `field-id` over `table-id`."
+  [table-id field-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
+                   (lib/sum (lib.metadata/field mp field-id)))))
+
+(defn- segment-definition
+  "An MBQL5 segment definition: a filter of `field-id` > `value` on `table-id`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
+(deftest read-measure-resource-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Measure {measure-id :id}
+                       {:name       "Order Revenue"
+                        :description "sum of order totals"
+                        :table_id   orders
+                        :creator_id (mt/user->id :crowberto)
+                        :definition (measure-definition orders total)}]
+          (testing "metabase://measure/{id} returns the measure with parent-table context + portable entity id"
+            (let [result     (read-resource/read-resource {:uris [(str "metabase://measure/" measure-id)]})
+                  structured (get-in result [:resources 0 :content :structured-output])
+                  output     (:output result)]
+              (is (=? {:type                   :measure
+                       :name                   "Order Revenue"
+                       :database_id            (mt/id)
+                       :base_table_id          orders
+                       :portable-entity-id     string?
+                       :base_table_portable_fk vector?}
+                      structured))
+              (testing "rendered XML carries the measure name and a portable entity id"
+                (is (str/includes? output "Order Revenue"))
+                (is (str/includes? output "portable_entity_id=")))))
+          (testing "returns an error for an unknown measure"
+            (is (=? {:resources [{:error string?}]}
+                    (read-resource/read-resource {:uris ["metabase://measure/99999"]}))))
+          (testing "errors when the user can't read the parent table"
+            (with-redefs [mi/can-read? (constantly false)]
+              (is (error? (read-resource/read-resource {:uris [(str "metabase://measure/" measure-id)]}))))))))))
+
+(deftest read-segment-resource-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Segment {segment-id :id}
+                       {:name       "Big Orders"
+                        :description "totals over 100"
+                        :table_id   orders
+                        :definition (segment-definition orders total 100)}]
+          (testing "metabase://segment/{id} returns the segment with parent-table context + portable entity id"
+            (let [result     (read-resource/read-resource {:uris [(str "metabase://segment/" segment-id)]})
+                  structured (get-in result [:resources 0 :content :structured-output])
+                  output     (:output result)]
+              (is (=? {:type                   :segment
+                       :name                   "Big Orders"
+                       :database_id            (mt/id)
+                       :base_table_id          orders
+                       :portable-entity-id     string?
+                       :base_table_portable_fk vector?}
+                      structured))
+              (testing "rendered XML carries the segment name and a portable entity id"
+                (is (str/includes? output "Big Orders"))
+                (is (str/includes? output "portable_entity_id=")))))
+          (testing "returns an error for an unknown segment"
+            (is (=? {:resources [{:error string?}]}
+                    (read-resource/read-resource {:uris ["metabase://segment/99999"]}))))
+          (testing "errors when the user can't read the parent table"
+            (with-redefs [mi/can-read? (constantly false)]
+              (is (error? (read-resource/read-resource {:uris [(str "metabase://segment/" segment-id)]}))))))))))
 
 (deftest read-dashboard-items-test
   (mt/with-current-user (mt/user->id :crowberto)
