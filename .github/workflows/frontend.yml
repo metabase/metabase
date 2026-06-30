@@ -124,7 +124,7 @@ jobs:
         uses: ./.github/actions/report-failures-to-ci-conductor
         with:
           test-suite: fe-tests-unit
-          entrypoint: release/ci-conductor/src/report-frontend.ts
+          adapter: frontend
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && github.event_name != 'workflow_dispatch'
