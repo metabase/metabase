@@ -194,10 +194,10 @@
                                               index-table/*meta-table*)]))))))))))))
 
 (defn- put-ai-context!
-  "POST an ai_context entry through the CRUD API; returns the created row's id."
+  "PUT an ai_context entry through the CRUD API."
   [entity-type entity-local-id ai-context]
-  (:id (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
-                             {:entity_type entity-type :entity_local_id entity-local-id :ai_context ai-context})))
+  (mt/user-http-request :crowberto :put 200 (format "osi/ai-context/%s/%d" entity-type entity-local-id)
+                        {:ai_context ai-context}))
 
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> reconcile -> pgvector -> retrieve_library_entities tool, end to end"
@@ -230,8 +230,8 @@
                                :model/Table      {table-id :id}  {:db_id db-id :collection_id data-id :is_published true
                                                                   :active true :name "orders" :display_name "orders"}]
                   (try
-                    (let [cse-id (put-ai-context! "table" table-id
-                                                  {:instructions "Group by month." :synonyms [synonym]})]
+                    (let [_ (put-ai-context! "table" table-id
+                                             {:instructions "Group by month." :synonyms [synonym]})]
                       (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                       (testing "the tool returns the table, matched on the curated synonym, with usage_instructions"
                         (is (=? [{:type "table" :id table-id :matched_doc_type "synonym" :matched_text synonym
@@ -243,7 +243,7 @@
                         (mt/with-temp-vals-in-db :model/Table table-id {:is_published false}
                           (is (empty? (search!)))))
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
-                        (mt/user-http-request :crowberto :delete 204 (str "osi/ai-context/" cse-id))
+                        (mt/user-http-request :crowberto :delete 204 (format "osi/ai-context/table/%d" table-id))
                         (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                         (is (empty? (jdbc/execute!
                                      ds

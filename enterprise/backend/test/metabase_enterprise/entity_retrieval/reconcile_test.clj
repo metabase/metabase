@@ -117,10 +117,10 @@
                        :model/Card       {metric-id :id}   {:type "metric" :collection_id metrics-id
                                                             :name "Revenue" :description "Total revenue"
                                                             :database_id db-id}
-                       :model/OsiAiContext {cse-id :id} {:entity_type "table" :entity_local_id table-id
-                                                         :ai_context {:instructions "Group by month."
-                                                                      :synonyms ["sales" "revenue"]
-                                                                      :examples ["orders last month"]}}]
+                       :model/OsiAiContext _ {:entity_type "table" :entity_local_id table-id
+                                              :ai_context {:instructions "Group by month."
+                                                           :synonyms ["sales" "revenue"]
+                                                           :examples ["orders last month"]}}]
           (testing "first run indexes name/description docs for every library entity, plus ai_context docs"
             (reconcile/reconcile! ds (constantly model))
             (testing "the published table: name + description + 2 synonyms + 1 example"
@@ -135,7 +135,7 @@
             (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model)))))
           (testing "editing instructions is a no-op for the index (instructions are read live, not stored)"
             (let [before (set (map :doc_id (docs-for ds "table" table-id)))]
-              (t2/update! :model/OsiAiContext cse-id
+              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id table-id
                           {:ai_context {:instructions "Group by week."
                                         :synonyms ["sales" "revenue"]
                                         :examples ["orders last month"]}})
@@ -317,12 +317,12 @@
                            :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
                                                     :active true :name "a" :display_name "Orders"
                                                     :description "all orders"}
-                           :model/OsiAiContext {ctx-id :id} {:entity_type "table" :entity_local_id a-id
-                                                             :ai_context {:synonyms ["sales" "revenue"]}}]
+                           :model/OsiAiContext _ {:entity_type "table" :entity_local_id a-id
+                                                  :ai_context {:synonyms ["sales" "revenue"]}}]
               (reconcile/reconcile! ds (constantly model))
               (is (= {"name" 1 "description" 1 "synonym" 2}
                      (frequencies (map :doc_type (docs-for ds "table" a-id)))))
-              (t2/delete! :model/OsiAiContext :id ctx-id)
+              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id a-id)
               (is (=? {:inserted 0 :deleted 2} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
               (is (= {"name" 1 "description" 1} (frequencies (map :doc_type (docs-for ds "table" a-id))))
                   "the synonym docs are GC'd; name + description remain"))))))))
