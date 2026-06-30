@@ -221,19 +221,20 @@
 (def ^:private raw-value? (complement lib/clause?))
 
 (defn- string-valued-absolute-datetime
-  "If `x` is an `:absolute-datetime` clause whose literal is still an (unparsed) string, return that
-  string; otherwise `nil`.
+  "If `x` is an `:absolute-datetime` clause whose literal is still an (unparsed) string, return a
+  `[string unit]` pair of that inner string and the clause's temporal unit; otherwise `nil`.
 
   Such clauses arrive when a query carries temporal literals in their portable / wire form — e.g.
   Metabot's representations repair wraps `between` bounds as `[:absolute-datetime {} \"2024-01-01\"
   :day]`, and on CLJS a string is the only representation. The arms below normally parse temporal
   strings that arrive as *raw* values; without this they'd skip ones already wrapped in
   `:absolute-datetime`, leaving a bare string that later middleware (e.g. `optimize-temporal-filters`)
-  chokes on."
+  chokes on. The unit must travel with the string so a `:year`/`:month` literal keeps its bucket
+  instead of collapsing to the field's default when re-parsed."
   [x]
   (when (lib/clause-of-type? x :absolute-datetime)
-    (let [[_tag _opts v _unit] x]
-      (when (string? v) v))))
+    (let [[_tag _opts v unit] x]
+      (when (string? v) [v unit]))))
 
 (defn- wrappable-literal?
   "A raw value, or a string-valued `:absolute-datetime` that still needs parsing."
@@ -241,13 +242,24 @@
   (or (raw-value? x)
       (some? (string-valued-absolute-datetime x))))
 
-(defn- literal-value
-  "The value to hand to [[add-type-info]] for `x`: the inner string of a string-valued
-  `:absolute-datetime`, otherwise `x` itself. Re-parsing that string through `add-type-info` (with
-  the comparison field's type info) re-derives the `:absolute-datetime` with a real `java.time`
-  value, in the field's type and the report timezone — same as a raw string would get."
-  [x]
-  (or (string-valued-absolute-datetime x) x))
+(defn- wrap-literal-against-field
+  "Wrap a single comparison literal `x` against the type info of the `field` it is compared to.
+
+  A raw value, or a string-valued `:absolute-datetime`, is re-parsed through [[add-type-info]] so it
+  picks up the field's effective type and the report timezone — same as a raw string would. The
+  comparison field's own bucket still wins, but when the field is *unbucketed* the literal's own unit
+  is used as the fallback instead of `:default`, so e.g. `[:absolute-datetime {} \"2024\" :year]`
+  against an unbucketed field keeps its `:year` bucket instead of collapsing to a single instant.
+  Anything else — an already-parsed `:absolute-datetime`, `:now`, `:relative-datetime`, another
+  field — is returned untouched, so a *mixed* `:between` only wraps the bound(s) that need it."
+  [query path field x]
+  (if-let [[s unit] (string-valued-absolute-datetime x)]
+    (let [col (*type-info* query path field)]
+      (add-type-info s (cond-> col
+                         (and unit (not (:unit col))) (assoc :unit unit))))
+    (if (raw-value? x)
+      (add-type-info x (*type-info* query path field))
+      x)))
 
 (defn- wrap-value-literals-in-clause
   [query path clause]
@@ -262,11 +274,11 @@
 
     ;; field and literal
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard wrappable-literal?)]
-    [tag opts field (add-type-info (literal-value x) (*type-info* query path field))]
+    [tag opts field (wrap-literal-against-field query path field x)]
 
     ;; literal and field (literal on LHS)
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard wrappable-literal?) field]
-    [tag opts (add-type-info (literal-value x) (*type-info* query path field)) field]
+    [tag opts (wrap-literal-against-field query path field x) field]
 
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
     [:datetime-diff opts (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
@@ -274,12 +286,16 @@
     [(tag :guard #{:datetime-add :datetime-subtract :convert-timezone :temporal-extract}) opts (field :guard string?) & args]
     (into [tag opts (add-type-info (u.date/parse field) nil)] args)
 
-    [:between opts field (min-val :guard wrappable-literal?) (max-val :guard wrappable-literal?)]
-    [:between
-     opts
-     field
-     (add-type-info (literal-value min-val) (*type-info* query path field))
-     (add-type-info (literal-value max-val) (*type-info* query path field))]
+    ;; wrap each bound independently so a *mixed* `:between` — e.g. a string-valued `:absolute-datetime`
+    ;; on one side and `:now` / `:relative-datetime` / an already-parsed `:absolute-datetime` on the
+    ;; other — still gets the wrappable bound coerced instead of falling through unwrapped.
+    [:between opts field min-val max-val]
+    (when (or (wrappable-literal? min-val) (wrappable-literal? max-val))
+      [:between
+       opts
+       field
+       (wrap-literal-against-field query path field min-val)
+       (wrap-literal-against-field query path field max-val)])
 
     [(tag :guard #{:starts-with :ends-with :contains}) opts field (s :guard string?) & more]
     (let [s (add-type-info s (*type-info* query path field), :parse-datetime-strings? false)]
