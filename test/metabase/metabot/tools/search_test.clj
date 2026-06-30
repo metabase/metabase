@@ -50,7 +50,7 @@
 ;; the entity-shaped output. Curation flags (`official_collection`, `verified`) are
 ;; always present (default false), `is_container` only on dashboard/collection results.
 
-(deftest postprocess-search-result-table-test
+(deftest ^:parallel postprocess-search-result-table-test
   (let [result   {:model "table"
                   :id 1
                   :table_name "orders"
@@ -116,7 +116,7 @@
       (is (str/includes? xml "data_layer=\"final\""))
       (is (str/includes? xml "data_authority=\"authoritative\"")))))
 
-(deftest postprocess-search-result-model-test
+(deftest ^:parallel postprocess-search-result-model-test
   (let [result   {:model "dataset"
                   :id 2
                   :name "Sales Model"
@@ -139,7 +139,7 @@
                   :created_at "2024-01-02"}]
     (is (= expected (#'search/postprocess-search-result result)))))
 
-(deftest postprocess-search-result-transform-test
+(deftest ^:parallel postprocess-search-result-transform-test
   (let [result   {:model "transform"
                   :id 3
                   :name "User Transform"
@@ -158,7 +158,7 @@
                   :created_at "2024-01-03"}]
     (is (= expected (#'search/postprocess-search-result result)))))
 
-(deftest postprocess-search-result-dashboard-test
+(deftest ^:parallel postprocess-search-result-dashboard-test
   (let [result   {:model "dashboard"
                   :id 3
                   :name "Main Dashboard"
@@ -185,25 +185,28 @@
 
 (deftest ^:parallel postprocess-document-search-result-test
   (testing "document result postprocessing"
-    (let [result   {:model      "document"
-                    :id         8
-                    :name       "Quarterly plan"
-                    :can_write  false
-                    :collection {:id 10 :name "Finance" :authority_level "official"}
-                    :updated_at "2024-01-03"
-                    :created_at "2024-01-02"}
-          expected {:id          8
-                    :type        "document"
-                    :name        "Quarterly plan"
-                    :description nil
-                    :can_write   false
-                    :official    true
-                    :collection  {:id 10 :name "Finance" :authority_level "official"}
-                    :updated_at  "2024-01-03"
-                    :created_at  "2024-01-02"}]
+    (let [result   {:model               "document"
+                    :id                  8
+                    :name                "Quarterly plan"
+                    :can_write           false
+                    :official_collection true
+                    :collection          {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at          "2024-01-03"
+                    :created_at          "2024-01-02"}
+          expected {:id                  8
+                    :type                "document"
+                    :name                "Quarterly plan"
+                    :description         nil
+                    :can_write           false
+                    :official_collection true
+                    :verified            false
+                    :official            true
+                    :collection          {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at          "2024-01-03"
+                    :created_at          "2024-01-02"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
-(deftest postprocess-search-result-card-test
+(deftest ^:parallel postprocess-search-result-card-test
   (testing "card with moderated_status normalises to verified=true"
     (let [result   {:model "card"
                     :id 4
@@ -227,7 +230,7 @@
                     :created_at "2024-01-04"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
-(deftest postprocess-search-result-metric-test
+(deftest ^:parallel postprocess-search-result-metric-test
   (let [result   {:model "metric"
                   :id 5
                   :name "Revenue"
@@ -248,7 +251,7 @@
                   :created_at "2024-01-05"}]
     (is (= expected (#'search/postprocess-search-result result)))))
 
-(deftest postprocess-search-result-database-test
+(deftest ^:parallel postprocess-search-result-database-test
   (let [result   {:model "database"
                   :id 6
                   :name "Production DB"
@@ -265,7 +268,7 @@
                   :created_at "2024-01-06"}]
     (is (= expected (#'search/postprocess-search-result result)))))
 
-(deftest postprocess-search-result-collection-test
+(deftest ^:parallel postprocess-search-result-collection-test
   (let [result   {:model "collection"
                   :id 7
                   :name "Marketing"
@@ -534,7 +537,7 @@
               (is (not (str/includes? rasta-path "Secret Parent"))
                   "the unreadable ancestor's name must not leak into collection_path"))))))))
 
-(deftest broaden-query-test
+(deftest ^:parallel broaden-query-test
   (testing "zero-hit fallback OR-joins meaningful tokens, skipping queries where broadening doesn't apply"
     (are [in out] (= out (#'search/broaden-query in))
       "hard bounce rate campaign" "hard or bounce or rate or campaign"  ; every word ANDed -> OR-join
