@@ -46,11 +46,24 @@ To open a **measure** in the metrics explorer:
 
 When you open a measure or metric in the Metrics explorer, Metabase plots it along the most appropriate dimension. To change how the metric is broken out, click the current breakout dimension in the bottom controls to open the **Break out** sidebar. 
 
-By default, the sidebar lists the dimensions your metrics have in common under **Shared dimensions**. To break out by any column from any table related to the metric, click **See all**. To see the total result without any dimensions, select **No breakout**.
+By default, the sidebar lists all available dimensions. The heading reads **Dimensions** when you select a single metric or measure, or **Shared dimensions** when you compare multiple metrics or measures. 
+
+To break out by a column that isn't listed, click **See all**. This shows every column from the table the metric or measure is built on, and any related tables. To see the total result without any dimensions, select **No breakout**.
 
 You can also [break out](#break-out-by-dimensions) a metric/measure by additional dimensions or [filter the metric/measure](#filter-metrics-and-measures).
 
-Column labels are hidden by default. To show them, open the **...** menu in the bottom controls and enable the **Show column labels** toggle.
+Column labels are hidden from the visualization by default. To show them, open the **...** menu in the bottom controls and enable the **Show column labels** toggle.
+
+### Time and country dimensions
+
+Metabase collapses all time columns into a single **Time** bucket and all country columns into a single **Country** bucket. 
+
+- A column appears in the **Time** bucket based on its data type, so any date or datetime column is included. 
+- A column appears in the **Country** bucket based on its semantic type, so the **Country** bucket only appears when a column has the **Country** semantic type. 
+
+To break out by a specific time or country column, click the slider button next to **Time** or **Country** and choose one.
+
+![Metrics explorer time bucket](images/metrics-explorer-time-bucket.png)
 
 ## Compare metrics and measures
 
@@ -65,14 +78,15 @@ To compare multiple metrics or measures:
 
 You can add the same metric/measure multiple times. This is useful if you want to [break out](#break-out-by-dimensions) or [filter](#filter-metrics-and-measures) the metric, while keeping the total trend visible. For example, you might want to compare the trend of total revenue to the revenue of a single product category.
 
-Once you pick the metrics, open the **Break out** sidebar to choose a dimension to compare them by. Metabase matches dimensions across metrics differently depending on the column:
+Once you pick the metrics or measures, open the **Break out** sidebar to choose a dimension to compare them by. Metabase matches dimensions across metrics/measures differently depending on the column type:
 
-- **Time and country columns match loosely.** Pick any time column or any country column on one metric, and Metabase matches the columns under **Shared dimensions** even if they come from different tables.
-- **Other columns require an exact match.** The column appears as a comparison option under **Shared dimensions** only if both metrics have it. If you pick a column that the other metric doesn't have, Metabase shows it for the metric you're selecting and disables the other. 
+- **Compare across different time or country columns.** If your metrics/measures have time or country dimensions, you can choose which column each metric/measure uses for the comparison, even if they're different columns. For example, you can compare Orders by their order date with Reviews by their review date. Click the slider icon next to **Time** or **Country** to choose a dimension for each metric/measure.
+  ![Metrics explorer time bucket comparison](images/metrics-explorer-time-bucket-comparison.png)
+- **Other columns require an exact match.** The column appears as a comparison option under **Shared dimensions** only if both metrics/measures have it. To break out by a column that only one metric/measure has, click **See all** and select that column. Metabase applies the breakout to that metric/measure and disables the other.
 
 ![Compare metrics](./images/two-metrics.png)
 
-Metabase treats dimensions as shared when the metrics come from the same data source, or when their data sources have foreign key relationships to a common data source.
+Metabase treats dimensions as shared when the metrics or measures come from the same data source, or when their data sources have foreign key relationships to a common data source.
 
 You can [filter](#filter-metrics-and-measures) or [break out](#break-out-by-dimensions) each metric/measure separately, or [do simple calculations with metrics/measures](#calculations-with-metrics-and-measures).
 
