@@ -431,7 +431,7 @@
                                    ;; Don't include search-native-query key if nil so that we don't
                                    ;; inadvertently filter out search models that don't support it
                                    search-native-query (assoc :search-native-query (boolean search-native-query))
-                                   use-verified?       (assoc :verified true)
+                                   use-verified?       (assoc :curated true)
                                    weights             (assoc :weights weights)
                                    collection-id       (assoc :collection collection-id)))]
                             (:data (search/search search-context))))
