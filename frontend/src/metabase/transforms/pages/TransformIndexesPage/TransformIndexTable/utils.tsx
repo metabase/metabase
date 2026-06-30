@@ -22,11 +22,15 @@ export function getIndexKey(index: TableIndexEntry, position: number): string {
 export function formatStatus(
   status: TableIndexRequestStatus | undefined,
 ): string {
+  if (status === undefined) {
+    return EMPTY_CELL_PLACEHOLDER;
+  }
+
   return match(status)
-    .with("pending", () => t`Pending`)
+    .with("create-pending", "update-pending", () => t`Pending`)
+    .with("delete-pending", () => t`Removing`)
     .with("running", () => t`Running`)
     .with("succeeded", () => t`Succeeded`)
     .with("failed", () => t`Failed`)
-    .with("dropped", () => t`Dropped`)
-    .otherwise(() => EMPTY_CELL_PLACEHOLDER);
+    .exhaustive();
 }

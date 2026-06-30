@@ -112,7 +112,7 @@ describe("TransformIndexesPage", () => {
           kind: "btree",
           metabase_managed: true,
           key_columns: ["City name", "Country"],
-          request: createMockTableIndexRequest({ status: "pending" }),
+          request: createMockTableIndexRequest({ status: "create-pending" }),
         }),
       ],
     });
@@ -160,7 +160,7 @@ describe("TransformIndexesPage", () => {
         createMockTableIndexEntry({
           name: null,
           kind: "distkey",
-          request: createMockTableIndexRequest({ status: "pending" }),
+          request: createMockTableIndexRequest({ status: "create-pending" }),
         }),
       ],
     });
