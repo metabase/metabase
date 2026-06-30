@@ -1,4 +1,4 @@
-import type { CurrencyStyle } from "metabase/utils/formatting";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -246,16 +246,13 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
 
-export interface ColumnSettings {
-  column_title?: string;
-  number_separators?: string;
-  currency?: string;
-  currency_style?: CurrencyStyle;
+export type ColumnSettings = Omit<OptionsType, "click_behavior"> & {
+  _column_title_full?: string;
+  "pivot_table.column_show_totals"?: boolean;
+  text_align?: "left" | "middle" | "right";
   click_behavior?: ClickBehavior;
-
-  // some options are untyped
   [key: string]: any;
-}
+};
 
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
