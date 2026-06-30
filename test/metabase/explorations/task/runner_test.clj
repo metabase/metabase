@@ -530,3 +530,83 @@
         (canceled-mid-plan-cleanup! (:id thread))
         (is (= "pending" (:status (t2/select-one :model/ExplorationQuery :id (:id pending-eq))))
             "pending EQ on a live thread must be left alone")))))
+
+;; ---------------------------- Planner crash recovery (fix #5) ----------------------------
+
+(deftest claim-stale-unplanned-thread-reclaims-crashed-plan-test
+  (testing "Fix #5: a thread claimed for planning past the cutoff that still has no query rows
+            (pod crashed mid-plan) is reclaimable; one that already produced query rows is not."
+    (mt/with-temp [:model/User u {:email "plan-stale@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [old        (.minusMinutes (OffsetDateTime/now) 30)
+            crashed    (temp-thread! (:id u))   ; claimed long ago, produced no rows ⇒ crashed mid-plan
+            progressed (temp-thread! (:id u))]  ; claimed long ago, but produced a row ⇒ not crashed
+        (t2/update! :model/ExplorationThread (:id crashed)
+                    {:started_at old :query_plan_started_at old})
+        (t2/update! :model/ExplorationThread (:id progressed)
+                    {:started_at old :query_plan_started_at old})
+        (pending-query! (:id progressed) (:id card)
+                        (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
+        ;; Reclaim loop; tolerates unrelated claimable threads being returned first.
+        (loop [n 10]
+          (let [c (claim-unplanned-thread!)]
+            (when (and (pos? n) (not= (:id crashed) c))
+              (recur (dec n)))))
+        (let [crashed-after    (t2/select-one :model/ExplorationThread :id (:id crashed))
+              progressed-after (t2/select-one :model/ExplorationThread :id (:id progressed))
+              recent-threshold (.minusMinutes (OffsetDateTime/now) 5)]
+          (is (.isAfter ^OffsetDateTime (:query_plan_started_at crashed-after) recent-threshold)
+              "crashed-mid-plan thread was reclaimed (query_plan_started_at bumped to ~now)")
+          (is (.isBefore ^OffsetDateTime (:query_plan_started_at progressed-after) recent-threshold)
+              "a thread that already produced query rows must NOT be reclaimed"))))))
+
+(deftest claim-unplanned-thread-ignores-fresh-in-flight-plan-test
+  (testing "Fix #5: a recent (in-flight) planning claim with no rows is NOT stale-reclaimed."
+    (mt/with-temp [:model/User u {:email "plan-inflight@example.com"}]
+      (let [recent   (.minusMinutes (OffsetDateTime/now) 1)
+            in-flight (temp-thread! (:id u))]
+        (t2/update! :model/ExplorationThread (:id in-flight)
+                    {:started_at recent :query_plan_started_at recent})
+        ;; The claim must never return our in-flight thread (recent qps is neither NULL nor stale).
+        (dotimes [_ 5]
+          (is (not= (:id in-flight) (claim-unplanned-thread!))
+              "an in-flight (recent) planning claim must not be reclaimed"))
+        (is (.isBefore ^OffsetDateTime (:query_plan_started_at (t2/select-one :model/ExplorationThread :id (:id in-flight)))
+                       (.minusSeconds (OffsetDateTime/now) 30))
+            "in-flight thread's query_plan_started_at is untouched")))))
+
+;; ---------------------------- Queue metrics (fix #4) ----------------------------
+
+(def ^:private pending-query-depth #'runner/pending-query-depth)
+(def ^:private oldest-pending-age-seconds #'runner/oldest-pending-age-seconds)
+
+(deftest pending-query-depth-counts-pending-rows-test
+  (testing "Fix #4: pending-query-depth counts rows in 'pending' status (and a done row is excluded)."
+    (mt/with-temp [:model/User u {:email "depth-metric@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            before (pending-query-depth)
+            _p1    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))
+            after  (pending-query-depth)]
+        (is (= (inc before) after) "a new pending row increments the depth by exactly one")
+        (done-query-with-fake-result! (:id thread) (:id card))
+        (is (= after (pending-query-depth)) "a done row does not count toward pending depth")))))
+
+(deftest oldest-pending-age-seconds-reflects-head-of-line-test
+  (testing "Fix #4: oldest-pending-age-seconds is at least the age of the oldest pending row."
+    (mt/with-temp [:model/User u {:email "age-metric@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card)
+                                   (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count))))))]
+        ;; Backdate our pending row 100s; the global oldest-age must be at least that (MIN(created_at)
+        ;; is no later than our row), regardless of other tests' pending rows.
+        (t2/update! :model/ExplorationQuery (:id row)
+                    {:created_at (.minusSeconds (OffsetDateTime/now) 100)})
+        (is (>= (oldest-pending-age-seconds) 100)
+            "oldest-pending-age is at least the age of our backdated pending row")))))

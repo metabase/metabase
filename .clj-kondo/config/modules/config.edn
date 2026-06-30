@@ -1012,7 +1012,9 @@
    :api  #{metabase.explorations.api
            metabase.explorations.core
            metabase.explorations.init}
-   :uses #{api
+   :uses #{analytics
+           analytics-interface
+           api
            app-db
            collections
            contextual-interestingness

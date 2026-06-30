@@ -14,13 +14,15 @@
 
   Crash recovery is via stale-row reclaim: rows whose `scored_at` is still `NULL` longer than
   [[stale-claim-cutoff-minutes]] are eligible for re-claim by a future iteration. The cutoff
-  comfortably exceeds metabot.self's bounded retry budget for a single LLM call, so a still-alive
+  comfortably exceeds the per-call scoring deadline ([[llm-scoring-deadline-ms]]), so a still-alive
   worker will never be stale-reclaimed. A *caught* scorer failure (poison input, transient LLM
-  error past retries) writes a sentinel row with `score=NULL, scored_at=NOW()` so that pair isn't
-  retried forever."
+  error past retries, or a deadline overrun) writes a sentinel row with `score=NULL,
+  scored_at=NOW()` so that pair isn't retried forever."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.contextual-interestingness.core :as contextual-interestingness]
    [metabase.explorations.ai-summary :as explorations.ai-summary]
@@ -38,10 +40,12 @@
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.request.core :as request]
    [metabase.startup.core :as startup]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)))
+   (java.time Duration OffsetDateTime)
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -58,8 +62,45 @@
 (def ^:private error-backoff-ms 5000)
 (def ^:private join-timeout-ms  5000)
 
+(def ^:private llm-scoring-deadline-ms
+  "Hard wall-clock cap on a single timeline-scoring LLM call, enforced via [[u/with-timeout]] (which
+  runs the call in a `future`, conveying dynamic bindings, and cancels it on timeout). Chosen well
+  under [[stale-claim-cutoff-minutes]] so a legitimately-running scorer is never stale-reclaimed."
+  (* 90 1000))
+
 (defonce ^:private running? (atom false))
 (defonce ^:private threads  (atom []))
+
+;;; ------------------------------------- Prometheus metrics -------------------------------------
+
+(defn- pending-query-depth
+  "Number of `exploration_query` rows currently awaiting execution."
+  []
+  (t2/count :model/ExplorationQuery :status "pending"))
+
+(defn- oldest-pending-age-seconds
+  "Age in seconds of the oldest still-pending `exploration_query`, or 0 when the queue is empty.
+  Computed as `now - min(created_at)` so it keeps climbing while the runner is stalled."
+  []
+  (if-let [oldest (t2/select-one-fn :created_at :model/ExplorationQuery
+                                    {:where    [:= :status "pending"]
+                                     :order-by [[:created_at :asc]]
+                                     :limit    1})]
+    (max 0 (.toSeconds (Duration/between ^OffsetDateTime oldest (OffsetDateTime/now))))
+    0))
+
+(defmethod analytics/pull-collector ::queue [_]
+  {:min-interval-s 30
+   :f (fn []
+        (analytics.interface/set-gauge! :metabase-explorations/pending-queue-depth
+                                        (pending-query-depth))
+        (analytics.interface/set-gauge! :metabase-explorations/oldest-pending-age-seconds
+                                        (oldest-pending-age-seconds)))})
+
+(defn- record-query-outcome!
+  "Bump the `queries-processed` counter for a terminal query `status` (\"done\" / \"error\")."
+  [status]
+  (analytics.interface/inc! :metabase-explorations/queries-processed {:status status}))
 
 (defn- claim-pending-query
   "Claim a single pending row with `FOR UPDATE SKIP LOCKED` so peer workers don't fight for it.
@@ -310,7 +351,7 @@
 (defn- safe-score+describe
   "Best-effort combined contextual scorer + describer for one chart. Threads the source
   Card's description (when present), the compiled SQL of the dataset_query, and the thread
-  prompt into a single Haiku call that returns
+  prompt into a single LLM call that returns
 
       {:score :chart-description :metric-description}
 
@@ -443,22 +484,25 @@
         (let [started (OffsetDateTime/now)]
           (try
             (execute-and-persist-query-result! (finalize-row! row) started)
+            (record-query-outcome! "done")
             (catch Throwable e
               (log/errorf e "ExplorationQuery %d failed" (:id row))
               (t2/update! :model/ExplorationQuery (:id row)
                           {:status        "error"
                            :error_message (.getMessage e)
                            :started_at    started
-                           :finished_at   (OffsetDateTime/now)}))))
+                           :finished_at   (OffsetDateTime/now)})
+              (record-query-outcome! "error"))))
         :worked))
     (when-let [tid @row-thread]
       (maybe-complete-thread! tid)
       :worked)))
 
 (def ^:private ^:const stale-claim-cutoff-minutes
-  "How long after a claim row's `created_at` we treat it as stale and reclaimable. Bounded above
-  by metabot.self's retry budget for a single LLM call (~60s worst case), so a still-alive worker
-  will never be stale-reclaimed. Five minutes gives plenty of headroom."
+  "How long after a claim row's `created_at` we treat it as stale and reclaimable. Must comfortably
+  exceed the wall-clock cost of one scoring iteration so a still-alive worker is never
+  stale-reclaimed. Scoring LLM calls are hard-capped at [[llm-scoring-deadline-ms]] (90s), so five
+  minutes leaves ample headroom."
   5)
 
 (defn- stale-cutoff
@@ -559,8 +603,13 @@
           score      (try
                        (when creator-id
                          (request/with-current-user creator-id
-                           (explorations.timeline-interestingness/score-query-timeline
-                            exploration_query_id timeline_id)))
+                           (u/with-timeout llm-scoring-deadline-ms
+                             (explorations.timeline-interestingness/score-query-timeline
+                              exploration_query_id timeline_id))))
+                       (catch TimeoutException _
+                         (log/warnf "Timeline scoring for query=%s timeline=%s timed out after %dms; treating as unscored"
+                                    exploration_query_id timeline_id llm-scoring-deadline-ms)
+                         nil)
                        (catch Throwable e
                          (log/warnf e "Timeline scoring failed for query=%s timeline=%s"
                                     exploration_query_id timeline_id)
@@ -571,31 +620,57 @@
       (maybe-complete-thread! (:exploration_thread_id eq)))
     :worked))
 
+(def ^:private ^:const plan-stale-cutoff-minutes
+  "Crash-recovery window for the planning phase."
+  10)
+
+(defn- plan-stale-cutoff
+  "Cutoff `OffsetDateTime`: started threads whose `query_plan_started_at` is older than this and
+  that still have no query rows are eligible for planner-crash reclaim."
+  ^OffsetDateTime []
+  (.minusMinutes (OffsetDateTime/now) plan-stale-cutoff-minutes))
+
 (defn- claim-unplanned-thread!
-  "CAS-claim the next thread that has been started but never planned:
-  `started_at IS NOT NULL`, `query_plan_started_at IS NULL`, and no
-  `exploration_query` rows yet. Returns the claimed thread id, or nil when
-  there's no work or we lost the race. The CAS makes this safe under multiple
-  workers: only one update will affect a given row."
+  "CAS-claim a started thread for planning. A thread is claimable when it has no `exploration_query`
+  rows yet and its `query_plan_started_at` is either NULL (never planned) or older than
+  [[plan-stale-cutoff-minutes]] — the latter being planner-crash recovery: a pod claimed the thread
+  for planning and died before producing any rows. Returns the claimed thread id, or nil when there's
+  no work or we lost the race.
+
+  Excludes canceled threads and ones that already started analysis/completion. Those last two guards
+  matter only for the stale branch — they distinguish a crash from a legitimately-empty thread that
+  planned 0 charts and finished. A never-planned thread always has `completed_at`/`analysis_started_at`
+  NULL (they're set only after a plan iteration runs, and `reset-thread-for-rerun!` clears them on
+  restart), so the guards are no-ops for the fresh branch.
+
+  The CAS repeats the `query_plan_started_at` predicate (still NULL, or still older than the
+  freshly-recomputed cutoff) so it serializes competing workers; because the cutoff exceeds any
+  planner's run time, a still-alive planner is never reclaimed."
   []
-  (let [thread-id (t2/select-one-fn
-                   :id :model/ExplorationThread
-                   {:where    [:and
-                               [:not= :started_at nil]
-                               [:= :query_plan_started_at nil]
-                               [:= :canceled_at nil]
-                               [:not-exists {:select [1]
-                                             :from   [:exploration_query]
-                                             :where  [:= :exploration_query.exploration_thread_id
-                                                      :exploration_thread.id]}]]
-                    :order-by [[:id :asc]]
-                    :limit    1})]
-    (when thread-id
-      (when (pos? (t2/update! :model/ExplorationThread
-                              :id                    thread-id
-                              :query_plan_started_at nil
-                              {:query_plan_started_at (OffsetDateTime/now)}))
-        thread-id))))
+  (let [claimable (fn [] [:or [:= :query_plan_started_at nil]
+                          [:< :query_plan_started_at (plan-stale-cutoff)]])]
+    (when-let [{:keys [id query_plan_started_at]}
+               (t2/select-one [:model/ExplorationThread :id :query_plan_started_at]
+                              {:where    [:and
+                                          [:not= :started_at nil]
+                                          [:= :canceled_at nil]
+                                          [:= :completed_at nil]
+                                          [:= :analysis_started_at nil]
+                                          (claimable)
+                                          [:not-exists {:select [1]
+                                                        :from   [:exploration_query]
+                                                        :where  [:= :exploration_query.exploration_thread_id
+                                                                 :exploration_thread.id]}]]
+                               :order-by [[:id :asc]]
+                               :limit    1})]
+      (when (pos? (t2/query-one
+                   {:update :exploration_thread
+                    :set    {:query_plan_started_at (OffsetDateTime/now)}
+                    :where  [:and [:= :id id] (claimable)]}))
+        ;; a non-nil prior timestamp means this was a crash reclaim, not a first-time claim
+        (when query_plan_started_at
+          (log/infof "Stale-reclaimed unplanned thread %d (planner appears to have crashed mid-plan)" id))
+        id))))
 
 (defn- canceled-mid-plan-cleanup!
   "Planner-race repair: the user can cancel a thread *after* the planner claimed it (set
