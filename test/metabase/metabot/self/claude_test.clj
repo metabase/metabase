@@ -449,6 +449,27 @@
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
 
+(deftest ^:parallel supported-model?-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
+      (is (true? (#'claude/supported-model? {:id id})) id)))
+  (testing "non-whitelisted models are not supported"
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-fable-5" "claude-sonnet-4-20250514"]]
+      (is (false? (#'claude/supported-model? {:id id})) id))))
+
+(deftest list-models-filters-catalog-to-whitelist-test
+  (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"]
+      (with-redefs [http/request (fn [_]
+                                   {:body (json/encode
+                                           {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                   {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                   {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                   {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
+        (is (= [{:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
+                {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
+               (:models (claude/list-models))))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; temperature support tests
 ;;; ──────────────────────────────────────────────────────────────────
