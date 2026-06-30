@@ -647,79 +647,61 @@
         (source.p/abort-commit! commit)
         (throw e)))))
 
-(defn- merge-and-store!
-  "Reconcile freshly serialized local state (`stream`) against a remote branch that has advanced beyond the
-  last sync, via an entity-identity 3-way merge of the merge base (`base-snapshot`), local state, and the
-  remote tip (`snapshot`). On a clean merge, writes the merged file set (wholesale, fast-forwarding onto the
-  remote tip) and returns `{:status :success :version <sha-or-:remote-sync/empty-commit> :summary {...}}`.
-  When the same entity changed on both sides, returns `{:status :conflict :conflicts [..] :summary {..}}`
-  without writing anything."
-  [stream snapshot base-snapshot task-id message]
-  (let [{:keys [merged conflicts summary]} (source/compute-merge stream snapshot base-snapshot task-id)]
-    (if (seq conflicts)
-      {:status :conflict :conflicts conflicts :summary summary}
-      (let [[_ version] (commit-staged! snapshot message
-                                        (fn [commit]
-                                          (source.p/replace-all! commit) ; merged set replaces the managed dirs wholesale
-                                          (run! #(source.p/stage-upsert! commit %) merged)))]
-        {:status :success :version version :summary summary}))))
-
 (defn- export-merged!
   "Export path taken when the remote branch has advanced beyond the last synced version (`base-snapshot`
-  is the merge base). Performs an entity-identity 3-way merge of local state against the remote tip:
-  - on a genuine conflict (same entity changed on both sides) returns a `:conflict` result;
+  is the merge base). Runs an entity-identity 3-way merge of local state (`models`) against the remote tip:
+  - on a genuine conflict (same entity changed on both sides) returns a `:conflict` result without writing;
   - on a clean merge, writes the merged set (fast-forwarding onto the remote tip), then reconciles the
     local app DB by loading the merged result (the 'pull' half), so local now contains the remote's
     changes. Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
-        {:keys [status version conflicts summary]}
-        (merge-and-store! models snapshot base-snapshot task-id message)
-        ;; An empty merge means the merged set already matched the remote tip: nothing was pushed, so
-        ;; reconcile (and advance) against the tip rather than a non-existent merge commit.
-        empty?       (= version :remote-sync/empty-commit)
-        version      (if empty? (source.p/version snapshot) version)]
-    (case status
-      :conflict
-      (let [conflicts (mapv remote-sync.merge/conflict-label conflicts)]
-        (log/infof "Export merge conflict on %d entit(ies): %s"
-                   (count conflicts) (str/join ", " conflicts))
+        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id)]
+    (if (seq conflicts)
+      (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
+        (log/infof "Export merge conflict on %d entit(ies): %s" (count labels) (str/join ", " labels))
         {:status        :conflict
          :version       (source.p/version snapshot)
-         :conflicts     conflicts
+         :conflicts     labels
          :merge-summary summary
          :message       "Export blocked: the same content was changed both locally and on the remote branch."})
-
-      :success
-      ;; Fold-in pull: the merge brought remote changes that aren't in the local app DB yet. Load the
-      ;; merged result so local state matches what we just pushed, marking everything synced and advancing
-      ;; the version atomically with the reconcile (set-version! runs only after the load, so a crash leaves
-      ;; the version at the old base and a retry re-merges — the push is idempotent — rather than advancing
-      ;; the pointer past un-reconciled local state).
-      (if-let [merged-snapshot (source.p/snapshot-at source version)]
-        (let [pulled (apply + (vals summary))]
-          (load-snapshot! merged-snapshot task-id sync-timestamp
-                          :finalize! (fn []
-                                       (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-                                       (remote-sync.task/set-version! task-id version)))
-          (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
-                     pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
-          {:status :success :version version :merge-summary summary
-           ;; An empty merge pushed nothing: it's a pull when remote changes were folded in, or a no-op
-           ;; when nothing changed on either side.
-           :outcome (cond
-                      (not empty?) {:kind "merged" :pulled pulled :pushed pushed-count
-                                    :branch (settings/remote-sync-branch)}
-                      (pos? pulled) {:kind "pulled" :count pulled :branch (settings/remote-sync-branch)}
-                      :else         {:kind "push-skipped"})})
-        ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
-        ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
-        ;; the version while skipping the reconcile, which would leave local missing the folded-in remote
-        ;; changes. The push already landed, so a retry sees the divergence and re-merges + reconciles.
-        (throw (ex-info (format (str "Merge pushed to %s but its commit could not be resolved locally to "
-                                     "reconcile the app DB; re-run the export to pull the merged changes.")
-                                version)
-                        {:version version}))))))
+      (let [[_ version] (commit-staged! snapshot message
+                                        (fn [commit]
+                                          (source.p/replace-all! commit) ; merged set replaces the managed dirs wholesale
+                                          (run! #(source.p/stage-upsert! commit %) merged)))
+            ;; An empty merge means the merged set already matched the remote tip: nothing was pushed, so
+            ;; reconcile (and advance) against the tip rather than a non-existent merge commit.
+            empty?  (= version :remote-sync/empty-commit)
+            version (if empty? (source.p/version snapshot) version)]
+        ;; Fold-in pull: the merge brought remote changes that aren't in the local app DB yet. Load the
+        ;; merged result so local state matches what we just pushed, marking everything synced and advancing
+        ;; the version atomically with the reconcile (set-version! runs only after the load, so a crash leaves
+        ;; the version at the old base and a retry re-merges — the push is idempotent — rather than advancing
+        ;; the pointer past un-reconciled local state).
+        (if-let [merged-snapshot (source.p/snapshot-at source version)]
+          (let [pulled (apply + (vals summary))]
+            (load-snapshot! merged-snapshot task-id sync-timestamp
+                            :finalize! (fn []
+                                         (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+                                         (remote-sync.task/set-version! task-id version)))
+            (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
+                       pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
+            {:status :success :version version :merge-summary summary
+             ;; An empty merge pushed nothing: it's a pull when remote changes were folded in, or a no-op
+             ;; when nothing changed on either side.
+             :outcome (cond
+                        (not empty?) {:kind "merged" :pulled pulled :pushed pushed-count
+                                      :branch (settings/remote-sync-branch)}
+                        (pos? pulled) {:kind "pulled" :count pulled :branch (settings/remote-sync-branch)}
+                        :else         {:kind "push-skipped"})})
+          ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
+          ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
+          ;; the version while skipping the reconcile, which would leave local missing the folded-in remote
+          ;; changes. The push already landed, so a retry sees the divergence and re-merges + reconciles.
+          (throw (ex-info (format (str "Merge pushed to %s but its commit could not be resolved locally to "
+                                       "reconcile the app DB; re-run the export to pull the merged changes.")
+                                  version)
+                          {:version version})))))))
 
 ;;; ------------------------------------------- Incremental Export Fast-Path -------------------------------------------
 

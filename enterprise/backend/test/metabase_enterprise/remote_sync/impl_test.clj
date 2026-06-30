@@ -1666,20 +1666,22 @@ serdes/meta:
 ;;; ------------------------------------- export! divergence / merge tests -------------------------------------
 
 (defn- export-test-snapshot
-  "A minimal SourceSnapshot reporting a fixed `version`."
-  [version]
-  (reify source.p/SourceSnapshot
-    (version [_] version)
-    (list-files [_] [])
-    (read-file [_ _] nil)
-    (open-commit [_]
-      (reify source.p/CommitBuilder
-        (stage-upsert! [_ _] nil)
-        (stage-delete! [_ _] nil)
-        (replace-all! [_] nil)
-        (empty-commit? [_] false)
-        (finish-commit! [_ _] "written-version")
-        (abort-commit! [_] nil)))))
+  "A minimal SourceSnapshot reporting a fixed `version`. `empty?` controls what its commit's `empty-commit?`
+  reports, to model a staged tree that already matches the remote tip."
+  ([version] (export-test-snapshot version false))
+  ([version empty?]
+   (reify source.p/SourceSnapshot
+     (version [_] version)
+     (list-files [_] [])
+     (read-file [_ _] nil)
+     (open-commit [_]
+       (reify source.p/CommitBuilder
+         (stage-upsert! [_ _] nil)
+         (stage-delete! [_ _] nil)
+         (replace-all! [_] nil)
+         (empty-commit? [_] empty?)
+         (finish-commit! [_ _] "written-version")
+         (abort-commit! [_] nil))))))
 
 (defn- export-test-source
   "A minimal Source whose snapshot-at returns a snapshot at the requested version."
@@ -1697,9 +1699,10 @@ serdes/meta:
       (let [reconciled (atom nil)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      impl/merge-and-store!          (fn [_ _ _ _ _]
-                                                       {:status :success :version "merged-M"
-                                                        :summary {:added 2 :updated 1 :removed 0}})
+                      source/compute-merge             (fn [_ _ _ _]
+                                                         {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                          :conflicts []
+                                                          :summary {:added 2 :updated 1 :removed 0}})
                       impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
                                                          (reset! reconciled (source.p/version snap))
                                                          (when finalize! (finalize!)))]
@@ -1709,9 +1712,9 @@ serdes/meta:
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :success (:status result)))
             (is (= {:added 2 :updated 1 :removed 0} (:merge-summary result)))
-            (is (= "merged-M" @reconciled)
+            (is (= "written-version" @reconciled)
                 "the merged result is loaded back into the local app DB (the pull half)")
-            (is (= "merged-M" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+            (is (= "written-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
 
 (deftest export!-empty-merge-reports-pull-test
   (testing "when the merge matches the remote tip (nothing to push), export! folds in remote changes, reports a pull, and advances to the tip"
@@ -1719,13 +1722,16 @@ serdes/meta:
       (let [reconciled (atom nil)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      impl/merge-and-store!            (fn [_ _ _ _ _]
-                                                         {:status :success :version :remote-sync/empty-commit
+                      source/compute-merge             (fn [_ _ _ _]
+                                                         {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                          :conflicts []
                                                           :summary {:added 1 :updated 0 :removed 0}})
                       impl/load-snapshot!              (fn [snap _ _ & {:keys [finalize!]}]
                                                          (reset! reconciled (source.p/version snap))
                                                          (when finalize! (finalize!)))]
-          (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
+          ;; the remote-tip snapshot reports the staged tree as identical (empty-commit? true), so the merge
+          ;; pushes no commit
+          (let [result (impl/export! (export-test-snapshot "remote-R" true) task-id "msg"
                                      :merge? true
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
@@ -1743,12 +1749,12 @@ serdes/meta:
       (let [reconciled? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      impl/merge-and-store!          (fn [_ _ _ _ _]
-                                                       {:status :conflict
-                                                        :conflicts [{:key [["Card" "A"]]
-                                                                     :ours {:path "collections/a.yaml" :content "x"}
-                                                                     :theirs {:path "collections/a.yaml" :content "y"}}]
-                                                        :summary {:added 0 :updated 0 :removed 0}})
+                      source/compute-merge             (fn [_ _ _ _]
+                                                         {:merged []
+                                                          :conflicts [{:key [["Card" "A"]]
+                                                                       :ours {:path "collections/a.yaml" :content "x"}
+                                                                       :theirs {:path "collections/a.yaml" :content "y"}}]
+                                                          :summary {:added 0 :updated 0 :removed 0}})
                       impl/load-snapshot!              (fn [_ _ _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -1772,9 +1778,10 @@ serdes/meta:
                                 (snapshot-at [_ _] nil))]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      impl/merge-and-store!          (fn [_ _ _ _ _]
-                                                       {:status :success :version "merged-M"
-                                                        :summary {:added 1 :updated 0 :removed 0}})
+                      source/compute-merge             (fn [_ _ _ _]
+                                                         {:merged [{:path "collections/x.yaml" :content "x"}]
+                                                          :conflicts []
+                                                          :summary {:added 1 :updated 0 :removed 0}})
                       impl/load-snapshot!              (fn [_ _ _ & _] (reset! reconciled? true))]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :merge? true
@@ -1803,7 +1810,7 @@ serdes/meta:
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      impl/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})]
+                      source/compute-merge             (fn [& _] (reset! merged? true) {:merged [] :conflicts [] :summary {}})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
@@ -1818,7 +1825,7 @@ serdes/meta:
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/exportable-entities         (constantly {"Card" [999999999]})  ; absent id -> empty extraction; routing is what's under test
-                      impl/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
+                      source/compute-merge             (fn [& _] (reset! merged? true) {:merged [] :conflicts [] :summary {}})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :force? true
                                      :source (export-test-source)
@@ -1837,7 +1844,7 @@ serdes/meta:
         ;; never reaches the merge path.
         (with-redefs [remote-sync.task/last-version    (constantly "remote-R")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      impl/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
+                      source/compute-merge             (fn [& _] (reset! merged? true) {:merged [] :conflicts [] :summary {}})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "remote-R"))]

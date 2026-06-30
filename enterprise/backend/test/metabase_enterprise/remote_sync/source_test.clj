@@ -1,7 +1,6 @@
 (ns metabase-enterprise.remote-sync.source-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as th]
@@ -27,81 +26,24 @@
 (defn- entities->snapshot
   "Serializes `entities` to file specs and returns a snapshot whose list-files/read-file expose them. The
   snapshot also records writes into `written` (an atom) and reports a fixed version, so it can stand in for
-  the remote tip in [[impl/merge-and-store!]]. `empty?` controls what the commit's `empty-commit?` reports,
-  to model a merge whose staged tree already matches the remote tip."
-  ([entities task-id written]
-   (entities->snapshot entities task-id written false))
-  ([entities task-id written empty?]
-   (let [by-path (into {} (map (juxt :path :content)) (source/serialize-specs entities task-id))]
-     (reify source.p/SourceSnapshot
-       (list-files [_] (vec (keys by-path)))
-       (read-file [_ p] (get by-path p))
-       (open-commit [_]
-         (let [staged (atom [])]
-           (reify source.p/CommitBuilder
-             (stage-upsert! [_ spec] (swap! staged conj spec) nil)
-             (stage-delete! [_ _path] nil)
-             (replace-all! [_] nil)
-             (empty-commit? [_] empty?)
-             (finish-commit! [_ message]
-               (reset! written {:message message :files @staged})
-               "merged-version")
-             (abort-commit! [_] nil))))
-       (version [_] "remote-tip")))))
-
-(deftest merge-and-store!-clean-merge-test
-  (testing "when local and remote changed different entities, merge-and-store! writes the union with no conflict"
-    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
-      (let [written     (atom nil)
-            base        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")]
-            ;; local kept A and B, added C
-            ours        [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")
-                         (create-test-entity "C" "c" "Card")]
-            ;; remote kept A and B, added D
-            theirs      [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")
-                         (create-test-entity "D" "d" "Card")]
-            base-snap   (entities->snapshot base task-id (atom nil))
-            remote-snap (entities->snapshot theirs task-id written)
-            result      (#'impl/merge-and-store! ours remote-snap base-snap task-id "merge commit")]
-        (is (= :success (:status result)))
-        (is (= "merged-version" (:version result)))
-        (is (= {:added 1 :updated 0 :removed 0} (:summary result))
-            "only D is folded in from the remote")
-        (testing "the union of all four entities is written"
-          (let [ids (->> @written :files
-                         (keep #(second (re-find #"entity_id: (\w+)" (:content %))))
-                         sort)]
-            (is (= ["A" "B" "C" "D"] ids))))))))
-
-(deftest merge-and-store!-empty-merge-skips-commit-test
-  (testing "when the merged set already matches the remote tip, merge-and-store! pushes no commit and returns the empty-commit sentinel (GHY-3934)"
-    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
-      (let [written     (atom nil)
-            base        [(create-test-entity "A" "a" "Card")]
-            ;; local unchanged vs base; remote added B — the 3-way merge equals the remote tip, so staging
-            ;; it is a no-op (the snapshot reports empty-commit? true).
-            ours        [(create-test-entity "A" "a" "Card")]
-            theirs      [(create-test-entity "A" "a" "Card") (create-test-entity "B" "b" "Card")]
-            base-snap   (entities->snapshot base task-id (atom nil))
-            remote-snap (entities->snapshot theirs task-id written true)
-            result      (#'impl/merge-and-store! ours remote-snap base-snap task-id "merge commit")]
-        (is (= :success (:status result)))
-        (is (= :remote-sync/empty-commit (:version result)))
-        (is (nil? @written) "no commit is pushed when the merge matches the remote tip")))))
-
-(deftest merge-and-store!-conflict-test
-  (testing "when the same entity changed on both sides, merge-and-store! returns :conflict and writes nothing"
-    (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
-      (let [written     (atom nil)
-            base        [(create-test-entity "A" "a" "Card")]
-            ours        [(create-test-entity* "A" "a" "Card" "ours")]
-            theirs      [(create-test-entity* "A" "a" "Card" "theirs")]
-            base-snap   (entities->snapshot base task-id (atom nil))
-            remote-snap (entities->snapshot theirs task-id written)
-            result      (#'impl/merge-and-store! ours remote-snap base-snap task-id "merge commit")]
-        (is (= :conflict (:status result)))
-        (is (= 1 (count (:conflicts result))))
-        (is (nil? @written) "nothing should be written when there is a conflict")))))
+  the remote tip in the merge tests."
+  [entities task-id written]
+  (let [by-path (into {} (map (juxt :path :content)) (source/serialize-specs entities task-id))]
+    (reify source.p/SourceSnapshot
+      (list-files [_] (vec (keys by-path)))
+      (read-file [_ p] (get by-path p))
+      (open-commit [_]
+        (let [staged (atom [])]
+          (reify source.p/CommitBuilder
+            (stage-upsert! [_ spec] (swap! staged conj spec) nil)
+            (stage-delete! [_ _path] nil)
+            (replace-all! [_] nil)
+            (empty-commit? [_] false)
+            (finish-commit! [_ message]
+              (reset! written {:message message :files @staged})
+              "merged-version")
+            (abort-commit! [_] nil))))
+      (version [_] "remote-tip"))))
 
 (deftest preview-merge-clean-test
   (testing "preview-merge reports a clean merge and summary without writing"

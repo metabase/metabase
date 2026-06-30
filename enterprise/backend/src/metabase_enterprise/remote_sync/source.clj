@@ -143,7 +143,7 @@
       (version [_] nil))))
 
 (defn preview-merge
-  "Dry-run of [[merge-and-store!]]: computes the 3-way merge without writing anything. Returns
+  "Dry-run of the export merge: computes the 3-way merge without writing anything. Returns
   `{:clean? bool :conflicts [labels] :summary {:added :updated :removed}
     :force-push-casualties {:deleted [labels] :overwritten [labels]}}`. The casualties are the remote
   content a force push (rather than a merge) would discard. Pass nil for `task-id` to skip progress
