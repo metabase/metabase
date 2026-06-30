@@ -127,13 +127,13 @@
   ;; Store under a flat top-level directory rather than nesting next to the entity: serdes/storage-path-prefixes
   ;; only knows how to nest under Database/Schema/Table/Field, so a Card/Measure/Segment parent would throw.
   ;; The row's identity still lives in its nested generate-path (the on-disk :serdes/meta); this is only the
-  ;; file's location. The key includes each parent segment's MODEL, so distinct paths that would otherwise
-  ;; join to the same string — e.g. database "a-b" + table "c" vs database "a" + schema "b" + table "c" —
-  ;; stay distinct and one context can't overwrite another's file.
-  (let [parent (pop (vec (serdes/path entity)))
-        ref    (str/join "/" (map (fn [{:keys [model id]}] (str model ":" id)) parent))]
+  ;; file's location. Storage dedups by `:key`, so it must be unambiguous: use the EDN of the parent's
+  ;; `[model id]` pairs (ids can contain "/" and ":", so a delimiter-joined string could collide for distinct
+  ;; paths). The slug is just a readable filename — the unique-name generator disambiguates it by `:key`.
+  (let [parent (pop (vec (serdes/path entity)))]
     [{:label "osi_ai_context"}
-     {:label (u/slugify ref {:unicode? true}) :key ref}]))
+     {:label (u/slugify (str/join "-" (map :id parent)) {:unicode? true})
+      :key   (pr-str (mapv (juxt :model :id) parent))}]))
 
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
 ;; verbatim. The key columns are carried by the path, not as fields: `entity_local_id` is resolved from the
