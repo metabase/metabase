@@ -20,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,11 +30,12 @@
               "measure" "metric" "segment" "table" "transform"))
 
 (def ^:private metabot-weight-overrides
-  "Per-request weight overrides applied to every metabot search. Boosts curator signals
-   (verified, official-collection) so curated content surfaces ahead of obscure items.
-   The LLM has no implicit affordance to 'trust' results otherwise — these signals are
-   how a human user would visually distinguish 'safe' content. text/exact stay at the
-   defaults (5) so on-topic results still win — curation only breaks near-ties."
+  "Per-request weight overrides applied to every metabot search. Nudges curator signals
+   (verified, official-collection, view-count) up from their default of 1 so they act as
+   tie-breakers — the LLM has no implicit affordance to 'trust' results otherwise, and
+   these signals are how a human user would visually distinguish 'safe' content. The boost
+   is deliberately small: against :exact (100) and the :metabot context's :data-layer (33),
+   text relevance still decides the ranking and curation only breaks near-ties."
   {:official-collection 4
    :verified            5
    :view-count          3})
@@ -627,7 +629,7 @@
 
 (def ^:private search-schema
   [:map {:closed true}
-   [:query :string]
+   [:query ms/NonBlankString]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "measure" "segment"
                           "dashboard" "question" "collection"]]]]
@@ -648,7 +650,7 @@
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:query :string]
+   [:query ms/NonBlankString]
    [:database_id :int]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model"]]]]
@@ -664,7 +666,7 @@
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:query :string]
+   [:query ms/NonBlankString]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "measure" "segment"
                           "question" "collection"]]]]
@@ -684,7 +686,7 @@
 
 (def ^:private transform-search-schema
   [:map {:closed true}
-   [:query :string]
+   [:query ms/NonBlankString]
    [:search_native_query {:optional true} [:maybe :boolean]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]
