@@ -50,11 +50,7 @@ jobs:
           INPUT_VERSION: ${{ github.event.inputs.release_version }}
         with:
           script: | # js
-            const {
-              getMajorVersionNumberFromReleaseBranch,
-              getLastReleaseTag,
-              findNextMinorVersion,
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const R = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const { REF_NAME, CURRENT_VERSION, INPUT_VERSION } = process.env;
             const owner = context.repo.owner;
@@ -69,13 +65,13 @@ jobs:
 
             // Branch -> major: release branches encode it; master develops the next major.
             const major = REF_NAME.startsWith('release-x.')
-              ? getMajorVersionNumberFromReleaseBranch(REF_NAME)
+              ? R.getMajorVersionNumberFromReleaseBranch(REF_NAME)
               : String(Number(CURRENT_VERSION) + 1);
 
             // Last STABLE MINOR shipped on this line (ignore patches + pre-releases),
             // so the release we record is always the next MINOR (e.g. v0.63.3) and a
             // patch build (v0.63.2.3) maps to its parent minor rather than its own release.
-            const lastMinorTag = await getLastReleaseTag({
+            const lastMinorTag = await R.getLastReleaseTag({
               github, owner, repo,
               version: `v0.${major}.0`, // only the major is read out of this
               ignorePatches: true,
@@ -83,12 +79,14 @@ jobs:
             });
 
             const releaseVersion = lastMinorTag
-              ? findNextMinorVersion(lastMinorTag) // v0.63.2 -> v0.63.3
+              ? R.findNextMinorVersion(lastMinorTag) // v0.63.2 -> v0.63.3
               : `v0.${major}.0`;                   // .0 not cut yet (done manually)
+            const linearReleaseName = R.getLinearReleaseName(releaseVersion);
 
             core.setOutput('release_version', releaseVersion);
             core.setOutput('base_ref', lastMinorTag ?? '');
-            core.info(`Linear release ${releaseVersion} (baseline: ${lastMinorTag ?? 'none'})`);
+            core.setOutput('linear_release_name', linearReleaseName);
+            core.info(`Linear release ${linearReleaseName} (baseline: ${lastMinorTag ?? 'none'})`);
 
       - name: Sync / update / complete the Linear release
         uses: linear/linear-release-action@v0
