@@ -419,9 +419,11 @@
                    "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
-  (testing "sampling parameters were removed starting with Opus 4.7 and on Fable models"
+  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
-                   "claude-opus-5" "claude-opus-5-0" "claude-fable-5"]]
+                   "claude-opus-5" "claude-opus-5-0"
+                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
+                   "claude-fable-5"]]
       (is (false? (#'claude/model-supports-temperature? model))
           model))))
 
@@ -440,4 +442,5 @@
       (is (= 0.3 (:temperature (request-body "claude-haiku-4-5")))))
     (testing "temperature is omitted for models that reject sampling parameters"
       (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
+      (is (not (contains? (request-body "claude-sonnet-5") :temperature)))
       (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))

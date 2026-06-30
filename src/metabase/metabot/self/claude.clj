@@ -300,16 +300,18 @@
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
 
-  Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7.  Strips an
-  optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
+  Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7 and Sonnet 5.
+  Strips an optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
   [model]
   (let [model (str/replace-first (str model) #"^anthropic\." "")]
     (not (or (str/starts-with? model "claude-fable")
-             (when-let [[_ major minor] (re-find #"^claude-opus-(\d+)(?:-(\d+))?" model)]
+             (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet)-(\d+)(?:-(\d+))?" model)]
                (let [major (parse-long major)
                      minor (or (some-> minor parse-long) 0)]
-                 (or (> major 4)
-                     (and (= major 4) (>= minor 7)))))))))
+                 (case family
+                   "opus"   (or (> major 4)
+                                (and (= major 4) (>= minor 7)))
+                   "sonnet" (>= major 5))))))))
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."
