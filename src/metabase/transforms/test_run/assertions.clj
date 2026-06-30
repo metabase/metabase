@@ -8,6 +8,7 @@
   Entry point: [[run-assertions!]]."
   (:require
    [clojure.string :as str]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
    [metabase.transforms.test-run.diff :as diff]
    [metabase.transforms.test-run.resolve :as resolve]
@@ -26,12 +27,6 @@
 ;;; ---------------------------------------------------------------------------
 ;;; SQL helpers
 ;;; ---------------------------------------------------------------------------
-
-(defn- sql-quote-literal
-  "Escape a SQL string literal (single-quote delimiter, escape by doubling).
-  Returns the literal wrapped in single quotes."
-  ^String [^String s]
-  (str "'" (str/replace s "'" "''") "'"))
 
 (defn- strip-trailing-semicolon
   "Remove a trailing semicolon and surrounding whitespace from `sql`.
@@ -99,7 +94,7 @@
   [binding runnable]
   (let [union-parts (mapv (fn [{:keys [name rewritten-sql]}]
                             (let [clean (strip-trailing-semicolon rewritten-sql)]
-                              (str "SELECT " (sql-quote-literal name)
+                              (str "SELECT " (sql.u/quote-literal name)
                                    " AS __assertion, COUNT(*) AS __failing"
                                    " FROM (" clean ") __a")))
                           runnable)

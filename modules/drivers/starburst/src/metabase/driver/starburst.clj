@@ -969,7 +969,7 @@
 
 (defmethod sql.qp/inline-value [:starburst String]
   [_ ^String s]
-  (str \' (sql.u/escape-sql s :ansi) \'))
+  (sql.u/quote-literal s))
 
 (defmethod sql.qp/inline-value [:starburst Time]
   [driver t]

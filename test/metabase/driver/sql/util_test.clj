@@ -88,6 +88,17 @@
         (is (= expected
                (sql.u/escape-sql s escape-strategy)))))))
 
+(deftest ^:parallel quote-literal-test
+  (testing "wraps in single quotes and escapes, defaulting to :ansi"
+    (is (= "'Tito''s Tacos'"
+           (sql.u/quote-literal "Tito's Tacos")
+           (sql.u/quote-literal "Tito's Tacos" :ansi))))
+  (testing ":backslashes escape style"
+    (is (= "'Tito\\'s Tacos'"
+           (sql.u/quote-literal "Tito's Tacos" :backslashes))))
+  (testing "empty string"
+    (is (= "''" (sql.u/quote-literal "")))))
+
 ;;; Ok to hardcode driver names in the tests below because they're for general util functions and not something that
 ;;; needs to be run against all supported drivers
 
