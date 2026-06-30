@@ -28,17 +28,14 @@ const DEV_ENTRY_SOURCE_PATH = fileURLToPath(
 
 // The dev server's HTML shell, served synthetically so the app scaffold needs no
 // `index.html`. It just boots the dev entry (resolved + served as a virtual
-// module below); the prod build is a lib build and uses no HTML at all.
+// module below), which injects the baseline reset CSS itself (the same file the
+// production iframe loads).
 const INDEX_HTML = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Data App Dev Preview</title>
-    <style>
-      html, body, #root { height: 100%; margin: 0; }
-      body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
-    </style>
   </head>
   <body>
     <div id="root"></div>
