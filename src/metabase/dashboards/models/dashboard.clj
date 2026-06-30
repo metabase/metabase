@@ -490,6 +490,13 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
+(defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
+  ;; content deps derived from descendants so the two can't drift; the export-time validator classifies which of
+  ;; these are actually exported as content. A dashboard's data-model references (field refs in parameter mappings)
+  ;; are carried by the cards it references, which are validated in their own right.
+  (for [[[model id] _] (serdes/descendants "Dashboard" (:id dashboard) nil)]
+    {:kind :content :model model :id id}))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "dashboard"
