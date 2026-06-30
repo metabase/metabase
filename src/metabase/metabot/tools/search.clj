@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
@@ -143,12 +144,6 @@
   (when (and location (not= "/" location))
     (->> (str/split location #"/") (remove str/blank?) (keep parse-long))))
 
-(def ^:private library-collection-types
-  "Collection `:type` values that make up the curated library. A result is a library member
-   when its *root* (top-level) collection is one of these — matching the search `:library`
-   scorer, which keys off `root_collection_type` (see `metabase.search.scoring/library-score-expr`)."
-  #{"library" "library-data" "library-metrics"})
-
 (defn- enrich-with-collection-paths
   "Stamp each collection-bearing result with :collection_path (and :full_path for collection
    results) and :library_member (boolean, gated by the :library premium feature).
@@ -192,10 +187,13 @@
                        (let [root-id (or (first (ancestor-ids (get-in id->row [coll-id :location])))
                                          coll-id)]
                          (get-in id->row [root-id :type])))
+        ;; A result is a library member when its root collection is a library type. Reuse the
+        ;; canonical set the `:library` search scorer keys off of (see
+        ;; `metabase.search.scoring/library-score-expr`) so the flag can't drift from the ranking.
         library-of   (fn [coll-id]
                        (boolean (and library?
                                      coll-id
-                                     (library-collection-types (root-type-of coll-id)))))]
+                                     (collection/library-collection-types (root-type-of coll-id)))))]
     (mapv (fn [r]
             (let [cid  (result-collection-id r)
                   path (when cid (path-of cid))]
