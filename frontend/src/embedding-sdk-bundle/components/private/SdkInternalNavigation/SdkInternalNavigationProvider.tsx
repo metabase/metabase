@@ -35,24 +35,16 @@ import {
   type SdkInternalNavigationEntry,
 } from "./context";
 
-/**
- * Strip root-dashboard-specific controller props before forwarding to a
- * drill-through target. Display props (withDownloads, withTitle, etc.) pass
- * through unchanged so UI features remain consistent across the stack.
- *
- * - parameters / onParametersChange: scoped to the root dashboard the host
- *   controls. The drill-through target is seeded from click-behavior
- *   initialParameters instead.
- * - initialParameters: seeds the root dashboard's initial filter state.
- *   The drill-through target always receives its own initialParameters
- *   from the click-behavior stack entry.
- */
+// Strips props that are only meant for the root dashboard before forwarding to a drill-through target.
 function getDrillThroughDashboardProps({
   parameters: _parameters,
   onParametersChange: _onParametersChange,
   initialParameters: _initialParameters,
   ...props
-}: Partial<SdkDashboardInnerProps> = {}): Partial<SdkDashboardInnerProps> {
+}: Partial<SdkDashboardInnerProps> = {}): Omit<
+  SdkDashboardInnerProps,
+  "dashboardId" | "parameters" | "onParametersChange" | "initialParameters"
+> {
   return props;
 }
 
