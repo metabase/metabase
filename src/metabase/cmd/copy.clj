@@ -383,7 +383,8 @@
     :model/FieldUserSettings
     :model/QueryAction
     :model/MetabotConversation
-    :model/ModelIndexValue})
+    :model/ModelIndexValue
+    :model/OsiAiContext})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}
