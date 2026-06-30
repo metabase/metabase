@@ -1466,8 +1466,8 @@
               (let [msgs (into #{}
                                (map :message)
                                (messages))]
-                (is (some #(str/starts-with? % "Failed to export Dashboard") msgs))
-                (is (some #(str/starts-with? % "Failed to export Cards") msgs))))))))))
+                (is (some #(re-find #"not included in the export" %) msgs)
+                    "the export warns that a referenced personal-collection card is not included")))))))))
 
 (deftest click-behavior-references-to-deleted-cards
   (mt/with-empty-h2-app-db!
@@ -1611,7 +1611,7 @@
           (extract-aborts! {:targets       [["Collection" coll1-id]]
                             :no-settings   true
                             :no-data-model true})
-          (is (some #(str/starts-with? % "Failed to export Dashboard")
+          (is (some #(re-find #"not included in the export" %)
                     (into #{}
                           (map :message)
                           (messages))))))
@@ -1621,7 +1621,7 @@
             (extract-aborts! {:targets       [["Collection" coll2-id]]
                               :no-settings   true
                               :no-data-model true})
-            (is (some #(str/starts-with? % "Failed to export Cards")
+            (is (some #(re-find #"not included in the export" %)
                       (into #{}
                             (map :message)
                             (messages))))))
@@ -1630,7 +1630,7 @@
             (extract-aborts! {:targets       [["Collection" coll2-id]]
                               :no-settings   true
                               :no-data-model true})
-            (is (some #(str/starts-with? % "Failed to export Cards")
+            (is (some #(re-find #"not included in the export" %)
                       (into #{}
                             (map :message)
                             (messages)))))))
@@ -1639,7 +1639,7 @@
           (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
             (extract-aborts! {:no-settings   true
                               :no-data-model true})
-            (is (some #(str/starts-with? % "Failed to export Cards")
+            (is (some #(re-find #"not included in the export" %)
                       (into #{}
                             (map :message)
                             (messages)))))))
@@ -1685,9 +1685,42 @@
                     "the clean card inside the target collection is exported")
                 (is (not (contains? (ids-by-model "Card" extracted) escaped-eid))
                     "the escaped card outside the target collection is not exported")
-                (is (some #(str/starts-with? % "Failed to export Dashboard")
+                (is (some #(re-find #"not included in the export" %)
                           (map :message (messages)))
                     "the escape report is still logged as a warning")))))))))
+
+(deftest dependency-validation-missing-data-ref-test
+  (testing "Export aborts when a card references a data-model row that no longer exists in the appdb (GHY-4010)"
+    ;; A field referenced by a card's query is deleted. The card still serializes a portable field reference by
+    ;; looking the row up; with the row gone that reference would be malformed, so the export must fail fast.
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
+                         :model/Database   {db-id :id}    {:engine :postgres}
+                         :model/Table      {table-id :id} {:db_id db-id :name "T"}
+                         :model/Field      {field-id :id} {:table_id table-id :name "F" :base_type :type/Integer}
+                         :model/Collection {coll-id :id}  {:name "Target Collection"}
+                         :model/Card        _             {:name          "Field Card"
+                                                           :collection_id coll-id
+                                                           :database_id   db-id
+                                                           :table_id      table-id
+                                                           :query_type    :query
+                                                           :dataset_query {:database db-id
+                                                                           :type     :query
+                                                                           :query    {:source-table table-id
+                                                                                      :filter       [:> [:field field-id nil] 1]}}}]
+        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
+          (testing "with the field present, the export succeeds"
+            (is (seq (into [] (extract/extract opts)))))
+          (t2/delete! :model/Field field-id)
+          (testing "after the field is deleted, the export aborts and names the missing reference"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (extract-aborts! opts)
+              (is (some #(re-find #"missing from the source database" %) (map :message (messages)))
+                  "the warning reports the unsatisfied data-model reference")))
+          (testing "continue-on-error exports anyway, skipping the affected card"
+            (let [extracted (into [] (extract/extract (assoc opts :continue-on-error true)))]
+              (is (some #(= "Collection" (-> % :serdes/meta last :model)) extracted)
+                  "the target collection is still exported under continue-on-error"))))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db!
