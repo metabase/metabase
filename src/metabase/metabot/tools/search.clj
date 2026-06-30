@@ -48,9 +48,6 @@
         verified? (or (boolean verified) (= moderated_status "verified"))
         official? (boolean official_collection)
         collection-info (select-keys collection [:id :name :authority_level])
-        ;; Curation signals beyond verified, so the LLM can see *why* content is curated. `:curated` is
-        ;; the precomputed rollup (present on the appdb/semantic engines); `:data_layer` is table-only.
-        ;; assoc-some keeps them off results that don't carry them (e.g. the in-place fallback).
         common-fields {:id                  (:id result)
                        :type                (metabot.search-models/search-model->entity-type model)
                        :name                (:name result)
@@ -76,6 +73,10 @@
                         :location        (:location result)))
 
       "table"
+      ;; Curation signals beyond verified, so the LLM can see *why* content is curated:
+      ;; `:curated` is the precomputed rollup (appdb/semantic engines only), `:data_layer` is
+      ;; table-only. assoc-some (here and in the dashboard/metric branches) keeps them off results
+      ;; that don't carry them (e.g. the in-place fallback).
       (-> common-fields
           (merge {:name            (:table_name result)
                   :display_name    (:name result)
@@ -104,11 +105,11 @@
       ;; [[enrich-with-base-tables]] once `database_name` is known.
       ("measure" "segment")
       (merge common-fields
-             {:database_id       (:database_id result)
-              :base_table_id     (:table_id result)
-              :base_table_name   (:table_name result)
-              :base_table_schema (:table_schema result)
-              :base_table_display_name (:table_display_name result)})
+             {:base_table_display_name (:table_display_name result)
+              :database_id             (:database_id result)
+              :base_table_id           (:table_id result)
+              :base_table_name         (:table_name result)
+              :base_table_schema       (:table_schema result)})
 
       ;; Questions, metrics, and datasets
       (-> common-fields
@@ -553,7 +554,7 @@
 
 (defn entity-refs->search-results
   "Hydrate semantic-layer entity refs into the enriched search-result shape that
-  [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
+  [[metabase.metabot.tools.shared.llm-shape/search-result->xml]] and the `search` tool consume.
 
   `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
   `\"metric\"`, `\"question\"`, `\"measure\"`, or `\"segment\"` (the names the agent uses with

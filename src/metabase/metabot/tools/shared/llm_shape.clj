@@ -770,7 +770,9 @@
                                  (fully-qualified-name schema table)))})))
 
 (defn search-results->xml
-  "Format search results as XML wrapped in search-results element."
+  "Format search results as XML wrapped in a `<search_results>` envelope. Retained as the shared
+   API for rendering a whole result block; the metabot search tool currently renders per-item via
+   [[search-result->xml]] and joins them itself, so this wrapper has no in-tree caller today."
   [results]
   (render-llm-template
    :search_results
