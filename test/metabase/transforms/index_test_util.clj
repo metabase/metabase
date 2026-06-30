@@ -87,6 +87,15 @@
              vec))
       [])))
 
+(defn- sqlserver-indexes
+  [database schema table]
+  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                   [(str "SELECT i.name AS index_name FROM sys.indexes i "
+                         "WHERE i.object_id = OBJECT_ID(?) AND i.type IN (1, 2) AND i.name IS NOT NULL")
+                    (format "[%s].[%s]" schema table)])
+       (map :index_name)
+       set))
+
 (def driver-cases
   "Driver -> test case: `:indexes` to declare (every method whose column types `transforms_products` can satisfy; the
   rest, e.g. Postgres gin/gist, live in the driver-level and fetch suites), `:physical-indexes` a
@@ -124,7 +133,14 @@
    ;; Snowflake: a single standalone clustering key, reported unnamed, so we read back just the clustered columns.
    :snowflake  {:indexes          [{:kind :clustering :name "by_category" :columns [{:name "category"}]}]
                 :expected         ["category"]
-                :physical-indexes snowflake-clustering}})
+                :physical-indexes snowflake-clustering}
+   ;; SQL Server: standalone clustered + nonclustered. The clustered key goes on `price` (a heap from SELECT INTO can
+   ;; take one clustered index) since a FLOAT stays under the 900-byte clustered limit; category (VARCHAR(1024)) only
+   ;; fits a nonclustered key (1700-byte limit).
+   :sqlserver  {:indexes          [{:kind :clustered :name "by_price" :columns [{:name "price"}]}
+                                   {:kind :nonclustered :name "by_category" :columns [{:name "category"}]}]
+                :expected         #{"by_price" "by_category"}
+                :physical-indexes sqlserver-indexes}})
 
 (defn index-test-drivers
   "Drivers that run transforms and declare any index support."
@@ -273,4 +289,26 @@
     {:label "a table with no clustering key returns []"
      :table "mb_fetch_sf_empty"
      :create ["CREATE TABLE mb_fetch_sf_empty (a INT, b INT)"]
+     :expected #{}}]
+
+   :sqlserver
+   [{:label  "clustered PK, nonclustered, unique, composite, INCLUDE, and a filtered index"
+     :table  "mb_fetch_ss"
+     ;; a named PK constraint so the clustered index has a deterministic name (the default is PK__mb_fetc__<hash>).
+     :create ["CREATE TABLE mb_fetch_ss (id INT NOT NULL, user_id INT, email NVARCHAR(255), a INT, b INT, CONSTRAINT pk_fetch_ss PRIMARY KEY (id))"
+              "CREATE INDEX fc_nc ON mb_fetch_ss (user_id)"
+              "CREATE UNIQUE INDEX fc_unique ON mb_fetch_ss (email)"
+              "CREATE INDEX fc_ab ON mb_fetch_ss (a, b)"
+              "CREATE INDEX fc_include ON mb_fetch_ss (a) INCLUDE (b, email)"
+              "CREATE INDEX fc_filtered ON mb_fetch_ss (user_id) WHERE user_id IS NOT NULL"]
+     ;; a PRIMARY KEY surfaces as a unique CLUSTERED index; SQL Server normalizes the filter to bracketed parens.
+     :expected #{(idx "pk_fetch_ss" :clustered "clustered" ["id"] :unique true :primary true)
+                 (idx "fc_nc" :nonclustered "nonclustered" ["user_id"])
+                 (idx "fc_unique" :nonclustered "nonclustered" ["email"] :unique true)
+                 (idx "fc_ab" :nonclustered "nonclustered" ["a" "b"])
+                 (idx "fc_include" :nonclustered "nonclustered" ["a"] :include ["b" "email"])
+                 (idx "fc_filtered" :nonclustered "nonclustered" ["user_id"] :partial "([user_id] IS NOT NULL)")}}
+    {:label "a heap with no indexes returns []"
+     :table "mb_fetch_ss_empty"
+     :create ["CREATE TABLE mb_fetch_ss_empty (a INT, b INT)"]
      :expected #{}}]})
