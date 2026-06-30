@@ -225,7 +225,12 @@ describe("pivot tables", () => {
     H.getDashboardCard(QUESTION_PIVOT_INDEX)
       .findByTestId("legend-caption-title")
       .click();
-    cy.wait("@datasetPivot");
+    // Clicking the title navigates to an ad-hoc QB, which must boot the route,
+    // load table metadata, and only then issue /api/dataset/pivot. Under network
+    // throttling that whole chain can exceed cy.wait's default 5s timeout (the
+    // request does fire — just late), so give the alias a throttle-tolerant
+    // window instead of asserting on the default.
+    cy.wait("@datasetPivot", { timeout: 30000 });
     cy.findByTestId("qb-header")
       .button(/Filter/)
       .click();
