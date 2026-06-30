@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
-import { FormSelect, FormTextInput } from "metabase/forms";
+import { FormSelect } from "metabase/forms";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -18,6 +18,7 @@ import {
   MultiSelect,
   Stack,
   Switch,
+  TagsInput,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -225,14 +226,39 @@ function UniqueKeyColumnSelect({
 
   return (
     <MultiSelect
-      label={t`Unique key`}
-      description={t`Optional. Output columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
+      label={t`Merge key`}
+      description={t`Optional. Output columns used to match rows and update them in place.`}
       placeholder={t`Pick columns`}
       data={options}
       value={value}
       onChange={(names) => helpers.setValue(names.join(", "))}
       disabled={readOnly}
       searchable
+      clearable
+    />
+  );
+}
+
+// Used before the target table exists, so we can't offer a column picker. Free-text entry that turns
+// each comma- or Enter-separated name into a chip, like the column selector once the table exists.
+function MergeKeyTagsInput({ readOnly }: { readOnly?: boolean }) {
+  const [field, , helpers] = useField<string>("uniqueKey");
+  const value = field.value
+    ? field.value
+        .split(",")
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0)
+    : [];
+
+  return (
+    <TagsInput
+      label={t`Merge key`}
+      description={t`Optional. Output columns used to match rows and update them in place. Type a column name and press comma.`}
+      placeholder={t`e.g. id`}
+      value={value}
+      onChange={(names) => helpers.setValue(names.join(", "))}
+      splitChars={[","]}
+      disabled={readOnly}
       clearable
     />
   );
@@ -258,15 +284,7 @@ function UniqueKeyField({
     return <UniqueKeyColumnSelect options={options} readOnly={readOnly} />;
   }
 
-  return (
-    <FormTextInput
-      name="uniqueKey"
-      label={t`Unique key`}
-      description={t`Optional. Output columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
-      placeholder={t`e.g. id`}
-      disabled={readOnly}
-    />
-  );
+  return <MergeKeyTagsInput readOnly={readOnly} />;
 }
 
 function TargetStrategyFields({
