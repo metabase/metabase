@@ -519,6 +519,10 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
+    // Wait for the modal to fully close before the next keyboard shortcut:
+    // shortcuts are suppressed while a modal is open, so firing "c d" before
+    // this dialog is removed from the DOM would be swallowed.
+    cy.findByRole("dialog", { name: /dashboard/i }).should("not.exist");
 
     // Using a command palette action registered as a shortcut should only
     // emit snowplow events when using keyboard shortcuts, not command palette
