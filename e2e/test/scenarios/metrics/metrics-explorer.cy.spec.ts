@@ -223,15 +223,22 @@ const addMetric = (
 };
 
 const runFormula = () => {
-  // After a metric is selected at the end of the formula the search dropdown
-  // re-opens itself (handleSelect schedules it on a setTimeout in
-  // useFormulaEditor), and its popover overlaps the Run button — so a .click()
-  // on Run can land on the dropdown instead and the formula never commits,
-  // leaving the editor open with no collapsed pills. Submit via the editor's
-  // Enter keybinding instead (see editorExtensions): it calls the run handler
-  // directly, regardless of whether the dropdown is open. The Run button being
-  // visible and enabled is a positive anchor that the formula is dirty and valid.
+  // After a metric is selected at the end of the formula, handleSelect
+  // (useFormulaEditor) re-opens the search dropdown on a setTimeout. While that
+  // Mantine menu is open it traps focus, so a raw {enter} can be swallowed by
+  // the menu instead of reaching the editor's Enter keybinding — and a click on
+  // the Run button can land on the dropdown popover that overlaps it. Either way
+  // the formula never commits and the editor stays open with no collapsed pills.
+  // Wait for the dropdown to settle open (so the re-open setTimeout has already
+  // fired and can't race us), dismiss it with Escape, confirm it's gone, then
+  // submit via the editor's Enter keybinding (editorExtensions binds Enter
+  // directly to the run handler) — now that the menu is closed it reaches the
+  // editor. The Run button being visible and enabled is a positive anchor that
+  // the formula is dirty and valid.
   H.MetricsViewer.runButton().should("be.visible").and("not.be.disabled");
+  H.miniPicker().should("exist");
+  cy.realPress("Escape");
+  H.miniPicker().should("not.exist");
   cy.findByTestId("metrics-viewer-search-input").type("{enter}");
 };
 
