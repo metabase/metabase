@@ -99,7 +99,6 @@ serdes/meta:
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.54.4-SNAPSHOT (c6780bb)
 source_card_id: null
 type: %s
 document_id: null

@@ -54,6 +54,8 @@
   ;; Is worth considering when adding entries here, whether they shouldn't just be skipped in extraction.
   #{:cache_field_values_schedule
     :metadata_sync_schedule
+    ;; instance-specific build version, no longer serialized (GHY-4013). Legacy baseline fixtures still
+    ;; carry it, which exercises that such exports still import cleanly now that it's skipped.
     :metabase_version
     ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
     ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
