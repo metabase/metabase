@@ -666,7 +666,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     });
   });
 
-  describe.only("root dashboard controller props do not leak into drill-through target (EMB-1946)", () => {
+  describe("root dashboard controller props do not leak into drill-through target (EMB-1946)", () => {
     const ORIGIN_DASHBOARD_FILTER: Parameter = createMockActionParameter({
       id: "origin-dashboard-filter",
       name: "City Filter",
