@@ -29,7 +29,7 @@ export const VALIDATION_SCHEMA = Yup.object({
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable().defined(),
     }),
-  uniqueKey: Yup.string().defined(),
+  uniqueKey: Yup.string().default(""),
 });
 
 export const getInitialValues = (

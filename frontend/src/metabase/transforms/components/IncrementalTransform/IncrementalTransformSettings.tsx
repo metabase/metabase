@@ -226,7 +226,7 @@ function UniqueKeyColumnSelect({
   return (
     <MultiSelect
       label={t`Unique key`}
-      description={t`Optional. Columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
+      description={t`Optional. Output columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
       placeholder={t`Pick columns`}
       data={options}
       value={value}
@@ -262,7 +262,7 @@ function UniqueKeyField({
     <FormTextInput
       name="uniqueKey"
       label={t`Unique key`}
-      description={t`Optional. Columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
+      description={t`Optional. Output columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
       placeholder={t`e.g. id`}
       disabled={readOnly}
     />
@@ -331,7 +331,7 @@ function SourceStrategyFields({
               name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              description={t`Pick the input field we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
               source={source}
@@ -343,7 +343,7 @@ function SourceStrategyFields({
               name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              description={t`Pick the input field we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
               disabled={readOnly}
@@ -354,7 +354,7 @@ function SourceStrategyFields({
               name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
-              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              description={t`Pick the input field we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               sourceTables={source["source-tables"]}
               disabled={readOnly}
