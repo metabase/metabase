@@ -78,9 +78,16 @@ const dataAppDevConfig = {
   entry: `${SDK_PACKAGE_SRC_PATH}/data-app-dev.ts`,
   target: "node",
   context: SDK_PACKAGE_SRC_PATH,
-  // The consumer brings its own `vite` + React Vite plugin (the same instance
-  // that runs the config), so both are left external rather than bundled.
-  externals: ["vite", "@vitejs/plugin-react"],
+  // The consumer's app provides the Vite toolchain (the same Vite instance runs
+  // the config), so leave it all external. Bundling the plugins — `vite-plugin-svgr`
+  // especially — would pull in @svgr/core + Babel + TypeScript + browserslist,
+  // which is heavy and floods the build with dynamic-`require` warnings.
+  externals: [
+    "vite",
+    "@vitejs/plugin-react",
+    "vite-plugin-svgr",
+    "vite-plugin-css-injected-by-js",
+  ],
   externalsType: "module",
   output: {
     path: SDK_DIST_PATH,
