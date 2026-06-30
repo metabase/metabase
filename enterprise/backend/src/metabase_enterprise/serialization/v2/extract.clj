@@ -190,35 +190,42 @@
                                                           (escape-analysis by-model nodes))]
     (when (seq reportable-escaped)
       (log-escape-report! reportable-escaped))
-    ;; By default a card referenced from inside the requested collections but living outside them aborts
-    ;; the whole export. With continue-on-error we don't abort: the escaped cards are outside the
-    ;; collection set so they're filtered out of extraction anyway, and the dashboards/cards that
-    ;; reference them are skipped on import (which also honors continue-on-error).
-    (when (or (empty? reportable-escaped)
-              (:continue-on-error opts))
-      (let [coll-set        (get by-model "Collection")
-            ;; When targets are specified, also include Tables found via descendants
-            ;; (published tables in target collections). These are extracted by ID, not all.
-            targeted-data-model (when (seq targets)
-                                  (select-keys by-model serdes.models/data-model-in-collection))
-            by-model        (cond-> (select-keys by-model models)
-                              ;; Add Tables back if they were found in descendants
-                              (seq targeted-data-model) (merge targeted-data-model)
-                              ;; Remove analytics cards from extraction - they have stable entity_ids across instances
-                              ;; so cards that reference them can still be exported and imported correctly
-                              (and analytics-card-ids (contains? by-model "Card"))
-                              (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
-            extract-by-ids  (fn [[model ids]]
-                              (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                     :where          [:in :id ids]})))
-            extract-all     (fn [model]
-                              (serdes/extract-all model (assoc opts :collection-set coll-set)))]
-        (eduction cat
-                  [(if (seq targets)
-                     (eduction (map extract-by-ids) cat by-model)
-                     (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
-                   ;; extract all non-content entities like data model and settings if necessary
-                   (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
+    ;; A card referenced from inside the requested collections but living outside them would produce an
+    ;; incomplete export (the referencing dashboards/cards get dropped), so by default we abort loudly
+    ;; instead of silently emitting an empty archive. With continue-on-error we don't abort: the escaped
+    ;; cards are outside the collection set so they're filtered out of extraction anyway, and the
+    ;; dashboards/cards that reference them are skipped on import (which also honors continue-on-error).
+    (when (and (seq reportable-escaped)
+               (not (:continue-on-error opts)))
+      (throw (ex-info (format (str "Serialization failed: %d card(s) referenced by the requested collections "
+                                   "are saved outside them, which would produce an incomplete export. See the "
+                                   "warnings above for the affected entities. Pass continue-on-error to export "
+                                   "anyway, skipping the affected dashboards and cards.")
+                              (count (distinct (map (comp :id :escapee) reportable-escaped))))
+                      {:status-code 400})))
+    (let [coll-set        (get by-model "Collection")
+          ;; When targets are specified, also include Tables found via descendants
+          ;; (published tables in target collections). These are extracted by ID, not all.
+          targeted-data-model (when (seq targets)
+                                (select-keys by-model serdes.models/data-model-in-collection))
+          by-model        (cond-> (select-keys by-model models)
+                            ;; Add Tables back if they were found in descendants
+                            (seq targeted-data-model) (merge targeted-data-model)
+                            ;; Remove analytics cards from extraction - they have stable entity_ids across instances
+                            ;; so cards that reference them can still be exported and imported correctly
+                            (and analytics-card-ids (contains? by-model "Card"))
+                            (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
+          extract-by-ids  (fn [[model ids]]
+                            (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                   :where          [:in :id ids]})))
+          extract-all     (fn [model]
+                            (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+      (eduction cat
+                [(if (seq targets)
+                   (eduction (map extract-by-ids) cat by-model)
+                   (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
+                 ;; extract all non-content entities like data model and settings if necessary
+                 (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))]))))
 
 (defn- needs-version?
   "True for extracted entities that should carry a `:metabase_version` stamp."
