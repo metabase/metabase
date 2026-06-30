@@ -23,6 +23,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 // and then immediately editing it again. After saving,
 // we exit the edit mode and that can happen after
 // `H.editDashboard` is called for some reason
+const DASHBOARD_SAVE_WAIT_TIME = 450;
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
@@ -1210,7 +1211,7 @@ describe("scenarios > dashboard", () => {
           .eq(0);
       dragOnXAxis(card(), 100);
       assertPreventLeave();
-      H.saveDashboard();
+      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
       // remove
       H.editDashboard();
@@ -1258,7 +1259,7 @@ describe("scenarios > dashboard", () => {
       // can be a side effect
       cy.url().should("include", "tab-1");
       assertPreventLeave();
-      H.saveDashboard();
+      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
       // rename tab
       H.editDashboard();

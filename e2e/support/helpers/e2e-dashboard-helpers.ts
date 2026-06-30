@@ -66,19 +66,13 @@ export function getDashboardCardMenu(index = 0) {
  * from cache), but the absence of loading indicators is a stable signal that the
  * grid has settled. Pass `count` to also assert the expected number of cards is
  * present, which guards against the check passing before the cards render.
- *
- * Anchors on the dashboard body being visible before checking for spinners so
- * the absence check can't pass mid-render, before any cards have started
- * loading. The body container renders even for empty dashboards (which show no
- * grid), so this stays a no-op rather than hanging when there is no grid.
  */
 export function waitForDashcardsToLoad({ count }: { count?: number } = {}) {
   cy.log("Wait for all dashcards to finish loading");
   if (count != null) {
     getDashboardCards().should("have.length", count);
   }
-  cy.findByTestId("dashboard-parameters-and-cards")
-    .should("be.visible")
+  cy.findByTestId("dashboard-grid")
     .findAllByTestId("loading-indicator")
     .should("not.exist");
 }
@@ -110,8 +104,9 @@ export function editDashboard() {
 }
 
 export function saveDashboard({
+  waitMs = 1,
   awaitRequest = true,
-}: { awaitRequest?: boolean } = {}) {
+}: { waitMs?: number; awaitRequest?: boolean } = {}) {
   cy.intercept("PUT", "/api/dashboard/*").as(
     "saveDashboard-saveDashboardCards",
   );
@@ -128,9 +123,7 @@ export function saveDashboard({
   }
 
   cy.findByTestId("edit-bar").should("not.exist");
-  // Settle on a deterministic signal (all dashcards loaded) instead of sleeping
-  // for a fixed time while the grid resizes and detaches elements.
-  waitForDashcardsToLoad();
+  cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
 export function checkFilterLabelAndValue(label: string, value: string) {

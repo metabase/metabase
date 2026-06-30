@@ -24,6 +24,7 @@ const DASHCARD_QUERY_WAIT_TIME = 1000;
 // and then immediately editing it again. After saving,
 // we exit the edit mode and that can happen after
 // `H.editDashboard` is called for some reason
+const DASHBOARD_SAVE_WAIT_TIME = 450;
 
 describe("scenarios > dashboard > visualizer > basics", () => {
   beforeEach(() => {
@@ -285,7 +286,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
     H.saveDashcardVisualizerModal();
     cy.wait(DASHCARD_QUERY_WAIT_TIME);
-    H.saveDashboard();
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     H.getDashboardCard(2).realHover();
     H.getDashboardCardMenu(2).click();
@@ -343,7 +344,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.assertDashboardCardTitle(1, "");
 
     // Save the dashboard
-    H.saveDashboard();
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     // Check that the card titles are still good
     H.assertDashboardCardTitle(0, "Renamed chart");
@@ -466,7 +467,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.saveDashcardVisualizerModal();
 
-    H.saveDashboard();
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     H.getDashboardCard(0).within(() => {
       cy.findByText("Original Question Title").should("exist");
@@ -499,7 +500,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.saveDashcardVisualizerModal();
 
-    H.saveDashboard();
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     H.getDashboardCard(0).within(() => {
       cy.findByText("Updated Title").should("exist");
@@ -715,7 +716,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
-    H.saveDashboard();
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
 
     H.editDashboard();
     H.showDashcardVisualizerModal(0);
