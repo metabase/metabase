@@ -7,7 +7,6 @@ import type {
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
 import type { ColorGetter } from "metabase/ui/colors/types";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
@@ -66,7 +65,7 @@ export interface Padding {
 
 export type Formatter = (
   value: RowValue,
-  options?: OptionsType,
+  options?: ColumnSettings,
 ) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
@@ -289,12 +288,12 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
-  getDefault?: (col: DatasetColumn, settings: OptionsType) => TValue;
-  getHidden?: (col: DatasetColumn, settings: OptionsType) => boolean;
-  isValid?: (col: DatasetColumn, settings: OptionsType) => boolean;
+  getDefault?: (col: DatasetColumn, settings: ColumnSettings) => TValue;
+  getHidden?: (col: DatasetColumn, settings: ColumnSettings) => boolean;
+  isValid?: (col: DatasetColumn, settings: ColumnSettings) => boolean;
   getProps?: (
     col: DatasetColumn,
-    settings: OptionsType,
+    settings: ColumnSettings,
     onChange: (value: TValue) => void,
     extra: { series: Series },
   ) => TProps;

@@ -1,4 +1,5 @@
-import type { OptionsType } from "metabase/utils/formatting/types";
+import type { CurrencyStyle } from "metabase/utils/formatting";
+import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -246,11 +247,46 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
 
-export type ColumnSettings = Omit<OptionsType, "click_behavior"> & {
+export type ColumnSettings = TimeOnlyOptions & {
   _column_title_full?: string;
   "pivot_table.column_show_totals"?: boolean;
   text_align?: "left" | "middle" | "right";
   click_behavior?: ClickBehavior;
+  clicked?: any;
+  collapseNewlines?: boolean;
+  column?: any;
+  column_title?: string;
+  compact?: boolean;
+  currency?: string;
+  currency_style?: CurrencyStyle;
+  date_abbreviate?: boolean;
+  date_format?: string;
+  date_separator?: string;
+  date_style?: string | null;
+  decimals?: number;
+  isExclude?: boolean;
+  jsx?: boolean;
+  link_text?: string;
+  link_url?: string;
+  majorWidth?: number;
+  markdown_template?: any;
+  maximumFractionDigits?: number;
+  negativeInParentheses?: boolean;
+  noRange?: boolean;
+  number_separators?: string;
+  number_style?: string;
+  prefix?: string;
+  remap?: any;
+  removeDay?: boolean;
+  removeYear?: boolean;
+  rich?: boolean;
+  scale?: number;
+  show_mini_bar?: boolean;
+  stringifyNull?: boolean;
+  suffix?: string;
+  type?: string;
+  view_as?: string | null;
+  weekday_enabled?: boolean;
   [key: string]: any;
 };
 
