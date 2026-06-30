@@ -205,10 +205,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       // components, so new undos will appear - this makes this test flaky, so we navigate with page reload instead
       visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
-      // Switching tables triggers an async query_metadata fetch; until it
-      // resolves the field list still shows the previous table's fields. Wait
-      // for it so we don't query the new table's fields against stale rows.
-      cy.wait("@metadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }
@@ -218,9 +214,14 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
 
       cy.log("formatting");
-      TablePicker.getDatabase("Sample Database").click();
+      // Switching DBs in-place via the picker (.getDatabase().click() then
+      // .getTable().click()) races the picker re-render: the table click can
+      // land before the new DB's tables list is interactive, so it never
+      // propagates to a URL change and the field list keeps showing the
+      // previous table. Re-anchor with visit() (which waits for picker
+      // bootstrap), matching the "Undos" sibling test below.
+      visit({ databaseId: SAMPLE_DB_ID });
       TablePicker.getTable("Orders").click();
-      cy.wait("@metadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }
