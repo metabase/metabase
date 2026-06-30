@@ -180,20 +180,26 @@
     (catch Exception e
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
 
+(def ^:private supported-models
+  "Bedrock models offered in the Metabot model picker.
+  `list-models` returns the intersection of this set with the mantle `/v1/models` catalog.
+  Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes."
+  #{"anthropic.claude-opus-4-8"
+    "anthropic.claude-opus-4-7"
+    "anthropic.claude-sonnet-5"
+    "anthropic.claude-haiku-4-5"
+    "openai.gpt-5.4"
+    "openai.gpt-5.4-2026-03-05"
+    "openai.gpt-5.5"
+    "openai.gpt-5.5-2026-04-23"})
+
 (defn- supported-model?
-  "Whether a catalog model is supported by this adapter: Anthropic and OpenAI models only.
-  Excludes `anthropic.*fable*` pending further testing.
-  Excludes `openai.gpt-oss*`, which appear in the catalog but are not invokable through the mantle /openai/v1 routes."
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
   [{:keys [id]}]
-  (boolean
-   (and id
-        (or (and (str/starts-with? id "anthropic.")
-                 (not (str/includes? id "fable")))
-            (and (str/starts-with? id "openai.")
-                 (not (str/starts-with? id "openai.gpt-oss")))))))
+  (contains? supported-models id))
 
 (defn list-models
-  "List the Bedrock models supported by this adapter (see [[supported-model?]]).
+  "List the Bedrock models supported by this adapter (see [[supported-models]]).
   No-arg uses the `llm-bedrock-*` settings. The opts map supports `:credentials`, a map of `:access-key-id`,
   `:secret-access-key`, `:region`, and (for temporary credentials) `:session-token`, plus `:ai-proxy?`,
   which is not supported for Bedrock and throws when true."

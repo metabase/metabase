@@ -24,11 +24,21 @@
    {:id "deepseek.v3.2" :object "model"}
    {:id "anthropic.claude-opus-4-8" :object "model"}
    {:id "anthropic.claude-fable-5" :object "model"}
+   {:id "anthropic.claude-3-5-sonnet" :object "model"}
    {:id "openai.gpt-5.4" :object "model"}])
 
-(deftest list-models-filters-to-supported-vendors-test
+(deftest ^:parallel supported-model?-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["anthropic.claude-opus-4-8" "anthropic.claude-sonnet-5" "openai.gpt-5.5"]]
+      (is (true? (#'bedrock/supported-model? {:id id})) id)))
+  (testing "non-whitelisted models are not supported, even for supported vendors"
+    (doseq [id ["anthropic.claude-fable-5" "anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
+                "qwen.qwen3-next-80b-a3b-instruct" "deepseek.v3.2"]]
+      (is (false? (#'bedrock/supported-model? {:id id})) id))))
+
+(deftest list-models-filters-to-whitelist-test
   (mt/with-dynamic-fn-redefs [bedrock/list-all-models (constantly fake-catalog)]
-    (testing "only anthropic.* and openai.* models survive, gpt-oss and fable excluded, sorted by id"
+    (testing "only whitelisted models survive sorted by id"
       (is (= {:models [{:id "anthropic.claude-haiku-4-5" :display_name "anthropic.claude-haiku-4-5"}
                        {:id "anthropic.claude-opus-4-8" :display_name "anthropic.claude-opus-4-8"}
                        {:id "openai.gpt-5.4" :display_name "openai.gpt-5.4"}
