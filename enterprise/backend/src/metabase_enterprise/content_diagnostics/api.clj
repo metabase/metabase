@@ -14,6 +14,7 @@
    [metabase-enterprise.content-diagnostics.detect :as detect]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
@@ -169,12 +170,61 @@
   []
   (t2/select-one-fn :detected_at :model/ContentDiagnosticsFinding {:order-by [[:id :desc]]}))
 
+;;; ------------------------------ per-caller collection-visibility filter (D20) ------------------------
+;;; The scan is user-less and nothing is permission-filtered at write time, so the only thing keeping one
+;;; caller's findings from leaking to another is a **live** serve-time filter (never the stale
+;;; `scope_collection_id`). For each entity-type we add `entity_id IN (SELECT id FROM <entity-table> WHERE
+;;; <visible-collection-filter-clause on the entity's LIVE collection_id> [AND <not personal>])` — a SQL
+;;; predicate (so pagination + `total` stay correct), resolved off the current entity tables, mirroring
+;;; Dependency Diagnostics (`dependencies/api.clj` `visible-collection-filter-clause` + `build-optional-filters`).
+
+(defn- personal-root-collection-ids
+  "Ids of the personal-collection roots (`personal_owner_id` set, top-level). Their `location` prefixes
+  (`/<id>/`) identify personal descendants too."
+  []
+  (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
+
+(defn- visible-entity-ids-query
+  "Subquery of `model`'s entity ids whose **live** collection the current caller may read. When
+  `include-personal?` is false, also exclude personal collections (root + descendants, via the
+  `location` prefix), matching deps' personal filter."
+  [model include-personal? personal-root-ids]
+  (let [table      (t2/table-name model)
+        id-field   (keyword (name table) "id")
+        coll-field (keyword (name table) "collection_id")]
+    (cond-> {:select [id-field]
+             :from   [table]
+             :where  [:and (collection/visible-collection-filter-clause coll-field)]}
+      (and (not include-personal?) (seq personal-root-ids))
+      (-> (assoc :left-join [[:collection :cd_coll] [:= coll-field :cd_coll.id]])
+          (update :where conj
+                  [:or
+                   [:= coll-field nil]
+                   [:and
+                    [:= :cd_coll.personal_owner_id nil]
+                    (into [:and] (for [pid personal-root-ids]
+                                   [:not-like :cd_coll.location (str "/" pid "/%")]))]])))))
+
+(defn- visible-entity-clause
+  "Where-clause restricting findings to entities the current caller may read, per entity-type. Personal
+  collections are excluded unless `include-personal?`."
+  [include-personal?]
+  (let [personal-root-ids (when-not include-personal? (personal-root-collection-ids))]
+    (into [:or]
+          (for [[etype model] detect/entity-type->model]
+            [:and
+             [:= :entity_type (name etype)]
+             [:in :entity_id (visible-entity-ids-query model include-personal? personal-root-ids)]]))))
+
 (defn- serve-findings
   "Shared per-finding-type serve: page the active (latest-per-entity, non-invalidated) findings of one
-  `finding-type`, batch-hydrate them, and wrap in the standard `{data,total,limit,offset,last_scan_at}`
-  envelope. `total` is the full active count (pagination-independent)."
-  [finding-type]
-  (let [where (active-where finding-type)
+  `finding-type` **that the current caller may read** (collection-visibility filtered; personal
+  collections excluded unless `include-personal-collections`), batch-hydrate them, and wrap in the
+  standard `{data,total,limit,offset,last_scan_at}` envelope. `total` is the full visible active count."
+  [finding-type include-personal-collections]
+  (let [where [:and
+               (active-where finding-type)
+               (visible-entity-clause include-personal-collections)]
         page  (t2/select :model/ContentDiagnosticsFinding
                          (cond-> {:where    where
                                   :order-by [[:id :asc]]}
@@ -259,6 +309,12 @@
    [:dashboard SlowContainerFinding]
    [:document  SlowContainerFinding]])
 
+(def ^:private serve-query-params
+  "Shared query params for the per-finding-type serve endpoints (kebab-case, deps-parity). `total`/page
+  are always collection-visibility filtered for the caller; `include-personal-collections` (default false,
+  mirrors `dependencies/api.clj`) additionally admits personal-collection findings the caller can read."
+  [:map [:include-personal-collections {:optional true} :boolean]])
+
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 
 (api.macros/defendpoint :post "/scan"
@@ -280,22 +336,15 @@
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
       [:last_scan_at [:maybe some?]]]
-  "List active **stale** findings — the latest non-invalidated `stale` finding per entity. Each item is
-  flat identity + a nested typed `details` (collection breadcrumb, `description`, `owner`, `creator`,
-  `threshold_days`), all batch-hydrated live. Paginated via the standard `limit`/`offset` query params;
-  `total` is the full active count."
-  []
-  (let [where (active-where "stale")
-        page  (t2/select :model/ContentDiagnosticsFinding
-                         (cond-> {:where    where
-                                  :order-by [[:id :asc]]}
-                           (request/limit)  (assoc :limit (request/limit))
-                           (request/offset) (assoc :offset (request/offset))))]
-    {:data         (hydrate-findings page)
-     :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
-     :limit        (request/limit)
-     :offset       (request/offset)
-     :last_scan_at (last-scan-at)}))
+  "List active **stale** findings — the latest non-invalidated `stale` finding per entity the caller may
+  read. Each item is flat identity + a nested typed `details` (collection breadcrumb, `description`,
+  `owner`, `creator`, `threshold_days`), all batch-hydrated live. Collection-visibility filtered;
+  personal collections excluded unless `include-personal-collections`. Paginated via the standard
+  `limit`/`offset`; `total` is the full visible active count."
+  [_route-params
+   {:keys [include-personal-collections]
+    :or   {include-personal-collections false}} :- serve-query-params]
+  (serve-findings "stale" include-personal-collections))
 
 (api.macros/defendpoint :get "/slow"
   :- [:map
@@ -304,13 +353,16 @@
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
       [:last_scan_at [:maybe some?]]]
-  "List active **slow** findings — the latest non-invalidated `slow` finding per entity. `details` varies
-  by `entity_type`: leaves (card/transform) carry the frozen `duration_ms`/`threshold_ms`; containers
-  (dashboard/document) carry the hydrated `slow_entities` culprit cards. All context (collection
-  breadcrumb, `description`, `owner`, `creator`) is batch-hydrated live. Paginated via the standard
-  `limit`/`offset`; `total` is the full active count."
-  []
-  (serve-findings "slow"))
+  "List active **slow** findings — the latest non-invalidated `slow` finding per entity the caller may
+  read. `details` varies by `entity_type`: leaves (card/transform) carry the frozen
+  `duration_ms`/`threshold_ms`; containers (dashboard/document) carry the hydrated `slow_entities` culprit
+  cards. All context (collection breadcrumb, `description`, `owner`, `creator`) is batch-hydrated live.
+  Collection-visibility filtered; personal collections excluded unless `include-personal-collections`.
+  Paginated via the standard `limit`/`offset`; `total` is the full visible active count."
+  [_route-params
+   {:keys [include-personal-collections]
+    :or   {include-personal-collections false}} :- serve-query-params]
+  (serve-findings "slow" include-personal-collections))
 
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for the Content Diagnostics API."

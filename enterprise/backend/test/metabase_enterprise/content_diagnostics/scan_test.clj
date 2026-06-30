@@ -160,21 +160,27 @@
   (testing "GET /finding honors limit/offset and reports the full active total"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (doseq [eid [970001 970002 970003]]
-          (t2/insert! :model/ContentDiagnosticsFinding
-                      {:scan_id "p" :entity_type :card :entity_id eid
-                       :finding_type :stale :details {}}))
-        (let [page (fn [limit offset]
-                     (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
-                                           :limit limit :offset offset))]
-          (testing "limit caps the page; total reflects the full active set; limit/offset echoed back"
-            (let [r (page 2 0)]
-              (is (= 2 (count (:data r))))
-              (is (= 3 (:total r)))
-              (is (= 2 (:limit r)))
-              (is (= 0 (:offset r)))))
-          (testing "offset advances to the remainder"
-            (is (= 1 (count (:data (page 2 2)))))))))))
+        ;; real cards in a visible collection — the serve layer filters findings by live
+        ;; collection-visibility, so phantom entity_ids would be (correctly) excluded.
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {c1 :id} {:collection_id coll-id}
+                       :model/Card {c2 :id} {:collection_id coll-id}
+                       :model/Card {c3 :id} {:collection_id coll-id}]
+          (doseq [eid [c1 c2 c3]]
+            (t2/insert! :model/ContentDiagnosticsFinding
+                        {:scan_id "p" :entity_type :card :entity_id eid
+                         :finding_type :stale :details {}}))
+          (let [page (fn [limit offset]
+                       (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
+                                             :limit limit :offset offset))]
+            (testing "limit caps the page; total reflects the full active set; limit/offset echoed back"
+              (let [r (page 2 0)]
+                (is (= 2 (count (:data r))))
+                (is (= 3 (:total r)))
+                (is (= 2 (:limit r)))
+                (is (= 0 (:offset r)))))
+            (testing "offset advances to the remainder"
+              (is (= 1 (count (:data (page 2 2))))))))))))
 
 (deftest scan-endpoint-is-feature-gated-test
   (testing "POST /scan runs synchronously for a licensed instance"
