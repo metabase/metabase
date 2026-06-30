@@ -43,10 +43,14 @@ import {
  * - parameters / onParametersChange: scoped to the root dashboard the host
  *   controls. The drill-through target is seeded from click-behavior
  *   initialParameters instead.
+ * - initialParameters: seeds the root dashboard's initial filter state.
+ *   The drill-through target always receives its own initialParameters
+ *   from the click-behavior stack entry.
  */
 function getDrillThroughDashboardProps({
   parameters: _parameters,
   onParametersChange: _onParametersChange,
+  initialParameters: _initialParameters,
   ...props
 }: Partial<SdkDashboardInnerProps> = {}): Partial<SdkDashboardInnerProps> {
   return props;
