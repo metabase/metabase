@@ -100,6 +100,31 @@
   [item]
   (normalize-context-type (:type item)))
 
+(defn- export-viewing-query
+  "Render a viewing/transform `query` for the LLM. A query map with a `:database`
+  is normalized and exported to the portable representations form the
+  `construct_notebook_query` tool consumes (a JSON code block); pre-resolved
+  string sources pass through; a `pprint`'d map is the last-resort fallback."
+  [query]
+  (cond
+    (string? query) query
+    (string? (:query-content query)) (:query-content query)
+    (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            database-id (:database normalized)
+            mp (when database-id
+                 (lib-be/application-database-metadata-provider database-id))
+            exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
+        (if exported
+          (str "```json\n" (json/encode exported {:pretty true}) "\n```")
+          (u/pprint-to-str normalized)))
+      (catch Exception _
+        (u/pprint-to-str query)))
+    (string? (get-in query [:native :query])) (get-in query [:native :query])
+    (map? query) (u/pprint-to-str query)
+    :else (some-> query str)))
+
 ;;; Entity Formatting
 
 (defn- fully-qualified-name
@@ -233,6 +258,7 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
+              (te/field "Query" (some-> (:query item) export-viewing-query))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
@@ -257,27 +283,7 @@
   Falls back to a `pprint`'d query map only as a last resort, when repr export is
   unavailable (e.g. a partially-broken `dataset_query`)."
   [source]
-  (let [query (:query source)]
-    (cond
-      (string? query) query
-      (string? (:query-content query)) (:query-content query)
-      (and (map? query) (:database query))
-      (try
-        (let [normalized (lib-be/normalize-query query)
-              database-id (:database normalized)
-              mp (when database-id
-                   (lib-be/application-database-metadata-provider database-id))
-              exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
-          (if exported
-            (str "```json\n" (json/encode exported {:pretty true}) "\n```")
-            (u/pprint-to-str normalized)))
-        (catch Exception _
-          (u/pprint-to-str query)))
-      ;; Legacy native shape with no :database (rare). Surface the raw SQL so the LLM at
-      ;; least sees the query body; if there's no :database we can't normalise / build a MP.
-      (string? (get-in query [:native :query])) (get-in query [:native :query])
-      (map? query) (u/pprint-to-str query)
-      :else (some-> query str))))
+  (export-viewing-query (:query source)))
 
 (defn- transform-source-type
   [source]
