@@ -163,17 +163,20 @@
         ;; Bulk-fetch direct collections (with their effective location, which elides ancestors
         ;; the current user can't read) so we can chase ancestors permission-safely.
         direct-rows  (when (seq direct-ids)
-                       (t2/hydrate (t2/select [:model/Collection :id :location] :id [:in direct-ids])
+                       (t2/hydrate (t2/select [:model/Collection :id :name :location :type] :id [:in direct-ids])
                                    :effective_location))
         id->eff-loc  (into {} (map (juxt :id :effective_location)) direct-rows)
         ;; Chase ancestors from the *raw* location so library-member detection (which reads the
-        ;; root's :type, not its name) still works even when the root isn't readable.
-        ancestor-id-set  (->> direct-rows (mapcat (comp ancestor-ids :location)) (into #{}))
-        all-ids          (into (set direct-ids) ancestor-id-set)
-        coll-rows    (when (seq all-ids)
-                       (t2/select [:model/Collection :id :name :location :type]
-                                  :id [:in all-ids]))
-        id->row      (into {} (map (juxt :id identity)) coll-rows)
+        ;; root's :type, not its name) still works even when the root isn't readable. Only the
+        ;; ancestor delta needs fetching — direct collections are already in hand.
+        ancestor-delta   (->> direct-rows
+                              (mapcat (comp ancestor-ids :location))
+                              (remove (set direct-ids))
+                              distinct)
+        ancestor-rows    (when (seq ancestor-delta)
+                           (t2/select [:model/Collection :id :name :location :type]
+                                      :id [:in ancestor-delta]))
+        id->row      (into {} (map (juxt :id identity)) (concat direct-rows ancestor-rows))
         path-of      (fn [coll-id]
                        (when-let [{:keys [name]} (get id->row coll-id)]
                          ;; Only readable ancestors (from :effective_location) contribute names,
@@ -197,7 +200,10 @@
               (cond-> r
                 path (assoc :collection_path path)
                 (and path (collection-result? r)) (assoc :full_path path)
-                cid  (assoc :library_member (library-of cid)))))
+                ;; Only expose the premium `:library_member` signal when the feature is on,
+                ;; matching [[enrich-tables-with-data-layer]] (which leaves the key absent
+                ;; otherwise) so external /v1/search consumers see a consistent shape.
+                (and library? cid) (assoc :library_member (library-of cid)))))
           results)))
 
 (defn- enrich-tables-with-data-layer
