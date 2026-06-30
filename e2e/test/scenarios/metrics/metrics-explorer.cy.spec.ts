@@ -223,15 +223,18 @@ const addMetric = (
 };
 
 const runFormula = () => {
-  cy.log("Make sure mini picker is closed before clicking Run");
+  cy.log("Close the search dropdown before clicking Run");
   H.MetricsViewer.runButton().should("be.visible");
-  cy.get("body").then(($body) => {
-    if ($body.find('[data-testid="mini-picker"]').length > 0) {
-      cy.realPress("Escape");
-      cy.get('[data-testid="mini-picker"]').should("not.exist");
-    }
-  });
-
+  // After a metric is selected at the end of the formula, the search dropdown
+  // re-opens itself on a setTimeout(0) (see handleSelect in useFormulaEditor) and
+  // overlaps the Run button. A one-shot `if (body.find(...).length)` snapshot
+  // races that async re-open: if it catches the dropdown momentarily closed it
+  // skips Escape, the dropdown then re-opens, and the click lands on it instead of
+  // Run — so the formula never runs. Escape only closes the dropdown (it never
+  // collapses the editor), so press it unconditionally and wait for the dropdown
+  // to be gone before clicking Run.
+  cy.realPress("Escape");
+  H.miniPicker().should("not.exist");
   H.MetricsViewer.runButton().should("not.be.disabled").click();
 };
 
