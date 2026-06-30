@@ -35,8 +35,12 @@ function dataAppVitePlugin(): PluginOption[] {
       // Merged over the user's config (`mergeConfig(userConfig, this)`), so these
       // win — the bundle Metabase loads always matches what dev runs. `loadEnv`
       // needs the mode, which is only known here in the `config` hook.
-      config: (_config: UserConfig, env: ConfigEnv) => ({
+      config: (_config: UserConfig, env: ConfigEnv): UserConfig => ({
         envDir,
+        envPrefix: ["DATA_APP_"],
+        // The dev plugin serves a synthetic index.html, so there's no file on
+        // disk for Vite's default HTML/SPA middleware to find.
+        appType: "custom",
         build: {
           outDir: "dist",
           emptyOutDir: true,

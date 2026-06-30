@@ -9,7 +9,7 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 
 **Data apps are served from Git, not uploaded.** A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<app>/` inside that repo — its source, a `data_app.yml` (name/slug/path), and the committed built bundle at the `path` its `data_app.yml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes one app per directory and serves it at `/data-app/<slug>`. So this skill always scaffolds **into the connected repo's `data_apps/<app>/` directory**, never as a standalone project.
 
-**The scaffold ships inside this skill at `./template/`** — a Vite + React + TypeScript project that was installed alongside the skill. Step 3 just copies it into the app directory; the skill then guides you through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, or `src/index.tsx` by hand, stop — copy the template instead.
+**The scaffold ships inside this skill at `./template/`** — a Vite + React + TypeScript project that was installed alongside the skill. Step 3 just copies it into the app directory; the skill then guides you through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, or `src/index.tsx` by hand, stop — copy the template instead.
 
 ## When to invoke this skill
 
@@ -45,8 +45,6 @@ If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the cur
 2. `src/index.tsx` default-exports a `DataAppFactory` (type from
    `@metabase/embedding-sdk-react/data-app`) returning `{ component, providerProps? }`
    (no args).
-3. `index.html` boots the dev entry from the SDK via a virtual module
-   (`import "virtual:metabase-data-app-dev-entry"`) — there is **no** `src/dev.tsx`.
 
 **All checks pass** → template-shaped. Ask: "Extend this app, or scaffold a new one under a different slug?" If extend → skip the copy step, edit `src/`. If new → pick a different slug and restart at Step 2.
 
@@ -175,7 +173,7 @@ Replace `src/App.tsx`'s starter content with the screens the user described. **S
 
 **Reference Metabase data through the schema, never with raw IDs.** Import `schema` from `src/metabase.data.ts` and pass `schema.questions.<name>.id`, `schema.tables.<t>.id`, `schema.metrics.<m>.id` to the data hooks. For query patterns (typed row shapes, `useMetabaseQuery` generics, segments / measures / breakouts, debugging), follow the `metabase-data-app-semantic-layer` skill — it owns the data-side conventions; this skill owns the project-side conventions.
 
-**Do not modify `src/index.tsx`, `tsconfig.json`, or `index.html` unless the change is genuinely required.** The whole build/dev setup lives in the SDK behind `dataAppConfig()`, so `vite.config.ts` is just:
+**Do not modify `src/index.tsx` or `tsconfig.json` unless the change is genuinely required.** The whole build/dev setup lives in the SDK behind `dataAppConfig()` (which also serves the dev HTML shell — there's no `index.html` to edit), so `vite.config.ts` is just:
 
 ```ts
 import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev";
