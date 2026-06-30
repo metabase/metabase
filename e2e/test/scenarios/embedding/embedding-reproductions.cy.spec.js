@@ -330,7 +330,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
       cy.findByLabelText("Text").click();
     });
 
-    H.popover().findByText("Locked").click();
+    H.selectDropdown().findByText("Locked").click();
 
     H.modal().within(() => {
       // set a parameter value
