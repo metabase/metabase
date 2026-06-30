@@ -493,6 +493,73 @@
             (scratch/cleanup! db-id db mapping nil)))))))
 
 ;;; ---------------------------------------------------------------------------
+;;; Opportunistic sweep: sweep-old-test-tables!
+;;; ---------------------------------------------------------------------------
+
+(deftest sweep-old-test-tables-drops-orphan-test
+  ;; Wiring test: sweep-old-test-tables! must drop old-epoch scratch tables and
+  ;; leave young scratch tables, production-prefix tables, and ordinary tables alive.
+  ;; This is the function called at the start of each test run to reap orphans left by
+  ;; prior runs that died without running their finally-cleanup.
+  (mt/test-drivers #{:postgres}
+    (testing "sweep-old-test-tables! drops old test tables; leaves young + non-test tables"
+      (let [db-id  (mt/id)
+            db     (mt/db)
+            schema "public"
+
+            ;; Young scratch table (now-epoch) — must survive
+            young-nonce (scratch/new-nonce)
+            young-name  (scratch/scratch-table-name young-nonce "in_sweep1")
+
+            ;; Old scratch table (2 h ago) — must be reaped
+            two-hours-ago-secs (- (quot (System/currentTimeMillis) 1000) 7200)
+            old-epoch36        (Long/toString two-hours-ago-secs 36)
+            old-nonce          (scratch/new-nonce)
+            old-name           (str transforms-base.u/transform-temp-table-prefix
+                                    "_test_" old-epoch36 "_" old-nonce "_in_sweep2")
+
+            ;; Ordinary table — must survive
+            ordinary-name "sweep_test_ordinary_tbl"
+
+            create-table! (fn [tbl-name]
+                            (transforms-base.u/create-table-from-schema!
+                             :postgres db-id
+                             {:name    (keyword schema tbl-name)
+                              :columns [{:name "id" :type :type/Integer :nullable? true}]}))]
+        (try
+          (create-table! young-name)
+          (create-table! old-name)
+          (create-table! ordinary-name)
+          ;; Precondition: all three exist
+          (is (table-exists-in-schema? db-id schema young-name)    "young table pre-exists")
+          (is (table-exists-in-schema? db-id schema old-name)      "old table pre-exists")
+          (is (table-exists-in-schema? db-id schema ordinary-name) "ordinary table pre-exists")
+          ;; Run the sweep (1-hour min-age)
+          (scratch/sweep-old-test-tables! db-id db schema)
+          ;; Old orphan is gone
+          (is (not (table-exists-in-schema? db-id schema old-name))
+              "old orphan scratch table should be dropped by sweep")
+          ;; Young table survives
+          (is (table-exists-in-schema? db-id schema young-name)
+              "young scratch table should survive sweep")
+          ;; Ordinary table survives
+          (is (table-exists-in-schema? db-id schema ordinary-name)
+              "non-test table should survive sweep")
+          (finally
+            (doseq [tbl [young-name old-name ordinary-name]]
+              (try (driver/drop-table! :postgres db-id (keyword schema tbl))
+                   (catch Exception _)))))))))
+
+(deftest sweep-old-test-tables-best-effort-test
+  ;; A drop failure inside sweep-old-test-tables! must not throw — the run must
+  ;; continue normally even when the sweep encounters an error.
+  (testing "sweep-old-test-tables! never throws, even when cleanup-all-test-tables! errors"
+    (with-redefs [scratch/cleanup-all-test-tables! (fn [& _] (throw (RuntimeException. "simulated sweep error")))]
+      ;; Should return nil (or any value) without throwing
+      (is (nil? (scratch/sweep-old-test-tables! 1 {:engine "postgres"} "public"))
+          "sweep-old-test-tables! must not propagate errors"))))
+
+;;; ---------------------------------------------------------------------------
 ;;; Regression: list-tables-in-schema must not interpolate schema
 ;;; ---------------------------------------------------------------------------
 

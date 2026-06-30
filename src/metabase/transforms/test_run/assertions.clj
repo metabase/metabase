@@ -278,6 +278,7 @@
 
   Dispatch on the strategy keyword (:batched or :per-assertion).
   Error entries from `prepare` are NOT passed — `interpret` handles them."
+  {:arglists '([strategy db-id drv mapping binding prepared opts])}
   (fn [strategy & _] strategy))
 
 (defmethod run-strategy :batched

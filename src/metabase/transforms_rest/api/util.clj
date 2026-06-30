@@ -39,7 +39,6 @@
    :metabase.transforms.test-run.resolve/unsupported-transform-type 422
    ;; Execution errors — 500.
    :metabase.transforms.test-run.scratch/seed-failed              500
-   :metabase.transforms.test-run.core/missing-database-id         422
    :metabase.transforms.test-run.execute/pre-execution-guard-failed 500
    :metabase.transforms.test-run.execute/execution-failed         500
    ;; Chained (sub-graph) test-run errors.
@@ -63,34 +62,32 @@
   Returns `{table-id File}` for every `input-<table-id>` part. Reserved parts
   (`expected`, `options`, plus any `extra-reserved`) are skipped; anything else
   throws a 400 naming the offending part."
-  ([multipart-params]
-   (parse-input-table-ids multipart-params #{}))
-  ([multipart-params extra-reserved]
-   (let [reserved (into #{"expected" "options"} extra-reserved)]
-     (reduce-kv
-      (fn [acc k v]
-        (cond
-          ;; Reserved keys handled separately — skip.
-          (contains? reserved k)
-          acc
+  [multipart-params extra-reserved]
+  (let [reserved (into #{"expected" "options"} extra-reserved)]
+    (reduce-kv
+     (fn [acc k v]
+       (cond
+         ;; Reserved keys handled separately — skip.
+         (contains? reserved k)
+         acc
 
-          ;; input-<positive-int> pattern.
-          (re-matches #"input-(\d+)" k)
-          (let [[_ id-str] (re-matches #"input-(\d+)" k)
-                table-id   (parse-long id-str)]
-            (if (and table-id (pos? table-id))
-              (assoc acc table-id (:tempfile v))
-              (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
-                              {:status-code 400
-                               :part-name   k}))))
+         ;; input-<positive-int> pattern.
+         (re-matches #"input-(\d+)" k)
+         (let [[_ id-str] (re-matches #"input-(\d+)" k)
+               table-id   (parse-long id-str)]
+           (if (and table-id (pos? table-id))
+             (assoc acc table-id (:tempfile v))
+             (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
+                             {:status-code 400
+                              :part-name   k}))))
 
-          ;; Anything else is unknown.
-          :else
-          (throw (ex-info (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
-                          {:status-code 400
-                           :part-name   k}))))
-      {}
-      multipart-params))))
+         ;; Anything else is unknown.
+         :else
+         (throw (ex-info (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
+                         {:status-code 400
+                          :part-name   k}))))
+     {}
+     multipart-params)))
 
 (defn parse-test-run-options
   "Parse the optional `options` JSON multipart part.
@@ -167,8 +164,8 @@
             data))))
 
 (defn run-record->response
-  "Convert a successful run-record (from `run-test!` / `run-chain-test!`) to the
-  HTTP response body.
+  "Convert a successful run-record (from `run-chain-test!` / `run-card-chain-test!`)
+  to the HTTP response body.
 
   Status keywords are converted to strings (`\"passed\"` / `\"failed\"`) for JSON
   serialisation. `:test_run_id` is nil (reserved for a future async polling variant).

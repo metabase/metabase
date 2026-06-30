@@ -261,7 +261,7 @@
 ;;; Shared CSV helper for DB tests
 ;;; ---------------------------------------------------------------------------
 
-(defn- ^File write-temp-csv! [csv-string]
+(defn- write-temp-csv! ^File [csv-string]
   (doto (File/createTempFile "assertions-test-" ".csv")
     (spit csv-string)))
 
@@ -519,7 +519,7 @@
                       ;; but throws at the warehouse in the combined query.
                       ;; We use run-assertions! with :strategy :batched (the default) and
                       ;; the bad assertion first so it poisons the combined UNION ALL.
-                      bad-sql     (str "SELECT * FROM test_output WHERE nonexistent_column_xyz < 0")]
+                      bad-sql     "SELECT * FROM test_output WHERE nonexistent_column_xyz < 0"]
                   (try
                     (let [results (assertions/run-assertions!
                                    db-id drv backend mapping binding

@@ -8,11 +8,10 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
-   [metabase.transforms-rest.api.util :as api-util]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -316,142 +315,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (run-transform! (api/read-check :model/Transform id)))
-
-;;; ---------------------------------------------------------------------------
-;;; Test-run endpoint helpers
-;;; ---------------------------------------------------------------------------
-
-(defn- run-test-run!
-  "Execute a test run for `transform` from parsed multipart params.
-
-  Reads the `expected` file part (optional when `assertions` is non-empty), the
-  `input-<id>` fixture files, the `options` JSON part, and the `assertions` JSON
-  part, then delegates to `transforms.core/run-test!`.
-
-  Returns the HTTP response map directly (status + body). Never throws —
-  typed errors are mapped to HTTP statuses from `test-run-error-http-status`;
-  unknown errors become 500."
-  [transform multipart-params]
-  (let [expected-part     (get multipart-params "expected")
-        assertions-part   (get multipart-params "assertions")
-        parsed-assertions (api-util/parse-assertions assertions-part)]
-    ;; At least one of expected or assertions must be present.
-    (when (and (nil? expected-part) (empty? parsed-assertions))
-      (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
-                      {:status-code 400})))
-    (let [expected-file   (when expected-part (:tempfile expected-part))
-          fixtures-by-id  (api-util/parse-input-table-ids multipart-params #{"assertions"})
-          opts            (assoc (api-util/parse-test-run-options (get multipart-params "options"))
-                                 :assertions parsed-assertions)
-          ;; The transform value for run-test! is built from the DB row's :source + :target.
-          transform-value {:source (:source transform)
-                           :target (:target transform)}]
-      (try
-        (let [record (transforms.core/run-test! transform-value fixtures-by-id expected-file opts)]
-          {:status 200
-           :body   (api-util/run-record->response record)})
-        (catch clojure.lang.ExceptionInfo e
-          (let [error-type  (:error-type (ex-data e))
-                http-status (get api-util/test-run-error-http-status error-type)]
-            (if http-status
-              {:status http-status
-               :body   (api-util/error->response e)}
-              ;; Unknown error-type — re-throw so the framework returns 500.
-              (throw e))))))))
-
-(api.macros/defendpoint :post "/:id/test-run" :- [:map
-                                                  [:status pos-int?]
-                                                  [:body api-util/TestRunResponse]]
-  "Run a synchronous test run for a transform.
-
-  Accepts a multipart/form-data request with the following parts:
-
-  - `input-<table-id>` (required, one per input table): a CSV file whose header
-    must exactly match the real table's column names. `table-id` must be a
-    positive integer matching the id of a table in the transform's dependency
-    set.
-
-  - `expected` (optional when `assertions` is non-empty): a CSV file containing
-    the expected output rows. Columns are inferred from the actual output schema;
-    the comparison is multiset (order-independent). At least one of `expected`
-    or `assertions` must be provided.
-
-  - `assertions` (optional when `expected` is present): a JSON array of assertion
-    objects `[{name, sql, severity?}]`. Each assertion's SQL must return zero rows
-    to pass. At least one of `expected` or `assertions` must be provided.
-
-  - `options` (optional): a JSON object with supported keys:
-    - `ignore_columns`: array of column name strings to exclude from the diff.
-
-  Error → HTTP status mapping:
-  - 400: missing both `expected` and `assertions`; unknown `input-*` table id;
-         malformed `options` or `assertions` JSON; unknown multipart part name.
-  - 402: feature flag off (transforms premium feature not enabled).
-  - 422: transform type not supported (e.g. Python); cannot determine input
-         tables; referenced table not synced; `replace-names` rewrite fails;
-         dangling column qualifier (table-qualified-column native SQL).
-  - 500: internal invariant violation (pre-execution DDL guard); QP read-back
-         failure.
-
-  Response shape (all cases):
-  - Passed/failed: `{:status \"passed\"|\"failed\", :diff <report>, :assertions [...], :test_run_id nil}`
-  - Error: `{:status \"error\", :error {:type <str>, :message <str>}, :test_run_id nil}`
-
-  `:test_run_id` is `nil` here (synchronous); reserved for a future async
-  polling variant."
-  {:multipart true}
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   {{:as multipart-params} :multipart-params}]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (api/check (not (transforms.core/transform-locked? transform))
-               [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
-                     :error-code "metabase_transforms_locked"}])
-    (run-test-run! transform multipart-params)))
-
-;;; ---------------------------------------------------------------------------
-;;; GET /:id/test-run/inputs — required input tables for the test-run UI
-;;; ---------------------------------------------------------------------------
-
-(api.macros/defendpoint :get "/:id/test-run/inputs" :- [:map
-                                                        [:status pos-int?]
-                                                        ;; Success → a vector of input-table descriptors; error paths
-                                                        ;; (402/403/422) → the run-record error envelope. The body must
-                                                        ;; admit both shapes or the framework coerces errors to 400.
-                                                        [:body [:or
-                                                                [:sequential api-util/InputTableResponse]
-                                                                [:map [:status [:= "error"]]]]]]
-  "Return the required input tables for a transform's test run.
-
-  The response is a vector of table descriptors — one per input table the
-  transform depends on, each carrying the table name and the exact column
-  headers the fixture CSV's header must contain.
-
-  Error → HTTP status mapping:
-  - 402: feature flag off (transforms premium feature not enabled).
-  - 403: caller lacks read access to the transform.
-  - 422: transform type not supported (e.g. Python); cannot determine input
-         tables; referenced table not synced."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (try
-      (let [transform-value {:source (:source transform)
-                             :target (:target transform)}
-            tables          (transforms.core/required-input-tables transform-value)]
-        {:status 200
-         :body   (mapv api-util/input-table->response tables)})
-      (catch clojure.lang.ExceptionInfo e
-        (let [error-type  (:error-type (ex-data e))
-              http-status (get api-util/test-run-error-http-status error-type)]
-          (if http-status
-            {:status http-status
-             :body   (api-util/error->response e)}
-            (throw e)))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

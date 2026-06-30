@@ -6,10 +6,10 @@
   - [[run-card-chain-test!]] — card-target: run the slice, compile + execute the card's query
                                under the scratch override, diff the result.
 
-  Generalizes the single-transform orchestrator ([[metabase.transforms.test-run.core/run-test!]])
-  to a connected slice of the transform DAG. The user picks boundary *source*
-  transforms plus a single *target*; every node between them runs, fed by fixtures
-  at the slice's leaves, and the target's output is diffed against an expected CSV.
+  The user picks boundary *source* transforms plus a single *target*; every node
+  between them runs, fed by fixtures at the slice's leaves, and the target's
+  output is diffed against an expected CSV. The single-transform case is the
+  degenerate slice: `source-ids = #{}` → `slice = #{target-id}`.
 
   The accumulating mapping is the heart of the chain: topo order guarantees an
   upstream output is registered before any downstream node resolves, so a
@@ -47,7 +47,6 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms.test-run.assertions :as assertions]
    [metabase.transforms.test-run.card-refs :as card-refs]
-   [metabase.transforms.test-run.core :as core]
    [metabase.transforms.test-run.diff :as diff]
    [metabase.transforms.test-run.execute :as execute]
    [metabase.transforms.test-run.fixtures :as fixtures]
@@ -60,6 +59,15 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------------------------------------
+;;; Constants
+;;; ---------------------------------------------------------------------------
+
+(def default-test-run-timeout-ms
+  "Statement-level timeout for a test-run execution. Override via `:timeout-ms`
+  in `opts`."
+  (u/minutes->ms 5))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Internal helpers
@@ -288,7 +296,7 @@
   On error, throws a typed `ex-info` (`:error-type` in ex-data). Cleanup (drop all
   scratch tables) runs in `finally` on every path."
   [target-id source-ids fixtures-by-table-id expected-csv-file opts]
-  (let [timeout-ms     (get opts :timeout-ms core/default-test-run-timeout-ms)
+  (let [timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
         ignore-cols    (get opts :ignore-columns #{})
         assertion-defs (get opts :assertions [])
         all-transforms (t2/select :model/Transform)
@@ -391,7 +399,7 @@
   On error, throws a typed `ex-info` (`:error-type` in ex-data). Cleanup runs in
   `finally` on every path."
   [card source-ids fixtures-by-table-id expected-csv-file opts]
-  (let [timeout-ms     (get opts :timeout-ms core/default-test-run-timeout-ms)
+  (let [timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
         ignore-cols    (get opts :ignore-columns #{})
         assertion-defs (get opts :assertions [])
         card-id        (:id card)

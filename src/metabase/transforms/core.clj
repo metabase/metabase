@@ -17,8 +17,6 @@
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.test-run.chain]
-   [metabase.transforms.test-run.core]
-   [metabase.transforms.test-run.inputs]
    [metabase.transforms.usage]
    [metabase.transforms.util]
    [potemkin :as p]))
@@ -87,10 +85,6 @@
  [metabase.transforms.models.transform-tag
   tag-name-exists?
   tag-name-exists-excluding?]
- [metabase.transforms.test-run.core
-  run-test!]
- [metabase.transforms.test-run.inputs
-  required-input-tables]
  [metabase.transforms.test-run.chain
   run-chain-test!
   subgraph-input-tables
