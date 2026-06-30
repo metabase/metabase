@@ -53,6 +53,14 @@ const failedPluginHashes = new Map<
   CustomVizPluginRuntime["bundle_hash"]
 >();
 
+// Per-plugin monotonic load counters for latest-wins ordering. Dev reloads can
+// overlap (rapid edits or a new build arriving while a fetch is in flight) and
+// resolve out of order; each load is tagged at start and only commits/toasts
+// if it is still the freshest, so a slower older load can't overwrite
+// a newer bundle or fire a stale error.
+const loadStartedSeq = new Map<CustomVizPluginId, number>();
+const loadAppliedSeq = new Map<CustomVizPluginId, number>();
+
 /**
  * Remove a previously-loaded custom-viz display from the global
  * visualizations registry and drop its load/failure cache entries, so a
@@ -68,6 +76,8 @@ export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
         PLUGIN_CUSTOM_VIZ.releaseCustomVizAsset(id);
         loadedPlugins.delete(id);
         failedPluginHashes.delete(id);
+        loadStartedSeq.delete(id);
+        loadAppliedSeq.delete(id);
       }
     }
   }
@@ -302,6 +312,9 @@ export async function loadCustomVizPlugin(
 
   ensureVizApi();
 
+  const loadSeq = (loadStartedSeq.get(plugin.id) ?? 0) + 1;
+  loadStartedSeq.set(plugin.id, loadSeq);
+
   try {
     const params: Record<string, string> = {};
     if (cacheBustSuffix) {
@@ -309,12 +322,28 @@ export async function loadCustomVizPlugin(
     } else if (currentHash) {
       params.v = currentHash;
     }
-    const res = await api.fetch({
-      method: "GET",
-      url: plugin.bundle_url,
-      params,
-      cache: "no-store",
-    });
+    // In dev mode the bundle is proxied from a dev server that can transiently
+    // fail while mid-rebuild — the endpoint reports this as a 5xx (e.g. 503).
+    // Retry only on those server-side statuses; a 4xx (missing plugin, no
+    // permission) is permanent, so fail fast instead of stalling. Non-dev
+    // bundles come from the backend's on-disk cache and aren't retried.
+    const fetchBundle = () =>
+      api.fetch({
+        method: "GET",
+        url: plugin.bundle_url,
+        params,
+        cache: "no-store",
+      });
+    const maxAttempts = plugin.dev_bundle_url ? 5 : 1;
+    let res = await fetchBundle();
+    for (
+      let attempt = 2;
+      attempt <= maxAttempts && !res.ok && res.status >= 500;
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      res = await fetchBundle();
+    }
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -384,6 +413,11 @@ export async function loadCustomVizPlugin(
       isDev: Boolean(plugin.dev_bundle_url),
     });
 
+    // Check if any newer request didn't complete earlier and exit early if it did
+    if ((loadAppliedSeq.get(plugin.id) ?? 0) > loadSeq) {
+      return identifier;
+    }
+
     // Use registerVisualization for first load; overwrite directly for updates
     // (registerVisualization throws on duplicate identifiers).
     // Check visualizations map directly (not loadedPlugins) because HMR may
@@ -397,10 +431,18 @@ export async function loadCustomVizPlugin(
       identifier,
       hash: currentHash,
     });
+    loadAppliedSeq.set(plugin.id, loadSeq);
     failedPluginHashes.delete(plugin.id);
 
     return identifier;
   } catch (error) {
+    // Suppress the failure if a newer load has superseded this one
+    const superseded =
+      (loadAppliedSeq.get(plugin.id) ?? 0) >= loadSeq ||
+      (loadStartedSeq.get(plugin.id) ?? 0) > loadSeq;
+    if (superseded) {
+      return null;
+    }
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
       onInfo?.(
