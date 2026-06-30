@@ -206,7 +206,7 @@
     "gpt-5.4"
     "gpt-5.4-pro"
     "gpt-5.4-mini"
-    "gpt-4.1"})
+    "gpt-5"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
