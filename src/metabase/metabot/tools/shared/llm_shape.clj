@@ -690,8 +690,10 @@
       (clojure.core/name result-type)
       "item")))
 
-(defn- container-type? [type]
-  (#{"dashboard" :dashboard "collection" :collection} type))
+(defn- container-type?
+  "Whether a (normalized, keyword) result type is a container the LLM drills into rather than queries."
+  [type-kw]
+  (#{:dashboard :collection} type-kw))
 
 (defn search-result->xml
   "Format a single search result as XML element.
