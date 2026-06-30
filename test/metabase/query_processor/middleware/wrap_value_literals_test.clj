@@ -318,13 +318,26 @@
           "the `:relative-datetime` bound is left untouched"))))
 
 (deftest ^:parallel wrap-prewrapped-absolute-datetime-two-literals-test
-  (testing (str "a comparison with a wrappable literal on *both* sides (no field to wrap against) is left "
-                "unchanged — neither literal is mis-bound as the `field` and silently dropped")
+  (testing (str "a comparison with a string-valued `:absolute-datetime` on *both* sides (no field to "
+                "wrap against) still has each literal parsed using its own unit — neither is mis-bound "
+                "as the `field` and silently dropped, and no bare string survives to execution")
+    (is (=? {:filters [[:= {}
+                        [:absolute-datetime {} (t/local-date "2024-01-01") :day]
+                        [:absolute-datetime {} (t/local-date "2025-01-01") :day]]]}
+            (-> (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query checkins
+                   {:filter [:= [:absolute-datetime "2024-01-01" :day]
+                             [:absolute-datetime "2025-01-01" :day]]}))
+                wrap-value-literals
+                :stages
+                first))))
+  (testing "two already-parsed `:absolute-datetime` literals are left unchanged (nothing to parse)"
     (let [parsed (lib/query
                   meta/metadata-provider
                   (lib.tu.macros/mbql-query checkins
-                    {:filter [:= [:absolute-datetime "2024-01-01" :day]
-                              [:absolute-datetime "2025-01-01" :day]]}))]
+                    {:filter [:= [:absolute-datetime (t/local-date "2024-01-01") :day]
+                              [:absolute-datetime (t/local-date "2025-01-01") :day]]}))]
       (is (= (:stages parsed) (:stages (wrap-value-literals parsed)))))))
 
 (deftest ^:parallel string-filters-test

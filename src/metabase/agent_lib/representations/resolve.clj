@@ -36,6 +36,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -112,13 +113,16 @@
     (u.date/parse s)
     nil
     (catch Exception e
-      (throw (ex-info (tru "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-                           (pr-str s))
-                      {:agent-error? true
-                       :status-code  400
-                       :error        :invalid-temporal-literal
-                       :literal      s}
-                      e)))))
+      ;; `s` is untrusted agent input — bound it before it lands in an exception message or ex-data so a
+      ;; pathological literal can't flood logs. A real temporal literal is well under this length.
+      (let [s' (u/truncate s 64)]
+        (throw (ex-info (tru "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
+                             (pr-str s'))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :invalid-temporal-literal
+                         :literal      s'}
+                        e))))))
 
 (defn- validate-absolute-datetime-literals
   "Validate (without coercing) the string literals in `:absolute-datetime` clauses, so malformed

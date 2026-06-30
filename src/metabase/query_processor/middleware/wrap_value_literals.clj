@@ -260,6 +260,19 @@
       (add-type-info x (*type-info* query path field))
       x)))
 
+(defn- parse-fieldless-literal
+  "Parse a string-valued `:absolute-datetime` standalone — using its own unit and no field type — for a
+  comparison of two literals where there is no field to wrap against (e.g. `[:= <abs-datetime-string>
+  <abs-datetime-string>]`). Without this the bare string survives to execution and later middleware
+  (e.g. `optimize-temporal-filters`) chokes on it. Anything else is returned untouched."
+  [x]
+  (if-let [[s unit] (string-valued-absolute-datetime x)]
+    ;; pre-parse to a `java.time` value (no field type / report timezone to apply here) so the result
+    ;; is the literal's own value — a date-only string stays a `LocalDate`, not a timezone-dependent
+    ;; instant — rather than routing through the tz-aware string path.
+    (add-type-info (u.date/parse s) {:unit (or unit :default)})
+    x))
+
 (defn- wrap-value-literals-in-clause
   [query path clause]
   (match/match-one clause
@@ -280,6 +293,14 @@
     ;; literal and field (literal on LHS)
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard wrappable-literal?) (field :guard (not (wrappable-literal? field)))]
     [tag opts (wrap-literal-against-field query path field x) field]
+
+    ;; two literals, no field to wrap against — still parse a string-valued `:absolute-datetime` (using
+    ;; its own unit) so a bare string can't survive to execution. Guarded on
+    ;; `string-valued-absolute-datetime` so `[:= 1 2]`, two already-parsed bounds, etc. fall through
+    ;; unchanged; raw values stay raw since there's no field type to attach.
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts x y]
+    (when (or (string-valued-absolute-datetime x) (string-valued-absolute-datetime y))
+      [tag opts (parse-fieldless-literal x) (parse-fieldless-literal y)])
 
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
     [:datetime-diff opts (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
