@@ -29,6 +29,7 @@ export function useDashboardChartPaste() {
       try {
         const card = await createCard({
           name: payload.name,
+          description: payload.description ?? null,
           display: payload.display,
           dataset_query: payload.dataset_query,
           visualization_settings: payload.visualization_settings,
