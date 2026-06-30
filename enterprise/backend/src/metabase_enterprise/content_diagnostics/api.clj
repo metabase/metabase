@@ -199,7 +199,9 @@
      [:description    [:maybe :string]]
      [:owner          NormalizedUser]
      [:creator        NormalizedUser]
-     [:threshold_days {:optional true} :int]]]])
+     [:threshold_days {:optional true} :int]
+     ;; frozen scan-time activity anchor (ISO string); nil ⇒ never used/ran
+     [:last_active_at {:optional true} [:maybe :string]]]]])
 
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 

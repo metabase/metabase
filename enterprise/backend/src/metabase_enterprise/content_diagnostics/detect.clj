@@ -46,13 +46,17 @@
                          :offset         nil
                          :sort-column    :name
                          :sort-direction :asc})]
-    (for [{:keys [id model]} rows
+    (for [{:keys [id model last_used_at]} rows
           :let  [et (model->entity-type model)]
           :when et]
       {:entity-type  et
        :entity-id    id
        :finding-type :stale
-       :details      {:threshold_days threshold}})))
+       ;; freeze the scan-time verdict evidence (D17): the activity anchor that crossed the cutoff —
+       ;; `last_used_at` for cards, `last_viewed_at` for dashboards (the stale query aliases both to
+       ;; `last_used_at`). `nil` ⇒ never used/ran. Stored in JSON details, served as an ISO string.
+       :details      {:threshold_days threshold
+                      :last_active_at last_used_at}})))
 
 (def checkers
   "Ordered checker registry. Each entry **declares** the finding-types it owns and a 0-arg `:run` fn

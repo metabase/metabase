@@ -51,9 +51,16 @@
                 (is (= :stale (:finding_type row)))
                 ;; scope_collection_id is stamped at scan time from the entity's collection
                 (is (= coll-id (:scope_collection_id row)))
+                ;; details = frozen verdict evidence: threshold + the activity anchor, nothing else
+                (is (= #{:threshold_days :last_active_at} (set (keys (:details row)))))
                 ;; derive from the setting, not a literal — a default change must not silently desync
-                (is (= {:threshold_days (cd.settings/content-diagnostics-stale-threshold-days)}
-                       (:details row)))))
+                (is (= (cd.settings/content-diagnostics-stale-threshold-days)
+                       (get-in row [:details :threshold_days])))
+                ;; last_active_at frozen from the card's last_used_at (JSON-encoded → ISO string)
+                (is (string? (get-in row [:details :last_active_at])))))
+            (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
+              (let [row (first (filter #(and (= :dashboard (:entity_type %)) (= s4 (:entity_id %))) rows))]
+                (is (string? (get-in row [:details :last_active_at])))))
             (testing "duration histogram recorded one ok observation"
               (is (<= 1 (:count (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms
                                                  {:status "ok"})))))
@@ -127,7 +134,8 @@
                                                                  :entity_type  :card
                                                                  :entity_id    card-id
                                                                  :finding_type :stale
-                                                                 :details      {:threshold_days threshold}})))
+                                                                 :details      {:threshold_days threshold
+                                                                                :last_active_at "2025-09-01T08:00:00Z"}})))
                   old-id     (insert "scan-old" 30)
                   new-id     (insert "scan-new" 90)
                   serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")
@@ -145,8 +153,9 @@
                   (is (= "Quarterly Revenue" (:entity_display_name row)))
                   (testing "collection breadcrumb nested under details"
                     (is (= coll-id (get-in row [:details :collection :id]))))
-                  (testing "stored verdict (threshold_days) flows through details"
-                    (is (= 90 (get-in row [:details :threshold_days]))))
+                  (testing "stored verdict (threshold_days, last_active_at) flows through details"
+                    (is (= 90 (get-in row [:details :threshold_days])))
+                    (is (= "2025-09-01T08:00:00Z" (get-in row [:details :last_active_at]))))
                   (testing "creator hydrated as a normalized user object"
                     (is (= (mt/user->id :rasta) (get-in row [:details :creator :id])))
                     (is (= "user" (get-in row [:details :creator :type]))))

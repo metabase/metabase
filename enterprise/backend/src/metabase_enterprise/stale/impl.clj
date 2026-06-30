@@ -107,7 +107,7 @@
     (find-stale-query model args)))
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
-  (cond-> {:select [:id :model]
+  (cond-> {:select [:id :model :last_used_at]
            :from [[{:union-all (queries args)} :dummy_alias]]
            :order-by [[(sort-column (:sort-column args))
                        (:sort-direction args)]]}
@@ -123,7 +123,11 @@
 (mu/defn find-candidates :- [:map
                              [:rows [:sequential [:map
                                                   [:id pos-int?]
-                                                  [:model keyword?]]]]
+                                                  [:model keyword?]
+                                                  ;; the entity's last-activity anchor (card `last_used_at`,
+                                                  ;; dashboard `last_viewed_at`, both aliased to `last_used_at`);
+                                                  ;; `nil` is the never-used arm. Optional for back-compat.
+                                                  [:last_used_at {:optional true} [:maybe some?]]]]]
                              [:total :int]]
   "Find stale content in the given collections.
 
@@ -142,7 +146,8 @@
 
   Returns a map containing two keys,
 
-  - `:rows` (a collection of maps containing an `:id` and `:model` field, like `{:id 1 :model :model/Card}`), and
+  - `:rows` (a collection of maps containing `:id`, `:model`, and `:last_used_at` — the entity's last-activity
+  anchor; like `{:id 1 :model :model/Card :last_used_at #inst \"…\"}`), and
 
   - `:total` (the total count of stale elements that could be found if you iterated through all pages)
   "
@@ -151,7 +156,7 @@
     (throw (ex-info "not implemented." {:collection-ids collection-ids})))
   {:rows (into []
                (comp
-                (map #(select-keys % [:id :model]))
+                (map #(select-keys % [:id :model :last_used_at]))
                 (map (fn [v] (update v :model #(keyword "model" %)))))
                (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})
