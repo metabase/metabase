@@ -137,9 +137,9 @@
 (defn- handle-escapees!
   "Reports cards that are referenced from inside the requested collections but saved outside them.
 
-  Always logs a per-entity warning for each escapee, and unless `continue-on-error?` is set, aborts the
-  export by throwing: the escaped references would otherwise be dropped, silently producing an incomplete
-  archive. With `continue-on-error?` the export proceeds and the escaped entities are skipped instead."
+  Logs a per-entity warning for each escapee.
+
+  Throws if `continue-on-error?` is false."
   [escaped continue-on-error?]
   (let [dashboards (group-by #(get % "Dashboard") escaped)]
     (doseq [[dash-id escapes] (dissoc dashboards nil)]
@@ -201,13 +201,10 @@
         ;; cards referenced by dashboards live outside the target collections.
         {:keys [reportable-escaped analytics-card-ids]} (when has-content?
                                                           (escape-analysis by-model nodes))]
-    ;; A card referenced from inside the requested collections but living outside them would produce an
-    ;; incomplete export (the referencing dashboards/cards get dropped), so by default handle-escapees!
-    ;; aborts loudly instead of silently emitting an empty archive. With continue-on-error we don't abort:
-    ;; the escaped cards are outside the collection set so they're filtered out of extraction anyway, and
-    ;; the dashboards/cards that reference them are skipped on import (which also honors continue-on-error).
+    ;; A card referenced from inside the requested collections but living outside them would produce an incomplete
+    ;; export.
     (when (seq reportable-escaped)
-      (handle-escapees! reportable-escaped (:continue-on-error opts)))
+      (handle-escapees! reportable-escaped (:continue-on-error opts))) ;; may throw
     (let [coll-set        (get by-model "Collection")
           ;; When targets are specified, also include Tables found via descendants
           ;; (published tables in target collections). These are extracted by ID, not all.
