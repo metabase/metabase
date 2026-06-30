@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.search :as search]
@@ -397,9 +398,10 @@
                      :model/Table      {final-table-id :id}    {:db_id db-id :data_layer :final}
                      :model/Table      {internal-table-id :id} {:db_id db-id :data_layer :internal}]
         (testing "collection items: true when the root collection is a library type, not merely shared/official"
-          (let [by-id (->> (#'search/enrich-with-collection-paths
-                            [{:type "model" :id 1 :collection {:id lib-coll-id}}
-                             {:type "model" :id 2 :collection {:id official-coll-id}}])
+          (let [by-id (->> (mt/with-test-user :crowberto
+                             (#'search/enrich-with-collection-paths
+                              [{:type "model" :id 1 :collection {:id lib-coll-id}}
+                               {:type "model" :id 2 :collection {:id official-coll-id}}]))
                            (into {} (map (juxt :id identity))))]
             (is (true?  (:library_member (by-id 1))) "item in a library collection")
             (is (false? (:library_member (by-id 2))) "item in an official (non-library) collection")))
@@ -416,6 +418,31 @@
                      :model/Table {t-id :id} {:db_id db-id :data_layer :final}]
         (is (nil? (:library_member (first (#'search/enrich-tables-with-data-layer
                                            [{:type "table" :id t-id}])))))))))
+
+(deftest collection-path-respects-read-permissions-test
+  (testing "collection_path omits ancestor collections the current user can't read (no name leak)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
+                                                          :group_id group-id}
+                     :model/Collection parent-coll {:name "Secret Parent"}
+                     :model/Collection child-coll  {:name "Visible Child"
+                                                    :location (collection/location-path parent-coll)}]
+        ;; rasta can read the child but NOT the parent.
+        (perms/grant-collection-read-permissions! group-id child-coll)
+        (let [path-for (fn [user]
+                         (-> (mt/with-test-user user
+                               (#'search/enrich-with-collection-paths
+                                [{:type "model" :id 1 :collection {:id (:id child-coll)}}]))
+                             first
+                             :collection_path))]
+          (testing "an admin who can read the whole chain sees the full path"
+            (is (= "Secret Parent/Visible Child" (path-for :crowberto))))
+          (testing "a user without read access to the parent only sees the readable leaf"
+            (let [rasta-path (path-for :rasta)]
+              (is (= "Visible Child" rasta-path))
+              (is (not (str/includes? rasta-path "Secret Parent"))
+                  "the unreadable ancestor's name must not leak into collection_path"))))))))
 
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"

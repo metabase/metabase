@@ -160,18 +160,25 @@
    by [[enrich-tables-with-data-layer]]."
   [results]
   (let [direct-ids   (->> results (keep result-collection-id) distinct)
-        ;; Bulk-fetch :location for direct ids so we can chase ancestors.
-        direct-locations (when (seq direct-ids)
-                           (t2/select-fn-set :location :model/Collection :id [:in direct-ids]))
-        ancestor-id-set  (->> direct-locations (mapcat ancestor-ids) (into #{}))
+        ;; Bulk-fetch direct collections (with their effective location, which elides ancestors
+        ;; the current user can't read) so we can chase ancestors permission-safely.
+        direct-rows  (when (seq direct-ids)
+                       (t2/hydrate (t2/select [:model/Collection :id :location] :id [:in direct-ids])
+                                   :effective_location))
+        id->eff-loc  (into {} (map (juxt :id :effective_location)) direct-rows)
+        ;; Chase ancestors from the *raw* location so library-member detection (which reads the
+        ;; root's :type, not its name) still works even when the root isn't readable.
+        ancestor-id-set  (->> direct-rows (mapcat (comp ancestor-ids :location)) (into #{}))
         all-ids          (into (set direct-ids) ancestor-id-set)
         coll-rows    (when (seq all-ids)
                        (t2/select [:model/Collection :id :name :location :type]
                                   :id [:in all-ids]))
         id->row      (into {} (map (juxt :id identity)) coll-rows)
         path-of      (fn [coll-id]
-                       (when-let [{:keys [name location]} (get id->row coll-id)]
-                         (let [ancestor-names (->> (ancestor-ids location)
+                       (when-let [{:keys [name]} (get id->row coll-id)]
+                         ;; Only readable ancestors (from :effective_location) contribute names,
+                         ;; so we never leak the name of a collection the user can't see.
+                         (let [ancestor-names (->> (ancestor-ids (get id->eff-loc coll-id))
                                                    (keep #(get-in id->row [% :name])))]
                            (str/join "/" (concat ancestor-names [name])))))
         library?     (premium-features/has-feature? :library)
