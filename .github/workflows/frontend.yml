@@ -123,11 +123,6 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor
         with:
-          # One stable suite for both shards. jest shards by file hash, so each
-          # test runs on exactly one shard and the two reports are disjoint — no
-          # collision under a shared suite. The shard is a parallelization detail
-          # (which one ran a failure lives in job_id/run context), so keeping it
-          # out of the suite keeps a test's identity stable across re-sharding.
           test-suite: fe-tests-unit
           entrypoint: release/ci-conductor/src/report-frontend.ts
       - name: Upload Test Results
