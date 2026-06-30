@@ -71,7 +71,7 @@
    `{:tables #{}}` even when USAGE/SELECT grants are intact (root cause
    pending investigation; see that test's docstring). Don't add drivers
    to the smaller test without first fixing the underlying sync visibility."
-  #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery-cloud-sdk})
+  #{:postgres :sqlserver :clickhouse :mysql :redshift})
 
 (defn- three-slot-driver?
   "True when the driver emits `db.schema.table` (SQL Server / BigQuery).
