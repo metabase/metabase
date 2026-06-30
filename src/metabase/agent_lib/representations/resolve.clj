@@ -29,9 +29,11 @@
   encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
    [clojure.walk :as walk]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.walk :as lib.walk]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util.date-2 :as u.date]
@@ -127,15 +129,15 @@
   QP's `wrap-value-literals`, where the comparison field's type and the report timezone are
   available. This pass only rejects literals that can't possibly parse. Returns the query unchanged."
   [pmbql-query]
-  (walk/postwalk
-   (fn [node]
-     (when (and (vector? node)
-                (= :absolute-datetime (nth node 0 nil))
-                (map? (nth node 1 nil))
-                (string? (nth node 2 nil)))
-       (assert-parseable-temporal-literal! (nth node 2)))
-     node)
-   pmbql-query)
+  ;; `walk-clauses` visits each clause without rebuilding the query (returning `nil` from `f` leaves it
+  ;; untouched); `clause-of-type?` is the same detection `wrap-value-literals` uses downstream.
+  (lib.walk/walk-clauses
+   pmbql-query
+   (fn [_query _path-type _path clause]
+     (when (and (lib/clause-of-type? clause :absolute-datetime)
+                (string? (nth clause 2 nil)))
+       (assert-parseable-temporal-literal! (nth clause 2)))
+     nil))
   pmbql-query)
 
 (defn resolve-query

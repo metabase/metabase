@@ -317,6 +317,16 @@
                   first))
           "the `:relative-datetime` bound is left untouched"))))
 
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-two-literals-test
+  (testing (str "a comparison with a wrappable literal on *both* sides (no field to wrap against) is left "
+                "unchanged — neither literal is mis-bound as the `field` and silently dropped")
+    (let [parsed (lib/query
+                  meta/metadata-provider
+                  (lib.tu.macros/mbql-query checkins
+                    {:filter [:= [:absolute-datetime "2024-01-01" :day]
+                              [:absolute-datetime "2025-01-01" :day]]}))]
+      (is (= (:stages parsed) (:stages (wrap-value-literals parsed)))))))
+
 (deftest ^:parallel string-filters-test
   (testing "string filters like `starts-with` should not parse datetime strings for obvious reasons"
     (is (= (lib.tu.macros/mbql-query checkins

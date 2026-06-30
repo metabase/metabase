@@ -220,17 +220,16 @@
 
 (def ^:private raw-value? (complement lib/clause?))
 
+;; Some queries carry temporal literals in their portable / wire form — e.g. Metabot's representations
+;; repair wraps `between` bounds as `[:absolute-datetime {} "2024-01-01" :day]`, and on CLJS a string
+;; is the only representation. The comparison arms below parse temporal strings that arrive as *raw*
+;; values, but would otherwise skip ones already wrapped in `:absolute-datetime`, leaving a bare string
+;; that later middleware (e.g. `optimize-temporal-filters`) chokes on. This predicate lets those arms
+;; detect such clauses; the unit travels with the string so a `:year`/`:month` literal keeps its bucket
+;; instead of collapsing to the field's default when re-parsed.
 (defn- string-valued-absolute-datetime
   "If `x` is an `:absolute-datetime` clause whose literal is still an (unparsed) string, return a
-  `[string unit]` pair of that inner string and the clause's temporal unit; otherwise `nil`.
-
-  Such clauses arrive when a query carries temporal literals in their portable / wire form — e.g.
-  Metabot's representations repair wraps `between` bounds as `[:absolute-datetime {} \"2024-01-01\"
-  :day]`, and on CLJS a string is the only representation. The arms below normally parse temporal
-  strings that arrive as *raw* values; without this they'd skip ones already wrapped in
-  `:absolute-datetime`, leaving a bare string that later middleware (e.g. `optimize-temporal-filters`)
-  chokes on. The unit must travel with the string so a `:year`/`:month` literal keeps its bucket
-  instead of collapsing to the field's default when re-parsed."
+  `[string unit]` pair of that inner string and the clause's temporal unit; otherwise `nil`."
   [x]
   (when (lib/clause-of-type? x :absolute-datetime)
     (let [[_tag _opts v unit] x]
@@ -272,12 +271,14 @@
        (add-type-info x {:base-type x-type :effective-type x-type})
        (add-type-info y {:base-type y-type :effective-type y-type})])
 
-    ;; field and literal
-    [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard wrappable-literal?)]
+    ;; field and literal. `field` is guarded as *not* a wrappable literal so that a comparison of two
+    ;; literals (e.g. `[:= <abs-datetime-string> <abs-datetime-string>]`) can't bind a literal as the
+    ;; `field` and leave it unwrapped — it falls through unchanged instead.
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (field :guard (not (wrappable-literal? field))) (x :guard wrappable-literal?)]
     [tag opts field (wrap-literal-against-field query path field x)]
 
     ;; literal and field (literal on LHS)
-    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard wrappable-literal?) field]
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard wrappable-literal?) (field :guard (not (wrappable-literal? field)))]
     [tag opts (wrap-literal-against-field query path field x) field]
 
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
