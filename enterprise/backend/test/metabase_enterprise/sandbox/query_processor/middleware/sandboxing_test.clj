@@ -1228,12 +1228,14 @@
           (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
           (let [mp     (mt/metadata-provider)
                 orders (lib.metadata/table mp (mt/id :orders))
-                ;; Oracle prefixes table names with "Test Data " — match by display-name suffix to stay portable.
+                ;; Some drivers (e.g. Oracle, Vertica) prefix table names with "Test Data " — match the joined
+                ;; "People" table/group with an optional prefix to stay portable. The "Product" group is an
+                ;; implicit join and isn't prefixed.
                 query  (-> (lib/query mp orders)
-                           (lib.tu.notebook/add-join {:display-name #"People$"} {:display-name "User ID"} {:display-name "ID"})
+                           (lib.tu.notebook/add-join {:display-name #"(Test Data )?People"} "User ID" "ID")
                            (lib/aggregate (lib/count))
-                           (lib.tu.notebook/add-breakout {:display-name "People"} {:display-name "Source"})
-                           (lib.tu.notebook/add-breakout {:display-name "Product"} {:display-name "Category"})
+                           (lib.tu.notebook/add-breakout {:display-name #"(Test Data )?People"} "Source")
+                           (lib.tu.notebook/add-breakout "Product" "Category")
                            (merge {:pivot-rows [0] :pivot-cols [1]}))]
             (qp.pivot.test-util/with-pivot-parity-check
               (is (=? {:status :completed}
