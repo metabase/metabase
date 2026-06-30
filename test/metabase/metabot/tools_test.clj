@@ -149,16 +149,20 @@
                            :stages   [{:lib/type     "mbql.stage/mbql"
                                        :source-table ["Sample" "PUBLIC" "ORDERS"]
                                        :aggregation  [["count" {}]]}]}
-              result (agent-tools/construct-notebook-query-tool
-                      {:reasoning     "check seats"
-                       :query         query-input
-                       :title         "Seat check"
-                       :visualization {:chart_type "table"}})]
+              result (binding [shared/*profile-id* :nlq]
+                       (agent-tools/construct-notebook-query-tool
+                        {:reasoning     "check seats"
+                         :query         query-input
+                         :title         "Seat check"
+                         :description   "Total order count."
+                         :visualization {:chart_type "table"}}))]
           (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))
-          (is (seq (:data-parts result))))))))
+          (is (seq (:data-parts result)))
+          (is (= "Total order count."
+                 (get-in result [:data-parts 0 :data :description]))))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"
