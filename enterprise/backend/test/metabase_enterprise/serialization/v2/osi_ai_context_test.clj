@@ -1,8 +1,8 @@
 (ns metabase-enterprise.serialization.v2.osi-ai-context-test
-  "Round-trip serialization tests for `:model/OsiAiContext`, whose `entity_local_id` column holds a
-  polymorphic reference (dispatched on `entity_type`) that must survive export and import."
+  "Round-trip serialization tests for `:model/OsiAiContext`. Identity is the entity it describes: there is no
+  entity_id, so serdes nests each row under its entity's portable path (Card/Table/Measure/Segment) and
+  resolves the `(entity_type, entity_local_id)` key back from that path on import."
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -14,7 +14,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
@@ -39,36 +38,35 @@
       (ingest-one [_ path] (get mapped (no-labels path)))
       (ingest-errors [_] []))))
 
+(defn- extract-for [entity-type entity-local-id]
+  (ts/extract-one "OsiAiContext" [:and [:= :entity_type entity-type] [:= :entity_local_id entity-local-id]]))
+
+(defn- self-segment [extracted]
+  (last (serdes/path extracted)))
+
 (deftest card-backed-entity-round-trip-test
-  (testing "every card-backed entity type stores as the canonical \"card\", exports as the Card's entity_id, and imports back"
+  (testing "every card-backed entity type stores as \"card\", nests under the Card's path, and imports back"
     (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
       (doseq [entity-type ["card" "model" "metric" "question"]]
         (testing entity-type
-          (mt/with-temp [:model/OsiAiContext {sli-id :id sli-eid :entity_id}
-                         {:ai_context      {:instructions "Use it directly." :synonyms [entity-type]}
-                          :entity_type     entity-type
-                          :entity_local_id card-id}]
-            (let [extracted (ts/extract-one "OsiAiContext" sli-id)]
-              (testing "entity_local_id is exported as a portable reference; the type is normalized to \"card\""
-                (is (=? {:entity_id       sli-eid
-                         :ai_context      {:instructions "Use it directly." :synonyms [entity-type]}
-                         :entity_type     "card"
-                         :entity_local_id card-eid}
-                        extracted)))
-              (testing "dependencies cover the referenced Card"
-                (is (= #{[{:model "Card" :id card-eid}]}
-                       (serdes/dependencies extracted))))
-              (testing "importing resolves the ref back to the local id"
-                (t2/delete! :model/OsiAiContext :id sli-id)
+          (mt/with-temp [:model/OsiAiContext _ {:ai_context {:instructions "Use it directly." :synonyms [entity-type]}
+                                                :entity_type entity-type :entity_local_id card-id}]
+            (let [extracted (extract-for "card" card-id)]
+              (testing "path nests the row under the Card; ai_context copies verbatim; no entity_id/key fields"
+                (is (=? {:ai_context  {:instructions "Use it directly." :synonyms [entity-type]}
+                         :serdes/meta [{:model "Card" :id card-eid} {:model "OsiAiContext" :id "ai_context"}]}
+                        extracted))
+                (is (not (contains? extracted :entity_id))))
+              (testing "depends on the referenced Card"
+                (is (= [[{:model "Card" :id card-eid}]] (serdes/dependencies extracted))))
+              (testing "importing resolves the path back to the local card row"
+                (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
                 (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
                 (is (=? {:entity_type "card" :entity_local_id card-id}
-                        (t2/select-one :model/OsiAiContext :entity_id sli-eid)))
-                ;; load-metabase! re-inserts under a new id that with-temp can't reap; clean it up so the
-                ;; row doesn't leak into other tests' view of the (small, fully-scanned) table.
-                (t2/delete! :model/OsiAiContext :entity_id sli-eid)))))))))
+                        (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))))))
 
 (deftest measure-segment-entity-round-trip-test
-  (testing "measure and segment entity refs export as the entity's entity_id and import back"
+  (testing "measure and segment refs nest under the entity's path and import back"
     (let [orders (mt/id :orders)
           total  (mt/id :orders :total)]
       (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
@@ -79,80 +77,35 @@
         (doseq [[entity-type id eid serdes-model] [["measure" measure-id measure-eid "Measure"]
                                                    ["segment" segment-id segment-eid "Segment"]]]
           (testing entity-type
-            (mt/with-temp [:model/OsiAiContext {sli-id :id sli-eid :entity_id}
-                           {:ai_context {:synonyms [entity-type]} :entity_type entity-type :entity_local_id id}]
-              (let [extracted (ts/extract-one "OsiAiContext" sli-id)]
-                (testing "entity_local_id is exported as a portable entity_id reference"
-                  (is (=? {:entity_type entity-type :entity_local_id eid} extracted)))
-                (testing "dependencies cover the referenced entity (not a Card)"
-                  (is (= #{[{:model serdes-model :id eid}]}
-                         (serdes/dependencies extracted))))
-                (testing "importing resolves the ref back to the local id"
-                  (t2/delete! :model/OsiAiContext :id sli-id)
+            (mt/with-temp [:model/OsiAiContext _ {:ai_context {:synonyms [entity-type]}
+                                                  :entity_type entity-type :entity_local_id id}]
+              (let [extracted (extract-for entity-type id)]
+                (testing "path nests under the entity"
+                  (is (=? {:serdes/meta [{:model serdes-model :id eid} {:model "OsiAiContext" :id "ai_context"}]}
+                          extracted)))
+                (testing "depends on the referenced entity"
+                  (is (= [[{:model serdes-model :id eid}]] (serdes/dependencies extracted))))
+                (testing "importing resolves the path back to the local id"
+                  (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id id)
                   (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
                   (is (=? {:entity_type entity-type :entity_local_id id}
-                          (t2/select-one :model/OsiAiContext :entity_id sli-eid)))
-                  (t2/delete! :model/OsiAiContext :entity_id sli-eid))))))))))
-
-(deftest unmapped-entity-type-passes-through-test
-  (testing "an unrecognized entity_type exports as-is (raw id, no deps) instead of aborting the export"
-    ;; The CRUD API rejects unknown types, but rows written before a type was retired (or by direct appdb
-    ;; writes) shouldn't take down a whole export.
-    (mt/with-temp [:model/OsiAiContext {sli-id :id}
-                   {:ai_context {:instructions "legacy"} :entity_type "garbage" :entity_local_id 5}]
-      (let [extracted (ts/extract-one "OsiAiContext" sli-id)]
-        (is (=? {:entity_type "garbage" :entity_local_id 5} extracted))
-        (is (= #{} (serdes/dependencies extracted)))))))
+                          (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id id))))))))))))
 
 (deftest table-entity-round-trip-test
   (let [table-id (mt/id :venues)]
-    (mt/with-temp [:model/OsiAiContext {sli-id :id sli-eid :entity_id}
-                   {:ai_context {:instructions "best venues"} :entity_type "table" :entity_local_id table-id}]
-      (let [extracted (ts/extract-one "OsiAiContext" sli-id)
-            table-ref (:entity_local_id extracted)]
-        (testing "entity_local_id is exported as a [db schema table] path"
-          (is (=? {:entity_id sli-eid :entity_type "table" :entity_local_id vector?} extracted))
-          (is (= ["VENUES"] (take-last 1 table-ref))))
-        (testing "dependencies cover the Table's Database (the Table is synthesized on import)"
-          (is (= #{[{:model "Database" :id (first table-ref)}]}
-                 (serdes/dependencies extracted))))
-        (testing "importing resolves the ref back to the local id"
-          (t2/delete! :model/OsiAiContext :id sli-id)
+    (mt/with-temp [:model/OsiAiContext _ {:ai_context {:instructions "best venues"}
+                                          :entity_type "table" :entity_local_id table-id}]
+      (let [extracted (extract-for "table" table-id)]
+        (testing "path nests under the Table's [Database Schema Table] path"
+          (is (= {:model "OsiAiContext" :id "ai_context"} (self-segment extracted)))
+          (is (= "Table" (:model (last (pop (vec (serdes/path extracted))))))))
+        (testing "depends on the Table"
+          (is (= [(vec (pop (vec (serdes/path extracted))))] (serdes/dependencies extracted))))
+        (testing "importing resolves the path back to the local id"
+          (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
           (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
           (is (=? {:entity_type "table" :entity_local_id table-id}
-                  (t2/select-one :model/OsiAiContext :entity_id sli-eid)))
-          ;; load-metabase! re-inserts under a new id that with-temp can't reap; clean it up so the row
-          ;; doesn't leak into other tests' view of the (small, fully-scanned) table.
-          (t2/delete! :model/OsiAiContext :entity_id sli-eid))))))
-
-(deftest import-over-existing-natural-key-row-test
-  (testing "importing over a local row for the same (entity_type, entity_local_id) but a different entity_id updates in place"
-    ;; Reproduces the unique-constraint hazard: source and destination independently created ai_context for the
-    ;; same Card, each minting its own entity_id. The default entity_id-keyed lookup misses the local row, so without
-    ;; the natural-key load-one! override the import INSERTs and violates uq_osi_ai_context_entity.
-    (mt/with-temp [:model/Card {card-id :id} {}
-                   :model/OsiAiContext {local-id :id local-eid :entity_id}
-                   {:ai_context {:instructions "destination's own copy"}
-                    :entity_type "card" :entity_local_id card-id}]
-      (let [source-eid (u/generate-nano-id)
-            ;; an incoming export for the SAME card but a different (source-minted) entity_id
-            extracted  (-> (ts/extract-one "OsiAiContext" local-id)
-                           (assoc :entity_id source-eid)
-                           (assoc-in [:serdes/meta 0 :id] source-eid)
-                           (assoc :ai_context {:instructions "source guidance"}))]
-        (is (not= local-eid (:entity_id extracted)))
-        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-        (testing "still exactly one row for this entity, updated in place (not a duplicate insert)"
-          (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))
-        (testing "the existing row's ai_context was replaced"
-          (is (=? {:id          local-id
-                   :entity_type "card"
-                   :entity_local_id card-id
-                   :ai_context  {:instructions "source guidance"}}
-                  (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))
-        ;; the in-place update swapped local-id's entity_id, so with-temp's entity_id-keyed reap would miss it;
-        ;; delete by natural key so the row doesn't leak into other tests' view of the fully-scanned table.
-        (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))
+                  (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id))))))))
 
 (deftest osi-ai-context-export-scope-test
   (testing "OsiAiContext exports only on a fully complete export"
@@ -168,85 +121,27 @@
     (testing "the explicit opt-out excludes it"
       (is (not (contains? (#'extract/model-set {:no-osi-ai-context true}) "OsiAiContext"))))))
 
-(deftest import-repoints-row-to-a-different-entity-test
-  (testing "an import whose portable ref resolves to a different entity repairs the binding instead of aborting"
-    ;; The immutable-binding before-update hook rejects a changed entity_local_id (right for the CRUD API), but
-    ;; serdes legitimately re-resolves a row's ref to a new local entity (e.g. re-import after the target was
-    ;; recreated). load-update! must delete + reinsert in that case rather than t2/update! the binding.
-    (mt/with-temp [:model/Card {card-a :id} {}
-                   :model/Card {card-b :id card-b-eid :entity_id} {}
-                   :model/OsiAiContext {local-id :id local-eid :entity_id}
-                   {:ai_context {:instructions "bound to A"} :entity_type "card" :entity_local_id card-a}]
-      ;; same serdes entity_id, but the portable ref now points at Card B
-      (let [extracted (-> (ts/extract-one "OsiAiContext" local-id)
-                          (assoc :entity_local_id card-b-eid)
-                          (assoc :ai_context {:instructions "now bound to B"}))]
-        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-        (testing "still one row for this entity_id, now bound to Card B"
-          (is (= 1 (t2/count :model/OsiAiContext :entity_id local-eid)))
-          (is (=? {:entity_type "card" :entity_local_id card-b :ai_context {:instructions "now bound to B"}}
-                  (t2/select-one :model/OsiAiContext :entity_id local-eid))))
-        (testing "the stale binding to Card A is gone"
-          (is (nil? (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-a))))
-        ;; reinsert minted a new local id with the same entity_id; reap by entity_id so it doesn't leak.
-        (t2/delete! :model/OsiAiContext :entity_id local-eid)))))
-
-(deftest import-repoints-onto-an-already-owned-entity-test
-  (testing "re-pointing onto an entity another row already owns updates that row in place (no unique-constraint abort)"
-    ;; X is matched by entity_id and re-resolves to Card B, but Y already owns (card, B). Blindly reinserting
-    ;; X's data would violate uq_osi_ai_context_entity; instead the stale X is deleted and Y is updated in place.
-    (mt/with-temp [:model/Card {card-a :id} {}
-                   :model/Card {card-b :id card-b-eid :entity_id} {}
-                   :model/OsiAiContext {x-id :id x-eid :entity_id}
-                   {:ai_context {:instructions "X, bound to A"} :entity_type "card" :entity_local_id card-a}
-                   :model/OsiAiContext {_y-id :id _y-eid :entity_id}
-                   {:ai_context {:instructions "Y, bound to B"} :entity_type "card" :entity_local_id card-b}]
-      ;; an incoming export of X (its entity_id) whose portable ref now points at Card B
-      (let [extracted (-> (ts/extract-one "OsiAiContext" x-id)
-                          (assoc :entity_local_id card-b-eid)
-                          (assoc :ai_context {:instructions "merged onto B"}))]
-        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-        (testing "exactly one row for Card B, updated in place with X's incoming data"
-          (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id card-b)))
-          (is (=? {:entity_type "card" :entity_local_id card-b
-                   :entity_id x-eid :ai_context {:instructions "merged onto B"}}
-                  (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-b))))
-        (testing "Card A's row (the stale matched row) is gone"
-          (is (nil? (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-a))))
-        (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-b)))))
-
 (deftest disk-export-import-round-trip-test
-  (testing "OsiAiContext survives a real on-disk export/import"
-    ;; The in-memory tests above skip two layers that have silently dropped the model before:
-    ;; `extract/model-set` (the default-export selection) and `ingest/legal-top-level-paths` (which
-    ;; dirs the importer reads). This drives both through actual YAML on disk.
-    (let [serialized (atom nil)
-          sli-eid    (atom nil)]
+  (testing "OsiAiContext survives a real on-disk export/import, nested under its Table"
+    ;; Drives extract/model-set (the default-export selection) and ingest/legal-top-level-paths through real YAML.
+    (let [serialized (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-          (let [db  (ts/create! :model/Database :name "Prompt DB")
-                t1  (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")
-                sli (ts/create! :model/OsiAiContext
-                                :ai_context {:instructions "orders guidance"}
-                                :entity_type "table" :entity_local_id (:id t1))]
-            (reset! sli-eid (:entity_id sli))
-            ;; realize inside with-cache so the cached resolvers are actually used during extraction
+          (let [db (ts/create! :model/Database :name "Prompt DB")
+                t1 (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")]
+            (ts/create! :model/OsiAiContext
+                        :ai_context {:instructions "orders guidance"}
+                        :entity_type "table" :entity_local_id (:id t1))
             (reset! serialized (serdes/with-cache (into [] (extract/extract {}))))))
         (testing "default export selection includes it (guards extract/model-set)"
-          (is (= 1 (count (filter (fn [{[{:keys [model]}] :serdes/meta}]
-                                    (= model "OsiAiContext"))
+          ;; the row nests under its Table, so OsiAiContext is the *last* path segment, not the first.
+          (is (= 1 (count (filter (fn [e] (= "OsiAiContext" (:model (last (:serdes/meta e)))))
                                   @serialized)))))
         (ts/with-random-dump-dir [dump-dir "sli-serdes-"]
           (storage/store! (seq @serialized) (storage.files/file-writer dump-dir))
-          (testing "stored under the osi_ai_context/ directory"
-            (is (.exists (io/file dump-dir "osi_ai_context"))))
-          (testing "ingest reads it back (guards ingest/legal-top-level-paths)"
-            (is (contains? (set (serdes.ingest/ingest-list (serdes.ingest/ingest-yaml dump-dir)))
-                           [{:model "OsiAiContext" :id @sli-eid}])))
           (testing "loads into a fresh appdb with the table ref resolved"
             (ts/with-db dest-db
               (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
-              (let [row (t2/select-one :model/OsiAiContext :entity_id @sli-eid)]
-                (is (=? {:ai_context {:instructions "orders guidance"}} row))
-                (is (= "ORDERS"
-                       (t2/select-one-fn :name :model/Table :id (:entity_local_id row))))))))))))
+              (let [orders (t2/select-one :model/Table :name "ORDERS")
+                    row    (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id (:id orders))]
+                (is (=? {:ai_context {:instructions "orders guidance"}} row))))))))))

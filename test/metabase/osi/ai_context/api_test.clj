@@ -15,107 +15,87 @@
                                                   ~attrs)]
      ~@body))
 
+(defn- has-entity?
+  "Whether `entries` contains a row for `(entity-type, entity-local-id)`."
+  [entries entity-type entity-local-id]
+  (some #(= {:entity_type entity-type :entity_local_id entity-local-id}
+            (select-keys % [:entity_type :entity_local_id]))
+        entries))
+
 (deftest list-test
-  (with-test-entry [entry {}]
+  (with-test-entry [_ {}]
     (testing "superuser can list ai_context entries"
       (let [response (mt/user-http-request :crowberto :get 200 "osi/ai-context/")]
         (is (contains? response :data))
         (is (contains? response :total))
-        (is (some #(= (:id entry) (:id %)) (:data response)))))
+        (is (has-entity? (:data response) "table" 1))))
     (testing "non-superuser gets 403"
       (mt/user-http-request :rasta :get 403 "osi/ai-context/"))
     (testing "a legacy row whose entity_type is no longer in the write enum still reads back fine"
-      (with-test-entry [legacy {:entity_type "retired-model-string" :entity_local_id 7}]
-        (is (some #(= (:id legacy) (:id %))
-                  (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/"))))))))
+      (with-test-entry [_ {:entity_type "retired-model-string" :entity_local_id 7}]
+        (is (has-entity? (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/"))
+                         "retired-model-string" 7))))))
 
 (deftest get-test
-  (with-test-entry [entry {:entity_type "table" :entity_local_id 1 :ai_context {:instructions "find customers"}}]
-    (testing "superuser can fetch an ai_context entry by id"
-      (is (=? {:id              (:id entry)
-               :entity_type     "table"
+  (with-test-entry [_ {:entity_type "table" :entity_local_id 1 :ai_context {:instructions "find customers"}}]
+    (testing "superuser can fetch an ai_context entry by its logical key"
+      (is (=? {:entity_type     "table"
                :entity_local_id 1
                :ai_context      {:instructions "find customers"}}
-              (mt/user-http-request :crowberto :get 200 (str "osi/ai-context/" (:id entry))))))
-    (testing "returns 404 for unknown id"
-      (mt/user-http-request :crowberto :get 404 "osi/ai-context/0"))
+              (mt/user-http-request :crowberto :get 200 "osi/ai-context/table/1"))))
+    (testing "a card flavor resolves the canonical \"card\" row"
+      (with-test-entry [_ {:entity_type "metric" :entity_local_id 8 :ai_context {:instructions "by month"}}]
+        (is (=? {:entity_type "card" :entity_local_id 8}
+                (mt/user-http-request :crowberto :get 200 "osi/ai-context/model/8")))))
+    (testing "returns 404 for an entity with no row (including an unknown entity_type)"
+      (mt/user-http-request :crowberto :get 404 "osi/ai-context/table/999999")
+      (mt/user-http-request :crowberto :get 404 "osi/ai-context/garbage/1"))
     (testing "non-superuser gets 403"
-      (mt/user-http-request :rasta :get 403 (str "osi/ai-context/" (:id entry))))))
+      (mt/user-http-request :rasta :get 403 "osi/ai-context/table/1"))))
 
-(deftest create-test
-  (testing "superuser can create an ai_context entry (a card flavor is stored under the canonical \"card\")"
-    (let [response (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
-                                         {:entity_type     "metric"
-                                          :entity_local_id 42
-                                          :ai_context      {:instructions "Use the Revenue metric."
-                                                            :synonyms     ["sales"]
-                                                            :examples     ["revenue last month"]}})]
-      (try
-        (is (=? {:entity_type     "card"
-                 :entity_local_id 42
-                 :ai_context      {:instructions "Use the Revenue metric."
-                                   :synonyms     ["sales"]
-                                   :examples     ["revenue last month"]}}
-                response))
-        (finally
-          (t2/delete! :model/OsiAiContext :id (:id response))))))
+(deftest upsert-test
+  (testing "PUT creates the entry (a card flavor is stored under the canonical \"card\")"
+    (try
+      (is (=? {:entity_type     "card"
+               :entity_local_id 42
+               :ai_context      {:instructions "Use the Revenue metric." :synonyms ["sales"]
+                                 :examples ["revenue last month"]}}
+              (mt/user-http-request :crowberto :put 200 "osi/ai-context/metric/42"
+                                    {:ai_context {:instructions "Use the Revenue metric." :synonyms ["sales"]
+                                                  :examples ["revenue last month"]}})))
+      (finally (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id 42))))
   (testing "measure and segment entity refs are accepted (they are indexed library entities)"
     (doseq [entity-type ["measure" "segment"]]
-      (let [response (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
-                                           {:entity_type entity-type :entity_local_id 5
-                                            :ai_context {:synonyms ["alias"]}})]
-        (try
-          (is (=? {:entity_type entity-type :entity_local_id 5} response))
-          (finally
-            (t2/delete! :model/OsiAiContext :id (:id response)))))))
-  (testing "posting the same card under different flavors upserts one row (both normalize to \"card\")"
-    (let [first-resp  (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
-                                            {:entity_type "metric" :entity_local_id 99
-                                             :ai_context {:instructions "v1"}})
-          second-resp (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
-                                            {:entity_type "model" :entity_local_id 99
-                                             :ai_context {:instructions "v2"}})]
       (try
-        (is (= (:id first-resp) (:id second-resp)) "same row reused across a metric->model relabel")
-        (is (= {:instructions "v2"} (:ai_context second-resp)) "ai_context replaced")
-        (is (= 1 (count (filter #(= {:entity_type "card" :entity_local_id 99}
-                                    (select-keys % [:entity_type :entity_local_id]))
-                                (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/"))))))
-        (finally
-          (t2/delete! :model/OsiAiContext :id (:id first-resp))))))
-  (testing "entity is required"
-    (mt/user-http-request :crowberto :post 400 "osi/ai-context/"
-                          {:ai_context {:instructions "x"}}))
+        (is (=? {:entity_type entity-type :entity_local_id 5}
+                (mt/user-http-request :crowberto :put 200 (str "osi/ai-context/" entity-type "/5")
+                                      {:ai_context {:synonyms ["alias"]}})))
+        (finally (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id 5)))))
+  (testing "PUTting the same card under different flavors upserts one row (both normalize to \"card\")"
+    (try
+      (mt/user-http-request :crowberto :put 200 "osi/ai-context/metric/99" {:ai_context {:instructions "v1"}})
+      (let [second-resp (mt/user-http-request :crowberto :put 200 "osi/ai-context/model/99"
+                                              {:ai_context {:instructions "v2"}})]
+        (is (= {:instructions "v2"} (:ai_context second-resp)) "ai_context replaced across a metric->model relabel")
+        (is (=? {:entity_type "card" :entity_local_id 99 :ai_context {:instructions "v2"}}
+                (mt/user-http-request :crowberto :get 200 "osi/ai-context/model/99"))
+            "one canonical card row, fetched by either flavor")
+        (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id 99))))
+      (finally (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id 99))))
   (testing "ai_context is required"
-    (mt/user-http-request :crowberto :post 400 "osi/ai-context/"
-                          {:entity_type "table" :entity_local_id 1}))
-  (testing "entity types the reconciler never indexes (card/question/garbage) are rejected"
+    (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1" {}))
+  (testing "an over-long instructions string is rejected"
+    (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1"
+                          {:ai_context {:instructions (apply str (repeat 6000 "x"))}}))
+  (testing "too many synonyms is rejected"
+    (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1"
+                          {:ai_context {:synonyms (mapv str (range 51))}}))
+  (testing "entity types the reconciler never indexes (card/question/garbage) are rejected by the route"
     (doseq [entity-type ["card" "question" "garbage"]]
-      (mt/user-http-request :crowberto :post 400 "osi/ai-context/"
-                            {:entity_type entity-type :entity_local_id 1 :ai_context {:instructions "x"}})))
+      (mt/user-http-request :crowberto :put 400 (str "osi/ai-context/" entity-type "/1")
+                            {:ai_context {:instructions "x"}})))
   (testing "non-superuser gets 403"
-    (mt/user-http-request :rasta :post 403 "osi/ai-context/"
-                          {:entity_type "table" :entity_local_id 1 :ai_context {:instructions "x"}})))
-
-(deftest update-test
-  (with-test-entry [entry {}]
-    (testing "superuser can update the ai_context"
-      (let [updated (mt/user-http-request :crowberto :put 200
-                                          (str "osi/ai-context/" (:id entry))
-                                          {:ai_context {:instructions "updated"}})]
-        (is (= {:instructions "updated"} (:ai_context updated)))))
-    (testing "the entity is permanently bound: entity_type/entity_local_id in the body are ignored"
-      (let [updated (mt/user-http-request :crowberto :put 200
-                                          (str "osi/ai-context/" (:id entry))
-                                          {:entity_type "model" :entity_local_id 7
-                                           :ai_context {:instructions "x"}})]
-        (is (=? {:entity_type "table" :entity_local_id 1} updated) "still bound to the original entity")))
-    (testing "returns 404 for unknown id"
-      (mt/user-http-request :crowberto :put 404 "osi/ai-context/0" {:ai_context {:instructions "x"}}))
-    (testing "non-superuser gets 403"
-      (mt/user-http-request :rasta :put 403
-                            (str "osi/ai-context/" (:id entry))
-                            {:ai_context {:instructions "x"}}))))
+    (mt/user-http-request :rasta :put 403 "osi/ai-context/table/1" {:ai_context {:instructions "x"}})))
 
 (deftest reconcile-test
   (testing "POST /reconcile requires superuser"
@@ -124,11 +104,11 @@
     (mt/user-http-request :crowberto :post 400 "osi/ai-context/reconcile")))
 
 (deftest delete-test
-  (with-test-entry [entry {}]
+  (with-test-entry [_ {}]
     (testing "non-superuser gets 403"
-      (mt/user-http-request :rasta :delete 403 (str "osi/ai-context/" (:id entry))))
-    (testing "superuser can delete an entry"
-      (mt/user-http-request :crowberto :delete 204 (str "osi/ai-context/" (:id entry)))
-      (is (nil? (t2/select-one :model/OsiAiContext :id (:id entry)))))
-    (testing "returns 404 for unknown id"
-      (mt/user-http-request :crowberto :delete 404 "osi/ai-context/0"))))
+      (mt/user-http-request :rasta :delete 403 "osi/ai-context/table/1"))
+    (testing "superuser can delete an entry by its logical key"
+      (mt/user-http-request :crowberto :delete 204 "osi/ai-context/table/1")
+      (is (nil? (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id 1))))
+    (testing "returns 404 for an entity with no row"
+      (mt/user-http-request :crowberto :delete 404 "osi/ai-context/table/999999"))))

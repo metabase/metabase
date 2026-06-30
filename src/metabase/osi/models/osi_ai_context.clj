@@ -2,6 +2,9 @@
   "The `osi_ai_context` appdb table: one row per library entity holding OSI `ai_context` metadata
   (`{instructions, synonyms[], examples[]}`) for the entity identified by `entity_type`/`entity_local_id`.
 
+  Identity is the logical `(entity_type, entity_local_id)` pair — that compound key is the primary key, so
+  there is one row per entity and no surrogate id or serialization NanoID.
+
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
   library membership and serves the `retrieve_library_entities` Metabot tool's similarity search.
@@ -21,12 +24,22 @@
 
 (doto :model/OsiAiContext
   (derive :metabase/model)
-  (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+;; The logical (entity_type, entity_local_id) pair is the primary key — no surrogate id.
+(methodical/defmethod t2/primary-keys :model/OsiAiContext [_model] [:entity_type :entity_local_id])
 
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly.
   {:ai_context mi/transform-json})
+
+;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
+;;; ai_context row survives a type relabel and keys on a stable `(card, entity_local_id)`. The CRUD and tool
+;;; APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
+(t2/define-before-insert :model/OsiAiContext
+  [row]
+  (cond-> row
+    (:entity_type row) (update :entity_type entity-retrieval/normalize-entity-type)))
 
 ;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
 ;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The
@@ -41,54 +54,23 @@
 ;;; stale-read race (a delete buried in a long transaction) is closed without leaning on the backstop.
 ;;; Tagging the nudge as a delete is the wrong fix: it breaks under coalescing (a delete + re-insert of the
 ;;; same entity collapse to one dirty entry) and would act on possibly-rolled-back state.
-
-;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
-;;; ai_context row survives a type relabel and upserts key on a stable `(card, entity_local_id)`. The CRUD
-;;; and tool APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
-(t2/define-before-insert :model/OsiAiContext
+(defn- nudge-entity-sync!
+  "Nudge a targeted reconcile of `row`'s entity slice, returning `row`."
   [row]
-  (cond-> row
-    (:entity_type row) (update :entity_type entity-retrieval/normalize-entity-type)))
+  (u/prog1 row
+    (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))))
 
-;;; A row is permanently bound to its entity. Re-pointing it — a changed entity_local_id, or an entity_type
-;;; that normalizes to a different stored type — would strand the old entity's synonym/example docs in the
-;;; index until the periodic full reconcile (the after-update nudge below only reconciles the *new* entity's
-;;; slice). Disallow it: callers delete the row and create a new one. A no-op type relabel (metric -> model,
-;;; both stored as `card`) normalizes away first, so it isn't a change and is allowed.
-(t2/define-before-update :model/OsiAiContext
-  [row]
-  (let [row     (cond-> row
-                  (contains? (t2/changes row) :entity_type)
-                  (update :entity_type entity-retrieval/normalize-entity-type))
-        changes (t2/changes row)]
-    (when (or (contains? changes :entity_local_id)
-              (contains? changes :entity_type))
-      (throw (ex-info (str "Cannot re-point an osi_ai_context row to a different entity; "
-                           "delete it and create a new one.")
-                      {:status-code 400
-                       :changes     (select-keys changes [:entity_type :entity_local_id])})))
-    row))
-
-(t2/define-after-insert :model/OsiAiContext
-  [row]
-  (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))
-  row)
-
-(t2/define-after-update :model/OsiAiContext
-  [row]
-  (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))
-  row)
-
-(t2/define-before-delete :model/OsiAiContext
-  [row]
-  (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))
-  row)
+(t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
+(t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
+(t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-
-;;; The entity ref is `entity_type` plus a local `entity_local_id`. On export we copy `entity_type` and
-;;; swap `entity_local_id` for a portable reference (a Card's entity_id, or a Table's `[db schema table]`
-;;; path), reversing it on import — mirroring `serdes/export-viz-link-card`.
+;;;
+;;; A row's identity is its entity ref: `entity_type` plus the entity it describes. Rather than a separate
+;;; NanoID, serdes nests the row under its entity's portable path (mirroring
+;;; [[metabase.warehouse-schema.models.field-user-settings]], which hangs off its Field): the path is the
+;;; entity's path plus a constant `OsiAiContext` segment. So both key columns are carried by the path —
+;;; `entity_local_id` is resolved from it on import, and `entity_type` is read back from the parent segment.
 
 (def ^:private entity-type->toucan
   "Toucan model each `entity_type` resolves to. Tables get the table-fk treatment instead.
@@ -100,103 +82,78 @@
    "measure"  :model/Measure
    "segment"  :model/Segment})
 
-(defn- export-entity-local-id [entity-type id]
+(def ^:private parent-model->entity-type
+  "Inverse of the parent's serdes model name back to the stored `entity_type`."
+  {"Table"   "table"
+   "Card"    "card"
+   "Measure" "measure"
+   "Segment" "segment"})
+
+(defn- entity-parent-path
+  "Portable serdes path of the entity a row describes — the path its `OsiAiContext` segment hangs under.
+  A Table expands to its `[Database Schema Table]` path; card/measure/segment refs are a single segment
+  keyed on the entity's `entity_id`. An unmapped type yields a raw-id segment rather than aborting export."
+  [entity-type entity-local-id]
   (cond
-    (= entity-type "table")           (serdes/*export-table-fk* id)
-    (entity-type->toucan entity-type) (serdes/*export-fk* id (entity-type->toucan entity-type))
-    ;; Unmapped type: leave the raw id rather than aborting the whole export
-    ;; (same forgiving behavior as serdes/export-viz-link-card).
-    :else                             id))
+    (= entity-type "table")           (serdes/table->path (serdes/*export-table-fk* entity-local-id))
+    (entity-type->toucan entity-type) (let [model (entity-type->toucan entity-type)]
+                                        [{:model (name model) :id (serdes/*export-fk* entity-local-id model)}])
+    :else                             [{:model entity-type :id entity-local-id}]))
 
-(defn- import-entity-local-id [entity-type id]
-  (cond
-    (= entity-type "table")           (serdes/*import-table-fk* id)
-    (entity-type->toucan entity-type) (serdes/*import-fk* id (entity-type->toucan entity-type))
-    :else                             id))
+(defn- parent-path->entity
+  "Inverse of [[entity-parent-path]]: resolve a parent path back to `{:entity_type :entity_local_id}` (the
+  local id), or `nil` when the referenced entity is absent."
+  [parent-path]
+  (let [{:keys [model id]} (last parent-path)]
+    (if (= model "Table")
+      {:entity_type "table"
+       :entity_local_id (serdes/*import-table-fk* (mapv :id parent-path))}
+      (when-let [etype (parent-model->entity-type model)]
+        (when-let [toucan (entity-type->toucan etype)]
+          {:entity_type etype :entity_local_id (serdes/*import-fk* id toucan)})))))
 
-;;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
-;;; verbatim, as does `entity_type`. Only `entity_local_id` needs portable rewriting, dispatched on its
-;;; row's `entity_type` — hence `:export-with-context`, which sees the whole row.
-(defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
-  {:copy      [:entity_id :entity_type :ai_context]
-   :transform {:created_at      (serdes/date)
-               :updated_at      (serdes/date)
-               :entity_local_id {:export-with-context
-                                 (fn [row _k id] (export-entity-local-id (:entity_type row) id))
-                                 :import-with-context
-                                 (fn [row _k id] (import-entity-local-id (:entity_type row) id))}}})
-
-(defn- entity-ref-label
-  "Slug source for serdes paths: the entity ref, e.g. \"metric-42\"."
-  [{:keys [entity_type entity_local_id]}]
-  (str entity_type "-" entity_local_id))
+(defmethod serdes/entity-id "OsiAiContext" [_ _] nil)
 
 (defmethod serdes/hash-fields :model/OsiAiContext
   [_model]
   [:entity_type :entity_local_id])
 
-(defmethod serdes/generate-path "OsiAiContext" [_ entity]
-  (serdes/maybe-labeled "OsiAiContext" entity entity-ref-label))
+(defmethod serdes/generate-path "OsiAiContext" [_ {:keys [entity_type entity_local_id]}]
+  (conj (vec (entity-parent-path entity_type entity_local_id))
+        {:model "OsiAiContext" :id "ai_context"}))
 
 (defmethod serdes/storage-path "OsiAiContext" [entity _ctx]
-  [{:label "osi_ai_context"}
-   {:label (u/slugify (entity-ref-label entity) {:unicode? true}) :key (:entity_id entity)}])
+  ;; Nest the YAML next to its entity, the way field-user-settings hangs off its Field, so an ai_context
+  ;; file travels with the entity it describes rather than in a disconnected top-level directory.
+  (let [hierarchy  (serdes/path entity)
+        parent     (serdes/storage-path-prefixes (drop-last hierarchy))]
+    (update parent (dec (count parent))
+            (fn [segment] (update segment :label str "___aicontext")))))
 
-;; `(entity_type, entity_local_id)` has a unique constraint, but serdes identity is `entity_id`. When source and
-;; destination independently minted ai_context for the same entity, their `entity_id`s differ, so the default
-;; entity_id-keyed `load-find-local` misses the local row and falls through to an INSERT that violates the constraint.
-;; `load-find-local` only sees the (portable) path, not the ingested row, so it can't resolve `entity_local_id` to a
-;; local id; `load-one!` does see the full ingested map, so we match on the natural key here. We override `load-one!`
-;; rather than `load-find-local` for that reason.
-(defmethod serdes/load-one! "OsiAiContext"
-  [ingested maybe-local]
-  ;; Resolve the portable entity_local_id to its local id (the same way the import spec does), then find any existing
-  ;; row by (entity_type, local-id) so the import updates it in place instead of inserting a duplicate.
-  (let [local (or maybe-local
-                  (let [{:keys [entity_type entity_local_id]} ingested
-                        local-id (import-entity-local-id entity_type entity_local_id)]
-                    (when (some? local-id)
-                      ;; normalize to the stored key so a card matches its `card` row regardless of the
-                      ;; flavor the export carried.
-                      (t2/select-one :model/OsiAiContext
-                                     :entity_type (entity-retrieval/normalize-entity-type entity_type)
-                                     :entity_local_id local-id))))]
-    (serdes/default-load-one! ingested local)))
+;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
+;; verbatim. The key columns are carried by the path, not as fields: `entity_local_id` is resolved from the
+;; parent path on import, and `entity_type` is read back from the parent segment's model.
+(defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
+  {:copy      [:ai_context]
+   :transform {:created_at      (serdes/date)
+               :updated_at      (serdes/date)
+               :entity_type     {:export (constantly ::serdes/skip)
+                                 :import-with-context
+                                 (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
+               :entity_local_id {::serdes/fk true
+                                 :export     (constantly ::serdes/skip)
+                                 :import-with-context
+                                 (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})
 
-;; The before-update hook forbids re-pointing a row to a different entity — correct for the CRUD API, but on
-;; import serdes legitimately re-resolves a row's portable ref to a new local entity (e.g. re-importing after
-;; the target was recreated under a new local id). The hook would reject `t2/update!`-ing the binding and abort
-;; the import, so on a binding change delete the stale matched row and land the data on the new entity. If a
-;; different row already owns the new `(entity_type, entity_local_id)`, update it in place (natural key wins,
-;; like load-one!'s natural-key fallback) so the reinsert can't trip `uq_osi_ai_context_entity`; otherwise
-;; insert fresh. Both run under `*deserializing?*`, so the surviving row adopts the ingested entity_id.
-(defmethod serdes/load-update! "OsiAiContext"
-  [model-name ingested local]
-  (let [norm-type (entity-retrieval/normalize-entity-type (:entity_type ingested))
-        new-id    (:entity_local_id ingested)]
-    (if (or (not= norm-type (:entity_type local))
-            (not= new-id (:entity_local_id local)))
-      (let [target (t2/select-one :model/OsiAiContext :entity_type norm-type :entity_local_id new-id)]
-        (t2/delete! :model/OsiAiContext :id (:id local))
-        (if (and target (not= (:id target) (:id local)))
-          ((get-method serdes/load-update! :default) model-name ingested target)
-          (serdes/load-insert! model-name ingested)))
-      ((get-method serdes/load-update! :default) model-name ingested local))))
-
-;; TODO (Chris 2026-06-24) -- this is a top-level model that *depends on* its entity, so a context row only
-;; travels on export when it's independently selected.
-;; We probably want the reverse: selecting an entity should pull in its ai_context (a cascade /
-;; reverse-dependency), so "export the table, get its context" just works — without childifying this into
-;; Table/Card/Measure/Segment.
-;; Validate how serdes export selection includes a top-level model from only a dependency edge before
-;; changing direction.
 (defmethod serdes/dependencies "OsiAiContext"
-  [{:keys [entity_type entity_local_id]}]
-  ;; entity_local_id here is the exported (portable) value: a [db schema table] path for tables, an
-  ;; entity_id for card/measure/segment refs.
-  ;; A referenced Table is synthesized on import if missing, so (like link cards) we depend on its Database,
-  ;; not the Table itself; card/measure/segment refs depend on that entity directly.
-  (cond
-    (= entity_type "table")           #{[{:model "Database" :id (first entity_local_id)}]}
-    (entity-type->toucan entity_type) #{[{:model (name (entity-type->toucan entity_type)) :id entity_local_id}]}
-    :else                             #{}))
+  [entity]
+  ;; Depend on the entity this row describes (its parent path), so it imports after that entity exists.
+  [(vec (pop (serdes/path entity)))])
+
+(defmethod serdes/load-find-local "OsiAiContext"
+  [path]
+  ;; Resolve the parent path back to a local entity, then find this row by its (entity_type, local-id) key.
+  (when-let [{:keys [entity_type entity_local_id]} (parent-path->entity (pop path))]
+    (t2/select-one :model/OsiAiContext
+                   :entity_type (entity-retrieval/normalize-entity-type entity_type)
+                   :entity_local_id entity_local_id)))

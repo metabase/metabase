@@ -3,6 +3,11 @@
 ## The table is authoritative; an enterprise pgvector index (library_entity_index, many embedded
 ## docs per entity) is reconciled against it plus live library membership and backs the
 ## retrieve_library_entities Metabot tool.
+##
+## Identity is the logical (entity_type, entity_local_id) pair — that compound key is the primary key,
+## so there is one row per entity and no surrogate id or serialization NanoID. Card flavors
+## (question/metric/model) are stored under the canonical "card" entity_type (normalized on write), so a
+## card keeps its one row across a type relabel.
 
 databaseChangeLog:
   - logicalFilePath: migrations/063_update_migrations.yaml
@@ -17,17 +22,9 @@ databaseChangeLog:
             remarks: OSI ai_context metadata for library entities, one row per entity
             columns:
               - column:
-                  name: id
-                  type: int
-                  remarks: Unique ID
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
                   name: entity_type
                   type: varchar(32)
-                  remarks: Type of entity this ai_context describes (table, metric, model, measure, segment)
+                  remarks: Type of entity this ai_context describes (table, card, measure, segment)
                   constraints:
                     nullable: false
               - column:
@@ -42,13 +39,6 @@ databaseChangeLog:
                   remarks: OSI ai_context JSON blob ({instructions, synonyms[], examples[]})
                   constraints:
                     nullable: false
-              - column:
-                  name: entity_id
-                  type: char(21)
-                  remarks: Random NanoID tag for unique identity (serialization)
-                  constraints:
-                    nullable: true
-                    unique: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -69,6 +59,20 @@ databaseChangeLog:
 
   - changeSet:
       id: v63.2026-06-23T00:00:02
+      author: christruter
+      comment: Make (entity_type, entity_local_id) the primary key of osi_ai_context
+      changes:
+        - addPrimaryKey:
+            tableName: osi_ai_context
+            columnNames: entity_type, entity_local_id
+            constraintName: pk_osi_ai_context
+      rollback:
+        - dropPrimaryKey:
+            tableName: osi_ai_context
+            constraintName: pk_osi_ai_context
+
+  - changeSet:
+      id: v63.2026-06-23T00:00:03
       author: christruter
       comment: Drop the superseded curated_search_entries table
       changes:
@@ -127,48 +131,3 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v63.2026-06-25T00:00:01
-      author: christruter
-      comment: Enforce one ai_context row per entity
-      changes:
-        - addUniqueConstraint:
-            tableName: osi_ai_context
-            columnNames: entity_type, entity_local_id
-            constraintName: uq_osi_ai_context_entity
-      rollback:
-        - dropUniqueConstraint:
-            tableName: osi_ai_context
-            constraintName: uq_osi_ai_context_entity
-
-  ## Coalesce card-flavor ai_context rows (question/metric/model/card) into one canonical "card" row per entity.
-  ## Split across two change sets because the strict migration linter allows only one change per change set
-  ## (unless each is DBMS-qualified).
-  - changeSet:
-      id: v63.2026-06-25T00:00:02
-      author: christruter
-      comment: Keep only the newest card-flavor ai_context row per entity
-      changes:
-        # Keep only the newest card-flavor row per entity (a derived table so MySQL allows deleting from the
-        # table referenced in the subquery), so the type-normalizing UPDATE below can't hit the unique constraint.
-        - sql:
-            sql: >-
-              DELETE FROM osi_ai_context
-              WHERE entity_type IN ('question', 'metric', 'model', 'card')
-                AND id NOT IN (SELECT keep_id FROM
-                  (SELECT MAX(id) AS keep_id FROM osi_ai_context
-                   WHERE entity_type IN ('question', 'metric', 'model', 'card')
-                   GROUP BY entity_local_id) AS newest);
-      rollback:
-
-  - changeSet:
-      id: v63.2026-06-25T00:00:03
-      author: christruter
-      comment: Normalize card-flavor entity_type values to canonical "card"
-      changes:
-        - sql:
-            sql: >-
-              UPDATE osi_ai_context SET entity_type = 'card'
-              WHERE entity_type IN ('question', 'metric', 'model');
-      rollback:
