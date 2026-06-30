@@ -139,8 +139,9 @@
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables, models, metrics, saved questions, dashboards, and collections.
 
-  Hybrid keyword + semantic search. The backend runs the query through both engines
-  in parallel and fuses the two — callers provide one query string, not paraphrases."
+  Hybrid keyword + semantic search: when semantic search is active the engine matches on
+  both meaning and keywords; otherwise matching is keyword-only. Either way, callers
+  provide one query string, not paraphrases."
   {:scope metabot/agent-search
    :tool  {:name "search"
            :title "Search Metabase Content"
