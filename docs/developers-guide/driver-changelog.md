@@ -6,6 +6,10 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
+- Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
+  `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
+  derive from `:sql-mbql5` (which provides the `:pivot` clause compiler). Defaults to false.
+
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support
   `:metadata/key-constraints`.
