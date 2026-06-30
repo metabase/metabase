@@ -147,7 +147,7 @@ function QuestionTableBadges({
   isLast,
 }: QuestionTableBadgesProps) {
   const badgeInactiveColor =
-    isLast && !subHead ? "text-primary" : "text-tertiary";
+    isLast && !subHead ? "text-primary" : "text-disabled";
 
   const parts = tables.map((table) => (
     <HeadBreadcrumbs.Breadcrumb

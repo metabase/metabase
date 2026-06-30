@@ -35,5 +35,5 @@ export const HeaderCloseButton = styled(IconButtonWrapper)`
   height: 36px;
   width: 36px;
   flex: 0 0 auto;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 `;

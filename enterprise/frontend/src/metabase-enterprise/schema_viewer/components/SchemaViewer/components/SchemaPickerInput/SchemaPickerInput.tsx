@@ -83,13 +83,13 @@ export function SchemaPickerInput({
         leftSection={
           <FixedSizeIcon
             name="database"
-            c={isInputEmpty ? "text-tertiary" : undefined}
+            c={isInputEmpty ? "text-disabled" : undefined}
           />
         }
         rightSection={
           <FixedSizeIcon
             name="chevrondown"
-            c={isInputEmpty ? "text-tertiary" : undefined}
+            c={isInputEmpty ? "text-disabled" : undefined}
           />
         }
         data-testid="schema-picker-button"

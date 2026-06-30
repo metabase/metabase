@@ -2893,8 +2893,8 @@
   (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test
-  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02-updated: backfill canonical Library root entity IDs"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02-updated-2: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id (insert-legacy-library-collection! {:name      "Library"
                                                            :slug      "library"
                                                            :type      "library"
@@ -2917,9 +2917,42 @@
         (is (= "librarylibrarymetrics"
                (collection-entity-id metrics-id)))))))
 
+(deftest backfill-legacy-library-root-collection-entity-ids-mysql-utf8mb3-test
+  (testing "Library root entity ID backfill handles utf8mb3 MySQL app DB sessions (#76510)"
+    (mt/test-driver :mysql
+      (impl/with-temp-empty-app-db [conn :mysql]
+        (impl/run-migrations-in-range! conn
+                                       [(str "v" "00.00-000") "v62.2026-05-13T12:00:00"]
+                                       {:inclusive-end? false})
+        (jdbc/execute! {:connection conn}
+                       "ALTER TABLE collection CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci")
+        (let [library-id (insert-legacy-library-collection! {:name      "Library"
+                                                             :slug      "library"
+                                                             :type      "library"
+                                                             :entity_id "legacy-library-root"})
+              data-id    (insert-legacy-library-collection! {:name      "Data"
+                                                             :slug      "data"
+                                                             :type      "library-data"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-data"})
+              metrics-id (insert-legacy-library-collection! {:name      "Metrics"
+                                                             :slug      "metrics"
+                                                             :type      "library-metrics"
+                                                             :location  (str "/" library-id "/")
+                                                             :entity_id "legacy-library-metric"})]
+          (jdbc/execute! {:connection conn} "SET NAMES utf8 COLLATE utf8_general_ci")
+          (impl/run-migrations-in-range! conn
+                                         ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"])
+          (is (= "librarylibrarylibrary"
+                 (collection-entity-id library-id)))
+          (is (= "librarylibrarydatadat"
+                 (collection-entity-id data-id)))
+          (is (= "librarylibrarymetrics"
+                 (collection-entity-id metrics-id))))))))
+
 (deftest backfill-legacy-library-root-collection-entity-ids-test-2
   (testing "ambiguous Library Data direct children are not modified"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id        (insert-legacy-library-collection! {:name      "Library"
                                                                   :slug      "library"
                                                                   :type      "library"
@@ -2951,7 +2984,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-3
   (testing "Library Data collections outside Library root do not count as ambiguous"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [library-id      (insert-legacy-library-collection! {:name      "Library"
                                                                 :slug      "library"
                                                                 :type      "library"
@@ -2979,7 +3012,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-4
   (testing "pre-existing canonical Library rows with missing types prevent entity_id collisions"
-    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02-updated"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02-updated-2"] [migrate!]
       (let [canonical-library-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Library"
                                                                      :slug      "canonical-library"
                                                                      :type      nil

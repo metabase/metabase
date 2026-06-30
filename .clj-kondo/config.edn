@@ -181,6 +181,10 @@
      clojure.core.async/to-chan!!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!
+     metabase.channel.render.pdf/draw-too-large!
+     metabase.channel.render.pdf/draw-no-results!
+     metabase.channel.render.pdf/render-card-cell!
+     metabase.channel.render.pdf.font/load-fonts!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.notification.models/create-notification!
@@ -803,7 +807,6 @@
   ;;
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
    :name    general-qp-and-driver-test-namespaces}
-
   {:pattern "(?:^mage.*)"
    :name    mage-namespaces}]
 

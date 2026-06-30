@@ -58,7 +58,7 @@ export const getTimelineEventsSeries = (
       selectedEventsIds.includes(event.id),
     );
 
-    const color = getColor(isSelected ? "core-brand" : "text-tertiary");
+    const color = getColor(isSelected ? "core-brand" : "text-disabled");
     const iconName =
       events.length === 1 ? (events[0].icon as IconName) : "star";
 

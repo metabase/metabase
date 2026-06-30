@@ -395,7 +395,7 @@ describe("Tenants - management", () => {
       "exist",
     ]);
 
-    cy.findByRole("radio", { name: "Databases" }).click({ force: true });
+    cy.findByRole("tab", { name: "Databases" }).click({ force: true });
     cy.findByRole("menuitem", { name: "Sample Database" }).click();
 
     assertPermissionTableColumnsExist([
@@ -431,7 +431,7 @@ describe("Tenants - management", () => {
 
       cy.visit(`/admin/permissions/data/group/${tenantGroupId}`);
 
-      cy.findByRole("radio", { name: "Groups" }).click({ force: true });
+      cy.findByRole("tab", { name: "Groups" }).click({ force: true });
 
       cy.findByRole("menuitem", { name: "All tenant users" }).click();
 
