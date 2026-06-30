@@ -16,25 +16,26 @@
   #{:sortkey :order-by :distkey})
 
 (mr/def ::match-key
-  "Join key for reconciling a managed request with a warehouse index: a `:name` string for named kinds, a
-  `[kind key-columns]` tuple for unnamed-inline kinds, or a `[:distkey style key-columns]` triple for a distkey."
-  [:maybe [:or
-           :string
-           [:tuple :keyword [:sequential [:maybe :string]]]
-           [:tuple [:= :distkey] [:maybe :string] [:sequential [:maybe :string]]]]])
+  "Join key for reconciling a managed request with a warehouse index. `:kind` selects how it's matched: `:named` keys
+  by `:name`; an unnamed-inline `:sortkey`/`:order-by` by `:kind` + `:key-columns`; `:distkey` also by `:style`, so the
+  column-less `:even` and `:all` stay distinct."
+  [:map
+   [:kind :keyword]
+   [:name {:optional true} [:maybe :string]]
+   [:style {:optional true} [:maybe :string]]
+   [:key-columns {:optional true} [:sequential [:maybe :string]]]])
 
 (mu/defn match-key :- ::match-key
-  "Join key for a warehouse index map: its `:name` for named kinds, else a tuple for unnamed-inline kinds. Sort/order
-  keys key by columns; a distkey also by style (`:access-method`), so the column-less `:even` and `:all` stay distinct."
+  "The [[::match-key]] for a warehouse index map (see the schema for how each kind is keyed)."
   [{:keys [kind key-columns] am :access-method nm :name} :- [:map
                                                              [:kind :keyword]
                                                              [:key-columns [:sequential [:maybe :string]]]
                                                              [:access-method {:optional true} [:maybe :string]]
                                                              [:name {:optional true} [:maybe :string]]]]
   (cond
-    (= kind :distkey)                     [:distkey am key-columns]
-    (contains? unnamed-inline-kinds kind) [kind key-columns]
-    :else                                 nm))
+    (= kind :distkey)                     {:kind :distkey :style am :key-columns key-columns}
+    (contains? unnamed-inline-kinds kind) {:kind kind :key-columns key-columns}
+    :else                                 {:kind :named :name nm}))
 
 (mu/defn index-name :- :string
   "Physical index name for a structured def: a named kind's `:name`, else its `:kind` as a string (one inline key per

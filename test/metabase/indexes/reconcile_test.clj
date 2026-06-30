@@ -46,21 +46,21 @@
 
 (deftest match-key-test
   (testing "named kinds key by name; managed and warehouse agree"
-    (is (= "by_cat" (reconcile/managed-match-key managed-btree)))
-    (is (= "by_cat" (reconcile/match-key wh-btree))))
+    (is (= {:kind :named :name "by_cat"} (reconcile/managed-match-key managed-btree)))
+    (is (= {:kind :named :name "by_cat"} (reconcile/match-key wh-btree))))
   (testing "unnamed inline kinds key by kind+columns, so managed and warehouse agree"
-    (is (= [:sortkey ["a" "b"]] (reconcile/managed-match-key managed-sortkey)))
-    (is (= [:sortkey ["a" "b"]] (reconcile/match-key wh-sortkey))))
+    (is (= {:kind :sortkey :key-columns ["a" "b"]} (reconcile/managed-match-key managed-sortkey)))
+    (is (= {:kind :sortkey :key-columns ["a" "b"]} (reconcile/match-key wh-sortkey))))
   (testing "a key distkey is keyed by its style + column, so managed and warehouse agree (#76331)"
-    (is (= [:distkey "key" ["category"]] (reconcile/managed-match-key managed-distkey)))
-    (is (= [:distkey "key" ["category"]] (reconcile/match-key wh-distkey))))
+    (is (= {:kind :distkey :style "key" :key-columns ["category"]} (reconcile/managed-match-key managed-distkey)))
+    (is (= {:kind :distkey :style "key" :key-columns ["category"]} (reconcile/match-key wh-distkey))))
   (testing "distkey keys are style-aware: column-less even and all don't collapse onto the same key"
-    (is (= [:distkey "even" []] (reconcile/managed-match-key managed-even-distkey)))
-    (is (= [:distkey "even" []] (reconcile/match-key wh-even-distkey)))
+    (is (= {:kind :distkey :style "even" :key-columns []} (reconcile/managed-match-key managed-even-distkey)))
+    (is (= {:kind :distkey :style "even" :key-columns []} (reconcile/match-key wh-even-distkey)))
     (is (not= (reconcile/managed-match-key managed-even-distkey)
               (reconcile/managed-match-key (assoc-in managed-even-distkey [:structured :style] :all))))
     (testing "a stray column on a non-key request is ignored, so it still matches the column-less warehouse distkey"
-      (is (= [:distkey "even" []]
+      (is (= {:kind :distkey :style "even" :key-columns []}
              (reconcile/managed-match-key (assoc-in managed-even-distkey [:structured :columns] [{:name "x"}])))))))
 
 (deftest merge-indexes-test

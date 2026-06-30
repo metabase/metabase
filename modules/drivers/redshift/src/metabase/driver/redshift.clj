@@ -250,7 +250,8 @@
                           :display-name (deferred-tru "Style")
                           :type         :select
                           :required     true
-                          ;; AUTO is Redshift's default and drifts over time, so it can't be reconciled; not offered.
+                          ;; AUTO is Redshift's default and drifts over time, so it's not offered as a managed style;
+                          ;; an AUTO table still surfaces its current style as a (non-managed) index.
                           :options      [{:name (deferred-tru "Key")  :value "key"}
                                          {:name (deferred-tru "All")  :value "all"}
                                          {:name (deferred-tru "Even") :value "even"}]}
