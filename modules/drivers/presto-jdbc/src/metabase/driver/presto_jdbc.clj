@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :presto-jdbc, :parent #{:sql-jdbc
+(driver/register! :presto-jdbc, :parent #{:sql-mbql5 :sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (doseq [[feature supported?] {:basic-aggregations               true
@@ -152,8 +152,8 @@
                                [:from_utf8 expr]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
@@ -163,20 +163,16 @@
   [_driver bs]
   [:from_base64 (u/encode-base64-bytes bs)])
 
-(defmethod sql.qp/->honeysql [:presto-jdbc :time]
-  [_ [_ t]]
-  (h2x/cast :time (u.date/format-sql (t/local-time t))))
-
 (defmethod sql.qp/->honeysql [:presto-jdbc :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 ;;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
@@ -309,18 +305,17 @@
 (def ^:private ^:const timestamp-with-time-zone-db-type "timestamp with time zone")
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :log]
-  [driver [_ field]]
-  ;; recent Presto versions have a `log10` function (not `log`)
+  [driver [_ _opts field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :count-where]
-  [driver [_ pred]]
+  [driver [_ _opts pred]]
   ;; Presto will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
-  [_driver [_ t]]
+  [_driver [_ _opts t]]
   ;; make time in UTC to avoid any interpretation by Presto in the connection (i.e. report) time zone
   [:inline (t/offset-time (t/local-time t) 0)])
 
