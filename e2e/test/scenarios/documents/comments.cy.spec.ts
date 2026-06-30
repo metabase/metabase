@@ -154,13 +154,18 @@ describe("document comments", () => {
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 1);
+      H.getParagraph("lor sit amet.").scrollIntoView();
       H.getParagraph("lor sit amet.").realHover();
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 2)
         .last()
         .should("not.contain.text", "1")
-        .click();
+        // scrollBehavior:false: the node button is revealed by hovering the
+        // paragraph, so a click-time scroll would move the paragraph out from
+        // under the real cursor, drop the hover, and hide the button before the
+        // sidebar opens.
+        .click({ scrollBehavior: false });
 
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
@@ -1598,6 +1603,7 @@ function selectCharactersLeft(count: number) {
 function startNewCommentIn1ParagraphDocument() {
   createAndVisit1ParagraphDocument();
 
+  H.getParagraph().scrollIntoView();
   H.getParagraph().realHover();
 
   cy.get<DocumentId>("@documentId").then((targetId) => {
