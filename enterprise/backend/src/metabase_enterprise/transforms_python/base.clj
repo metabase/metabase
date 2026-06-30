@@ -167,6 +167,7 @@
   [driver db table-name metadata data-source unique-key]
   (let [db-id   (:id db)
         staging (transforms-base.u/temp-table-name driver (namespace table-name))]
+    (transforms-base.u/validate-merge-unique-key! unique-key (mapv :name (:fields metadata)))
     (create-table-and-insert-data! driver db-id (table-schema staging metadata) data-source)
     (try
       (let [[sql & params] (sql.qp/format-honeysql driver {:select [:*], :from [staging]})

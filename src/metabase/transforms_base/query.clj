@@ -54,8 +54,10 @@
     :table {:overwrite? true}
     :table-incremental
     (if (transforms-base.u/merge-target? transform)
-      {:merge {:unique-key (transforms-base.u/merge-target-unique-key transform)
-               :columns    (transforms-base.u/target-column-names transform)}}
+      (let [unique-key (transforms-base.u/merge-target-unique-key transform)
+            columns    (transforms-base.u/target-column-names transform)]
+        (transforms-base.u/validate-merge-unique-key! unique-key columns)
+        {:merge {:unique-key unique-key, :columns columns}})
       {})))
 
 ;;; ------------------------------------------------- Base Execution -------------------------------------------------
