@@ -33,7 +33,7 @@
       (is (= ["columns"] (map :name (get-in methods [:order-by :fields]))))
       (is (= ["name" "columns" "type" "granularity"]
              (map :name (get-in methods [:skip-index :fields]))))
-      (is (= #{"minmax" "set" "bloom_filter" "ngrambf_v1" "tokenbf_v1"}
+      (is (= #{"minmax" "bloom_filter"}
              (set (map :value (:options type-field))))))))
 
 ;;; --- inline ORDER BY at both creation seams ---
@@ -75,6 +75,11 @@
             ["ALTER TABLE `events` MATERIALIZE INDEX `idx_a`"]]
            (driver/compile-create-index :clickhouse nil "events"
                                         {:name "idx_a" :columns [{:name "a"}] :type :minmax :granularity 4}))))
+  (testing "bloom_filter (the other arg-free advertised type) renders TYPE bloom_filter, no args"
+    (is (= [["ALTER TABLE `events` ADD INDEX `idx_a` (`a`) TYPE bloom_filter GRANULARITY 4"]
+            ["ALTER TABLE `events` MATERIALIZE INDEX `idx_a`"]]
+           (driver/compile-create-index :clickhouse nil "events"
+                                        {:name "idx_a" :columns [{:name "a"}] :type :bloom_filter :granularity 4}))))
   (testing "type args render, schema qualifies, granularity defaults to 1"
     (is (= [["ALTER TABLE `public`.`events` ADD INDEX `idx_ab` (`a`, `b`) TYPE set(100) GRANULARITY 1"]
             ["ALTER TABLE `public`.`events` MATERIALIZE INDEX `idx_ab`"]]

@@ -33,15 +33,14 @@
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::distkey
-  "Redshift distribution, inline. `:columns` holds the single DISTKEY column, required only for the `:key` style;
-  `:all`/`:even`/`:auto` take no column."
+  "Redshift distribution, inline. Only `:key` uses a column (the one DISTKEY column); `:all`/`:even` take none."
   [:and
    [:map
     [:kind    [:= :distkey]]
-    [:style   [:enum :key :all :even :auto]]
+    [:style   [:enum :key :all :even]]
     [:columns {:optional true} [:vector {:min 1 :max 1} ::column]]]
-   [:fn {:error/message "a :key distkey requires a column"}
-    (fn [{:keys [style columns]}] (or (not= style :key) (seq columns)))]])
+   [:fn {:error/message "a :key distkey requires its one column"}
+    (fn [{:keys [style columns]}] (or (not= style :key) (= 1 (count columns))))]])
 
 (mr/def ::clustering
   "Snowflake (standalone) / BigQuery (inline) clustering. `:name` is required for the standalone form."
@@ -57,13 +56,13 @@
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::skip-index
-  "ClickHouse data-skipping index, standalone."
+  "ClickHouse data-skipping index, standalone. Only arg-free types; the parameterized ones need type-args the form
+  can't supply yet."
   [:map
    [:kind [:= :skip-index]]
    [:name :string]
    [:columns [:vector {:min 1} ::column]]
-   [:type [:enum :minmax :set :bloom_filter :ngrambf_v1 :tokenbf_v1]]
-   [:type-args {:optional true} [:vector :any]]
+   [:type [:enum :minmax :bloom_filter]]
    [:granularity {:optional true} pos-int?]])
 
 (mr/def ::index-structured

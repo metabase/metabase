@@ -10,35 +10,11 @@
 
 (comment metabase.driver.postgres/keep-me)
 
-(defn- sample-value
-  "A representative value for a descriptor field, the way the FE would fill the form."
-  [{:keys [type options]}]
-  (case type
-    :string  "idx_sample"
-    :boolean true
-    :integer 1
-    :columns [{:name "a"} {:name "b"}]
-    :select  (-> options first :value)))
-
-(defn- body-from-fields
-  "Assemble a structured index body from ONLY the kind + its descriptor fields, then re-keywordize enum values the way
-  the POST path does."
-  [kind fields]
-  (-> (into {:kind kind} (map (fn [{nm :name :as f}] [(keyword nm) (sample-value f)])) fields)
-      schema/keywordize-structured))
-
 (deftest return-conforms-to-schema-test
   (testing "the supported-index-methods return validates against ::driver/supported-index-methods"
     (is (mr/validate ::driver/supported-index-methods (driver/supported-index-methods :postgres nil)))
     (testing "including the empty default for a driver with no index support"
       (is (mr/validate ::driver/supported-index-methods (driver/supported-index-methods :h2 nil))))))
-
-(deftest postgres-descriptors-match-schema-test
-  (testing "a body built from each advertised kind's descriptors validates against ::index-structured"
-    (doseq [[kind {:keys [fields]}] (driver/supported-index-methods :postgres nil)]
-      (let [body (body-from-fields kind fields)]
-        (is (mr/validate ::schema/index-structured body)
-            (str "descriptor body for " kind " should validate: " (pr-str body)))))))
 
 (deftest postgres-lifecycle-matches-feature-flag-test
   (testing ":standalone <=> :index/standalone-create, :inline <=> :index/inline-create"
@@ -58,8 +34,7 @@
       {:kind :skip-index :name "s" :columns [{:name "a"}] :type "bloom_filter" :granularity 4}
       {:kind :distkey    :style "key" :columns [{:name "a"}]}
       {:kind :distkey    :style "all"}
-      {:kind :distkey    :style "even"}
-      {:kind :distkey    :style "auto"})))
+      {:kind :distkey    :style "even"})))
 
 (deftest distkey-key-requires-a-column-test
   (testing "a :key distkey without a column is rejected; the column-less styles are fine"

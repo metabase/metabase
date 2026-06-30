@@ -250,10 +250,11 @@
                           :display-name (deferred-tru "Style")
                           :type         :select
                           :required     true
+                          ;; AUTO is Redshift's default and drifts over time, so it's not offered as a managed style;
+                          ;; an AUTO table still surfaces its current style as a (non-managed) index.
                           :options      [{:name (deferred-tru "Key")  :value "key"}
                                          {:name (deferred-tru "All")  :value "all"}
-                                         {:name (deferred-tru "Even") :value "even"}
-                                         {:name (deferred-tru "Auto") :value "auto"}]}
+                                         {:name (deferred-tru "Even") :value "even"}]}
                          ;; only the :key style takes a column, so this is not required
                          {:name         "columns"
                           :display-name (deferred-tru "Columns")
@@ -286,20 +287,49 @@
     (when (seq clauses)
       (str/join " " clauses))))
 
-;; Redshift has no secondary indexes; the only physical "indexes" are the inline, unnamed sortkey and the distribution
-;; key, so we override the inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position
-;; (negative marks the whole key INTERLEAVED); `distkey` is true on the single KEY-distribution column. Blank `schema`
+(defn- distkey-index
+  "The distkey entry from a table's declared `reldiststyle` (0 EVEN, 1 KEY, 8 ALL) and KEY column; nil for AUTO (9) and
+  anything else. Reads the declared style, not the effective one Redshift drifts AUTO tables toward."
+  [reldiststyle key-column]
+  (when-let [style (case (long reldiststyle) 0 "even", 1 "key", 8 "all", nil)]
+    (let [key? (= style "key")]
+      {:name              nil
+       :kind              :distkey
+       :access-method     style
+       :is-unique         false
+       :is-primary        false
+       :is-valid          true
+       :key-columns       (if key? [key-column] [])
+       :include-columns   []
+       :partial-predicate nil
+       :definition        (if key?
+                            (format "DISTSTYLE KEY DISTKEY (%s)" key-column)
+                            (format "DISTSTYLE %s" (u/upper-case-en style)))})))
+
+;; Redshift has no secondary indexes; the only physical "indexes" are the inline unnamed sortkey and the distribution,
+;; so we override the inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position
+;; (negative marks the whole key INTERLEAVED); `distkey` is true on the single KEY column. The declared distribution
+;; style comes from `pg_class_info`, which reports it for empty tables (`svv_table_info` doesn't). Blank `schema`
 ;; falls back to `current_schema()`.
 (defmethod driver/fetch-table-indexes :redshift
   [_driver database schema table]
-  (let [rows      (jdbc/query
-                   (sql-jdbc.conn/db->pooled-connection-spec database)
+  (let [spec      (sql-jdbc.conn/db->pooled-connection-spec database)
+        rows      (jdbc/query
+                   spec
                    [(str "SELECT column_name, sortkey, distkey FROM svv_redshift_columns "
                          "WHERE schema_name = COALESCE(?, current_schema()) AND table_name = ? "
                          "ORDER BY abs(sortkey)")
                     (perf/not-empty schema) table])
         sort-rows (filter (comp (complement zero?) :sortkey) rows)
-        dist-row  (perf/some #(when (:distkey %) %) rows)]
+        key-col   (perf/some #(when (:distkey %) (:column_name %)) rows)
+        diststyle (-> (jdbc/query
+                       spec
+                       [(str "SELECT c.reldiststyle AS reldiststyle FROM pg_class_info c "
+                             "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                             "WHERE n.nspname = COALESCE(?, current_schema()) AND c.relname = ?")
+                        (perf/not-empty schema) table])
+                      first :reldiststyle)
+        distkey   (some-> diststyle (distkey-index key-col))]
     (cond-> []
       (seq sort-rows)
       (conj (let [interleaved? (perf/some (comp neg? :sortkey) sort-rows)
@@ -316,17 +346,7 @@
                :definition        (format "%s SORTKEY (%s)"
                                           (if interleaved? "INTERLEAVED" "COMPOUND")
                                           (str/join ", " columns))}))
-      dist-row
-      (conj {:name              nil
-             :kind              :distkey
-             :access-method     nil
-             :is-unique         false
-             :is-primary        false
-             :is-valid          true
-             :key-columns       [(:column_name dist-row)]
-             :include-columns   []
-             :partial-predicate nil
-             :definition        (format "DISTKEY (%s)" (:column_name dist-row))}))))
+      distkey (conj distkey))))
 
 (defmethod driver/compile-transform :redshift
   [driver {:keys [query output-table indexes] :as transform-details}]

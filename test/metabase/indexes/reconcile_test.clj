@@ -28,8 +28,17 @@
    :status :create-pending :error_message nil :created_by 3 :last_executed_at nil})
 
 (def ^:private wh-distkey
-  {:name nil :kind :distkey :access-method nil :is-unique false :is-primary false
+  {:name nil :kind :distkey :access-method "key" :is-unique false :is-primary false
    :is-valid true :key-columns ["category"] :include-columns [] :partial-predicate nil :definition nil})
+
+(def ^:private managed-even-distkey
+  {:id 4 :transform_id 7 :index_name "distkey"
+   :structured {:kind :distkey :style :even}
+   :status :pending :error_message nil :created_by 3 :last_executed_at nil})
+
+(def ^:private wh-even-distkey
+  {:name nil :kind :distkey :access-method "even" :is-unique false :is-primary false
+   :is-valid true :key-columns [] :include-columns [] :partial-predicate nil :definition "DISTSTYLE EVEN"})
 
 (def ^:private wh-dba
   {:name "dba_made" :kind :btree :access-method "btree" :is-unique false :is-primary false
@@ -37,14 +46,22 @@
 
 (deftest match-key-test
   (testing "named kinds key by name; managed and warehouse agree"
-    (is (= "by_cat" (reconcile/managed-match-key managed-btree)))
-    (is (= "by_cat" (reconcile/match-key wh-btree))))
+    (is (= {:kind :named :name "by_cat"} (reconcile/managed-match-key managed-btree)))
+    (is (= {:kind :named :name "by_cat"} (reconcile/match-key wh-btree))))
   (testing "unnamed inline kinds key by kind+columns, so managed and warehouse agree"
-    (is (= [:sortkey ["a" "b"]] (reconcile/managed-match-key managed-sortkey)))
-    (is (= [:sortkey ["a" "b"]] (reconcile/match-key wh-sortkey))))
-  (testing "a fetched distkey is unnamed-inline too, so it matches its managed request (#76331)"
-    (is (= [:distkey ["category"]] (reconcile/managed-match-key managed-distkey)))
-    (is (= [:distkey ["category"]] (reconcile/match-key wh-distkey)))))
+    (is (= {:kind :sortkey :key-columns ["a" "b"]} (reconcile/managed-match-key managed-sortkey)))
+    (is (= {:kind :sortkey :key-columns ["a" "b"]} (reconcile/match-key wh-sortkey))))
+  (testing "a key distkey is keyed by its style + column, so managed and warehouse agree (#76331)"
+    (is (= {:kind :distkey :style "key" :key-columns ["category"]} (reconcile/managed-match-key managed-distkey)))
+    (is (= {:kind :distkey :style "key" :key-columns ["category"]} (reconcile/match-key wh-distkey))))
+  (testing "distkey keys are style-aware: column-less even and all don't collapse onto the same key"
+    (is (= {:kind :distkey :style "even" :key-columns []} (reconcile/managed-match-key managed-even-distkey)))
+    (is (= {:kind :distkey :style "even" :key-columns []} (reconcile/match-key wh-even-distkey)))
+    (is (not= (reconcile/managed-match-key managed-even-distkey)
+              (reconcile/managed-match-key (assoc-in managed-even-distkey [:structured :style] :all))))
+    (testing "a stray column on a non-key request is ignored, so it still matches the column-less warehouse distkey"
+      (is (= {:kind :distkey :style "even" :key-columns []}
+             (reconcile/managed-match-key (assoc-in managed-even-distkey [:structured :columns] [{:name "x"}])))))))
 
 (deftest merge-indexes-test
   (testing "managed + present: observed from the warehouse, flagged managed, request carries lifecycle + structured"
@@ -75,11 +92,17 @@
       (is (= 1 (count merged)))
       (is (true? (:metabase_managed (first merged))))
       (is (true? (:present_in_warehouse (first merged))))))
-  (testing "a managed inline distkey matches the warehouse distkey by kind+columns, listed once as managed"
+  (testing "a managed inline distkey matches the warehouse distkey by style+columns, listed once as managed"
     (let [merged (reconcile/merge-indexes [managed-distkey] [wh-distkey])]
       (is (= 1 (count merged)))
       (is (true? (:metabase_managed (first merged))))
       (is (true? (:present_in_warehouse (first merged))))))
+  (testing "a managed even distkey matches an even warehouse distkey, but not an all one"
+    (is (true? (:present_in_warehouse (first (reconcile/merge-indexes [managed-even-distkey] [wh-even-distkey])))))
+    (let [merged  (reconcile/merge-indexes [managed-even-distkey]
+                                           [(assoc wh-even-distkey :access-method "all")])
+          managed (first (filter :metabase_managed merged))]
+      (is (false? (:present_in_warehouse managed)))))
   (testing "mix: a matched managed index, plus a DBA index alongside it"
     (let [merged  (reconcile/merge-indexes [managed-btree] [wh-btree wh-dba])
           by-flag (group-by :metabase_managed merged)]
