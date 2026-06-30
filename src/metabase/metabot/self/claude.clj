@@ -51,6 +51,12 @@
    :cacheCreationTokens (:cache_creation_input_tokens u 0)
    :cacheReadTokens     (:cache_read_input_tokens u 0)})
 
+(def ^:private translated-chunk-type?
+  "Claude content-block types we translate into AI SDK chunks. Other block types
+  (e.g. `thinking`/`redacted_thinking` from extended or adaptive thinking) are
+  ignored, mirroring the OpenAI adapter's handling of reasoning output."
+  #{:text :tool_use})
+
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
 
@@ -82,10 +88,14 @@
           ;; usage in the completion arity so we don't lose data entirely.
           last-usage   (volatile! nil)
           close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text     :text-end
-                                                             :tool_use :tool-input-available)}
-                                                    @payload))
+                         ;; only emit an end marker for block types we translate; thinking and
+                         ;; other untranslated blocks are ignored.
+                         (u/prog1 (if-let [end-type (case @current-type
+                                                      :text     :text-end
+                                                      :tool_use :tool-input-available
+                                                      nil)]
+                                    (rf result (merge {:type end-type} @payload))
+                                    result)
                            (vreset! current-type nil)
                            (vreset! current-id nil)
                            (vreset! payload {})))]
@@ -121,19 +131,24 @@
                                                           :tool_use {:toolCallId chunk-id
                                                                      :toolName   (:name content_block)}
                                                           nil)))
-                                             (rf (merge (case block-type
-                                                          :text     {:type :text-start}
-                                                          :tool_use {:type :tool-input-start})
-                                                        @payload)))
+                                             (cond->
+                                              (translated-chunk-type? block-type)
+                                               (rf (merge (case block-type
+                                                            :text     {:type :text-start}
+                                                            :tool_use {:type :tool-input-start})
+                                                          @payload))))
 
-             ;; content block delta
-             (= t "content_block_delta") (rf (case (:type delta)
-                                               "text_delta"       {:type  :text-delta
-                                                                   :id    (:id @payload)
-                                                                   :delta (:text delta)}
-                                               "input_json_delta" {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:partial_json delta)}))
+             ;; content block delta — ignore deltas for blocks we don't translate
+             ;; (e.g. thinking_delta / signature_delta from extended thinking)
+             (and (= t "content_block_delta")
+                  (contains? #{"text_delta" "input_json_delta"} (:type delta)))
+             (rf (case (:type delta)
+                   "text_delta"       {:type  :text-delta
+                                       :id    (:id @payload)
+                                       :delta (:text delta)}
+                   "input_json_delta" {:type           :tool-input-delta
+                                       :toolCallId     (:toolCallId @payload)
+                                       :inputTextDelta (:partial_json delta)}))
 
              ;; end of content block
              (= t "content_block_stop") (close!)
