@@ -114,7 +114,7 @@
     "immer": "^10.1.1",
     "inflection": "^1.7.1",
     "inquirer-toggle": "^1.0.1",
-    "js-cookie": "^2.1.2",
+    "js-cookie": "3.0.7",
     "js-yaml": "^4.2.0",
     "json5": "^2.2.2",
     "jspdf": "^4.2.1",
