@@ -179,9 +179,9 @@ Errors:
 
 ### POST /v1/search
 
-Hybrid keyword + semantic search for tables and metrics. The backend runs the
-query through both engines in parallel and fuses the results — provide one query
-string, not paraphrases.
+Hybrid keyword + semantic search. When semantic search is active the engine matches on
+both meaning and keywords; otherwise matching is keyword-only. Either way, provide one
+query string, not paraphrases.
 
 Request:
 
