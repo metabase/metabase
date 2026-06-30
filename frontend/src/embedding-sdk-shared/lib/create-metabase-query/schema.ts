@@ -14,21 +14,11 @@ export type SchemaColumn = {
   effectiveType?: string;
 };
 
-export type SchemaParameter = {
-  slug: string;
-  type?: string;
-};
-
-export type QuestionSchema<TQuestionId = string | number> = {
-  id: TQuestionId;
-  columns: readonly SchemaColumn[];
-  parameters?: readonly SchemaParameter[];
-};
-
 /**
- * Metadata for a generated table field or metric dimension.
+ * Metadata for a generated table field.
  */
 export type FieldSchema = SchemaColumn & {
+  type: "column";
   id?: string | number;
   fieldId?: number;
   tableId?: number;
@@ -36,33 +26,24 @@ export type FieldSchema = SchemaColumn & {
 };
 
 export type SegmentSchema<TTableId extends number = number> = {
-  kind: "segment";
+  type: "segment";
   id: number;
   tableId: TTableId;
 };
 
 export type MeasureSchema<TTableId extends number = number> = {
-  kind: "measure";
+  type: "measure";
   id: number;
   tableId: TTableId;
   columns: readonly SchemaColumn[];
 };
 
 export type TableSchema = {
+  type: "table";
   id: number;
   databaseId: number;
   columns?: readonly SchemaColumn[];
   fields?: Record<string, FieldSchema>;
   segments?: Record<string, SegmentSchema>;
   measures?: Record<string, MeasureSchema>;
-};
-
-export type MetricSchema = {
-  id: number;
-  databaseId?: number;
-  sourceTableId?: number;
-  sourceCardId?: number;
-  columns: readonly SchemaColumn[];
-  mappedTableIds?: readonly number[];
-  dimensions?: Record<string, Record<string, FieldSchema>>;
 };

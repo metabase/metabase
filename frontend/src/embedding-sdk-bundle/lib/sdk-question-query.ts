@@ -1,6 +1,6 @@
 import type { SdkQuestionEntityInternalProps } from "embedding-sdk-bundle/types/question";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
-import type { UnsavedCard } from "metabase-types/api";
+import type { DatasetQuery, UnsavedCard } from "metabase-types/api";
 
 export function getCardFromSdkQuestionQuery(
   query: SdkQuestionEntityInternalProps["query"] | undefined,
@@ -14,7 +14,7 @@ export function getCardFromSdkQuestionQuery(
   }
 
   return {
-    dataset_query: query,
+    dataset_query: query as DatasetQuery,
     display: "table",
     visualization_settings: {},
   };

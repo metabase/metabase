@@ -18,6 +18,10 @@ export function resolveCardProp(
     }
   }
 
+  if (input.query == null) {
+    return null;
+  }
+
   const shouldSetDisplayLock =
     input.visualization != null || input.displayIsLocked != null;
 

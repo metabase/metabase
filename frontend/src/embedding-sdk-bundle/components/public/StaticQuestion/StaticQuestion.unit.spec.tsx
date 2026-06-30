@@ -165,17 +165,6 @@ describe("StaticQuestion", () => {
     mockGetBoundingClientRect();
   });
 
-  // query may be null when the SDK bundle isn't loaded yet
-  it("should render nothing when query is null", () => {
-    renderWithSDKProviders(<StaticQuestion query={null} />, {
-      componentProviderProps: { authConfig: createMockSdkConfig() },
-    });
-
-    expect(
-      screen.queryByTestId("query-visualization-root"),
-    ).not.toBeInTheDocument();
-  });
-
   it("should render a static question with the mocked data", async () => {
     await setup();
 

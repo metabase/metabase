@@ -38,13 +38,13 @@
 (def ^:private schema-render-policy
   {:question         {:runtime [:kind :id :name :display :columns :parameters]
                       :comment [:entityId :description :verified]}
-   :table            {:runtime [:kind :id :name :databaseId :fields :segments :measures]
+   :table            {:runtime [:type :id :name :databaseId :fields :segments :measures]
                       :comment [:entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
+   :field            {:runtime [:type :name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
-   :segment          {:runtime [:kind :id :tableId :name]
+   :segment          {:runtime [:type :id :tableId :name]
                       :comment [:entityId :description]}
-   :measure          {:runtime [:kind :id :tableId :name :columns]
+   :measure          {:runtime [:type :id :tableId :name :columns]
                       :comment [:entityId :description]}
    :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :sourceCardId
                                 :mappedTableIds :columns :dimensions]
@@ -596,6 +596,7 @@
         table-id (or (:table_id field) (:table-id field) (field-table-id field-id))]
     (assoc-some
      (assoc (column-schema field)
+            :type "column"
             :key (generated-key (:name field) field-id)
             :id field-id)
      :fieldId (when (integer? field-id) field-id)
@@ -742,7 +743,7 @@
 (defn- segment-schema
   [table-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
   (assoc-some
-   {:kind    "segment"
+   {:type    "segment"
     :key     (generated-key (or display-name name) id)
     :id      id
     :tableId table-id
@@ -753,7 +754,7 @@
 (defn- measure-schema
   [table-id database-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
   (assoc-some
-   {:kind    "measure"
+   {:type    "measure"
     :key     (generated-key (or display-name name) id)
     :id      id
     :tableId table-id
@@ -768,7 +769,7 @@
   (let [segments-map (keyed-map (map #(segment-schema id %) segments))
         measures-map (keyed-map (map #(measure-schema id database_id %) measures))]
     (assoc-some
-     {:kind         "table"
+     {:type         "table"
       :key          (generated-key (or display_name name) id)
       :id           id
       :name         (or display_name name)
@@ -926,7 +927,8 @@
 (defn- node-kind
   [path value]
   (when (map? value)
-    (let [kind (map-key-value value :kind)]
+    (let [kind (or (map-key-value value :type)
+                   (map-key-value value :kind))]
       (cond
         (= kind "question") :question
         (= kind "table") :table

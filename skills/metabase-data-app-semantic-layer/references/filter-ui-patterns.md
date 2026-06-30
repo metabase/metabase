@@ -13,7 +13,7 @@ Before writing controls, map each filter to the dashboard. Keep this contract sm
 
 If a filter has unsupported sections, either make it section-scoped or do not render it as a global dashboard filter. Do not show duplicate date controls for the same page unless both visibly affect different labeled sections.
 
-For every rendered card or table, build filters from that semantic object's own generated fields or metric dimensions. Do not reuse a filter array built for a different table or metric.
+For every rendered card or table, build filters from that table query's generated fields. Do not reuse a filter array built for a different table.
 
 Before rendering a filter, answer:
 
@@ -25,10 +25,10 @@ Before rendering a filter, answer:
 
 ## Runtime Categorical Options
 
-Query options from Metabase at runtime with a breakout on the same field or metric dimension used by the filter.
+Query options from Metabase at runtime with a breakout on the same generated table field used by the filter.
 
-- Run a `useMetabaseQuery` breakout on the same table field or metric dimension used by `filter(...)`, then derive a deduped option list from returned rows.
-- Prefer querying options from the same semantic object used by the charts so the option list stays compatible with the filter.
+- Run a `useMetabaseQuery` breakout on the same table field used by `filter(...)`, then derive a deduped option list from returned rows.
+- Prefer querying options from the same table used by the charts so the option list stays compatible with the filter.
 - Treat categorical labels as runtime values unless the user explicitly provides a closed enum. Field names in the generated schema are not value lists.
 - Use a searchable picker/combobox for entity filters and long runtime option lists.
 
@@ -73,7 +73,7 @@ Keep the `All` option selectable even while options are loading, empty, or error
 - If a selected runtime option disappears from the latest option query, reset that filter to `all` so stale values do not keep filtering the dashboard to no rows.
 - For custom date ranges, apply the filter only when both dates are valid.
 - Never fill half-selected ranges with sentinel dates like `2000-01-01` or `2100-01-01`.
-- Keep one filter array per queried semantic object when charts use different date fields or metric dimensions.
+- Keep one filter array per queried table when charts use different date fields.
 - Memoize filter arrays so SDK query keys stay stable.
 - For boolean Yes/No/All filters, map both `true` and `false` explicitly; only All maps to no filter.
 

@@ -17,8 +17,16 @@ export { DataAppLink } from "./components/public/DataAppLink";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export {
+  avg,
   breakout,
+  count,
+  createMetabaseQuery,
+  distinct,
   filter,
+  max,
+  median,
+  min,
+  sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
