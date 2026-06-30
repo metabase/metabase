@@ -11,11 +11,6 @@
   output is diffed against an expected CSV. The single-transform case is the
   degenerate slice: `source-ids = #{}` → `slice = #{target-id}`.
 
-  The accumulating mapping is the heart of the chain: topo order guarantees an
-  upstream output is registered before any downstream node resolves, so a
-  downstream node's reference to an upstream output table is transparently
-  redirected to the upstream's scratch output.
-
   ## v1 scope
 
   - **Single database.** All slice nodes must share the target's source database;
@@ -99,18 +94,13 @@
                :offenders  offenders})))))
 
 (defn- leaf-table-infos
-  "Resolve `leaf-deps` (raw dep maps) to deduped leaf table-infos, fail closed.
-
-  Reuses `inputs/resolve-table-dep`, which throws a typed error on an unsupported
-  leaf (e.g. an unmaterialized upstream/sibling output → `::transform-dep-not-supported`,
-  or an unsynced table → `::table-not-found`). Dedupes by table id since two slice
-  nodes may reference the same leaf table."
+  "Resolve `leaf-deps` to deduped leaf table-infos, fail closed on an unsupported
+  or unsynced leaf. Dedupes by table id (two slice nodes may share a leaf)."
   [leaf-deps]
   (into [] (m/distinct-by :id) (map inputs/resolve-table-dep leaf-deps)))
 
 (defn- node-real-output-spec
-  "The `{:schema :table}` of a transform node's real (production) output table,
-  used as the mapping key that downstream nodes' inputs are redirected from."
+  "The `{:schema :table}` of a transform node's real (production) output table."
   [transform]
   {:schema (-> transform :target :schema)
    :table  (-> transform :target :name)})
@@ -160,6 +150,8 @@
         nonce     (scratch/new-nonce)
         mapping*  (atom {})
         outputs*  (atom {})]
+    ;; Reap orphans left by prior runs that died before cleanup (JVM kill, timeout).
+    (scratch/sweep-old-test-tables! db-id db schema)
     (reset! mapping* (scratch/seed! db-id db schema seed-inputs nonce))
     (let [last-backend* (atom nil)]
       (doseq [node-id order]
@@ -176,7 +168,7 @@
               out-spec (:target artifact)]
           (swap! outputs* assoc node-id out-spec)
           (reset! last-backend* (:parser-backend artifact))
-          ;; Register this node's real output → its scratch output for downstream nodes.
+          ;; So downstream nodes redirect to this node's scratch output.
           (swap! mapping* assoc (node-real-output-spec node) out-spec)))
       {:mapping        @mapping*
        :db             db
@@ -204,17 +196,11 @@
     (into [] (m/distinct-by :id) (map #(inputs/resolve-table-dep {:table %}) table-ids))))
 
 (defn- compile-card-sql
-  "Compile the card's query to a verified SQL string under the scratch override.
+  "Compile the card's query to a SQL string that reads only the run's scratch tables.
 
-  Native cards are rewritten via `resolve/rewrite-native-sql`; MBQL cards are
-  compiled under a metadata-provider override so the compiler emits
-  scratch-qualified SQL directly.
+  Native cards are rewritten; MBQL cards are compiled with scratch-qualified SQL.
 
-  `resolve/verify` is the safety proof — throws `::cannot-test-run` if any
-  non-scratch table reference survives.
-
-  Returns the final SQL string, reused for both card execution and the assertion
-  CTE binding."
+  Throws `::cannot-test-run` if any non-scratch table reference survives."
   [card db-id drv mapping input-tables]
   (let [backend   (sql-tools/parser-backend)
         dataset-q (:dataset_query card)
@@ -244,25 +230,21 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn subgraph-input-tables
-  "Leaf input table-infos for the `(target-id, source-ids)` sub-graph selection,
-  fail closed. The chained analogue of `inputs/required-input-tables`: the set of
-  boundary tables the caller must supply fixtures for.
+  "Leaf input table-infos the caller must supply fixtures for, for the
+  `(target-id, source-ids)` sub-graph selection. Fail closed on a bad selection
+  or an unresolvable dep.
 
-  Each table-info is `{:id :schema :name :columns [...]}`. Throws the same typed
-  errors as `resolve-subgraph` (`::sources-not-ancestors`) and
-  `inputs/resolve-table-dep` (`::transform-dep-not-supported`, `::table-not-found`)."
+  Each is `{:id :schema :name :columns [...]}`."
   [target-id source-ids all-transforms]
   (-> (subgraph/resolve-subgraph target-id source-ids all-transforms)
       :leaf-deps
       leaf-table-infos))
 
 (defn card-subgraph-input-tables
-  "Leaf input table-infos for the `(card, source-ids)` sub-graph selection,
-  fail closed.
+  "Leaf input table-infos the caller must supply fixtures for, for the
+  `(card, source-ids)` sub-graph selection. Fail closed.
 
-  Mirrors [[subgraph-input-tables]] for a card target. Returns the same
-  `{:id :schema :name :columns [...]}` shape; the caller supplies one fixture CSV
-  per returned table-info."
+  Each is `{:id :schema :name :columns [...]}`."
   [card source-ids all-transforms]
   (-> (subgraph/card->necessary-fixtures card source-ids all-transforms)
       :leaf-deps
@@ -415,8 +397,7 @@
         _              (assert-single-database! slice id->transform db-id)
         db             (t2/select-one :model/Database :id db-id)
         drv            (keyword (:engine db))
-        ;; Use the first slice node's target schema as the scratch schema, falling back
-        ;; to "public". Consistent with how run-chain-test! derives schema from the target.
+        ;; Use the first slice node's target schema as the scratch schema, falling back to "public".
         schema         (or (some-> (first order) id->transform :target :schema) "public")
         mapping*       (atom {})
         outputs*       (atom {})]

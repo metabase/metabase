@@ -14,14 +14,14 @@
   where:
     - The prefix `mb_transform_temp_table_test_` extends
       `transforms-base.u/transform-temp-table-prefix` (sync skips any name starting
-      with that prefix, so test tables are sync-invisible for free).
+      with that prefix, so test tables are sync-invisible).
     - `epoch36` — epoch seconds encoded in base 36 (6 chars for current epoch).
     - `nonce`   — 8-character random string for per-run uniqueness.
     - `suffix`  — `in_<table-id>` for input tables, `out` for the output target.
 
   Production transform temp tables use `mb_transform_temp_table_<hex-millis>`.
-  The `_test_` segment cannot appear in a hex-only name, so there is zero risk
-  that a janitor call drops a live production transform's temp table.
+  The `_test_` segment cannot appear in a hex-only name, so a janitor call
+  cannot drop a live production transform's temp table.
 
   ## Connection context
 
@@ -122,13 +122,8 @@
   "Return true when `table-name` is a test scratch table name.
 
   Accepts strings and keywords (including schema-qualified keywords like
-  `:public/mb_transform_temp_table_test_...`).  Returns false for nil and
-  non-string/keyword values.
-
-  Note: never consults the database — purely name-based.
-
-  Production transform temp tables (`mb_transform_temp_table_<hex-millis>`) can
-  never match because the `_test_` segment is not a valid hex sequence."
+  `:public/mb_transform_temp_table_test_...`). Returns false for nil and
+  non-string/keyword values. Never consults the database — purely name-based."
   [table-name]
   (some? (parse-scratch-table-name table-name)))
 
@@ -305,32 +300,12 @@
     (mapv first (get-in result [:data :rows]))))
 
 (defn cleanup-all-test-tables!
-  "Catch-all janitor: drop old test scratch tables in `schema`.
+  "Drop every test scratch table in `schema` older than `:min-age-seconds`
+  (default 3600), judged by the name-encoded timestamp alone. Non-test names and
+  younger tables are left untouched; per-table drop is best-effort (logs, continues).
 
-  Iterates over all tables in the schema, drops those that:
-  1. Parse as test scratch names (pass [[test-table-name?]] / [[parse-scratch-table-name]]).
-  2. Are older than `:min-age-seconds` (default 3600 = 1 hour) based on the
-     name-encoded timestamp alone — no reliance on warehouse creation-time metadata.
-
-  Safe by construction:
-  - Young test tables (timestamp < min-age) are skipped.
-  - Non-test names never parse and are never touched.
-  - Drop is best-effort (logs, continues).
-
-  Arguments:
-  - `db-id`  — integer database id.
-  - `db`     — `:model/Database` row.
-  - `schema` — schema string to scan (e.g. `\"public\"`).
-  - `opts`   — map with optional keys:
-    - `:min-age-seconds` (default 3600) — minimum age in seconds for a table to be dropped.
-
-  Returns a report map:
-  ```
-  {:dropped         [<table-name-string> ...]  ; names successfully dropped
-   :skipped-young   [<table-name-string> ...]  ; test tables younger than min-age
-   :non-matching-count <integer>               ; tables that did not parse as test names
-   :drop-errors     [{:table <name> :error <msg>} ...]} ; per-table drop failures
-  ```"
+  Returns `{:dropped [...] :skipped-young [...] :non-matching-count <int>
+  :drop-errors [{:table :error} ...]}`."
   [db-id db ^String schema {:keys [min-age-seconds] :or {min-age-seconds 3600}}]
   (let [drv         (keyword (:engine db))
         now-secs    (quot (System/currentTimeMillis) 1000)
@@ -359,3 +334,20 @@
      :skipped-young      @skipped
      :non-matching-count @non-match
      :drop-errors        @errors}))
+
+(defn sweep-old-test-tables!
+  "Reap old test scratch tables in `schema`, best-effort. Never throws; returns nil."
+  ([db-id db ^String schema]
+   (sweep-old-test-tables! db-id db schema {}))
+  ([db-id db ^String schema opts]
+   (try
+     (let [report (cleanup-all-test-tables! db-id db schema opts)]
+       (when (seq (:dropped report))
+         (log/infof "sweep-old-test-tables! reaped %d orphaned scratch table(s) in schema %s: %s"
+                    (count (:dropped report)) schema (pr-str (:dropped report))))
+       (when (seq (:drop-errors report))
+         (log/warnf "sweep-old-test-tables! encountered %d drop error(s) in schema %s: %s"
+                    (count (:drop-errors report)) schema (pr-str (:drop-errors report)))))
+     (catch Throwable e
+       (log/warn e "sweep-old-test-tables! failed; continuing without sweep for schema" schema)))
+   nil))

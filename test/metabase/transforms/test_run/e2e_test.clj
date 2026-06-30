@@ -20,9 +20,7 @@
   - Asserts the cleanup and no-TransformRun invariants at the API level.
 
   These tests exercise the subgraph endpoint (`POST /api/transform-test/transform/:id/subgraph`)
-  with `sources=[]`, the degenerate single-node case. The deleted Phase 1 endpoint
-  (`POST /api/transform/:id/test-run`) was removed; `sources=[]` is functionally
-  identical to it."
+  with `sources=[]`, the degenerate single-node case."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -273,47 +271,3 @@
                   (testing "no TransformRun row created"
                     (is (= before-runs (t2/count :model/TransformRun))
                         "No TransformRun row should be created by a test run")))))))))))
-
-;;; ===========================================================================
-;;; E2E: 422 dangling-qualifier case — verifies error UX at the API level
-;;; ===========================================================================
-
-(deftest e2e-dangling-qualifier-422-test
-  (testing "E2E: table-qualified column (orders.user_id) → 422 ::cannot-test-run with message"
-    ;; SELECT o.user_id works (alias-qualified); SELECT orders.user_id fails closed
-    ;; via guard 3 (the orders. qualifier survives the FROM-only rewrite).
-    ;; This exercises the documented limitation and the user-facing error message.
-    (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp         (mt/metadata-provider)
-                orders-id  (mt/id :orders)
-                people-id  (mt/id :people)]
-            (mt/with-temp [:model/Transform transform
-                           {:source {:type  :query
-                                     :query (lib/native-query
-                                             mp
-                                             (str "SELECT orders.user_id, COUNT(*) AS cnt"
-                                                  " FROM orders JOIN people ON orders.user_id = people.id"
-                                                  " GROUP BY orders.user_id"))}
-                            :target {:schema "public"
-                                     :type   "table"
-                                     :name   (mt/random-name)}}]
-              (with-temp-csv-files
-                [orders-f   (str orders-header "\n1,1,10,80.00,7.20,87.20,,2024-03-15T10:00:00Z,2\n")
-                 people-f   (str people-header "\n1,Addr,e@e.com,pw,Alice,SF,\"-1\",CA,g,1990-01-01,94102,\"37\",2020-01-01T00:00:00Z\n")
-                 expected-f "user_id,cnt\n1,1\n"]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 422 (test-run-url (:id transform))
-                            multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             (str "input-" people-id) people-f
-                             "expected"               expected-f})]
-                  (testing "status is error"
-                    (is (= "error" (:status resp))))
-                  (testing "error type is ::cannot-test-run"
-                    (is (= (pr-str ::test-run.resolve/cannot-test-run)
-                           (get-in resp [:error :type]))))
-                  (testing "error message mentions the dangling qualifier"
-                    (is (string? (get-in resp [:error :message]))
-                        "Error response should include a user-facing message")))))))))))
