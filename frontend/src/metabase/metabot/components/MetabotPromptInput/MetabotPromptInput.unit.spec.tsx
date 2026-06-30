@@ -166,44 +166,34 @@ describe("MetabotPromptInput", () => {
       getEditor().dispatchEvent(event);
     };
 
-    it("saves a pasted chart and inserts a question mention", async () => {
-      fetchMock.post(
-        "path:/api/card",
-        createMockCard({ id: 42, name: "Orders by month" }),
-      );
-      fetchMock.get(
-        "path:/api/card/42",
-        createMockCard({ id: 42, name: "Orders by month" }),
-      );
+    it("inserts an ad-hoc chart mention without saving a card", async () => {
+      fetchMock.post("path:/api/card", createMockCard({ id: 42 }));
       const onChange = jest.fn();
       setup({ onChange });
 
       pasteIntoEditor(chartText);
 
       await waitFor(() => {
-        expect(fetchMock.callHistory.called("path:/api/card")).toBe(true);
-      });
-      const call = fetchMock.callHistory.lastCall("path:/api/card");
-      const body = JSON.parse((call?.options?.body as string) ?? "{}");
-      expect(body.display).toBe("bar");
-      expect(body.dataset_query).toEqual(datasetQuery);
-
-      await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(
-          expect.stringContaining("metabase://question/42"),
+          expect.stringContaining("metabase://adhoc/"),
         );
       });
+      expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
     });
 
     it("ignores pasted content that is not a chart", async () => {
       fetchMock.post("path:/api/card", createMockCard({ id: 42 }));
-      setup();
+      const onChange = jest.fn();
+      setup({ onChange });
 
       pasteIntoEditor("just some text");
 
       await waitFor(() => {
-        expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
+        expect(onChange).toHaveBeenCalled();
       });
+      expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
+      const lastValue = onChange.mock.calls.at(-1)?.[0];
+      expect(lastValue).not.toContain("metabase://adhoc/");
     });
   });
 });
