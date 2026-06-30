@@ -35,7 +35,7 @@
       (is (= ["columns" "style"] (map :name (get-in methods [:sortkey :fields]))))
       (is (= ["style" "columns"] (map :name (get-in methods [:distkey :fields]))))
       (is (= #{"compound" "interleaved"} (style-options :sortkey)))
-      (is (= #{"key" "all" "even" "auto"} (style-options :distkey))))))
+      (is (= #{"key" "all" "even"} (style-options :distkey))))))
 
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
@@ -77,6 +77,11 @@
     :indexes      [{:kind :distkey :style :all}]
     :ctas         "CREATE TABLE \"events\" DISTSTYLE ALL AS SELECT 1"
     :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) DISTSTYLE ALL"}
+   {:label        "even distribution renders DISTSTYLE EVEN, no column"
+    :table        :events
+    :indexes      [{:kind :distkey :style :even}]
+    :ctas         "CREATE TABLE \"events\" DISTSTYLE EVEN AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) DISTSTYLE EVEN"}
    {:label        "distkey + sortkey render in Redshift's required order (distribution then sort)"
     :table        :events
     :indexes      [{:kind :distkey :style :key :columns [{:name "a"}]}
