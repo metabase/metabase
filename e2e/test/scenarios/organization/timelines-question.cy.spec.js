@@ -545,8 +545,10 @@ describe("scenarios > organization > timelines > question", () => {
         "data-selected",
         "true",
       );
-      timelineEventCard("Alpha").should("be.visible");
-      timelineEventCard("Delta").should("be.visible");
+      cy.findByTestId("sidebar-content").within(() => {
+        timelineEventCard("Alpha").should("be.visible");
+        timelineEventCard("Delta").should("be.visible");
+      });
 
       cy.log("the unrelated timeline is filtered out of the focused list");
       cy.findByTestId("sidebar-content")
@@ -591,8 +593,10 @@ describe("scenarios > organization > timelines > question", () => {
       cy.log("clicking a grouped chip focuses the sidebar on its events");
       H.timelineEventChip("2 events").should("be.visible").click();
 
-      timelineEventCard("Alpha").should("be.visible");
-      timelineEventCard("Beta").should("be.visible");
+      cy.findByTestId("sidebar-content").within(() => {
+        timelineEventCard("Alpha").should("be.visible");
+        timelineEventCard("Beta").should("be.visible");
+      });
       cy.findByTestId("sidebar-content")
         .findByText("Other")
         .should("not.exist");
@@ -610,7 +614,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.log("the sidebar opens (unfiltered) with the event selected");
       H.timelineEventChip("RC1").should("have.attr", "data-selected", "true");
-      timelineEventCard("RC1").should("be.visible");
+      cy.findByTestId("sidebar-content").findByText("RC1").should("be.visible");
       cy.findByTestId("timeline-sidebar-show-all").should("not.exist");
     });
 
