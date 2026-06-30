@@ -378,6 +378,22 @@
       (is (sequential? (-> result :structuredContent :resources))
           "structuredContent should mirror the endpoint response shape"))))
 
+(deftest read-resource-multiple-uris-test
+  (testing "read_resource via MCP tools/call returns one resource per URI — pins the multi-URI
+           contract through the synthetic-GET query-param path (a vector :uris must fan out)"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "read_resource"
+                                                        :arguments {:uris ["metabase://databases"
+                                                                           "metabase://collections"]}})
+                                      {"mcp-session-id" session-id})
+          result         (get-in response [:body :result])]
+      (is (= 200 (:status response)))
+      (is (not (:isError result))
+          (str "read_resource should succeed: " (some-> result :content first :text)))
+      (is (= 2 (count (-> result :structuredContent :resources)))
+          "two URIs in → two resources out"))))
+
 (deftest tools-list-strict-shape-test
   (testing "no tool's inputSchema uses JSON-Schema constructs that ChatGPT's strict MCP validator rejects"
     ;; Pins the strict-shape guarantee across the whole exposed tool surface. `construct_query` had

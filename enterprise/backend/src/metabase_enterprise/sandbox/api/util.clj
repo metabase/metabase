@@ -114,6 +114,10 @@
   bound (and the user isn't a superuser) — matching `sandboxed-user-for-db?` / `sandboxed-user?`, so a missing binding
   fails CLOSED rather than silently exposing the query.
 
+  Expects a persisted `card` whose `:dataset_query` is already normalized to pMBQL (as loaded from the app DB via
+  Toucan's `:out` transform). `lib/all-source-table-ids` has a pMBQL input schema and will throw under Malli
+  instrumentation if handed a raw legacy `{:type :query ...}` map — don't call this with a hand-built legacy query.
+
   Two detection modes:
   - MBQL: `lib/all-source-table-ids` yields the structural source tables; check for an enforced sandbox on any.
   - Native: `all-source-table-ids` returns nil (it only sees `:source-table` refs), so fall back to a database-level
