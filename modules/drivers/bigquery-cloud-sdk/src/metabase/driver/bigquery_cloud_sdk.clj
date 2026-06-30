@@ -782,12 +782,20 @@
      ;; realizing more rows as per the maximum result size
      (.setMaxResults *page-size*))))
 
+(defn- query-results-page
+  "Fetch one page of query-job results from `job` with the given `options`. A thin wrapper over `.getQueryResults`
+  that exists as a redefable seam so tests can simulate BigQuery returning nil for a later page."
+  ^TableResult [^Job job options]
+  (.getQueryResults job options))
+
 (defn- adaptive-query-next-page
   "Adaptive page-advance for query-job results (the regular execution path), mirroring [[adaptive-sample-next-page]]
   but paging via `getQueryResults` -- the query result's own `.getNextPage` re-uses the original page size and can't
   be re-sized. Measures the just-consumed page's real bytes/row and re-issues the next page with a `pageSize`
   targeting [[*page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
-  large parsed page in memory. Returns nil once the result set is exhausted."
+  large parsed page in memory. Returns nil once the result set is exhausted; throws if BigQuery reports another
+  page is available (non-blank page token) but fails to return it, so we surface the error instead of silently
+  truncating the result set."
   [^Job job]
   (let [budget (long *page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
@@ -801,11 +809,12 @@
                                                             :rows  (+ (long (:rows s)) (long page-rows))}))]
             (log/trace "BigQuery: Fetching new page")
             (*page-callback*)
-            (.getQueryResults job
-                              (u/varargs BigQuery$QueryResultsOption
-                                [(BigQuery$QueryResultsOption/pageSize
-                                  (next-page-size budget bytes rows Long/MAX_VALUE))
-                                 (BigQuery$QueryResultsOption/pageToken token)]))))))))
+            (or (query-results-page job
+                                    (u/varargs BigQuery$QueryResultsOption
+                                      [(BigQuery$QueryResultsOption/pageSize
+                                        (next-page-size budget bytes rows Long/MAX_VALUE))
+                                       (BigQuery$QueryResultsOption/pageToken token)]))
+                (throw (ex-info "Cannot get next page from BigQuery" {})))))))))
 
 (defn- reducible-bigquery-results
   "Reducible over the rows of `page` and its successors. `next-page` is the adaptive page-advance: given the
