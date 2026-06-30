@@ -51,7 +51,7 @@ export function AddDimensionsPanel({
     try {
       await addDimensions({
         metricId,
-        dimension_ids: [dimension.id],
+        dimensions: [dimension],
       }).unwrap();
     } catch {
       dispatch(addUndo({ message: t`Couldn't add ${dimension.display_name}` }));

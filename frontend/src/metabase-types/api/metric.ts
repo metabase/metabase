@@ -135,7 +135,7 @@ export type ListMetricDimensionsResponse = {
 
 export type AddMetricDimensionsRequest = {
   metricId: MetricId;
-  dimension_ids: DimensionId[];
+  dimensions: MetricDimension[];
 };
 
 export type RemoveMetricDimensionsRequest = {

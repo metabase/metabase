@@ -1,6 +1,7 @@
 (ns metabase.metrics.api-dimension-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
@@ -205,3 +206,109 @@
                (mt/user-http-request :rasta :get 403
                                      (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                      :value "1")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension CRUD Endpoints                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmacro ^:private with-seeded-metric [[binding] & body]
+  `(mt/with-temp [:model/Card metric# {:name          "CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+     (metrics/sync-dimensions! :metadata/metric (:id metric#))
+     (let [~binding metric#]
+       ~@body)))
+
+(deftest list-dimensions-test
+  (testing "GET /api/metric/:id/dimension lists the curated (self-table) dimensions"
+    (with-seeded-metric [metric]
+      (let [resp (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))]
+        (is (seq (:added resp)) "should list seeded self-table dimensions")
+        (is (= [] (:addable resp)) "addable is empty unless requested")
+        (is (contains? (set (map :display_name (:added resp))) "Price"))))))
+
+(deftest list-dimensions-with-addable-test
+  (testing "GET /api/metric/:id/dimension?with_addable=true returns joinable columns to add"
+    (with-seeded-metric [metric]
+      (let [resp (mt/user-http-request :crowberto :get 200
+                                       (str "metric/" (:id metric) "/dimension") :with_addable true)]
+        (is (seq (:addable resp)) "FK-joinable (categories) columns should be addable")
+        (is (every? #(and (contains? % :group) (seq (:dimensions %))) (:addable resp))
+            "each addable entry is a {group, dimensions} group")))))
+
+(deftest list-dimensions-search-test
+  (testing "GET /api/metric/:id/dimension?query=… filters added dimensions by name"
+    (with-seeded-metric [metric]
+      (let [names (->> (mt/user-http-request :crowberto :get 200
+                                             (str "metric/" (:id metric) "/dimension") :query "Price")
+                       :added (map :display_name) set)]
+        (is (contains? names "Price"))
+        (is (not (contains? names "Latitude")))))))
+
+(deftest remove-dimensions-test
+  (testing "POST /api/metric/:id/dimension/remove removes dimensions by id and persists"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            resp     (mt/user-http-request :crowberto :post 200
+                                           (str "metric/" (:id metric) "/dimension/remove")
+                                           {:dimension_ids [price-id]})]
+        (is (not (contains? (set (map :id resp)) price-id))
+            "removed dimension is gone from the response")
+        (is (not (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) price-id))
+            "removal is persisted")))))
+
+(deftest add-dimensions-test
+  (testing "POST /api/metric/:id/dimension/add adds a full dimension object and persists its UUID"
+    (with-seeded-metric [metric]
+      (let [addable (-> (mt/user-http-request :crowberto :get 200
+                                              (str "metric/" (:id metric) "/dimension") :with_addable true)
+                        :addable first :dimensions first)]
+        (is (some? addable) "there should be an addable joinable dimension")
+        (let [resp      (mt/user-http-request :crowberto :post 200
+                                              (str "metric/" (:id metric) "/dimension/add")
+                                              {:dimensions [addable]})
+              field-ids (->> resp (mapcat :sources) (map :field-id) set)]
+          (is (contains? (set (map :id resp)) (:id addable))
+              "added dimension keeps the posted UUID")
+          (is (contains? field-ids (-> addable :sources first :field-id))
+              "added dimension targets the chosen column")
+          (is (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) (:id addable))
+              "the addition is persisted"))))))
+
+(deftest update-dimension-display-name-test
+  (testing "POST /api/metric/:id/dimension/:id updates display_name"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            resp     (mt/user-http-request :crowberto :post 200
+                                           (str "metric/" (:id metric) "/dimension/" price-id)
+                                           {:display_name "Cost"})]
+        (is (= "Cost" (:display_name resp)))
+        (is (= "Cost" (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                           :added (m/find-first #(= price-id (:id %))) :display_name))
+            "the rename is persisted")))))
+
+(deftest update-dimension-source-type-mismatch-test
+  (testing "POST /api/metric/:id/dimension/:id rejects a source column of a different type"
+    (with-seeded-metric [metric]
+      (let [name-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "NAME")
+            resp    (mt/user-http-request :crowberto :post 400
+                                          (str "metric/" (:id metric) "/dimension/" name-id)
+                                          {:source {:type "field" :field-id (mt/id :venues :price)}})]
+        (is (re-find #"different type" resp))))))
+
+(deftest dimension-crud-permission-test
+  (testing "dimension CRUD endpoints require write permission"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       metric {:name          "Protected Metric"
+                                               :type          :metric
+                                               :collection_id (:id collection)
+                                               :database_id   (mt/id)
+                                               :table_id      (mt/id :venues)
+                                               :dataset_query (metric-query)}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (str "metric/" (:id metric) "/dimension/remove")
+                                     {:dimension_ids [fake-dimension-id]})))))))

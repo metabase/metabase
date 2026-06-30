@@ -56,6 +56,8 @@
      unprojected-sources
      ->query-plan]
     [lib-metric.dimension
+     add-dimensions
+     addable-pairs
      dimension
      dimensionable-query
      dimensions-changed?
@@ -66,8 +68,12 @@
      field-ref->key
      get-persisted-dimension-mappings
      get-persisted-dimensions
+     main-group?
      mappings-changed?
      reconcile-dimensions-and-mappings
+     reconcile-existing-dimensions
+     remove-dimensions
+     update-dimension
      resolve-dimension-to-field-id]
     [lib-metric.dimension.jvm
      compute-dimension-pairs]

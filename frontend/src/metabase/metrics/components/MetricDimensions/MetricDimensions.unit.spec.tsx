@@ -133,7 +133,7 @@ describe("MetricDimensions", () => {
     await waitFor(async () => {
       expect(
         await getPostBody(`path:/api/metric/${METRIC_ID}/dimension/add`),
-      ).toEqual({ dimension_ids: ["billed-at"] });
+      ).toEqual({ dimensions: [BILLED_AT] });
     });
   });
 

@@ -313,3 +313,67 @@
      (:dimension_mappings metric)
      dimension-key
      value)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension CRUD Endpoints                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- read-check-metric! [id]
+  (api/read-check (t2/select-one :model/Card :id id :type "metric")))
+
+(defn- write-check-metric! [id]
+  (api/write-check (t2/select-one :model/Card :id id :type "metric")))
+
+(api.macros/defendpoint :get "/:id/dimension"
+  :- [:map
+      [:added   [:sequential :map]]
+      [:addable [:sequential :map]]]
+  "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to
+  add, grouped by source table. Both can be filtered with a `query` name substring."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [query with_addable]} :- [:map
+                                    [:query        {:optional true} [:maybe :string]]
+                                    [:with_addable {:optional true} [:maybe ms/BooleanValue]]]]
+  (read-check-metric! id)
+  (metrics/list-dimensions :metadata/metric id {:query         query
+                                                :with-addable? (boolean with_addable)}))
+
+(api.macros/defendpoint :post "/:id/dimension/add"
+  :- [:sequential :map]
+  "Add dimensions to a metric. Each entry is a full dimension object (carrying its UUID and a single `sources` field
+  id); the column-derived fields and mapping are recomputed server-side.
+
+  Returns the updated list of dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dimensions]} :- [:map
+                            [:dimensions [:sequential [:map
+                                                       [:id      ms/NonBlankString]
+                                                       [:sources [:sequential [:map [:field-id ms/PositiveInt]]]]]]]]]
+  (write-check-metric! id)
+  (metrics/add-dimensions! :metadata/metric id dimensions))
+
+(api.macros/defendpoint :post "/:id/dimension/remove"
+  :- [:sequential :map]
+  "Remove dimensions (by UUID) from a metric. Returns the updated list of added dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
+  (write-check-metric! id)
+  (metrics/remove-dimensions! :metadata/metric id dimension_ids))
+
+(api.macros/defendpoint :post "/:id/dimension/:dimension-key"
+  :- :map
+  "Update a metric dimension's `display_name`, `description`, and/or source column.
+
+  `source` is a `{type, field-id}`; the new column must have the same effective type."
+  [{:keys [id dimension-key]} :- [:map
+                                  [:id            ms/PositiveInt]
+                                  [:dimension-key ms/UUIDString]]
+   _query-params
+   body :- [:map
+            [:display_name {:optional true} [:maybe ms/NonBlankString]]
+            [:description  {:optional true} [:maybe :string]]
+            [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
+  (write-check-metric! id)
+  (metrics/update-dimension! :metadata/metric id dimension-key body))
