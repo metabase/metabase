@@ -68,7 +68,7 @@ export function ExploreSection({ location, onPin }: Props) {
   return (
     <>
       <SubNavSection>
-        <SubNavHeading>{t`Ask AI`}</SubNavHeading>
+        <SubNavHeading>{t`AI explorations`}</SubNavHeading>
         <SidebarLink
           icon="sparkles"
           url="/question/ask"
@@ -98,10 +98,10 @@ export function ExploreSection({ location, onPin }: Props) {
             onPin();
           }}
         >
-          {t`GUI query`}
+          {t`Query builder`}
         </SidebarLink>
         <SidebarLink icon="sql" url={sqlQueryUrl} onClick={onPin}>
-          {t`SQL query`}
+          {t`SQL editor`}
         </SidebarLink>
       </SubNavSection>
 

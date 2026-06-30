@@ -39,13 +39,6 @@ export function DataSection({ location }: Props) {
             </SidebarLink>
           );
         })}
-        <SidebarLink
-          icon="network"
-          url={Urls.dataStudioSchemaViewer()}
-          isSelected={path.startsWith("/data-studio/schema-viewer")}
-        >
-          {t`Schema viewer`}
-        </SidebarLink>
       </SubNavSection>
 
       <SubNavSection>

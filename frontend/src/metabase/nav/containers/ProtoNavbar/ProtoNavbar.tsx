@@ -47,7 +47,7 @@ type Props = {
 };
 
 const MIN_WIDTH = 220;
-const MAX_WIDTH = 336;
+const MAX_WIDTH = 480;
 const DEFAULT_WIDTH = 320;
 const WIDTH_STORAGE_KEY = "proto-nav-width";
 

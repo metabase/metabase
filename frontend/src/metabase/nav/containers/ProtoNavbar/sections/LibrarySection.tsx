@@ -1,6 +1,9 @@
 import type { Location } from "history";
+import type { MouseEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
+import { Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { SidebarLink } from "../../MainNavbar/SidebarItems";
@@ -28,33 +31,59 @@ export function LibrarySection({ location }: Props) {
   const isPublishedTablesSelected =
     isLibraryPage && (librarySection === "tables" || librarySection == null);
 
+  const [isPublishedTablesExpanded, setIsPublishedTablesExpanded] =
+    useState(false);
+
+  const togglePublishedTablesExpanded = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsPublishedTablesExpanded((expanded) => !expanded);
+  };
+
   return (
     <>
       <SubNavSection>
         <SubNavHeading>{t`Semantic layer`}</SubNavHeading>
         <SidebarLink
+          className={S.publishedTablesRow}
           icon="table"
           url={tablesUrl}
           isSelected={isPublishedTablesSelected}
+          right={
+            <button
+              type="button"
+              className={S.publishedTablesExpandBtn}
+              aria-label={isPublishedTablesExpanded ? t`Collapse` : t`Expand`}
+              aria-expanded={isPublishedTablesExpanded}
+              onClick={togglePublishedTablesExpanded}
+            >
+              <Icon
+                name={isPublishedTablesExpanded ? "chevronup" : "chevrondown"}
+                size={12}
+              />
+            </button>
+          }
         >
-          {t`Published tables`}
+          {t`Tables`}
         </SidebarLink>
-        <div className={S.libraryNestedItems}>
-          <SidebarLink
-            icon="segment"
-            url={segmentsUrl}
-            isSelected={isLibraryPage && librarySection === "segments"}
-          >
-            {t`Segments`}
-          </SidebarLink>
-          <SidebarLink
-            icon="sum"
-            url={measuresUrl}
-            isSelected={isLibraryPage && librarySection === "measures"}
-          >
-            {t`Measures`}
-          </SidebarLink>
-        </div>
+        {isPublishedTablesExpanded && (
+          <div className={S.libraryNestedItems}>
+            <SidebarLink
+              icon="segment"
+              url={segmentsUrl}
+              isSelected={isLibraryPage && librarySection === "segments"}
+            >
+              {t`Segments`}
+            </SidebarLink>
+            <SidebarLink
+              icon="sum"
+              url={measuresUrl}
+              isSelected={isLibraryPage && librarySection === "measures"}
+            >
+              {t`Measures`}
+            </SidebarLink>
+          </div>
+        )}
         <SidebarLink
           icon="metric"
           url={metricsUrl}
