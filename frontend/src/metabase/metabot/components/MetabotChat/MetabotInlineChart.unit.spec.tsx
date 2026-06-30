@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupCardDataset } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
 import type Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
@@ -151,6 +152,25 @@ describe("MetabotInlineChart", () => {
       expect(body.display).toBe("bar");
       expect(body.name).toBe("Orders by month");
       expect(body.dataset_query).toEqual(datasetQuery);
+    });
+  });
+
+  describe("copying", () => {
+    it("copies the chart payload to the clipboard", async () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText },
+        configurable: true,
+      });
+      setup();
+
+      await userEvent.click(screen.getByRole("button", { name: "Copy chart" }));
+
+      expect(writeText).toHaveBeenCalledTimes(1);
+      const payload = parseChartClipboard(writeText.mock.calls[0][0]);
+      expect(payload?.display).toBe("bar");
+      expect(payload?.name).toBe("Orders by month");
+      expect(payload?.dataset_query).toEqual(datasetQuery);
     });
   });
 });

@@ -1,3 +1,4 @@
+import { useClipboard } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -9,9 +10,19 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Anchor, Box, Button, Center, Flex } from "metabase/ui";
+import {
+  ActionIcon,
+  Anchor,
+  Box,
+  Button,
+  Center,
+  Flex,
+  Icon,
+  Tooltip,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
@@ -36,8 +47,29 @@ export function MetabotInlineChart({
 }) {
   const datasetQuery = query.query;
   const dispatch = useDispatch();
+  const clipboard = useClipboard();
   const [createCard] = useCreateCardMutation();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
+  const clipboardPayload = useMemo(
+    () =>
+      serializeChartClipboard({
+        name: title,
+        display: display ?? "table",
+        dataset_query: datasetQuery,
+        visualization_settings: {},
+      }),
+    [title, display, datasetQuery],
+  );
+
+  const handleCopyEvent = (event: React.ClipboardEvent) => {
+    const hasTextSelection = !!window.getSelection()?.toString();
+    if (hasTextSelection) {
+      return;
+    }
+    event.preventDefault();
+    event.clipboardData.setData("text/plain", clipboardPayload);
+  };
 
   const question = useMemo(
     () =>
@@ -94,7 +126,12 @@ export function MetabotInlineChart({
   };
 
   return (
-    <Box className={S.container} data-testid="metabot-inline-chart">
+    <Box
+      className={S.container}
+      data-testid="metabot-inline-chart"
+      tabIndex={0}
+      onCopy={handleCopyEvent}
+    >
       <Flex className={S.header} align="center" gap="sm">
         <Anchor
           className={S.title}
@@ -108,6 +145,15 @@ export function MetabotInlineChart({
         >
           {title}
         </Anchor>
+        <Tooltip label={clipboard.copied ? t`Copied` : t`Copy chart`}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={t`Copy chart`}
+            onClick={() => clipboard.copy(clipboardPayload)}
+          >
+            <Icon name="copy" size={16} />
+          </ActionIcon>
+        </Tooltip>
         <Button
           variant="subtle"
           size="xs"
