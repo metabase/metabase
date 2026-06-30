@@ -206,8 +206,7 @@
     "gpt-5.4"
     "gpt-5.4-pro"
     "gpt-5.4-mini"
-    "gpt-4.1"
-    "gpt-4.1-mini"})
+    "gpt-4.1"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -261,7 +260,7 @@
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+    :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
                         [{:type        "function"
@@ -288,7 +287,7 @@
   "Perform a streaming request to OpenAI Responses API.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
   [{:keys [model ai-proxy?] :as opts
-    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+    :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
   (let [req (openai-request-body opts)]

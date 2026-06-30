@@ -394,21 +394,21 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
                                                              ([provider]
                                                               (is (= "openai" provider))
-                                                              {:models [{:id "gpt-4.1-mini"
-                                                                         :display_name "gpt-4.1-mini"}]})
+                                                              {:models [{:id "gpt-5.4"
+                                                                         :display_name "gpt-5.4"}]})
                                                              ([provider {:keys [credentials]}]
                                                               (is (= "openai" provider))
                                                               (is (= {:api-key "sk-fresh"} credentials))
-                                                              {:models [{:id "gpt-4.1-mini"
-                                                                         :display_name "gpt-4.1-mini"}]}))]
-        (is (= {:value  "openai/gpt-4.1-mini"
-                :models [{:id "gpt-4.1-mini"
-                          :display_name "gpt-4.1-mini"
-                          :group "GPT-4.1"}]}
+                                                              {:models [{:id "gpt-5.4"
+                                                                         :display_name "gpt-5.4"}]}))]
+        (is (= {:value  "openai/gpt-5.4"
+                :models [{:id "gpt-5.4"
+                          :display_name "gpt-5.4"
+                          :group "GPT-5.4"}]}
                (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                      {:provider "openai"
                                       :api-key  "sk-fresh"})))
-        (is (= "openai/gpt-4.1-mini"
+        (is (= "openai/gpt-5.4"
                (metabot.settings/llm-metabot-provider)))
         (is (= "sk-fresh"
                (llm.settings/llm-openai-api-key)))))))

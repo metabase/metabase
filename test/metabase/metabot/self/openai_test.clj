@@ -263,7 +263,7 @@
     (doseq [id ["gpt-5.5" "gpt-5.4-mini" "gpt-4.1"]]
       (is (true? (#'openai/supported-model? {:id id})) id)))
   (testing "non-white-listed models are not supported"
-    (doseq [id ["gpt-4o" "o3" "text-embedding-3-small"]]
+    (doseq [id ["gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
       (is (false? (#'openai/supported-model? {:id id})) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
@@ -274,6 +274,7 @@
                                     :body   {:data [{:id "gpt-5-mini"             :created 30}
                                                     {:id "gpt-5.4"                :created 25}
                                                     {:id "gpt-4.1"                :created 20}
+                                                    {:id "gpt-4.1-mini"           :created 19}
                                                     {:id "gpt-4o-mini"            :created 18}
                                                     {:id "o3"                     :created 15}
                                                     {:id "text-embedding-3-small" :created 8}
