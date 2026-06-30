@@ -1,10 +1,7 @@
 import { t } from "ttag";
 
-import type { WritebackActionType } from "metabase-types/api";
-
 import {
   ActionButtons,
-  CompactSelect,
   Container,
   EditableText,
   LeftHeader,
@@ -12,31 +9,17 @@ import {
 
 type Props = {
   name: string;
-  type: WritebackActionType;
   isEditable: boolean;
   canRename: boolean;
   onChangeName: (name: string) => void;
-  onChangeType?: (type: WritebackActionType) => void;
   actionButtons: React.ReactElement[];
 };
-
-const OPTS = [
-  {
-    value: "query",
-    get name() {
-      return t`Query`;
-    },
-    disabled: true,
-  },
-];
 
 const ActionCreatorHeader = ({
   name = t`New Action`,
   isEditable,
   canRename,
-  type,
   onChangeName,
-  onChangeType,
   actionButtons,
 }: Props) => {
   return (
@@ -47,9 +30,6 @@ const ActionCreatorHeader = ({
           onChange={onChangeName}
           isDisabled={!isEditable || !canRename}
         />
-        {!!onChangeType && (
-          <CompactSelect options={OPTS} value={type} onChange={onChangeType} />
-        )}
       </LeftHeader>
       {actionButtons.length > 0 && (
         <ActionButtons>{actionButtons}</ActionButtons>
