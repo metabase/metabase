@@ -12,10 +12,11 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type { TransformId } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
+import { IndexPageActions } from "./IndexPageActions";
 import { NoIndexes } from "./NoIndexes";
 import { TransformIndexTable } from "./TransformIndexTable";
 
@@ -48,21 +49,27 @@ export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
   return (
     <PageContainer data-testid="transforms-indexes-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <TransformIndexesContent transformId={transform.id} />
+      <TransformIndexesContent transform={transform} readOnly={readOnly} />
     </PageContainer>
   );
 }
 
 function TransformIndexesContent({
-  transformId,
+  transform,
+  readOnly = false,
 }: {
-  transformId: TransformId;
+  transform: Transform;
+  readOnly: boolean | undefined;
 }) {
   const {
     data: indexes = [],
     isLoading,
     error,
-  } = useListTableIndexesQuery({ "transform-id": transformId });
+  } = useListTableIndexesQuery({ "transform-id": transform.id });
+  const targetTableExists = transform.table != null;
+  const hasRequestableIndexes =
+    Object.keys(transform.requestable_indexes ?? {}).length > 0;
+  const canCreate = targetTableExists && hasRequestableIndexes && !readOnly;
 
   if (isLoading || !isNullOrUndefined(error)) {
     return (
@@ -73,7 +80,17 @@ function TransformIndexesContent({
   }
 
   return (
-    <TitleSection label={t`Indexes`}>
+    <TitleSection
+      label={t`Indexes`}
+      actions={
+        <IndexPageActions
+          readOnly={readOnly}
+          targetTableExists={targetTableExists}
+          handleCreate={() => undefined}
+          canCreate={canCreate}
+        />
+      }
+    >
       {indexes.length === 0 ? (
         <NoIndexes />
       ) : (
