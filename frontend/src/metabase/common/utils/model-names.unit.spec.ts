@@ -7,9 +7,4 @@ describe("common/utils/model-names", () => {
     expect(getTranslatedEntityName("dataset")).toBe("Model");
     expect(getTranslatedEntityName("indexed-entity")).toBe("Indexed record");
   });
-
-  // TEMP ci-conductor FE smoke test — revert before merge.
-  it("TEMP ci-conductor fe reporting smoke", () => {
-    expect(getTranslatedEntityName("dashboard")).toBe("NOPE");
-  });
 });
