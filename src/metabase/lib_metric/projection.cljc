@@ -332,17 +332,24 @@
 
 ;;; -------------------------------------------------- Default Breakout Dimensions --------------------------------------------------
 
-(defn- dimension-has-field-id?
-  "Check if a dimension has a source matching any of the given field IDs."
-  [field-ids dimension]
-  (perf/some (fn [source]
-               (when-let [fid (:field-id source)]
-                 (field-ids fid)))
-             (:sources dimension)))
+(defn- column-key
+  "Collision-safe key for the underlying column of a field ref, ignoring any bucketing. Unlike a bare
+   field id, this keeps the `:source-field`/`:join-alias` so columns reached via different FKs to the
+   same table don't collide. See [[lib-metric.dimension/field-ref->key]]."
+  [field-ref]
+  (-> field-ref
+      (update 1 dissoc :temporal-unit :binning)
+      lib-metric.dimension/field-ref->key))
+
+(defn- dimension-column-key
+  "Column key for a metadata dimension, derived from its mapping target (which carries the
+   `:source-field`). Returns nil when the dimension has no mapping."
+  [dimension]
+  (some-> dimension :dimension-mapping :target column-key))
 
 (mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Get dimensions corresponding to the source metric's default breakout columns.
-   Returns DimensionMetadata objects matching the breakout field-ids in the dataset_query."
+   Returns DimensionMetadata objects matching the breakout columns in the dataset_query."
   [definition :- ::lib-metric.schema/metric-definition]
   (let [{:keys [expression metadata-provider]} definition
         leaf-type (lib-metric.definition/expression-leaf-type expression)
@@ -356,12 +363,13 @@
             raw-query     (lib-metric.dimension/dimensionable-query metadata)]
         (if-not raw-query
           []
-          (let [mbql5-query        (lib/query metadata-provider raw-query)
-                breakout-clauses   (lib/breakouts mbql5-query)
-                breakout-field-ids (into #{}
-                                         (keep lib-metric.dimension/dimension-target->field-id)
-                                         breakout-clauses)]
-            (if (perf/empty? breakout-field-ids)
+          (let [mbql5-query      (lib/query metadata-provider raw-query)
+                breakout-clauses (lib/breakouts mbql5-query)
+                ;; Key by the full column ref (incl. :source-field), not the bare field id, since a
+                ;; field id can be reached via multiple FKs to the same foreign table.
+                breakout-keys    (into #{} (keep column-key) breakout-clauses)]
+            (if (perf/empty? breakout-keys)
               []
-              (filterv #(dimension-has-field-id? breakout-field-ids %)
+              (filterv #(when-let [k (dimension-column-key %)]
+                          (contains? breakout-keys k))
                        (projectable-dimensions definition)))))))))

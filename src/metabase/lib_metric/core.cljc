@@ -63,6 +63,7 @@
      dimensions-for-metric
      dimensions-for-table
      extract-persisted-dimensions
+     field-ref->key
      get-persisted-dimension-mappings
      get-persisted-dimensions
      mappings-changed?
@@ -102,6 +103,7 @@
      (def get-persisted-dimensions "See [[lib-metric.dimension/get-persisted-dimensions]]." lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings "See [[lib-metric.dimension/get-persisted-dimension-mappings]]." lib-metric.dimension/get-persisted-dimension-mappings)
      (def resolve-dimension-to-field-id "See [[lib-metric.dimension/resolve-dimension-to-field-id]]." lib-metric.dimension/resolve-dimension-to-field-id)
+     (def field-ref->key "See [[lib-metric.dimension/field-ref->key]]." lib-metric.dimension/field-ref->key)
      (def database-provider-for-table "See [[lib-metric.metadata.provider/database-provider-for-table]]." lib-metric.metadata.provider/database-provider-for-table)
      (def metric-context-metadata-provider "See [[lib-metric.metadata.provider/metric-context-metadata-provider]]." lib-metric.metadata.provider/metric-context-metadata-provider)
      (def metadata-provider "See [[lib-metric.metadata.js/metadata-provider]]." lib-metric.metadata.js/metadata-provider)
