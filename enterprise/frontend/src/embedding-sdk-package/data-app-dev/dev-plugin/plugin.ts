@@ -3,17 +3,25 @@ import path from "node:path";
 
 import { type Plugin, type Rollup, build } from "vite";
 
+// Build-time string constants shared with the rspack config; bundled as values,
+// so this references no app runtime code (cf. `use-load-sdk-bundle.ts`). A
+// namespace import stays single-line so the disable covers the reported line.
+// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
+import * as dataAppVirtualModules from "build-configs/embedding-sdk/constants/data-app-virtual-modules";
+
 import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
 import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 
 // Virtual modules the dev server provides. The template's `index.html` imports
 // the dev entry; the dev entry imports the config (the app's allowed hosts + the
-// bundle URL/event). The dev entry is served verbatim from `dev-entry.ts` —
-// shipped next to this bundle in `dist` — so it runs in the consumer's app,
-// resolving its React + `@metabase/embedding-sdk-react`, and is never compiled here.
-const DEV_ENTRY_VIRTUAL_ID = "virtual:metabase-data-app-dev-entry";
-const CONFIG_VIRTUAL_ID = "virtual:metabase-data-app-dev-config";
-const DEV_ENTRY_SOURCE_PATH = path.join(__dirname, "data-app-dev-entry.ts");
+// bundle URL/event). The dev entry is the prebuilt `data-app-dev-entry.js`
+// (bundled by the SDK's browser build, shipped next to this bundle in `dist`); it
+// keeps React + `@metabase/embedding-sdk-react` external so the consumer's Vite
+// resolves them to its single instance.
+const { DATA_APP_DEV_CONFIG_VIRTUAL_ID, DATA_APP_DEV_ENTRY_VIRTUAL_ID } =
+  dataAppVirtualModules;
+
+const DEV_ENTRY_SOURCE_PATH = path.join(__dirname, "data-app-dev-entry.js");
 
 // Rollup/Vite's virtual-module marker: a leading NUL byte tells Rollup core and
 // other plugins that an id is synthetic, so they don't try to resolve/load it
@@ -64,17 +72,20 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
     apply: "serve",
 
     resolveId(id) {
-      if (id === DEV_ENTRY_VIRTUAL_ID || id === CONFIG_VIRTUAL_ID) {
+      if (
+        id === DATA_APP_DEV_ENTRY_VIRTUAL_ID ||
+        id === DATA_APP_DEV_CONFIG_VIRTUAL_ID
+      ) {
         return RESOLVED_PREFIX + id;
       }
     },
 
     load(id) {
-      if (id === RESOLVED_PREFIX + DEV_ENTRY_VIRTUAL_ID) {
+      if (id === RESOLVED_PREFIX + DATA_APP_DEV_ENTRY_VIRTUAL_ID) {
         return fs.readFileSync(DEV_ENTRY_SOURCE_PATH, "utf8");
       }
 
-      if (id === RESOLVED_PREFIX + CONFIG_VIRTUAL_ID) {
+      if (id === RESOLVED_PREFIX + DATA_APP_DEV_CONFIG_VIRTUAL_ID) {
         return [
           `export const allowedHosts = ${JSON.stringify(allowedHosts)};`,
           `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,

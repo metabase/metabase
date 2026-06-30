@@ -26,7 +26,8 @@
   ],
   "exclude": [
     "node_modules",
-    // Served verbatim to the consumer's Vite; not compiled or rolled up here.
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev/vite-env.d.ts",
     "**/*.spec.*",
     "**/mocks/*",
     "**/tests/*",

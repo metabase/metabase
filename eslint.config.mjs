@@ -86,7 +86,7 @@ const configs = [
       // The data-app dev entry is served verbatim to the consumer's Vite (it
       // imports `@metabase/embedding-sdk-react/*` + a virtual config module), so
       // it can't be resolved/linted in this repo.
-      "enterprise/frontend/src/embedding-sdk-package/data-app-dev-server/dev-entry.ts",
+      "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",

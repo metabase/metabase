@@ -13,6 +13,9 @@ const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
 const {
+  DATA_APP_DEV_CONFIG_VIRTUAL_ID,
+} = require("./frontend/build/embedding-sdk/constants/data-app-virtual-modules");
+const {
   SDK_PACKAGE_BANNER,
 } = require("./frontend/build/embedding-sdk/constants/banner");
 const {
@@ -40,7 +43,6 @@ const baseConfig = {
   entry: {
     main: "./index.ts",
     "data-app": "./data-app.ts",
-    "data-app-dev": "./data-app-dev.ts",
   },
 
   output: {
@@ -86,7 +88,16 @@ const baseConfig = {
     ],
   },
 
-  externals: Object.keys(EXTERNAL_DEPENDENCIES),
+  // The data-app dev entry (ESM-only, below) keeps the consumer's React/SDK and
+  // the dev plugin's virtual config external so it shares the single React/SDK
+  // instance; harmless for the other entries, which don't import these.
+  externals: [
+    ...Object.keys(EXTERNAL_DEPENDENCIES),
+    "react/jsx-dev-runtime",
+    "@metabase/embedding-sdk-react",
+    "@metabase/embedding-sdk-react/data-app",
+    DATA_APP_DEV_CONFIG_VIRTUAL_ID,
+  ],
 
   optimization: OPTIMIZATION_CONFIG,
 
@@ -109,7 +120,7 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
-    "data-app-dev.esm": "./data-app-dev.ts",
+    "data-app-dev-entry": "./data-app-dev-entry.tsx",
   },
 
   output: {

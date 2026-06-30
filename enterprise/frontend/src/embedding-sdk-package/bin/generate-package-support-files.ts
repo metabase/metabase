@@ -48,7 +48,7 @@ export * from "./data-app.esm.js";
 writeToFile("data-app.cjs", dataApp_cjs);
 writeToFile("data-app.js", dataApp_js);
 
-// Data-app dev runtime imports
+// Data-app dev preset (node) imports
 const dataAppDev_cjs = `
 const DataAppDev = require("./data-app-dev.bundle");
 
@@ -62,28 +62,8 @@ export * from "./data-app-dev.esm.js";
 writeToFile("data-app-dev.cjs", dataAppDev_cjs);
 writeToFile("data-app-dev.js", dataAppDev_js);
 
-// Data-app dev server preset (node) imports
-const dataAppDevServer_cjs = `
-const DataAppDevServer = require("./data-app-dev-server.bundle");
-
-module.exports = DataAppDevServer;
-`.trim();
-
-const dataAppDevServer_js = `
-export * from "./data-app-dev-server.esm.js";
-`.trim();
-
-writeToFile("data-app-dev-server.cjs", dataAppDevServer_cjs);
-writeToFile("data-app-dev-server.js", dataAppDevServer_js);
-
-// Ship the dev entry source verbatim next to the preset bundle; the dev plugin
-// reads it at runtime and serves it as a virtual module (it runs in the
-// consumer's app, so it isn't compiled here).
-const dataAppDevEntry = fs.readFileSync(
-  path.resolve(__dirname, "../data-app-dev-server/dev-entry.ts"),
-  "utf8",
-);
-writeToFile("data-app-dev-entry.ts", dataAppDevEntry);
+// The dev entry (`data-app-dev-entry.js`) is emitted by the rspack browser build,
+// not copied here — it bundles the sandbox + toolbar with React/SDK left external.
 
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,

@@ -15,6 +15,7 @@ const SDK_CLI_PATH = path.join(SDK_PACKAGE_SRC_PATH, "cli");
 
 const METABASE_SRC_PATH = path.join(__dirname, "/frontend/src/metabase");
 const TYPES_SRC_PATH = path.join(__dirname, "/frontend/src/metabase-types");
+const BUILD_CONFIGS_PATH = path.join(__dirname, "/frontend/build");
 
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
@@ -27,6 +28,7 @@ const sharedResolve = {
     "metabase-types": TYPES_SRC_PATH,
     "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
     "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
+    "build-configs": BUILD_CONFIGS_PATH,
   },
 };
 
@@ -68,7 +70,7 @@ const cliConfig = {
 
 // The consumer brings its own `vite` + React Vite plugin (the same instance that
 // runs the config), so both are left external rather than bundled.
-const SERVER_ENTRY = `${SDK_PACKAGE_SRC_PATH}/data-app-dev-server.ts`;
+const SERVER_ENTRY = `${SDK_PACKAGE_SRC_PATH}/data-app-dev.ts`;
 const SERVER_EXTERNALS = ["vite", "@vitejs/plugin-react"];
 
 /** @type {import('@rspack/cli').Configuration} */
@@ -83,7 +85,7 @@ const serverConfig = {
   node: { __dirname: false, __filename: false },
   output: {
     path: SDK_DIST_PATH,
-    filename: "data-app-dev-server.bundle.js",
+    filename: "data-app-dev.bundle.js",
     library: { type: "commonjs2" },
   },
   resolve: sharedResolve,
@@ -97,7 +99,7 @@ const serverEsmConfig = {
   externalsType: "module",
   output: {
     path: SDK_DIST_PATH,
-    filename: "data-app-dev-server.esm.js",
+    filename: "data-app-dev.esm.js",
     library: { type: "module" },
   },
   experiments: { outputModule: true },

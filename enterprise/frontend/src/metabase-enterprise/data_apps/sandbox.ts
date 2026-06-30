@@ -2,7 +2,7 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 import type * as React from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
-import { DATA_APP_GLOBAL_NAMES } from "embedding-sdk-package/data-app-dev-server/bundle";
+import { DATA_APP_GLOBAL_NAMES } from "embedding-sdk-package/data-app-dev/bundle";
 
 import { makeDistortionCallback } from "./sandbox/distortions";
 

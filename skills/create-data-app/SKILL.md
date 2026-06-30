@@ -37,7 +37,7 @@ Data apps live inside the Git repository connected to Metabase via remote-sync. 
 If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the current `data-app-template`. Check **all** of:
 
 1. `vite.config.ts` is a one-liner: `export default dataAppConfig({ port: 5174 })`
-   (from `@metabase/embedding-sdk-react/data-app-dev/server`). There is **no**
+   (from `@metabase/embedding-sdk-react/data-app-dev`). There is **no**
    local `config/` directory: the whole bundle contract (externals/globals, the
    dev sandbox entry, CSS/SVG handling) lives inside that SDK config, not the
    scaffold. `dataAppConfig` takes only a curated set of overrides (currently just
@@ -78,7 +78,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    npm install @metabase/embedding-sdk-react@63-data-apps
    ```
 
-   This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint (the app's APIs) and the `@metabase/embedding-sdk-react/data-app-dev/server` entrypoint `vite.config.ts` uses (the dev/build preset, which serves the sandbox entry). Do not use `latest`, `63-stable`, or a generic `^0.63.x` range for data apps until the data-app SDK surface is promoted out of the internal tag.
+   This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint (the app's APIs) and the `@metabase/embedding-sdk-react/data-app-dev` entrypoint `vite.config.ts` uses (the dev/build preset, which serves the sandbox entry). Do not use `latest`, `63-stable`, or a generic `^0.63.x` range for data apps until the data-app SDK surface is promoted out of the internal tag.
 3. **Ensure the repo-root `.gitignore` ignores `.env.local`** — do this *before* creating any credentials file so the secret can never be committed. Create the `.gitignore` if the repo doesn't have one, then add the entry if it's missing:
 
    ```bash
@@ -178,7 +178,7 @@ Replace `src/App.tsx`'s starter content with the screens the user described. **S
 **Do not modify `src/index.tsx`, `tsconfig.json`, or `index.html` unless the change is genuinely required.** The whole build/dev setup lives in the SDK behind `dataAppConfig()`, so `vite.config.ts` is just:
 
 ```ts
-import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev/server";
+import { dataAppConfig } from "@metabase/embedding-sdk-react/data-app-dev";
 
 export default dataAppConfig({ port: 5174 });
 ```

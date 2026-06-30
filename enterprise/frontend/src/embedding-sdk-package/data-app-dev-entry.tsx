@@ -4,32 +4,30 @@ import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
-  DevToolbar,
-  createDataAppSandbox,
-  installDevDiagnostics,
-} from "@metabase/embedding-sdk-react/data-app-dev";
-import {
   allowedHosts,
   bundleUrl,
   rebuiltEvent,
 } from "virtual:metabase-data-app-dev-config";
 import { createRoot } from "react-dom/client";
 
-// The data-app dev entry. This file is NOT compiled by this repo — it's copied
-// verbatim into the SDK dist as `data-app-dev-entry.ts` by
-// `enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts`,
-// and the dev server plugin reads that copy and serves it as a Vite virtual
-// module, so it runs in the consumer's app where `react`, `react-dom`, and
-// `@metabase/embedding-sdk-react/*` resolve. `virtual:metabase-data-app-dev-config`
-// is provided by the plugin (the app's `allowed_hosts` + the bundle URL/event).
+import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox";
+import { DevToolbar } from "./components/public/debug/DevToolbar/DevToolbar";
+import { installDevDiagnostics } from "./components/public/debug/DevToolbar/diagnostics";
+
+// The data-app dev entry. rspack bundles this file into the SDK dist as
+// `data-app-dev-entry.js` (see `rspack.embedding-sdk-package.config.js`),
+// inlining the sandbox + dev toolbar so they aren't part of the package's public
+// API. `react`, `react-dom`, `@metabase/embedding-sdk-react/*`, and the dev
+// plugin's `virtual:metabase-data-app-dev-config` are left EXTERNAL, so the
+// consumer's Vite resolves them — the bundle runs against the consumer's single
+// React/SDK instance (the same ones the app bundle is endowed with), and the dev
+// plugin provides the config (the app's `allowed_hosts` + the bundle URL/event).
 //
 // It mounts the diagnostics toolbar, builds the Near-Membrane sandbox, then
 // fetches + evaluates the app's IIFE bundle and renders it under
-// `MetabaseProvider`. Kept JSX-free (React.createElement) so it needs no JSX
-// transform as a virtual module. Load failures go through `console.error`, so
-// the toolbar surfaces them.
+// `MetabaseProvider`. Load failures go through `console.error`, so the toolbar
+// surfaces them.
 
-const { createElement } = React;
 const { MetabaseProvider } = sdkExports;
 
 const authConfig = {
@@ -41,7 +39,7 @@ installDevDiagnostics();
 
 const toolbarRoot = document.createElement("div");
 document.body.appendChild(toolbarRoot);
-createRoot(toolbarRoot).render(createElement(DevToolbar));
+createRoot(toolbarRoot).render(<DevToolbar />);
 
 const root = document.getElementById("root");
 if (!root) {
@@ -75,11 +73,9 @@ async function loadAndRender() {
   const { component: Component, providerProps } = sandbox.evaluate(code)();
 
   appRoot.render(
-    createElement(MetabaseProvider, {
-      authConfig,
-      ...providerProps,
-      children: createElement(Component),
-    }),
+    <MetabaseProvider authConfig={authConfig} {...providerProps}>
+      <Component />
+    </MetabaseProvider>,
   );
 }
 
