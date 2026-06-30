@@ -8,8 +8,8 @@ inputs:
   test-suite:
     description: Per-job identity label (CI_CONDUCTOR_TEST_SUITE); unique per job/leg.
     required: true
-  entrypoint:
-    description: bun reporter to run, e.g. release/ci-conductor/src/report-backend.ts.
+  adapter:
+    description: Which reporter to run; resolves to report-<adapter>.ts. backend or frontend.
     required: true
 
 runs:
@@ -37,4 +37,11 @@ runs:
         COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
         CI_CONDUCTOR_TEST_SUITE: ${{ inputs.test-suite }}
-      run: bun ${{ inputs.entrypoint }}
+        ADAPTER: ${{ inputs.adapter }}
+      # Keep the path constrained to known entrypoints.
+      run: |
+        case "$ADAPTER" in
+          backend|frontend) ;;
+          *) echo "::error::Unknown ci-conductor adapter '$ADAPTER'"; exit 1 ;;
+        esac
+        bun "release/ci-conductor/src/report-${ADAPTER}.ts"

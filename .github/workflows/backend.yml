@@ -212,7 +212,7 @@ jobs:
         uses: ./.github/actions/report-failures-to-ci-conductor
         with:
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
-          entrypoint: release/ci-conductor/src/report-backend.ts
+          adapter: backend
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

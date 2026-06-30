@@ -386,6 +386,10 @@ describe("reportFailedTestsToConductor", () => {
       REPO_ID: "123",
       GITHUB_RUN_ID: "456",
       GITHUB_RUN_ATTEMPT: "2",
+      // Cleared explicitly: the resolve-job-id action exports a real JOB_ID to
+      // $GITHUB_ENV, so on CI this var is present in the ambient process env.
+      // This case asserts the null-job_id path, so it must not inherit it.
+      JOB_ID: undefined,
       CYPRESS_RETRIES: "1",
       COMMIT_SHA: "abc123",
       TARGET_BRANCH: "master",

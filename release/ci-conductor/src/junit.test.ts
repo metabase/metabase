@@ -118,6 +118,20 @@ java.lang.RuntimeException: boom
 </testcase>
 </testsuite>`;
 
+// jest-junit with `addFileAttribute: "true"` emits a `file` attribute holding
+// the source path, plus an entity-escaped (non-CDATA) failure body. The parser
+// must surface that path as `file` and decode the body.
+const JEST_WITH_FILE = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="1" failures="1">
+<testsuite name="Button" failures="1" tests="1">
+<testcase classname="Button when open renders &gt; the label" name="Button when open renders &gt; the label" time="0.012" file="frontend/src/metabase/components/Button/Button.unit.spec.tsx">
+<failure>Error: expect(received).toBe(expected)
+
+    at Button.unit.spec.tsx:42:18</failure>
+</testcase>
+</testsuite>
+</testsuites>`;
+
 describe("parseJunit", () => {
   it("prefers the failure `message` attribute over the body", () => {
     const [test] = parseJunit(FAILURE_WITH_MESSAGE);
@@ -176,6 +190,22 @@ describe("parseJunit", () => {
       "metabase.a-test",
       "metabase.b-test",
     ]);
+  });
+
+  it("surfaces the testcase `file` attribute as file_path (frontend/jest)", () => {
+    const tests = parseJunit(JEST_WITH_FILE);
+    expect(tests).toHaveLength(1);
+    const [test] = tests;
+    expect(test.file).toBe(
+      "frontend/src/metabase/components/Button/Button.unit.spec.tsx",
+    );
+    // The unescaped `>` in the title survives decoding.
+    expect(test.name).toBe("Button when open renders > the label");
+    // The <failure> has no `message` attribute, so message is null; the body
+    // text lands in `stack`.
+    expect(test.message).toBeNull();
+    expect(test.stack).toContain("Error: expect(received).toBe(expected)");
+    expect(test.status).toBe("failure");
   });
 
   it("returns [] for malformed XML without throwing", () => {
