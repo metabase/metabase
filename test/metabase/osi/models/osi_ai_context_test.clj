@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -33,19 +34,42 @@
       (is (= {:instructions "Just this."} (:ai_context (by-key entity)))))))
 
 (deftest hooks-nudge-a-targeted-reconcile-test
-  (testing "insert, update and delete each request a targeted reconcile of the entity — and nothing else"
+  (testing "insert, update and delete each nudge the entity's reconcile once — deferred until the txn commits"
+    (let [nudges (atom [])
+          ref    ["table" 42]]
+      (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [entity-type entity-local-id]
+                                                                (swap! nudges conj [entity-type entity-local-id])
+                                                                nil)]
+        (try
+          (testing "insert"
+            (t2/with-transaction [_conn]
+              (t2/insert! :model/OsiAiContext (assoc entity :ai_context ai-context))
+              (is (= [] @nudges) "not nudged while the transaction is still open"))
+            (is (= [ref] @nudges) "nudged once, after commit"))
+          (testing "update"
+            (t2/with-transaction [_conn]
+              (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42 {:ai_context {:instructions "changed"}})
+              (is (= [ref] @nudges) "still only the insert's nudge while open"))
+            (is (= [ref ref] @nudges) "nudged again, after commit"))
+          (testing "delete"
+            (t2/with-transaction [_conn]
+              (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)
+              (is (= [ref ref] @nudges) "not nudged while open"))
+            (is (= [ref ref ref] @nudges) "nudged again, after commit"))
+          (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)))))))
+
+(deftest nudge-not-fired-on-rollback-test
+  (testing "a rolled-back write never nudges (and leaves no row)"
     (let [nudges (atom [])]
       (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [entity-type entity-local-id]
                                                                 (swap! nudges conj [entity-type entity-local-id])
                                                                 nil)]
-        (mt/with-temp [:model/OsiAiContext row (assoc entity :ai_context ai-context)]
-          (let [ref [(:entity_type row) (:entity_local_id row)]]
-            (is (= [ref] @nudges) "insert nudges once with the entity ref")
-            (t2/update! :model/OsiAiContext :entity_type (:entity_type row) :entity_local_id (:entity_local_id row)
-                        {:ai_context {:instructions "changed"}})
-            (is (= [ref ref] @nudges) "update nudges once with the entity ref")
-            (t2/delete! :model/OsiAiContext :entity_type (:entity_type row) :entity_local_id (:entity_local_id row))
-            (is (= [ref ref ref] @nudges) "delete nudges once with the entity ref")))))))
+        (u/ignore-exceptions
+          (t2/with-transaction [_conn]
+            (t2/insert! :model/OsiAiContext (assoc entity :entity_local_id 43 :ai_context ai-context))
+            (throw (ex-info "roll back" {}))))
+        (is (= [] @nudges))
+        (is (nil? (by-key (assoc entity :entity_local_id 43))))))))
 
 (deftest card-flavors-share-one-canonical-key-test
   (testing "card flavors are stored under one canonical \"card\" key (normalized on write), so a metric and

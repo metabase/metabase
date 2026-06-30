@@ -13,6 +13,7 @@
   themselves."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
@@ -43,23 +44,17 @@
     (:entity_type row) (update :entity_type entity-retrieval/normalize-entity-type)))
 
 ;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
-;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The
-;;; reconcile runs later on a future that reads the entity's *current* appdb state, so it is best-effort
-;;; and eventually consistent: a delete usually sees the row already gone (so its synonym/example docs GC
-;;; while name/description stay if the entity is still in the library), but if the future races ahead of
-;;; the delete's commit and still sees the row, those docs linger until the periodic full reconcile heals
-;;; the index.
-;;;
-;;; TODO (Chris 2026-06-26) -- try deferring the request-entity-sync! nudge until *after* the surrounding
-;;; transaction commits (a post-commit hook), so the reconcile future always reads committed state and the
-;;; stale-read race (a delete buried in a long transaction) is closed without leaning on the backstop.
-;;; Tagging the nudge as a delete is the wrong fix: it breaks under coalescing (a delete + re-insert of the
-;;; same entity collapse to one dirty entry) and would act on possibly-rolled-back state.
+;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The nudge
+;;; is deferred until *after* the surrounding transaction commits, so the reconcile future always reads
+;;; committed state — e.g. a delete buried in a long transaction is seen as gone, GC'ing its synonym/example
+;;; docs (name/description stay if the entity is still in the library), rather than racing the commit and
+;;; lingering until the periodic full reconcile. Outside a transaction the write has already committed, so
+;;; [[app-db/do-after-commit]] runs the nudge immediately.
 (defn- nudge-entity-sync!
-  "Nudge a targeted reconcile of `row`'s entity slice, returning `row`."
-  [row]
+  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice. Returns `row`."
+  [{:keys [entity_type entity_local_id] :as row}]
   (u/prog1 row
-    (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))))
+    (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))))
 
 (t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
 (t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))

@@ -139,6 +139,26 @@
   []
   (pos? *transaction-depth*))
 
+;; Accumulates thunks to run after the outermost transaction commits. Bound to a fresh atom when the
+;; outermost transaction starts (see [[do-with-transaction]]); nil outside any transaction.
+(def ^:private ^:dynamic *after-commit-callbacks* nil)
+
+(defn do-after-commit
+  "Run `thunk` after the current outermost transaction commits successfully — never on rollback. Outside a
+  transaction (autocommit), runs `thunk` immediately, since the surrounding write has already committed.
+  Use for side effects that must observe committed state (e.g. enqueuing async work that reads the row)."
+  [thunk]
+  (if-let [callbacks *after-commit-callbacks*]
+    (do (swap! callbacks conj thunk) nil)
+    (thunk)))
+
+(defn- run-after-commit-callbacks! []
+  (when-let [callbacks *after-commit-callbacks*]
+    (doseq [thunk @callbacks]
+      ;; the transaction already committed; a failing callback must not unwind it
+      (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
+    (reset! callbacks [])))
+
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
             (let [savepoint (.setSavepoint connection)]
@@ -146,7 +166,9 @@
                 (let [result (f connection)]
                   (when (= *transaction-depth* 1)
                     ;; top-level transaction, commit
-                    (.commit connection))
+                    (.commit connection)
+                    ;; ...then fire post-commit side effects (only here, so they never run on rollback)
+                    (run-after-commit-callbacks!))
                   result)
                 (catch Throwable txn-e
                   (try
@@ -201,7 +223,9 @@
                     {:options options}))
 
     :else
-    (binding [*transaction-depth* (inc *transaction-depth*)]
+    (binding [*transaction-depth*      (inc *transaction-depth*)
+              ;; one accumulator for the whole tree, created when the outermost transaction starts
+              *after-commit-callbacks* (if (zero? *transaction-depth*) (atom []) *after-commit-callbacks*)]
       (do-transaction connection f))))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
