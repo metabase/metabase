@@ -7,10 +7,8 @@ import {
 } from "@tiptap/pm/model";
 import { match } from "ts-pattern";
 
-import {
-  METABSE_PROTOCOL_MD_LINK,
-  createMetabaseProtocolLink,
-} from "metabase/metabot/utils/links";
+import { createAdhocMentionLink } from "metabase/metabot/utils/adhoc-mention";
+import { createMetabaseProtocolLink } from "metabase/metabot/utils/links";
 import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 
 function serializeNodes(nodes: JSONContent[]): string {
@@ -47,6 +45,13 @@ function serializeNode(node: JSONContent): string {
         name: label,
       });
     }
+    case "adhocChartMention": {
+      const { payload, label } = node.attrs || {};
+      if (!payload) {
+        return label || "";
+      }
+      return createAdhocMentionLink({ label: label ?? "chart", payload });
+    }
     case "hardBreak":
       return "\n";
     default:
@@ -76,7 +81,7 @@ export const parseClipboardTextAsParagraphs = (
   return Slice.maxOpen(fragment);
 };
 
-const MENTION_REGEX = new RegExp(METABSE_PROTOCOL_MD_LINK, "g");
+const MENTION_REGEX = /\[([^\]]+)\]\(metabase:\/\/([^/]+)\/([^)]+)\)/g;
 
 export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
   // Split text by lines to handle paragraphs
@@ -85,8 +90,7 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
     let lastIndex = 0;
 
     for (const match of line.matchAll(MENTION_REGEX)) {
-      const [fullMatch, label, mbProtocolModel, entityId] = match;
-      const model = mbProtocolModelToSuggestionModel(mbProtocolModel);
+      const [fullMatch, label, mbProtocolModel, id] = match;
 
       // Add text before the mention
       if (match.index > lastIndex) {
@@ -96,10 +100,21 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
         });
       }
 
-      pContent.push({
-        type: "smartLink",
-        attrs: { label, model, entityId },
-      });
+      if (mbProtocolModel === "adhoc") {
+        pContent.push({
+          type: "adhocChartMention",
+          attrs: { label, payload: id },
+        });
+      } else {
+        pContent.push({
+          type: "smartLink",
+          attrs: {
+            label,
+            model: mbProtocolModelToSuggestionModel(mbProtocolModel),
+            entityId: id,
+          },
+        });
+      }
 
       lastIndex = match.index + fullMatch.length;
     }
