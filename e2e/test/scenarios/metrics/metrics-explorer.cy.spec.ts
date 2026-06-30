@@ -223,19 +223,16 @@ const addMetric = (
 };
 
 const runFormula = () => {
-  cy.log("Close the search dropdown before clicking Run");
-  H.MetricsViewer.runButton().should("be.visible");
-  // After a metric is selected at the end of the formula, the search dropdown
-  // re-opens itself on a setTimeout(0) (see handleSelect in useFormulaEditor) and
-  // overlaps the Run button. A one-shot `if (body.find(...).length)` snapshot
-  // races that async re-open: if it catches the dropdown momentarily closed it
-  // skips Escape, the dropdown then re-opens, and the click lands on it instead of
-  // Run — so the formula never runs. Escape only closes the dropdown (it never
-  // collapses the editor), so press it unconditionally and wait for the dropdown
-  // to be gone before clicking Run.
-  cy.realPress("Escape");
-  H.miniPicker().should("not.exist");
-  H.MetricsViewer.runButton().should("not.be.disabled").click();
+  // After a metric is selected at the end of the formula the search dropdown
+  // re-opens itself (handleSelect schedules it on a setTimeout in
+  // useFormulaEditor), and its popover overlaps the Run button — so a .click()
+  // on Run can land on the dropdown instead and the formula never commits,
+  // leaving the editor open with no collapsed pills. Submit via the editor's
+  // Enter keybinding instead (see editorExtensions): it calls the run handler
+  // directly, regardless of whether the dropdown is open. The Run button being
+  // visible and enabled is a positive anchor that the formula is dirty and valid.
+  H.MetricsViewer.runButton().should("be.visible").and("not.be.disabled");
+  cy.findByTestId("metrics-viewer-search-input").type("{enter}");
 };
 
 const runFormulaWithKeyboard = () => {
