@@ -91,6 +91,16 @@
     (query-transform? transform)  (-> transform :source :query :database)
     (python-transform? transform) (-> transform :source :source-database)))
 
+(defn full-incremental-run?
+  "True when an incremental transform should drop-and-recreate the target rather than append.
+  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
+  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
+  change. Stays true across failed attempts since the predicate only inspects
+  `:last_checkpoint_value`."
+  [transform]
+  (and (incremental-target? transform)
+       (nil? (:last_checkpoint_value transform))))
+
 ;;; ------------------------------------------------- Table Template Tags -------------------------------------------------
 
 (defn table-template-tag-name
@@ -214,16 +224,6 @@
   [base-type]
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
-
-(defn full-incremental-run?
-  "True when an incremental transform should drop-and-recreate the target rather than append.
-  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
-  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
-  change. Stays true across failed attempts since the predicate only inspects
-  `:last_checkpoint_value`."
-  [transform]
-  (and (incremental-target? transform)
-       (nil? (:last_checkpoint_value transform))))
 
 (defn- encode-checkpoint-value [v]
   (if (number? v)
