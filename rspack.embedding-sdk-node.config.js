@@ -1,7 +1,7 @@
 // @ts-check
 /* eslint-disable no-undef */
 // Node-targeted builds for the SDK package: the `npx` CLI and the data-app dev
-// server preset (`@metabase/embedding-sdk-react/data-app-dev/server`). Both run
+// preset (`@metabase/embedding-sdk-react/data-app-dev`). Both run
 // in Node (not the browser), so they can't go through the browser rspack bundle.
 const path = require("path");
 
@@ -68,53 +68,36 @@ const cliConfig = {
   optimization: { minimize: true, minimizer },
 };
 
-// The consumer brings its own `vite` + React Vite plugin (the same instance that
-// runs the config), so both are left external rather than bundled.
-const SERVER_ENTRY = `${SDK_PACKAGE_SRC_PATH}/data-app-dev.ts`;
-const SERVER_EXTERNALS = ["vite", "@vitejs/plugin-react"];
-
+// ESM-only: this entry is imported from a Vite config (`import { dataAppConfig }
+// from "@metabase/embedding-sdk-react/data-app-dev"`), which Vite loads through the
+// ESM `import` condition. ESM-only lets the dev plugin read its sibling dev-entry
+// bundle via `import.meta.url` natively (no `__dirname` shim needed).
 /** @type {import('@rspack/cli').Configuration} */
-const serverConfig = {
+const dataAppDevConfig = {
   mode: "production",
-  entry: SERVER_ENTRY,
+  entry: `${SDK_PACKAGE_SRC_PATH}/data-app-dev.ts`,
   target: "node",
   context: SDK_PACKAGE_SRC_PATH,
-  externals: SERVER_EXTERNALS,
-  // Keep the real Node `__dirname` at runtime so the dev plugin can read the
-  // dev entry source it ships next to this bundle in `dist`.
-  node: { __dirname: false, __filename: false },
-  output: {
-    path: SDK_DIST_PATH,
-    filename: "data-app-dev.bundle.js",
-    library: { type: "commonjs2" },
-  },
-  resolve: sharedResolve,
-  module: sharedModule,
-  optimization: { minimize: true, minimizer },
-};
-
-/** @type {import('@rspack/cli').Configuration} */
-const serverEsmConfig = {
-  ...serverConfig,
+  // The consumer brings its own `vite` + React Vite plugin (the same instance
+  // that runs the config), so both are left external rather than bundled.
+  externals: ["vite", "@vitejs/plugin-react"],
   externalsType: "module",
   output: {
     path: SDK_DIST_PATH,
-    filename: "data-app-dev.esm.js",
+    filename: "data-app-dev.js",
     library: { type: "module" },
   },
   experiments: { outputModule: true },
-  // ESM has no `__dirname`; the dev plugin needs it to read the dev entry it ships
-  // in `dist`. Shim it from `import.meta.url` at the top of the bundle.
-  plugins: [
-    new rspack.BannerPlugin({
-      raw: true,
-      banner: [
-        'import { fileURLToPath as __mbToPath } from "node:url";',
-        "const __filename = __mbToPath(import.meta.url);",
-        'const __dirname = __mbToPath(new URL(".", import.meta.url));',
-      ].join("\n"),
-    }),
-  ],
+  resolve: sharedResolve,
+  // Leave `new URL(..., import.meta.url)` fully as runtime code: `url: false` stops
+  // it being treated as a build-time asset, and `importMeta: false` stops rspack
+  // baking `import.meta.url` to the source path — so at runtime it's the emitted
+  // bundle's URL and the dev plugin resolves its sibling dev-entry in `dist`.
+  module: {
+    ...sharedModule,
+    parser: { javascript: { url: false, importMeta: false } },
+  },
+  optimization: { minimize: true, minimizer },
 };
 
-module.exports = [cliConfig, serverConfig, serverEsmConfig];
+module.exports = [cliConfig, dataAppDevConfig];

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { type Plugin, type Rollup, build } from "vite";
 
@@ -21,7 +22,9 @@ import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 const { DATA_APP_DEV_CONFIG_VIRTUAL_ID, DATA_APP_DEV_ENTRY_VIRTUAL_ID } =
   dataAppVirtualModules;
 
-const DEV_ENTRY_SOURCE_PATH = path.join(__dirname, "data-app-dev-entry.js");
+const DEV_ENTRY_SOURCE_PATH = fileURLToPath(
+  new URL("data-app-dev-entry.js", import.meta.url),
+);
 
 // Rollup/Vite's virtual-module marker: a leading NUL byte tells Rollup core and
 // other plugins that an id is synthetic, so they don't try to resolve/load it
