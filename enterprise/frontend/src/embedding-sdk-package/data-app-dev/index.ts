@@ -47,7 +47,7 @@ function dataAppVitePlugin(): PluginOption[] {
           headers: {
             "Content-Security-Policy": buildConnectSrcCsp(
               allowedHosts,
-              loadEnv(env.mode, envDir, "").VITE_MB_URL,
+              loadEnv(env.mode, envDir, "").DATA_APP_MB_URL,
             ),
           },
         },

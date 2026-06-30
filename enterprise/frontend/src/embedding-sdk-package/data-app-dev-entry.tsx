@@ -31,8 +31,8 @@ import { installDevDiagnostics } from "./components/public/debug/DevToolbar/diag
 const { MetabaseProvider } = sdkExports;
 
 const authConfig = {
-  metabaseInstanceUrl: import.meta.env.VITE_MB_URL,
-  apiKey: import.meta.env.VITE_MB_API_KEY,
+  metabaseInstanceUrl: import.meta.env.DATA_APP_MB_URL,
+  apiKey: import.meta.env.DATA_APP_MB_API_KEY,
 };
 
 installDevDiagnostics();
