@@ -1449,6 +1449,24 @@
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
+(defmethod serdes/serialization-dependencies "Card" [_model-name card]
+  (let [query     (not-empty (:dataset_query card))
+        field-ids (when query
+                    (into (lib/all-field-ids query)
+                          (lib/all-template-tag-field-ids query)))]
+    (concat
+     ;; content deps: derived from descendants so the two can't drift
+     (for [[[model id] _] (serdes/descendants "Card" (:id card) nil)]
+       {:kind :content :model model :id id})
+     ;; data-model deps: omitted by descendants (import creates tables/fields on the fly), but at export
+     ;; time a missing row can't be turned into a portable reference, so we existence-check them
+     (when-let [db-id (:database_id card)]
+       [{:kind :data :model "Database" :id db-id}])
+     (for [table-id (some-> query lib/all-source-table-ids)]
+       {:kind :data :model "Table" :id table-id})
+     (for [field-id field-ids]
+       {:kind :data :model "Field" :id field-id}))))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (mu/defn- dataset-query->dimensions :- [:maybe [:sequential ::lib.schema.metadata/column]]

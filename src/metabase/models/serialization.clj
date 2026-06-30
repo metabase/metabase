@@ -654,6 +654,27 @@
 (defmethod required :default [_ _]
   nil)
 
+(defmulti serialization-dependencies
+  "Returns the entities that `entity` references and that must be satisfied for `entity` to serialize into a complete,
+  importable archive. Used by export-time validation (not by load — that's [[dependencies]], which works on the
+  serialized form and deliberately omits tables/fields because import creates them on the fly).
+
+  `entity` is a raw appdb (Toucan) instance, not a serialized map.
+
+  Returns a seq of dependency maps, each `{:kind :content|:data, :model \"ModelName\", :id id}`:
+  - `:content` deps (Card, Dashboard, NativeQuerySnippet, …) are satisfied only if they are themselves part of the
+    export. A referenced content entity that exists in the appdb but lives outside the requested set would become a
+    dangling reference on import.
+  - `:data` deps (Database, Table, Field) are satisfied if the row exists in the source appdb. A missing data-model row
+    can't be turned into a portable reference and silently corrupts the archive.
+
+  Dispatched on model-name. Default returns `nil`, so only models with references need to implement this."
+  {:arglists '([model-name entity])}
+  (fn [model-name _entity] model-name))
+
+(defmethod serialization-dependencies :default [_ _]
+  nil)
+
 ;;; # Metadata Export
 
 (defmulti metadata-query
