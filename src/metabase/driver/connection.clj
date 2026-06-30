@@ -248,9 +248,7 @@
 (defn assert-connection-type!
   "Assert that `*connection-type*` is currently `expected` (one of [[connection-types]]).
 
-   The sanctioned way for code with a connection-context precondition to verify it:
-   assert, never branch. Branching on connection type is what this namespace's
-   privacy is designed to prevent."
+   The sanctioned way for code with a connection-context precondition to verify it."
   [expected]
   (assert (= *connection-type* expected)
           (str "Expected " expected " connection context, got " *connection-type*)))

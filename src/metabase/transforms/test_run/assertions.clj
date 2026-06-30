@@ -1,33 +1,15 @@
 (ns metabase.transforms.test-run.assertions
-  "Assertion evaluation for transform test runs.
+  "Evaluate assertions for a transform test run.
 
-  An assertion is a SQL query that passes iff it returns zero rows. The SQL
-  references real table names (the target's output table + input tables) and/or
-  the synthetic `test_output` relation; the harness remaps every real reference
-  to scratch and binds `test_output` to the target's output.
+  An assertion is a SQL query that passes iff it returns zero rows. Its SQL
+  may read the run's input tables and `test_output` (the target's output);
+  both are rewritten to the run's scratch tables before it executes.
 
-  Callers depend only on the data interface of [[run-assertions!]]. Execution
-  splits into four stages — `prepare` (rewrite+verify, shared), an OutputBinding
-  (how `test_output` is satisfied), an ExecutionStrategy (how prepared assertions
-  are run), and `interpret` (counts→results, shared). Strategy and binding are
-  selectable via the options map; the defaults are `:batched` and `:cte`.
-
-  ## Invariants
-
-  1. Callers depend only on `run-assertions!`'s data interface. They never name a
-     strategy, a binding, or any SQL.
-  2. The combined-SQL builder, strategy planning, and binding are pure
-     `data → data/string`; only the execute step does I/O. Strategies are
-     therefore unit-testable without a warehouse.
-  3. `run-assertions!` selects strategy + binding from an options map (defaults
-     `:batched` / `:cte`). Changing a default is a one-line change; overriding
-     per-call is supported.
-  4. Adding in-band JSON samples, a new binding, or a new strategy must not touch
-     `prepare`, `interpret`, or any caller. A change that forces an edit outside
-     the relevant seam means the factoring is wrong."
+  Entry point: [[run-assertions!]]."
   (:require
    [clojure.string :as str]
    [metabase.query-processor.core :as qp]
+   [metabase.transforms.test-run.diff :as diff]
    [metabase.transforms.test-run.resolve :as resolve]
    [metabase.util.log :as log]))
 
@@ -38,12 +20,11 @@
 ;;; ---------------------------------------------------------------------------
 
 (def ^:private sample-cap
-  "Maximum number of sample failing rows fetched per assertion.
-  Matches diff/mismatch-cap (= 50) so the caps cannot drift."
-  50)
+  "Maximum failing rows sampled per assertion."
+  diff/mismatch-cap)
 
 ;;; ---------------------------------------------------------------------------
-;;; Pure SQL helpers
+;;; SQL helpers
 ;;; ---------------------------------------------------------------------------
 
 (defn- sql-quote-literal
@@ -60,20 +41,16 @@
   (str/trimr (str/replace sql #";\s*$" "")))
 
 ;;; ---------------------------------------------------------------------------
-;;; OutputBinding — seam 1
+;;; Output binding
 ;;; ---------------------------------------------------------------------------
 
 (defn build-output-binding
-  "Return the OutputBinding for `test_output` for this target type (seam 1).
+  "Return the `test_output` binding for `target-kind` (`:transform` or `:card`).
 
-  `target-kind` — `:transform` or `:card`.
-  For `:transform`: `opts` must contain `:scratch-spec` ({:schema :table :db}).
-  For `:card`: `opts` must contain one of:
-    - `:card-sql` (string) — compiled + scratch-remapped card SQL (CTE default).
-    - `:scratch-spec` ({:schema :table :db}) — materialize escape binding.
+  `:transform` → `opts` has `:scratch-spec` `{:schema :table :db}`.
+  `:card`      → `opts` has `:card-sql` (a SQL string) or `:scratch-spec`.
 
-  Default is always `:cte`. Returns `{:kind :cte :sql \"...\"}` or
-  `{:kind :table :spec <scratch-spec>}`."
+  Returns `{:kind :cte :sql ...}` or `{:kind :table :spec ...}`."
   [target-kind opts]
   (case target-kind
     :transform
@@ -101,7 +78,7 @@
                       {:target-kind target-kind :opts opts})))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Pure SQL builder (data → string, warehouse-free)
+;;; Combined-SQL builder
 ;;; ---------------------------------------------------------------------------
 
 (defn build-combined-assertion-sql
@@ -135,18 +112,13 @@
       union-sql)))
 
 ;;; ---------------------------------------------------------------------------
-;;; Stage 1 — prepare (shared, fault-isolation here)
+;;; Prepare
 ;;; ---------------------------------------------------------------------------
 
 (defn- prepare-one
-  "Prepare a single assertion: rewrite its SQL and run verify. Returns a
-  PreparedAssertion map:
-  - On success: `{:name :severity :rewritten-sql}`.
-  - On rewrite/verify failure: `{:name :severity :error <message>}` — terminal,
-    excluded from the combined statement but attributed in the result.
-
-  Fault isolation lives here: a malformed assertion is captured and named before
-  any execution begins, so the batch can never lose attribution for a bad entry."
+  "Rewrite and verify one assertion's SQL. Returns
+  `{:name :severity :rewritten-sql}`, or `{:name :severity :error <message>}`
+  when rewrite/verify fails (excluded from execution, still reported)."
   [drv backend mapping {:keys [name sql severity]}]
   (try
     (let [rewritten (resolve/rewrite-native-sql drv sql mapping backend)]
@@ -166,11 +138,8 @@
        :error    (str "Unexpected error preparing assertion: " (ex-message e))})))
 
 (defn- prepare
-  "Stage 1 (shared): rewrite + verify every assertion SQL. Returns a vector of
-  PreparedAssertion maps, one per input assertion, preserving order.
-
-  Each assertion is independently fault-isolated: a rewrite/verify failure
-  becomes a terminal `:error` entry for that assertion, not a run-level throw."
+  "Rewrite and verify every assertion via [[prepare-one]], preserving order.
+  A failure in one becomes that entry's `:error`; never throws."
   [drv backend mapping assertions]
   (mapv #(prepare-one drv backend mapping %) assertions))
 
@@ -269,15 +238,13 @@
         runnable))
 
 ;;; ---------------------------------------------------------------------------
-;;; Seam 2 — ExecutionStrategy multimethod
+;;; Execution strategy
 ;;; ---------------------------------------------------------------------------
 
 (defmulti ^:private run-strategy
-  "Execute prepared runnable assertions and return a seq of raw result maps
-  `{:name :failing-count :sample?}`.
-
-  Dispatch on the strategy keyword (:batched or :per-assertion).
-  Error entries from `prepare` are NOT passed — `interpret` handles them."
+  "Run the prepared (non-error) assertions; return raw result maps
+  `{:name :failing-count :sample}`. Dispatches on strategy
+  (`:batched` or `:per-assertion`)."
   {:arglists '([strategy db-id drv mapping binding prepared opts])}
   (fn [strategy & _] strategy))
 
@@ -306,7 +273,7 @@
     (mapv #(run-one-assertion! db-id binding %) runnable)))
 
 ;;; ---------------------------------------------------------------------------
-;;; Stage 4 — interpret (shared)
+;;; Interpret
 ;;; ---------------------------------------------------------------------------
 
 (defn- interpret-one
@@ -368,16 +335,12 @@
           prepared)))
 
 ;;; ---------------------------------------------------------------------------
-;;; Materialize-card-result! — :table escape binding (off the default path)
+;;; Materialize card result (escape path)
 ;;; ---------------------------------------------------------------------------
 
 (defn materialize-card-result!
-  "Escape binding: write a card QP result into a fresh scratch table and return
-  its `{:schema :table :db}` spec. The caller adds it to the cleanup set.
-
-  Off the default path. The default for card targets is `build-output-binding`
-  with `:card-sql` (CTE). Use this only when a compute-heavy card makes the
-  inline-CTE plan re-evaluate the card per reference."
+  "Write a card's query result into a fresh scratch table; return its
+  `{:schema :table :db}` spec for the caller to clean up. Not yet implemented."
   [_db-id _db _drv _qp-result _schema _nonce]
   (throw (ex-info "materialize-card-result! is not yet implemented (escape path only)"
                   {:error-type ::materialize-not-implemented})))
@@ -405,24 +368,20 @@
 (defn run-assertions!
   "Evaluate assertions against the current scratch state.
 
-  Arguments:
-  - `db-id`          — integer database id.
+  - `db-id`          — database id.
   - `drv`            — driver keyword.
-  - `backend`        — parser backend keyword (from `sql-tools/parser-backend`).
-  - `mapping`        — fully-populated `{real-spec → scratch-spec}` (leaves + node
-                       outputs), as returned by `scratch/seed!` + `run-slice-inner!`.
-  - `output-binding` — `{:kind :cte :sql \"...\"}` | `{:kind :table :spec <spec>}`.
-                       Build with [[build-output-binding]].
+  - `backend`        — parser backend keyword.
+  - `mapping`        — the `{real-spec → scratch-spec}` map (leaves + node outputs).
+  - `output-binding` — from [[build-output-binding]].
   - `assertions`     — seq of `{:name <str> :sql <str> :severity :error|:warn}`.
-  - `opts`           — optional map:
-    - `:strategy`  — `:batched` (default) or `:per-assertion`.
-    - `:samples?`  — `true` (default) fetches failing-row samples lazily.
+  - `opts`           — optional: `:strategy` `:batched` (default) or `:per-assertion`;
+                       `:samples?` fetch failing-row samples (default true).
 
-  Returns a vector of assertion-result maps (one per assertion):
+  Returns one result map per assertion:
   `[{:name :status :failing_row_count :sample_rows :columns} ...]`
 
-  Never throws — per-assertion failures are captured as result entries.
-  All-pass executes ONE combined SQL statement (one warehouse round-trip)."
+  Never throws; per-assertion failures are captured as result entries. All-pass
+  runs as one combined query."
   ([db-id drv backend mapping output-binding assertions]
    (run-assertions! db-id drv backend mapping output-binding assertions {}))
   ([db-id drv backend mapping output-binding assertions opts]

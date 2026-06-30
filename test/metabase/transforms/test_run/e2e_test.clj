@@ -17,41 +17,23 @@
   - Asserts: 200 'passed' with empty diff sections on the correct expected CSV;
     then 200 'failed' with a named mismatch on a deliberately-wrong expected CSV.
 
-  - Asserts the cleanup and no-TransformRun invariants at the API level."
+  - Asserts the cleanup and no-TransformRun invariants at the API level.
+
+  These tests exercise the subgraph endpoint (`POST /api/transform-test/transform/:id/subgraph`)
+  with `sources=[]`, the degenerate single-node case. The deleted Phase 1 endpoint
+  (`POST /api/transform/:id/test-run`) was removed; `sources=[]` is functionally
+  identical to it."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
-   [metabase.transforms-rest.api.transform]
-   [metabase.transforms.test-run.resolve :as test-run.resolve]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [metabase.transforms-rest.api.transform-test-run]
+   [metabase.transforms.test-run.test-util :refer [with-temp-csv-files]]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------------------------------------------
-;;; CSV / temp-file helpers
-;;; ---------------------------------------------------------------------------
-
-(defn- write-temp-csv!
-  "Write csv-string to a temporary File and return it."
-  ^File [csv-string]
-  (doto (File/createTempFile "e2e-test-run-" ".csv")
-    (spit csv-string)))
-
-(defmacro ^:private with-temp-csv-files
-  "Bind temp CSV Files from [name csv-str ...] pairs; delete all in finally."
-  [bindings & body]
-  (let [pairs   (partition 2 bindings)
-        names   (mapv first pairs)
-        strings (mapv second pairs)]
-    `(let [~@(mapcat (fn [n s] [n `(write-temp-csv! ~s)]) names strings)]
-       (try
-         ~@body
-         (finally
-           ~@(map (fn [n] `(.delete ~n)) names))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Invariant helpers
@@ -75,8 +57,8 @@
 (def ^:private multipart-content-type
   {:request-options {:headers {"content-type" "multipart/form-data"}}})
 
-(defn- test-run-url [transform-id]
-  (format "transform/%d/test-run" transform-id))
+(defn- subgraph-test-run-url [transform-id]
+  (format "transform-test/transform/%d/subgraph" transform-id))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Fixture CSV content
@@ -193,11 +175,12 @@
                  people-f   people-5-rows
                  expected-f correct-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (test-run-url (:id transform))
+                            :crowberto :post 200 (subgraph-test-run-url (:id transform))
                             multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
+                             "sources"                (json/encode [])
                              "options"                "{\"ignore_columns\":[\"snapshot_ts\"]}"})]
                   (testing "status is passed"
                     (is (= "passed" (:status resp))
@@ -230,6 +213,7 @@
 
 (deftest e2e-join-aggregation-failed-test
   (testing "E2E: mutate one expected cell (TX order_count 99) → 200 failed with named diff"
+    ;; Uses POST /transform-test/transform/:id/subgraph with sources=[] (degenerate single-node).
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -252,11 +236,12 @@
                  ;; TX order_count is 2 in reality, but expected says 99.
                  expected-f wrong-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (test-run-url (:id transform))
+                            :crowberto :post 200 (subgraph-test-run-url (:id transform))
                             multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
+                             "sources"                (json/encode [])
                              "options"                "{\"ignore_columns\":[\"snapshot_ts\"]}"})]
                   (testing "status is failed"
                     (is (= "failed" (:status resp))

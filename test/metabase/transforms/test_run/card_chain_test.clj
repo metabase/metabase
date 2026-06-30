@@ -46,31 +46,9 @@
    [metabase.test :as mt]
    [metabase.transforms.test-run.chain :as chain]
    [metabase.transforms.test-run.scratch :as scratch]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------------------------------------------
-;;; CSV / temp-file helpers
-;;; ---------------------------------------------------------------------------
-
-(defn- write-temp-csv!
-  ^File [csv-string]
-  (doto (File/createTempFile "card-chain-test-run-" ".csv")
-    (spit csv-string)))
-
-(defmacro ^:private with-temp-csv-files
-  [bindings & body]
-  (let [pairs   (partition 2 bindings)
-        names   (mapv first pairs)
-        strings (mapv second pairs)]
-    `(let [~@(mapcat (fn [n s] [n `(write-temp-csv! ~s)]) names strings)]
-       (try
-         ~@body
-         (finally
-           ~@(map (fn [n] `(.delete ~n)) names))))))
 
 (defn- count-test-scratch-tables [db-id schema]
   (let [result (qp.core/process-query
@@ -199,27 +177,24 @@
                 before-scratch (count-test-scratch-tables db-id "public")
                 before-runs    (t2/count :model/TransformRun)]
             (with-enrich-topology [t1 _tbl enriched-name]
-              (let [card (native-agg-card db-id enriched-name)]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f correct-expected-csv]
-                  (let [result (chain/run-card-chain-test!
-                                card #{(:id t1)}
-                                {orders-id orders-f people-id people-f}
-                                expected-f {})]
-                    (testing "status is passed"
-                      (is (= :passed (:status result))
-                          (str "Expected passed; diff: " (pr-str (:diff result)))))
-                    (testing "run order contains t1"
-                      (is (= [(:id t1)] (:order result))))
-                    (testing "diff sections are empty"
-                      (is (empty? (get-in result [:diff :missing-rows])))
-                      (is (empty? (get-in result [:diff :extra-rows])))
-                      (is (empty? (get-in result [:diff :cell-mismatches]))))
-                    (testing "all scratch tables cleaned up (2 leaves + 1 node output)"
-                      (is (= before-scratch (count-test-scratch-tables db-id "public"))))
-                    (testing "no TransformRun row created"
-                      (is (= before-runs (t2/count :model/TransformRun))))))))))))))
+              (let [card   (native-agg-card db-id enriched-name)
+                    result (chain/run-card-chain-test!
+                            card #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            correct-expected-csv {})]
+                (testing "status is passed"
+                  (is (= :passed (:status result))
+                      (str "Expected passed; diff: " (pr-str (:diff result)))))
+                (testing "run order contains t1"
+                  (is (= [(:id t1)] (:order result))))
+                (testing "diff sections are empty"
+                  (is (empty? (get-in result [:diff :missing-rows])))
+                  (is (empty? (get-in result [:diff :extra-rows])))
+                  (is (empty? (get-in result [:diff :cell-mismatches]))))
+                (testing "all scratch tables cleaned up (2 leaves + 1 node output)"
+                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))
+                (testing "no TransformRun row created"
+                  (is (= before-runs (t2/count :model/TransformRun))))))))))))
 
 ;;; ===========================================================================
 ;;; Native card: failed
@@ -235,22 +210,19 @@
                 people-id      (mt/id :people)
                 before-scratch (count-test-scratch-tables db-id "public")]
             (with-enrich-topology [t1 _tbl enriched-name]
-              (let [card (native-agg-card db-id enriched-name)]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f wrong-expected-csv]
-                  (let [result (chain/run-card-chain-test!
-                                card #{(:id t1)}
-                                {orders-id orders-f people-id people-f}
-                                expected-f {})]
-                    (testing "status is failed"
-                      (is (= :failed (:status result))))
-                    (testing "diff reports the discrepancy"
-                      (is (or (seq (get-in result [:diff :missing-rows]))
-                              (seq (get-in result [:diff :extra-rows]))
-                              (seq (get-in result [:diff :cell-mismatches])))))
-                    (testing "scratch cleaned up even on a failed diff"
-                      (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))))
+              (let [card   (native-agg-card db-id enriched-name)
+                    result (chain/run-card-chain-test!
+                            card #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            wrong-expected-csv {})]
+                (testing "status is failed"
+                  (is (= :failed (:status result))))
+                (testing "diff reports the discrepancy"
+                  (is (or (seq (get-in result [:diff :missing-rows]))
+                          (seq (get-in result [:diff :extra-rows]))
+                          (seq (get-in result [:diff :cell-mismatches])))))
+                (testing "scratch cleaned up even on a failed diff"
+                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; Native card: ignore_columns honored
@@ -267,17 +239,14 @@
                 ;; revenue deliberately wrong — should be ignored
                 wrong-rev-csv  "state,order_count,revenue\nCA,3,999.00\nTX,1,999.00\n"]
             (with-enrich-topology [t1 _tbl enriched-name]
-              (let [card (native-agg-card db-id enriched-name)]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f wrong-rev-csv]
-                  (let [result (chain/run-card-chain-test!
-                                card #{(:id t1)}
-                                {orders-id orders-f people-id people-f}
-                                expected-f {:ignore-columns #{"revenue"}})]
-                    (testing "status is passed when revenue is ignored"
-                      (is (= :passed (:status result))
-                          (str "Expected passed; diff: " (pr-str (:diff result)))))))))))))))
+              (let [card   (native-agg-card db-id enriched-name)
+                    result (chain/run-card-chain-test!
+                            card #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            wrong-rev-csv {:ignore-columns #{"revenue"}})]
+                (testing "status is passed when revenue is ignored"
+                  (is (= :passed (:status result))
+                      (str "Expected passed; diff: " (pr-str (:diff result)))))))))))))
 
 ;;; ===========================================================================
 ;;; MBQL card: passed (override-provider redirects by table id)
@@ -295,21 +264,18 @@
                 ;; 4 fixture orders → enriched has 4 rows → COUNT = 4
                 expected-csv   "count\n4\n"]
             (with-enrich-topology [t1 tbl _enriched-name]
-              (let [card (mbql-count-card db-id (:id tbl))]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f expected-csv]
-                  (let [result (chain/run-card-chain-test!
-                                card #{(:id t1)}
-                                {orders-id orders-f people-id people-f}
-                                expected-f {})]
-                    (testing "status is passed"
-                      (is (= :passed (:status result))
-                          (str "Expected passed; diff: " (pr-str (:diff result)))))
-                    (testing "run order contains t1"
-                      (is (= [(:id t1)] (:order result))))
-                    (testing "all scratch tables cleaned up"
-                      (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))))
+              (let [card   (mbql-count-card db-id (:id tbl))
+                    result (chain/run-card-chain-test!
+                            card #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            expected-csv {})]
+                (testing "status is passed"
+                  (is (= :passed (:status result))
+                      (str "Expected passed; diff: " (pr-str (:diff result)))))
+                (testing "run order contains t1"
+                  (is (= [(:id t1)] (:order result))))
+                (testing "all scratch tables cleaned up"
+                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; MBQL card: failed (wrong expected value)
@@ -326,22 +292,19 @@
                 before-scratch (count-test-scratch-tables db-id "public")
                 wrong-csv      "count\n99\n"]
             (with-enrich-topology [t1 tbl _enriched-name]
-              (let [card (mbql-count-card db-id (:id tbl))]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f wrong-csv]
-                  (let [result (chain/run-card-chain-test!
-                                card #{(:id t1)}
-                                {orders-id orders-f people-id people-f}
-                                expected-f {})]
-                    (testing "status is failed"
-                      (is (= :failed (:status result))))
-                    (testing "diff reports the discrepancy"
-                      (is (or (seq (get-in result [:diff :missing-rows]))
-                              (seq (get-in result [:diff :extra-rows]))
-                              (seq (get-in result [:diff :cell-mismatches])))))
-                    (testing "scratch cleaned up on failed diff"
-                      (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))))
+              (let [card   (mbql-count-card db-id (:id tbl))
+                    result (chain/run-card-chain-test!
+                            card #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            wrong-csv {})]
+                (testing "status is failed"
+                  (is (= :failed (:status result))))
+                (testing "diff reports the discrepancy"
+                  (is (or (seq (get-in result [:diff :missing-rows]))
+                          (seq (get-in result [:diff :extra-rows]))
+                          (seq (get-in result [:diff :cell-mismatches])))))
+                (testing "scratch cleaned up on failed diff"
+                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; Safety: verify fails closed when card refs an unmapped table
@@ -368,23 +331,20 @@
                                                  :native   {:query (str "SELECT state, count(*) AS n"
                                                                         " FROM " enriched-name
                                                                         " JOIN not_a_real_table ON 1=1"
-                                                                        " GROUP BY state")}}}]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f correct-expected-csv]
-                  (let [thrown (atom nil)]
-                    (try
-                      (chain/run-card-chain-test!
-                       danger-card #{(:id t1)}
-                       {orders-id orders-f people-id people-f}
-                       expected-f {})
-                      (catch clojure.lang.ExceptionInfo e
-                        (reset! thrown e)))
-                    (testing "throws ::cannot-test-run"
-                      (is (some? @thrown))
-                      (is (= :metabase.transforms.test-run.resolve/cannot-test-run
-                             (:error-type (ex-data @thrown)))
-                          (str "Expected ::cannot-test-run; got: " (pr-str (ex-data @thrown)))))))))))))))
+                                                                        " GROUP BY state")}}}
+                    thrown      (atom nil)]
+                (try
+                  (chain/run-card-chain-test!
+                   danger-card #{(:id t1)}
+                   {orders-id orders-rows people-id people-rows}
+                   correct-expected-csv {})
+                  (catch clojure.lang.ExceptionInfo e
+                    (reset! thrown e)))
+                (testing "throws ::cannot-test-run"
+                  (is (some? @thrown))
+                  (is (= :metabase.transforms.test-run.resolve/cannot-test-run
+                         (:error-type (ex-data @thrown)))
+                      (str "Expected ::cannot-test-run; got: " (pr-str (ex-data @thrown)))))))))))))
 
 ;;; ===========================================================================
 ;;; Cleanup runs inside with-transform-connection
@@ -405,13 +365,10 @@
                                             (fn [& args]
                                               (swap! captured conj @#'driver.conn/*connection-type*)
                                               (apply (mt/original-fn #'scratch/cleanup!) args))]
-                  (with-temp-csv-files [orders-f   orders-rows
-                                        people-f   people-rows
-                                        expected-f correct-expected-csv]
-                    (chain/run-card-chain-test!
-                     card #{(:id t1)}
-                     {orders-id orders-f people-id people-f}
-                     expected-f {})))))
+                  (chain/run-card-chain-test!
+                   card #{(:id t1)}
+                   {orders-id orders-rows people-id people-rows}
+                   correct-expected-csv {}))))
             (is (pos? (count @captured))
                 "cleanup! should have been called at least once")
             (is (every? #{:transform} @captured)
@@ -456,13 +413,10 @@
                 people-id      (mt/id :people)]
             (with-enrich-topology [t1 _tbl enriched-name]
               (let [card (native-agg-card db-id enriched-name)]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f correct-expected-csv]
-                  (chain/run-card-chain-test!
-                   card #{(:id t1)}
-                   {orders-id orders-f people-id people-f}
-                   expected-f {}))
+                (chain/run-card-chain-test!
+                 card #{(:id t1)}
+                 {orders-id orders-rows people-id people-rows}
+                 correct-expected-csv {})
                 ;; After the run, verify that enriched-name (t1's real output) is absent.
                 (let [result (qp.core/process-query
                               {:database db-id :type :native

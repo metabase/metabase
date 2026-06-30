@@ -25,9 +25,7 @@
    [metabase.transforms.test-run.assertions :as assertions]
    [metabase.transforms.test-run.fixtures :as fixtures]
    [metabase.transforms.test-run.scratch :as scratch]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -258,25 +256,6 @@
 ;;; ===========================================================================
 
 ;;; ---------------------------------------------------------------------------
-;;; Shared CSV helper for DB tests
-;;; ---------------------------------------------------------------------------
-
-(defn- write-temp-csv! ^File [csv-string]
-  (doto (File/createTempFile "assertions-test-" ".csv")
-    (spit csv-string)))
-
-(defmacro ^:private with-temp-csv-files
-  [bindings & body]
-  (let [pairs   (partition 2 bindings)
-        names   (mapv first pairs)
-        strings (mapv second pairs)]
-    `(let [~@(mapcat (fn [n s] [n `(write-temp-csv! ~s)]) names strings)]
-       (try
-         ~@body
-         (finally
-           ~@(map (fn [n] `(.delete ~n)) names))))))
-
-;;; ---------------------------------------------------------------------------
 ;;; Step 9.5 — all-pass via one combined query
 ;;; ---------------------------------------------------------------------------
 
@@ -309,29 +288,28 @@
                                  "1,1,1,90,10,100,,2024-01-01T00:00:00Z,1\n"
                                  "2,2,2,45,5,50,,2024-01-02T00:00:00Z,1\n")]
             (driver.conn/with-transform-connection
-              (with-temp-csv-files [fixture-f fixture-csv]
-                (let [mapping (scratch/seed! db-id db schema
-                                             [{:table-info orders-info
-                                               :fixture    (fixtures/parse-fixture fixture-f (:columns orders-info))}]
-                                             nonce)
-                      scratch-spec (-> mapping vals first)
-                      binding  (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
-                      backend  (sql-tools/parser-backend)]
-                  (try
-                    (let [results (assertions/run-assertions!
-                                   db-id drv backend mapping binding
-                                   [{:name "no_neg_total"    :sql "SELECT * FROM test_output WHERE total < 0"    :severity :error}
-                                    {:name "has_positive_id" :sql "SELECT * FROM test_output WHERE id <= 0"      :severity :error}])]
-                      (testing "returns one result per assertion"
-                        (is (= 2 (count results))))
-                      (testing "all assertions :passed"
-                        (is (every? #(= :passed (:status %)) results)))
-                      (testing "failing_row_count = 0 for all"
-                        (is (every? #(zero? (:failing_row_count %)) results)))
-                      (testing "sample_rows is nil for all (no failures)"
-                        (is (every? #(nil? (:sample_rows %)) results))))
-                    (finally
-                      (scratch/cleanup! db-id db mapping nil))))))))))))
+              (let [mapping (scratch/seed! db-id db schema
+                                           [{:table-info orders-info
+                                             :fixture    (fixtures/parse-fixture fixture-csv (:columns orders-info))}]
+                                           nonce)
+                    scratch-spec (-> mapping vals first)
+                    binding  (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
+                    backend  (sql-tools/parser-backend)]
+                (try
+                  (let [results (assertions/run-assertions!
+                                 db-id drv backend mapping binding
+                                 [{:name "no_neg_total"    :sql "SELECT * FROM test_output WHERE total < 0"    :severity :error}
+                                  {:name "has_positive_id" :sql "SELECT * FROM test_output WHERE id <= 0"      :severity :error}])]
+                    (testing "returns one result per assertion"
+                      (is (= 2 (count results))))
+                    (testing "all assertions :passed"
+                      (is (every? #(= :passed (:status %)) results)))
+                    (testing "failing_row_count = 0 for all"
+                      (is (every? #(zero? (:failing_row_count %)) results)))
+                    (testing "sample_rows is nil for all (no failures)"
+                      (is (every? #(nil? (:sample_rows %)) results))))
+                  (finally
+                    (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 9.6 — mixed pass/fail with 50-row cap actually exceeded
@@ -368,37 +346,36 @@
                                         (str i ",1,1,-90,-10,-100,,2024-01-01T00:00:00Z,1")))
                 fixture-csv (str header "\n" neg-rows "\n")]
             (driver.conn/with-transform-connection
-              (with-temp-csv-files [fixture-f fixture-csv]
-                (let [mapping     (scratch/seed! db-id db schema
-                                                 [{:table-info orders-info
-                                                   :fixture    (fixtures/parse-fixture fixture-f (:columns orders-info))}]
-                                                 nonce)
-                      scratch-spec (-> mapping vals first)
-                      binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
-                      backend     (sql-tools/parser-backend)]
-                  (try
-                    (let [results (assertions/run-assertions!
-                                   db-id drv backend mapping binding
-                                   ;; assertion 0: all rows fail (total < 0) → >50 failing rows
-                                   ;; assertion 1: no rows fail (id > 0 is always true) → pass
-                                   [{:name "total_positive" :sql "SELECT * FROM test_output WHERE total < 0" :severity :error}
-                                    {:name "id_positive"    :sql "SELECT * FROM test_output WHERE id <= 0"   :severity :error}])]
-                      (testing "returns two results"
-                        (is (= 2 (count results))))
-                      (testing "first assertion is :failed (all 60 rows have negative totals)"
-                        (let [r (first results)]
-                          (is (= :failed (:status r)))
-                          (is (= 60 (:failing_row_count r)))))
-                      (testing "50-row cap: sample_rows has exactly 50 entries"
-                        (is (= 50 (count (:sample_rows (first results))))))
-                      (testing "second assertion is :passed (no rows with id <= 0)"
-                        (let [r (second results)]
-                          (is (= :passed (:status r)))
-                          (is (zero? (:failing_row_count r)))))
-                      (testing "sample_rows is nil for the passing assertion"
-                        (is (nil? (:sample_rows (second results))))))
-                    (finally
-                      (scratch/cleanup! db-id db mapping nil))))))))))))
+              (let [mapping     (scratch/seed! db-id db schema
+                                               [{:table-info orders-info
+                                                 :fixture    (fixtures/parse-fixture fixture-csv (:columns orders-info))}]
+                                               nonce)
+                    scratch-spec (-> mapping vals first)
+                    binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
+                    backend     (sql-tools/parser-backend)]
+                (try
+                  (let [results (assertions/run-assertions!
+                                 db-id drv backend mapping binding
+                                 ;; assertion 0: all rows fail (total < 0) → >50 failing rows
+                                 ;; assertion 1: no rows fail (id > 0 is always true) → pass
+                                 [{:name "total_positive" :sql "SELECT * FROM test_output WHERE total < 0" :severity :error}
+                                  {:name "id_positive"    :sql "SELECT * FROM test_output WHERE id <= 0"   :severity :error}])]
+                    (testing "returns two results"
+                      (is (= 2 (count results))))
+                    (testing "first assertion is :failed (all 60 rows have negative totals)"
+                      (let [r (first results)]
+                        (is (= :failed (:status r)))
+                        (is (= 60 (:failing_row_count r)))))
+                    (testing "50-row cap: sample_rows has exactly 50 entries"
+                      (is (= 50 (count (:sample_rows (first results))))))
+                    (testing "second assertion is :passed (no rows with id <= 0)"
+                      (let [r (second results)]
+                        (is (= :passed (:status r)))
+                        (is (zero? (:failing_row_count r)))))
+                    (testing "sample_rows is nil for the passing assertion"
+                      (is (nil? (:sample_rows (second results))))))
+                  (finally
+                    (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 9.7 — warn-severity: full run, per-entry :warn, not :failed
@@ -431,40 +408,39 @@
                                  "1,1,1,90,10,100,,2024-01-01T00:00:00Z,1\n"
                                  "2,2,2,45,5,50,,2024-01-02T00:00:00Z,1\n")]
             (driver.conn/with-transform-connection
-              (with-temp-csv-files [fixture-f fixture-csv]
-                (let [mapping     (scratch/seed! db-id db schema
-                                                 [{:table-info orders-info
-                                                   :fixture    (fixtures/parse-fixture fixture-f (:columns orders-info))}]
-                                                 nonce)
-                      scratch-spec (-> mapping vals first)
-                      binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
-                      backend     (sql-tools/parser-backend)]
-                  (try
-                    (let [results (assertions/run-assertions!
-                                   db-id drv backend mapping binding
-                                   ;; Assertion always fires (all rows pass WHERE 1=1) but severity is :warn.
-                                   [{:name "warn_always_fires"
-                                     :sql  "SELECT * FROM test_output WHERE 1=1"
-                                     :severity :warn}
-                                    ;; A passing :error assertion alongside.
-                                    {:name "error_passes"
-                                     :sql  "SELECT * FROM test_output WHERE id <= 0"
-                                     :severity :error}])]
-                      (testing "two assertion results"
-                        (is (= 2 (count results))))
-                      (testing ":warn assertion fires → status :warn (not :failed)"
-                        (let [r (first results)]
-                          (is (= "warn_always_fires" (:name r)))
-                          (is (= :warn (:status r)))
-                          (is (pos? (:failing_row_count r)))))
-                      (testing "passing :error assertion → :passed"
-                        (let [r (second results)]
-                          (is (= "error_passes" (:name r)))
-                          (is (= :passed (:status r)))))
-                      (testing "overall-status: :warn does not flip to :failed"
-                        (is (= :passed (assertions/overall-status :passed results)))))
-                    (finally
-                      (scratch/cleanup! db-id db mapping nil))))))))))))
+              (let [mapping     (scratch/seed! db-id db schema
+                                               [{:table-info orders-info
+                                                 :fixture    (fixtures/parse-fixture fixture-csv (:columns orders-info))}]
+                                               nonce)
+                    scratch-spec (-> mapping vals first)
+                    binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
+                    backend     (sql-tools/parser-backend)]
+                (try
+                  (let [results (assertions/run-assertions!
+                                 db-id drv backend mapping binding
+                                 ;; Assertion always fires (all rows pass WHERE 1=1) but severity is :warn.
+                                 [{:name "warn_always_fires"
+                                   :sql  "SELECT * FROM test_output WHERE 1=1"
+                                   :severity :warn}
+                                  ;; A passing :error assertion alongside.
+                                  {:name "error_passes"
+                                   :sql  "SELECT * FROM test_output WHERE id <= 0"
+                                   :severity :error}])]
+                    (testing "two assertion results"
+                      (is (= 2 (count results))))
+                    (testing ":warn assertion fires → status :warn (not :failed)"
+                      (let [r (first results)]
+                        (is (= "warn_always_fires" (:name r)))
+                        (is (= :warn (:status r)))
+                        (is (pos? (:failing_row_count r)))))
+                    (testing "passing :error assertion → :passed"
+                      (let [r (second results)]
+                        (is (= "error_passes" (:name r)))
+                        (is (= :passed (:status r)))))
+                    (testing "overall-status: :warn does not flip to :failed"
+                      (is (= :passed (assertions/overall-status :passed results)))))
+                  (finally
+                    (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 9.8 — :batched → :per-assertion fallback on runtime warehouse error
@@ -506,43 +482,42 @@
                                  "1,1,1,90,10,100,,2024-01-01T00:00:00Z,1\n"
                                  "2,2,2,45,5,50,,2024-01-02T00:00:00Z,1\n")]
             (driver.conn/with-transform-connection
-              (with-temp-csv-files [fixture-f fixture-csv]
-                (let [mapping     (scratch/seed! db-id db schema
-                                                 [{:table-info orders-info
-                                                   :fixture    (fixtures/parse-fixture fixture-f (:columns orders-info))}]
-                                                 nonce)
-                      scratch-spec (-> mapping vals first)
-                      binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
-                      backend     (sql-tools/parser-backend)
-                      ;; Force the bad assertion SQL to reference an existing table but a
-                      ;; non-existent column — passes prepare (verify checks table refs)
-                      ;; but throws at the warehouse in the combined query.
-                      ;; We use run-assertions! with :strategy :batched (the default) and
-                      ;; the bad assertion first so it poisons the combined UNION ALL.
-                      bad-sql     "SELECT * FROM test_output WHERE nonexistent_column_xyz < 0"]
-                  (try
-                    (let [results (assertions/run-assertions!
-                                   db-id drv backend mapping binding
-                                   [{:name "bad_column_ref" :sql bad-sql               :severity :error}
-                                    {:name "good_assertion" :sql "SELECT * FROM test_output WHERE id <= 0" :severity :error}]
-                                   {:strategy :batched})]
-                      (testing "returns two results (fallback attributed both)"
-                        (is (= 2 (count results))))
-                      (testing "bad assertion result present (fallback ran it per-assertion)"
-                        (let [bad (first results)]
-                          (is (= "bad_column_ref" (:name bad)))
-                          ;; The per-assertion strategy captures the QP error as a raw :error result.
-                          ;; interpret-one maps that to :failed + :error_message.
-                          (is (or (= :failed (:status bad))
-                                  ;; Some postgres QP errors may produce count=0 with :error captured
-                                  (some? (:error_message bad))))))
-                      (testing "good assertion still gets a result"
-                        (let [good (second results)]
-                          (is (= "good_assertion" (:name good)))
-                          ;; id <= 0 is false for our data, so 0 failing rows → :passed
-                          (is (= :passed (:status good))))))
-                    (finally
-                      (scratch/cleanup! db-id db mapping nil))))))))))))
+              (let [mapping     (scratch/seed! db-id db schema
+                                               [{:table-info orders-info
+                                                 :fixture    (fixtures/parse-fixture fixture-csv (:columns orders-info))}]
+                                               nonce)
+                    scratch-spec (-> mapping vals first)
+                    binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
+                    backend     (sql-tools/parser-backend)
+                    ;; Force the bad assertion SQL to reference an existing table but a
+                    ;; non-existent column — passes prepare (verify checks table refs)
+                    ;; but throws at the warehouse in the combined query.
+                    ;; We use run-assertions! with :strategy :batched (the default) and
+                    ;; the bad assertion first so it poisons the combined UNION ALL.
+                    bad-sql     "SELECT * FROM test_output WHERE nonexistent_column_xyz < 0"]
+                (try
+                  (let [results (assertions/run-assertions!
+                                 db-id drv backend mapping binding
+                                 [{:name "bad_column_ref" :sql bad-sql               :severity :error}
+                                  {:name "good_assertion" :sql "SELECT * FROM test_output WHERE id <= 0" :severity :error}]
+                                 {:strategy :batched})]
+                    (testing "returns two results (fallback attributed both)"
+                      (is (= 2 (count results))))
+                    (testing "bad assertion result present (fallback ran it per-assertion)"
+                      (let [bad (first results)]
+                        (is (= "bad_column_ref" (:name bad)))
+                        ;; The per-assertion strategy captures the QP error as a raw :error result.
+                        ;; interpret-one maps that to :failed + :error_message.
+                        (is (or (= :failed (:status bad))
+                                ;; Some postgres QP errors may produce count=0 with :error captured
+                                (some? (:error_message bad))))))
+                    (testing "good assertion still gets a result"
+                      (let [good (second results)]
+                        (is (= "good_assertion" (:name good)))
+                        ;; id <= 0 is false for our data, so 0 failing rows → :passed
+                        (is (= :passed (:status good))))))
+                  (finally
+                    (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 9.9 — strategy equivalence: :batched and :per-assertion yield same verdicts
@@ -579,33 +554,32 @@
                                 {:name "id_always_pos"   :sql "SELECT * FROM test_output WHERE id <= 0"      :severity :error}
                                 {:name "subtotal_nonneg" :sql "SELECT * FROM test_output WHERE subtotal < 0" :severity :warn}]]
             (driver.conn/with-transform-connection
-              (with-temp-csv-files [fixture-f fixture-csv]
-                (let [mapping     (scratch/seed! db-id db schema
-                                                 [{:table-info orders-info
-                                                   :fixture    (fixtures/parse-fixture fixture-f (:columns orders-info))}]
-                                                 nonce)
-                      scratch-spec (-> mapping vals first)
-                      binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
-                      backend     (sql-tools/parser-backend)]
-                  (try
-                    (let [batched-results     (assertions/run-assertions!
-                                               db-id drv backend mapping binding assertion-defs
-                                               {:strategy :batched})
-                          per-assert-results  (assertions/run-assertions!
-                                               db-id drv backend mapping binding assertion-defs
-                                               {:strategy :per-assertion})]
-                      (testing ":batched and :per-assertion return same number of results"
-                        (is (= (count batched-results) (count per-assert-results))))
-                      (testing "status verdicts are identical for each assertion"
-                        (doseq [[b p] (map vector batched-results per-assert-results)]
-                          (testing (str "assertion " (:name b))
-                            (is (= (:name b) (:name p)))
-                            (is (= (:status b) (:status p))
-                                (str "status mismatch: batched=" (:status b)
-                                     " per-assertion=" (:status p))))))
-                      (testing "failing_row_count matches for each assertion"
-                        (doseq [[b p] (map vector batched-results per-assert-results)]
-                          (is (= (:failing_row_count b) (:failing_row_count p))
-                              (str "count mismatch for " (:name b))))))
-                    (finally
-                      (scratch/cleanup! db-id db mapping nil))))))))))))
+              (let [mapping     (scratch/seed! db-id db schema
+                                               [{:table-info orders-info
+                                                 :fixture    (fixtures/parse-fixture fixture-csv (:columns orders-info))}]
+                                               nonce)
+                    scratch-spec (-> mapping vals first)
+                    binding     (assertions/build-output-binding :transform {:scratch-spec scratch-spec})
+                    backend     (sql-tools/parser-backend)]
+                (try
+                  (let [batched-results    (assertions/run-assertions!
+                                            db-id drv backend mapping binding assertion-defs
+                                            {:strategy :batched})
+                        per-assert-results (assertions/run-assertions!
+                                            db-id drv backend mapping binding assertion-defs
+                                            {:strategy :per-assertion})]
+                    (testing ":batched and :per-assertion return same number of results"
+                      (is (= (count batched-results) (count per-assert-results))))
+                    (testing "status verdicts are identical for each assertion"
+                      (doseq [[b p] (map vector batched-results per-assert-results)]
+                        (testing (str "assertion " (:name b))
+                          (is (= (:name b) (:name p)))
+                          (is (= (:status b) (:status p))
+                              (str "status mismatch: batched=" (:status b)
+                                   " per-assertion=" (:status p))))))
+                    (testing "failing_row_count matches for each assertion"
+                      (doseq [[b p] (map vector batched-results per-assert-results)]
+                        (is (= (:failing_row_count b) (:failing_row_count p))
+                            (str "count mismatch for " (:name b))))))
+                  (finally
+                    (scratch/cleanup! db-id db mapping nil)))))))))))

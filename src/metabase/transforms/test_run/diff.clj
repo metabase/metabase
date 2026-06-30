@@ -37,7 +37,7 @@
 ;; Constants
 ;; ---------------------------------------------------------------------------
 
-(def ^:private mismatch-cap
+(def mismatch-cap
   "Maximum number of missing-rows, extra-rows, or cell-mismatches entries in the report.
   Mismatches beyond this limit are counted in `:truncated`."
   50)

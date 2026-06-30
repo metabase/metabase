@@ -30,7 +30,7 @@
    [clojure.string :as str]
    [metabase.upload.core :as upload])
   (:import
-   (java.io File InputStreamReader Reader)))
+   (java.io File InputStreamReader Reader StringReader)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,11 +73,16 @@
   (InputStreamReader. (bom/bom-input-stream file) "UTF-8"))
 
 (defn- read-csv
-  "Reads `file` and returns `[header-row & data-rows]` as vectors of strings."
-  [^File file]
-  (with-open [reader (->reader file)]
-    ;; Realise the lazy seq inside with-open so the reader isn't closed first.
-    (vec (csv/read-csv reader))))
+  "Returns `[header-row & data-rows]` as vectors of strings.
+  Accepts a `java.io.File` (BOM-stripped, UTF-8) or a CSV `String` (already
+  decoded, passed through `StringReader` directly)."
+  [file-or-string]
+  (if (string? file-or-string)
+    (with-open [reader (StringReader. ^String file-or-string)]
+      (vec (csv/read-csv reader)))
+    (with-open [reader (->reader ^File file-or-string)]
+      ;; Realise the lazy seq inside with-open so the reader isn't closed first.
+      (vec (csv/read-csv reader)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Error constructors
@@ -209,10 +214,12 @@
 ;; ---------------------------------------------------------------------------
 
 (defn parse-fixture
-  "Parse a fixture CSV file into typed rows suitable for seeding a scratch table.
+  "Parse a fixture CSV into typed rows suitable for seeding a scratch table.
 
   Arguments:
-  - `csv-file`      — `java.io.File` (e.g. a multipart upload temp file).
+  - `csv-file`      — `java.io.File` (e.g. a multipart upload temp file) OR a
+                      CSV `String` (in-memory, used by in-process tests to avoid
+                      disk I/O).
   - `target-schema` — `nil` (infer from data) OR a sequence of column descriptors
                       in any order:
                       `[{:name <string> :base-type <kw> :nullable? <bool>} ...]`
@@ -236,7 +243,7 @@
   - `::unparseable-cell`  — a cell value could not be parsed as the column type;
                             ex-data includes `:row-index` (0-based), `:column-name`,
                             and `:raw-value`."
-  [^File csv-file target-schema]
+  [csv-file target-schema]
   (let [rows        (read-csv csv-file)
         header      (first rows)
         data-rows   (rest rows)]

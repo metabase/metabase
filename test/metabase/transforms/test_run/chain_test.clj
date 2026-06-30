@@ -27,32 +27,11 @@
    [metabase.transforms.test-run.chain :as chain]
    [metabase.transforms.test-run.execute :as test-run.execute]
    [metabase.transforms.test-run.scratch :as scratch]
+   [metabase.transforms.test-run.test-util :refer [with-temp-csv-files]]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (java.io File)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------------------------------------------
-;;; CSV / temp-file helpers
-;;; ---------------------------------------------------------------------------
-
-(defn- write-temp-csv!
-  ^File [csv-string]
-  (doto (File/createTempFile "chain-test-run-" ".csv")
-    (spit csv-string)))
-
-(defmacro ^:private with-temp-csv-files
-  [bindings & body]
-  (let [pairs   (partition 2 bindings)
-        names   (mapv first pairs)
-        strings (mapv second pairs)]
-    `(let [~@(mapcat (fn [n s] [n `(write-temp-csv! ~s)]) names strings)]
-       (try
-         ~@body
-         (finally
-           ~@(map (fn [n] `(.delete ~n)) names))))))
 
 (defn- count-test-scratch-tables [db-id schema]
   (let [result (qp.core/process-query
@@ -134,26 +113,23 @@
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [result (chain/run-chain-test!
-                              (:id t2) #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              expected-f {})]
-                  (testing "status is passed"
-                    (is (= :passed (:status result))
-                        (str "Expected passed; diff: " (pr-str (:diff result)))))
-                  (testing "run order is topological (t1 before t2)"
-                    (is (= [(:id t1) (:id t2)] (:order result))))
-                  (testing "diff sections are empty"
-                    (is (empty? (get-in result [:diff :missing-rows])))
-                    (is (empty? (get-in result [:diff :extra-rows])))
-                    (is (empty? (get-in result [:diff :cell-mismatches]))))
-                  (testing "all scratch tables cleaned up (2 leaves + 2 node outputs)"
-                    (is (= before-scratch (count-test-scratch-tables db-id schema))))
-                  (testing "no TransformRun row created"
-                    (is (= before-runs (t2/count :model/TransformRun)))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            correct-expected-csv {})]
+                (testing "status is passed"
+                  (is (= :passed (:status result))
+                      (str "Expected passed; diff: " (pr-str (:diff result)))))
+                (testing "run order is topological (t1 before t2)"
+                  (is (= [(:id t1) (:id t2)] (:order result))))
+                (testing "diff sections are empty"
+                  (is (empty? (get-in result [:diff :missing-rows])))
+                  (is (empty? (get-in result [:diff :extra-rows])))
+                  (is (empty? (get-in result [:diff :cell-mismatches]))))
+                (testing "all scratch tables cleaned up (2 leaves + 2 node outputs)"
+                  (is (= before-scratch (count-test-scratch-tables db-id schema))))
+                (testing "no TransformRun row created"
+                  (is (= before-runs (t2/count :model/TransformRun))))))))))))
 
 ;;; ===========================================================================
 ;;; Failed: wrong expected value triggers a diff mismatch
@@ -177,21 +153,18 @@
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f wrong-expected-csv]
-                (let [result (chain/run-chain-test!
-                              (:id t2) #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              expected-f {})]
-                  (testing "status is failed"
-                    (is (= :failed (:status result))))
-                  (testing "diff reports the discrepancy"
-                    (is (or (seq (get-in result [:diff :missing-rows]))
-                            (seq (get-in result [:diff :extra-rows]))
-                            (seq (get-in result [:diff :cell-mismatches])))))
-                  (testing "scratch cleaned up even on a failed diff"
-                    (is (= before-scratch (count-test-scratch-tables db-id schema)))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            wrong-expected-csv {})]
+                (testing "status is failed"
+                  (is (= :failed (:status result))))
+                (testing "diff reports the discrepancy"
+                  (is (or (seq (get-in result [:diff :missing-rows]))
+                          (seq (get-in result [:diff :extra-rows]))
+                          (seq (get-in result [:diff :cell-mismatches])))))
+                (testing "scratch cleaned up even on a failed diff"
+                  (is (= before-scratch (count-test-scratch-tables db-id schema))))))))))))
 
 ;;; ===========================================================================
 ;;; HTTP endpoints: GET subgraph-inputs + POST subgraph
@@ -565,24 +538,21 @@
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [result (chain/run-chain-test!
-                              (:id t2) #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              expected-f
-                              {:assertions [{:name "revenue_nonneg"
-                                             :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
-                                             :severity :error}]})]
-                  (testing "overall status is :passed"
-                    (is (= :passed (:status result))))
-                  (testing ":assertions is a single-entry vector"
-                    (is (= 1 (count (:assertions result)))))
-                  (testing "assertion status is :passed"
-                    (is (= :passed (get-in result [:assertions 0 :status]))))
-                  (testing "failing_row_count is 0"
-                    (is (zero? (get-in result [:assertions 0 :failing_row_count])))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            correct-expected-csv
+                            {:assertions [{:name "revenue_nonneg"
+                                           :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                           :severity :error}]})]
+                (testing "overall status is :passed"
+                  (is (= :passed (:status result))))
+                (testing ":assertions is a single-entry vector"
+                  (is (= 1 (count (:assertions result)))))
+                (testing "assertion status is :passed"
+                  (is (= :passed (get-in result [:assertions 0 :status]))))
+                (testing "failing_row_count is 0"
+                  (is (zero? (get-in result [:assertions 0 :failing_row_count]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 10.2 — failing assertion (transform target)
@@ -604,23 +574,20 @@
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [result (chain/run-chain-test!
-                              (:id t2) #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              expected-f
-                              {:assertions [{:name "always_fails"
-                                             ;; SELECT * FROM <target> returns rows → always fails
-                                             :sql  (str "SELECT * FROM " target-name)
-                                             :severity :error}]})]
-                  (testing "overall status is :failed"
-                    (is (= :failed (:status result))))
-                  (testing "failing_row_count > 0"
-                    (is (pos? (get-in result [:assertions 0 :failing_row_count]))))
-                  (testing "assertion status is :failed"
-                    (is (= :failed (get-in result [:assertions 0 :status])))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            correct-expected-csv
+                            {:assertions [{:name "always_fails"
+                                           ;; SELECT * FROM <target> returns rows → always fails
+                                           :sql  (str "SELECT * FROM " target-name)
+                                           :severity :error}]})]
+                (testing "overall status is :failed"
+                  (is (= :failed (:status result))))
+                (testing "failing_row_count > 0"
+                  (is (pos? (get-in result [:assertions 0 :failing_row_count]))))
+                (testing "assertion status is :failed"
+                  (is (= :failed (get-in result [:assertions 0 :status]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 10.3 — warn-severity failing assertion does not fail the run
@@ -642,22 +609,19 @@
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [result (chain/run-chain-test!
-                              (:id t2) #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              expected-f
-                              {:assertions [{:name "warn_always_fails"
-                                             :sql  (str "SELECT * FROM " target-name)
-                                             :severity :warn}]})]
-                  (testing "overall status is :passed (warn does not flip overall)"
-                    (is (= :passed (:status result))))
-                  (testing "assertion status is :warn"
-                    (is (= :warn (get-in result [:assertions 0 :status]))))
-                  (testing "failing_row_count > 0"
-                    (is (pos? (get-in result [:assertions 0 :failing_row_count])))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            correct-expected-csv
+                            {:assertions [{:name "warn_always_fails"
+                                           :sql  (str "SELECT * FROM " target-name)
+                                           :severity :warn}]})]
+                (testing "overall status is :passed (warn does not flip overall)"
+                  (is (= :passed (:status result))))
+                (testing "assertion status is :warn"
+                  (is (= :warn (get-in result [:assertions 0 :status]))))
+                (testing "failing_row_count > 0"
+                  (is (pos? (get-in result [:assertions 0 :failing_row_count]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 10.4 — no expected CSV, assertions only
@@ -679,21 +643,19 @@
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f orders-rows
-                                    people-f people-rows]
-                (let [result (chain/run-chain-test!
-                              (:id t2) #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              nil  ; no expected CSV
-                              {:assertions [{:name "revenue_nonneg"
-                                             :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
-                                             :severity :error}]})]
-                  (testing "overall status is :passed"
-                    (is (= :passed (:status result))))
-                  (testing ":diff is nil when no expected CSV"
-                    (is (nil? (:diff result))))
-                  (testing ":assertions entry is present and passed"
-                    (is (= :passed (get-in result [:assertions 0 :status])))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            nil  ; no expected CSV
+                            {:assertions [{:name "revenue_nonneg"
+                                           :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                           :severity :error}]})]
+                (testing "overall status is :passed"
+                  (is (= :passed (:status result))))
+                (testing ":diff is nil when no expected CSV"
+                  (is (nil? (:diff result))))
+                (testing ":assertions entry is present and passed"
+                  (is (= :passed (get-in result [:assertions 0 :status]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 10.5 — test_output alias works in assertions (transform target)
@@ -715,21 +677,18 @@
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [result (chain/run-chain-test!
-                              (:id t2) #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              expected-f
-                              {:assertions [{:name "no_negative_revenue_via_alias"
-                                             ;; Uses test_output alias instead of real table name
-                                             :sql  "SELECT * FROM test_output WHERE revenue < 0"
-                                             :severity :error}]})]
-                  (testing "overall status is :passed"
-                    (is (= :passed (:status result))))
-                  (testing "assertion using test_output alias passes"
-                    (is (= :passed (get-in result [:assertions 0 :status])))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            correct-expected-csv
+                            {:assertions [{:name "no_negative_revenue_via_alias"
+                                           ;; Uses test_output alias instead of real table name
+                                           :sql  "SELECT * FROM test_output WHERE revenue < 0"
+                                           :severity :error}]})]
+                (testing "overall status is :passed"
+                  (is (= :passed (:status result))))
+                (testing "assertion using test_output alias passes"
+                  (is (= :passed (get-in result [:assertions 0 :status]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Step 10.6 — card target, assertions via :cte binding (no extra scratch table)
@@ -745,23 +704,20 @@
                 people-id      (mt/id :people)
                 before-scratch (count-test-scratch-tables db-id "public")]
             (with-enrich-card [t1 card]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [result (chain/run-card-chain-test!
-                              card #{(:id t1)}
-                              {orders-id orders-f people-id people-f}
-                              expected-f
-                              {:assertions [{:name "result_nonneg_revenue"
-                                             ;; test_output refers to the card's compiled SQL CTE
-                                             :sql  "SELECT * FROM test_output WHERE revenue < 0"
-                                             :severity :error}]})]
-                  (testing "overall status is :passed"
-                    (is (= :passed (:status result))))
-                  (testing "assertion status is :passed"
-                    (is (= :passed (get-in result [:assertions 0 :status]))))
-                  (testing "no extra scratch tables remain (CTE binding creates no tables)"
-                    (is (= before-scratch (count-test-scratch-tables db-id "public")))))))))))))
+              (let [result (chain/run-card-chain-test!
+                            card #{(:id t1)}
+                            {orders-id orders-rows people-id people-rows}
+                            correct-expected-csv
+                            {:assertions [{:name "result_nonneg_revenue"
+                                           ;; test_output refers to the card's compiled SQL CTE
+                                           :sql  "SELECT * FROM test_output WHERE revenue < 0"
+                                           :severity :error}]})]
+                (testing "overall status is :passed"
+                  (is (= :passed (:status result))))
+                (testing "assertion status is :passed"
+                  (is (= :passed (get-in result [:assertions 0 :status]))))
+                (testing "no extra scratch tables remain (CTE binding creates no tables)"
+                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; Step 11 — HTTP endpoint wires assertions
@@ -1067,13 +1023,10 @@
                                           (fn [& args]
                                             (swap! captured conj @#'driver.conn/*connection-type*)
                                             (apply (mt/original-fn #'scratch/cleanup!) args))]
-                (with-temp-csv-files [orders-f   orders-rows
-                                      people-f   people-rows
-                                      expected-f correct-expected-csv]
-                  (chain/run-chain-test!
-                   (:id t2) #{(:id t1)}
-                   {orders-id orders-f people-id people-f}
-                   expected-f {}))))
+                (chain/run-chain-test!
+                 (:id t2) #{(:id t1)}
+                 {orders-id orders-rows people-id people-rows}
+                 correct-expected-csv {})))
             (is (pos? (count @captured))
                 "cleanup! should have been called at least once")
             (is (every? #{:transform} @captured)
@@ -1110,20 +1063,17 @@
                                                   " FROM orders GROUP BY user_id ORDER BY user_id"))}
                             :target {:schema schema :type "table" :name (mt/random-name)}}]
               ;; orders-rows has 4 rows: user_ids 1,1,2,3 → COUNT(*) yields 3 groups.
-              (with-temp-csv-files
-                [orders-f orders-rows
-                 ;; ts placeholder doesn't match NOW(), but :ignore-columns excludes it.
-                 expected-f "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"]
-                (let [result (chain/run-chain-test!
-                              (:id t) #{}
-                              {orders-id orders-f}
-                              expected-f
-                              {:ignore-columns #{"ts"}})]
-                  (testing "status is passed with ts ignored"
-                    (is (= :passed (:status result))
-                        (str "Expected :passed; diff: " (pr-str (:diff result)))))
-                  (testing "scratch tables cleaned up"
-                    (is (= before-scratch (count-test-scratch-tables db-id schema)))))))))))))
+              (let [result (chain/run-chain-test!
+                            (:id t) #{}
+                            {orders-id orders-rows}
+                            ;; ts placeholder doesn't match NOW(), but :ignore-columns excludes it.
+                            "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"
+                            {:ignore-columns #{"ts"}})]
+                (testing "status is passed with ts ignored"
+                  (is (= :passed (:status result))
+                      (str "Expected :passed; diff: " (pr-str (:diff result)))))
+                (testing "scratch tables cleaned up"
+                  (is (= before-scratch (count-test-scratch-tables db-id schema))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; seed! creates a missing target schema (single-node)
@@ -1148,16 +1098,13 @@
                                                mp
                                                "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id")}
                               :target {:schema fresh-schema :type "table" :name (mt/random-name)}}]
-                (with-temp-csv-files
-                  [orders-f   orders-rows
-                   ;; orders-rows has user_ids 1,1,2,3 → 3 groups.
-                   expected-f "user_id,order_count\n1,2\n2,1\n3,1\n"]
-                  (let [result (chain/run-chain-test!
-                                (:id t) #{}
-                                {orders-id orders-f}
-                                expected-f {})]
-                    (is (= :passed (:status result))
-                        (str "Expected :passed; got: " (pr-str result))))))
+                ;; orders-rows has user_ids 1,1,2,3 → 3 groups.
+                (let [result (chain/run-chain-test!
+                              (:id t) #{}
+                              {orders-id orders-rows}
+                              "user_id,order_count\n1,2\n2,1\n3,1\n" {})]
+                  (is (= :passed (:status result))
+                      (str "Expected :passed; got: " (pr-str result)))))
               (is (driver/schema-exists? :postgres db-id fresh-schema)
                   "seed! should have created the missing target schema")
               (is (zero? (count-test-scratch-tables db-id fresh-schema))
@@ -1189,20 +1136,17 @@
                                              mp
                                              "SELECT total FROM orders WHERE pg_sleep(10) IS NOT NULL")}
                             :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files
-                [orders-f   (str orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")
-                 expected-f "total\n100.00\n"]
-                (let [threw? (try
-                               (chain/run-chain-test!
-                                (:id t) #{}
-                                {orders-id orders-f}
-                                expected-f
-                                {:timeout-ms 1000})
-                               false
-                               (catch Exception _ true))]
-                  (is threw? "Expected exception from pg_sleep timeout")
-                  (is (= before-runs (t2/count :model/TransformRun))
-                      "No TransformRun row after timeout"))))))))))
+              (let [threw? (try
+                             (chain/run-chain-test!
+                              (:id t) #{}
+                              {orders-id (str orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
+                              "total\n100.00\n"
+                              {:timeout-ms 1000})
+                             false
+                             (catch Exception _ true))]
+                (is threw? "Expected exception from pg_sleep timeout")
+                (is (= before-runs (t2/count :model/TransformRun))
+                    "No TransformRun row after timeout")))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; read-back-output uses quoted identifiers (regression; tests execute.clj directly)
