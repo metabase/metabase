@@ -1212,8 +1212,15 @@
 (def ^:private ^String nano-alphabet
   "URL-safe 64-character NanoID alphabet. The alphabet is exactly 64 chars long
   so `(bit-and byte 63)` is a perfectly uniform projection (256/64 = 4, no
-  remainder), which means we don't need rejection sampling."
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
+  remainder), which means we don't need rejection sampling.
+
+  Order matches `taoensso.encore`'s `:nanoid` alphabet exactly. This is
+  load-bearing for [[metabase.models.serialization/backfill-entity-id]]: it
+  re-derives a stable `entity_id` from an identity hash via the seeded
+  [[generate-nano-id]] path, and prior versions used encore directly. Changing
+  the byte→char mapping here would silently break serialization round-trip
+  and any re-derivation path."
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_")
 
 (def ^:private nano-id-default-size 21)
 
@@ -1231,15 +1238,18 @@
                (aset arr i (.charAt nano-alphabet (bit-and (long (byte-fn i)) 63))))
              (apply str arr))))
 
+#?(:clj
+   (defonce ^:private ^java.security.SecureRandom nano-id-rng
+     (java.security.SecureRandom.)))
+
 (defn generate-nano-id
   "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
   ([]
-   #?(:clj  (let [^java.security.SecureRandom rng (java.security.SecureRandom.)
-                  buf                             (byte-array nano-id-default-size)]
-              (.nextBytes rng buf)
+   #?(:clj  (let [buf (byte-array nano-id-default-size)]
+              (.nextBytes nano-id-rng buf)
               (nano-id-from-bytes nano-id-default-size (fn [i] (aget buf i))))
       :cljs (let [buf (js/Uint8Array. nano-id-default-size)]
               (.getRandomValues js/crypto buf)
