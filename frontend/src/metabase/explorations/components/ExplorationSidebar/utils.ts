@@ -356,7 +356,7 @@ export function getExplorationSidebarTabsInfo(
       (thread) => thread.blocks?.flatMap((block) => block.pages) ?? [],
     ) ?? [];
   const starredPageIds = new Set(
-    pages.filter((page) => page.interesting).map((page) => String(page.id)),
+    pages.filter((page) => page.starred).map((page) => String(page.id)),
   );
   const discussionPageIds = new Set(
     comments

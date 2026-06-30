@@ -1359,8 +1359,8 @@
           (is (= [src-sr-id] (mapv :stored_result_id use-rows))
               "exactly one stored_result_use row, pointing at the source snapshot"))))))
 
-(deftest exploration-page-interestingness-roundtrip-test
-  (testing "PUT /page/:id/interesting marks the page; DELETE clears it; both reflected in GET /:id"
+(deftest exploration-page-starred-roundtrip-test
+  (testing "PUT /page/:id/starred sets the flag both ways; reflected in GET /:id"
     (mt/with-temp [:model/User u {:email "page-mark@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (create-exploration! u
@@ -1373,18 +1373,17 @@
             fetch-page (fn []
                          (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
                              :threads first :blocks first :pages first))]
-        (testing "fresh page has nil interesting"
-          (is (contains? (fetch-page) :interesting))
-          (is (nil? (:interesting (fetch-page)))))
-        (testing "PUT marks the page interesting"
-          (mt/user-http-request u :put 204 (format "exploration/page/%d/interesting" page-id))
-          (is (true? (:interesting (fetch-page)))))
-        (testing "DELETE clears interesting"
-          (mt/user-http-request u :delete 204 (format "exploration/page/%d/interesting" page-id))
-          (is (nil? (:interesting (fetch-page)))))))))
+        (testing "fresh page defaults to not starred"
+          (is (false? (:starred (fetch-page)))))
+        (testing "PUT :starred true stars the page"
+          (mt/user-http-request u :put 204 (format "exploration/page/%d/starred" page-id) {:starred true})
+          (is (true? (:starred (fetch-page)))))
+        (testing "PUT :starred false unstars the page"
+          (mt/user-http-request u :put 204 (format "exploration/page/%d/starred" page-id) {:starred false})
+          (is (false? (:starred (fetch-page)))))))))
 
-(deftest exploration-page-interestingness-permissions-test
-  (testing "PUT/DELETE /page/:id/interesting enforce write-check — non-owner gets 403"
+(deftest exploration-page-starred-permissions-test
+  (testing "PUT /page/:id/starred enforces write-check — non-owner gets 403"
     (mt/with-temp [:model/User owner {:email "page-mp-owner@example.com"}
                    :model/User other {:email "page-mp-other@example.com"}
                    :model/Card metric (valid-metric-card (:id owner))]
@@ -1395,14 +1394,12 @@
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
             page-id (-> resp :threads first :blocks first :pages first :id)]
-        (mt/user-http-request other :put 403 (format "exploration/page/%d/interesting" page-id))
-        (mt/user-http-request other :delete 403 (format "exploration/page/%d/interesting" page-id))))))
+        (mt/user-http-request other :put 403 (format "exploration/page/%d/starred" page-id) {:starred true})))))
 
-(deftest exploration-page-interestingness-404-test
-  (testing "PUT/DELETE on a nonexistent page id returns 404"
+(deftest exploration-page-starred-404-test
+  (testing "PUT on a nonexistent page id returns 404"
     (mt/with-temp [:model/User u {:email "page-mark-404@example.com"}]
-      (mt/user-http-request u :put 404 "exploration/page/9999999/interesting")
-      (mt/user-http-request u :delete 404 "exploration/page/9999999/interesting"))))
+      (mt/user-http-request u :put 404 "exploration/page/9999999/starred" {:starred true}))))
 
 (deftest exploration-create-auto-creates-scratchpad-document-test
   (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"

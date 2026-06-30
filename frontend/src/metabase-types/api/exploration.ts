@@ -266,7 +266,7 @@ export interface ExplorationPageNode {
   long_name: string | null;
   position: number;
   query_ids: ExplorationQueryId[];
-  interesting?: boolean | null;
+  starred: boolean;
 }
 
 export interface ExplorationBlockNode {

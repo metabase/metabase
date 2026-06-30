@@ -140,7 +140,7 @@
    :name        (page-short-name block page queries card-name-by-id)
    :long_name   (page-long-name page queries card-name-by-id)
    :query_ids   (mapv :id queries)
-   :interesting (:interesting page)
+   :starred     (:starred page)
    ::max-score  (max-score queries)})
 
 (defn blocks-tree
@@ -156,7 +156,7 @@
                      :long_name <full self-describing page name>
                      :position  <0-indexed slot among the block's pages, score-sorted>
                      :query_ids [<id> <id> ...]
-                     :interesting <true | false | nil>}]}]
+                     :starred   <true | false>}]}]
 
    Pages are sorted by interestingness desc within their block. Pages whose block isn't in
    `blocks` are dropped; queries are matched to their page via `page_id`."

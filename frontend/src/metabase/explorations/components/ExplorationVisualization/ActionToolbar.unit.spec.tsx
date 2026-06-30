@@ -324,92 +324,87 @@ describe("ActionToolbar", () => {
     });
   });
 
-  describe("star as interesting", () => {
-    it("shows the star action when the page is not marked interesting", () => {
-      setup({ page: createPage({ id: PAGE_ID, interesting: false }) });
+  describe("star", () => {
+    it("shows the star action when the page is not starred", () => {
+      setup({ page: createPage({ id: PAGE_ID, starred: false }) });
 
-      expect(
-        screen.getByRole("button", { name: "Star as interesting" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Star" })).toBeInTheDocument();
     });
 
-    it("shows the remove-star action when the page is marked interesting", () => {
-      setup({ page: createPage({ id: PAGE_ID, interesting: true }) });
+    it("shows the remove-star action when the page is starred", () => {
+      setup({ page: createPage({ id: PAGE_ID, starred: true }) });
 
       expect(
         screen.getByRole("button", { name: "Remove star" }),
       ).toBeInTheDocument();
     });
 
-    it("marks the page as interesting on click", async () => {
-      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/interesting`, 204);
+    it("stars the page on click", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 204);
 
-      setup({ page: createPage({ id: PAGE_ID, interesting: false }) });
+      setup({ page: createPage({ id: PAGE_ID, starred: false }) });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Star as interesting" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Star" }));
 
       await waitFor(() => {
-        expect(
-          fetchMock.callHistory.calls(
-            `path:/api/exploration/page/${PAGE_ID}/interesting`,
-            { method: "PUT" },
-          ),
-        ).toHaveLength(1);
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/page/${PAGE_ID}/starred`,
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          starred: true,
+        });
       });
     });
 
-    it("clears the interesting mark on click", async () => {
-      fetchMock.delete(
-        `path:/api/exploration/page/${PAGE_ID}/interesting`,
-        204,
-      );
+    it("unstars the page on click", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 204);
 
-      setup({ page: createPage({ id: PAGE_ID, interesting: true }) });
+      setup({ page: createPage({ id: PAGE_ID, starred: true }) });
 
       await userEvent.click(
         screen.getByRole("button", { name: "Remove star" }),
       );
 
       await waitFor(() => {
-        expect(
-          fetchMock.callHistory.calls(
-            `path:/api/exploration/page/${PAGE_ID}/interesting`,
-            { method: "DELETE" },
-          ),
-        ).toHaveLength(1);
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/page/${PAGE_ID}/starred`,
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          starred: false,
+        });
       });
     });
 
-    it("toggles interesting with the s shortcut", async () => {
-      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/interesting`, 204);
+    it("toggles the star with the s shortcut", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 204);
 
-      setup({ page: createPage({ id: PAGE_ID, interesting: false }) });
+      setup({ page: createPage({ id: PAGE_ID, starred: false }) });
 
       fireEvent.keyDown(document.body, { key: "s" });
 
       await waitFor(() => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/exploration/page/${PAGE_ID}/interesting`,
+            `path:/api/exploration/page/${PAGE_ID}/starred`,
             { method: "PUT" },
           ),
         ).toHaveLength(1);
       });
     });
 
-    it("shows a toast when marking interesting fails", async () => {
-      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/interesting`, 500);
+    it("shows a toast when starring fails", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 500);
 
       setup({
-        page: createPage({ id: PAGE_ID, interesting: false }),
+        page: createPage({ id: PAGE_ID, starred: false }),
         withUndos: true,
       });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Star as interesting" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Star" }));
 
       expect(
         await screen.findByText("Failed to update star"),

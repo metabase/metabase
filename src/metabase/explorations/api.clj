@@ -316,7 +316,7 @@
    [:long_name   [:maybe :string]]
    [:position    ms/IntGreaterThanOrEqualToZero]
    [:query_ids   [:sequential ms/PositiveInt]]
-   [:interesting {:optional true} [:maybe :boolean]]])
+   [:starred     :boolean]])
 
 (mr/def ::ExplorationBlockNode
   "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is
@@ -944,20 +944,14 @@
       {:status 409
        :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
 
-(api.macros/defendpoint :put "/page/:id/interesting" :- :nil
-  "Mark an exploration page as interesting."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+(api.macros/defendpoint :put "/page/:id/starred" :- :nil
+  "Set whether an exploration page is starred."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [starred]} :- [:map [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
-    (t2/update! :model/ExplorationPage id {:interesting true}))
-  nil)
-
-(api.macros/defendpoint :delete "/page/:id/interesting" :- :nil
-  "Clear the user's interestingness flag on an exploration page."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [page (get-exploration-page-or-404 id)]
-    (api/write-check page)
-    (t2/update! :model/ExplorationPage id {:interesting nil}))
+    (t2/update! :model/ExplorationPage id {:starred starred}))
   nil)
 
 ;;; ----------------------------------------- routes -----------------------------------------

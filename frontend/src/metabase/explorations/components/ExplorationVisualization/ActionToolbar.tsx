@@ -9,10 +9,7 @@ import {
 import { t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
-import {
-  useClearPageInterestingMutation,
-  useMarkPageInterestingMutation,
-} from "metabase/api/exploration";
+import { useSetPageStarredMutation } from "metabase/api/exploration";
 import { CommentEditor } from "metabase/comments/components";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
@@ -59,8 +56,7 @@ export function ActionToolbar({
   onSelectTimelineId,
   interestingTimelineIds,
 }: ActionToolbarProps) {
-  const [markPageInteresting] = useMarkPageInterestingMutation();
-  const [clearPageInteresting] = useClearPageInterestingMutation();
+  const [setPageStarred] = useSetPageStarredMutation();
 
   const [isCommentEditorOpen, setCommentEditorOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
@@ -81,13 +77,13 @@ export function ActionToolbar({
     [explorationId, onSelectTimelineId],
   );
 
-  const handleMarkAsInteresting = useCallback(async () => {
+  const handleToggleStarred = useCallback(async () => {
     try {
-      if (page.interesting) {
-        await clearPageInteresting({ pageId: page.id, explorationId }).unwrap();
-      } else {
-        await markPageInteresting({ pageId: page.id, explorationId }).unwrap();
-      }
+      await setPageStarred({
+        pageId: page.id,
+        explorationId,
+        starred: !page.starred,
+      }).unwrap();
     } catch (error) {
       sendToast({
         icon: "warning_triangle_filled",
@@ -95,14 +91,7 @@ export function ActionToolbar({
         message: t`Failed to update star`,
       });
     }
-  }, [
-    page.interesting,
-    clearPageInteresting,
-    markPageInteresting,
-    page.id,
-    explorationId,
-    sendToast,
-  ]);
+  }, [page.starred, setPageStarred, page.id, explorationId, sendToast]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -127,7 +116,7 @@ export function ActionToolbar({
       }
 
       if (event.key === "s") {
-        handleMarkAsInteresting();
+        handleToggleStarred();
         event.preventDefault();
       }
 
@@ -143,7 +132,7 @@ export function ActionToolbar({
     availableTimelines,
     selectedTimelineId,
     handleSelectTimelineId,
-    handleMarkAsInteresting,
+    handleToggleStarred,
     setCommentEditorOpen,
   ]);
 
@@ -238,15 +227,13 @@ export function ActionToolbar({
         </Menu>
       )}
       <ToolbarButton
-        icon={page.interesting ? "star_filled" : "star"}
-        tooltipLabel={
-          page.interesting ? t`Remove star` : t`Star as interesting`
-        }
+        icon={page.starred ? "star_filled" : "star"}
+        tooltipLabel={page.starred ? t`Remove star` : t`Star`}
         iconProps={{
           size: "1.125rem",
-          c: page.interesting ? "core-yellow-saturated" : undefined,
+          c: page.starred ? "core-yellow-saturated" : undefined,
         }}
-        onClick={handleMarkAsInteresting}
+        onClick={handleToggleStarred}
       />
       <Popover
         position="top"

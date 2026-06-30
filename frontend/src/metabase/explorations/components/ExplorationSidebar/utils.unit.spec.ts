@@ -614,14 +614,14 @@ describe("getExplorationSidebarTabsInfo", () => {
             name: "Starred",
             position: 0,
             query_ids: [starredQuery.id],
-            interesting: true,
+            starred: true,
           }),
           createPage({
             id: UNSTARRED_PAGE_ID,
             name: "Unstarred",
             position: 1,
             query_ids: [unstarredQuery.id],
-            interesting: false,
+            starred: false,
           }),
           createPage({
             id: DISCUSSED_PAGE_ID,
@@ -635,7 +635,7 @@ describe("getExplorationSidebarTabsInfo", () => {
   });
 
   describe("stars filter", () => {
-    it("includes only pages marked interesting on the backend", () => {
+    it("includes only pages marked starred on the backend", () => {
       const tree = getFilteredSidebarTree(mixedPagesExploration, "stars");
 
       expect(getAllPageIds(tree)).toEqual([String(STARRED_PAGE_ID)]);
@@ -655,7 +655,7 @@ describe("getExplorationSidebarTabsInfo", () => {
                 name: "Unstarred",
                 position: 0,
                 query_ids: [unstarredQuery.id],
-                interesting: false,
+                starred: false,
               }),
             ],
           }),
@@ -679,7 +679,7 @@ describe("getExplorationSidebarTabsInfo", () => {
                 name: "Starred",
                 position: 0,
                 query_ids: [starredQuery.id],
-                interesting: true,
+                starred: true,
               }),
             ],
           }),

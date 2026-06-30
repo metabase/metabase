@@ -439,12 +439,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: user_interestingness
-                  type: int
-                  remarks: Owner's interestingness rating; null = unrated, 0 = not interesting, 1 = hmm, 2 = interesting
-                  constraints:
-                    nullable: true
-              - column:
                   name: entity_id
                   type: char(21)
                   remarks: NanoID for serdes
@@ -1597,6 +1591,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: starred
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: True if the page is starred
+                  constraints:
+                    nullable: false
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
@@ -1737,46 +1738,3 @@ databaseChangeLog:
               - column:
                   name: group_id
                   type: int
-
-  - changeSet:
-      id: v63.exppageinteresting
-      author: kevinkelleher12
-      comment: Add nullable boolean interesting column to exploration_page
-      changes:
-        - addColumn:
-            tableName: exploration_page
-            columns:
-              - column:
-                  name: interesting
-                  type: boolean
-                  remarks: User-set flag; null = no opinion, true = interesting, false = not interesting
-                  constraints:
-                    nullable: true
-      rollback:
-        - dropColumn:
-            tableName: exploration_page
-            columnName: interesting
-
-  - changeSet:
-      id: v63.expqdropuserinterestingness
-      author: kevinkelleher12
-      comment: Drop unused user_interestingness column from exploration_query — replaced by exploration_page.interesting
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: exploration_query
-            columnName: user_interestingness
-      changes:
-        - dropColumn:
-            tableName: exploration_query
-            columnName: user_interestingness
-      rollback:
-        - addColumn:
-            tableName: exploration_query
-            columns:
-              - column:
-                  name: user_interestingness
-                  type: int
-                  remarks: Owner's interestingness rating; null = unrated, 0 = not interesting, 1 = hmm, 2 = interesting
-                  constraints:
-                    nullable: true
