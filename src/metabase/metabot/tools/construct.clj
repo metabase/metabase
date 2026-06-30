@@ -110,7 +110,7 @@
    [:query [:map {:json-schema construct-notebook-query-json-schema}]]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]
-   [:description {:optional true} :string]])
+   [:description :string]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
