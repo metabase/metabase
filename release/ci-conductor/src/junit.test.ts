@@ -201,8 +201,8 @@ describe("parseJunit", () => {
     );
     // The unescaped `>` in the title survives decoding.
     expect(test.name).toBe("Button when open renders > the label");
-    // No `message` attribute on the <failure> => null. We never derive a
-    // message from the body; the full trace lands in `stack` instead.
+    // The <failure> has no `message` attribute, so message is null; the body
+    // text lands in `stack`.
     expect(test.message).toBeNull();
     expect(test.stack).toContain("Error: expect(received).toBe(expected)");
     expect(test.status).toBe("failure");
