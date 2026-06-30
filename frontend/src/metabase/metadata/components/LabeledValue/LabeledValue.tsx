@@ -29,6 +29,7 @@ export const LabeledValue = ({ children, label }: Props) => {
         size="lg"
         tt="none"
         variant="default"
+        lh="sm"
       >
         {children}
       </Badge>
