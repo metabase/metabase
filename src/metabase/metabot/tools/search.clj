@@ -343,7 +343,8 @@
         id->card  (when (seq ids)
                     (into {} (map (juxt :id identity))
                           (filter mi/can-read?
-                                  (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
+                                  (t2/select [:model/Card :id :name :description :database_id :collection_id
+                                              :card_schema :type]
                                              :id [:in ids]))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
@@ -354,12 +355,14 @@
                     (t2/select-fn-set :moderated_item_id :model/ModerationReview
                                       :moderated_item_id [:in ids] :moderated_item_type "card"
                                       :most_recent true :status "verified"))]
-    (for [{:keys [id type]} refs
+    (for [{:keys [id]} refs
           :let [c (id->card id)]
           :when c]
       (let [coll (get id->coll (:collection_id c))]
         {:id          id
-         :type        type
+         ;; the Card's *current* type, not the caller's ref type — a stale index hit kept across a
+         ;; metric<->model relabel must not describe the entity with its old shape.
+         :type        (:type c)
          :name        (:name c)
          :description (:description c)
          :database_id (:database_id c)

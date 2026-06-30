@@ -98,7 +98,10 @@
         ;; so hydrate the whole deduped candidate set and take `n` from the readable survivors — taking
         ;; `n` first would let unreadable top hits shrink the result below `n` while readable matches sit
         ;; just past the cut.
-        by-key   (u/index-by (juxt :type :id) (tools.search/entity-refs->search-results refs))
+        ;; Key by entity *class*, not raw [type id]: hydration emits a card's current type, so a stale index
+        ;; ref (an old metric/model label) still resolves to its hydrated record once both collapse to "card".
+        by-key   (u/index-by (fn [r] (entity-retrieval/entity-class (:type r) (:id r)))
+                             (tools.search/entity-refs->search-results refs))
         ;; instructions aren't stored in the index — read the current text from osi_ai_context per request.
         instrs   (entity-retrieval/ai-context-instructions refs)
         ;; The index is eventually consistent, so a hit may point at an entity that has since left the
@@ -110,9 +113,7 @@
         lib-classes (some->> (entity-retrieval/library-entity-keys)
                              (into #{} (map (fn [[t id]] (entity-retrieval/entity-class t id)))))]
     (->> (for [{:keys [doc_type doc_text entity score]} deduped
-               ;; hydrated records use the agent-facing entity type, so normalize the ref's model to match
-               ;; (plain "card" refs hydrate as "question")
-               :let [resolved (get by-key [(tools.search/ref-model->entity-type (:model entity)) (:id entity)])
+               :let [resolved (get by-key (entity-retrieval/entity-class (:model entity) (:id entity)))
                      sim      (similarity score)]
                :when (and resolved
                           (or (nil? lib-classes)

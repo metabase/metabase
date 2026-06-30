@@ -16,6 +16,7 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -504,34 +505,34 @@
         {:output (ex-message e) :status-code 404}
         (metabot.tools.u/handle-agent-error e)))))
 
-(defn- measure-or-segment-details
-  "Build drill-in detail for a single measure or segment by numeric `id`.
-   `kind` is `:measure` or `:segment`; it selects the model, the lib-metadata fetcher, and the
-   `convert-measure-or-segment` definition key.
+(def ^:private measure-or-segment-dispatch
+  "Per-`kind` config for `measure-or-segment-details`: the app-DB model, the lib-metadata fetcher,
+  and the `convert-measure-or-segment` definition key."
+  {:measure {:model :model/Measure, :lookup-fn lib.metadata/measure, :definition-key :aggregation}
+   :segment {:model :model/Segment, :lookup-fn lib.metadata/segment, :definition-key :filters}})
 
-   Reads the app-DB row first (for `:table_id` and to gate access — measure/segment perms delegate
-   to the parent Table) and read-checks that table. Then layers the parent-table context the agent
-   needs to use the measure/segment in a query — `database_id` / `database_name`, the base table
-   id/name/schema, and the portable `[db-name schema table]` FK — on top of the `convert-measure-or-segment`
-   payload, so the output is consistent with the nested measures/segments table-details already emits."
-  [kind id]
-  (let [model-key   (case kind :measure :model/Measure :segment :model/Segment)
-        defn-key    (case kind :measure :aggregation :segment :filters)
-        row         (t2/select-one [model-key :id :table_id] :id id)]
+(mu/defn- measure-or-segment-details
+  "Build drill-in detail for a single measure or segment by numeric `id`.
+  Layers parent-table context onto the `convert-measure-or-segment` payload — `database_id` /
+  `database_name`, the base table id/name/schema, and the portable `[db-name schema table]` FK — so the
+  shape matches the nested measures/segments `table-details` already emits."
+  [kind :- [:enum :measure :segment]
+   id   :- :int]
+  (let [{:keys [model lookup-fn definition-key]} (measure-or-segment-dispatch kind)
+        row (t2/select-one [model :id :table_id] :id id)]
     (when-not row
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))
+    ;; Measure/segment perms delegate to the parent Table, so read-checking it gates access.
     (let [table     (api/read-check :model/Table (:table_id row))
           db-id     (:db_id table)
           mp        (lib-be/application-database-metadata-provider db-id)
           database  (lib.metadata/database mp)
-          metadata  (case kind
-                      :measure (lib.metadata/measure mp id)
-                      :segment (lib.metadata/segment mp id))
+          metadata  (lookup-fn mp id)
           db-name   (:name database)
           schema    (:schema table)
           tbl-name  (:name table)]
-      (-> (convert-measure-or-segment metadata defn-key)
+      (-> (convert-measure-or-segment metadata definition-key)
           (assoc :type kind
                  :database_id db-id
                  :database_name db-name
@@ -547,26 +548,34 @@
   [{:keys [measure-id]}]
   (try
     (lib-be/with-metadata-provider-cache
-      (if (int? measure-id)
-        {:structured-output (assoc (measure-or-segment-details :measure measure-id) :result-type :entity)}
-        (throw (ex-info "Invalid measure_id format" {:agent-error? true :status-code 400}))))
+      (when-not (int? measure-id)
+        (throw (ex-info "Invalid measure_id format" {:agent-error? true :status-code 400})))
+      {:structured-output (assoc (measure-or-segment-details :measure measure-id) :result-type :entity)})
     (catch Exception e
-      (if (= (:status-code (ex-data e)) 404)
-        {:output (ex-message e) :status-code 404}
-        (metabot.tools.u/handle-agent-error e)))))
+      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+        ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
+        (when-not agent-error?
+          (log/error e "Failed to fetch measure details" data))
+        (if (= status-code 404)
+          {:output (ex-message e) :status-code 404}
+          (metabot.tools.u/handle-agent-error e))))))
 
 (defn get-segment-details
   "Get information about the segment with ID `segment-id`."
   [{:keys [segment-id]}]
   (try
     (lib-be/with-metadata-provider-cache
-      (if (int? segment-id)
-        {:structured-output (assoc (measure-or-segment-details :segment segment-id) :result-type :entity)}
-        (throw (ex-info "Invalid segment_id format" {:agent-error? true :status-code 400}))))
+      (when-not (int? segment-id)
+        (throw (ex-info "Invalid segment_id format" {:agent-error? true :status-code 400})))
+      {:structured-output (assoc (measure-or-segment-details :segment segment-id) :result-type :entity)})
     (catch Exception e
-      (if (= (:status-code (ex-data e)) 404)
-        {:output (ex-message e) :status-code 404}
-        (metabot.tools.u/handle-agent-error e)))))
+      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+        ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
+        (when-not agent-error?
+          (log/error e "Failed to fetch segment details" data))
+        (if (= status-code 404)
+          {:output (ex-message e) :status-code 404}
+          (metabot.tools.u/handle-agent-error e))))))
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
