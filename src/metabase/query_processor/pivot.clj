@@ -32,6 +32,7 @@
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
@@ -519,7 +520,8 @@
 (defn native-pivot-compatible?
   "True iff the native MBQL5 pivot path can handle `query` end-to-end.
 
-  Returns false when `query` has a feature that doesn't compile cleanly through `GROUPING SETS`."
+  Preprocesses the query first so the check sees the fully-expanded form — after metric/measure/segment
+  expansion and source-card inlining — and then rejects only when a known incompatibility remains."
   [query]
   ;; The set of incompatibility reasons is intentionally small: each entry must point at a specific demonstrated
   ;; problem, never "just in case." Add new conditions by combining the existing predicates with `or` inside the
@@ -527,8 +529,9 @@
   ;;
   ;; Window-function aggregations: a running total over `GROUPING SETS` results would span detail rows AND
   ;; subtotal rows, which is meaningless. The multi-query path runs one query per breakout combination, where
-  ;; these aggregations behave as expected.
-  (not (has-window-fn-aggregation? query)))
+  ;; these aggregations behave as expected. Importantly, this check has to see the EXPANDED query — a metric
+  ;; that resolves to `:cum-sum` is just as problematic as a `:cum-sum` written inline.
+  (not (has-window-fn-aggregation? (qp.preprocess/preprocess query))))
 
 (defn- remapped-field
   [breakout]

@@ -444,7 +444,38 @@
           query   (-> (lib/query json-mp (lib.metadata/table json-mp 1))
                       (lib/aggregate (lib/count))
                       (lib/breakout (lib.metadata/field json-mp 1)))]
-      (is (qp.pivot/native-pivot-compatible? query)))))
+      (is (qp.pivot/native-pivot-compatible? query))))
+  (testing "metric whose definition is a window-function aggregation is incompatible"
+    (let [metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
+          metric-card  {:lib/type      :metadata/card
+                        :id            10000
+                        :entity-id     (apply str (repeat 21 "X"))
+                        :database-id   (meta/id)
+                        :name          "Cumulative Total"
+                        :type          :metric
+                        :dataset-query metric-query}
+          mp           (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [metric-card]})
+          query        (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                           (lib/aggregate (lib.options/ensure-uuid [:metric {} (:id metric-card)]))
+                           (lib/breakout (lib.metadata/field mp (meta/id :orders :created-at))))]
+      (is (not (qp.pivot/native-pivot-compatible? query)))))
+  (testing "source card with a window-function aggregation"
+    (let [card-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/breakout (meta/field-metadata :orders :created-at))
+                         (lib/aggregate (lib/cum-sum (meta/field-metadata :orders :total))))
+          card       {:lib/type      :metadata/card
+                      :id            10001
+                      :entity-id     (apply str (repeat 21 "Y"))
+                      :database-id   (meta/id)
+                      :name          "Cumulative by Day"
+                      :type          :question
+                      :dataset-query card-query}
+          mp         (lib.tu/mock-metadata-provider meta/metadata-provider {:cards [card]})
+          query      (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                         (lib/aggregate (lib/count)))]
+      (testing "outer aggregations don't inherit the card's window-fn, so the pivot is compatible"
+        (is (qp.pivot/native-pivot-compatible? query))))))
 
 ;;; ---- wrap-nested-field-breakouts ----
 
