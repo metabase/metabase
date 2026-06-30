@@ -88,16 +88,7 @@ const baseConfig = {
     ],
   },
 
-  // The data-app dev entry (ESM-only, below) keeps the consumer's React/SDK and
-  // the dev plugin's virtual config external so it shares the single React/SDK
-  // instance; harmless for the other entries, which don't import these.
-  externals: [
-    ...Object.keys(EXTERNAL_DEPENDENCIES),
-    "react/jsx-dev-runtime",
-    "@metabase/embedding-sdk-react",
-    "@metabase/embedding-sdk-react/data-app",
-    DATA_APP_DEV_CONFIG_VIRTUAL_ID,
-  ],
+  externals: Object.keys(EXTERNAL_DEPENDENCIES),
 
   optimization: OPTIMIZATION_CONFIG,
 
@@ -120,7 +111,6 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
-    "data-app-dev-entry": "./data-app-dev-entry.tsx",
   },
 
   output: {
@@ -138,4 +128,24 @@ const esmConfig = {
   },
 };
 
-module.exports = [baseConfig, esmConfig];
+// The data-app dev entry is its own ESM build. It keeps the consumer's React/SDK
+// and the dev plugin's virtual config external (so the bundle runs against the
+// consumer's single React/SDK instance), with those extra externals scoped HERE
+// so they can't affect the SDK (`main` / `data-app`) builds above.
+const dataAppDevEntryConfig = {
+  ...esmConfig,
+
+  entry: {
+    "data-app-dev-entry": "./data-app-dev-entry.tsx",
+  },
+
+  externals: [
+    ...Object.keys(EXTERNAL_DEPENDENCIES),
+    "react/jsx-dev-runtime",
+    "@metabase/embedding-sdk-react",
+    "@metabase/embedding-sdk-react/data-app",
+    DATA_APP_DEV_CONFIG_VIRTUAL_ID,
+  ],
+};
+
+module.exports = [baseConfig, esmConfig, dataAppDevEntryConfig];
