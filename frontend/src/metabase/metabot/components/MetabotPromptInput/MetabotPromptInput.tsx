@@ -10,8 +10,16 @@ import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
+import { useCreateCardMutation } from "metabase/api";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
+import {
+  type ChartClipboardPayload,
+  parseChartClipboard,
+} from "metabase/common/utils/chart-clipboard";
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
@@ -63,6 +71,9 @@ export const MetabotPromptInput = forwardRef<
     ref,
   ) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+    const dispatch = useDispatch();
+    const [createCard] = useCreateCardMutation();
+    const defaultCollectionId = useGetDefaultCollectionId();
     const serializedRef = useRef(value);
 
     // editorProps closures are baked into the editor at creation and are not
@@ -72,6 +83,9 @@ export const MetabotPromptInput = forwardRef<
     onSubmitRef.current = onSubmit;
     const onStopRef = useRef(onStop);
     onStopRef.current = onStop;
+    const onPasteChartRef = useRef<(payload: ChartClipboardPayload) => void>(
+      () => undefined,
+    );
 
     const extensions = [
       Document,
@@ -138,6 +152,17 @@ export const MetabotPromptInput = forwardRef<
 
               return true;
             },
+            paste: (_view: EditorView, e: ClipboardEvent) => {
+              const payload = parseChartClipboard(
+                e.clipboardData?.getData("text/plain"),
+              );
+              if (!payload) {
+                return false;
+              }
+              e.preventDefault();
+              onPasteChartRef.current(payload);
+              return true;
+            },
           },
           handleKeyDown: (view, event) => {
             if (event.key === "Escape" || event.key === "Enter") {
@@ -194,6 +219,40 @@ export const MetabotPromptInput = forwardRef<
         siteUrl,
       ],
     );
+
+    // Pasting a copied Metabot chart materializes it into a saved question and
+    // inserts an @mention so it can be referenced in the prompt.
+    onPasteChartRef.current = async (payload: ChartClipboardPayload) => {
+      if (!editor) {
+        return;
+      }
+      try {
+        const card = await createCard({
+          name: payload.name,
+          display: payload.display,
+          dataset_query: payload.dataset_query,
+          visualization_settings: payload.visualization_settings,
+          collection_id: canonicalCollectionId(defaultCollectionId),
+        }).unwrap();
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: "smartLink",
+            attrs: { entityId: card.id, model: "card", label: card.name },
+          })
+          .insertContent(" ")
+          .run();
+      } catch {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: t`Couldn't add the chart to the chat`,
+          }),
+        );
+      }
+    };
 
     useImperativeHandle(ref, () => {
       if (!editor) {

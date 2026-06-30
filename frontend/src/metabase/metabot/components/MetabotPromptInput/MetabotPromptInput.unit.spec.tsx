@@ -12,14 +12,17 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { createMockState } from "metabase/redux/store/mocks";
 import { MetabotMentionPluginKey } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
+  createMockCard,
   createMockCollection,
   createMockDatabase,
 } from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { MetabotPromptInput } from "./MetabotPromptInput";
 
@@ -142,5 +145,65 @@ describe("MetabotPromptInput", () => {
     );
 
     expect(await typeMentionQueryAndGetSearchDbId()).toBe("2");
+  });
+
+  describe("pasting a chart", () => {
+    const datasetQuery = createMockStructuredDatasetQuery();
+    const chartText = serializeChartClipboard({
+      name: "Orders by month",
+      display: "bar",
+      dataset_query: datasetQuery,
+      visualization_settings: {},
+    });
+
+    const pasteIntoEditor = (text: string) => {
+      const event = new Event("paste", { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "clipboardData", {
+        value: {
+          getData: (type: string) => (type === "text/plain" ? text : ""),
+        },
+      });
+      getEditor().dispatchEvent(event);
+    };
+
+    it("saves a pasted chart and inserts a question mention", async () => {
+      fetchMock.post(
+        "path:/api/card",
+        createMockCard({ id: 42, name: "Orders by month" }),
+      );
+      fetchMock.get(
+        "path:/api/card/42",
+        createMockCard({ id: 42, name: "Orders by month" }),
+      );
+      const onChange = jest.fn();
+      setup({ onChange });
+
+      pasteIntoEditor(chartText);
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/card")).toBe(true);
+      });
+      const call = fetchMock.callHistory.lastCall("path:/api/card");
+      const body = JSON.parse((call?.options?.body as string) ?? "{}");
+      expect(body.display).toBe("bar");
+      expect(body.dataset_query).toEqual(datasetQuery);
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(
+          expect.stringContaining("metabase://question/42"),
+        );
+      });
+    });
+
+    it("ignores pasted content that is not a chart", async () => {
+      fetchMock.post("path:/api/card", createMockCard({ id: 42 }));
+      setup();
+
+      pasteIntoEditor("just some text");
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
+      });
+    });
   });
 });
