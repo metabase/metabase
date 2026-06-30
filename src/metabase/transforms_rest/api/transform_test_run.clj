@@ -82,13 +82,6 @@
                :body   (api-util/error->response e)}
               (throw e))))))))
 
-(defn- metric-not-supported!
-  "Metric targets have no defined standalone rowset to diff yet; reject with 422."
-  []
-  (throw (ex-info (tru "Metric targets are not yet supported for test runs.")
-                  {:status-code 422
-                   :error-type  ::metric-target-not-supported})))
-
 (defn- run-card-subgraph-test-run!
   "Execute a chained (sub-graph) test run whose target is Card `card` from parsed
   multipart params — the card analogue of `run-subgraph-test-run!`.
@@ -147,12 +140,11 @@
   `ignore_columns`). The required leaves are what `GET …/subgraph-inputs` returns
   for the same `(target-type, id, sources)` selection.
 
-  `card` covers questions and models. Metric cards are rejected with 422 (no
-  defined standalone rowset to diff yet). Read access to the target is enforced
-  (`read-check` Transform or Card)."
+  `card` covers questions, models, and metric cards (`:type :metric`). Read access
+  to the target is enforced (`read-check` Transform or Card)."
   {:multipart true}
   [{:keys [target-type id]} :- [:map
-                                [:target-type [:enum "transform" "card" "metric"]]
+                                [:target-type [:enum "transform" "card"]]
                                 [:id ms/PositiveInt]]
    _query-params
    _body
@@ -168,12 +160,7 @@
 
     "card"
     (let [card (api/read-check :model/Card id)]
-      (when (= :metric (:type card))
-        (metric-not-supported!))
-      (run-card-subgraph-test-run! card multipart-params))
-
-    "metric"
-    (metric-not-supported!)))
+      (run-card-subgraph-test-run! card multipart-params))))
 
 (api.macros/defendpoint :get "/:target-type/:id/subgraph-inputs" :- [:map
                                                                      [:status pos-int?]
@@ -187,7 +174,7 @@
   A vector of `{table_id, schema, name, columns}` descriptors — one fixture CSV per
   entry is required for `POST …/subgraph`. Same shape for both target types."
   [{:keys [target-type id]} :- [:map
-                                [:target-type [:enum "transform" "card" "metric"]]
+                                [:target-type [:enum "transform" "card"]]
                                 [:id ms/PositiveInt]]
    {:keys [sources]} :- [:map
                          [:sources {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
@@ -199,12 +186,7 @@
 
     "card"
     (let [card (api/read-check :model/Card id)]
-      (when (= :metric (:type card))
-        (metric-not-supported!))
-      (inputs-response #(transforms.core/card-subgraph-input-tables card (set sources) (t2/select :model/Transform))))
-
-    "metric"
-    (metric-not-supported!)))
+      (inputs-response #(transforms.core/card-subgraph-input-tables card (set sources) (t2/select :model/Transform))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform-test` routes."

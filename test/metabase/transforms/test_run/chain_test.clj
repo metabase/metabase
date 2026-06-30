@@ -501,9 +501,10 @@
            multipart-content-type
            {"expected" expected-f}))))))
 
-(deftest metric-target-rejected-test
-  (testing "metric target-type is rejected with 422 (no defined standalone rowset to diff)"
-    (is (some? (mt/user-http-request :crowberto :get 422 "transform-test/metric/1/subgraph-inputs")))))
+(deftest unknown-target-type-rejected-test
+  (testing "unrecognised target-type returns 404 — the route enum no longer includes \"metric\"; use target-type=card for metric cards"
+    (is (= "API endpoint does not exist."
+           (mt/user-http-request :crowberto :get 404 "transform-test/metric/1/subgraph-inputs")))))
 
 ;;; ===========================================================================
 ;;; Contract: cleanup! runs inside the transform connection context

@@ -41,7 +41,9 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.driver.connection :as driver.conn]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.transforms.test-run.chain :as chain]
@@ -425,3 +427,112 @@
                                                     " AND table_name = '" enriched-name "'")}})]
                   (testing "t1 real output table was never written"
                     (is (= 0 (-> result (get-in [:data :rows]) first first int)))))))))))))
+
+;;; ===========================================================================
+;;; Metric card: :type :metric card as card target
+;;; ===========================================================================
+
+(defn- metric-sum-card
+  "A `:type :metric` Card computing SUM(total) over the enriched table."
+  [db-id tbl-id total-field-id]
+  (let [mp    (lib-be/application-database-metadata-provider db-id)
+        tbl   (lib.metadata/table mp tbl-id)
+        field (lib.metadata/field mp total-field-id)
+        q     (-> (lib/query mp tbl)
+                  (lib/aggregate (lib/sum (lib/ref field))))]
+    {:id            nil
+     :type          :metric
+     :dataset_query q}))
+
+;;; SUM(total) over 4 fixture orders: 100 + 50 + 200 + 30 = 380.
+(def ^:private metric-expected-csv "sum\n380.00\n")
+(def ^:private metric-wrong-csv    "sum\n999.00\n")
+
+;;; ===========================================================================
+;;; Metric card: passed
+;;; ===========================================================================
+
+(deftest card-chain-metric-passed-test
+  (testing "metric card (SUM over enriched) passes against correct expected CSV"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id          (mt/id)
+                orders-id      (mt/id :orders)
+                people-id      (mt/id :people)
+                before-scratch (count-test-scratch-tables db-id "public")]
+            (with-enrich-topology [t1 tbl _enriched-name]
+              (let [;; total field was created by with-enrich-topology as position 0
+                    total-field-id (t2/select-one-fn :id :model/Field
+                                                     :table_id (:id tbl)
+                                                     :name "total")
+                    card           (metric-sum-card db-id (:id tbl) total-field-id)
+                    result         (chain/run-card-chain-test!
+                                    card #{(:id t1)}
+                                    {orders-id orders-rows people-id people-rows}
+                                    metric-expected-csv {})]
+                (testing "status is passed"
+                  (is (= :passed (:status result))
+                      (str "Expected passed; diff: " (pr-str (:diff result)))))
+                (testing "run order contains t1"
+                  (is (= [(:id t1)] (:order result))))
+                (testing "all scratch tables cleaned up"
+                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+
+;;; ===========================================================================
+;;; Metric card: failed (wrong expected value)
+;;; ===========================================================================
+
+(deftest card-chain-metric-failed-test
+  (testing "metric card with wrong expected SUM → failed with diff, scratch cleaned"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id          (mt/id)
+                orders-id      (mt/id :orders)
+                people-id      (mt/id :people)
+                before-scratch (count-test-scratch-tables db-id "public")]
+            (with-enrich-topology [t1 tbl _enriched-name]
+              (let [total-field-id (t2/select-one-fn :id :model/Field
+                                                     :table_id (:id tbl)
+                                                     :name "total")
+                    card           (metric-sum-card db-id (:id tbl) total-field-id)
+                    result         (chain/run-card-chain-test!
+                                    card #{(:id t1)}
+                                    {orders-id orders-rows people-id people-rows}
+                                    metric-wrong-csv {})]
+                (testing "status is failed"
+                  (is (= :failed (:status result))))
+                (testing "diff reports the discrepancy"
+                  (is (or (seq (get-in result [:diff :missing-rows]))
+                          (seq (get-in result [:diff :extra-rows]))
+                          (seq (get-in result [:diff :cell-mismatches])))))
+                (testing "scratch cleaned up on failed diff"
+                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+
+;;; ===========================================================================
+;;; Metric card: card-subgraph-input-tables
+;;; ===========================================================================
+
+(deftest card-chain-metric-subgraph-inputs-test
+  (testing "card-subgraph-input-tables works for a metric card target"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id     (mt/id)
+                orders-id (mt/id :orders)
+                people-id (mt/id :people)]
+            (with-enrich-topology [t1 tbl _enriched-name]
+              (let [total-field-id  (t2/select-one-fn :id :model/Field
+                                                      :table_id (:id tbl)
+                                                      :name "total")
+                    card            (metric-sum-card db-id (:id tbl) total-field-id)
+                    all-transforms  (t2/select :model/Transform)
+                    infos           (chain/card-subgraph-input-tables card #{(:id t1)} all-transforms)]
+                (testing "both leaf tables (orders, people) are returned"
+                  (is (= #{orders-id people-id} (set (map :id infos)))))
+                (testing "each descriptor carries schema, name, and column headers"
+                  (is (every? (fn [d] (and (string? (:schema d))
+                                           (string? (:name d))
+                                           (seq (:columns d))))
+                              infos)))))))))))
