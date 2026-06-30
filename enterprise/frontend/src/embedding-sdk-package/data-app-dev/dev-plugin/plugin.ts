@@ -136,15 +136,31 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
         }
       };
 
-      let chain = Promise.resolve();
-      const rebuildAndNotify = () => {
-        chain = chain.then(async () => {
-          if (await safeRebuild()) {
+      // Coalesce rebuilds: at most one Vite build runs at a time, and changes
+      // that arrive mid-build collapse into a single follow-up — so a burst of
+      // saves can't back up a queue of full rebuilds (or fire a soft reload each).
+      let building = false;
+      let pending = false;
+      const rebuildAndNotify = async () => {
+        if (building) {
+          pending = true;
+          return;
+        }
+
+        building = true;
+        try {
+          let built = false;
+          do {
+            pending = false;
+            built = await safeRebuild();
+          } while (pending);
+
+          if (built) {
             server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
           }
-        });
-
-        return chain;
+        } finally {
+          building = false;
+        }
       };
 
       // Initial build; no client is connected yet, so nothing to notify.
