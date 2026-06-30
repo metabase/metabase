@@ -1519,7 +1519,7 @@ describe("scenarios > dashboard", () => {
 
 function checkOptionsForFilter(filter) {
   cy.findByText("Available filters").parent().contains(filter).click();
-  H.popover()
+  cy.findByRole("listbox")
     .should("contain", "Columns")
     .and("contain", "COUNT(*)")
     .and("not.contain", "Dashboard filters");

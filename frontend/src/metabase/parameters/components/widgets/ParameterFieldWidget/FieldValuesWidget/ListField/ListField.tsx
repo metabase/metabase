@@ -7,7 +7,7 @@ import type { InputProps } from "metabase/common/components/Input";
 import { Input } from "metabase/common/components/Input";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Checkbox, Flex, Text } from "metabase/ui";

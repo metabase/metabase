@@ -1160,64 +1160,49 @@
             (is (< count-after (+ count-before 5))
                 "unbounded thread growth!")))))))
 
-(comment
-  ;; this appears to have been broken with the pagination changes in
-  ;; https://github.com/metabase/metabase/pull/76068/changes
-  (deftest later-page-fetch-returns-nil-test
-    (mt/test-driver :bigquery-cloud-sdk
-      (testing "BigQuery queries which fail on later pages are caught properly"
-        (let [page-counter (atom 3)
-              orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
-              wrap-result  (fn wrap-result [^TableResult result]
-                             (proxy [TableResult] []
-                               (getSchema [] (.getSchema result))
-                               (getValues [] (.getValues result))
-                               (hasNextPage [] (.hasNextPage result))
-                               (getNextPage []
-                                 (if (zero? @page-counter)
-                                   nil
-                                   (wrap-result (.getNextPage result))))))]
-          (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                                            (apply orig-exec (wrap-result page) args))]
-            (binding [bigquery/*page-size*     10 ; small pages so there are several
+(deftest later-page-fetch-returns-nil-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery query whose later page fetch returns nil is caught, not silently truncated"
+      ;; The query path pages via `query-results-page` (`.getQueryResults`), so simulate BigQuery returning nil
+      ;; for a later page even though the page token reported there was more.
+      (let [page-counter (atom 3)
+            orig-fetch   (mt/original-fn #'bigquery/query-results-page)]
+        (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [job options]
+                                                                  (if (zero? @page-counter)
+                                                                    nil
+                                                                    (orig-fetch job options)))]
+          (binding [bigquery/*page-size*     10 ; small pages so there are several
+                    bigquery/*page-callback* (fn []
+                                               (let [pages (swap! page-counter #(max (dec %) 0))]
+                                                 (log/debugf "*page-callback counting down: %d to go" pages)))]
+            (mt/dataset test-data
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Cannot get next page from BigQuery"
+                   (mt/process-query (mt/query orders)))))))))))
+
+(deftest later-page-fetch-throws-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery query whose later page fetch throws is caught, with no thread leaks"
+      (let [count-before (count (future-thread-names))
+            page-counter (atom 3)
+            orig-fetch   (mt/original-fn #'bigquery/query-results-page)]
+        (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [job options]
+                                                                  (if (zero? @page-counter)
+                                                                    (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
+                                                                    (orig-fetch job options)))]
+          (dotimes [_ 10]
+            (reset! page-counter 3)
+            (binding [bigquery/*page-size*     100 ; small pages so there are several
                       bigquery/*page-callback* (fn []
                                                  (let [pages (swap! page-counter #(max (dec %) 0))]
                                                    (log/debugf "*page-callback counting down: %d to go" pages)))]
               (mt/dataset test-data
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"Cannot get next page from BigQuery"
-                     (mt/process-query (mt/query orders)))))))))))
-
-  (deftest later-page-fetch-throws-test
-    (mt/test-driver :bigquery-cloud-sdk
-      (testing "BigQuery queries which fail on later pages are caught properly"
-        (let [count-before (count (future-thread-names))
-              page-counter (atom 3)
-              orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
-              wrap-result  (fn wrap-result [^TableResult result]
-                             (proxy [TableResult] []
-                               (getSchema [] (.getSchema result))
-                               (getValues [] (.getValues result))
-                               (hasNextPage [] (.hasNextPage result))
-                               (getNextPage []
-                                 (if (zero? @page-counter)
-                                   (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
-                                   (wrap-result (.getNextPage result))))))]
-          (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                                            (apply orig-exec (wrap-result page) args))]
-            (dotimes [_ 10]
-              (reset! page-counter 3)
-              (binding [bigquery/*page-size*     100 ; small pages so there are several
-                        bigquery/*page-callback* (fn []
-                                                   (let [pages (swap! page-counter #(max (dec %) 0))]
-                                                     (log/debugf "*page-callback counting down: %d to go" pages)))]
-                (mt/dataset test-data
-                  (is (thrown-with-msg? Exception #"onoes BigQuery failed to fetch a later page"
-                                        (mt/process-query (mt/query orders))))))))
-          (testing "no thread leaks"
-            (let [count-after (count (future-thread-names))]
-              (is (< count-after (+ count-before 5))))))))))
+                (is (thrown-with-msg? Exception #"onoes BigQuery failed to fetch a later page"
+                                      (mt/process-query (mt/query orders))))))))
+        (testing "no thread leaks"
+          (let [count-after (count (future-thread-names))]
+            (is (< count-after (+ count-before 5)))))))))
 
 (deftest cancel-page-test
   (mt/test-driver
