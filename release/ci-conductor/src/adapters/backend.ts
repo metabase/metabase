@@ -6,26 +6,17 @@
 // (`../junit.ts`); this owns the backend-specific parts — hawk's `*_test.xml`
 // file layout — while the suite label is supplied by the entrypoint.
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 
 import type { NormalizedTest } from "../contract.ts";
-import { parseJunit } from "../junit.ts";
+import { findJunitFiles, parseJunit } from "../junit.ts";
 import { log } from "../util.ts";
 
 const JUNIT_DIR = process.env.JUNIT_DIR || "target/junit";
 
-/** Recursively list `*_test.xml` files under `dir`. Returns [] on any error. */
-function findJunitFiles(dir: string): string[] {
-  try {
-    return readdirSync(dir, { recursive: true })
-      .map((entry) => String(entry))
-      .filter((entry) => entry.endsWith("_test.xml"))
-      .map((entry) => join(dir, entry));
-  } catch {
-    return [];
-  }
-}
+/** hawk always names its JUnit files `*_test.xml`. */
+const selectHawkJunit = (entries: string[]): string[] =>
+  entries.filter((entry) => entry.endsWith("_test.xml"));
 
 /**
  * Normalize every JUnit file hawk wrote under `dir` into `NormalizedTest[]` —
@@ -35,7 +26,7 @@ function findJunitFiles(dir: string): string[] {
 export function normalizeBackendJunit(
   dir: string = JUNIT_DIR,
 ): NormalizedTest[] {
-  const files = findJunitFiles(dir);
+  const files = findJunitFiles(dir, selectHawkJunit);
   const failures = files.flatMap((file) => {
     try {
       return parseJunit(readFileSync(file, "utf8"));
