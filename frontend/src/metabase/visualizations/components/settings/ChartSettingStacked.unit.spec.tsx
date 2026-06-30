@@ -2,10 +2,11 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import type { Series } from "metabase-types/api";
 
 registerVisualizations();
 
-function getSeries(metrics) {
+function getSeries(metrics: string[]): Series {
   return [
     {
       card: {
@@ -77,10 +78,10 @@ function getSeries(metrics) {
         ],
       },
     },
-  ];
+  ] as unknown as Series;
 }
 
-const setup = (seriesMetrics) => {
+const setup = (seriesMetrics: string[]) => {
   return renderWithProviders(
     <QuestionChartSettings
       series={getSeries(seriesMetrics)}

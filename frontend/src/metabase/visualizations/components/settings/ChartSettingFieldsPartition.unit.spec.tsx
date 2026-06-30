@@ -1,16 +1,23 @@
 import { render, screen } from "__support__/ui";
+import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
+import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import { ChartSettingFieldsPartition } from "./ChartSettingFieldsPartition";
+
+const partitions: Partition[] = [
+  { name: "rows", title: "Rows", columnFilter: (x) => Boolean(x) },
+];
 
 describe("ChartSettingFieldsPartition", () => {
   it("should render empty state when value is undefined", () => {
     render(
       <ChartSettingFieldsPartition
-        partitions={[
-          { name: "rows", title: "Rows", columnFilter: (x) => Boolean(x) },
-        ]}
-        columns={[createMockColumn()]}
+        partitions={partitions}
+        columns={[createMockColumn() as RemappingHydratedDatasetColumn]}
+        getColumnTitle={(column) => column.display_name}
+        onChange={jest.fn()}
+        onShowWidget={jest.fn()}
       />,
     );
     expect(screen.getByText("Drag fields here")).toBeInTheDocument();
@@ -20,17 +27,17 @@ describe("ChartSettingFieldsPartition", () => {
     const fieldName = "my column";
     render(
       <ChartSettingFieldsPartition
-        partitions={[
-          { name: "rows", title: "Rows", columnFilter: (x) => Boolean(x) },
-        ]}
+        partitions={partitions}
         columns={[
           createMockColumn({
             name: fieldName,
             display_name: fieldName,
-          }),
+          }) as RemappingHydratedDatasetColumn,
         ]}
         getColumnTitle={(column) => column.display_name}
-        value={{ rows: [fieldName] }}
+        value={{ rows: [fieldName], columns: [], values: [] }}
+        onChange={jest.fn()}
+        onShowWidget={jest.fn()}
       />,
     );
     expect(screen.queryByText("Drag fields here")).not.toBeInTheDocument();
