@@ -8,6 +8,8 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.measures.test-util :as measures.tu]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -104,6 +106,32 @@
           (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
           (is (=? {:entity_type "table" :entity_local_id table-id}
                   (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id))))))))
+
+(deftest import-over-existing-row-updates-by-compound-key-test
+  (testing "importing over an existing row updates it in place via the full compound key, not entity_type alone"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                          :ai_context {:instructions "v1"}}]
+      (let [extracted (assoc-in (extract-for "card" card-id) [:ai_context :instructions] "v2")]
+        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+        (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id card-id))
+            "still one row (updated, not duplicated)")
+        (is (=? {:ai_context {:instructions "v2"}}
+                (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))
+
+(deftest disk-round-trip-card-context-test
+  (testing "a card-backed ai_context survives a real on-disk store/ingest/load (storage-path handles a non-table parent)"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                          :ai_context {:instructions "card guidance"}}]
+      (let [extracted (serdes/with-cache (extract-for "card" card-id))]
+        (ts/with-random-dump-dir [dump-dir "osi-card-"]
+          ;; store! exercises storage-path for a Card parent — the regression that used to throw.
+          (storage/store! [extracted] (storage.files/file-writer dump-dir))
+          (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
+          (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
+          (is (=? {:ai_context {:instructions "card guidance"}}
+                  (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))))))
 
 (deftest osi-ai-context-excluded-from-default-export-test
   (testing "OsiAiContext is kept out of the default export set"

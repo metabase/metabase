@@ -82,6 +82,12 @@
             "one canonical card row, fetched by either flavor")
         (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id 99))))
       (finally (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id 99))))
+  (testing "a re-PUT with the same ai_context is idempotent (a no-op update must not retry as a duplicate insert)"
+    (try
+      (mt/user-http-request :crowberto :put 200 "osi/ai-context/measure/77" {:ai_context {:instructions "same"}})
+      (is (=? {:entity_type "measure" :entity_local_id 77 :ai_context {:instructions "same"}}
+              (mt/user-http-request :crowberto :put 200 "osi/ai-context/measure/77" {:ai_context {:instructions "same"}})))
+      (finally (t2/delete! :model/OsiAiContext :entity_type "measure" :entity_local_id 77))))
   (testing "ai_context is required"
     (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1" {}))
   (testing "an over-long instructions string is rejected"

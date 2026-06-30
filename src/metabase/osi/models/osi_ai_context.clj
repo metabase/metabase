@@ -12,6 +12,7 @@
   ([[mirror/request-entity-sync!]]); they never touch the embedding service or the pgvector store
   themselves."
   (:require
+   [clojure.string :as str]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
@@ -123,12 +124,14 @@
         {:model "OsiAiContext" :id "ai_context"}))
 
 (defmethod serdes/storage-path "OsiAiContext" [entity _ctx]
-  ;; Nest the YAML next to its entity, the way field-user-settings hangs off its Field, so an ai_context
-  ;; file travels with the entity it describes rather than in a disconnected top-level directory.
-  (let [hierarchy  (serdes/path entity)
-        parent     (serdes/storage-path-prefixes (drop-last hierarchy))]
-    (update parent (dec (count parent))
-            (fn [segment] (update segment :label str "___aicontext")))))
+  ;; Store under a flat top-level directory rather than nesting next to the entity: serdes/storage-path-prefixes
+  ;; only knows how to nest under Database/Schema/Table/Field, so a Card/Measure/Segment parent would throw.
+  ;; The row's identity still lives in its nested generate-path (the on-disk :serdes/meta); this is only the
+  ;; file's location. The slug encodes the entity ref so files don't collide.
+  (let [ref-ids (map :id (pop (vec (serdes/path entity))))
+        ref     (str/join "-" ref-ids)]
+    [{:label "osi_ai_context"}
+     {:label (u/slugify ref {:unicode? true}) :key ref}]))
 
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
 ;; verbatim. The key columns are carried by the path, not as fields: `entity_local_id` is resolved from the
@@ -157,3 +160,13 @@
     (t2/select-one :model/OsiAiContext
                    :entity_type (entity-retrieval/normalize-entity-type entity_type)
                    :entity_local_id entity_local_id)))
+
+(defmethod serdes/load-update! "OsiAiContext"
+  [_model-name ingested local]
+  ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
+  ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
+  (t2/update! :model/OsiAiContext
+              :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)
+              ingested)
+  (t2/select-one :model/OsiAiContext
+                 :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)))
