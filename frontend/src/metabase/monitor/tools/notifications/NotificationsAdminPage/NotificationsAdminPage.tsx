@@ -4,7 +4,6 @@ import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
@@ -18,9 +17,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Flex, type SelectionState, Title } from "metabase/ui";
+import { Flex, type SelectionState, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   AdminNotification,
@@ -335,9 +335,9 @@ export const NotificationsAdminPage = ({
     })();
 
   return (
-    <SettingsPageWrapper pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
+    <Stack gap="lg" pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
       <Flex align="center" gap="sm">
-        <Title order={1}>{t`Alerts management`}</Title>
+        <MonitorHeaderTitle>{t`Alerts management`}</MonitorHeaderTitle>
       </Flex>
 
       <NotificationsTabs
@@ -430,6 +430,6 @@ export const NotificationsAdminPage = ({
       />
 
       {confirmContent}
-    </SettingsPageWrapper>
+    </Stack>
   );
 };

@@ -5,14 +5,12 @@ import reactAnsiStyle from "react-ansi-style";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Button, Flex, Icon, TextInput } from "metabase/ui";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Button, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
 
@@ -79,7 +77,8 @@ const LogsBase = ({
 
   return (
     <>
-      <SettingsPageWrapper title={t`Logs`}>
+      <Stack gap="lg">
+        <MonitorHeaderTitle>{t`Logs`}</MonitorHeaderTitle>
         <SettingsSection>
           <LogsContainer loading={!loaded} error={error}>
             <Flex align="center" gap="md" justify="space-between" mb="md">
@@ -159,7 +158,7 @@ const LogsBase = ({
             </AnsiLogs>
           </LogsContainer>
         </SettingsSection>
-      </SettingsPageWrapper>
+      </Stack>
 
       {
         // render 'children' so that the modals show up
