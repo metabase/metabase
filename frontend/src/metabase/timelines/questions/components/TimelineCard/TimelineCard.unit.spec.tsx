@@ -28,6 +28,48 @@ describe("TimelineCard", () => {
     expect(screen.queryByText("RC")).not.toBeInTheDocument();
   });
 
+  it("should expand when one of its events is selected", () => {
+    const event = createMockTimelineEvent({ id: 1, name: "RC" });
+    const props = getProps({
+      timeline: createMockTimeline({ name: "Releases", events: [event] }),
+      selectedEventIds: [1],
+    });
+
+    render(<TimelineCard {...props} />);
+    expect(screen.getByText("RC")).toBeInTheDocument();
+  });
+
+  it("should re-expand after a manual collapse when the same selection is reapplied", async () => {
+    const event = createMockTimelineEvent({ id: 1, name: "RC" });
+    const props = getProps({
+      timeline: createMockTimeline({ name: "Releases", events: [event] }),
+      selectedEventIds: [1],
+    });
+
+    const { rerender } = render(<TimelineCard {...props} />);
+    expect(screen.getByText("RC")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Releases"));
+    expect(screen.queryByText("RC")).not.toBeInTheDocument();
+
+    // reapplying the selection (a new array, as the reducer produces) re-expands
+    rerender(<TimelineCard {...props} selectedEventIds={[1]} />);
+    expect(screen.getByText("RC")).toBeInTheDocument();
+  });
+
+  it("should collapse a default-expanded card when another timeline's event is selected", () => {
+    const event = createMockTimelineEvent({ id: 1, name: "RC" });
+    const props = getProps({
+      timeline: createMockTimeline({ name: "Releases", events: [event] }),
+      isDefault: true,
+      // a selection exists, but it belongs to a different timeline
+      selectedEventIds: [999],
+    });
+
+    render(<TimelineCard {...props} />);
+    expect(screen.queryByText("RC")).not.toBeInTheDocument();
+  });
+
   it("should toggle visibility of the card", async () => {
     const props = getProps({
       timeline: createMockTimeline({

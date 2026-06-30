@@ -490,7 +490,7 @@ describe("scenarios > organization > timelines > question", () => {
         .should("be.visible");
     });
 
-    it("should collapse close events into a count chip and truncate the hover popover with 'See all'", () => {
+    it("should collapse close events into a count chip and focus the sidebar on the group from 'See all'", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
@@ -498,9 +498,12 @@ describe("scenarios > organization > timelines > question", () => {
           { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
           { name: "Gamma", timestamp: "2027-10-17T00:00:00Z" },
           { name: "Delta", timestamp: "2027-10-24T00:00:00Z" },
-          // a separate event outside the cluster, to verify filtering
-          { name: "Outsider", timestamp: "2028-01-15T00:00:00Z" },
         ],
+      });
+      // a second timeline that must be filtered out while the cluster is focused
+      H.createTimelineWithEvents({
+        timeline: { name: "Other" },
+        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -536,16 +539,79 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByText("See all").click();
       });
 
-      cy.log("'See all' opens the sidebar filtered to the clicked group");
+      cy.log("'See all' selects the cluster and focuses the sidebar on it");
+      H.timelineEventChip("4 events").should(
+        "have.attr",
+        "data-selected",
+        "true",
+      );
       timelineEventCard("Alpha").should("be.visible");
       timelineEventCard("Delta").should("be.visible");
+
+      cy.log("the unrelated timeline is filtered out of the focused list");
       cy.findByTestId("sidebar-content")
-        .findByText("Outsider")
+        .findByText("Other")
         .should("not.exist");
 
-      cy.log("the 'All events' link returns to the full list of events");
+      cy.log("'All events' restores the full list of timelines");
       cy.findByTestId("timeline-sidebar-show-all").click();
-      timelineEventCard("Outsider").should("be.visible");
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("be.visible");
+    });
+
+    it("should focus the sidebar on the group when a grouped chip is clicked directly", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "Alpha", timestamp: "2027-10-03T00:00:00Z" },
+          { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
+        ],
+      });
+      H.createTimelineWithEvents({
+        timeline: { name: "Other" },
+        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.log("clicking a grouped chip focuses the sidebar on its events");
+      H.timelineEventChip("2 events").should("be.visible").click();
+
+      timelineEventCard("Alpha").should("be.visible");
+      timelineEventCard("Beta").should("be.visible");
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("not.exist");
+    });
+
+    it("should select a single event and open the full sidebar when its chip is clicked", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-01-01T00:00:00Z" }],
+      });
+
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      H.timelineEventChip("RC1").should("be.visible").click();
+
+      cy.log("the sidebar opens (unfiltered) with the event selected");
+      H.timelineEventChip("RC1").should("have.attr", "data-selected", "true");
+      timelineEventCard("RC1").should("be.visible");
+      cy.findByTestId("timeline-sidebar-show-all").should("not.exist");
     });
 
     // TODO @nemanjaglumac 2026-04-17: Simplify or potentially remove this repro altogether!

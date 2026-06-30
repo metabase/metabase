@@ -7,6 +7,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventChip } from "./TimelineEventChip";
 import S from "./TimelineEventsBand.module.css";
@@ -18,7 +19,9 @@ interface TimelineEventsBandProps {
   timelineEventsModel: TimelineEventsModel | null;
   chartLayout: ChartLayout;
   xAxisIndex: number;
+  selectedTimelineEventIds?: TimelineEventId[];
   onOpenTimelines?: (eventIds?: number[]) => void;
+  onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
 }
 
 export const TimelineEventsBand = ({
@@ -27,7 +30,9 @@ export const TimelineEventsBand = ({
   timelineEventsModel,
   chartLayout,
   xAxisIndex,
+  selectedTimelineEventIds,
   onOpenTimelines,
+  onSelectTimelineEvents,
 }: TimelineEventsBandProps) => {
   // ECharts settles its layout asynchronously, so positions read from
   // `convertToPixel` can be stale right after an option/size change. Recompute
@@ -65,6 +70,7 @@ export const TimelineEventsBand = ({
       chartInstance,
       plotBounds: { left: plotLeft, right: plotRight },
       xAxisIndex,
+      selectedEventIds: selectedTimelineEventIds ?? [],
     });
     // `renderTick` intentionally re-derives positions after ECharts settles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,6 +80,7 @@ export const TimelineEventsBand = ({
     plotLeft,
     plotRight,
     xAxisIndex,
+    selectedTimelineEventIds,
     chartSize.width,
     chartSize.height,
     renderTick,
@@ -100,6 +107,7 @@ export const TimelineEventsBand = ({
           eventsGroup={eventsGroup}
           centerY={centerY}
           onOpenTimelines={onOpenTimelines}
+          onSelectTimelineEvents={onSelectTimelineEvents}
         />
       ))}
     </div>

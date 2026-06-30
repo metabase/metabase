@@ -44,7 +44,10 @@ const TimelineCard = ({
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
   const isEventSelected = events.some((e) => selectedEventIds.includes(e.id));
-  const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
+  const hasSelection = selectedEventIds.length > 0;
+  const [isExpanded, setIsExpanded] = useState(
+    hasSelection ? isEventSelected : Boolean(isDefault),
+  );
 
   const anyEventVisible = useMemo(
     () => events.some((event) => visibleEventIds.includes(event.id)),
@@ -78,10 +81,10 @@ const TimelineCard = ({
   );
 
   useEffect(() => {
-    if (isEventSelected) {
+    if (hasSelection) {
       setIsExpanded(isEventSelected);
     }
-  }, [isEventSelected, selectedEventIds]);
+  }, [hasSelection, isEventSelected, selectedEventIds]);
 
   return (
     <CardRoot>

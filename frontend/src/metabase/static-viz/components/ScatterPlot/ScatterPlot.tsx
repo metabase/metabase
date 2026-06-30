@@ -68,6 +68,8 @@ export function ScatterPlot({
     chartModel,
     chartLayout,
     false,
+    null,
+    [],
     settings,
     width,
     false,

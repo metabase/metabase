@@ -58,6 +58,8 @@ function CartesianChartInner(props: VisualizationProps) {
     canToggleSeriesVisibility,
     titleMenuItems,
     onOpenTimelines,
+    onSelectTimelineEvents,
+    selectedTimelineEventIds,
   } = props;
 
   const settings = useMemo(
@@ -222,7 +224,9 @@ function CartesianChartInner(props: VisualizationProps) {
             timelineEventsModel={timelineEventsModel}
             chartLayout={chartLayout}
             xAxisIndex={timelineEventsXAxisIndex}
+            selectedTimelineEventIds={selectedTimelineEventIds}
             onOpenTimelines={onOpenTimelines}
+            onSelectTimelineEvents={onSelectTimelineEvents}
           />
         </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>

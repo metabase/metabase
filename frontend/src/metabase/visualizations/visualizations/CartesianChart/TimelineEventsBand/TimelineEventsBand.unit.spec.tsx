@@ -49,6 +49,7 @@ const timelineEventsModel: TimelineEventsModel = [
 interface SetupOpts {
   chartInstance?: EChartsType;
   timelineEventsModel?: TimelineEventsModel | null;
+  selectedTimelineEventIds?: number[];
 }
 
 const setup = (opts: SetupOpts = {}) => {
@@ -70,6 +71,7 @@ const setup = (opts: SetupOpts = {}) => {
       timelineEventsModel={model}
       chartLayout={createChartLayout()}
       xAxisIndex={0}
+      selectedTimelineEventIds={opts.selectedTimelineEventIds}
     />,
   );
 };
@@ -79,6 +81,13 @@ describe("TimelineEventsBand", () => {
     setup();
     expect(screen.getByTestId("timeline-events-band")).toBeInTheDocument();
     expect(screen.getAllByTestId("timeline-event-chip")).toHaveLength(2);
+  });
+
+  it("marks the chip for a selected event group as selected", () => {
+    setup({ selectedTimelineEventIds: [2] });
+    const chips = screen.getAllByTestId("timeline-event-chip");
+    expect(chips[0]).toHaveAttribute("data-selected", "false");
+    expect(chips[1]).toHaveAttribute("data-selected", "true");
   });
 
   it("renders nothing without a chart instance", () => {

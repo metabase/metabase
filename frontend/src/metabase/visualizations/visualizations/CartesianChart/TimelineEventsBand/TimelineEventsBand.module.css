@@ -55,6 +55,11 @@
   background-color: var(--mb-color-background_surface-primary-hover);
 }
 
+.chipSelected {
+  color: var(--mb-color-text-brand);
+  border-color: var(--mb-color-text-brand);
+}
+
 .count {
   font-size: var(--mantine-font-size-xs);
   font-weight: bold;

@@ -28,11 +28,15 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import type { TimelineEventId } from "metabase-types/api";
 
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 import { getDisplaySeriesSettingsByDataKey } from "../model/series";
 import { getBarSeriesDataLabelKey } from "../model/util";
+import type { SplitPanelYExtent } from "../timeline-events/option";
+import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
+import type { TimelineEventsModel } from "../timeline-events/types";
 
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
@@ -153,6 +157,8 @@ export const ensureRoomForLabels = (
 export function buildGridAndSeriesOption(
   chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
+  timelineEventsModel: TimelineEventsModel | null,
+  selectedTimelineEventIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   dataSeriesOptions: EChartsSeriesOption[],
@@ -177,10 +183,20 @@ export function buildGridAndSeriesOption(
     ? remapTrendLinesToPanels(chartModel, visibleSeries)
     : getTrendLinesOption(chartModel);
 
+  const timelineEventsSeries = getTimelineSelectionSeries(
+    timelineEventsModel,
+    selectedTimelineEventIds,
+    chartLayout,
+    panelCount,
+    isSplitPanels,
+    renderingContext,
+  );
+
   const seriesOption = [
     dataSeriesOptions,
     goalSeriesOption,
     trendSeriesOption,
+    timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 
   const grid: GridOption | GridOption[] = isSplitPanels
@@ -207,6 +223,8 @@ export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   chartLayout: ChartLayout,
   hasTimelineEvents: boolean,
+  timelineEventsModel: TimelineEventsModel | null,
+  selectedTimelineEventIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isAnimated: boolean,
@@ -225,6 +243,8 @@ export const getCartesianChartOption = (
   const { grid, seriesOption, splitPanelOverrides } = buildGridAndSeriesOption(
     chartModel,
     chartLayout,
+    timelineEventsModel,
+    selectedTimelineEventIds,
     settings,
     renderingContext,
     dataSeriesOptions,
@@ -293,6 +313,52 @@ export const getCartesianChartOption = (
     series: seriesOption,
   };
 };
+
+function getTimelineSelectionSeries(
+  timelineEventsModel: TimelineEventsModel | null,
+  selectedTimelineEventIds: TimelineEventId[],
+  chartLayout: ChartLayout,
+  panelCount: number,
+  isSplitPanels: boolean,
+  renderingContext: RenderingContext,
+): EChartsSeriesOption | null {
+  if (timelineEventsModel == null) {
+    return null;
+  }
+
+  const splitPanelYExtent = isSplitPanels
+    ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
+    : undefined;
+
+  const series = getTimelineEventsSelectionSeries(
+    timelineEventsModel,
+    selectedTimelineEventIds,
+    renderingContext,
+    splitPanelYExtent,
+  );
+
+  if (series == null) {
+    return null;
+  }
+
+  return isSplitPanels
+    ? { ...series, xAxisIndex: panelCount - 1, yAxisIndex: panelCount - 1 }
+    : series;
+}
+
+export function getSplitPanelTimelineEventsYExtent(
+  chartLayout: ChartLayout,
+  panelCount: number,
+): SplitPanelYExtent {
+  const panelHeight = chartLayout.panelHeight ?? 0;
+  return {
+    topY: chartLayout.padding.top,
+    bottomY:
+      chartLayout.padding.top +
+      (panelCount - 1) * (panelHeight + chartLayout.panelGap) +
+      panelHeight,
+  };
+}
 
 export function buildSplitPanelGrid(
   chartLayout: ChartLayout,

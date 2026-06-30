@@ -42,6 +42,8 @@ export function WaterfallChart({
     width,
     chartLayout,
     false,
+    null,
+    [],
     settings,
     false,
     renderingContext,

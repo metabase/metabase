@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { HoverCard, Icon, UnstyledButton } from "metabase/ui";
 import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
+import type { TimelineEvent } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
 import { TimelineEventRow, TimelineEventsList } from "./TimelineEventsList";
@@ -19,14 +21,16 @@ interface TimelineEventChipProps {
   eventsGroup: PositionedTimelineEventGroup;
   centerY: number;
   onOpenTimelines?: (eventIds?: number[]) => void;
+  onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
 }
 
 export const TimelineEventChip = ({
   eventsGroup,
   centerY,
   onOpenTimelines,
+  onSelectTimelineEvents,
 }: TimelineEventChipProps) => {
-  const { group, x, iconName, count } = eventsGroup;
+  const { group, x, iconName, count, isSelected } = eventsGroup;
   const { events } = group;
 
   const isSingleEvent = events.length === 1;
@@ -34,7 +38,14 @@ export const TimelineEventChip = ({
   const visibleEvents = hasMoreThanMax
     ? events.slice(0, MAX_VISIBLE_EVENTS)
     : events;
-  const showSeeAll = hasMoreThanMax && onOpenTimelines != null;
+
+  const canSelect = onSelectTimelineEvents != null;
+  const handleSelect = () => {
+    onOpenTimelines?.(isSingleEvent ? undefined : events.map((e) => e.id));
+    onSelectTimelineEvents?.(events);
+  };
+
+  const showSeeAll = hasMoreThanMax && canSelect;
 
   return (
     <HoverCard
@@ -47,10 +58,12 @@ export const TimelineEventChip = ({
     >
       <HoverCard.Target>
         <UnstyledButton
-          className={S.chip}
+          className={cx(S.chip, isSelected && S.chipSelected)}
           style={{ left: x, top: centerY }}
           data-testid="timeline-event-chip"
+          data-selected={isSelected}
           aria-label={getChipLabel(eventsGroup)}
+          onClick={canSelect ? handleSelect : undefined}
         >
           {count > 1 ? (
             <span className={S.count}>{count}</span>
@@ -71,12 +84,7 @@ export const TimelineEventChip = ({
                 <TimelineEventsList events={visibleEvents} />
               </div>
               {showSeeAll && (
-                <UnstyledButton
-                  className={S.seeAll}
-                  onClick={() =>
-                    onOpenTimelines?.(events.map((event) => event.id))
-                  }
-                >
+                <UnstyledButton className={S.seeAll} onClick={handleSelect}>
                   {t`See all`}
                 </UnstyledButton>
               )}

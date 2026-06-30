@@ -1,16 +1,21 @@
-import type { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { getUiControls } from "metabase/query_builder/selectors";
+import {
+  getTimeseriesDataInterval,
+  getUiControls,
+} from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { onOpenTimelines } from "metabase/redux/query-builder";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
 import { Box, Button, Icon } from "metabase/ui";
+import type { CartesianChartDateTimeAbsoluteUnit } from "metabase/visualizations/echarts/cartesian/model/types";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type Question from "metabase-lib/v1/Question";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { DatetimeUnit, Timeline, TimelineEvent } from "metabase-types/api";
 
 export interface TimelineSidebarProps {
   question: Question;
@@ -41,11 +46,24 @@ export const TimelineSidebar = ({
 }: TimelineSidebarProps) => {
   const dispatch = useDispatch();
   const { focusedTimelineEventIds } = useSelector(getUiControls);
+  const dataInterval = useSelector(getTimeseriesDataInterval);
 
   const displayedTimelines = useMemo(
     () => getFocusedTimelines(timelines, focusedTimelineEventIds),
     [timelines, focusedTimelineEventIds],
   );
+
+  const focusedXDomain = useMemo(
+    () =>
+      focusedTimelineEventIds != null
+        ? getEventsXDomain(displayedTimelines)
+        : undefined,
+    [focusedTimelineEventIds, displayedTimelines],
+  );
+
+  const title = focusedXDomain
+    ? formatTitle(focusedXDomain, toDatetimeUnit(dataInterval?.unit))
+    : formatTitle(xDomain);
 
   const handleShowAllEvents = useCallback(() => {
     dispatch(onOpenTimelines());
@@ -81,7 +99,7 @@ export const TimelineSidebar = ({
   );
 
   return (
-    <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
+    <SidebarContent title={title} onClose={onClose}>
       {focusedTimelineEventIds != null && (
         <Box mx="lg" mb="sm">
           <Button
@@ -129,12 +147,45 @@ export const getFocusedTimelines = (
     .filter((timeline) => timeline.events.length > 0);
 };
 
-const formatTitle = (xDomain?: [Dayjs, Dayjs]) => {
-  return xDomain
-    ? t`Events between ${formatDate(xDomain[0])} and ${formatDate(xDomain[1])}`
-    : t`Events`;
+export const getEventsXDomain = (
+  timelines: Timeline[],
+): [Dayjs, Dayjs] | undefined => {
+  const timestamps = timelines
+    .flatMap((timeline) => timeline.events ?? [])
+    .map((event) => dayjs(event.timestamp));
+
+  if (timestamps.length === 0) {
+    return undefined;
+  }
+
+  const min = timestamps.reduce((a, b) => (b.isBefore(a) ? b : a));
+  const max = timestamps.reduce((a, b) => (b.isAfter(a) ? b : a));
+  return [min, max];
 };
 
-const formatDate = (date: Dayjs) => {
-  return date.format("ll");
+const toDatetimeUnit = (
+  unit?: CartesianChartDateTimeAbsoluteUnit,
+): DatetimeUnit | undefined =>
+  unit == null || unit === "second" || unit === "ms" ? undefined : unit;
+
+const isPeriodUnit = (unit?: DatetimeUnit) =>
+  unit === "week" || unit === "month" || unit === "quarter" || unit === "year";
+
+export const formatTitle = (xDomain?: [Dayjs, Dayjs], unit?: DatetimeUnit) => {
+  if (!xDomain) {
+    return t`Events`;
+  }
+  const startLabel = formatDate(xDomain[0], unit);
+  const endLabel = formatDate(xDomain[1], unit);
+  if (startLabel !== endLabel) {
+    return t`Events between ${startLabel} and ${endLabel}`;
+  }
+
+  return isPeriodUnit(unit)
+    ? t`Events in ${startLabel}`
+    : t`Events on ${startLabel}`;
+};
+
+const formatDate = (date: Dayjs, unit?: DatetimeUnit) => {
+  return unit ? formatDateTimeWithUnit(date, unit) : date.format("ll");
 };

@@ -58,6 +58,7 @@ export const CHART_STYLE = {
     height: TIMELINE_BAND_RESERVED_HEIGHT,
     minDistance: TIMELINE_EVENTS_BAND.chipWidth + TIMELINE_EVENTS_BAND.chipGap, // Min center-to-center distance before chips merge
     countLabelMargin: 4,
+    selectionLineWidth: 2,
   },
   goalLine: {
     label: {

@@ -4,7 +4,11 @@ import type {
   TimelineEventGroup,
   TimelineEventsModel,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type { IconName, TimelineIcon } from "metabase-types/api";
+import type {
+  IconName,
+  TimelineEventId,
+  TimelineIcon,
+} from "metabase-types/api";
 
 export const TIMELINE_ICON_TO_ICON_NAME = {
   info: "info",
@@ -24,6 +28,7 @@ export interface PositionedTimelineEventGroup {
   x: number;
   iconName: IconName;
   count: number;
+  isSelected: boolean;
 }
 
 export const getTimelineEventGroupIconName = (
@@ -35,6 +40,7 @@ interface PositioningInput {
   chartInstance: EChartsType;
   plotBounds: { left: number; right: number };
   xAxisIndex: number;
+  selectedEventIds: TimelineEventId[];
 }
 
 export const getPositionedTimelineEventGroups = ({
@@ -42,6 +48,7 @@ export const getPositionedTimelineEventGroups = ({
   chartInstance,
   plotBounds,
   xAxisIndex,
+  selectedEventIds,
 }: PositioningInput): PositionedTimelineEventGroup[] => {
   const { left, right } = plotBounds;
 
@@ -59,6 +66,9 @@ export const getPositionedTimelineEventGroups = ({
         x,
         iconName: getTimelineEventGroupIconName(group),
         count: group.events.length,
+        isSelected: group.events.some((event) =>
+          selectedEventIds.includes(event.id),
+        ),
       },
     ];
   });

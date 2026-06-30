@@ -62,6 +62,7 @@ describe("TimelineEventsBand utils", () => {
         chartInstance,
         plotBounds: BOUNDS,
         xAxisIndex: 0,
+        selectedEventIds: [],
       });
 
       expect(positioned).toHaveLength(2);
@@ -77,6 +78,28 @@ describe("TimelineEventsBand utils", () => {
       });
     });
 
+    it("marks a group as selected when one of its events is selected", () => {
+      const chartInstance = createChartInstance({
+        "2025-01-01T00:00:00Z": 120,
+        "2025-02-01T00:00:00Z": 300,
+        "2025-03-01T00:00:00Z": 200,
+      });
+
+      const positioned = getPositionedTimelineEventGroups({
+        timelineEventsModel,
+        chartInstance,
+        plotBounds: BOUNDS,
+        xAxisIndex: 0,
+        selectedEventIds: [3],
+      });
+
+      expect(positioned.map((group) => group.isSelected)).toEqual([
+        false,
+        true,
+        false,
+      ]);
+    });
+
     it("drops groups whose pixel position is NaN", () => {
       const chartInstance = createChartInstance({});
 
@@ -85,6 +108,7 @@ describe("TimelineEventsBand utils", () => {
         chartInstance,
         plotBounds: BOUNDS,
         xAxisIndex: 0,
+        selectedEventIds: [],
       });
 
       expect(positioned).toHaveLength(0);
@@ -102,6 +126,7 @@ describe("TimelineEventsBand utils", () => {
         chartInstance,
         plotBounds: BOUNDS,
         xAxisIndex: 0,
+        selectedEventIds: [],
       });
 
       expect(positioned).toHaveLength(1);

@@ -16,6 +16,7 @@ const singleGroup: PositionedTimelineEventGroup = {
   x: 100,
   iconName: "cloud",
   count: 1,
+  isSelected: false,
 };
 
 const twoGroup: PositionedTimelineEventGroup = {
@@ -29,6 +30,7 @@ const twoGroup: PositionedTimelineEventGroup = {
   x: 200,
   iconName: "star",
   count: 2,
+  isSelected: false,
 };
 
 const manyGroup: PositionedTimelineEventGroup = {
@@ -44,34 +46,47 @@ const manyGroup: PositionedTimelineEventGroup = {
   x: 300,
   iconName: "star",
   count: 4,
+  isSelected: false,
 };
 
 interface SetupOpts {
   eventsGroup?: PositionedTimelineEventGroup;
-  withOpenTimelines?: boolean;
+  withCallbacks?: boolean;
 }
 
 const setup = ({
   eventsGroup = singleGroup,
-  withOpenTimelines = true,
+  withCallbacks = true,
 }: SetupOpts = {}) => {
   const onOpenTimelines = jest.fn();
+  const onSelectTimelineEvents = jest.fn();
 
   renderWithProviders(
     <TimelineEventChip
       eventsGroup={eventsGroup}
       centerY={120}
-      onOpenTimelines={withOpenTimelines ? onOpenTimelines : undefined}
+      onOpenTimelines={withCallbacks ? onOpenTimelines : undefined}
+      onSelectTimelineEvents={
+        withCallbacks ? onSelectTimelineEvents : undefined
+      }
     />,
   );
 
-  return { onOpenTimelines };
+  return { onOpenTimelines, onSelectTimelineEvents };
 };
 
 describe("TimelineEventChip", () => {
   it("renders the event count for a cluster", () => {
     setup({ eventsGroup: manyGroup });
     expect(screen.getByTestId("timeline-event-chip")).toHaveTextContent("4");
+  });
+
+  it("marks the chip as selected when the group is selected", () => {
+    setup({ eventsGroup: { ...singleGroup, isSelected: true } });
+    expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
   });
 
   it("opens a single-event popover on hover without a 'See all' link", async () => {
@@ -104,18 +119,46 @@ describe("TimelineEventChip", () => {
     expect(screen.getByText("See all")).toBeInTheDocument();
   });
 
-  it("calls onOpenTimelines from the 'See all' action", async () => {
-    const { onOpenTimelines } = setup({ eventsGroup: manyGroup });
+  it("opens the full sidebar (no focus) and selects the event when a single chip is clicked", async () => {
+    const { onOpenTimelines, onSelectTimelineEvents } = setup({
+      eventsGroup: singleGroup,
+    });
+
+    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+
+    expect(onOpenTimelines).toHaveBeenCalledWith(undefined);
+    expect(onSelectTimelineEvents).toHaveBeenCalledWith(
+      singleGroup.group.events,
+    );
+  });
+
+  it("focuses the sidebar on the group and selects its events when a grouped chip is clicked", async () => {
+    const { onOpenTimelines, onSelectTimelineEvents } = setup({
+      eventsGroup: twoGroup,
+    });
+
+    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+
+    expect(onOpenTimelines).toHaveBeenCalledWith([2, 3]);
+    expect(onSelectTimelineEvents).toHaveBeenCalledWith(twoGroup.group.events);
+  });
+
+  it("focuses the sidebar on the group and selects its events from 'See all'", async () => {
+    const { onOpenTimelines, onSelectTimelineEvents } = setup({
+      eventsGroup: manyGroup,
+    });
 
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
     await userEvent.click(await screen.findByText("See all"));
 
-    expect(onOpenTimelines).toHaveBeenCalled();
+    expect(onOpenTimelines).toHaveBeenCalledWith([4, 5, 6, 7]);
+    expect(onSelectTimelineEvents).toHaveBeenCalledWith(manyGroup.group.events);
   });
 
-  it("hides 'See all' when onOpenTimelines is not provided", async () => {
-    setup({ eventsGroup: manyGroup, withOpenTimelines: false });
+  it("hides 'See all' and does not select in degraded contexts", async () => {
+    setup({ eventsGroup: manyGroup, withCallbacks: false });
 
+    await userEvent.click(screen.getByTestId("timeline-event-chip"));
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
     expect(await screen.findByText("Many 1")).toBeInTheDocument();
