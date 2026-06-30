@@ -678,13 +678,11 @@
                               (is (some? checkpoint) "Checkpoint should be updated"))))))))))))))))
 
 (defn- incremental-index-test-drivers
-  "Index-supporting drivers exercised by the incremental index test. The general incremental suite excludes
-  redshift/clickhouse/sqlserver, but sqlserver's incremental append (compile-insert) and index DDL are both the
-  standard paths, so the index feature is covered here even though the rest of the suite still skips it."
+  "Index-supporting drivers that also run incremental transforms (effectively postgres today; the incremental suite
+  excludes redshift/clickhouse/sqlserver -- e.g. sqlserver's SELECT INTO preserves the source IDENTITY column, so the
+  append INSERT...SELECT fails without IDENTITY_INSERT)."
   []
-  (let [index-drivers (index-util/index-test-drivers)]
-    (cond-> (into #{} (filter index-drivers) (test-drivers))
-      (contains? index-drivers :sqlserver) (conj :sqlserver))))
+  (into #{} (filter (index-util/index-test-drivers)) (test-drivers)))
 
 (deftest ^:synchronized ^:mb/transforms-python-test declared-indexes-on-incremental-transform-test
   (testing "incremental: the first (full) run creates the target's declared indexes; an append run preserves them"
