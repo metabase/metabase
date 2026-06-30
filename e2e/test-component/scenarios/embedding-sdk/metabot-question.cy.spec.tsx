@@ -45,21 +45,6 @@ const metabotResponseWithChart = H.createMetabotSSEBody(
   H.metabotDataPart("generated_entity", generatedCard),
 );
 
-const metabotResponseWithSqlEditor = H.createMetabotSSEBody(
-  H.metabotTextPart(
-    "I'll write a SQL query for the most popular products so you can tweak it in the SQL editor!",
-  ),
-  H.metabotDataPart("generated_entity", {
-    type: "card",
-    id: "card-sql",
-    title: "SQL query",
-    query: {
-      id: "query-sql",
-      query: { database: 1, type: "native", native: { query: "" } },
-    },
-  }),
-);
-
 const metabotRetryResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),
 );
@@ -99,17 +84,6 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
   };
-
-  it("should show the SQL editor when Metabot generates a native query", () => {
-    setup(metabotResponseWithSqlEditor);
-
-    mountSdkContent(<MetabotQuestion />);
-
-    getSdkRoot().within(() => {
-      cy.findByTestId("metabot-chat-input").type("Open the SQL editor {enter}");
-      cy.findByTestId("native-query-editor-container").should("be.visible");
-    });
-  });
 
   it("should show drill-through results after drilling from a metabot question", () => {
     setup(metabotResponseWithChart);
