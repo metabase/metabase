@@ -1934,9 +1934,11 @@
   metric is NOT inherited there, so deferring here would leave a bare foreign field unattributed
   and trade the clean `:no-fk-path` error for an opaque execution failure.
 
-  Portable metric clause shape: `[\"metric\" {} \"<entity-id>\"]`. Best-effort: any metric that
-  can't be resolved contributes no tables (returns an empty set), so unrelated failures still
-  surface their normal errors downstream."
+  Portable metric clause shape: `[\"metric\" {} \"<entity-id>\"]`. Direct aggregation entries only
+  (a metric nested inside an expression is not scanned) - matching
+  [[metabase.metabot.tools.construct/aggregation-metric-ids]] on the construct side. Best-effort:
+  any metric that can't be resolved contributes no tables (returns an empty set), so unrelated
+  failures still surface their normal errors downstream."
   [stage mp import-resolver source-table-id]
   (into #{}
         (comp
