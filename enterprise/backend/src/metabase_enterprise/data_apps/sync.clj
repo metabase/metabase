@@ -27,8 +27,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:const max-bundle-bytes
-  "Cap on a synced bundle's size. 5 MiB matches the custom-viz cap."
-  (* 5 1024 1024))
+  "Cap on a synced bundle's size (10 MiB)."
+  (* 10 1024 1024))
 
 (defn- bytes-hash ^String [^bytes b]
   (let [^MessageDigest md (MessageDigest/getInstance "SHA-256")]
