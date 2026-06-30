@@ -68,7 +68,8 @@
                            shared/*profile-id* :nlq]
                    (charts/edit-chart-tool {:chart_id         "c-1"
                                             :new_viz_settings {:chart_type "pie"}
-                                            :title            "Orders by month"}))
+                                            :title            "Orders by month"
+                                            :description      "Monthly count of orders."}))
           parts  (:data-parts result)
           entity (:data (first parts))]
       (is (= 1 (count parts)))
