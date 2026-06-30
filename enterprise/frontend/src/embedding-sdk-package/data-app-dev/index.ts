@@ -8,6 +8,7 @@ import {
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { buildConnectSrcCsp, readAllowedHosts } from "./config/dev-connect-src";
+import { dataAppEnvPrefix } from "./config/env-prefix";
 import { findEnvRoot } from "./config/find-env-root";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 
@@ -37,10 +38,9 @@ function dataAppVitePlugin(): PluginOption[] {
       // needs the mode, which is only known here in the `config` hook.
       config: (_config: UserConfig, env: ConfigEnv): UserConfig => ({
         envDir,
-        // Expose `DATA_APP_*` env vars to `import.meta.env` in the dev preview
-        // ONLY. Never in `vite build`, or the app's `.env.local` secrets (the dev
-        // `DATA_APP_MB_API_KEY`) would be inlined into the shipped `dist/index.js`.
-        envPrefix: env.command === "serve" ? ["DATA_APP_"] : undefined,
+        // Dev preview only — keeps `.env.local` secrets out of prod builds. See
+        // `dataAppEnvPrefix`.
+        envPrefix: dataAppEnvPrefix(env.command),
         // The dev plugin serves a synthetic index.html, so there's no file on
         // disk for Vite's default HTML/SPA middleware to find.
         appType: "custom",
