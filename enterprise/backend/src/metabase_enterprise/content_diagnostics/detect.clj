@@ -8,6 +8,7 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.content-diagnostics.detect.slow :as detect.slow]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
    ;; sanctioned export: find-candidates is the stale module's public staleness-rule entry point
@@ -24,7 +25,9 @@
   "Content Diagnostics entity-types → their Toucan models. Single source of truth: the API's display
   hydration and the scan's candidate→finding mapping both derive from this (inverse below)."
   {:card      :model/Card
-   :dashboard :model/Dashboard})
+   :dashboard :model/Dashboard
+   :document  :model/Document
+   :transform :model/Transform})
 
 (def ^:private model->entity-type
   "Inverse of [[entity-type->model]] — `find-candidates` returns `:model` keywords like `:model/Card`."
@@ -59,7 +62,8 @@
   returning finding maps. Declaring the types (rather than inferring them from a scan's output) is what
   lets post-scan invalidation know its supersession scope even when a scan emits **zero** rows — i.e. an
   all-clean scan still resolves the previous scan's findings."
-  [{:finding-types #{:stale} :run stale-checker}])
+  [{:finding-types #{:stale} :run stale-checker}
+   {:finding-types #{:slow}  :run detect.slow/slow-checker}])
 
 (defn covered-finding-types
   "The set of finding-types the registered checkers own — the supersession scope for post-scan invalidation."
@@ -80,11 +84,14 @@
 ;;; ----------------------------------------------- scan ------------------------------------------------
 
 (defn- count-scannable
-  "Size of the candidate universe the checkers swept (non-archived Cards + Dashboards) — the denominator
-  for the findings/entities topline."
+  "Size of the candidate universe the checkers swept — the denominator for the findings/entities topline.
+  Counts every scannable entity type: non-archived Cards/Dashboards/Documents plus all Transforms
+  (transforms have no archived tier — D7)."
   []
   (+ (t2/count :model/Card :archived false)
-     (t2/count :model/Dashboard :archived false)))
+     (t2/count :model/Dashboard :archived false)
+     (t2/count :model/Document :archived false)
+     (t2/count :model/Transform)))
 
 (defn- scope-collection-id-lookup
   "Batched `{[entity-type entity-id] → collection_id}` for the findings' entities — **one** query per

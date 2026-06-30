@@ -11,3 +11,21 @@
   :type       :positive-integer
   :export?    false
   :doc        false)
+
+(defsetting slow-card-threshold-seconds
+  (deferred-tru "Cards whose mean execution time exceeds this many seconds are flagged slow by the Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    15
+  :type       :positive-integer
+  :export?    false
+  :doc        false)
+
+(defsetting slow-transform-threshold-seconds
+  (deferred-tru "Transforms whose latest successful run exceeds this many seconds are flagged slow by the Content Diagnostics.")
+  :encryption :no
+  :visibility :admin
+  :default    300
+  :type       :positive-integer
+  :export?    false
+  :doc        false)
