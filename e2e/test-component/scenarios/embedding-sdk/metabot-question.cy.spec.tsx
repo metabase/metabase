@@ -35,6 +35,14 @@ const metabotResponseWithNavigateTo = `${metabotResponse}
 
 const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
 
+const sqlEditorPath = `/question#${btoa(
+  JSON.stringify({
+    dataset_query: { database: 1, type: "native", native: { query: "" } },
+  }),
+)}`;
+const metabotResponseWithSqlEditor = `0:"Opening the SQL editor for you."
+2:{"type":"navigate_to","version":1,"value":"${sqlEditorPath}"}`;
+
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
     signInAsAdminAndEnableEmbeddingSdk();
@@ -70,6 +78,17 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
   };
+
+  it("should show the SQL editor when Metabot navigates to the SQL editor page", () => {
+    setup(metabotResponseWithSqlEditor);
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-chat-input").type("Open the SQL editor {enter}");
+      cy.findByTestId("native-query-editor-container").should("be.visible");
+    });
+  });
 
   it("should show drill-through results after drilling from a metabot question", () => {
     setup(metabotResponseWithNavigateTo);
