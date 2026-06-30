@@ -227,25 +227,31 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
           {sections.map((section) => {
             const isSelected = activeSection === section.id;
             return (
-              <button
+              <Tooltip
                 key={section.id}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                aria-label={section.label}
-                className={cx(S.railBtn, { [S.selected]: isSelected })}
-                onClick={() => {
-                  setActiveSection(section.id);
-                  const target = defaultPaths[section.id];
-                  if (target) {
-                    pinSection(section.id);
-                    dispatch(push(target));
-                  }
-                }}
+                label={section.label}
+                openDelay={1000}
+                disabled={isSelected}
               >
-                <FixedSizeIcon name={section.icon} />
-                <span className={S.railLabel}>{section.label}</span>
-              </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  aria-label={section.label}
+                  className={cx(S.railBtn, { [S.selected]: isSelected })}
+                  onClick={() => {
+                    setActiveSection(section.id);
+                    const target = defaultPaths[section.id];
+                    if (target) {
+                      pinSection(section.id);
+                      dispatch(push(target));
+                    }
+                  }}
+                >
+                  <FixedSizeIcon name={section.icon} />
+                  <span className={S.railLabel}>{section.label}</span>
+                </button>
+              </Tooltip>
             );
           })}
         </Box>

@@ -73,8 +73,7 @@
     opacity 200ms ease;
 }
 
-.railBtn.selected .railLabel,
-.railBtn:hover .railLabel {
+.railBtn.selected .railLabel {
   max-width: 10rem;
   margin-left: 0.375rem;
   opacity: 1;
