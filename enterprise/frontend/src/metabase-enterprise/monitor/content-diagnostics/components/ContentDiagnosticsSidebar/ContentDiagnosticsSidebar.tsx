@@ -20,6 +20,7 @@ import type { ContentDiagnosticsFinding } from "metabase-types/api";
 
 import {
   getBreadcrumbLinks,
+  getEntityIcon,
   getEntityName,
   getEntityTypeLabel,
   getEntityUrl,
@@ -116,9 +117,12 @@ function SidebarHeader({
       justify="space-between"
       data-testid="content-diagnostics-sidebar-header"
     >
-      <Box className={CS.textWrap} fz="h3" fw="bold" lh="h3">
-        {getEntityName(finding)}
-      </Box>
+      <Group gap="sm" wrap="nowrap" align="center" miw={0}>
+        <FixedSizeIcon name={getEntityIcon(finding.entity_type)} />
+        <Box className={CS.textWrap} fz="h3" fw="bold" lh="h3">
+          {getEntityName(finding)}
+        </Box>
+      </Group>
       <Group gap="xs" wrap="nowrap">
         <Tooltip label={viewLabel} openDelay={TOOLTIP_OPEN_DELAY_MS}>
           <ActionIcon

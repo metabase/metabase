@@ -86,38 +86,32 @@ function getCollectionBreadcrumbUrl(
   return Urls.collection({ id: entry.id, name: entry.name });
 }
 
+// Breadcrumb for the finding's location — the collection path only (ancestors →
+// parent collection). The entity itself is the sidebar title, so it is not
+// repeated as a trailing breadcrumb link.
 export function getBreadcrumbLinks(
   finding: ContentDiagnosticsFinding,
 ): ContentDiagnosticsBreadcrumbLink[] {
-  const collectionLinks =
-    finding.details.collection == null
-      ? [
-          {
-            id: "root",
-            label: t`Our analytics`,
-            url: Urls.collection(),
-            icon: "folder" as const,
-          },
-        ]
-      : [
-          ...finding.details.collection.effective_ancestors,
-          finding.details.collection,
-        ].map((entry, index) => ({
-          id: String(entry.id),
-          label: entry.name,
-          url: getCollectionBreadcrumbUrl(entry),
-          icon: index === 0 ? ("folder" as const) : undefined,
-        }));
+  if (finding.details.collection == null) {
+    return [
+      {
+        id: "root",
+        label: t`Our analytics`,
+        url: Urls.collection(),
+        icon: "folder" as const,
+      },
+    ];
+  }
 
   return [
-    ...collectionLinks,
-    {
-      id: `${finding.entity_type}-${finding.entity_id}`,
-      label: getEntityName(finding),
-      url: getEntityUrl(finding),
-      icon: getEntityIcon(finding.entity_type),
-    },
-  ];
+    ...finding.details.collection.effective_ancestors,
+    finding.details.collection,
+  ].map((entry, index) => ({
+    id: String(entry.id),
+    label: entry.name,
+    url: getCollectionBreadcrumbUrl(entry),
+    icon: index === 0 ? ("folder" as const) : undefined,
+  }));
 }
 
 export function getUserName(user: ContentDiagnosticsUser | null): string {

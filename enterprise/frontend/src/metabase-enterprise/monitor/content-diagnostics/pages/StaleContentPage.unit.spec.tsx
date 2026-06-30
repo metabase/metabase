@@ -182,6 +182,20 @@ describe("StaleContentPage", () => {
         name: "Revenue by category",
       }),
     ).not.toBeInTheDocument();
+    // Breadcrumbs show the parent collection path only — not the entity itself.
+    const locationRegion = within(sidebarRegion).getByRole("region", {
+      name: "Location",
+    });
+    expect(
+      within(locationRegion).getByRole("link", {
+        name: "Executive dashboards",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(locationRegion).queryByRole("link", {
+        name: "Revenue by category",
+      }),
+    ).not.toBeInTheDocument();
     expect(sidebarRegion).toHaveTextContent("Our analytics");
     expect(sidebarRegion).toHaveTextContent("Executive dashboards");
     expect(sidebarRegion).toHaveTextContent(
