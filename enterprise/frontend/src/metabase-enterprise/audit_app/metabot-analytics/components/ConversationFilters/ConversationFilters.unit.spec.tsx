@@ -86,6 +86,40 @@ describe("ConversationFilters date dropdown", () => {
     expect(labels).not.toContain("Previous 12 months");
   });
 
+  describe("30-day-minimum boundary days (EMB-2040)", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it.each([
+      { label: "May 1", frozenDate: "2026-05-01T12:00:00" }, // day after 30-day April
+      { label: "Jul 1", frozenDate: "2026-07-01T12:00:00" }, // day after 30-day June
+      { label: "Oct 1", frozenDate: "2026-10-01T12:00:00" }, // day after 30-day September
+      { label: "Dec 1", frozenDate: "2026-12-01T12:00:00" }, // day after 30-day November
+    ])("hides every multi-month shortcut on $label", async ({ frozenDate }) => {
+      jest.useFakeTimers({
+        advanceTimers: true,
+      });
+      jest.setSystemTime(new Date(frozenDate));
+
+      setup({ retentionDays: 30 });
+      const labels = await getDropdownLabels();
+      expect(labels).toEqual(
+        expect.arrayContaining([
+          "Today",
+          "Yesterday",
+          "Last 7 days",
+          "Last 30 days",
+          "Fixed date range…",
+          "Relative date range…",
+        ]),
+      );
+      expect(labels).not.toContain("Previous month");
+      expect(labels).not.toContain("Previous 3 months");
+      expect(labels).not.toContain("Previous 12 months");
+    });
+  });
+
   it("shows every shortcut when retention is infinite", async () => {
     setup({ retentionDays: null });
     const labels = await getDropdownLabels();

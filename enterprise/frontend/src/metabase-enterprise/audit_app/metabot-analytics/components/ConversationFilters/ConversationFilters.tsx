@@ -72,7 +72,7 @@ function ConversationDateFilter({
   const data = useMemo(() => {
     const withinRetention = (item: { value: string }) =>
       !retentionCutoff ||
-      !getShortcutStartDate(item.value)?.isBefore(retentionCutoff);
+      getShortcutStartDate(item.value)?.isAfter(retentionCutoff);
 
     return [
       {
