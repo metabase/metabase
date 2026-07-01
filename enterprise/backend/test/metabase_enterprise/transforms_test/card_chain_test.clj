@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.transforms.test-run.card-chain-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-test.card-chain-test
   "End-to-end tests for the card-target chained test-run orchestrator
   ([[metabase-enterprise.transforms-test.chain/run-card-chain-test!]]).
 

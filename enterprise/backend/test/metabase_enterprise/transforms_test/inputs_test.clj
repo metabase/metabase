@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.inputs-test
+(ns metabase-enterprise.transforms-test.inputs-test
   "Tests for strict input resolution: required-input-tables and match-fixtures."
   (:require
    [clojure.test :refer :all]

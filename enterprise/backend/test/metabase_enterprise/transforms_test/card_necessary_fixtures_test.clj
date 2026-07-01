@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.card-necessary-fixtures-test
+(ns metabase-enterprise.transforms-test.card-necessary-fixtures-test
   "Pure unit tests for [[card->necessary-fixtures]].
 
   Synthetic transforms and cards are used throughout — no database required, no

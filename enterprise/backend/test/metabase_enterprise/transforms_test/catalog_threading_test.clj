@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.catalog-threading-test
+(ns metabase-enterprise.transforms-test.catalog-threading-test
   "Unit tests for catalog (db-slot) threading through scratch specs, transform details,
   and read-back SQL.
 
@@ -93,7 +93,7 @@
             "output-db must be the catalog from output-target :db")))))
 
 (deftest build-transform-details-output-db-nil-for-non-db-slot-driver-test
-  (testing ":output-db is nil for a non-db-slot driver (regression guard)"
+  (testing ":output-db is nil for a non-db-slot driver"
     (with-redefs [driver/connection-spec (fn [_drv _db] {:subprotocol "stub"})]
       (let [output-target {:schema "public"
                            :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
@@ -135,7 +135,7 @@
             "3-segment: catalog segment present")))))
 
 (deftest read-back-sql-is-2-segment-for-non-db-slot-driver-test
-  (testing "read-back SQL is schema.table (2-segment) for postgres — regression guard"
+  (testing "read-back SQL is schema.table (2-segment) for postgres"
     (let [captured (atom nil)]
       (with-redefs [qp/process-query
                     (fn [q]

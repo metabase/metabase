@@ -16,6 +16,8 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ============================================================================
 ;;; Shared table-remapping building blocks
 ;;; ============================================================================

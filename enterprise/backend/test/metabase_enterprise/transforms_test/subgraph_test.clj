@@ -1,9 +1,7 @@
-(ns metabase.transforms.test-run.subgraph-test
+(ns metabase-enterprise.transforms-test.subgraph-test
   "Pure unit tests for sub-graph resolution (chained test runs).
 
-  The slice/order/leaf logic is exercised here over synthetic dependency maps;
-  end-to-end resolution against real transforms is covered by the chained
-  executor's driver-gated e2e test."
+  The slice/order/leaf logic is exercised here over synthetic dependency maps."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-test.subgraph :as subgraph]))

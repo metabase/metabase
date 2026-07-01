@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.transforms.test-run.e2e-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-test.e2e-test
   "End-to-end test for the transform test-run endpoint.
 
   Exercises one realistic scenario through the full HTTP stack:
@@ -24,10 +24,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-test.api]
+   [metabase-enterprise.transforms-test.test-util :refer [with-temp-csv-files]]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
-   [metabase.transforms.test-run.test-util :refer [with-temp-csv-files]]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 

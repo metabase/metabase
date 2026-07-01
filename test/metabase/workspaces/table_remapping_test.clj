@@ -85,8 +85,9 @@
   (try (thunk) ::no-throw
        (catch clojure.lang.ExceptionInfo e (:guard (ex-data e)))))
 
-(def ^:private throw-violation
-  (fn [msg extra] (throw (ex-info msg extra))))
+(defn- throw-violation
+  [msg extra]
+  (throw (ex-info msg extra)))
 
 (deftest verify-passes-when-all-refs-allowed-test
   (is (= "SELECT id FROM public.scratch_orders"

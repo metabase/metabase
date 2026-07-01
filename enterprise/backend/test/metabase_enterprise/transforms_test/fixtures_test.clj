@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.fixtures-test
+(ns metabase-enterprise.transforms-test.fixtures-test
   "Tests for fixture CSV parsing: CSV → typed rows against a target schema.
 
   These tests are pure/driver-free — no database required."

@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.card-tables-walker-test
+(ns metabase-enterprise.transforms-test.card-tables-walker-test
   "Tests for [[metabase-enterprise.transforms-test.card-refs/card->tables]].
 
   The primary contract under test:

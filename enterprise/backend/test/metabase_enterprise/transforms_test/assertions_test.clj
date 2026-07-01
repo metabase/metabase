@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.transforms.test-run.assertions-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-test.assertions-test
   "Tests for the assertion evaluation subsystem
   ([[metabase-enterprise.transforms-test.assertions]]). Some are pure (no database); the
   `:postgres`-gated tests run the full round-trip through `run-assertions!`."
@@ -229,7 +229,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-all-pass-test
-  (testing "all-pass→ single combined query, all assertions :passed"
+  (testing "all-pass → single combined query, all assertions :passed"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -351,7 +351,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-warn-severity-test
-  (testing ":warn severityfiring → per-entry :warn, overall does not flip to :failed"
+  (testing ":warn severity firing → per-entry :warn, overall does not flip to :failed"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -416,7 +416,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-batched-fallback-test
-  (testing "runtime warehouse errorin batched query → falls back to :per-assertion, still attributes results"
+  (testing "runtime warehouse error in batched query → falls back to :per-assertion, still attributes results"
     ;; The bad assertion references a non-existent column: verify checks only table
     ;; refs, so it passes prepare, then fails at execution in the combined UNION ALL,
     ;; triggering the per-assertion fallback. The bad one gets an :error raw result;
@@ -488,7 +488,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-strategy-equivalence-test
-  (testing ":batched and :per-assertion strategiesyield identical verdicts"
+  (testing ":batched and :per-assertion strategies yield identical verdicts"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data

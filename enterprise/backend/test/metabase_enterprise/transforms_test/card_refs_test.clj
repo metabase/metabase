@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.card-refs-test
+(ns metabase-enterprise.transforms-test.card-refs-test
   "Tests for [[metabase-enterprise.transforms-test.card-refs/card->immediate-refs]].
 
   Every case asserts:
@@ -91,7 +91,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest native-card-test
-  (testing "Native card: table ids resolved from SQL text via sql-tools"
+  (testing "Native card: table ids resolved from SQL text"
     (mt/with-temp [:model/Card card
                    {:dataset_query (lib/native-query
                                     (mt/metadata-provider)

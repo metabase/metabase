@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.diff-test
+(ns metabase-enterprise.transforms-test.diff-test
   "Tests for the diff engine. All tests are pure/driver-free — no Postgres, no app DB.
 
   QP actual-rows contain temporals as ISO-8601 Z strings:
@@ -501,14 +501,10 @@
       (is (= :passed (:status report))))))
 
 ;; ---------------------------------------------------------------------------
-;; 14. Regression: cell-mismatch entries must not have :actual-raw/:expected-raw
+;; cell-mismatch entries must not have :actual-raw/:expected-raw
 ;; ---------------------------------------------------------------------------
 
 (deftest cell-mismatch-keys-no-raw-fields-test
-  ;; Regression: attempt-cell-mismatches was passing canonical rows as both
-  ;; the canonical AND raw arguments to cell-mismatch-detail, so :actual-raw and
-  ;; :expected-raw were always equal to their canonical counterparts.  The fix drops
-  ;; those fields entirely from the cell-mismatch entry.
   (testing "cell-mismatch entry has exactly the expected keys — no :actual-raw/:expected-raw"
     (let [actual-cols [(col "ts" :type/DateTime)]
           actual-rows [["2024-01-15T10:30:00Z"]]
@@ -524,7 +520,7 @@
         (is (contains? m :column))
         (is (contains? m :actual-canonical))
         (is (contains? m :expected-canonical))
-        ;; Removed keys
+        ;; Absent keys
         (is (not (contains? m :actual-raw))
             ":actual-raw must be absent from cell-mismatch")
         (is (not (contains? m :expected-raw))

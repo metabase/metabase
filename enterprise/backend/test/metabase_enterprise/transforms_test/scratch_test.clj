@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.scratch-test
+(ns metabase-enterprise.transforms-test.scratch-test
   "Tests for scratch table seeding + cleanup.
 
   Integration tests run under the :postgres gate only — they require a real
@@ -51,8 +51,7 @@
 
 (deftest name-length-under-identifier-limit-test
   (testing "worst-case scratch name (10-digit table-id) stays under the Postgres 63
-            and MySQL 64 identifier limits — pins the ns docstring's length claim so
-            it can't silently rot if the prefix or nonce length changes"
+            and MySQL 64 identifier limits"
     (let [;; longest realistic suffix: a 10-digit table id
           name (scratch/scratch-table-name (scratch/new-nonce) (str "in_" 9999999999))]
       (is (< (count name) 63)
@@ -497,10 +496,8 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest sweep-old-test-tables-drops-orphan-test
-  ;; Wiring test: sweep-old-test-tables! must drop old-epoch scratch tables and
-  ;; leave young scratch tables, production-prefix tables, and ordinary tables alive.
-  ;; This is the function called at the start of each test run to reap orphans left by
-  ;; prior runs that died without running their finally-cleanup.
+  ;; sweep-old-test-tables! runs at the start of each test run to reap orphan scratch
+  ;; tables left by prior runs that died before their finally-cleanup.
   (mt/test-drivers #{:postgres}
     (testing "sweep-old-test-tables! drops old test tables; leaves young + non-test tables"
       (let [db-id  (mt/id)
@@ -551,8 +548,6 @@
                    (catch Exception _)))))))))
 
 (deftest sweep-old-test-tables-best-effort-test
-  ;; A drop failure inside sweep-old-test-tables! must not throw — the run must
-  ;; continue normally even when the sweep encounters an error.
   (testing "sweep-old-test-tables! never throws, even when cleanup-all-test-tables! errors"
     (with-redefs [scratch/cleanup-all-test-tables! (fn [& _] (throw (RuntimeException. "simulated sweep error")))]
       ;; Should return nil (or any value) without throwing
@@ -560,18 +555,13 @@
           "sweep-old-test-tables! must not propagate errors"))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Regression: list-tables-in-schema must not interpolate schema
+;;; list-tables-in-schema must not interpolate schema
 ;;; ---------------------------------------------------------------------------
 
 (deftest list-tables-in-schema-uses-parameterized-query-test
-  ;; Regression: list-tables-in-schema was building SQL by string-interpolating
-  ;; the schema name directly into the WHERE clause: `WHERE table_schema = '<schema>'`.
-  ;; A schema value like "pub'lic" would produce malformed SQL (`... = 'pub'lic'`),
-  ;; causing a syntax error that crashes the janitor without cleaning up old test tables.
-  ;; Fix: use a parameterized query `{:query "... WHERE table_schema = ?" :params [schema]}`.
-  ;;
-  ;; Since list-tables-in-schema is private, we intercept qp/process-query to inspect
-  ;; the query map it actually submits.
+  ;; The schema name must be a query parameter, not interpolated: a value like
+  ;; "pub'lic" would otherwise produce malformed SQL and crash the janitor. The fn is
+  ;; private, so we intercept qp/process-query to inspect the query map it submits.
   (testing "list-tables-in-schema submits a parameterized query (schema in :params, not interpolated)"
     (let [captured-queries (atom [])
           ;; Intercept qp/process-query to capture the query map without executing

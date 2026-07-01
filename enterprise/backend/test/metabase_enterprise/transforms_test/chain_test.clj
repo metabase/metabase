@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.transforms.test-run.chain-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-test.chain-test
   "End-to-end tests for the chained (sub-graph) test-run orchestrator
   ([[metabase-enterprise.transforms-test.chain/run-chain-test!]]) and the generalized HTTP
   endpoints (`POST /api/ee/transform-test/:target-type/:id/subgraph`,
@@ -21,6 +21,7 @@
    [metabase-enterprise.transforms-test.core :as test-run.core]
    [metabase-enterprise.transforms-test.execute :as test-run.execute]
    [metabase-enterprise.transforms-test.scratch :as scratch]
+   [metabase-enterprise.transforms-test.test-util :refer [with-temp-csv-files]]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
@@ -28,7 +29,6 @@
    [metabase.test :as mt]
    [metabase.transforms-rest.api.transform]
    [metabase.transforms.core :as transforms.core]
-   [metabase.transforms.test-run.test-util :refer [with-temp-csv-files]]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -726,11 +726,11 @@
 ;;; ===========================================================================
 
 ;;; ---------------------------------------------------------------------------
-;;; assertions=[] → same response shape as before (regression)
+;;; assertions=[] → same response shape
 ;;; ---------------------------------------------------------------------------
 
-(deftest subgraph-endpoint-empty-assertions-regression-test
-  (testing "POST /subgraph with assertions=[] → 200 passed, same shape as before"
+(deftest subgraph-endpoint-empty-assertions-test
+  (testing "POST /subgraph with assertions=[] → 200 passed"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -1037,8 +1037,7 @@
 ;;; ===========================================================================
 ;;; Single-node subgraph: source-ids=#{} (degenerate slice = {target})
 ;;;
-;;; run-chain-test! with no sources is functionally identical to the
-;;; single-transform path.
+;;; run-chain-test! with no sources runs just the target node.
 ;;; ===========================================================================
 
 ;;; ---------------------------------------------------------------------------
@@ -1149,13 +1148,12 @@
                     "No TransformRun row after timeout")))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; read-back-output uses quoted identifiers (regression; tests execute.clj directly)
+;;; read-back-output uses quoted identifiers
 ;;; ---------------------------------------------------------------------------
 
 (deftest read-back-output-uses-quoted-identifiers-test
-  ;; Regression: read-back-output was building SELECT * FROM <schema>.<table>
-  ;; by string interpolation. A schema with a single quote produces malformed SQL.
-  ;; Schema and table are identifiers, not values — they must be driver-quoted.
+  ;; Schema and table are identifiers, not values — they must be driver-quoted;
+  ;; a schema containing a single quote would otherwise produce malformed SQL.
   (testing "read-back-output submits a SELECT with properly quoted schema.table identifiers"
     (let [captured-queries (atom [])
           fake-process     (fn [q]
@@ -1213,8 +1211,6 @@
   (testing "POST /subgraph with table-qualified-column SQL → 422 ::cannot-test-run"
     ;; SELECT orders.id FROM orders leaves the `orders.` qualifier dangling after
     ;; FROM-only rewrite, triggering guard 3 → ::cannot-test-run (422).
-    ;; The resolve check fires after seed but before execution; scratch-table cleanup
-    ;; on this error path is covered by chain-cleanup-runs-inside-transform-connection-test.
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -1240,7 +1236,6 @@
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-header-mismatch-400-test
-  ;; Regression: ::fixtures/header-mismatch was missing from test-run-error-http-status.
   (testing "POST /subgraph with wrong CSV headers → 400 + error envelope (::fixtures/header-mismatch)"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
@@ -1269,7 +1264,6 @@
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-unknown-ignore-columns-400-test
-  ;; Regression: ::diff/unknown-ignore-columns was missing from test-run-error-http-status.
   (testing "POST /subgraph with nonexistent ignore_columns → 400 + error envelope"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}

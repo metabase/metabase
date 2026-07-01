@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.test-util
+(ns metabase-enterprise.transforms-test.test-util
   "Shared test helpers for transform test-run test suites.
   For test use only; not for production code."
   (:import

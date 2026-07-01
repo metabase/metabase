@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.resolve-test
+(ns metabase-enterprise.transforms-test.resolve-test
   "Tests for metabase-enterprise.transforms-test.resolve.
 
   `rewrite-native-sql` and the three-guard `verify` only parse, so they are tested
@@ -409,19 +409,14 @@
           (is (= ::resolve/unsupported-transform-type (:error-type (ex-data e)))))))))
 
 ;;; ===========================================================================
-;;; Regression — Guard 1 must not reject zero-input transforms
+;;; Guard 1 must not reject zero-input transforms
 ;;; ===========================================================================
 
 (deftest guard-1-passes-zero-table-transform-test
-  ;; Regression: the old Guard 1 fired whenever refs was empty, regardless
-  ;; of whether mapping was also empty.  A zero-table transform (SELECT 1 AS x, no
-  ;; real input tables) has an empty mapping and yields empty refs from
-  ;; referenced-tables-raw.  Guard 1 must only fire when mapping is non-empty and
-  ;; refs is empty (that pattern implies a parse failure lost references that existed).
-  ;; When mapping is empty and refs is empty it is vacuously safe — there is nothing
-  ;; to protect, and Guard 2 still catches any stray refs.
+  ;; Guard 1 fires only when mapping is non-empty and refs is empty — that pattern
+  ;; implies a parse failure lost references that existed. Empty mapping + empty refs
+  ;; is vacuously safe: nothing to protect, and Guard 2 still catches any stray refs.
   (testing "SELECT 1 AS x with empty mapping → verify returns the SQL (not ::non-empty-refs)"
-    ;; This fails before the fix (throws ::non-empty-refs).
     (let [sql "SELECT 1 AS x"]
       (is (= sql (resolve/verify :postgres {} sql))
           "zero-table transform with empty mapping must pass Guard 1")))
@@ -433,10 +428,8 @@
          ::resolve/non-empty-refs)
         "non-empty mapping + empty refs must still fire Guard 1"))
   (testing "non-empty mapping + non-empty unmapped refs → Guard 2 fires (not Guard 1)"
-    ;; Confirm Guard 2 still covers the complementary case: mapping non-empty but
-    ;; the ref isn't in the scratch set.  If Guard 1 were to swallow this, Guard 2
-    ;; wouldn't reach it — but since refs is non-empty here, Guard 1 passes, Guard 2
-    ;; fires.  This verifies we haven't broken Guard 2 by fixing Guard 1.
+    ;; The complementary case: mapping non-empty but the ref isn't in the scratch set.
+    ;; refs is non-empty, so Guard 1 passes and Guard 2 fires.
     (is (cannot-test-run?
          #(resolve/verify :postgres orders->scratch "SELECT * FROM widgets")
          ::resolve/refs-subset-scratch)
