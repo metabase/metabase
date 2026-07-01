@@ -75,7 +75,7 @@ export function MonitorSection({ location }: Props) {
           {t`Logs`}
         </SidebarLink>
         <SidebarLink
-          icon="warning_round_filled"
+          icon="octagon_alert"
           url={Urls.adminToolsErrors()}
           isSelected={path.startsWith("/admin/tools/errors")}
         >

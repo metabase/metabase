@@ -103,24 +103,22 @@ function LibraryPageContent() {
             <LibraryEmptyState />
           ) : (
             <>
-              {!isHierarchyView && (
-                <Flex gap="md">
-                  <TextInput
-                    placeholder={t`Search...`}
-                    leftSection={<Icon name="search" />}
-                    bdrs="md"
-                    flex="1"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <CreateMenu
-                    metricCollectionId={writableMetricCollection?.id}
-                    canWriteToMetricCollection={!!writableMetricCollection}
-                    dataCollectionId={tableCollection?.id}
-                    canWriteToDataCollection={!!tableCollection?.can_write}
-                  />
-                </Flex>
-              )}
+              <Flex gap="md">
+                <TextInput
+                  placeholder={t`Search...`}
+                  leftSection={<Icon name="search" />}
+                  bdrs="md"
+                  flex="1"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <CreateMenu
+                  metricCollectionId={writableMetricCollection?.id}
+                  canWriteToMetricCollection={!!writableMetricCollection}
+                  dataCollectionId={tableCollection?.id}
+                  canWriteToDataCollection={!!tableCollection?.can_write}
+                />
+              </Flex>
               <Card withBorder p={0}>
                 {isLoading ? (
                   <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />

@@ -140,6 +140,7 @@
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   flex-shrink: 0;
+  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
 .libraryNestedItems {

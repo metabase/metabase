@@ -47,6 +47,30 @@ function filterSectionTree(tree: TreeItem[]) {
   return tree.filter((node) => node.model !== "empty-state");
 }
 
+function filterHierarchyTree(tree: TreeItem[], searchQuery: string) {
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) {
+    return tree;
+  }
+
+  return tree.flatMap((tableNode) => {
+    const tableNameMatches = tableNode.name.toLowerCase().includes(query);
+    const matchingChildren = (tableNode.children ?? []).filter((child) =>
+      child.name.toLowerCase().includes(query),
+    );
+
+    if (tableNameMatches) {
+      return [tableNode];
+    }
+
+    if (matchingChildren.length > 0) {
+      return [{ ...tableNode, children: matchingChildren }];
+    }
+
+    return [];
+  });
+}
+
 function unwrapLibrarySectionRoot(tree: TreeItem[]) {
   return filterSectionTree(tree.flatMap((node) => node.children ?? []));
 }
@@ -145,7 +169,8 @@ export function useLibraryTreeTableInstance({
 
   const combinedTree = useMemo(() => {
     if (isHierarchyView) {
-      return hierarchyTree.length > 0 ? hierarchyTree : EMPTY_TREE;
+      const tree = hierarchyTree.length > 0 ? hierarchyTree : EMPTY_TREE;
+      return filterHierarchyTree(tree, searchQuery);
     }
     if (isSearchActive) {
       return searchTree;
@@ -160,6 +185,7 @@ export function useLibraryTreeTableInstance({
   }, [
     isHierarchyView,
     hierarchyTree,
+    searchQuery,
     isSearchActive,
     sectionFilter,
     searchTree,
@@ -445,7 +471,11 @@ export function useLibraryTreeTableInstance({
   );
 
   let emptyMessage = null;
-  if (!libraryHasContent && !isLoading) {
+  const trimmedSearchQuery = searchQuery.trim();
+
+  if (trimmedSearchQuery && !isLoading && combinedTree.length === 0) {
+    emptyMessage = t`No results for "${searchQuery}"`;
+  } else if (!libraryHasContent && !isLoading) {
     if (sectionFilter === "tables") {
       emptyMessage = t`No published tables yet`;
     } else if (sectionFilter === "metrics") {
@@ -457,8 +487,6 @@ export function useLibraryTreeTableInstance({
     } else {
       emptyMessage = t`No tables, metrics, or snippets yet`;
     }
-  } else if (searchQuery && !isHierarchyView) {
-    emptyMessage = t`No results for "${searchQuery}"`;
   }
 
   return {
