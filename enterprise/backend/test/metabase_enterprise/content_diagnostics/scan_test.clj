@@ -402,6 +402,34 @@
               (testing "threshold-days=50 → all qualify (each ≥50 days stale, or never used)"
                 (is (= #{old-fid recent-fid never-fid} (ids :threshold-days "50")))))))))))
 
+(deftest serve-query-search-test
+  (testing "GET /stale ?query= case-insensitively substring-matches the denormalized entity name"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {c-rev :id}  {:collection_id coll-id}
+                         :model/Card {c-cost :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [insert   (fn [card nm]
+                             (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                              {:scan_id "q" :entity_type :card :entity_id card
+                                                               :finding_type :stale :details {} :entity_name nm})))
+                  rev-fid  (insert c-rev  "Quarterly Revenue")
+                  cost-fid (insert c-cost "Cost Analysis")
+                  ids      (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
+                                                                   "ee/content-diagnostics/stale" kvs)))))]
+              (testing "no query → all findings"
+                (is (= #{rev-fid cost-fid} (ids))))
+              (testing "substring match, case-insensitive"
+                (is (= #{rev-fid} (ids :query "revenue")))
+                (is (= #{rev-fid} (ids :query "REV")))
+                (is (= #{cost-fid} (ids :query "analysis"))))
+              (testing "no match → empty"
+                (is (empty? (ids :query "zzz"))))
+              (testing "blank query is a no-op → all findings"
+                (is (= #{rev-fid cost-fid} (ids :query "   ")))))))))))
+
 (deftest scan-endpoint-is-feature-gated-test
   (testing "POST /scan runs synchronously for a licensed instance"
     (mt/with-premium-features #{:content-diagnostics}

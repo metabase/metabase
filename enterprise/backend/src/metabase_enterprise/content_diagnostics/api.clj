@@ -9,6 +9,7 @@
   the entity's `description`, and two distinct user objects, `owner` and `creator`. `hint`/`url` are not
   returned — the FE builds them."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.content-diagnostics.detect :as detect]
@@ -16,6 +17,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -79,6 +81,14 @@
                                      (map (fn [pid] [:like :location (str "/" pid "/%")]))
                                      roots)})
     #{}))
+
+(defn- name-search-where
+  "Case-insensitive substring match on the denormalized `entity_name` (a native column ⇒ no join). Nil for a
+  blank/absent query, so a blank search is a no-op. `%`/`_` in the term are not escaped — they act as SQL
+  LIKE wildcards, matching the fuzzy name-search behavior used elsewhere in the app."
+  [query]
+  (when-let [q (some-> query str/trim not-empty u/lower-case-en)]
+    [:like [:lower :entity_name] (str "%" q "%")]))
 
 (defn- exclude-personal-collections-where
   "WHERE fragment dropping findings whose entity **currently** lives in a personal collection. Resolved live
@@ -261,12 +271,13 @@
   whose entity currently lives in a personal collection are also excluded. `entity-types` (repeatable;
   `card`|`dashboard`|`document`|`transform`) narrows to the given entity types (omitted = all).
   `threshold-days` (positive int) keeps only findings at least that stale — `last_active_at` on or before
-  `today − threshold-days` (never-used findings always pass). All resolved live at serve time, instance-wide.
+  `today − threshold-days` (never-used findings always pass). `query` case-insensitively substring-matches
+  the entity name (denormalized `entity_name`). All resolved live at serve time, instance-wide.
   Sortable by `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-used-at` —
   all native columns, the entity attrs denormalized at scan time; default `detected-at`) + `sort-direction`
   (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
   [_route-params
-   {:keys [include-personal-collections sort-column sort-direction entity-types threshold-days]
+   {:keys [include-personal-collections sort-column sort-direction entity-types threshold-days query]
     :or   {include-personal-collections false
            sort-column                   :detected-at
            sort-direction                :asc}}
@@ -277,25 +288,28 @@
        [:entity-types   {:optional true} [:or
                                           (ms/enum-decode-keyword stale-entity-types)
                                           [:sequential (ms/enum-decode-keyword stale-entity-types)]]]
-       [:threshold-days {:optional true} ms/PositiveInt]]]
-  (let [pers   (when-not include-personal-collections (exclude-personal-collections-where))
-        etypes (when entity-types (if (sequential? entity-types) entity-types [entity-types]))
-        ent    (when-let [es (not-empty etypes)] [:in :entity_type (mapv name es)])
+       [:threshold-days {:optional true} ms/PositiveInt]
+       [:query          {:optional true} :string]]]
+  (let [personal-filter    (when-not include-personal-collections (exclude-personal-collections-where))
+        entity-types*      (when entity-types (if (sequential? entity-types) entity-types [entity-types]))
+        entity-type-filter (when-let [types (not-empty entity-types*)] [:in :entity_type (mapv name types)])
         ;; "less stale than threshold-days" = active more recently than the cutoff → excluded. Never-used
         ;; (`last_active_at` nil) is maximally stale, so it always passes. Mirrors the scan-time cutoff.
-        thresh (when threshold-days
-                 (let [cutoff (t/minus (t/local-date) (t/days threshold-days))]
-                   [:or [:= :last_active_at nil] [:<= :last_active_at cutoff]]))
-        where  (cond-> [:and (active-where "stale") (visible-findings-where)]
-                 pers   (conj pers)
-                 ent    (conj ent)
-                 thresh (conj thresh))
-        page   (t2/select :model/ContentDiagnosticsFinding
-                          (cond-> {:where    where
-                                   :order-by [[(sort-column->field sort-column) sort-direction]
-                                              [:id sort-direction]]}
-                            (request/limit)  (assoc :limit (request/limit))
-                            (request/offset) (assoc :offset (request/offset))))]
+        threshold-filter   (when threshold-days
+                             (let [cutoff (t/minus (t/local-date) (t/days threshold-days))]
+                               [:or [:= :last_active_at nil] [:<= :last_active_at cutoff]]))
+        name-search-filter (name-search-where query)
+        where              (cond-> [:and (active-where "stale") (visible-findings-where)]
+                             personal-filter    (conj personal-filter)
+                             entity-type-filter (conj entity-type-filter)
+                             threshold-filter   (conj threshold-filter)
+                             name-search-filter (conj name-search-filter))
+        page               (t2/select :model/ContentDiagnosticsFinding
+                                      (cond-> {:where    where
+                                               :order-by [[(sort-column->field sort-column) sort-direction]
+                                                          [:id sort-direction]]}
+                                        (request/limit)  (assoc :limit (request/limit))
+                                        (request/offset) (assoc :offset (request/offset))))]
     {:data         (hydrate-findings page)
      :total        (t2/count :model/ContentDiagnosticsFinding {:where where})
      :limit        (request/limit)
