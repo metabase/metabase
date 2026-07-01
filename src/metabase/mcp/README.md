@@ -63,6 +63,7 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:sql:execute`       | `execute_sql`                                                                                                  |
 | `agent:question:create`   | `create_question`                                                                                              |
 | `agent:question:update`   | `update_question` (also covers "move card to collection")                                                      |
+| `agent:question:execute`  | `execute_question`                                                                                             |
 | `agent:dashboard:create`  | `create_dashboard`                                                                                             |
 | `agent:dashboard:update`  | `update_dashboard`                                                                                             |
 | `agent:collection:create` | `create_collection`                                                                                            |
@@ -97,6 +98,7 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `query`           | Query a table or metric directly. Supports pagination via continuation tokens.                                                                                                                 |
 | `execute_query`   | Execute a previously constructed query and return results with column metadata.                                                                                                                |
 | `execute_sql`     | Execute a raw SQL query against a database. Requires the user to have native-query permission on the target database. Can be disabled instance-wide via the `mcp-execute-sql-enabled` setting. |
+| `execute_question` | Run a saved question by id and return its rows + column metadata. Runs under the caller's permissions. Parameterized questions are not supported (returns an error). |
 
 ### Write
 

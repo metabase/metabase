@@ -27,6 +27,7 @@
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -979,6 +980,47 @@
      :collection_path (collection-path (:collection_id updated))
      :description     (:description updated)
      :archived        (boolean (:archived updated))}))
+
+;;; ------------------------------------------------ Execute Question -----------------------------------------------
+
+(defn- reject-parameterized-card!
+  "Agent execution does not yet supply parameter values, so refuse to run a card that declares
+   user-facing parameters or input template tags (field filters / variables). Snippet and
+   card-reference template tags don't count — those need no runtime input. Returns a 400 so the
+   limitation surfaces clearly rather than silently running the card with defaults."
+  [card]
+  (when (seq (qp.card/combined-parameters-and-template-tags card))
+    (throw (ex-info (str "This question takes parameters, which agent execution does not yet "
+                         "support. Run it in Metabase, or save a parameterless version.")
+                    {:status-code 400 :card-id (:id card)}))))
+
+(api.macros/defendpoint :post "/v1/question/:id/query"
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
+  "Run a saved question (card) and return its results.
+
+  Executes the query stored on the card under the caller's permissions and returns rows +
+  column metadata — the same response shape as /v1/execute.
+
+  Parameterized questions are NOT supported: if the card declares parameters or input
+  template tags (field filters / variables), this returns a 400. Run it in Metabase, or
+  save a parameterless version."
+  {:scope metabot/agent-question-execute
+   :tool  {:name "execute_question"
+           :description (str "Run a saved question by id and return its rows with column metadata, "
+                             "row count, and execution time. Use this to get the current results of "
+                             "an existing saved question. Does NOT support parameterized questions — "
+                             "if the question takes parameters or template-tag input, this returns an "
+                             "error.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body]
+  (let [card (api/check-404 (t2/select-one :model/Card id))]
+    (reject-parameterized-card! card)
+    (qp.card/process-query-for-card
+     card :api
+     :context    :question
+     :middleware {:process-viz-settings? false})))
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
