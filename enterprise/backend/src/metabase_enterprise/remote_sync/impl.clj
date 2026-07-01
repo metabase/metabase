@@ -630,11 +630,15 @@
         (analytics/observe! :metabase-remote-sync/import-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
 
 (defn- commit-staged!
-  "Open a commit on `snapshot`, stage into it via `stage-fn` (passed the open commit; returns the synced
-  write-rows), then finish it — or, when the staged tree is identical to the parent, abort instead of
-  pushing an empty commit. Releases the commit on every path. Returns `[synced version]`, where version is
-  the new commit SHA, or `:remote-sync/empty-commit` when no commit was pushed (the staged content already
-  matched the remote)."
+  "Open a commit on `snapshot`, stage into it via `stage-fn`, then finish it.
+
+  `stage-fn` will be passed the open commit. It should return the synced write-rows.
+
+  Will abort the commit if it is empty.
+
+  Returns `[version, write-rows]` where version is the new commit SHA or `:remote-sync/empty-commit` if empty.
+
+  Will abort the commit and throw on any Throwable."
   [snapshot message stage-fn]
   (let [commit (source.p/open-commit snapshot)]
     (try
@@ -648,12 +652,15 @@
         (throw e)))))
 
 (defn- export-merged!
-  "Export path taken when the remote branch has advanced beyond the last synced version (`base-snapshot`
-  is the merge base). Runs an entity-identity 3-way merge of local state (`models`) against the remote tip:
-  - on a genuine conflict (same entity changed on both sides) returns a `:conflict` result without writing;
+  "Export when the remote branch has advanced beyond the last synced version. Runs an entity-identity 3-way merge of
+   local state (`models`) against the remote tip:
+
+  - on a genuine conflict (same entity changed on both sides) returns a `:conflict` result without writing
   - on a clean merge, writes the merged set (fast-forwarding onto the remote tip), then reconciles the
     local app DB by loading the merged result (the 'pull' half), so local now contains the remote's
-    changes. Returns a `:success` result with a `:merge-summary`."
+    changes.
+
+  Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
         {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id)]
