@@ -1,18 +1,5 @@
-import type { ReactNode } from "react";
+import { Title, type TitleProps } from "metabase/ui";
 
-import { Box, type BoxProps } from "metabase/ui";
-
-type MonitorHeaderTitleProps = BoxProps & {
-  children?: ReactNode;
-};
-
-export function MonitorHeaderTitle({
-  children,
-  ...props
-}: MonitorHeaderTitleProps) {
-  return (
-    <Box {...props} fz="sm" c="text-secondary">
-      {children}
-    </Box>
-  );
+export function MonitorHeaderTitle(props: TitleProps) {
+  return <Title {...props} order={2} fz="sm" fw="normal" c="text-secondary" />;
 }

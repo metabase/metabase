@@ -97,7 +97,7 @@ function getMonitorIndexPath(state: State) {
  * - Dependency Diagnostics: Data Studio → Monitor.
  * - Admin Tools pages:
  *   - /admin/tools → /monitor
- *   - /admin/tools/help → /admin/help (GDGT-2684).
+ *   - /admin/tools/help → /admin/help
  */
 export function getMonitorRedirects() {
   return (
@@ -130,7 +130,7 @@ export function getMonitorRedirects() {
         from="/admin/tools/notifications/*"
         to="/monitor/notifications/*"
       />
-      <Redirect from="/admin/tools" to="/admin/help" />
+      <Redirect from="/admin/tools" to="/monitor" />
     </>
   );
 }

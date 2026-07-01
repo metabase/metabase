@@ -35,15 +35,14 @@ const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
 
   return (
     <Stack gap="lg">
-      {/* Header sits on the page background, outside the white
-          SettingsSection card — matching the other Monitor tool routes. */}
-      <Flex align="center" gap="sm">
+      <Flex align="center" gap="xs">
         <MonitorHeaderTitle>{t`Troubleshooting logs`}</MonitorHeaderTitle>
         <Tooltip
           label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
         >
           <ActionIcon
             size="xs"
+            style={{ "--ai-size": "1rem" }}
             variant="transparent"
             c="text-secondary"
             fz="0.5rem"

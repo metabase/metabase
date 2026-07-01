@@ -33,8 +33,6 @@ jest.mock("metabase-enterprise/monitor/dependency-diagnostics/pages", () => ({
   UnreferencedDependencyDiagnosticsPage: () => <div>{"Unreferenced page"}</div>,
 }));
 
-// Stub the migrated Admin Tools pages so this stays a focused routing test —
-// the sections/redirects under test don't depend on their data-fetching.
 jest.mock("metabase/monitor/tools/components/Logs", () => ({
   Logs: ({ children }: { children?: ReactNode }) => (
     <div data-testid="logs-page">
@@ -64,9 +62,6 @@ jest.mock("metabase/monitor/tools/components/ToolsUpsell", () => ({
   ),
 }));
 
-// Stub the Tasks/Notifications leaf pages (not the route factories) so the real
-// route mounting + index redirects in getTasksRoutes/getNotificationsRoutes are
-// exercised without their data-fetching plumbing.
 jest.mock("metabase/monitor/tools/components/TaskListPage", () => ({
   TaskListPage: () => <div data-testid="task-list-page">{"Task list"}</div>,
 }));
@@ -118,10 +113,9 @@ const setup = ({
   initialRoute,
   user = createMockUser({ is_superuser: true }),
 }: SetupOpts) => {
-  // The index route reads state on entry to pick the landing section.
   const store = getStore(mainReducers, createMockState({ currentUser: user }));
 
-  renderWithProviders(
+  return renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
       {getMonitorRoutes(
@@ -130,6 +124,33 @@ const setup = ({
         CanAccessMonitorDiagnostics,
         CanAccessMonitoringTools,
       )}
+    </Route>,
+    { withRouter: true, initialRoute },
+  );
+};
+
+const DenyingGuard = ({ children: _children }: { children?: ReactNode }) => (
+  <div data-testid="unauthorized-marker">{"Unauthorized"}</div>
+);
+
+const setupWithGuards = ({
+  initialRoute,
+  CanAccessMonitorDiagnostics: Diagnostics = CanAccessMonitorDiagnostics,
+  CanAccessMonitoringTools: Tools = CanAccessMonitoringTools,
+}: {
+  initialRoute: string;
+  CanAccessMonitorDiagnostics?: (props: { children?: ReactNode }) => ReactNode;
+  CanAccessMonitoringTools?: (props: { children?: ReactNode }) => ReactNode;
+}) => {
+  const store = getStore(
+    mainReducers,
+    createMockState({ currentUser: createMockUser({ is_superuser: true }) }),
+  );
+
+  return renderWithProviders(
+    <Route path="/">
+      {getMonitorRedirects()}
+      {getMonitorRoutes(store, CanAccessMonitor, Diagnostics, Tools)}
     </Route>,
     { withRouter: true, initialRoute },
   );
@@ -213,6 +234,31 @@ describe("monitor routes", () => {
         setup({ initialRoute: "/monitor/does-not-exist" });
 
         expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+      });
+
+      it("blocks section routes when the section guard denies", async () => {
+        setupWithGuards({
+          initialRoute: "/monitor/logs",
+          CanAccessMonitoringTools: DenyingGuard,
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("logs-page")).not.toBeInTheDocument();
+      });
+
+      it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {
+        setupWithGuards({
+          initialRoute: "/monitor/does-not-exist",
+          CanAccessMonitorDiagnostics: DenyingGuard,
+          CanAccessMonitoringTools: DenyingGuard,
+        });
+
+        expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("unauthorized-marker"),
+        ).not.toBeInTheDocument();
       });
     });
   });
@@ -306,6 +352,12 @@ describe("monitor routes", () => {
       setup({ initialRoute: route });
 
       expect(await screen.findByTestId(testId)).toBeInTheDocument();
+    });
+
+    it("redirects the legacy /admin/tools index into the Monitor space", async () => {
+      setup({ initialRoute: "/admin/tools" });
+
+      expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
     });
   });
 });
