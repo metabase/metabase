@@ -89,7 +89,7 @@
   io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
-  kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
+  kixi/stats                                {:mvn/version "0.5.9"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
