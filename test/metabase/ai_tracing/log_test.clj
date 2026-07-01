@@ -29,7 +29,7 @@
                 :duration-ms 12.5 :start-epoch-nanos 1000 :end-epoch-nanos 2000}
           e    (ait.log/node->entry node "sess-1")]
       (is (= {:session "sess-1" :id "n1" :parent "p0" :type :llm :name "llm.call"
-              :start-ns 1000 :end-ns 2000 :dur-ms 12.5
+              :start-epoch-ns 1000 :end-epoch-ns 2000 :dur-ms 12.5
               :attributes {:ai/model "claude" :ai/output-text "hi"}
               :events [{:event :note}]}
              e))
@@ -38,6 +38,21 @@
           (is (= "sess-1" (get j "session")))
           (is (= "llm" (get j "type")))
           (is (= "claude" (get-in j ["attributes" "ai/model"]))))))))
+
+(deftest emit-degrades-non-encodable-attrs-test
+  (testing "a non-encodable attribute value degrades to a string instead of dropping the whole span"
+    (log.capture/with-log-messages-for-level [messages [metabase.ai-tracing.log :info]]
+      ;; a bare Object has no JSON encoding — the direct encode throws and we fall back to json-safe
+      (ait.log/emit! {:type :turn :name "agent.turn" :id "n" :parent-id nil
+                      :attributes {:ai/final-state (Object.) :ai/model "m"} :events []
+                      :duration-ms 1.0 :start-epoch-nanos 1 :end-epoch-nanos 2}
+                     "sess-x")
+      (let [es (entries messages)]
+        (is (= 1 (count es)) "span still emitted despite the non-encodable attribute")
+        (is (= "agent.turn" (get (first es) "name")))
+        (is (= "m" (get-in (first es) ["attributes" "ai/model"])) "encodable attrs are preserved")
+        (is (string? (get-in (first es) ["attributes" "ai/final-state"]))
+            "the non-encodable value degraded to a string")))))
 
 (deftest one-entry-per-span-test
   (testing "each finished span streams exactly one JSONL line, carrying the session id in the payload"

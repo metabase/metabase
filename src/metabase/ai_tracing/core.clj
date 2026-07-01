@@ -142,7 +142,13 @@
         (binding [*parent* node]
           (thunk))
         (catch Throwable t
-          (swap! node update :events conj {:event :error :message (ex-message t)})
+          ;; Capture class + ex-data, not just the message: agent-validation `ex-info`s carry their
+          ;; signal in ex-data and a bare NPE has a nil message. The log sink JSON-safe-coerces
+          ;; :data, so a non-encodable value here never breaks emission.
+          (swap! node update :events conj {:event   :error
+                                           :message (ex-message t)
+                                           :class   (.getName (class t))
+                                           :data    (ex-data t)})
           (throw t))
         (finally
           (let [finished (finish-node node)]
