@@ -171,31 +171,54 @@
 
 ;;;; ----------------------------------------- Span macros --------------------------------------------------
 
+(defmacro spanning
+  "Implementation detail of the span macros below — not intended for direct use (it must be public
+  only so the public span macros can expand to it from other namespaces).
+
+  Runs `body` directly when no capture is live (the production no-op), else inside a captured span.
+  Guarding `capture-active?` HERE — ahead of the `eval-span*` call — means `span-name`/`attrs` are
+  only constructed when a capture is active, so organic traffic never builds the span name string or
+  the attrs map (it pays only the `*capture*` nil-check). `body` is emitted once, behind a `thunk#`,
+  so a large body isn't duplicated into both branches; the disabled path's only residual cost is that
+  one small closure."
+  {:style/indent 3}
+  [span-type span-name attrs & body]
+  `(let [thunk# (^{:once true} fn* [] ~@body)]
+     (if (capture-active?)
+       (eval-span* ~span-type ~span-name ~attrs thunk#)
+       (thunk#))))
+
 (defmacro eval-span
   "Generic eval-only span. Usable from any subsystem. `attrs` is a map of namespaced keyword → value."
   {:style/indent 2}
   [span-name attrs & body]
-  `(eval-span* :span ~span-name ~attrs (^{:once true} fn* [] ~@body)))
+  `(spanning :span ~span-name ~attrs ~@body))
 
 (defmacro with-agent-turn
   "Root span for one agentic turn."
   {:style/indent 1}
   [attrs & body]
-  `(eval-span* :turn "agent.turn" ~attrs (^{:once true} fn* [] ~@body)))
+  `(spanning :turn "agent.turn" ~attrs ~@body))
 
 (defmacro with-llm-call
   "Span around one LLM round-trip. Record the completion/usage via [[record!]] once known."
   {:style/indent 1}
   [attrs & body]
-  `(eval-span* :llm "llm.call" ~attrs (^{:once true} fn* [] ~@body)))
+  `(spanning :llm "llm.call" ~attrs ~@body))
 
 (defmacro with-tool-call
   "Span around one tool invocation. Expects `:ai/tool-name` in `attrs`."
   {:style/indent 1}
   [attrs & body]
-  `(let [attrs# ~attrs]
-     (eval-span* :tool (str "tool." (:ai/tool-name attrs#)) attrs#
-                 (^{:once true} fn* [] ~@body))))
+  ;; Can't route through `spanning`: the span name derives from `attrs`, and we want `attrs` built
+  ;; only when a capture is active AND only once (not twice — for the name and for the span). So we
+  ;; inline the gate and bind `attrs#` inside the active branch. Tool calls run on the organic agent
+  ;; path, so keeping this build behind `capture-active?` is the point.
+  `(let [thunk# (^{:once true} fn* [] ~@body)]
+     (if (capture-active?)
+       (let [attrs# ~attrs]
+         (eval-span* :tool (str "tool." (:ai/tool-name attrs#)) attrs# thunk#))
+       (thunk#))))
 
 ;;;; ----------------------------------------- Entrypoints --------------------------------------------------
 
