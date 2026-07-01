@@ -31,7 +31,21 @@
       (testing "unknown dimension ids fall back to the raw id"
         (is (= " (mystery = 7)"
                (explorations.groups/filter-path-suffix
-                labels {:params {:filter_path [{:dimension_id "mystery" :value 7}]}})))))))
+                labels {:params {:filter_path [{:dimension_id "mystery" :value 7}]}}))))
+      (testing "drilling into a null / blank bucket renders (empty), not a bare `= `"
+        (is (= " (State = (empty))"
+               (explorations.groups/filter-path-suffix
+                labels {:params {:filter_path [{:dimension_id "state" :value nil}]}})))
+        (is (= " (State = (empty))"
+               (explorations.groups/filter-path-suffix
+                labels {:params {:filter_path [{:dimension_id "state" :value ""}]}})))
+        (is (= " (State = (empty))"
+               (explorations.groups/filter-path-suffix
+                labels {:params {:filter_path [{:dimension_id "state" :value "   "}]}})))
+        (testing "a false value is a real value, not empty"
+          (is (= " (State = false)"
+                 (explorations.groups/filter-path-suffix
+                  labels {:params {:filter_path [{:dimension_id "state" :value false}]}}))))))))
 
 (deftest filter-path-key-test
   (testing "same path → same key; different path → different key; undrilled → nil"

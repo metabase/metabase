@@ -78,6 +78,16 @@
   [dims]
   (into {} (map (juxt :dimension_id (some-fn :display_name :dimension_id))) dims))
 
+(defn- drill-value-label
+  "Render a filter-path step's value for the drill label. A null / blank bucket (the user
+   drilled into the chart's `(empty)` bar) becomes `(empty)` — matching the axis label and
+   the FE's `NULL_DISPLAY_VALUE` — instead of a bare `= ` with nothing after it. `false` and
+   `0` are real values and render as-is."
+  [value]
+  (if (or (nil? value) (and (string? value) (str/blank? value)))
+    (tru "(empty)")
+    (str value)))
+
 (defn filter-path-suffix
   "A human label for a query's filter path — e.g. `\" (State = TX, Source = Google)\"` — or
    `\"\"` when undrilled. `labels` maps dimension_id → display label."
@@ -85,7 +95,7 @@
   (if-let [fp (filter-path query)]
     (str " ("
          (str/join ", " (map (fn [{:keys [dimension_id value]}]
-                               (tru "{0} = {1}" (get labels dimension_id dimension_id) (str value)))
+                               (tru "{0} = {1}" (get labels dimension_id dimension_id) (drill-value-label value)))
                              fp))
          ")")
     ""))
