@@ -114,9 +114,13 @@
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
   [{:keys [id method params] :as _msg} session-id token-scopes request-context]
   ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE): establish a session keyed on the MCP
-  ;; session id so an entire conversation's requests append to one `<session-id>.jsonl`, and
-  ;; open a per-request root span. Tool/resource/agent-api spans nest under it automatically.
-  (ait/with-eval-session session-id
+  ;; session's UUID correlator so an entire conversation's requests append to one
+  ;; `<uuid>.jsonl`, and open a per-request root span. Tool/resource/agent-api spans nest under
+  ;; it automatically. We key on the UUID prefix (not the full `<uuid>.<base64>` id): it's stable
+  ;; across the conversation AND always filesystem/URL-safe, whereas the full id can carry a
+  ;; base64 payload that `require-valid-session` accepts but `safe-session-id-re` rejects (e.g. `=`
+  ;; padding) — passing that to `with-eval-session` would throw out here, ahead of the try/catch.
+  (ait/with-eval-session (some-> session-id (str/split #"\.") first)
     (ait/eval-span (str "mcp." method) {:mcp/method     method
                                         :mcp/request-id id
                                         :mcp/params     params

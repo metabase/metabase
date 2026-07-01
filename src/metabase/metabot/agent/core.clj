@@ -540,13 +540,16 @@
                      :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
-        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
+        ;; LLM returned nothing this iteration — a natural stop, surfaced for the turn span.
+        (assoc loop-state :status :done :finish-reason :empty-response
+               :result (rf result (final-state-part @memory-atom)))
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
           (cond
             (reduced? result')
-            (assoc loop-state :status :reduced :result @result')
+            ;; consumer signalled early termination (e.g. client disconnect / cancellation)
+            (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
 
             (should-continue? iteration max-iter terminal-tools parts)
             (assoc loop-state :result result' :iteration (inc iteration))
