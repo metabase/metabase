@@ -1,26 +1,37 @@
 import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import {
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
-import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
+import { getDashcards } from "metabase/dashboard/selectors";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import type { Card } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockDashboard,
+  createMockDataset,
+} from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
-// Placing a dashcard is `addCardToDashboard`'s own responsibility (and fans out
-// to card/data/metadata fetches covered by its action spec); here we only assert
-// the hook calls it with the right args. Everything else runs for real.
-const mockAddCardToDashboard = jest.fn((_opts: unknown) => () =>
-  Promise.resolve(),
-);
-jest.mock("metabase/dashboard/actions", () => ({
-  ...jest.requireActual("metabase/dashboard/actions"),
-  addCardToDashboard: (opts: unknown) => mockAddCardToDashboard(opts),
-}));
-
+const TEST_DB = createSampleDatabase();
 const datasetQuery = createMockStructuredDatasetQuery();
+
+const CREATED_CARD = createMockCard({
+  id: 99,
+  display: "bar",
+  dataset_query: datasetQuery,
+});
 
 const chartText = serializeChartClipboard(
   {
@@ -41,15 +52,28 @@ function setup({
   isEditing = true,
   selectedTabId = null,
 }: { isEditing?: boolean; selectedTabId?: number | null } = {}) {
-  renderWithProviders(
+  const dashboard = createMockDashboard({ id: 7 });
+  const dashboardState = createMockDashboardState({
+    dashboardId: dashboard.id,
+    dashboards: {
+      [dashboard.id]: { ...dashboard, dashcards: [] },
+    },
+    editingDashboard: dashboard,
+    dashcards: {},
+  });
+
+  const { store } = renderWithProviders(
     <MockDashboardContext
-      dashboard={createMockDashboard({ id: 7 })}
+      dashboard={dashboard}
       isEditing={isEditing}
       selectedTabId={selectedTabId}
     >
       <TestComponent />
     </MockDashboardContext>,
+    { storeInitialState: { dashboard: dashboardState } },
   );
+
+  return { store };
 }
 
 function paste(text: string) {
@@ -60,19 +84,26 @@ function paste(text: string) {
   window.dispatchEvent(event);
 }
 
-describe("useDashboardChartPaste", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+function setupCardMocks(card: Card) {
+  setupDatabasesEndpoints([TEST_DB]);
+  setupCardEndpoints(card);
+  setupCardQueryEndpoints(card, createMockDataset());
+  setupCardQueryMetadataEndpoint(
+    card,
+    createMockCardQueryMetadata({ databases: [TEST_DB] }),
+  );
+}
 
+describe("useDashboardChartPaste", () => {
   it("creates a dashboard card from a pasted chart while editing", async () => {
-    fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
+    setupCardMocks(CREATED_CARD);
+    fetchMock.post("path:/api/card", CREATED_CARD, {
       name: "create-card",
       matchPartialBody: true,
       body: { display: "bar", dashboard_id: 7, dataset_query: datasetQuery },
     });
 
-    setup({ isEditing: true, selectedTabId: 3 });
+    const { store } = setup({ isEditing: true, selectedTabId: 3 });
     act(() => {
       paste(chartText);
     });
@@ -81,29 +112,28 @@ describe("useDashboardChartPaste", () => {
       expect(fetchMock.callHistory.called("create-card")).toBe(true);
     });
     await waitFor(() => {
-      expect(mockAddCardToDashboard).toHaveBeenCalledWith(
-        expect.objectContaining({ dashId: 7, tabId: 3, cardId: 99 }),
+      const dashcards = Object.values(getDashcards(store.getState()));
+      expect(dashcards).toContainEqual(
+        expect.objectContaining({ card_id: 99, dashboard_tab_id: 3 }),
       );
     });
   });
 
-  it("does nothing when not editing", async () => {
-    fetchMock.post("path:/api/card", createMockCard({ id: 99 }));
+  it("does nothing when not editing", () => {
+    fetchMock.post("path:/api/card", CREATED_CARD);
 
     setup({ isEditing: false });
     paste(chartText);
 
-    await Promise.resolve();
     expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
   });
 
-  it("ignores pastes that are not charts", async () => {
-    fetchMock.post("path:/api/card", createMockCard({ id: 99 }));
+  it("ignores pastes that are not charts", () => {
+    fetchMock.post("path:/api/card", CREATED_CARD);
 
     setup({ isEditing: true });
     paste("just some text");
 
-    await Promise.resolve();
     expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
   });
 });
