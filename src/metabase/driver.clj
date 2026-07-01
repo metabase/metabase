@@ -844,9 +844,6 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
-    ;; Does this driver support the key-based `merge` (upsert/restate) incremental target strategy?
-    :transforms/merge
-    ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
     ;;
