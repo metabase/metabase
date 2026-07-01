@@ -207,6 +207,14 @@ describe("monitor routes", () => {
         expect(await screen.findByTestId("task-list-page")).toBeInTheDocument();
       });
     });
+
+    describe("unknown routes", () => {
+      it("renders the NotFound page inside the Monitor layout", async () => {
+        setup({ initialRoute: "/monitor/does-not-exist" });
+
+        expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("getMonitorRedirects (legacy Data Studio URLs)", () => {

@@ -1,6 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import { IndexRoute, Redirect, Route, type RouteComponent } from "react-router";
 
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
@@ -76,6 +77,8 @@ export function getMonitorRoutes(
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
           </Route>
         </Route>
+
+        <Route path="*" component={NotFound} />
       </Route>
     </Route>
   );
