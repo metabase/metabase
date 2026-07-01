@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
 import { getMetabotRequestState } from "metabase/metabot/state";
 
 import {
