@@ -68,7 +68,6 @@ runs:
       # Quarantine remains the sole arbiter. See DEV-2260.
       if: ${{ always() && steps.run-test.outcome != 'success' }}
       continue-on-error: true
-      timeout-minutes: 3
       uses: ./.github/actions/quarantine-gate
       with:
         adapter: backend
