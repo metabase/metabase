@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.stale-test :as stale-test]
+   [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [toucan2.core :as t2]))
@@ -140,3 +142,42 @@
                                     :type     "query"
                                     :query    {:source-table (mt/id :people)}}}})
       (is (nil? (stored-deps id))))))
+
+(defn- insert-run! [transform-id status months-ago]
+  (t2/insert! :model/TransformRun
+              {:transform_id transform-id
+               :status       status
+               :run_method   :cron
+               :start_time   (stale-test/datetime-months-ago months-ago)
+               :end_time     (stale-test/datetime-months-ago months-ago)}))
+
+(deftest find-stale-query-test
+  (testing "a transform is stale when it has never run, or its most recent run started on/before the cutoff"
+    (mt/with-temp [:model/Transform {never-id :id}          {:name "never-run"}
+                   :model/Transform {old-id :id}            {:name "old-run"}
+                   :model/Transform {fresh-id :id}          {:name "fresh-run"}
+                   :model/Transform {recent-failed-id :id}  {:name "recent-failed"}
+                   :model/Transform {old-failed-id :id}     {:name "old-failed"}
+                   :model/Transform {old-then-recent-id :id} {:name "old-then-recent"}]
+      (insert-run! old-id :succeeded 8)
+      (insert-run! fresh-id :succeeded 1)
+      ;; status is irrelevant — only the most recent run's start_time matters
+      (insert-run! recent-failed-id :failed 1)
+      (insert-run! old-failed-id :failed 8)
+      ;; two runs: the most recent (1mo) governs, not the earlier one (8mo)
+      (insert-run! old-then-recent-id :succeeded 8)
+      (insert-run! old-then-recent-id :succeeded 1)
+      (let [stale-ids (set (map :id (t2/query (staleness/find-stale-query
+                                               :model/Transform
+                                               {:collection-ids #{}
+                                                :cutoff-date    (stale-test/date-months-ago 6)}))))]
+        (testing "a transform that has never run is stale"
+          (is (contains? stale-ids never-id)))
+        (testing "a transform whose most recent run started before the cutoff is stale, regardless of status"
+          (is (contains? stale-ids old-id))
+          (is (contains? stale-ids old-failed-id)))
+        (testing "a transform with a recent run is not stale, regardless of status"
+          (is (not (contains? stale-ids fresh-id)))
+          (is (not (contains? stale-ids recent-failed-id))))
+        (testing "the most recent run governs: an old run followed by a recent one is not stale"
+          (is (not (contains? stale-ids old-then-recent-id))))))))

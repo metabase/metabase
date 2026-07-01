@@ -14,6 +14,7 @@
    [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
+   [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -531,3 +532,27 @@
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})
+
+;;; ------------------------------------------------- Staleness ------------------------------------------------
+
+(defmethod staleness/find-stale-query :model/Transform
+  [_model args]
+  ;; Transform staleness is run-based: there is no `last_used_at` column. A transform is stale when it has
+  ;; never been run, or when its most recent run started on/before the cutoff — regardless of that run's
+  ;; status (a failed run still counts as having been run). "Most recent run" is the row with the greatest
+  ;; `start_time` (the ordering the `:last_run` hydrate uses), captured as a portable grouped MAX(start_time)
+  ;; rather than the window CTE in `transform-run`. `start_time` is NOT NULL, so a NULL aggregate means the
+  ;; transform has no runs at all — i.e. never run.
+  {:select    [:transform.id
+               [[:inline "Transform"] :model]
+               [:transform.name :name]
+               [:latest_run.last_used_at :last_used_at]]
+   :from      :transform
+   :left-join [[{:select   [:transform_id [[:max :start_time] :last_used_at]]
+                 :from     :transform_run
+                 :group-by [:transform_id]}
+                :latest_run]
+               [:= :latest_run.transform_id :transform.id]]
+   :where     [:or
+               [:= :latest_run.last_used_at nil]
+               [:<= :latest_run.last_used_at (:cutoff-date args)]]})
