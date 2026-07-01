@@ -58,7 +58,9 @@ jobs:
 
             // Manual dispatch override wins.
             if (INPUT_VERSION) {
-              core.setOutput('release_version', INPUT_VERSION);
+              const releaseVersion = R.getLinearReleaseName(INPUT_VERSION);
+              console.log({ REF_NAME, CURRENT_VERSION, INPUT_VERSION, releaseVersion });
+              core.setOutput('release_version', releaseVersion);
               core.setOutput('base_ref', '');
               return;
             }
