@@ -84,11 +84,12 @@ export type StructuredIndex =
   | SkipIndex;
 
 export const TABLE_INDEX_REQUEST_STATUSES = [
-  "pending",
+  "create-pending",
+  "update-pending",
+  "delete-pending",
   "running",
   "succeeded",
   "failed",
-  "dropped",
 ] as const;
 export type TableIndexRequestStatus =
   (typeof TABLE_INDEX_REQUEST_STATUSES)[number];

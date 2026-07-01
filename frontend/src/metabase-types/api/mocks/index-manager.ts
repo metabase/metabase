@@ -11,7 +11,7 @@ export const createMockTableIndexRequest = (
     name: "btree",
     columns: [{ name: "id" }],
   },
-  status: "pending",
+  status: "create-pending",
   error_message: null,
   created_by: 1,
   created_at: "2020-01-01T00:00:00.000Z",
