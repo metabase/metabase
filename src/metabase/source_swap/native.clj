@@ -141,14 +141,12 @@
   "Update :type :table template tags when swapping table→table.
    Just updates the :table-id field."
   [template-tags old-table-id new-table-id]
-  (reduce-kv
-   (fn [acc k tag]
-     (if (and (= (:type tag) :table)
-              (= (:table-id tag) old-table-id))
-       (assoc acc k (assoc tag :table-id new-table-id))
-       (assoc acc k tag)))
-   {}
-   template-tags))
+  (mapv (fn [[tag-name tag]]
+          [tag-name (if (and (= (:type tag) :table)
+                             (= (:table-id tag) old-table-id))
+                      (assoc tag :table-id new-table-id)
+                      tag)])
+        template-tags))
 
 ;;; ====================== Dimension Tag Helpers ======================
 ;;;
@@ -162,16 +160,14 @@
   [query template-tags old-table-id new-table-id]
   (let [old-fields (lib.metadata/fields query old-table-id)
         new-fields (lib.metadata/fields query new-table-id)]
-    (reduce-kv
-     (fn [acc k tag]
-       (assoc acc k
-              (or (when (#{:dimension :temporal-unit} (:type tag))
-                    (when-some [field (lib/find-matching-column (:dimension tag) old-fields)]
-                      (when-some [new-field (perf/some #(when (= (:name %) (:name field)) %) new-fields)]
-                        (assoc tag :dimension (lib/ref new-field)))))
-                  tag)))
-     {}
-     template-tags)))
+    (mapv (fn [[tag-name tag]]
+            [tag-name
+             (or (when (#{:dimension :temporal-unit} (:type tag))
+                   (when-some [field (lib/find-matching-column (:dimension tag) old-fields)]
+                     (when-some [new-field (perf/some #(when (= (:name %) (:name field)) %) new-fields)]
+                       (assoc tag :dimension (lib/ref new-field)))))
+                 tag)])
+          template-tags)))
 
 (defn- update-table-tags-for-card-swap
   "Update :type :table template tags when swapping table→card.
@@ -194,16 +190,17 @@
             ;; Note: :id is NOT preserved - new tag gets a new UUID
             [_ first-old-tag] (first table-tags)
             preserved-fields (perf/select-keys first-old-tag [:required :default])
-            ;; Update template-tags: remove old table tags, add new card tag
+            ;; Update template-tags: remove old table tags (preserving order), then append the new card tag
             new-tags (as-> template-tags tags
                        ;; Remove old table tags
-                       (reduce (fn [t [k _]] (dissoc t k)) tags table-tags)
+                       (reduce (fn [t [k _]] (lib/dissoc-template-tag t k)) tags table-tags)
                        ;; Add new card tag with preserved fields
-                       (assoc tags card-tag-key (merge preserved-fields
-                                                       {:type         :card
-                                                        :card-id      new-card-id
-                                                        :name         card-tag-key
-                                                        :display-name card-tag-key})))]
+                       (lib/assoc-template-tag tags card-tag-key
+                                               (merge preserved-fields
+                                                      {:type         :card
+                                                       :card-id      new-card-id
+                                                       :name         card-tag-key
+                                                       :display-name card-tag-key})))]
         {:sql new-sql :template-tags new-tags}))))
 
 (defn- unquote-template-refs
@@ -328,9 +325,9 @@
                                   :card-id      new-card-id
                                   :name         card-tag
                                   :display-name card-tag}
-                  template-tags  (if (contains? template-tags card-tag)
+                  template-tags  (if (lib/has-template-tag? template-tags card-tag)
                                    template-tags
-                                   (assoc template-tags card-tag new-tag))]
+                                   (lib/assoc-template-tag template-tags card-tag new-tag))]
               (-> query
                   (lib/with-native-query sql)
                   (lib/with-template-tags template-tags))))))
@@ -386,28 +383,26 @@
       query))
 
 (defn- replace-template-tags
-  "Replaces references to `old-card-id` with `new-card-id` in a template-tags map.
+  "Replaces references to `old-card-id` with `new-card-id` in `template-tags` (the pairs form).
    Preserves slug format: if old key was `#42-my-query`, new key will be `#99-new-query-name`."
   [tags old-card-id new-card-id new-card-name]
   (let [old-tag (str "#" old-card-id)
         new-slug (when new-card-name
                    (card-slug new-card-name))]
-    (reduce-kv
-     (fn [acc k v]
-       (if (= (:card-id v) old-card-id)
-         (let [;; Check if old key had a slug (e.g., "#42-my-query" vs "#42")
-               had-slug? (str/starts-with? k (str old-tag "-"))
-               new-key (if (and had-slug? new-slug)
-                         (str "#" new-card-id "-" new-slug)
-                         (str "#" new-card-id))]
-           (assoc acc new-key
-                  (assoc v
-                         :card-id new-card-id
-                         :name new-key
-                         :display-name new-key)))
-         (assoc acc k v)))
-     {}
-     tags)))
+    (mapv (fn [[k v]]
+            (if (= (:card-id v) old-card-id)
+              (let [;; Check if old key had a slug (e.g., "#42-my-query" vs "#42")
+                    had-slug? (str/starts-with? k (str old-tag "-"))
+                    new-key (if (and had-slug? new-slug)
+                              (str "#" new-card-id "-" new-slug)
+                              (str "#" new-card-id))]
+                [new-key
+                 (assoc v
+                        :card-id new-card-id
+                        :name new-key
+                        :display-name new-key)])
+              [k v]))
+          tags)))
 
 (defn- replace-card-refs-in-parsed
   "Walk parsed SQL tokens, replacing card references to old-card-id with new-card-id.

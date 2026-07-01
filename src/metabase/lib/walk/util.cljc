@@ -68,6 +68,25 @@
                 (assoc template-tag :lib.walk/template-tag-name template-tag-name)))
          (all-template-tags-map query))))
 
+(mu/defn all-template-tags-in-order :- [:maybe [:sequential {:min 1} ::lib.schema.template-tag/template-tag]]
+  "Return all template tags in native stages of `query`, in display order (stage order, then
+  template-tag order within each stage). Use this rather than [[all-template-tags]] when the
+  caller renders the tags as an ordered list (e.g. parameter widgets) -- the set returned by
+  [[all-template-tags]] discards the order that `:template-tags` now carries as pairs.
+  See https://github.com/metabase/metabase/issues/5136."
+  [query :- ::lib.schema/query]
+  (transduce-stages
+   (comp (filter (fn [stage] (= (:lib/type stage) :mbql.stage/native)))
+         (mapcat (fn [stage]
+                   (map (fn [[template-tag-name template-tag]]
+                          (assoc template-tag :lib.walk/template-tag-name template-tag-name))
+                        (:template-tags stage)))))
+   (fn rf
+     ([acc] (not-empty acc))
+     ([acc tag] (conj acc tag)))
+   []
+   query))
+
 (defn- all-metric-ids [query]
   (let [metric-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses

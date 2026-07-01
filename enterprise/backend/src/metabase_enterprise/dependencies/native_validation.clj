@@ -63,8 +63,8 @@
   (let [stage     (first (:stages query))
         sql       (:native stage)
         ttags     (:template-tags stage)
-        card-tags  (into {} (filter #(= (:type (val %)) :card)) ttags)
-        table-tags (into {} (filter #(= (:type (val %)) :table)) ttags)]
+        card-tags  (into [] (filter (fn [[_ tag]] (= (:type tag) :card))) ttags)
+        table-tags (into [] (filter (fn [[_ tag]] (= (:type tag) :table))) ttags)]
     (when-not (or (str/includes? sql card-placeholder-prefix)
                   (str/includes? sql table-placeholder-prefix))
       (let [;; Replace card tags
@@ -86,7 +86,7 @@
                     table-tags)
 
             remaining-tags
-            (into {} (remove #(#{:card :table} (:type (val %)))) ttags)
+            (into [] (remove (fn [[_ tag]] (#{:card :table} (:type tag)))) ttags)
 
             modified-query
             (-> query

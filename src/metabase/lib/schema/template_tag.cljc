@@ -6,7 +6,7 @@
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every?]]))
+   [metabase.util.performance :refer [every? not-empty]]))
 
 (mr/def ::widget-type
   "Schema for valid values of `:widget-type` for a `:metabase.lib.schema.template-tag/field-filter` template tag."
@@ -217,6 +217,79 @@
              m))])
 
 (mr/def ::template-tag-map
+  "Schema for the LEGACY associative-map representation of template tags
+  (`{tag-name tag}`), used only by legacy MBQL 4 (`::legacy-mbql.schema/TemplateTagMap`)
+  and other map-shaped stores. New MBQL 5 code uses the ordered [[::template-tags]] form
+  instead -- an associative map loses insertion order past the `PersistentArrayMap`
+  threshold, which scrambled template-tag filter widgets for large native queries.
+  See https://github.com/metabase/metabase/issues/5136"
   [:and
    [:map-of ::name ::template-tag]
    [:ref ::template-tag-map.validate-names]])
+
+(defn normalize-template-tags
+  "Idempotently coerce `template-tags` into the canonical ordered form: a vector of
+  `[tag-name tag]` pairs, each with `(:name tag) = tag-name`, with duplicate names dropped
+  in favor of their first occurrence.
+
+  Accepts either the canonical pairs form `[[tag-name tag] ...]` or the legacy associative
+  map form `{tag-name tag}`. The legacy map form is translated in map-iteration order;
+  for <=8 tags that preserves insertion order (array map), and beyond that it is whatever
+  the (hash) map yields -- the best we can do for legacy data that never recorded order.
+  New queries build the pairs form directly via
+  [[metabase.lib.native/extract-template-tags]], which preserves SQL-text order regardless
+  of tag count. See https://github.com/metabase/metabase/issues/5136"
+  [template-tags]
+  (when (some? template-tags)
+    (letfn [(->pair [entry]
+              (let [tag-name (some-> (first entry) common/normalize-string-key)
+                    tag      (second entry)]
+                (when (and tag-name (map? tag))
+                  [tag-name (assoc tag :name tag-name)])))]
+      (cond
+        (map? template-tags)
+        (not-empty (into [] (keep ->pair) template-tags))
+
+        (sequential? template-tags)
+        (let [seen (volatile! #{})]
+          (not-empty
+           (into []
+                 (keep (fn [entry]
+                         (let [pair (->pair entry)]
+                           (when-let [tag-name (first pair)]
+                             (when-not (@seen tag-name)
+                               (vswap! seen conj tag-name)
+                               pair)))))
+                 template-tags)))
+
+        :else nil))))
+
+(mr/def ::template-tags.entry
+  "A single `[tag-name tag]` pair in [[::template-tags]]."
+  [:tuple ::name ::template-tag])
+
+(mr/def ::template-tags
+  "Canonical schema for a native query's `:template-tags`: an ordered sequence of
+  `[tag-name tag]` pairs.
+
+  Order is significant -- it is the order in which template-tag filter widgets render
+  (https://github.com/metabase/metabase/issues/5136) -- so this is a sequence rather than
+  an associative map (Clojure maps lose insertion order past the array-map threshold).
+  Lookups by name are a linear scan, which is fine: queries almost always have fewer than
+  8 tags, and the rare larger case tolerates O(n) access.
+
+  The legacy associative-map form is accepted on normalization via
+  [[normalize-template-tags]], and on serialization (e.g. into the app DB or a serdes
+  export) the pairs are encoded back into the associative-map form so existing stored
+  queries and exports keep their shape."
+  [:and
+   {:decode/normalize normalize-template-tags
+    :encode/serialize (fn [template-tags]
+                        (some-> (seq template-tags) (into {})))}
+   [:sequential [:ref ::template-tags.entry]]
+   [:fn
+    {:error/message "template tag names must be unique and each pair's key must match its tag's :name"}
+    (fn [pairs]
+      (let [names (map first pairs)]
+        (and (= (count names) (count (set names)))
+             (every? (fn [[tag-name tag]] (= tag-name (:name tag))) pairs))))]])

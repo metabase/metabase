@@ -619,11 +619,11 @@
                                            :content "venues WHERE price = 4"}]})
           query (-> (lib/native-query mp "SELECT * FROM {{snippet:expensive_venues}}")
                     ;; force unnormalized snippet names
-                    (lib/update-query-stage 0 assoc :template-tags {"snippet:expensive_venues" {:type         :snippet
-                                                                                                :name         "snippet:expensive_venues"
-                                                                                                :display-name "Expensive Venues"
-                                                                                                :snippet-name "expensive_venues"
-                                                                                                :snippet-id   1}}))]
+                    (lib/update-query-stage 0 assoc :template-tags [["snippet:expensive_venues" {:type         :snippet
+                                                                                                 :name         "snippet:expensive_venues"
+                                                                                                 :display-name "Expensive Venues"
+                                                                                                 :snippet-name "expensive_venues"
+                                                                                                 :snippet-id   1}]]))]
       (is (=  {"snippet: expensive_venues" (lib/parsed-referenced-query-snippet-param 1 "venues WHERE price = 4")}
               (params.values/stage->params-map query (lib/query-stage query -1)))))))
 

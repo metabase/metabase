@@ -1610,8 +1610,16 @@
  [lib.swap
   swap-clauses]
  [lib.template-tags
+  assoc-template-tag
+  dissoc-template-tag
+  has-template-tag?
+  template-tag
+  template-tag-names
+  template-tag-vals
   template-tags->card-ids
-  template-tags->snippet-ids]
+  template-tags->map
+  template-tags->snippet-ids
+  update-template-tag]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
@@ -1660,6 +1668,7 @@
   all-template-tag-field-ids
   all-template-tag-snippet-ids
   all-template-tags
+  all-template-tags-in-order
   all-template-tags-map
   all-template-tags-id->field-ids
   any-native-stage?

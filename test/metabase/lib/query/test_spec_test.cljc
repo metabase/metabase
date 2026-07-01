@@ -971,7 +971,7 @@
                   :query "SELECT * FROM orders"})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders"))
-      (is (empty? (lib/template-tags query))))))
+      (is (empty? (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-text-tag-test
   (testing "test-native-query creates a native query with text template tag"
@@ -987,7 +987,7 @@
       (is (=? {"venue_name" {:type         :text
                              :name         "venue_name"
                              :display-name "Venue Name"}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-number-tag-test
   (testing "test-native-query creates a native query with number template tag"
@@ -1003,7 +1003,7 @@
       (is (=? {"price" {:type         :number
                         :name         "price"
                         :display-name "Price"}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-date-tag-test
   (testing "test-native-query creates a native query with date template tag"
@@ -1019,7 +1019,7 @@
       (is (=? {"date" {:type         :date
                        :name         "date"
                        :display-name "Date"}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-boolean-tag-test
   (testing "test-native-query creates a native query with boolean template tag"
@@ -1035,7 +1035,7 @@
       (is (=? {"is_active" {:type         :boolean
                             :name         "is_active"
                             :display-name "Is Active"}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-dimension-tag-test
   (testing "test-native-query creates a native query with dimension (field-filter) template tag"
@@ -1055,7 +1055,7 @@
                                   :display-name "Category Filter"
                                   :dimension    [:field {} (meta/id :venues :category-id)]
                                   :widget-type  :text}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-temporal-unit-tag-test
   (testing "test-native-query creates a native query with temporal-unit template tag"
@@ -1073,7 +1073,7 @@
                             :name         "date_unit"
                             :display-name "Date Unit"
                             :dimension    [:field {} (meta/id :orders :created-at)]}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
   (testing "test-native-query creates a native query with snippet template tag"
@@ -1091,7 +1091,7 @@
                                       :name         "snippet: my-snippet"
                                       :display-name "My Snippet"
                                       :snippet-name "my-snippet"}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-card-tag-test
   (testing "test-native-query creates a native query with card (source-query) template tag"
@@ -1109,7 +1109,7 @@
                        :name         "#123"
                        :display-name "Card 123"
                        :card-id      1}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-with-multiple-tags-test
   (testing "test-native-query creates a native query with multiple template tags"
@@ -1141,7 +1141,7 @@
                                   :display-name "Category Filter"
                                   :dimension    [:field {} (meta/id :venues :category-id)]
                                   :widget-type  :text}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-inferred-tags-test
   (testing "test-native-query infers template tags from query text"
@@ -1163,7 +1163,7 @@
                              :required     true
                              :widget-type  "string/contains"
                              :id           string?}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-empty-template-tags-test
   (testing "test-native-query handles explicit empty template tags"
@@ -1174,7 +1174,7 @@
                   :template-tags  {}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders"))
-      (is (empty? (lib/template-tags query))))))
+      (is (empty? (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-inferred-tags-test-from-js
   (testing "test-native-query infers template tags from query text, when passing spec from JS"
@@ -1196,7 +1196,7 @@
                              :required     true
                              :widget-type  "string/contains"
                              :id           string?}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))
 
 (deftest ^:parallel test-native-query-inferred-optional-tags-test
   (testing "test-native-query infers optional template tags from query text"
@@ -1218,4 +1218,4 @@
                              :required     true
                              :widget-type  "string/contains"
                              :id           string?}}
-              (lib/template-tags query))))))
+              (lib/template-tags->map (lib/template-tags query)))))))

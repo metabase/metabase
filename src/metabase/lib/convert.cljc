@@ -308,7 +308,14 @@
 
 (defmethod ->mbql5 :mbql.stage/native
   [stage]
-  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->mbql5))))
+  ;; `:template-tags` may arrive as the legacy associative map OR the canonical `[name tag]` pairs; update each
+  ;; tag's :dimension in either case, preserving the shape (normalization later canonicalizes to pairs).
+  (m/update-existing stage :template-tags
+                     (fn [template-tags]
+                       (into (empty template-tags)
+                             (map (fn [entry]
+                                    [(first entry) (m/update-existing (second entry) :dimension ->mbql5)]))
+                             template-tags))))
 
 (defmethod ->mbql5 :mbql/join
   [join]
@@ -742,9 +749,15 @@
             (disj stage-keys :aggregation :breakout :filters :expressions))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
-  (-> stage
-      disqualify
-      (update-vals ->legacy-MBQL)
+  (-> (into {}
+            (map (fn [[k v]]
+                   [k (if (= k :template-tags)
+                        ;; MBQL 5 stores template tags as an ordered sequence of `[name tag]` pairs;
+                        ;; legacy MBQL 4 stores them as an associative map `{name tag}`. Order is not
+                        ;; expressible in the legacy form (see #5136).
+                        (into {} (map (fn [[tag-name tag]] [tag-name (->legacy-MBQL tag)])) v)
+                        (->legacy-MBQL v))]))
+            (disqualify stage))
       ;; a native stage becomes
       ;;
       ;;    {:native "SELECT ..."}

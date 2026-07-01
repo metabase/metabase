@@ -298,7 +298,9 @@
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
     (lib.util/update-query-stage
      query 0
-     #(assoc-in % [:template-tags tag-name :source-filters] filters))))
+     (fn [stage]
+       (update stage :template-tags
+               #(lib/update-template-tag % tag-name (fn [tag] (assoc tag :source-filters filters))))))))
 
 (mu/defn get-source-range-params :- [:maybe ::transforms-base.schema/source-range-params]
   "Returns information on the incremental range filters that ought to be applied to a source query.

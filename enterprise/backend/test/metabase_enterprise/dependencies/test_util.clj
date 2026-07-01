@@ -25,7 +25,7 @@
                              {:database (:id (lib.metadata/database metadata-provider))
                               :type     :native
                               :native   {:query         query
-                                         :template-tags (lib/extract-template-tags metadata-provider query)}}
+                                         :template-tags (into {} (lib/extract-template-tags metadata-provider query))}}
                              (lib.convert/->legacy-MBQL query))
           :name            (str (gensym))
           :result-metadata (when (not (string? query))

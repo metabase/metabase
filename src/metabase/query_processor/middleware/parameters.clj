@@ -88,8 +88,10 @@
   "Find the template tag in `template-tags` that matches `param`'s target."
   [template-tags param]
   (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
-    (or (get template-tags name-or-id) ; handle name
-        (some (fn [[_ tag]] ; handle id (defensive, may be unnecessary)
+    ;; `template-tags` is the ordered pairs form, so lookups are a linear scan (fine: queries almost
+    ;; always have <8 tags, see #5136).
+    (or (some (fn [[tag-name tag]] (when (= tag-name name-or-id) tag)) template-tags) ; handle name
+        (some (fn [[_tag-name tag]] ; handle id (defensive, may be unnecessary)
                 (when (= (:id tag) name-or-id)
                   tag))
               template-tags))))
@@ -152,14 +154,13 @@
       (when-let [diff (second (data/diff query <>))]
         (log/tracef "\n\nSubstituted params:\n%s\n" (u/pprint-to-str 'cyan diff))))))
 
-(mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tag-map
-  [template-tags :- ::lib.schema.template-tag/template-tag-map
+(mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tags
+  [template-tags :- ::lib.schema.template-tag/template-tags
    database-id   :- ::lib.schema.id/database]
-  (update-vals
-   template-tags
-   (fn [v]
-     (cond-> v
-       (= (:type v) :snippet) (assoc :database database-id)))))
+  (into []
+        (map (fn [[tag-name tag]]
+               [tag-name (cond-> tag (= (:type tag) :snippet) (assoc :database database-id))]))
+        template-tags))
 
 (mu/defn- hoist-database-for-snippet-tags :- ::lib.schema/query
   "Assocs the `:database` ID from `query` in all snippet template tags."

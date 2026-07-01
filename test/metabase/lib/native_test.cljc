@@ -1,6 +1,7 @@
 (ns metabase.lib.native-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,8 +13,14 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(defn- extract-template-tags-map
+  "Call [[lib.native/extract-template-tags]] and return the result as an associative map
+  `{tag-name tag}` (order discarded). Handy for tests that check tag contents rather than order."
+  [& args]
+  (lib/template-tags->map (apply lib.native/extract-template-tags args)))
+
 (deftest ^:parallel variable-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
+  (are [exp input] (= exp (set (lib/template-tag-names (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"foo"} "SELECT * FROM table WHERE {{foo}} AND some_field IS NOT NULL"
     #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar}}"
     ;; Duplicates are flattened.
@@ -22,13 +29,13 @@
     #{} "SELECT * FROM table WHERE {{&foo}}"))
 
 (deftest ^:parallel snippet-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
+  (are [exp input] (= exp (set (lib/template-tag-names (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
     #{"snippet: foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
     #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
+  (are [exp input] (= exp (set (lib/template-tag-names (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"#123"} "SELECT * FROM table WHERE {{ #123 }} AND some_field IS NOT NULL"
     ;; TODO: This logic should trim the whitespace and unify these two card tags.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
@@ -49,13 +56,13 @@
                                :snippet-name "foo"
                                :snippet-id   1
                                :id           string?}}
-              (lib.native/extract-template-tags metadata-provider "SELECT * FROM table WHERE {{snippet:foo}}")))
+              (extract-template-tags-map metadata-provider "SELECT * FROM table WHERE {{snippet:foo}}")))
       (is (=? {"snippet: foo" {:type         :snippet
                                :name         "snippet: foo"
                                :snippet-name "foo"
                                :snippet-id   1
                                :id           string?}}
-              (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))))
+              (extract-template-tags-map metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))))
 
 (deftest ^:parallel template-tags-test-2
   (testing "renaming a variable"
@@ -68,15 +75,15 @@
                         :name         "bar"
                         :display-name "Bar"
                         :id           (:id old-tag)}}
-                (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
-                                                  {"foo" old-tag}))))
+                (extract-template-tags-map meta/metadata-provider "SELECT * FROM {{bar}}"
+                                           {"foo" old-tag}))))
       (testing "keeps display-name if it's customized"
         (is (=? {"bar" {:type         :text
                         :name         "bar"
                         :display-name "Custom Name"
                         :id           (:id old-tag)}}
-                (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
-                                                  {"foo" (assoc old-tag :display-name "Custom Name")}))))
+                (extract-template-tags-map meta/metadata-provider "SELECT * FROM {{bar}}"
+                                           {"foo" (assoc old-tag :display-name "Custom Name")}))))
       (testing "works with other variables present, if they don't change"
         (let [other {:type         :text
                      :name         "other"
@@ -87,9 +94,9 @@
                             :name         "bar"
                             :display-name "Bar"
                             :id           (:id old-tag)}}
-                  (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}} AND field = {{other}}"
-                                                    {"foo"   old-tag
-                                                     "other" other}))))))))
+                  (extract-template-tags-map meta/metadata-provider "SELECT * FROM {{bar}} AND field = {{other}}"
+                                             {"foo"   old-tag
+                                              "other" other}))))))))
 
 (deftest ^:parallel template-tags-test-3
   (testing "general case, add and remove"
@@ -124,14 +131,14 @@
       (is (=? {"foo"                    v1
                "#123-card-1"            c1
                "snippet: first snippet" s1}
-              (lib.native/extract-template-tags
+              (extract-template-tags-map
                metadata-provider
                "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
       (is (=? {"bar"                      v2
                "baz"                      v3
                "snippet: another snippet" s2
                "#321"                     c2}
-              (lib.native/extract-template-tags
+              (extract-template-tags-map
                metadata-provider
                "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
                {"foo"                    (assoc v1 :id (str (random-uuid)))
@@ -139,7 +146,7 @@
                 "snippet: first snippet" (assoc s1 :id (str (random-uuid)))})))
       (let [s1-uuid (str (random-uuid))]
         (is (= {"snippet: another snippet" (assoc s2 :id s1-uuid)}
-               (lib.native/extract-template-tags
+               (extract-template-tags-map
                 metadata-provider
                 "SELECT * FROM {{snippet:another snippet}}"
                 {"snippet: first snippet" (assoc s1 :id s1-uuid)})))))))
@@ -178,17 +185,17 @@
                         :name "myid"
                         :id string?
                         :display-name "Myid"}}]
-              ((juxt lib/raw-native-query lib/template-tags) query)))
+              ((juxt lib/raw-native-query #(lib/template-tags->map (lib/template-tags %))) query)))
       (is (=? ["select * from venues where id = {{myid}} and x = {{y}}"
                {"myid" {} "y" {}}]
               (-> query
                   (lib/with-native-query "select * from venues where id = {{myid}} and x = {{y}}")
-                  ((juxt lib/raw-native-query lib/template-tags)))))
+                  ((juxt lib/raw-native-query #(lib/template-tags->map (lib/template-tags %)))))))
       (is (=? ["select * from venues where id = {{myrenamedid}}"
                {"myrenamedid" {}}]
               (-> query
                   (lib/with-native-query "select * from venues where id = {{myrenamedid}}")
-                  ((juxt lib/raw-native-query lib/template-tags)))))
+                  ((juxt lib/raw-native-query #(lib/template-tags->map (lib/template-tags %)))))))
       (is (empty?
            (-> query
                (lib/with-native-query "select * from venues")
@@ -201,21 +208,24 @@
 
 (deftest ^:parallel with-template-tags-test
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")
-        original-tags (lib/template-tags query)]
-    (is (= (assoc-in original-tags ["myid" :display-name] "My ID")
+        original-tags (lib/template-tags query)
+        original-map  (into {} original-tags)]
+    (is (= (assoc-in original-map ["myid" :display-name] "My ID")
            (-> query
-               (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")})
-               lib/template-tags)))
+               (lib/with-template-tags {"myid" (assoc (original-map "myid") :display-name "My ID")})
+               lib/template-tags
+               (->> (into {})))))
     (testing "Changing query keeps updated template tags"
-      (is (= (assoc-in original-tags ["myid" :display-name] "My ID")
+      (is (= (assoc-in original-map ["myid" :display-name] "My ID")
              (-> query
-                 (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")})
+                 (lib/with-template-tags {"myid" (assoc (original-map "myid") :display-name "My ID")})
                  (lib/with-native-query "select * from venues where category_id = {{myid}}")
-                 lib/template-tags))))
+                 lib/template-tags
+                 (->> (into {}))))))
     (testing "Doesn't introduce garbage"
       (is (= original-tags
              (-> query
-                 (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :name "garbage" :display-name "Foobar")})
+                 (lib/with-template-tags {"garbage" (assoc (original-map "myid") :name "garbage" :display-name "Foobar")})
                  lib/template-tags))))
     (testing "Allows to remove template tag properties"
       (let [template-tags     {"tag"
@@ -233,12 +243,12 @@
                                 :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                 :name "tag"
                                 :type :text}}]
-        (is (= new-template-tags (lib/template-tags (lib/with-template-tags query new-template-tags))))))
+        (is (= new-template-tags (into {} (lib/template-tags (lib/with-template-tags query new-template-tags)))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
          (-> (lib.tu/venues-query)
-             (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
+             (lib/with-template-tags {"myid" (assoc (original-map "myid") :display-name "My ID")}))))))
 
 (deftest ^:parallel with-template-tags-update-map-order-test
   ;; yes, I know template tags are sorted as a map, but for small maps we should preserve the order passed in by the
@@ -248,13 +258,29 @@
     (let [query         (lib/native-query meta/metadata-provider "{{x}} {{y}} {{z}}")
           original-tags (lib/template-tags query)]
       (is (=? {"x" {}, "y" {}, "z" {}}
-              original-tags))
+              (into {} original-tags)))
       (is (= ["x" "y" "z"]
-             (keys original-tags)))
-      (let [updated-tags {"y" (get original-tags "y"), "x" (get original-tags "x")}
+             (lib/template-tag-names original-tags)))
+      (let [updated-tags {"y" (lib/template-tag original-tags "y"), "x" (lib/template-tag original-tags "x")}
             query'       (lib/with-template-tags query updated-tags)]
         (is (= ["y" "x" "z"]
-               (keys (lib/template-tags query'))))))))
+               (lib/template-tag-names (lib/template-tags query'))))))))
+
+(deftest ^:parallel template-tags-order-preserved-past-array-map-threshold-test
+  ;; Regression test for https://github.com/metabase/metabase/issues/5136 -- a query with more template tags than the
+  ;; PersistentArrayMap threshold (>8) must still surface them in SQL-text order, because that is the order in which
+  ;; the query builder renders filter widgets. The old associative-map representation lost insertion order past the
+  ;; threshold and scrambled the widgets.
+  (let [tag-names (map #(str (char %)) (range 97 113))  ; 16 tags: a..p
+        sql       (str "SELECT * FROM t WHERE "
+                       (str/join " AND " (map #(str "{{" % "}}") tag-names)))
+        query     (lib/native-query meta/metadata-provider sql)]
+    (is (= tag-names
+           (lib/template-tag-names (lib/template-tags query))))
+    (is (= tag-names
+           (->> (lib/native-query meta/metadata-provider sql)
+                lib/template-tags
+                lib/template-tag-names)))))
 
 (defn ^:private metadata-provider-requiring-collection []
   (meta/updated-metadata-provider update :features conj :native-requires-specified-collection))
@@ -439,7 +465,7 @@
                       (lib/with-different-database
                         (meta/updated-metadata-provider assoc :id 9999))
                       lib/template-tags
-                      vals
+                      (#(map second %))
                       (->> (filter :dimension))))))))
 
 (deftest ^:parallel native-query-idents-test
@@ -648,7 +674,7 @@
 
 (defn- table-tag-query [mp template-tag-overrides]
   (let [base-query (lib.native/native-query mp "select * from {{table}}")
-        template-tag (get (lib.native/template-tags base-query) "table")]
+        template-tag (lib/template-tag (lib.native/template-tags base-query) "table")]
     (lib.native/with-template-tags base-query
       {"table" (merge template-tag {:type :table} template-tag-overrides)})))
 
@@ -671,7 +697,8 @@
                                                                        :name         "snippet:expensive_venues"
                                                                        :display-name "(New display name)"
                                                                        :snippet-name "expensive_venues"
-                                                                       :snippet-id   1}})))))))
+                                                                       :snippet-id   1}})
+                  (update-in [:stages 0 :template-tags] (partial into {}))))))))
 
 (deftest ^:parallel basic-native-query-table-references-test
   (testing "should find id-based native query table references"

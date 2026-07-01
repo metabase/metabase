@@ -111,7 +111,7 @@
                          :type          :model
                          :dataset-query (mt/native-query {:query "select * from checkins"})}]})
           q   "SELECT * FROM {{#1}} LIMIT 2"
-          tt  (lib-native/extract-template-tags mp q)
+          tt  (into {} (lib-native/extract-template-tags mp q))
           res (qp/process-query
                (lib/query
                 mp
@@ -786,7 +786,7 @@
   [mp ids template-tag-overrides]
   (let [sql (mt/native-query-with-card-template-tag driver/*driver* "table")
         base-query (lib/native-query mp sql)
-        template-tag (get (lib/template-tags base-query) "table")
+        template-tag (lib/template-tag (lib/template-tags base-query) "table")
         query (lib/with-template-tags base-query
                 {"table" (merge template-tag {:type :table} template-tag-overrides)})]
     (is (= (set ids) (query-result-ids query)))))

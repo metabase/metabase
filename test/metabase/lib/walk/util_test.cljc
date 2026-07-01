@@ -1,5 +1,6 @@
 (ns metabase.lib.walk.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -393,3 +394,12 @@
                       [(lib/query override-mp (lib.metadata/card override-mp 2))]
                       {:include-implicitly-joinable? true})))
           "the result-metadata FK-target override pulls in PEOPLE, which the raw PRODUCTS.PRICE Field does not reference"))))
+
+(deftest ^:parallel all-template-tags-in-order-preserves-order-test
+  (testing "all-template-tags-in-order preserves SQL-text order past the array-map threshold (#5136)"
+    (let [names (map #(str (char %)) (range 97 113)) ; a..p, 16 tags
+          query (lib/native-query meta/metadata-provider
+                                  (str "SELECT * FROM t WHERE "
+                                       (str/join " AND " (map #(str "{{" % "}}") names))))]
+      (is (= names
+             (map :lib.walk/template-tag-name (lib.walk.util/all-template-tags-in-order query)))))))

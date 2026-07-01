@@ -127,7 +127,7 @@
                        :default nil}}}
                     :database 76}
           converted (lib.convert/->mbql5 original)]
-      (is (=? {:stages [{:template-tags {"NAME" {:dimension [:field {:lib/uuid string?} 866]}}}]}
+      (is (=? {:stages [{:template-tags [["NAME" {:dimension [:field {:lib/uuid string?} 866]}]]}]}
               converted))
       (is (mr/validate :metabase.lib.schema/query converted)))))
 

@@ -32,7 +32,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance :refer [mapv not-empty]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
   [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
@@ -352,18 +352,22 @@
    spec  :- ::lib.schema.test-spec/test-template-tag-spec]
   (u/update-if-exists spec :dimension #(field-id->field-ref query %)))
 
-(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tag-map
+(mu/defn- adjust-template-tags :- ::lib.schema.template-tag/template-tags
   [query                  :- ::lib.schema/query
-   inferred-template-tags :- ::lib.schema.template-tag/template-tag-map
+   inferred-template-tags :- [:maybe ::lib.schema.template-tag/template-tags]
    template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (merge-with merge
-              inferred-template-tags
-              (update-vals template-tags-spec #(adjust-template-tag query %))))
+  (let [adjusted-spec (into {} (map (fn [[k v]] [k (adjust-template-tag query v)]))
+                            (some-> template-tags-spec not-empty))]
+    (mapv (fn [[tag-name tag]]
+            [tag-name (if-let [override (get adjusted-spec tag-name)]
+                        (merge tag override)
+                        tag)])
+          (some-> inferred-template-tags not-empty))))
 
 (mu/defn- add-template-tags :- ::lib.schema/query
   [query              :- ::lib.schema/query
    template-tags-spec :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
-  (let [inferred-template-tags (or (lib.native/template-tags query) {})]
+  (let [inferred-template-tags (or (lib.native/template-tags query) [])]
     (->> template-tags-spec
          (adjust-template-tags query inferred-template-tags)
          (lib.native/with-template-tags query))))
