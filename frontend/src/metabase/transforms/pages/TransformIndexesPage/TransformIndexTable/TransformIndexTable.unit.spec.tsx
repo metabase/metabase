@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupUsersEndpoints } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -17,13 +19,25 @@ import { TransformIndexTable } from "./TransformIndexTable";
 type SetupOpts = {
   indexes?: TableIndexEntry[];
   users?: UserListResult[];
+  readOnly?: boolean;
 };
 
-function setup({ indexes = [], users = [] }: SetupOpts = {}) {
+function setup({ indexes = [], users = [], readOnly = false }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   setupUsersEndpoints(users);
 
-  renderWithProviders(<TransformIndexTable indexes={indexes} />);
+  const onEdit = jest.fn();
+  const onDelete = jest.fn();
+  renderWithProviders(
+    <TransformIndexTable
+      indexes={indexes}
+      readOnly={readOnly}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />,
+  );
+
+  return { onEdit, onDelete };
 }
 
 describe("TransformIndexTable", () => {
@@ -134,5 +148,62 @@ describe("TransformIndexTable", () => {
     });
 
     expect(await screen.findByText("Never")).toBeInTheDocument();
+  });
+
+  it("offers edit and delete for a managed index with a request", async () => {
+    const index = createMockTableIndexEntry({
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 5 }),
+    });
+    const { onEdit, onDelete } = setup({ indexes: [index] });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Index actions" }),
+    );
+    await userEvent.click(await screen.findByText("Edit"));
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "btree" }),
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Index actions" }),
+    );
+    await userEvent.click(await screen.findByText("Delete"));
+    expect(onDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "btree" }),
+    );
+  });
+
+  it("does not offer a menu for unmanaged indexes", async () => {
+    setup({
+      indexes: [
+        createMockTableIndexEntry({
+          metabase_managed: false,
+          request: undefined,
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Unmanaged")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Index actions" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render the actions column when read-only", async () => {
+    setup({
+      readOnly: true,
+      indexes: [
+        createMockTableIndexEntry({
+          metabase_managed: true,
+          request: createMockTableIndexRequest({ id: 5 }),
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Managed")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Index actions" }),
+    ).not.toBeInTheDocument();
   });
 });
