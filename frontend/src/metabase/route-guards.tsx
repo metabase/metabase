@@ -188,10 +188,6 @@ export const CanAccessMonitor = MetabaseIsSetup(
   UserIsAuthenticated(UserCanAccessMonitor(({ children }) => children)),
 );
 
-// Gates the Admin Tools pages migrated into the Monitor space (GDGT-2684) so
-// they keep their original superuser-or-monitoring access rather than the
-// broader analyst-level Monitor guard.
-// Must be in sync with canAccessMonitoringTools in frontend/src/metabase/common/monitor/selectors.ts
 export const CanAccessMonitoringTools = UserCanAccessMonitoringTools(
   ({ children }) => children,
 );
