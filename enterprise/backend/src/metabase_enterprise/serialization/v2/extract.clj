@@ -111,29 +111,59 @@
                                               [:in :collection_id (vec analytics-colls)]]})
       #{})))
 
+(def ^:private query-batch-size
+  "Maximum number of ids per `:in` clause, to stay under database parameter limits."
+  1000)
+
+(defn- content-id-batches
+  "Seq of `[model id-batch]` pairs over the content models in `by-model` (a map of `{model-name [ids ...]}`), each batch
+   capped at [[query-batch-size]] so its `:in :id` clause stays under database parameter limits."
+  [by-model]
+  (for [model (filter (set serdes.models/content) (keys by-model))
+        batch (partition-all query-batch-size (get by-model model))]
+    [model batch]))
+
+(defn- entity-deps
+  "The dependency contribution of a single entity, as a `{:visited :deps}` value: the entity's own `[model id]` as
+   visited, plus every reference it makes (via [[serdes/serialization-dependencies]]), tagged with the `:via` entity
+   that made it."
+  [model entity]
+  (let [via [model (:id entity)]]
+    {:visited #{via}
+     :deps    (mapv #(assoc % :via via)
+                    (serdes/serialization-dependencies model entity))}))
+
+(defn- merge-deps
+  "Monoid over `{:visited :deps}` accumulators: identity (0-arity), completion (1-arity), and associative combine
+   (2-arity), so it doubles as a [[transduce]] reducing function."
+  ([] {:visited #{} :deps []})
+  ([acc] acc)
+  ([a b] {:visited (into (:visited a) (:visited b))
+          :deps    (into (:deps a) (:deps b))}))
+
 (defn- collect-dependencies
-  "Runs the same collection-filtered extract queries the export will run, without serializing or writing, to collect:
-   - `:visited` — the `#{[model id]}` content entities that will actually be extracted, and
-   - `:deps`    — every dependency referenced by those entities (via [[serdes/serialization-dependencies]]), each
-                  tagged with the `:via [model id]` entity that referenced it.
+  "Runs the same collection-filtered extract queries the export will run, without serializing or writing, and returns
+   `{:visited #{[model id]}, :deps [...]}`: the content entities that will actually be extracted and every dependency
+   they reference. Maps each entity to its [[entity-deps]] contribution and folds them with the [[merge-deps]] monoid,
+   iterating `[model id-batch]` pairs so each query's `:in :id` clause stays bounded.
 
   This is the dependency-satisfaction equivalent of the real extraction pass: it shares the extract queries and the
   per-model dependency derivation, differing only in that it neither serializes nor stores anything."
   [by-model coll-set opts]
-  (reduce
-   (fn [acc model]
-     (reduce
-      (fn [acc entity]
-        (let [via [model (:id entity)]]
-          (-> acc
-              (update :visited conj via)
-              (update :deps into (map #(assoc % :via via))
-                      (serdes/serialization-dependencies model entity)))))
-      acc
-      (serdes/extract-query model (merge opts {:collection-set coll-set
-                                               :where          [:in :id (vec (get by-model model))]}))))
-   {:visited #{} :deps []}
-   (filter (set serdes.models/content) (keys by-model))))
+  (transduce
+   (mapcat (fn [[model id-batch]]
+             (eduction (map #(entity-deps model %))
+                       (serdes/extract-query model (merge opts {:collection-set coll-set
+                                                                :where          [:in :id id-batch]})))))
+   merge-deps
+   (content-id-batches by-model)))
+
+(defn- existing-ids
+  "The subset of `ids` that exist as rows of `model` (a model-name string), queried in bounded `:in` batches."
+  [model ids]
+  (into #{}
+        (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]}))
+        (partition-all query-batch-size (distinct ids))))
 
 (defn- unsatisfied-dependencies
   "Given collected `deps`, the `visited` set, and `analytics-cards`, returns the deps that won't be satisfied in the
@@ -145,8 +175,7 @@
         content-models (set serdes.models/content)
         existing       (into {}
                              (for [[model items] (group-by :model data-deps)]
-                               [model (t2/select-pks-set (keyword "model" model)
-                                                         {:where [:in :id (distinct (map :id items))]})]))]
+                               [model (existing-ids model (map :id items))]))]
     (concat
      (remove (fn [{:keys [model id]}]
                (or (not (contains? content-models model))
@@ -168,6 +197,9 @@
 (defn- validate-dependencies!
   "Validates that every entity to be extracted has all of its references satisfied. Logs a warning per unsatisfied
    reference and, unless `continue-on-error?`, throws to abort the export before any archive is produced.
+
+  Arguments:
+    - `by-model` is a map of `{model-name [ids ...]}`
 
   Content references must be part of the export (or be analytics cards, which resolve on import); data-model
   references must exist in the source appdb. A missing reference would otherwise become a dangling reference or a
