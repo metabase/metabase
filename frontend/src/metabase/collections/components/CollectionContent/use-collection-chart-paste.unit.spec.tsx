@@ -45,8 +45,6 @@ function paste(text: string) {
 
 describe("useCollectionChartPaste", () => {
   it("creates a card in the collection from a pasted chart", async () => {
-    // The route only matches when the POST body targets the collection with the
-    // chart's query, so asserting it was called verifies the request payload.
     fetchMock.post("path:/api/card", createMockCard({ id: 5 }), {
       name: "create-card",
       matchPartialBody: true,
