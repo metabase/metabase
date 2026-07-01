@@ -101,7 +101,8 @@
   line protocol so the client can correlate streamed messages with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
            assistant-msg-id external-id]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id})
+  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
+                                                                  :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])

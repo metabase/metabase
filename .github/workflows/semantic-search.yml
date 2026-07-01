@@ -11,6 +11,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-semantic-search
   cancel-in-progress: true
 
+# Exposed to every job so the test-driver action can report failures to
+# ci-conductor (secrets: inherit is already set on the semantic-search call in
+# run-tests.yml). See DEV-2224.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   semantic-search-tests-h2:
     if: ${{ !inputs.skip }}
@@ -27,7 +34,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/curated_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -86,7 +93,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/curated_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -159,7 +166,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/curated_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:
@@ -232,7 +239,7 @@ jobs:
           - name: Semantic Search Tests
             build-static-viz: false
             test-args: >-
-              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/curated_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/entity_retrieval" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
             exclude-tag: ':mb/driver-tests'
 
     services:

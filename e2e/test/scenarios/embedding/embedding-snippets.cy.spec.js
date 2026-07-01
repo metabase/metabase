@@ -56,11 +56,11 @@ tokens.forEach((token) => {
           );
 
         cy.findAllByTestId("embed-backend-select-button")
-          .should("contain", "Node.js")
+          .should("have.value", "Node.js")
           .click();
       });
 
-      H.popover()
+      cy.findByRole("listbox")
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")
@@ -71,10 +71,10 @@ tokens.forEach((token) => {
 
       H.modal()
         .findAllByTestId("embed-frontend-select-button")
-        .should("contain", "Pug / Jade")
+        .should("have.value", "Pug / Jade")
         .click();
 
-      H.popover()
+      cy.findByRole("listbox")
         .should("contain", "Mustache")
         .and("contain", "Pug / Jade")
         .and("contain", "ERB")
@@ -177,11 +177,11 @@ tokens.forEach((token) => {
         }
 
         cy.findByTestId("embed-backend-select-button")
-          .should("contain", "Node.js")
+          .should("have.value", "Node.js")
           .click();
       });
 
-      H.popover()
+      cy.findByRole("listbox")
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")
