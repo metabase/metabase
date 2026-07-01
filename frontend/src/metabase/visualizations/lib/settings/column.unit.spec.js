@@ -1,7 +1,11 @@
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import registerVisualizations from "metabase/visualizations/register";
 
-import { NUMBER_COLUMN_SETTINGS, columnSettings } from "./column";
+import {
+  NUMBER_COLUMN_SETTINGS,
+  columnSettings,
+  tableColumnSettings,
+} from "./column";
 
 registerVisualizations();
 
@@ -128,6 +132,32 @@ describe("column settings", () => {
 
       onChange(options[1].value);
       expect(onChangeSpy).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("table.columns", () => {
+    it("should filter stale table column settings against current result columns (#76136)", () => {
+      const series = [
+        {
+          card: {},
+          data: {
+            cols: [{ name: "ID" }, { name: "QUANTITY_RENAMED" }],
+          },
+        },
+      ];
+
+      const computed = getComputedSettings(tableColumnSettings(), series, {
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "QUANTITY", enabled: false },
+          { name: "QUANTITY_RENAMED", enabled: true },
+        ],
+      });
+
+      expect(computed["table.columns"]).toEqual([
+        { name: "ID", enabled: true },
+        { name: "QUANTITY_RENAMED", enabled: true },
+      ]);
     });
   });
 });
