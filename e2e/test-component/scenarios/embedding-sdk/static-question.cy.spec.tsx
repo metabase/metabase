@@ -283,7 +283,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
     });
   });
 
-  it.only("should not request /api/card/undefined when clicking a data point on an ad-hoc `query` question", () => {
+  it("should not request /api/card/undefined when clicking a data point on an ad-hoc `query` question", () => {
     // An ad-hoc question (rendered from `query`) has no saved card id. A static
     // question must not navigate on a chart click — previously it did, fetching
     // `GET /api/card/undefined` (the new card's id was `undefined`).
