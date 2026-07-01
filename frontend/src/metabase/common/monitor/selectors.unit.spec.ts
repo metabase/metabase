@@ -1,7 +1,11 @@
 import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { canAccessMonitor, canAccessMonitoringTools } from "./selectors";
+import {
+  canAccessMonitor,
+  canAccessMonitorDiagnostics,
+  canAccessMonitoringTools,
+} from "./selectors";
 
 jest.mock("metabase/selectors/embed", () => ({
   getIsEmbeddingIframe: jest.fn(() => false),
@@ -46,15 +50,75 @@ describe("canAccessMonitor", () => {
     expect(canAccessMonitor(state)).toBe(true);
   });
 
-  it("returns false when user is neither admin nor analyst", () => {
+  it("returns true for a monitoring-only user (tools access)", () => {
     const state = createMockState({
       currentUser: createMockUser({
         is_superuser: false,
         is_data_analyst: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    expect(canAccessMonitor(state)).toBe(true);
+  });
+
+  it("returns false when the user has no monitor section access", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: false,
+        permissions: { can_access_monitoring: false },
       }),
     });
 
     expect(canAccessMonitor(state)).toBe(false);
+  });
+});
+
+describe("canAccessMonitorDiagnostics", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getIsEmbeddingIframe.mockReturnValue(false);
+  });
+
+  it("returns false when in embedding iframe", () => {
+    getIsEmbeddingIframe.mockReturnValue(true);
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessMonitorDiagnostics(state)).toBe(false);
+  });
+
+  it("returns true when user is admin", () => {
+    const state = createMockState({
+      currentUser: createMockUser({ is_superuser: true }),
+    });
+
+    expect(canAccessMonitorDiagnostics(state)).toBe(true);
+  });
+
+  it("returns true when user is analyst", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+      }),
+    });
+
+    expect(canAccessMonitorDiagnostics(state)).toBe(true);
+  });
+
+  it("returns false for a monitoring-only user (no diagnostics access)", () => {
+    const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: false,
+        is_data_analyst: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    expect(canAccessMonitorDiagnostics(state)).toBe(false);
   });
 });
 

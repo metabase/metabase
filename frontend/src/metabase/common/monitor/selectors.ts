@@ -6,14 +6,13 @@ import {
   getUserIsAnalyst,
 } from "metabase/selectors/user";
 
-export function canAccessMonitor(state: State) {
+export function canAccessMonitorDiagnostics(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;
   }
   return getUserIsAdmin(state) || getUserIsAnalyst(state);
 }
 
-// Gating for the Admin Tools pages migrated into the Monitor space.
 export function canAccessMonitoringTools(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;
@@ -22,4 +21,8 @@ export function canAccessMonitoringTools(state: State) {
     getUserIsAdmin(state) ||
     (getUser(state)?.permissions?.can_access_monitoring ?? false)
   );
+}
+
+export function canAccessMonitor(state: State) {
+  return canAccessMonitorDiagnostics(state) || canAccessMonitoringTools(state);
 }

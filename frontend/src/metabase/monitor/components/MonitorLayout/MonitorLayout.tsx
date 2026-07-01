@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { canAccessMonitoringTools } from "metabase/common/monitor/selectors";
+import {
+  canAccessMonitorDiagnostics,
+  canAccessMonitoringTools,
+} from "metabase/common/monitor/selectors";
 import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
@@ -30,21 +33,21 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   const { pathname } = useSelector(getLocation);
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
-  // The migrated Admin Tools pages keep their original superuser-or-monitoring
-  // access (GDGT-2684); hide their nav items from analysts who lack it, matching
-  // the CanAccessMonitoringTools route guard.
+  const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
   const canAccessTools = useSelector(canAccessMonitoringTools);
 
   const upperNav = (
     <>
-      <AreaTab
-        label={t`Dependency diagnostics`}
-        icon="search_check"
-        to={Urls.dependencyDiagnostics()}
-        isSelected={pathname.startsWith(Urls.dependencyDiagnostics())}
-        showLabel={isNavbarOpened}
-        isGated={!hasDependenciesFeature}
-      />
+      {canAccessDiagnostics && (
+        <AreaTab
+          label={t`Dependency diagnostics`}
+          icon="search_check"
+          to={Urls.dependencyDiagnostics()}
+          isSelected={pathname.startsWith(Urls.dependencyDiagnostics())}
+          showLabel={isNavbarOpened}
+          isGated={!hasDependenciesFeature}
+        />
+      )}
       {canAccessTools && (
         <>
           <AreaTab

@@ -151,6 +151,31 @@ describe("MonitorLayout", () => {
     });
   });
 
+  it("hides Dependency diagnostics for a monitoring-only user", async () => {
+    // A user who only holds can_access_monitoring reaches the Tools pages but
+    // not the analyst-level diagnostics sections.
+    setup({
+      user: createMockUser({
+        is_superuser: false,
+        is_data_analyst: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("link", { name: "Dependency diagnostics" }),
+    ).not.toBeInTheDocument();
+    ["Tasks", "Jobs", "Logs", "Model cache log", "Alerts management"].forEach(
+      (name) => {
+        expect(screen.getByRole("link", { name })).toBeInTheDocument();
+      },
+    );
+  });
+
   it("renders the content area", async () => {
     setup();
 

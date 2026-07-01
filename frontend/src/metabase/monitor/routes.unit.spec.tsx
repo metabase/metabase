@@ -2,8 +2,11 @@ import type { ReactNode } from "react";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { getStore, mainReducers } from "__support__/entities-store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
+import { createMockState } from "metabase/redux/store/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
 
@@ -93,6 +96,12 @@ const CanAccessMonitor = ({ children }: { children?: ReactNode }) => (
   <>{children}</>
 );
 
+const CanAccessMonitorDiagnostics = ({
+  children,
+}: {
+  children?: ReactNode;
+}) => <>{children}</>;
+
 const CanAccessMonitoringTools = ({ children }: { children?: ReactNode }) => (
   <>{children}</>
 );
@@ -102,13 +111,25 @@ const UPSELL_TITLE =
 
 type SetupOpts = {
   initialRoute: string;
+  user?: ReturnType<typeof createMockUser>;
 };
 
-const setup = ({ initialRoute }: SetupOpts) => {
+const setup = ({
+  initialRoute,
+  user = createMockUser({ is_superuser: true }),
+}: SetupOpts) => {
+  // The index route reads state on entry to pick the landing section.
+  const store = getStore(mainReducers, createMockState({ currentUser: user }));
+
   renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
-      {getMonitorRoutes(CanAccessMonitor, CanAccessMonitoringTools)}
+      {getMonitorRoutes(
+        store,
+        CanAccessMonitor,
+        CanAccessMonitorDiagnostics,
+        CanAccessMonitoringTools,
+      )}
     </Route>,
     { withRouter: true, initialRoute },
   );
@@ -159,6 +180,33 @@ describe("monitor routes", () => {
         expect(await screen.findByText("Broken page")).toBeInTheDocument();
       });
     });
+
+    describe("index redirect (/monitor)", () => {
+      it("sends analysts to the diagnostics section", async () => {
+        setup({
+          initialRoute: "/monitor",
+          user: createMockUser({
+            is_superuser: false,
+            is_data_analyst: true,
+          }),
+        });
+
+        expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
+      });
+
+      it("sends monitoring-only users to the Tools pages", async () => {
+        setup({
+          initialRoute: "/monitor",
+          user: createMockUser({
+            is_superuser: false,
+            is_data_analyst: false,
+            permissions: { can_access_monitoring: true },
+          }),
+        });
+
+        expect(await screen.findByTestId("task-list-page")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("getMonitorRedirects (legacy Data Studio URLs)", () => {
@@ -203,8 +251,6 @@ describe("monitor routes", () => {
     });
   });
 
-  // The Tasks/Notifications sections mount real route factories with index
-  // redirects and nested params, so exercise those boundaries directly.
   describe("Tasks section route branches", () => {
     it.each([
       ["/monitor/tasks", "task-list-page"],
@@ -232,8 +278,6 @@ describe("monitor routes", () => {
     );
   });
 
-  // Each redirect declared in getMonitorRedirects should reach its destination.
-  // A typo or ordering issue in any single Redirect would otherwise ship unnoticed.
   describe("getMonitorRedirects (legacy Admin Tools URLs)", () => {
     it.each([
       ["/admin/tools/tasks", "task-list-page"],
