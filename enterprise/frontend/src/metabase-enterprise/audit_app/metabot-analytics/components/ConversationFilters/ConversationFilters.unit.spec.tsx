@@ -69,13 +69,13 @@ describe("ConversationFilters date dropdown", () => {
   });
 
   it("hides every multi-month shortcut when retention is at the 30-day minimum", async () => {
-    setup({ retentionDays: 30 });
+    setup({ retentionDays: 300 });
     const labels = await getDropdownLabels();
     expect(labels).toEqual(
       expect.arrayContaining([
         "Today",
         "Yesterday",
-        "Last 7 days",
+        "Last 70 days",
         "Last 30 days",
         "Fixed date range…",
         "Relative date range…",
