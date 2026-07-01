@@ -48,16 +48,14 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xs" {...rest}>
-      {breadcrumbs && (
-        <Flex mb="lg" mt="md" w="100%" h="xl">
-          {breadcrumbs}
+      <Flex mb="lg" mt="md" w="100%" h="xl">
+        {breadcrumbs}
 
-          <Group ml="auto" gap="md" className={S.ButtonGroup}>
-            {showMetabotButton && <MetabotDataStudioButton />}
-            {showAppSwitcher && <AppSwitcher />}
-          </Group>
-        </Flex>
-      )}
+        <Group ml="auto" gap="md" className={S.ButtonGroup}>
+          {showMetabotButton && <MetabotDataStudioButton />}
+          {showAppSwitcher && <AppSwitcher />}
+        </Group>
+      </Flex>
       <Group
         className={className}
         gap="sm"

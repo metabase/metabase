@@ -104,33 +104,42 @@ export function getMonitorRedirects() {
     <>
       <Redirect
         from="/data-studio/dependency-diagnostics"
-        to="/monitor/dependency-diagnostics"
+        to={Urls.dependencyDiagnostics()}
       />
       <Redirect
         from="/data-studio/dependency-diagnostics/*"
-        to="/monitor/dependency-diagnostics/*"
+        to={`${Urls.dependencyDiagnostics()}/*`}
       />
 
-      <Redirect from="/admin/tools/help" to="/admin/help" />
-      <Redirect from="/admin/tools/help/*" to="/admin/help/*" />
-      <Redirect from="/admin/tools/tasks" to="/monitor/tasks" />
-      <Redirect from="/admin/tools/tasks/*" to="/monitor/tasks/*" />
-      <Redirect from="/admin/tools/jobs" to="/monitor/jobs" />
-      <Redirect from="/admin/tools/jobs/*" to="/monitor/jobs/*" />
-      <Redirect from="/admin/tools/logs" to="/monitor/logs" />
-      <Redirect from="/admin/tools/logs/*" to="/monitor/logs/*" />
-      <Redirect from="/admin/tools/errors" to="/monitor/errors" />
-      <Redirect from="/admin/tools/model-caching" to="/monitor/model-caching" />
+      <Redirect from="/admin/tools/help" to={Urls.adminHelp()} />
+      <Redirect from="/admin/tools/help/*" to={`${Urls.adminHelp()}/*`} />
+      <Redirect from="/admin/tools/tasks" to={Urls.monitorTasks()} />
+      <Redirect from="/admin/tools/tasks/*" to={`${Urls.monitorTasks()}/*`} />
+      <Redirect from="/admin/tools/jobs" to={Urls.monitorJobs()} />
+      <Redirect from="/admin/tools/jobs/*" to={`${Urls.monitorJobs()}/*`} />
+      <Redirect from="/admin/tools/logs" to={Urls.monitorLogs()} />
+      <Redirect from="/admin/tools/logs/*" to={`${Urls.monitorLogs()}/*`} />
+      <Redirect
+        from="/admin/tools/errors"
+        to={Urls.monitorErroringQuestions()}
+      />
+      <Redirect
+        from="/admin/tools/model-caching"
+        to={Urls.monitorModelCaching()}
+      />
       <Redirect
         from="/admin/tools/model-caching/*"
-        to="/monitor/model-caching/*"
+        to={`${Urls.monitorModelCaching()}/*`}
       />
-      <Redirect from="/admin/tools/notifications" to="/monitor/notifications" />
+      <Redirect
+        from="/admin/tools/notifications"
+        to={Urls.monitorNotifications()}
+      />
       <Redirect
         from="/admin/tools/notifications/*"
-        to="/monitor/notifications/*"
+        to={`${Urls.monitorNotifications()}/*`}
       />
-      <Redirect from="/admin/tools" to="/monitor" />
+      <Redirect from="/admin/tools" to={Urls.monitor()} />
     </>
   );
 }

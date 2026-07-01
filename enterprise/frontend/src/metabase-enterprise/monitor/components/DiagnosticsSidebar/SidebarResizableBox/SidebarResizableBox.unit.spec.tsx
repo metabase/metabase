@@ -1,28 +1,13 @@
-import type { ReactNode } from "react";
+import type { ResizableProps } from "react-resizable";
 
 import { act, render, screen } from "__support__/ui";
 
 import { SidebarResizableBox } from "./SidebarResizableBox";
 
-type ResizeData = {
-  size: {
-    width: number;
-    height: number;
-  };
-};
-
-type ResizableBoxProps = {
-  width: number;
-  height?: number;
-  maxConstraints?: [number, number];
-  onResize?: (event: React.SyntheticEvent, data: ResizeData) => void;
-  children?: ReactNode;
-};
-
-let latestResizableBoxProps: ResizableBoxProps | null = null;
+let latestResizableBoxProps: ResizableProps | null = null;
 
 jest.mock("react-resizable", () => ({
-  ResizableBox: (props: ResizableBoxProps) => {
+  ResizableBox: (props: ResizableProps) => {
     latestResizableBoxProps = props;
     return <div data-testid="resizable-box">{props.children}</div>;
   },
@@ -48,6 +33,8 @@ describe("SidebarResizableBox", () => {
     act(() => {
       latestResizableBoxProps?.onResize?.({} as React.SyntheticEvent, {
         size: { width: 600, height: 0 },
+        node: {} as HTMLElement,
+        handle: "w",
       });
     });
 

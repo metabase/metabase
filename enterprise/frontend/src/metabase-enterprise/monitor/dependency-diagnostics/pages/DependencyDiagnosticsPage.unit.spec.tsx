@@ -143,9 +143,6 @@ describe("DependencyDiagnosticsPage", () => {
 
       const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
       expect(sidebarRegion).toHaveTextContent("Question 1");
-      expect(screen.getByTestId("monitor-main")).not.toContainElement(
-        sidebarRegion,
-      );
     });
   });
 

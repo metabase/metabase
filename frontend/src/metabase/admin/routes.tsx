@@ -307,8 +307,6 @@ export const getRoutes = (
           />
         )}
 
-        {/* Help is a standalone Admin page (GDGT-2684): no Tools sidebar, just
-            the Help content. The other Tools pages moved to the Monitor space. */}
         <Route component={createAdminRouteGuard("help")}>
           <Route path="help" component={Help}>
             {PLUGIN_SUPPORT.isEnabled && (

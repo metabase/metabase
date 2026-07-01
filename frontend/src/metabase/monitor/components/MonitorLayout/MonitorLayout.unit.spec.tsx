@@ -98,7 +98,7 @@ const setup = ({
 };
 
 describe("MonitorLayout", () => {
-  it("renders a sidebar tab for each Monitor section (Dependency diagnostics + migrated Tools)", async () => {
+  it("renders a navbar with tabs for each Monitor section", async () => {
     setup();
 
     await waitFor(() => {
@@ -121,9 +121,6 @@ describe("MonitorLayout", () => {
   });
 
   it("hides the migrated Tools tabs for an analyst without the monitoring permission", async () => {
-    // GDGT-2684 regression guard: these pages keep their superuser-or-monitoring
-    // access, so an analyst lacking can_access_monitoring sees only Dependency
-    // diagnostics in the Monitor nav.
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -152,8 +149,6 @@ describe("MonitorLayout", () => {
   });
 
   it("hides Dependency diagnostics for a monitoring-only user", async () => {
-    // A user who only holds can_access_monitoring reaches the Tools pages but
-    // not the analyst-level diagnostics sections.
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -186,17 +181,19 @@ describe("MonitorLayout", () => {
     expect(screen.getByTestId("content")).toBeInTheDocument();
   });
 
-  it("renders the AppSwitcher in the content shell for every Monitor view", async () => {
+  it("renders the AppSwitcher in Monitor view", async () => {
     setup();
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId("app-switcher-target")).toBeInTheDocument();
+    expect(screen.getByTestId("monitor-main")).toContainElement(
+      screen.getByTestId("app-switcher-target"),
+    );
   });
 
-  it("renders monitor sidebars outside the padded main content area", async () => {
+  it("renders monitor sidebar outside the padded main content area", async () => {
     setup({ children: <TestSidebarSetter /> });
 
     await waitFor(() => {

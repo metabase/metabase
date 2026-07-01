@@ -164,6 +164,10 @@ export function customVizDev() {
   return `${customViz()}/development`;
 }
 
+export function adminHelp() {
+  return "/admin/help";
+}
+
 export function adminHelpGrantAccess() {
-  return "/admin/help/grant-access";
+  return `${adminHelp()}/grant-access`;
 }

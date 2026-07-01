@@ -16,10 +16,6 @@ const getDefaultMonitorTools = (): { COMPONENT: ComponentType | null } => ({
   COMPONENT: null,
 });
 
-/**
- * Erroring questions view, gated behind the `audit_app` premium feature. The EE
- * plugin sets `COMPONENT`; OSS leaves it null and falls back to an upsell.
- */
 export const PLUGIN_MONITOR_TOOLS: {
   COMPONENT: ComponentType | null;
 } = getDefaultMonitorTools();

@@ -157,8 +157,6 @@ describe("canAccessMonitoringTools", () => {
   });
 
   it("returns false for an analyst without the monitoring permission", () => {
-    // Regression guard (GDGT-2684): analysts who lack can_access_monitoring
-    // could not reach the old /admin/tools pages and must not reach them now.
     const state = createMockState({
       currentUser: createMockUser({
         is_superuser: false,

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { useDispatch } from "metabase/redux";
-import { ActionIcon, Flex, Icon, Stack, Tabs, Tooltip } from "metabase/ui";
+import { Flex, Icon, Stack, Tabs, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 type TabConfig = {
@@ -40,16 +40,7 @@ const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
         <Tooltip
           label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
         >
-          <ActionIcon
-            size="xs"
-            style={{ "--ai-size": "1rem" }}
-            variant="transparent"
-            c="text-secondary"
-            fz="0.5rem"
-            aria-label={t`About troubleshooting logs`}
-          >
-            <Icon name="info" size="xs" />
-          </ActionIcon>
+          <Icon name="info" size="1rem" />
         </Tooltip>
       </Flex>
       <SettingsSection>
