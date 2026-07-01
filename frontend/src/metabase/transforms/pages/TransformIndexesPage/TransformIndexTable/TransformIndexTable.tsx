@@ -36,9 +36,9 @@ export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
     () =>
       indexes.map((index, position) => {
         const userId = index.request?.created_by;
-        const modifiedBy = !isNullOrUndefined(userId)
-          ? (usersById.get(userId) ?? "")
-          : "";
+        const modifiedBy = isNullOrUndefined(userId)
+          ? ""
+          : (usersById.get(userId) ?? "");
         return {
           ...index,
           id: getIndexKey(index, position),
