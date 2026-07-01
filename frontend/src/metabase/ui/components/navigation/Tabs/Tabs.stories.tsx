@@ -10,6 +10,10 @@ const argTypes = {
     options: ["horizontal", "vertical"],
     control: { type: "inline-radio" },
   },
+  variant: {
+    options: ["default", "pills"],
+    control: { type: "inline-radio" },
+  },
   listBorder: {
     control: { type: "boolean" },
   },
@@ -98,5 +102,20 @@ export const NoListBorder = {
   name: "Without list border",
   args: {
     listBorder: false,
+  },
+};
+
+export const Pills = {
+  render: DefaultTemplate,
+  args: {
+    variant: "pills",
+  },
+};
+
+export const PillsIcons = {
+  render: IconsTemplate,
+  name: "Pills, icons",
+  args: {
+    variant: "pills",
   },
 };

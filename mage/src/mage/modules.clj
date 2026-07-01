@@ -104,7 +104,6 @@
      collections
      config
      content-verification
-     curated-search
      custom-viz-plugin
      dashboards
      documents
@@ -116,6 +115,7 @@
      enterprise/sso
      enterprise/transforms
      enterprise/transforms-inspector
+     entity-retrieval
      events
      formatter
      geojson
@@ -143,6 +143,7 @@
      setup
      slackbot
      sso
+     staleness
      startup
      system
      task
