@@ -336,6 +336,20 @@
   [query stage-number field-ref]
   (lib.temporal-bucket/available-temporal-buckets query stage-number (lib.field.resolution/resolve-field-ref query stage-number field-ref)))
 
+(mu/defn temporal-column-span-days :- [:maybe number?]
+  "Number of days spanned by `column`'s recorded values -- from the earliest to the latest value in
+  its fingerprint -- or `nil` when the column has no usable `:type/DateTime` fingerprint range (never
+  analyzed, non-temporal, or unparseable bounds). Lets feature code reason about how much history a
+  temporal column covers -- e.g. whether a year-over-year comparison has any prior-year data to
+  compare against -- without reaching into fingerprint internals itself."
+  [column :- ::lib.schema.metadata/column]
+  (u/ignore-exceptions
+    (when-let [{:keys [earliest latest]} (-> column :fingerprint :type :type/DateTime)]
+      (let [days (u.time/day-diff (u.time/coerce-to-timestamp earliest)
+                                  (u.time/coerce-to-timestamp latest))]
+        (when-not (NaN? days)
+          days)))))
+
 (defn- fingerprint-based-default-unit [fingerprint]
   (u/ignore-exceptions
     (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]

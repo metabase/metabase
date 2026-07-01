@@ -17,6 +17,7 @@
   (:require
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.ai-summary :as ai-summary]
+   [metabase.explorations.query-plan.adaptive :as qp.adaptive]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.llm :as qp.llm]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
@@ -25,6 +26,7 @@
    [metabase.explorations.settings :as explorations.settings]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -42,10 +44,12 @@
     - a `QueryPlanner` instance the caller should dispatch through, or
     - `{:skip <reason-keyword>}` when the caller should skip entirely.
 
-  Setting `explorations-query-planner` (`:auto` / `:llm` / `:mechanical`):
+  Setting `explorations-query-planner` (`:auto` / `:llm` / `:mechanical` /
+  `:adaptive`):
    - `:auto`       — LLM when configured, otherwise mechanical (never skips).
    - `:llm`        — LLM if configured; if not, returns `{:skip :skip-no-llm}`.
    - `:mechanical` — always the mechanical planner.
+   - `:adaptive`   — the greedy best-first loop (no LLM dependency).
 
   Public so tests can `with-redefs` it to inject a stub planner. The `!`
   suffix marks that it inspects mutable global state (the setting + the
@@ -56,7 +60,14 @@
     (case choice
       :auto       (if llm? qp.llm/planner qp.mechanical/planner)
       :llm        (if llm? qp.llm/planner {:skip :skip-no-llm})
-      :mechanical qp.mechanical/planner)))
+      :mechanical qp.mechanical/planner
+      :adaptive   qp.adaptive/planner
+      ;; The setting's setter already restricts writes to `valid-query-planners`, so an
+      ;; unrecognized value here means a new planner was added to that enum without a `case`
+      ;; branch — a programming error worth surfacing, not silently running mechanical.
+      ;; `generate-query-plan!`'s top-level catch keeps it from crashing more than this thread.
+      (throw (ex-info "No planner wired for explorations-query-planner value"
+                      {:value choice :valid explorations.settings/valid-query-planners})))))
 
 ;; ---------------------------------------------------------------------------
 ;; Plan materialization (planner-agnostic)
@@ -217,29 +228,89 @@
      :metric-dim-ctx metric-dim-ctx
      :metric-by-key  metric-by-key
      :creator-id     (creator-id-for-thread thread-id)
-     :thread-groups  thread-groups}))
+     :thread-groups  thread-groups
+     ;; Cooperative-cancellation probe: `plan!` now runs many live QP measurement queries, so a
+     ;; planner that loops over groups can check this between them and bail early when the user
+     ;; cancels mid-plan (the runner's `canceled-mid-plan-cleanup!` then reconciles any rows).
+     :cancelled?     (fn [] (t2/exists? :model/ExplorationThread :id thread-id :canceled_at [:not= nil]))}))
 
 ;; ---------------------------------------------------------------------------
 ;; Public entry point — called from the worker
 ;; ---------------------------------------------------------------------------
 
+(defn- safe-plan!
+  "Invoke `picked`'s `plan!`, converting an uncaught throw into a `:failed`
+  result so outcome handling (and the mechanical fallback) stays uniform. Logs
+  the resolved planner, outcome, and wall-clock duration — `plan!` now runs live
+  QP measurement queries, so its cost is worth tracing per thread."
+  [picked planner-id {:keys [thread-id] :as ctx}]
+  (let [timer  (u/start-timer)
+        result (try
+                 (planner/plan! picked ctx)
+                 (catch Throwable e
+                   (log/errorf e "Planner %s threw for thread %d" (name planner-id) thread-id)
+                   {:outcome      :failed
+                    :final-errors [(str "Planner " (name planner-id) " threw: "
+                                        (or (ex-message e) (str e)))]}))]
+    (log/infof "Query plan for thread %d (%s): plan! outcome=%s in %.0f ms"
+               thread-id (name planner-id) (name (:outcome result))
+               (u/since-ms timer))
+    result))
+
+(defn- fail-thread!
+  "Shared terminal-failure path: persist the failed transcript, replace the AI
+  Summary placeholder with an error doc, and terminally stamp the thread."
+  [thread-id creator-id pre transcript-body final-errors]
+  (record-outcome! thread-id pre :failed :transcript transcript-body)
+  (write-planning-failed-doc! thread-id creator-id final-errors)
+  (mark-thread-terminally-failed! thread-id)
+  :failed)
+
 (defn- run-planner!
-  "Invoke the picked planner, persist rows / mark terminal as appropriate, and
+  "Invoke the picked planner — falling back to the mechanical matrix when an
+  adaptive/LLM planner fails — persist rows / mark terminal as appropriate, and
   return the outcome keyword (`:ok`, `:skip-empty`, or `:failed`)."
   [{:keys [thread-id metric-by-key creator-id] :as ctx} picked planner-id pre]
-  (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
+  (let [result0   (safe-plan! picked planner-id ctx)
+        ;; Adaptive and LLM are built on top of the mechanical matrix, which runs no live
+        ;; queries; if they fail, fall back to it before terminal-failing the thread.
+        fell-back? (and (= :failed (:outcome result0))
+                        (contains? #{:adaptive :llm} planner-id))
+        [planner-id result]
+        (if fell-back?
+          (do (log/warnf "Query plan for thread %d (%s): planner failed; falling back to mechanical"
+                         thread-id (name planner-id))
+              [:mechanical (safe-plan! qp.mechanical/planner :mechanical ctx)])
+          [planner-id result0])
+        {:keys [outcome plan rationale transcript final-errors]} result
         transcript-body {:outcome      outcome
                          :rationale    rationale
                          :plan         plan
                          :final-errors final-errors
-                         :planner      transcript}]
+                         :planner      transcript
+                         :planner-id   planner-id
+                         :fell-back?   fell-back?}]
+    (when (seq final-errors)
+      (log/warnf "Query plan for thread %d (%s): planner reported %d soft error(s): %s"
+                 thread-id (name planner-id) (count final-errors) (pr-str final-errors)))
     (case outcome
       :ok
-      (let [n (insert-plan-rows! thread-id metric-by-key plan)]
-        (record-outcome! thread-id pre :ok :rows-count n :transcript transcript-body)
-        (log/infof "Query plan for thread %d (%s): inserted %d ExplorationQuery rows"
-                   thread-id (name planner-id) n)
-        :ok)
+      (let [emitted (count plan)
+            n       (insert-plan-rows! thread-id metric-by-key plan)]
+        (if (zero? n)
+          ;; Items were emitted but none materialized → an empty exploration. That is a
+          ;; failure, not a success: reporting :ok would leave the thread "completed" with
+          ;; zero charts and no error (and run the AI summary over an empty thread).
+          (do (log/warnf "Query plan for thread %d (%s): emitted %d item(s) but none materialized; treating as failed"
+                         thread-id (name planner-id) emitted)
+              (fail-thread! thread-id creator-id pre transcript-body final-errors))
+          (do (record-outcome! thread-id pre :ok :rows-count n :transcript transcript-body)
+              (log/infof "Query plan for thread %d (%s): emitted %d item(s), inserted %d ExplorationQuery rows"
+                         thread-id (name planner-id) emitted n)
+              (when (not= emitted n)
+                (log/warnf "Query plan for thread %d (%s): %d of %d plan item(s) failed to materialize"
+                           thread-id (name planner-id) (- emitted n) emitted))
+              :ok)))
 
       :skip-not-applicable
       (do (log/infof "Query plan for thread %d (%s): planner reported nothing to do"
@@ -251,10 +322,7 @@
       :failed
       (do (log/warnf "Query plan for thread %d (%s): planner failed; terminally marking thread"
                      thread-id (name planner-id))
-          (record-outcome! thread-id pre :failed :transcript transcript-body)
-          (write-planning-failed-doc! thread-id creator-id final-errors)
-          (mark-thread-terminally-failed! thread-id)
-          :failed))))
+          (fail-thread! thread-id creator-id pre transcript-body final-errors)))))
 
 (defn generate-query-plan!
   "Build a query plan for `thread-id` and materialize ExplorationQuery rows.
@@ -274,6 +342,11 @@
           skip?      (:skip picked)
           planner-id (when-not skip? (planner/planner-name picked))
           pre        (preamble thread-id planner-id)]
+      (when planner-id
+        (log/infof "Thread %d: planner=%s (setting=%s llm-configured=%s)"
+                   thread-id (name planner-id)
+                   (explorations.settings/explorations-query-planner)
+                   (metabot.settings/llm-metabot-configured?)))
       (cond
         (not-any? #(and (seq (:metrics %)) (seq (:dimensions %))) thread-groups)
         (do (log/infof "Thread %d: no group has both a metric and a dimension; skipping query plan" thread-id)

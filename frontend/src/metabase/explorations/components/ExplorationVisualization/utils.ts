@@ -146,18 +146,26 @@ function getDisplay(
   const isTimeseries = cols.some(isDate);
 
   if (cols.length === 3 && isTimeseries) {
-    // The second column is the date column and should be the x-axis;
-    // the first column is the breakout. Provide the dimensions explicitly,
-    // otherwise viz settings might swap them based on cardinality.
-    const dimensions = [cols[1]?.name, cols[0]?.name].filter(
+    // A faceted timeseries has one date breakout (the x-axis) and one other
+    // breakout (the series). Identify them by type/source rather than column
+    // position — different variants emit the two breakouts in different orders
+    // (`time-facet` is [series, date]; the cumulative/offset transforms are
+    // [date, series]). Provide the dimensions explicitly, otherwise viz
+    // settings might swap them based on cardinality.
+    const dateCol = cols.find(isDate);
+    const seriesCol = cols.find(
+      (col) => col !== dateCol && col.source === "breakout",
+    );
+    const dimensions = [dateCol?.name, seriesCol?.name].filter(
       (name): name is string => typeof name === "string",
     );
+    const seriesColIndex = seriesCol ? cols.indexOf(seriesCol) : 0;
 
     // here, we use the number of unique breakout values to determine whether to stack
     let shouldStack = true;
     const breakoutValues = new Set<RowValue>();
     for (const row of rows) {
-      breakoutValues.add(row[0]);
+      breakoutValues.add(row[seriesColIndex]);
       if (breakoutValues.size > SHOULD_STACK_CUTOFF) {
         shouldStack = false;
         break;

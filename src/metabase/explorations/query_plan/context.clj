@@ -14,13 +14,16 @@
   iterate on prompt engineering."
   (:require
    [clojure.string :as str]
+   [metabase.driver.util :as driver.u]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration-thread-group :as thread-group]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -120,13 +123,26 @@
       (:fingerprint col))
     (catch Exception _ nil)))
 
+(defn- column-temporal-span-for-target
+  "Span in days of the temporal column `target` resolves to (via
+  [[metabase.lib.core/temporal-column-span-days]]), or nil for non-temporal /
+  unanalyzed columns. Powers the year-over-year / month-over-month span gate on
+  a temporal dim."
+  [base-query columns target]
+  (try
+    (let [ref-clause (qp.mbql/normalize-target-ref target)
+          col        (lib/find-matching-column base-query -1 ref-clause columns)]
+      (lib/temporal-column-span-days col))
+    (catch Exception _ nil)))
+
 (defn- applicability
   "For each chosen `dim`, decide whether it has a resolvable target on
   `card`'s `dimension_mappings`. Returns
   `{dimension_id {:target :enriched-dim} | nil}` keyed by dim id. The dim
-  is enriched with the resolved column's `:fingerprint`, looked up through
-  the metadata provider — bare thread-dim rows don't store fingerprints, so
-  categorical-cardinality probes have nothing to read without this lookup."
+  is enriched with the resolved column's `:fingerprint` and (for temporal dims)
+  its `:temporal-span-days`, looked up through the metadata provider — bare
+  thread-dim rows don't store fingerprints, so categorical-cardinality probes
+  and span gates have nothing to read without this lookup."
   [dim-by-id metric mp card-dataset-query]
   (let [mappings (:dimension_mappings metric)
         base    (try (lib/query mp card-dataset-query) (catch Exception _ nil))
@@ -135,9 +151,38 @@
           (keep (fn [[dim-id dim]]
                   (when-let [target (qp.mbql/find-dimension-target dim-id mappings)]
                     (let [fp   (when base (column-fingerprint-for-target base columns target))
-                          dim' (cond-> dim fp (assoc :fingerprint fp))]
+                          span (when base (column-temporal-span-for-target base columns target))
+                          dim' (cond-> dim
+                                 fp   (assoc :fingerprint fp)
+                                 span (assoc :temporal-span-days span))]
                       [dim-id {:target target :dim dim'}]))))
           dim-by-id)))
+
+(defn- transform-eligibility
+  "Aggregation/driver facts the mechanical planner needs to decide whether the
+  cumulative/offset/pct-change variants apply to this metric: whether it has a
+  single aggregation, whether that aggregation has a cumulative form, whether the
+  metric's database supports window functions (required for offset/pct-change,
+  which have no Clojure fallback), and the span of the metric's own default
+  temporal breakout (for the faceted span gate). Fails closed on any error."
+  [mp dataset-query default-temp]
+  (try
+    (let [base    (lib/query mp dataset-query)
+          aggs    (lib/aggregations base)
+          db      (lib.metadata/database base)
+          single? (= 1 (count aggs))]
+      {:single-aggregation?        single?
+       :cumulable-aggregation?     (and single? (some? (lib/cumulative-aggregation (first aggs))))
+       :supports-window-functions? (boolean (and (:engine db)
+                                                 (driver.u/supports?
+                                                  (:engine db) :window-functions/offset db)))
+       :default-temporal-span-days (some-> default-temp first lib/temporal-column-span-days)})
+    (catch Exception e
+      (log/warn e "transform-eligibility failed; disabling transform variants for this metric")
+      {:single-aggregation?        false
+       :cumulable-aggregation?     false
+       :supports-window-functions? false
+       :default-temporal-span-days nil})))
 
 (defn- metric-context
   "Per-metric entry for [[metric-and-dim-context]]'s `:metrics` list. Enriches
@@ -150,18 +195,20 @@
         enriched-thread-dims (update-vals dim-by-id #(thread-group/enrich-with-card-group % card-dims))
         appl                 (applicability enriched-thread-dims tm mp dataset-query)
         default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
-    {:metric-id                         (:card_id tm)
-     :card                              card
-     :mp                                mp
-     :applicability                     appl
-     :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
-                                          {:column display-name
-                                           :unit   (some-> unit name)})
-     :segments                          (segment-blurbs mp dataset-query)
-     :name                              (:name card)
-     :description                       (some-> (:description card) str/trim not-empty)
-     :aggregation                       (aggregation-summary mp dataset-query)
-     :result-column-name                (metrics/aggregation-column-name (:database_id card) dataset-query)}))
+    (merge
+     (transform-eligibility mp dataset-query default-temp)
+     {:metric-id                         (:card_id tm)
+      :card                              card
+      :mp                                mp
+      :applicability                     appl
+      :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
+                                           {:column display-name
+                                            :unit   (some-> unit name)})
+      :segments                          (segment-blurbs mp dataset-query)
+      :name                              (:name card)
+      :description                       (some-> (:description card) str/trim not-empty)
+      :aggregation                       (aggregation-summary mp dataset-query)
+      :result-column-name                (metrics/aggregation-column-name (:database_id card) dataset-query)})))
 
 (defn- group-context
   "Per-group entry for [[metric-and-dim-context]]'s `:groups` list. Hydrates this group's
@@ -221,6 +268,7 @@
                           :numeric-max    (get-in dim [:fingerprint :type :type/Number :max])
                           :applicable-to  (vec (get applicable-to dim-id []))}))]
     {:group-id      (:id group)
+     :type          (explorations.groups/group-anchor-type group)
      :name          (explorations.groups/group-display-name
                      group (update-vals cards :name))
      :metrics       metrics
@@ -270,7 +318,7 @@
   axis. The metric selection + dim snapshot are read from the row's
   `ExplorationThreadGroup` (the group the planner stamped on the row), not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
-  [{:keys [card_id dimension_id segment_id params group_id]}]
+  [{:keys [id card_id dimension_id segment_id params group_id]}]
   (let [card       (t2/select-one :model/Card :id card_id)
         group      (when group_id (t2/select-one :model/ExplorationThreadGroup :id group_id))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics group))
@@ -288,16 +336,34 @@
                              (catch Exception _ nil)))
             t-dim-id     (:temporal_dimension_id params)
             t-target     (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
-            t-thread-dim (when t-dim-id (get dim-by-id t-dim-id))]
-        {:mp              mp
-         :card            card
-         :target          target
-         :dim             thread-dim
-         :dim-label       (or (:display_name thread-dim) dimension_id)
-         :segment         segment
-         :params          params
-         :temporal-target t-target
-         :temporal-dim    t-thread-dim}))))
+            t-thread-dim (when t-dim-id (get dim-by-id t-dim-id))
+            ;; Adaptive-loop drilled survivors carry an accumulating filter path
+            ;; (`{:dimension_id :value}` pairs). Resolve each dim's target here,
+            ;; where the metric mappings live; the runner folds it onto the query.
+            raw-path     (:filter_path params)
+            filter-path  (mapv (fn [{:keys [dimension_id value]}]
+                                 (when-let [tgt (qp.mbql/find-dimension-target dimension_id mappings)]
+                                   {:target tgt :value value}))
+                               raw-path)]
+        ;; A step that doesn't resolve must NOT be silently dropped: dropping it widens the
+        ;; query's scope while the chart title still claims the full drill path, so the chart
+        ;; would show rows outside what it says it shows. Fail the row instead (the runner
+        ;; records it as a row-level error).
+        (if (some nil? filter-path)
+          (let [unresolved (mapv :dimension_id (remove #(qp.mbql/find-dimension-target (:dimension_id %) mappings) raw-path))]
+            (log/warnf "Exploration row %s (card %s): filter-path dimension(s) %s did not resolve to a target; failing the row rather than broadening its scope"
+                       id card_id (pr-str unresolved))
+            nil)
+          {:mp              mp
+           :card            card
+           :target          target
+           :dim             thread-dim
+           :dim-label       (or (:display_name thread-dim) dimension_id)
+           :segment         segment
+           :params          params
+           :filter-path     filter-path
+           :temporal-target t-target
+           :temporal-dim    t-thread-dim})))))
 
 (defn- group-prompt-block
   "Render one group's METRICS + DIMENSIONS markdown for `plan.selmer`. Each group is a

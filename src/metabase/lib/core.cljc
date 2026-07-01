@@ -552,7 +552,8 @@
   sum-where
   var
   cum-count
-  cum-sum])
+  cum-sum
+  cumulative-aggregation])
 
 ;;; **Code Health:** Leak. These helpers are only used in tests and should be avoided. To be unexported soon.
 (shared.ns/import-fns
@@ -1238,7 +1239,7 @@
   find-visible-column-for-ref
   infer-has-field-values ; Single-use
   json-field? ; Single-use
-  ]
+  temporal-column-span-days]
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage])
 

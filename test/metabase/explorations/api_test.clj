@@ -118,14 +118,21 @@
   each created thread (production does this in an async worker that doesn't run in
   tests). Also finalizes each query's dataset_query (production does this in the
   runner's per-row execution step). Returns the re-hydrated exploration so callers
-  see materialized :queries with dataset_query populated."
+  see materialized :queries with dataset_query populated.
+
+  Pins the planner to `:mechanical` so the materialized fan-out is the deterministic
+  matrix these structural API tests assert against. The default `:adaptive` planner
+  layers data-gated drilled survivors on top, which vary with the underlying data and
+  would make exact query/group counts non-deterministic — the adaptive search is
+  covered by `metabase.explorations.query-plan.adaptive-test`."
   [user body]
-  (let [resp (mt/user-http-request user :post 200 "exploration" (->groups-body body))]
-    (doseq [thread (:threads resp)]
-      (query-plan/generate-query-plan! (:id thread)))
-    (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
-      (finalize-queries! (mapcat :queries (:threads hydrated)))
-      (vectorize-clauses (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))))))
+  (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+    (let [resp (mt/user-http-request user :post 200 "exploration" (->groups-body body))]
+      (doseq [thread (:threads resp)]
+        (query-plan/generate-query-plan! (:id thread)))
+      (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
+        (finalize-queries! (mapcat :queries (:threads hydrated)))
+        (vectorize-clauses (mt/user-http-request user :get 200 (str "exploration/" (:id resp))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    GET /api/exploration/dimensions                                             |
@@ -641,7 +648,8 @@
                                    :effective_type "type/DateTime"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
+        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"
+                 "cumulative" "offset-yoy" "pct-change"}
                (query-types queries)))
         (is (every? #(= "created" (:dimension_id %)) queries))))))
 
@@ -659,7 +667,9 @@
                                    :effective_type "type/Date"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default" "temporal-pattern-day"} (query-types queries)))))))
+        (is (= #{"default" "temporal-pattern-day"
+                 "cumulative" "offset-mom" "offset-yoy" "pct-change"}
+               (query-types queries)))))))
 
 (deftest exploration-create-time-facet-test
   (testing "POST / with a low-cardinality categorical dim + metric with default temporal breakout emits default + time-facet"
@@ -674,7 +684,9 @@
             queries (-> (create-exploration! u body)
                         :threads first :queries)
             facet   (first (filter #(= "time-facet" (:query_type %)) queries))]
-        (is (= #{"default" "time-facet"} (query-types queries)))
+        (is (= #{"default" "time-facet"
+                 "cumulative" "offset-yoy" "pct-change"}
+               (query-types queries)))
         (is (= "line" (:display facet))
             "time-facet variant explicitly sets :display \"line\"")
         (is (= "Sales by Category over time" (:name facet)))))))
@@ -736,7 +748,7 @@
             (is (empty? (segment-filters (:dataset_query (first (get by-type "time-facet"))))))))))))
 
 (deftest exploration-create-segments-multiply-every-variant-test
-  (testing "Segment fan-out applies uniformly to each candidate variant"
+  (testing "Segment fan-out applies uniformly to each segment-eligible variant (transforms are exempt)"
     (mt/with-temp [:model/User u {:email "seg-multiply@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment s {:name       "cheap"
@@ -753,21 +765,26 @@
             queries (-> (create-exploration! u body)
                         :threads first :queries)
             by-seg  (group-by (comp boolean :segment_id) queries)]
-        (is (= 6 (count queries)) "3 variants × (1 base + 1 segment) = 6")
+        (is (= 9 (count queries))
+            "3 fanning variants × (1 base + 1 segment) = 6, plus 3 transforms (no segment fan-out) = 9")
+        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"
+                 "cumulative" "offset-yoy" "pct-change"}
+               (set (map :query_type (get by-seg false))))
+            "base rows carry the fanning variants plus the segment-exempt transforms")
         (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
-               (set (map :query_type (get by-seg false)))))
-        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
-               (set (map :query_type (get by-seg true)))))
+               (set (map :query_type (get by-seg true))))
+            "only the fanning variants get a segment copy")
         (is (every? #(= (:id s) (:segment_id %)) (get by-seg true)))))))
 
-(deftest exploration-create-variants-share-one-sidebar-leaf-test
-  (testing "All variants for a (card, dim) collapse into a single 'page' leaf in auto-groups"
-    (mt/with-temp [:model/User u {:email "groups-collapse@example.com"}
+(deftest exploration-create-variants-get-own-sidebar-leaf-test
+  (testing "Each distinct-query_type variant for a (card, dim) is its own leaf in auto-groups
+            (leaves are keyed by query_type, so variants split rather than collapse)"
+    (mt/with-temp [:model/User u {:email "groups-split@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
                       :target       ["field" {} (mt/id :people :created_at)]}]
-            body    {:name       "collapse"
+            body    {:name       "split"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"
                                    :display_name   "Created"
@@ -775,12 +792,13 @@
             resp    (create-exploration! u body)
             thread  (first (:threads resp))
             queries (:queries thread)
-            leaves  (filter #(= "page" (:display_type %)) (:groups thread))
-            page    (first leaves)]
-        (is (= 3 (count queries)))
-        (is (= 1 (count leaves)) "all 3 variants collapse into one page leaf")
-        (is (= 3 (count (:query_ids page))))
-        (is (= (set (map :id queries)) (set (:query_ids page))))))))
+            leaves  (remove #(= "sidebar" (:display_type %)) (:groups thread))]
+        (is (= 6 (count queries)))
+        (is (= 6 (count leaves)) "the 6 distinct-query_type variants each get their own leaf")
+        (is (every? #(= "singleton" (:display_type %)) leaves) "one query per leaf")
+        (is (= 6 (count (distinct (map :id leaves)))) "leaf ids are distinct (query_type is in the id)")
+        (is (= (set (map :id queries)) (set (mapcat :query_ids leaves)))
+            "every query is surfaced in exactly one leaf")))))
 
 (deftest exploration-create-without-selections-test
   (testing "POST / works without metrics/dimensions/timelines (drafty exploration)"
@@ -1762,7 +1780,8 @@
             leaf-nodes    (filter #(not= "sidebar" (:display_type %)) groups)]
         (is (= 9 (count queries))
             "category (default+top-n-other) × 3 + price (default) × 3 = 9 queries")
-        (is (= 3 (count groups)) "1 group node + 2 (card, dim) leaves")
+        (is (= 4 (count groups))
+            "1 group node + 3 (card, dim, query_type) leaves: category-default, category-top-n-other, price-default")
         (testing "group node"
           (is (= 1 (count group-nodes)) "one group — one top-level node")
           (let [[g] group-nodes]
@@ -1823,10 +1842,13 @@
             by-display (group-by :display_type groups)
             group-ids  (set (map :id (get by-display "sidebar")))
             non-sidebar (concat (get by-display "singleton") (get by-display "page"))]
-        ;; Per group: category dim gets default + top-n-other (> 20 distinct) → "page";
-        ;; price dim gets only default (4 distinct) → "singleton". Two groups → 2 of each.
-        (is (= 2 (count (get by-display "singleton"))) "price dim → one singleton leaf per group = 2")
-        (is (= 2 (count (get by-display "page")))      "category dim → one page leaf per group = 2")
+        ;; Leaves are keyed by query_type. Per group, with no segment fan-out: category dim gets
+        ;; default + top-n-other (> 20 distinct) → two singleton leaves (one per query_type);
+        ;; price dim gets only default (4 distinct) → one singleton leaf. Three singleton leaves
+        ;; per group, no pages. Two groups → 6 singletons.
+        (is (= 6 (count (get by-display "singleton")))
+            "category-default + category-top-n-other + price-default per group × 2 groups = 6")
+        (is (empty? (get by-display "page")) "no leaf bundles multiple queries (each variant its own leaf)")
         (is (= 2 (count (get by-display "sidebar")))   "two groups → two top-level nodes")
         (is (= #{"Revenue" "Order count"}
                (set (map :group_name (get by-display "sidebar"))))
@@ -1836,8 +1858,8 @@
           (let [leaves-by-parent (group-by :parent_group_id non-sidebar)]
             (is (= group-ids (set (keys leaves-by-parent)))
                 "every leaf's parent is a known group node id")
-            (is (every? #(= 2 (count %)) (vals leaves-by-parent))
-                "each group parents its own 2 (card, dim) leaves")))))))
+            (is (every? #(= 3 (count %)) (vals leaves-by-parent))
+                "each group parents its own 3 (card, dim, query_type) leaves")))))))
 
 (deftest exploration-get-empty-thread-has-empty-groups-test
   (testing "A thread with no queries gets :groups => []"

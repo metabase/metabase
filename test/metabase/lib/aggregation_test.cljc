@@ -39,6 +39,21 @@
         (is (=? [tag {:lib/uuid string?} venue-field-check]
                 (op venues-category-id-metadata)))))))
 
+(deftest ^:parallel cumulative-aggregation-test
+  (let [price (meta/field-metadata :venues :price)]
+    (testing "sum -> cum-sum, preserving options and the aggregated field"
+      (is (=? [:cum-sum {:lib/uuid string?} [:field {} (meta/id :venues :price)]]
+              (lib/cumulative-aggregation (lib/sum price)))))
+    (testing "count -> cum-count"
+      (is (=? [:cum-count {:lib/uuid string?}]
+              (lib/cumulative-aggregation (lib/count)))))
+    (testing "operators without a cumulative form return nil"
+      (are [agg] (nil? (lib/cumulative-aggregation agg))
+        (lib/avg price)
+        (lib/distinct price)
+        (lib/max price)
+        (lib/count-where (lib/= price 1))))))
+
 (defn- aggregation-display-name [aggregation-clause]
   (lib/display-name (lib.tu/venues-query) -1 aggregation-clause))
 

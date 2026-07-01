@@ -29,6 +29,7 @@
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.explorations.query-plan :as explorations.query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
+   [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.settings :as explorations.settings]
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
@@ -158,7 +159,10 @@
         (throw (ex-info "Could not build context for row"
                         {:row-id (:id row)})))
       (let [variant (:query_type row)
-            dq      (qp.variants/dataset-query variant ctx)
+            ;; Fold the adaptive loop's accumulating filter path onto whatever the
+            ;; variant builds, uniformly — so drilled survivors carry their filters.
+            dq      (some-> (qp.variants/dataset-query variant ctx)
+                            (qp.mbql/apply-filter-path (:filter-path ctx)))
             nm      (qp.variants/query-name variant ctx)]
         (when (nil? dq)
           (throw (ex-info "Could not build dataset_query for row (discovery returned no values?)"
