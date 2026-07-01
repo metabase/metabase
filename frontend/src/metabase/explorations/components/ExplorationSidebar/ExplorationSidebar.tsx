@@ -26,13 +26,18 @@ import {
   PotentiallyInterestingMarker,
 } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import {
   ActionIcon,
   Box,
+  Center,
   Ellipsified,
   Icon,
   type IconProps,
   Menu,
+  Stack,
+  Tabs,
+  Text,
 } from "metabase/ui";
 import type {
   Exploration,
@@ -48,6 +53,7 @@ import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
 import {
+  type ExplorationSidebarTabsInfo,
   type ExplorationTreeHeading,
   type ExplorationTreeItem,
   type ExplorationTreeNode,
@@ -56,6 +62,9 @@ import {
 
 interface ExplorationSidebarProps {
   exploration: Exploration;
+  explorationSidebarTabsInfo: ExplorationSidebarTabsInfo;
+  selectedSidebarTab: ExplorationSidebarTab;
+  getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNode>[];
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
@@ -65,6 +74,9 @@ interface ExplorationSidebarProps {
 
 export function ExplorationSidebar({
   exploration,
+  explorationSidebarTabsInfo,
+  selectedSidebarTab,
+  getSelectedSidebarTabUrl,
   tree,
   selectedEntityId,
   setSelectedEntityId,
@@ -204,18 +216,44 @@ export function ExplorationSidebar({
     return null;
   }
 
+  const emptyTreeMessage =
+    explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
+
   return (
-    <Box
-      h="100%"
-      w="20%"
-      miw="20.5rem"
-      flex="none"
-      mr="2rem"
-      data-testid="exploration-page-sidebar"
-      className={S.tree}
-    >
-      <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
-    </Box>
+    <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
+      <Tabs
+        pl="0.5rem"
+        pr="1rem"
+        classNames={{ tab: S.tab }}
+        value={selectedSidebarTab}
+      >
+        <Tabs.List>
+          {Object.values(explorationSidebarTabsInfo).map(({ value, label }) => (
+            <Tabs.Tab
+              key={value}
+              value={value}
+              renderRoot={(props) => (
+                <ForwardRefLink
+                  {...props}
+                  to={getSelectedSidebarTabUrl(value)}
+                />
+              )}
+            >
+              {label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
+      {tree.length > 0 ? (
+        <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
+          <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
+        </Box>
+      ) : (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text fz="lg">{emptyTreeMessage}</Text>
+        </Center>
+      )}
+    </Stack>
   );
 }
 

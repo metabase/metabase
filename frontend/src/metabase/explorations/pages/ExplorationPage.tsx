@@ -5,9 +5,14 @@ import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { c, t } from "ttag";
 
-import { useGetExplorationQuery, useListTimelinesQuery } from "metabase/api";
+import {
+  useGetExplorationQuery,
+  useListCommentsQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
 import { Api } from "metabase/api/api";
 import { idTag } from "metabase/api/tags";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
@@ -35,6 +40,7 @@ import {
   ExplorationTitle,
 } from "../components/ExplorationSidebar";
 import {
+  getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
   pickInitialSidebarEntity,
 } from "../components/ExplorationSidebar/utils";
@@ -48,6 +54,7 @@ import {
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
+import { type ExplorationSidebarTab, isExplorationSidebarTab } from "../types";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 const NO_TIMELINE_PARAM = "none";
@@ -56,6 +63,7 @@ const TIMELINE_QUERY_PARAM = "timeline";
 interface ExplorationPageQuery {
   [TIMELINE_QUERY_PARAM]?: string;
   comments?: string;
+  tab?: string;
 }
 
 interface ExplorationPageProps {
@@ -110,6 +118,23 @@ export function ExplorationPage({
 }: ExplorationPageProps) {
   const dispatch = useDispatch();
 
+  const selectedSidebarTab = useMemo<ExplorationSidebarTab>(() => {
+    const tab = location.query?.tab;
+    if (isExplorationSidebarTab(tab)) {
+      return tab;
+    }
+    return "all";
+  }, [location.query]);
+
+  const getSelectedSidebarTabUrl = useCallback(
+    (tab: ExplorationSidebarTab) => {
+      const nextSearchParams = new URLSearchParams(location.search);
+      nextSearchParams.set("tab", tab);
+      return `${location.pathname}?${nextSearchParams.toString()}`;
+    },
+    [location.pathname, location.search],
+  );
+
   const getSelectedEntityIdUrl = useCallback(
     (entityId: SelectedEntityId) => {
       return `${Urls.exploration(parseInt(params.id, 10))}/${entityId.type}/${encodeURIComponent(entityId.id)}${location.search}`;
@@ -139,6 +164,13 @@ export function ExplorationPage({
     pollingInterval: shouldPoll ? QUERY_POLL_INTERVAL_MS : 0,
   });
 
+  const { data: commentsData } = useListCommentsQuery(
+    getListCommentsQuery({
+      target_id: Number(params.id),
+      target_type: "exploration",
+    }),
+  );
+
   useEffect(() => {
     setShouldPoll(hasUnsettledQueries(exploration));
     dispatch(setCurrentExploration(exploration));
@@ -161,12 +193,21 @@ export function ExplorationPage({
     return new Map(allTimelines.map((timeline) => [timeline.id, timeline]));
   }, [allTimelines]);
 
+  const explorationSidebarTabsInfo = useMemo(() => {
+    return getExplorationSidebarTabsInfo(
+      exploration,
+      commentsData?.comments ?? [],
+    );
+  }, [exploration, commentsData?.comments]);
+
   const tree = useMemo(() => {
     if (!exploration) {
       return [];
     }
-    return getExplorationSidebarTree(exploration);
-  }, [exploration]);
+    const treeItemFilter =
+      explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
+    return getExplorationSidebarTree(exploration, treeItemFilter);
+  }, [exploration, selectedSidebarTab, explorationSidebarTabsInfo]);
 
   // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
@@ -417,6 +458,9 @@ export function ExplorationPage({
         <Group flex={1} mih={0} align="flex-start" wrap="nowrap" gap={0}>
           <ExplorationSidebar
             exploration={exploration}
+            explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+            selectedSidebarTab={selectedSidebarTab}
+            getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
             selectedEntityId={selectedEntityId}
             setSelectedEntityId={setSelectedEntityId}

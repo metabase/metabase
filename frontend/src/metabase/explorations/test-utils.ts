@@ -166,6 +166,7 @@ export function createPage(
     long_name: null,
     position: 0,
     query_ids: [],
+    starred: false,
     ...overrides,
   };
 }
@@ -229,6 +230,7 @@ export function createExploration({
         long_name: q.name,
         position: i,
         query_ids: [q.id],
+        starred: false,
       })),
     },
   ];

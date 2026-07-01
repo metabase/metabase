@@ -8,7 +8,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import type { DocumentContent, Timeline, TimelineId } from "metabase-types/api";
+import { createPage } from "metabase/explorations/test-utils";
+import type {
+  DocumentContent,
+  ExplorationPageNode,
+  Timeline,
+  TimelineId,
+} from "metabase-types/api";
 import { createMockTimeline } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 import { createMockDocumentContent } from "metabase-types/api/mocks/document";
@@ -18,7 +24,7 @@ import { ActionToolbar } from "./ActionToolbar";
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const EXPLORATION_ID = 42;
-const GROUP_ID = "group-1";
+const PAGE_ID = 1;
 const mockCommentContent = createMockDocumentContent({
   content: [
     {
@@ -50,6 +56,7 @@ function makeTimeline(id: TimelineId, name: string): Timeline {
 }
 
 interface SetupOpts {
+  page?: ExplorationPageNode;
   timelines?: Timeline[];
   selectedTimelineId?: TimelineId | null;
   interestingTimelineIds?: ReadonlySet<TimelineId>;
@@ -58,6 +65,7 @@ interface SetupOpts {
 }
 
 function setup({
+  page = createPage({ id: PAGE_ID }),
   timelines = [],
   selectedTimelineId = null,
   interestingTimelineIds,
@@ -70,7 +78,7 @@ function setup({
   renderWithProviders(
     <ActionToolbar
       explorationId={EXPLORATION_ID}
-      pageId={GROUP_ID}
+      page={page}
       commentDrafts={{}}
       setCommentDrafts={setCommentDrafts}
       showTimelineDropdown={showTimelineDropdown}
@@ -256,7 +264,7 @@ describe("ActionToolbar", () => {
         createMockComment({
           target_type: "exploration",
           target_id: EXPLORATION_ID,
-          child_target_id: GROUP_ID,
+          child_target_id: String(PAGE_ID),
         }),
       );
 
@@ -282,7 +290,7 @@ describe("ActionToolbar", () => {
       expect(await lastCall?.request?.json()).toEqual({
         target_id: EXPLORATION_ID,
         target_type: "exploration",
-        child_target_id: GROUP_ID,
+        child_target_id: String(PAGE_ID),
         parent_comment_id: null,
         content: mockCommentContent,
         context: {
@@ -312,6 +320,94 @@ describe("ActionToolbar", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Submit comment" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("star", () => {
+    it("shows the star action when the page is not starred", () => {
+      setup({ page: createPage({ id: PAGE_ID, starred: false }) });
+
+      expect(screen.getByRole("button", { name: "Star" })).toBeInTheDocument();
+    });
+
+    it("shows the remove-star action when the page is starred", () => {
+      setup({ page: createPage({ id: PAGE_ID, starred: true }) });
+
+      expect(
+        screen.getByRole("button", { name: "Remove star" }),
+      ).toBeInTheDocument();
+    });
+
+    it("stars the page on click", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 204);
+
+      setup({ page: createPage({ id: PAGE_ID, starred: false }) });
+
+      await userEvent.click(screen.getByRole("button", { name: "Star" }));
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/page/${PAGE_ID}/starred`,
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          starred: true,
+        });
+      });
+    });
+
+    it("unstars the page on click", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 204);
+
+      setup({ page: createPage({ id: PAGE_ID, starred: true }) });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove star" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls(
+          `path:/api/exploration/page/${PAGE_ID}/starred`,
+          { method: "PUT" },
+        );
+        expect(calls).toHaveLength(1);
+        expect(JSON.parse(calls[0].options?.body as string)).toEqual({
+          starred: false,
+        });
+      });
+    });
+
+    it("toggles the star with the s shortcut", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 204);
+
+      setup({ page: createPage({ id: PAGE_ID, starred: false }) });
+
+      fireEvent.keyDown(document.body, { key: "s" });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(
+            `path:/api/exploration/page/${PAGE_ID}/starred`,
+            { method: "PUT" },
+          ),
+        ).toHaveLength(1);
+      });
+    });
+
+    it("shows a toast when starring fails", async () => {
+      fetchMock.put(`path:/api/exploration/page/${PAGE_ID}/starred`, 500);
+
+      setup({
+        page: createPage({ id: PAGE_ID, starred: false }),
+        withUndos: true,
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Star" }));
+
+      expect(
+        await screen.findByText("Failed to update star"),
       ).toBeInTheDocument();
     });
   });

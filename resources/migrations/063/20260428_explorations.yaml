@@ -439,12 +439,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: user_interestingness
-                  type: int
-                  remarks: Owner's interestingness rating; null = unrated, 0 = not interesting, 1 = hmm, 2 = interesting
-                  constraints:
-                    nullable: true
-              - column:
                   name: entity_id
                   type: char(21)
                   remarks: NanoID for serdes
@@ -1594,6 +1588,13 @@ databaseChangeLog:
                   type: int
                   defaultValueNumeric: 0
                   remarks: First-seen authoring order of the page within its block
+                  constraints:
+                    nullable: false
+              - column:
+                  name: starred
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: True if the page is starred
                   constraints:
                     nullable: false
               - column:

@@ -2,7 +2,9 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import type {
+  Comment,
   DocumentId,
   Exploration,
   ExplorationId,
@@ -55,33 +57,39 @@ export type ExplorationTreeItem = ExplorationTreePage | ExplorationTreeDocument;
 
 export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
 
+type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
+
 export function getExplorationSidebarTree(
   exploration: Exploration,
+  treeItemFilter: TreeItemFilter,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
-  const tree: ITreeNodeItem<ExplorationTreeNode>[] = (
-    exploration.threads ?? []
-  ).map((thread, index) => {
-    const children = getExplorationQueryTree(thread);
-    const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
-    if (aiSummaryDocumentNode != null) {
-      children.push(aiSummaryDocumentNode);
-    }
-    return {
-      id: thread.id,
-      name: getExplorationThreadName(thread, index),
-      icon: "empty",
-      data: {
-        type: "heading",
-        explorationId: exploration.id,
-        thread,
-        status: getExplorationQueryGroupStatus(thread.queries ?? []),
-        lastActivityAt: latestTimestamp(
-          (thread.queries ?? []).map((query) => query.finished_at),
-        ),
-      },
-      children,
-    };
-  });
+  const tree: ITreeNodeItem<ExplorationTreeNode>[] = (exploration.threads ?? [])
+    .map((thread, index) => {
+      const children = getExplorationQueryTree(thread, treeItemFilter);
+      const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
+      if (
+        aiSummaryDocumentNode != null &&
+        treeItemFilter(aiSummaryDocumentNode)
+      ) {
+        children.push(aiSummaryDocumentNode);
+      }
+      return {
+        id: thread.id,
+        name: getExplorationThreadName(thread, index),
+        icon: "empty" as const,
+        data: {
+          type: "heading" as const,
+          explorationId: exploration.id,
+          thread,
+          status: getExplorationQueryGroupStatus(thread.queries ?? []),
+          lastActivityAt: latestTimestamp(
+            (thread.queries ?? []).map((query) => query.finished_at),
+          ),
+        },
+        children,
+      };
+    })
+    .filter((heading) => (heading.children ?? []).length > 0);
   return tree;
 }
 
@@ -129,6 +137,7 @@ export function getCompactRelativeTime(timestamp: string): string {
 
 function getExplorationQueryTree(
   thread: ExplorationThread,
+  treeItemFilter: TreeItemFilter,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
@@ -167,7 +176,8 @@ function getExplorationQueryTree(
         };
       })
       .filter(
-        (node): node is ITreeNodeItem<ExplorationTreeNode> => node != null,
+        (node): node is ITreeNodeItem<ExplorationTreeNode> =>
+          node != null && treeItemFilter(node),
       );
 
     return {
@@ -325,4 +335,58 @@ export function pickInitialSidebarEntity(
     }
   }
   return null;
+}
+
+export type ExplorationSidebarTabsInfo = Record<
+  ExplorationSidebarTab,
+  {
+    value: ExplorationSidebarTab;
+    label: string;
+    treeItemFilter: TreeItemFilter;
+    emptyTreeMessage: string;
+  }
+>;
+
+export function getExplorationSidebarTabsInfo(
+  exploration?: Exploration,
+  comments?: Comment[],
+): ExplorationSidebarTabsInfo {
+  const pages =
+    exploration?.threads?.flatMap(
+      (thread) => thread.blocks?.flatMap((block) => block.pages) ?? [],
+    ) ?? [];
+  const starredPageIds = new Set(
+    pages.filter((page) => page.starred).map((page) => String(page.id)),
+  );
+  const discussionPageIds = new Set(
+    comments
+      ?.map((comment) => comment.child_target_id)
+      .filter((pageId) => typeof pageId === "string"),
+  );
+  return {
+    all: {
+      value: "all",
+      label: t`All`,
+      treeItemFilter: () => true,
+      emptyTreeMessage: t`Nothing to see here yet.`,
+    },
+    stars: {
+      value: "stars",
+      label: t`Stars`,
+      treeItemFilter: (node) =>
+        isExplorationTreePage(node) &&
+        node.data?.page_id != null &&
+        starredPageIds.has(node.data.page_id),
+      emptyTreeMessage: t`Nothing's been starred yet.`,
+    },
+    discussions: {
+      value: "discussions",
+      label: t`Discussions`,
+      treeItemFilter: (node) =>
+        isExplorationTreePage(node) &&
+        node.data?.page_id != null &&
+        discussionPageIds.has(node.data.page_id),
+      emptyTreeMessage: t`No discussions yet.`,
+    },
+  };
 }

@@ -59,6 +59,7 @@ jest.mock("metabase/comments/components/Comments", () => ({
 
 const mockDatasetsByQueryId = new Map<number, Dataset | undefined>();
 const mockErrorsByQueryId = new Map<number, unknown>();
+const mockMutationTrigger = () => jest.fn(() => ({ unwrap: jest.fn() }));
 jest.mock("metabase/api/exploration", () => ({
   __esModule: true,
   explorationApi: {
@@ -74,6 +75,7 @@ jest.mock("metabase/api/exploration", () => ({
       },
     },
   },
+  useSetPageStarredMutation: () => [mockMutationTrigger()],
 }));
 
 function makeTimeseriesDataset(): Dataset {
@@ -266,7 +268,9 @@ describe("ExplorationGroupVisualization", () => {
       ],
     });
 
-    expect(screen.getAllByText("Q1").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Revenue across regions").length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
@@ -288,7 +292,7 @@ describe("ExplorationGroupVisualization", () => {
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
-  it("shows the first query's name in the header", () => {
+  it("shows the group name in the header", () => {
     const queries = [
       createQuery({ id: 101, name: "Revenue (US)", status: "done" }),
       createQuery({ id: 102, name: "Revenue (EU)", status: "done" }),
@@ -299,7 +303,7 @@ describe("ExplorationGroupVisualization", () => {
     ]);
     setup({ queries, datasets });
 
-    expect(screen.getByText("Revenue (US)")).toBeInTheDocument();
+    expect(screen.getByText("Revenue across regions")).toBeInTheDocument();
   });
 
   it("shows the timeline dropdown when the group has timeseries charts", () => {

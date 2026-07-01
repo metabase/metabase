@@ -27,16 +27,17 @@ export function ExplorationVisualizationHeader({
   const dispatch = useDispatch();
   const { location } = useRouter();
   const nextCommentsUrl = getNextCommentsUrl(location);
-  const unresolvedCommentsCount = useUnresolvedCommentsCount({
-    target:
-      explorationId != null
-        ? {
-            target_id: explorationId,
-            target_type: "exploration",
-          }
-        : undefined,
-    childTargetId: pageId,
-  });
+  const { unresolvedCommentsCount, allCommentsCount } =
+    useUnresolvedCommentsCount({
+      target:
+        explorationId != null
+          ? {
+              target_id: explorationId,
+              target_type: "exploration",
+            }
+          : undefined,
+      childTargetId: pageId,
+    });
 
   const ShowCommentsButton = showCommentsButton ? (
     <ToolbarButton
@@ -61,8 +62,16 @@ export function ExplorationVisualizationHeader({
         {name}
       </Text>
       <Group align="center" gap="sm">
-        {unresolvedCommentsCount > 0 ? (
-          <Indicator label={unresolvedCommentsCount} size={16} color="danger">
+        {unresolvedCommentsCount > 0 || allCommentsCount > 0 ? (
+          <Indicator
+            label={
+              unresolvedCommentsCount > 0
+                ? unresolvedCommentsCount
+                : allCommentsCount
+            }
+            size={16}
+            color={unresolvedCommentsCount > 0 ? "danger" : "core-info"}
+          >
             {ShowCommentsButton}
           </Indicator>
         ) : (
