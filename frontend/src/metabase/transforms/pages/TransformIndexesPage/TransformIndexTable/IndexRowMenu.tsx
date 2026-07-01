@@ -11,6 +11,7 @@ type IndexRowMenuProps = {
 
 export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
   const isManaged = index.metabase_managed && index.request?.id !== undefined;
+
   if (!isManaged) {
     return null;
   }

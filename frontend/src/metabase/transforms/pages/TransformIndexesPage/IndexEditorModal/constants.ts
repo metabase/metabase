@@ -14,12 +14,3 @@ export function getKindDescription(kind: string): string {
       return t`The data structure used to organize the index.`;
   }
 }
-
-export function getFieldDescription(name: string): string | undefined {
-  switch (name) {
-    case "columns":
-      return t`The column(s) the index will be built on. Usually the ones you filter or join by.`;
-    default:
-      return undefined;
-  }
-}

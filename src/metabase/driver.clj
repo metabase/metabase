@@ -1574,6 +1574,8 @@
    [:name :string]
    ;; deferred-i18n label (or string)
    [:display-name :any]
+   ;; deferred-i18n user facing description
+   [:description {:optional true} :any]
    [:type [:enum :string :boolean :select :integer :columns]]
    [:required {:optional true} :boolean]
    ;; `:columns` only: whether per-column asc/desc is offered

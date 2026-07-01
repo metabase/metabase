@@ -9,7 +9,6 @@ import {
 import type { IndexField } from "metabase-types/api";
 
 import { ColumnsField } from "./ColumnsField";
-import { getFieldDescription } from "./constants";
 import type { ColumnOption } from "./types";
 
 type IndexFieldInputProps = {
@@ -26,7 +25,7 @@ export function IndexFieldInput({
   autoFocus,
 }: IndexFieldInputProps) {
   const label = field["display-name"];
-  const description = getFieldDescription(field.name);
+  const description = field.description;
 
   return match(field.type)
     .with("boolean", () => (

@@ -155,6 +155,7 @@ export type IndexFieldOption = {
 export type IndexField = {
   name: string;
   "display-name": string;
+  description?: string;
   type: IndexFieldType;
   required?: boolean;
   directions?: boolean;
