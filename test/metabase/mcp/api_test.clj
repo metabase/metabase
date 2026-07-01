@@ -277,6 +277,7 @@
     "create_metric"
     "create_question"
     "execute_query"
+    "execute_question"
     "execute_sql"
     "query"
     "read_resource"
@@ -663,7 +664,7 @@
    invocation check."
   #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "read_resource"
-    "create_question" "create_metric" "create_dashboard"
+    "create_question" "execute_question" "create_metric" "create_dashboard"
     "update_question" "update_metric" "update_dashboard" "create_collection"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
@@ -741,6 +742,8 @@
                     _              (call-tool session-id "update_metric"
                                               {:id          (:id metric-data)
                                                :description "Smoke updated metric"})
+                    _              (call-tool session-id "execute_question"
+                                              {:id (:id question-data)})
                     dash-data      (call-tool session-id "create_dashboard"
                                               {:name "Smoke Dashboard"})
                     _              (reset! dash-id (:id dash-data))

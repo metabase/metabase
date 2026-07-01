@@ -41,6 +41,8 @@
   (deferred-tru "Create saved questions"))
 (api-scope/defscope agent-question-update "agent:question:update"
   (deferred-tru "Update saved questions"))
+(api-scope/defscope agent-question-execute "agent:question:execute"
+  (deferred-tru "Run saved questions"))
 
 ;; Metric (saved metric cards via Agent API)
 (api-scope/defscope agent-metric-create "agent:metric:create"

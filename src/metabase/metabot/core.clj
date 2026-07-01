@@ -19,6 +19,7 @@
   agent-query-construct
   agent-query-execute
   agent-question-create
+  agent-question-execute
   agent-question-update
   agent-metric-create
   agent-metric-update

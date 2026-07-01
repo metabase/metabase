@@ -36,6 +36,13 @@
                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
       (lib/aggregate (lib/count))))
 
+(defn- orders-limit-query
+  "A simple unaggregated orders query with a row limit, built via lib."
+  [n]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/limit n))))
+
 ;;; ------------------------------------------------- Session Auth Tests ------------------------------------------------
 
 (deftest agent-api-session-token-auth-test
@@ -680,6 +687,48 @@
         (mt/user-http-request :rasta :post 403 "agent/v1/question"
                               {:name  "Should Not Save Native"
                                :query (:query construct-resp)})))))
+
+;;; ----------------------------------------------- Execute Question ------------------------------------------------
+
+(deftest execute-question-test
+  (testing "Runs a saved question and returns rows + column metadata"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-limit-query 5)}]
+      ;; Streaming response returns 202 (accepted) like the other execute endpoints.
+      (let [resp (mt/user-http-request :crowberto :post 202 (format "agent/v1/question/%d/query" card-id))]
+        (is (=? {:status    "completed"
+                 :row_count 5
+                 :data      {:cols (fn [cols] (and (seq cols) (every? :name cols) (every? :base_type cols)))
+                             :rows (fn [rows] (= 5 (count rows)))}}
+                resp)))))
+  (testing "Returns 404 for a non-existent card"
+    (mt/user-http-request :crowberto :post 404
+                          (format "agent/v1/question/%d/query" Integer/MAX_VALUE)))
+  (testing "Returns 403 when the caller lacks read permission on the card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "No-Read Coll"}
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :dataset_query (orders-limit-query 5)}]
+        (mt/user-http-request :rasta :post 403
+                              (format "agent/v1/question/%d/query" card-id))))))
+
+(deftest execute-question-rejects-parameterized-test
+  (testing "Refuses a card with a native template-tag variable (400)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query         "SELECT {{n}} AS n"
+                                               :template-tags {:n {:id "n" :name "n"
+                                                                   :display-name "N" :type :number}}}}}]
+      (is (re-find #"takes parameters"
+                   (str (mt/user-http-request :crowberto :post 400
+                                              (format "agent/v1/question/%d/query" card-id)))))))
+  (testing "Refuses a card with a configured parameter widget (400)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (orders-limit-query 5)
+                    :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
+      (is (re-find #"takes parameters"
+                   (str (mt/user-http-request :crowberto :post 400
+                                              (format "agent/v1/question/%d/query" card-id))))))))
 
 (deftest create-question-explicit-null-collection-test
   (testing "An explicit null collection_id saves to the root collection, not the personal default"
