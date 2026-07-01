@@ -137,36 +137,107 @@
   (str (table-uri db-name schema table-name)
        "/field/" (enc field-name)))
 
-(def ^:private sandbox-redacted-card-keys
-  "Card MBR keys that name the underlying warehouse tables/columns. Serdes extracts them
-   unfiltered (it is an admin-export pipeline), so for a user with a data sandbox on any table
-   the card touches we withhold them — otherwise the MBR would leak column/table names the
-   sandbox hides."
-  [:dataset_query :result_metadata])
+(def ^:private sandbox-safe-card-keys
+  "ALLOWLIST (default-deny) of Card MBR keys that are safe to emit to a user who is sandboxed on the
+   card's data. Serdes extracts a Card unfiltered (it is an admin-export pipeline) and several of its
+   keys carry *portable* `[db schema table field]` NAMES — `:dataset_query`, `:result_metadata`,
+   `:visualization_settings` (column_settings `[\"ref\" [\"field\" id]]` keys, click_behavior targets,
+   series settings), `:parameters`, and `:parameter_mappings` all round-trip field refs by name. Any one
+   of those would leak the sandboxed table/column names the sandbox is meant to hide.
+
+   Rather than denylist the currently-known leaky keys (which rots the moment serdes adds a new
+   field-ref-bearing key — the leak would be reintroduced silently), we project the MBR down to ONLY
+   the keys below. A future spec addition is therefore safe-by-default: it is withheld unless someone
+   explicitly adds it here after confirming it carries no field ref.
+
+   Justification per key (all sourced from the Card serdes make-spec, `queries.models.card`):
+   - `serdes/meta`      — the serdes path `[{:model \"Card\" :id <entity_id>}]`; pure identity, no field ref.
+   - `:name`            — display label. Copy key. No field ref.
+   - `:description`     — free-text description. Copy key. No field ref.
+   - `:display`         — chart type keyword (`:table`, `:bar`, …). Copy key. No field ref.
+   - `:type`            — card type (`:question`/`:model`/`:metric`). Copy key. No field ref.
+   - `:entity_id`       — the NanoID identity. Copy key. No field ref.
+   - `:archived`        — boolean lifecycle flag. Copy key. No field ref.
+   - `:created_at`      — timestamp. Transform (date). No field ref.
+   - `:collection_id`   — Collection FK, exported as a collection-name path — never a warehouse ref.
+   - `:database_id`     — Database FK, exported as the *database name* only (no schema/table/field),
+                          which the sandboxed user can already see (they query that database).
+   - `:_uri`            — MBR navigation annotation added by [[with-uri]]. Not a spec key; no field ref.
+   - `:_recently_viewed_at` — MBR annotation added by the recents list path. Not a spec key; no field ref.
+
+   Deliberately EXCLUDED even though a reviewer might miss them, because they can each embed a field ref:
+   `:dataset_query`, `:result_metadata`, `:visualization_settings`, `:parameters`, `:parameter_mappings`.
+   Also excluded (not identity/display, no reason to surface, and cheaper to keep the allowlist tight):
+   `:embedding_params`, `:enable_embedding`, `:embedding_type`, `:public_uuid`, `:metabase_version`,
+   `:card_schema`, `:collection_position`, `:collection_preview`, `:dashboard_id`. If a reviewer wants
+   any of these back, they are safe to add (none carry a warehouse ref) — they were left out to keep the
+   surface minimal, not for safety."
+  [:serdes/meta :name :description :display :type :entity_id :archived :created_at
+   :collection_id :database_id :_uri :_recently_viewed_at])
+
+(def ^:private sandbox-safe-dashcard-keys
+  "ALLOWLIST (default-deny) of DashboardCard keys kept when scrubbing a sandboxed Dashboard MBR. A
+   DashboardCard nests inside `:dashcards`; serdes exports its `:visualization_settings` and
+   `:parameter_mappings` with portable field-ref NAMES (same leak as on a Card). We keep only the
+   card FK reference and the layout/identity fields, dropping everything field-ref-bearing.
+
+   Justification per key (from the DashboardCard serdes make-spec, `dashboards.models.dashboard-card`):
+   - `serdes/meta`        — serdes path; identity only.
+   - `:entity_id`         — DashboardCard identity. Copy key.
+   - `:card_id`           — Card FK (exported as the card's serdes path/entity-id, not a warehouse ref).
+   - `:col` `:row`        — grid position. Copy keys. No field ref.
+   - `:size_x` `:size_y`  — grid size. Copy keys. No field ref.
+   Excluded (carry field refs): `:visualization_settings`, `:parameter_mappings`, `:inline_parameters`
+   (parameters can target fields), and `:series` (nested cards' viz settings)."
+  [:serdes/meta :entity_id :card_id :col :row :size_x :size_y])
+
+(defn- scrub-dashcard
+  "Project one nested dashcard map down to [[sandbox-safe-dashcard-keys]] (default-deny)."
+  [dashcard]
+  (select-keys dashcard sandbox-safe-dashcard-keys))
 
 (defn redact-sandboxed
-  "Strip sandbox-revealing keys from `mbr` when the current user is sandboxed on the warehouse
-   data behind `instance`.
+  "Strip sandbox-revealing content from `mbr` when the current user is sandboxed on the warehouse
+   data behind `instance`. Uses an ALLOWLIST (default-deny) so a future serdes key that embeds a
+   field ref is withheld by default rather than leaking.
 
-   Currently only Cards (questions / models / metrics) carry such keys inline. When the user has
-   an enforced sandbox on any source table of the card's query, drop `:dataset_query` and
-   `:result_metadata` (identity + FK references stay). For every other model, and for
-   non-sandboxed users / superusers / OSS, `mbr` is returned unchanged.
+   - Card (questions / models / metrics — a metric is a `:type :metric` Card and flows through this
+     branch): gated by `card-query-touches-sandboxed-table?`, which is precise (checks the card's own
+     source tables). When it fires, project the MBR to [[sandbox-safe-card-keys]].
 
-   Relies on the request context: the predicate reads the per-request `*sandboxes-for-user*`
-   cache (bound by `bind-current-user` middleware on the metabot/agent endpoints). It fails CLOSED
-   — `card-query-touches-sandboxed-table?` throws a 403 if called without a `*current-user-id*`
-   binding (e.g. a bare `(binding [...] ...)` that forgets it, or future parallelization that loses
-   dynamic bindings on worker threads) rather than silently exposing the query.
+   - Dashboard: a dashboard has no single query to gate on and its leaky content lives in NESTED
+     dashcards (`:visualization_settings`, `:parameter_mappings`) plus the dashboard's own
+     `:parameters`. We take a simple, over-approximating fail-safe: if the current user has ANY
+     enforced sandbox in scope (`sandboxed-user?`), scrub every dashcard to
+     [[sandbox-safe-dashcard-keys]] and drop the dashboard's `:parameters`. Over-redaction here is
+     acceptable and safe. A top-level `select-keys` would NOT reach the nested dashcards, so we walk
+     `:dashcards` explicitly.
 
-   Native queries are covered: `lib/all-source-table-ids` only sees `:source-table` refs, so the
-   predicate falls back to a database-level sandbox check (`sandboxed-user-for-db?`) when a query
-   has no structural source tables — any enforced sandbox on the card's database withholds the
-   keys, since the raw SQL's referenced tables can't be enumerated."
+   - Every other model, and non-sandboxed users / superusers / OSS: `mbr` is returned unchanged.
+
+   Both predicates fail CLOSED: they read the per-request `*sandboxes-for-user*` cache (bound by
+   `bind-current-user` middleware on the metabot/agent endpoints) and throw a 403 if called without a
+   `*current-user-id*` binding (e.g. a bare `(binding [...] ...)` that forgets it, or future
+   parallelization that loses dynamic bindings on worker threads) rather than silently exposing data.
+
+   Native card queries are covered by `card-query-touches-sandboxed-table?`: `lib/all-source-table-ids`
+   only sees `:source-table` refs, so it falls back to a database-level sandbox check when a query has
+   no structural source tables — any enforced sandbox on the card's database withholds the keys, since
+   the raw SQL's referenced tables can't be enumerated."
   [model instance mbr]
-  (if (and (= model "Card")
-           (perms/card-query-touches-sandboxed-table? instance))
-    (apply dissoc mbr sandbox-redacted-card-keys)
+  (cond
+    (and (= model "Card")
+         (perms/card-query-touches-sandboxed-table? instance))
+    (select-keys mbr sandbox-safe-card-keys)
+
+    (and (= model "Dashboard")
+         (perms/sandboxed-user?))
+    (-> mbr
+        (dissoc :parameters)
+        (cond-> (contains? mbr :dashcards)
+          (update :dashcards #(mapv scrub-dashcard %))))
+
+    :else
     mbr))
 
 (defn ->mbr
