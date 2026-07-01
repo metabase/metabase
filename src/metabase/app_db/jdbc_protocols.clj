@@ -4,7 +4,6 @@
   CLOBs to Strings and using new `java.time` classes."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.util :as u]
@@ -14,7 +13,6 @@
    [next.jdbc.prepare]
    [toucan2.jdbc.read :as t2.jdbc.read])
   (:import
-   (java.io BufferedReader)
    (java.sql PreparedStatement ResultSet ResultSetMetaData Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
@@ -75,33 +73,10 @@
   (set-parameter [ratio stmt i]
     (jdbc/set-parameter (double ratio) stmt i)))
 
-(defn clob->str
-  "Convert an H2 clob to a String."
-  ^String [^org.h2.jdbc.JdbcClob clob]
-  (when clob
-    (letfn [(->str [^BufferedReader buffered-reader]
-              (loop [acc []]
-                (if-let [line (.readLine buffered-reader)]
-                  (recur (conj acc line))
-                  (str/join "\n" acc))))]
-      (with-open [reader (.getCharacterStream clob)]
-        (if (instance? BufferedReader reader)
-          (->str reader)
-          (with-open [buffered-reader (BufferedReader. reader)]
-            (->str buffered-reader)))))))
-
 (extend-protocol jdbc/IResultSetReadColumn
   org.postgresql.util.PGobject
   (result-set-read-column [clob _ _]
-    (.getValue clob))
-
-  org.h2.jdbc.JdbcClob
-  (result-set-read-column [clob _ _]
-    (clob->str clob))
-
-  org.h2.jdbc.JdbcBlob
-  (result-set-read-column [^org.h2.jdbc.JdbcBlob blob _ _]
-    (.getBytes blob 0 (.length blob))))
+    (.getValue clob)))
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}

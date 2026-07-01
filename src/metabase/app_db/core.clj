@@ -16,7 +16,8 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
-   [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
+   [metabase.app-db.h2 :as mdb.h2]
+   [metabase.app-db.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
    [metabase.app-db.query-cancelation]
@@ -28,6 +29,7 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
+         metabase.app-db.jdbc-protocols/keep-me
          metabase.app-db.query/keep-me
          metabase.app-db.query-cancelation/keep-me)
 
@@ -46,8 +48,9 @@
   broken-out-details->DataSource]
  [mdb.env
   db-file]
- [mdb.jdbc-protocols
-  clob->str]
+ [mdb.h2
+  clob->str
+  jdbc-sql-syntax-error-exception-classname]
  [mdb.encryption
   decrypt-db
   encrypt-db]
