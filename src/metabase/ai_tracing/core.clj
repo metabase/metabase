@@ -11,9 +11,11 @@
   eval entrypoints ([[with-eval-session]] / [[capturing]]). It is orthogonal to
   `metabase.tracing`'s `MB_TRACING_ENABLED` + group gates:
 
-    - In production — even with `metabase.tracing` fully enabled — ai-tracing is inert
-      (a single nil-check). Eval spans, which carry full prompts and verbose internals, can
-      NEVER fire on organic traffic. `MB_AI_EVAL_CAPTURE` is off by default.
+    - In production — even with `metabase.tracing` fully enabled — ai-tracing does no work:
+      each span's body runs behind a nil-check on [[*capture*]] (the span macros still build
+      their `span-name`/`attrs` args, which just reference already-computed values). Eval spans,
+      which carry full prompts and verbose internals, can NEVER fire on organic traffic.
+      `MB_AI_EVAL_CAPTURE` is off by default.
     - In an eval run, an entrypoint binds [[*capture*]] and the spans fire.
 
   ## What it captures

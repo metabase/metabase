@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
+   [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.urls :as channel.urls]
@@ -1803,24 +1804,28 @@
 (def ^:private base-routes
   (api.macros/ns-handler *ns* +auth))
 
-(defn routes
+(def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
-  {:arglists '([request respond raise])}
-  [request respond raise]
-  ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE). Direct callers get a fresh session;
-  ;; the synthetic in-process call from MCP inherits the MCP session and nests under it.
-  ;; Agent-API endpoints are synchronous, so `respond` fires inside the span and the span
-  ;; closes after the handler returns.
-  (ait/with-eval-session nil
-    (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
-                   {:http/method  (some-> (:request-method request) name)
-                    :http/uri     (:uri request)
-                    :http/request (:body request)
-                    :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
-                   (base-routes request
-                                (fn eval-traced-respond [response]
-                                  (when (ait/capture-active?)
-                                    (ait/record! {:http/status   (:status response)
-                                                  :http/response (:body response)}))
-                                  (respond response))
-                                raise))))
+  ;; Wrapped in `handler-with-open-api-spec` so the handler still implements `OpenAPISpec` for
+  ;; full-API spec generation (openapi.json, endpoint-dox); the spec is delegated to `base-routes`,
+  ;; the underlying `ns-handler`, since the eval-tracing wrapper below carries no route metadata.
+  (open-api/handler-with-open-api-spec
+   ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE). Direct callers get a fresh session;
+   ;; the synthetic in-process call from MCP inherits the MCP session and nests under it.
+   ;; Agent-API endpoints are synchronous, so `respond` fires inside the span and the span
+   ;; closes after the handler returns.
+   (fn [request respond raise]
+     (ait/with-eval-session nil
+       (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
+                      {:http/method  (some-> (:request-method request) name)
+                       :http/uri     (:uri request)
+                       :http/request (:body request)
+                       :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
+                      (base-routes request
+                                   (fn eval-traced-respond [response]
+                                     (when (ait/capture-active?)
+                                       (ait/record! {:http/status   (:status response)
+                                                     :http/response (:body response)}))
+                                     (respond response))
+                                   raise))))
+   (fn [prefix] (open-api/open-api-spec base-routes prefix))))

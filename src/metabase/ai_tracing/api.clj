@@ -45,9 +45,11 @@
   (api/check-superuser)
   (let [f (trace-file session-id)]
     (api/check (and f (.exists ^File f)) [404 (tru "Eval trace not found")])
+    ;; Return the File directly so Ring streams it — a per-session trace can be many MB of full
+    ;; prompts/completions, which we don't want to slurp into the heap.
     {:status  200
      :headers {"Content-Type" "application/x-ndjson"}
-     :body    (slurp f)}))
+     :body    ^File f}))
 
 (defn- enforce-eval-capture-enabled
   "Ring middleware: 404 (endpoint invisible) when eval capture is disabled."

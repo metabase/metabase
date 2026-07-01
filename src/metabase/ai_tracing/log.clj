@@ -50,6 +50,8 @@
         (log/info (json/encode (node->entry node session-id))))
       ;; Never let trace serialization break the traced run (the attributes now carry arbitrary
       ;; request context / agent state, which could in principle contain a non-encodable value).
-      (catch Throwable t
+      ;; Catch `Exception`, not `Throwable`, so JVM `Error`s and `InterruptedException` still
+      ;; propagate — this runs in the span's `finally`, often on a tool virtual thread.
+      (catch Exception t
         (log/warn t "ai-tracing: failed to serialize/emit eval span"))))
   nil)
