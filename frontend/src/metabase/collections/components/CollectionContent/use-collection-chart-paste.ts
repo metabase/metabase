@@ -12,11 +12,6 @@ import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection } from "metabase-types/api";
 
-/**
- * Lets the user paste a copied Metabot chart (see `chart-clipboard`) into a
- * writable collection: the ad-hoc chart is materialized into a saved question in
- * that collection.
- */
 export function useCollectionChartPaste(collection: Collection) {
   const dispatch = useDispatch();
   const [createCard] = useCreateCardMutation();

@@ -68,8 +68,6 @@ export function MetabotInlineChart({
       description,
       ...(display != null ? { display, displayIsLocked: true } : {}),
     });
-    // The model usually provides a display; fall back to the query's default
-    // rather than hardcoding a display type.
     return display != null ? base : base.setDefaultDisplay();
   }, [datasetQuery, title, description, display]);
 
@@ -157,10 +155,10 @@ export function MetabotInlineChart({
           </ActionIcon>
         </Tooltip>
         {match({ savedCardId, readonly })
-          .with({ savedCardId: P.number.select() }, (id) => (
+          .with({ savedCardId: P.number }, ({ savedCardId }) => (
             <Button
               component={ForwardRefLink}
-              to={Urls.question(question.setId(id))}
+              to={Urls.question(question.setId(savedCardId))}
               target="_blank"
               variant="subtle"
               color="text-secondary"
@@ -171,7 +169,7 @@ export function MetabotInlineChart({
             </Button>
           ))
           .with({ readonly: true }, () => null)
-          .otherwise(() => (
+          .with({ savedCardId: P.nullish, readonly: false }, () => (
             <Button
               variant="subtle"
               size="compact-xs"
@@ -179,7 +177,8 @@ export function MetabotInlineChart({
             >
               {t`Save`}
             </Button>
-          ))}
+          ))
+          .exhaustive()}
       </Flex>
       <Box className={S.viz}>
         {chartError ? (
