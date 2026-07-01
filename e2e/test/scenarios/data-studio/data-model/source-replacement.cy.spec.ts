@@ -446,17 +446,12 @@ describe(
           native: { query: `SELECT id, name, amount FROM ${SOURCE_TABLE}` },
         }).as("nativeQuestion");
 
-        cy.get<Cypress.Response<{ id: number }>>("@nativeQuestion").then(
-          ({ body }) => {
-            replaceSourceWithTarget(
-              SOURCE_TABLE_LABEL,
-              COMPATIBLE_TARGET_LABEL,
-            );
-            H.visitQuestion(body.id);
-            assertTargetRowVisible();
-            H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
-          },
-        );
+        cy.get<Cypress.Response<{ id: number }>>("@nativeQuestion").then(() => {
+          replaceSourceWithTarget(SOURCE_TABLE_LABEL, COMPATIBLE_TARGET_LABEL);
+          H.visitQuestion(1337);
+          assertTargetRowVisible();
+          H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
+        });
       });
 
       it.skip("replaces a table referenced via a native query snippet", () => {
