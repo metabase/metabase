@@ -641,15 +641,13 @@
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
             ;; eval-only: when supplied (e.g. by the benchmark harness), names the per-session
-            ;; trace file so the caller can read it back without parsing the stream
-            [:eval-session-id {:optional true} [:maybe :string]]
+            ;; trace file so the caller can read it back without parsing the stream. Bounded so a
+            ;; supplied id can't produce a pathological filename (charset enforced by
+            ;; `ait/checked-session-id`).
+            [:eval-session-id {:optional true} [:maybe [:string {:max 200}]]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
-        ;; the user's latest question — surfaced as the trace-level input for evals
-        user-input         (some->> (:messages opts)
-                                    (filter #(= "user" (some-> % :role name)))
-                                    last :content)
         labels             {:profile-id (name profile-id)}
         perms              (or scope/*current-user-metabot-permissions*
                                (if api/*is-superuser?*
@@ -679,7 +677,10 @@
                   (let [turn-result
                         (ait/with-agent-turn {:ai/profile-id (name profile-id)
                                               :ai/msg-count  (count (:messages opts))
-                                              :ai/user-input user-input
+                                              ;; the user's latest question — trace-level input for evals
+                                              :ai/user-input (some->> (:messages opts)
+                                                                      (filter #(= "user" (some-> % :role name)))
+                                                                      last :content)
                                               ;; full request — makes the trace a self-contained record
                                               :ai/messages   (:messages opts)
                                               :ai/context    (:context opts)

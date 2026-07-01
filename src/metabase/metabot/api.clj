@@ -257,8 +257,10 @@
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
-            ;; eval-only: lets the benchmark harness name the per-session trace file it will read back
-            [:eval_session_id {:optional true} [:maybe :string]]
+            ;; eval-only: lets the benchmark harness name the per-session trace file it will read back.
+            ;; Bounded so a supplied id can't produce a pathological filename (charset is enforced
+            ;; separately by `ait/checked-session-id`).
+            [:eval_session_id {:optional true} [:maybe [:string {:max 200}]]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)

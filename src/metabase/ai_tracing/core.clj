@@ -76,12 +76,19 @@
   [[with-eval-session]]) AND at the read boundary (`metabase.ai-tracing.api`)."
   #"[A-Za-z0-9][A-Za-z0-9._-]*")
 
+(def ^:const max-session-id-length
+  "Cap on a supplied session id. It becomes `<id>.jsonl` on disk, so this keeps the filename well
+  under the ~255-byte filesystem limit. Also mirrored as a `:max` on the API schemas (defense in
+  depth for non-API callers: MCP, direct invocation)."
+  200)
+
 (defn checked-session-id
   "Return a safe session id: mint a fresh uuid when `supplied` is nil, otherwise validate it against
-  [[safe-session-id-re]]. Throws on a supplied id that isn't safe — the id names a file written by
-  the RoutingAppender, so an unsafe value (e.g. `../../etc/x`) must never reach it. We throw rather
-  than silently substituting a uuid so a caller that named a trace file gets an error instead of a
-  trace it can't find."
+  [[safe-session-id-re]] and [[max-session-id-length]]. Throws on a supplied id that isn't safe — the
+  id names a file written by the RoutingAppender, so an unsafe value (e.g. `../../etc/x`) or an
+  over-long one (which would fail filesystem creation and silently drop the trace) must never reach
+  it. We throw rather than silently substituting a uuid so a caller that named a trace file gets an
+  error instead of a trace it can't find."
   ^String [supplied]
   (if (nil? supplied)
     (str (random-uuid))
@@ -89,6 +96,9 @@
       (when-not (re-matches safe-session-id-re id)
         (throw (ex-info "Invalid eval-session-id: must start alphanumeric and contain only [A-Za-z0-9._-]"
                         {:session-id id})))
+      (when (> (count id) max-session-id-length)
+        (throw (ex-info (str "Invalid eval-session-id: must be at most " max-session-id-length " characters")
+                        {:session-id-length (count id)})))
       id)))
 
 (defn capture-active?
@@ -115,11 +125,12 @@
          :start-epoch-nanos (now-epoch-nanos)}))
 
 (defn- finish-node [node]
-  (let [start  (:start-ns @node)
-        dur-ns (- (now-ns) start)]
-    (-> @node
+  ;; one deref ⇒ a consistent snapshot (duration, start, and :children all from the same state).
+  (let [{:keys [start-ns start-epoch-nanos] :as snapshot} @node
+        dur-ns (- (now-ns) start-ns)]
+    (-> snapshot
         (assoc :duration-ms     (/ (double dur-ns) 1e6)
-               :end-epoch-nanos (+ (long (:start-epoch-nanos @node)) dur-ns))
+               :end-epoch-nanos (+ (long start-epoch-nanos) dur-ns))
         (dissoc :start-ns))))
 
 (defn- attach! [parent finished]
