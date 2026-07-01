@@ -61,23 +61,21 @@ describe("useCollectionChartPaste", () => {
     });
   });
 
-  it("does nothing in a read-only collection", async () => {
+  it("does nothing in a read-only collection", () => {
     fetchMock.post("path:/api/card", createMockCard({ id: 5 }));
 
     setup({ canWrite: false });
     paste(chartText);
 
-    await Promise.resolve();
     expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
   });
 
-  it("ignores pastes that are not charts", async () => {
+  it("ignores pastes that are not charts", () => {
     fetchMock.post("path:/api/card", createMockCard({ id: 5 }));
 
     setup({ canWrite: true });
     paste("just some text");
 
-    await Promise.resolve();
     expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
   });
 });

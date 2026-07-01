@@ -1,5 +1,6 @@
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
+import { serializeCardForUrl } from "./card";
 import {
   CHART_CLIPBOARD_TYPE,
   parseChartClipboard,
@@ -21,7 +22,17 @@ describe("chart-clipboard", () => {
       SITE_URL,
     );
 
-    expect(text.startsWith(`${SITE_URL}/question#`)).toBe(true);
+    const hash = serializeCardForUrl(
+      {
+        name: "Orders by month",
+        description: null,
+        display: "bar",
+        dataset_query: datasetQuery,
+        visualization_settings: {},
+      },
+      { includeDisplayIsLocked: true },
+    );
+    expect(text).toBe(`${SITE_URL}/question#${hash}`);
   });
 
   it("round-trips a serialized chart payload", () => {
