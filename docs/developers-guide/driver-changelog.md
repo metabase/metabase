@@ -6,10 +6,6 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
-- Added `metabase.driver.sql/compile-merge`, which returns the queries that upsert a `select` into a
-  target table keyed on a unique. The default `:sql` impl stages into a temporary table and does delete+insert;
-  drivers that support `:transforms/merge` may override it to emit a single native `MERGE`.
-
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support
   `:metadata/key-constraints`.

@@ -253,14 +253,9 @@
   (sql.qp/format-honeysql driver
                           {:insert-into [target {:select [:*] :from [temp]}]}))
 
-(defmulti compile-merge
+(defn compile-merge
   "Returns `[sql params]` queries that upsert the rows of `select` (a compiled `{:query sql :params}`)
    into `target`. `merge-spec` is `{:unique-key [col-names] :columns [all-col-names]}`."
-  {:added "0.63.0", :arglists '([driver target select merge-spec])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod compile-merge :sql
   [driver target select {:keys [unique-key]}]
   (let [temp (driver.u/temp-table-name driver target)]
     [(driver/compile-transform driver {:query select, :output-table temp})
