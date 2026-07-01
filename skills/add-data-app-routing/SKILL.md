@@ -19,7 +19,7 @@ That's the entire surface. **No `react-router` of any version, no `<BrowserRoute
 
 - The user has a working data-app project — scaffolded from the `data-app-template` repo, so `vite.config.ts` with `name: "__dataAppFactory__"`, an `src/index.tsx` that exports a factory, and an `src/dev.tsx` for the dev preview already exist.
 - The user wants the bundle to render different content at different URLs (`/overview`, `/customers/:id`).
-- **Do not use this skill** to scaffold a project from scratch — it only patches an existing data-app project. If there is no project yet, invoke the `create-data-app` skill first.
+- **Do not use this skill** to scaffold a project from scratch — it only patches an existing data-app project. If there is no project yet, stop and tell the user to start with a new data-app scaffold before adding routing.
 
 The template already externalizes `@metabase/embedding-sdk-react/data-app` in `vite.config.ts`. You do NOT need to edit `vite.config.ts` to add routing — just edit `src/App.tsx` (and add more component files as needed) per the step below.
 
