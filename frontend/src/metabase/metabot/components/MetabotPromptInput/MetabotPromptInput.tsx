@@ -37,12 +37,10 @@ import {
   serializeTiptapToMetabotMessage,
 } from "./utils";
 
-/**
- * Inserts a pasted Metabot chart into the prompt as an ad-hoc @mention chip (the
- * chart is NOT saved); the whole chart is encoded into the chip and, on submit,
- * decoded into the request's ad-hoc context.
- */
-function insertAdhocChartMention(editor: Editor, payload: ChartClipboardPayload) {
+function insertAdhocChartMention(
+  editor: Editor,
+  payload: ChartClipboardPayload,
+) {
   const encoded = encodeAdhocChartPayload({
     query: payload.dataset_query,
     display: payload.display,

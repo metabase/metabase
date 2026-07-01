@@ -1,12 +1,18 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupCardDataset } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  setupCardDataset,
+  setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
-import type Question from "metabase-lib/v1/Question";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { MetabotInlineChart } from "./MetabotInlineChart";
@@ -18,27 +24,20 @@ jest.mock("metabase/visualizations/components/Visualization", () => ({
   default: () => <div data-testid="visualization" />,
 }));
 
-// The real SaveQuestionModal (with its collection/dashboard picker) is covered by
-// its own spec; here we stub it to assert the open + create wiring only.
-jest.mock("metabase/common/components/SaveQuestionModal", () => ({
-  __esModule: true,
-  SaveQuestionModal: ({
-    question,
-    onCreate,
-    onClose,
-  }: {
-    question: Question;
-    onCreate: (question: Question) => Promise<Question>;
-    onClose: () => void;
-  }) => (
-    <div data-testid="save-question-modal">
-      <button onClick={() => onCreate(question)}>mock-confirm-save</button>
-      <button onClick={onClose}>mock-close</button>
-    </div>
-  ),
-}));
-
 const datasetQuery = createMockStructuredDatasetQuery();
+
+const PERSONAL_COLLECTION = createMockCollection({
+  id: 1,
+  name: "My personal collection",
+  can_write: true,
+  personal_owner_id: 1,
+});
+
+const ROOT_TEST_COLLECTION = createMockCollection({
+  ...ROOT_COLLECTION,
+  id: "root",
+  can_write: false,
+});
 
 const value: GeneratedCard = {
   type: "card",
@@ -48,6 +47,22 @@ const value: GeneratedCard = {
   query: { id: "q-1", query: datasetQuery },
   display: "bar",
 };
+
+function setupSaveModalEndpoints() {
+  setupCollectionByIdEndpoint({ collections: [PERSONAL_COLLECTION] });
+  setupCollectionsEndpoints({
+    collections: [PERSONAL_COLLECTION],
+    rootCollection: ROOT_TEST_COLLECTION,
+  });
+  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupRecentViewsAndSelectionsEndpoints(
+    [],
+    ["selections", "views"],
+    {},
+    false,
+  );
+  setupDatabasesEndpoints([]);
+}
 
 function setup(
   args: Parameters<typeof setupCardDataset>[0] = {},
@@ -61,6 +76,17 @@ function setup(
       readonly={readonly}
     />,
   );
+}
+
+async function openSaveModal() {
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  return screen.findByTestId("save-question-modal");
+}
+
+async function submitSaveModal(modal: HTMLElement) {
+  const saveButton = within(modal).getByRole("button", { name: "Save" });
+  await waitFor(() => expect(saveButton).toBeEnabled());
+  await userEvent.click(saveButton);
 }
 
 describe("MetabotInlineChart", () => {
@@ -132,12 +158,20 @@ describe("MetabotInlineChart", () => {
 
   describe("saving", () => {
     it("opens the save modal when Save is clicked", async () => {
+      setupSaveModalEndpoints();
       setup();
+
       expect(
         screen.queryByTestId("save-question-modal"),
       ).not.toBeInTheDocument();
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
+
+      const modal = await openSaveModal();
+      expect(within(modal).getByLabelText("Name")).toHaveValue(
+        "Orders by month",
+      );
+      expect(within(modal).getByLabelText("Description")).toHaveValue(
+        "Monthly count of orders.",
+      );
     });
 
     it("does not render the Save button in readonly mode", () => {
@@ -148,8 +182,7 @@ describe("MetabotInlineChart", () => {
     });
 
     it("creates a card with the chart's query and display on save", async () => {
-      // The route only matches when the POST body carries the chart's fields, so
-      // asserting it was called verifies the request payload.
+      setupSaveModalEndpoints();
       fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
         name: "create-card",
         matchPartialBody: true,
@@ -162,10 +195,8 @@ describe("MetabotInlineChart", () => {
       });
       setup();
 
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      await userEvent.click(
-        screen.getByRole("button", { name: "mock-confirm-save" }),
-      );
+      const modal = await openSaveModal();
+      await submitSaveModal(modal);
 
       await waitFor(() => {
         expect(fetchMock.callHistory.called("create-card")).toBe(true);
@@ -173,13 +204,14 @@ describe("MetabotInlineChart", () => {
     });
 
     it("replaces the Save button with a Saved link after saving", async () => {
-      fetchMock.post("path:/api/card", createMockCard({ id: 99 }));
+      setupSaveModalEndpoints();
+      fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
+        name: "create-card",
+      });
       const { store } = setup();
 
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      await userEvent.click(
-        screen.getByRole("button", { name: "mock-confirm-save" }),
-      );
+      const modal = await openSaveModal();
+      await submitSaveModal(modal);
 
       await waitFor(() => {
         expect(store.getState().metabot.savedChartCardIds["card-1"]).toBe(99);

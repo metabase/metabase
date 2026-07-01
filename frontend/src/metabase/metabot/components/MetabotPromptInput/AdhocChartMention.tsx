@@ -15,13 +15,6 @@ export interface AdhocChartMentionAttributes {
   label?: string;
 }
 
-/**
- * An inline, non-editable chip representing a Metabot chart pasted into the
- * prompt as an ad-hoc reference (it is NOT saved). Renders with the same look as
- * a regular `SmartLink` mention. `payload` is the base64 ad-hoc chart spec (see
- * `metabase/metabot/utils/adhoc-mention`); on submit it is decoded into
- * `user_is_viewing` context so the model can act on the chart.
- */
 export const AdhocChartMention = Node.create({
   name: "adhocChartMention",
   group: "inline",
