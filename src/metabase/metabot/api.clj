@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.ai-tracing.core :as ait]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -258,9 +259,11 @@
                      [:charts {:optional true} [:map-of :string :any]]
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
             ;; eval-only: lets the benchmark harness name the per-session trace file it will read back.
-            ;; Bounded so a supplied id can't produce a pathological filename (charset is enforced
-            ;; separately by `ait/checked-session-id`).
-            [:eval_session_id {:optional true} [:maybe [:string {:max 200}]]]
+            ;; Length + charset enforced at this HTTP boundary so a bad id 400s cleanly instead of
+            ;; throwing deep in `ait/checked-session-id` and surfacing as a generic agent error.
+            ;; `ait/max-session-id-length` / `ait/safe-session-id-re` are the single source of truth.
+            [:eval_session_id {:optional true}
+             [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)

@@ -73,8 +73,12 @@
   and a URL path segment on the read endpoint, so it must be filesystem/URL safe: start alphanumeric
   (rejects `.`/`..`), then only alphanumerics / `.` `_` `-` (no `/` ⇒ no path traversal). This is the
   single source of truth — enforced at the mint/supply boundary ([[checked-session-id]], via
-  [[with-eval-session]]) AND at the read boundary (`metabase.ai-tracing.api`)."
-  #"[A-Za-z0-9][A-Za-z0-9._-]*")
+  [[with-eval-session]]) AND at the read boundary (`metabase.ai-tracing.api`).
+
+  Anchored with `\\A`/`\\z` so it's an exact, newline-safe match under BOTH `re-matches` (the mint/read
+  checks) and `re-find` (Malli's `:re` schema on the `eval[_-]session[_-]id` API params). Without the
+  anchors, `re-find` would accept any string merely CONTAINING a safe run (e.g. `../../etc/passwd`)."
+  #"\A[A-Za-z0-9][A-Za-z0-9._-]*\z")
 
 (def ^:const max-session-id-length
   "Cap on a supplied session id. It becomes `<id>.jsonl` on disk, so this keeps the filename well

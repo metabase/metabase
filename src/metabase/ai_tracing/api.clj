@@ -12,8 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.i18n :refer [tru]])
   (:import
    (java.io File)))
 
@@ -39,7 +38,9 @@
 (api.macros/defendpoint :get "/:session-id" :- :any
   "Return the captured eval trace as JSONL (one span per line) for `session-id`. Superuser-only;
    served only when `MB_AI_EVAL_CAPTURE` is enabled."
-  [{:keys [session-id]} :- [:map [:session-id ms/NonBlankString]]]
+  ;; Bound the length here too (not only via `trace-file`): `session-id` is a raw user-supplied path
+  ;; segment, and `ait/max-session-id-length` is the single cap enforced at both write and read.
+  [{:keys [session-id]} :- [:map [:session-id [:string {:min 1, :max ait/max-session-id-length}]]]]
   (api/check-superuser)
   (let [f (trace-file session-id)]
     (api/check (and f (.exists ^File f)) [404 (tru "Eval trace not found")])

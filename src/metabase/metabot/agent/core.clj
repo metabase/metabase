@@ -641,10 +641,12 @@
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
             ;; eval-only: when supplied (e.g. by the benchmark harness), names the per-session
-            ;; trace file so the caller can read it back without parsing the stream. Bounded so a
-            ;; supplied id can't produce a pathological filename (charset enforced by
-            ;; `ait/checked-session-id`).
-            [:eval-session-id {:optional true} [:maybe [:string {:max 200}]]]
+            ;; trace file so the caller can read it back without parsing the stream. Length + charset
+            ;; are enforced here (rather than only deep in `ait/checked-session-id`) so a bad id 400s
+            ;; at the boundary instead of surfacing as a generic agent error. `ait/max-session-id-length`
+            ;; and `ait/safe-session-id-re` are the single source of truth for the cap and the charset.
+            [:eval-session-id {:optional true}
+             [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
