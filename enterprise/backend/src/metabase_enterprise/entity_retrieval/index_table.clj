@@ -1,22 +1,24 @@
-(ns metabase-enterprise.curated-search.index-table
-  "Lifecycle of the pgvector tables backing the curated search mirror.
+(ns metabase-enterprise.entity-retrieval.index-table
+  "Lifecycle of the pgvector tables backing the library entity index.
 
   Two tables live in the pgvector store:
 
-  - the vectors table: one row per appdb `curated_search_entries` row, carrying the embedding, a copy of
-    the searchable fields, and a `content_hash` used by the reconciler to detect stale rows;
+  - the vectors table (`library_entity_index`): many rows per library entity — one *embedded* document
+    per value (the entity's name, its description, each ai_context synonym, each ai_context example).
+    Each row carries `doc_embedding`, the `doc_text` it was embedded from, and flat `entity_type` /
+    `entity_local_id` columns.
+    The primary key `doc_id` is content-addressed over the embedded text (see [[reconcile]]), so a text
+    edit mints a new row and the reconciler GCs the old one.
+    Curator `instructions` are NOT stored here — the tool reads them live from `osi_ai_context` at query
+    time.
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
-
-  There is deliberately no HNSW index: the search path orders by the blended score (distance minus the
-  verified boost), which an HNSW index can't accelerate anyway, and an exact scan over a curated table
-  of this size is microseconds.
 
   [[ensure-tables!]] is the only entry point: it idempotently creates both tables and, when the
   configured embedding model or the schema version no longer matches the meta row, drops and recreates
   the vectors table so the next reconcile re-embeds everything.
-  That drop-and-rebuild is the entire model-change story — the appdb table is authoritative and small,
-  so rebuilding from it is cheap."
+  That drop-and-rebuild is the entire model-change story — the index is rebuilt from the authoritative
+  appdb (library membership + `osi_ai_context`), so rebuilding is cheap."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -30,17 +32,24 @@
 
 (def ^:dynamic *vectors-table*
   "Vectors table name. Dynamic so tests can rebind it to an isolated table."
-  "curated_search_index")
+  "library_entity_index")
 
 (def ^:dynamic *meta-table*
   "Meta table name. Dynamic so tests can rebind it to an isolated table."
-  "curated_search_index_meta")
+  "library_entity_index_meta")
 
 (def schema-version
-  "Version of the vectors table schema.
-  Bump it to force a drop-and-rebuild on instances whose meta row records an older version."
-  ;; 2: dropped the HNSW index — the rebuild sheds it from tables built under version 1.
-  2)
+  "Canonical version of the index's *document format* — both the vectors table schema and the
+  doc-derivation contract (doc_id scheme, doc_type set, doc_text source, dedup/key rules).
+  It's part of the meta row's [[model-identity]], so bumping it makes [[ensure-tables!]] drop and rebuild
+  the vectors table; the post-upgrade startup reconcile then repopulates from the appdb under the new
+  format. Bump on ANY format-affecting change in [[metabase-enterprise.entity-retrieval.reconcile]] or
+  the table schema: a vectors-table column/type change, a new or renamed doc_type, a changed doc_text
+  source, or a changed doc_id / dedup / key scheme — anything that makes old rows incomparable to newly
+  derived desired docs. A bump forces a full re-embed of the library on every instance at upgrade, so do
+  it only when the format truly moved, never as a refresh convenience."
+  ;; v1 — initial schema.
+  1)
 
 ;; Advisory lock serializing concurrent ensure-tables! calls (e.g. several cluster nodes starting at
 ;; once). Arbitrary app-wide-unique constant; semantic-search's migration lock uses 19991.
@@ -73,13 +82,12 @@
 (defn- create-vectors-table-sql [dims]
   (-> (sql.helpers/create-table (keyword *vectors-table*) :if-not-exists)
       (sql.helpers/with-columns
-        [[:index_id :bigint [:primary-key]]
-         [:search_prompt :text :not-null]
-         [:usage_instructions :text :not-null]
-         [:entity :jsonb :not-null]
-         [:verified :boolean [:default false] :not-null]
-         [:content_hash :text :not-null]
-         [:embedding [:raw (format "vector(%d)" dims)] :not-null]])
+        [[:doc_id :text [:primary-key]]
+         [:entity_type :text :not-null]
+         [:entity_local_id :bigint :not-null]
+         [:doc_type :text :not-null]
+         [:doc_text :text :not-null]
+         [:doc_embedding [:raw (format "vector(%d)" dims)] :not-null]])
       sql-format-quoted))
 
 (defn- model-identity
@@ -91,7 +99,9 @@
    :schema_version    schema-version})
 
 (defn- read-meta [tx]
-  (jdbc/execute-one! tx [(format "SELECT provider, model_name, vector_dimensions, schema_version FROM \"%s\" WHERE id = 1" *meta-table*)]
+  (jdbc/execute-one! tx
+                     [(format "SELECT provider, model_name, vector_dimensions, schema_version FROM \"%s\" WHERE id = 1"
+                              *meta-table*)]
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- write-meta! [tx embedding-model]
@@ -112,12 +122,31 @@
 (defn- create-tables! [tx dims]
   (jdbc/execute! tx (create-vectors-table-sql dims)))
 
+(defn- vectors-table-exists? [tx]
+  (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" *vectors-table*)]
+                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+
+(defn index-compatible?
+  "Whether the meta row matches `embedding-model` and the current [[schema-version]] — i.e. the vectors
+  table holds embeddings the configured model can be queried against.
+  False when the meta row is missing or describes a different provider/model/dimensions/format, meaning the
+  index is stale and a rebuild is still pending; the same comparison [[ensure-tables!]] uses to decide a
+  rebuild.
+  Reads the meta table directly, so a caller must guard against the table not existing yet (it throws a SQL
+  error before the first [[ensure-tables!]] of the process)."
+  [pgvector embedding-model]
+  (= (read-meta pgvector) (model-identity embedding-model)))
+
 (defn ensure-tables!
   "Idempotently create the vectors + meta tables for `embedding-model`, rebuilding on model change.
 
   When the meta row's model identity (provider, model name, dimensions) or schema version no longer
   matches, the vectors table is dropped and recreated empty — the next reconcile re-embeds every row.
-  Serialized across nodes with an advisory lock. Returns :created, :rebuilt or :ok."
+  Serialized across nodes with an advisory lock.
+  Returns :created (the vectors table was just created empty — first build, or healing a manual drop),
+  :rebuilt (dropped and recreated empty for a model/format change), or :ok (already present, untouched).
+  A caller doing a targeted reconcile must treat :created and :rebuilt alike: both leave an empty table
+  that a one-entity write can't fill."
   [pgvector embedding-model]
   (jdbc/with-transaction [tx pgvector]
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
@@ -139,6 +168,9 @@
             :rebuilt)
 
         :else
-        ;; Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals itself.
-        (do (create-tables! tx dims)
-            :ok)))))
+        ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals itself,
+        ;; and report :created when it had actually gone missing — the recreated table is empty, so a
+        ;; targeted reconcile must repopulate the whole library rather than fill it with one entity.
+        (let [existed? (vectors-table-exists? tx)]
+          (create-tables! tx dims)
+          (if existed? :ok :created))))))

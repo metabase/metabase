@@ -67,6 +67,7 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListWorkspacesQuery,
+  useLazyListWorkspacesQuery,
   useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,

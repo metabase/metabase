@@ -484,6 +484,14 @@
                                  :field-id    dim-id
                                  :limit       30}))))
 
+;; ----- Measure / Segment -----
+
+(defn- fetch-measure [id-str]
+  (entity-details/get-measure-details {:measure-id (parse-long id-str)}))
+
+(defn- fetch-segment [id-str]
+  (entity-details/get-segment-details {:segment-id (parse-long id-str)}))
+
 ;; ----- Transform -----
 
 (defn- resolve-transform-id-or-404
@@ -633,6 +641,10 @@
       ["metric" id "dimensions"]                       (fetch-metric-dimensions id)
       ["metric" id "dimensions" & rst]                 (fetch-metric-dimension id (str/join "/" rst))
 
+      ;; Measure / Segment
+      ["measure" id]                                   (fetch-measure id)
+      ["segment" id]                                   (fetch-segment id)
+
       ;; Transform
       ["transform" id]                                 (fetch-transform id)
       ["transform" id "sources"]                       (fetch-transform-sources id query-params)
@@ -780,6 +792,8 @@
   - metabase://card/{entity_id}/sources                          — referenced database/table/source-card
   - metabase://metric/{entity_id}                                — single metric
   - metabase://metric/{entity_id}/dimensions[/{dim_id}]          — dimensions + samples
+  - metabase://measure/{entity_id}                               — measure detail (definition + parent table)
+  - metabase://segment/{entity_id}                              — segment detail (definition + parent table)
   - metabase://transform/{entity_id}                             — single transform
   - metabase://transform/{entity_id}/sources|/target             — input tables / output table
   - metabase://dashboard/{entity_id}                             — full MBR with tabs + dashcards

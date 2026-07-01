@@ -27,6 +27,7 @@
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -305,6 +306,48 @@
   (let [query (evaluate-external-query-for-execution body)]
     (cond-> {:query (-> query json/encode u/encode-base64)}
       prompt (assoc :prompt prompt))))
+
+;;; --------------------------------------------- Construct Native Query ---------------------------------------------
+
+(mr/def ::construct-native-query-request
+  "Request body for /v1/construct-native-query: a target database and a raw SQL string."
+  [:map {:closed true}
+   [:database_id {:tool/description "Numeric id of the database to run the SQL against."}
+    ms/PositiveInt]
+   [:sql {:tool/description "The raw SQL query text."}
+    ms/NonBlankString]])
+
+(api.macros/defendpoint :post "/v1/construct-native-query" :- ::construct-query-response
+  "Construct a native (raw SQL) query against a database.
+
+  Wraps `sql` into a serialized native query and returns it base64-encoded — the same
+  `{\"query\": <base64>}` shape as /v2/construct-query — so it can be saved as a question via
+  /v1/question (the MCP layer swaps the base64 for a `query_handle`).
+
+  This endpoint does NOT execute the SQL; to run native SQL ad hoc use /v1/execute-sql. The
+  MBQL execution endpoints (/v1/execute, /v2/query) reject native queries by design, so a
+  handle produced here is for saving, not for /v2/query execution."
+  {:scope metabot/agent-sql-construct
+   :tool  {:name "construct_native_query"
+           :description (str "Construct a native (raw SQL) query for the given database. Returns "
+                             "`{\"query_handle\": \"<uuid>\"}` to feed `create_question` and save it "
+                             "as a question. Use this ONLY for native SQL — for MBQL use "
+                             "`construct_query`. This does NOT run the SQL; to execute SQL ad hoc "
+                             "use `execute_sql`. Saving the resulting question requires native-query "
+                             "permission on the target database.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [_route-params
+   _query-params
+   {:keys [database_id sql]} :- ::construct-native-query-request]
+  ;; Construction does not run the query, but require the caller to at least be able to see the
+  ;; target database so a bogus/inaccessible database_id fails here rather than at save time.
+  (api/read-check :model/Database database_id)
+  ;; Emit MBQL 5 (via `lib/native-query` + `prepare-for-serialization`, same as `construct_query`)
+  (let [mp (lib-be/application-database-metadata-provider database_id)]
+    {:query (-> (lib/native-query mp sql)
+                lib/prepare-for-serialization
+                json/encode
+                u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
@@ -765,16 +808,20 @@
 (api.macros/defendpoint :post "/v1/question" :- ::create-question-response
   "Save a previously constructed query as a named question (card).
 
-  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,
-  or a base64-encoded MBQL string. MCP callers should always use the handle.
+  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query` (MBQL) or
+  `construct_native_query` (native SQL), or a base64-encoded query string. MCP callers should
+  always use the handle.
   Optionally specify display type, description, collection, and visualization settings.
   If `collection_id` is omitted the question is saved to the caller's personal collection.
   Pass an explicit `null` to save it to the root collection.
-  The response `collection_path` is the saved location."
+  The response `collection_path` is the saved location.
+
+  Saving a native (raw SQL) query requires native-query permission on the target database."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
-                             "Pass the `query_handle` returned by `construct_query`. "
+                             "Pass the `query_handle` returned by `construct_query` (MBQL) or "
+                             "`construct_native_query` (native SQL). "
                              "Optionally set display type (table, bar, line, pie, etc.), "
                              "description, and target collection. "
                              "If you omit collection_id it's saved to the user's personal collection; "
@@ -853,13 +900,15 @@
   "Update a saved question (card). Patch semantics - only fields that you pass are changed.
 
   Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.
-  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying query."
+  Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
+  string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
+  native-query permission on the target database."
   {:scope metabot/agent-question-update
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
                              "To archive, set archived true. To replace the underlying query, pass query "
-                             "(a query_handle from construct_query).")}}
+                             "(a query_handle from construct_query or construct_native_query).")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
@@ -934,6 +983,47 @@
      :collection_path (collection-path (:collection_id updated))
      :description     (:description updated)
      :archived        (boolean (:archived updated))}))
+
+;;; ------------------------------------------------ Execute Question -----------------------------------------------
+
+(defn- reject-parameterized-card!
+  "Agent execution does not yet supply parameter values, so refuse to run a card that declares
+   user-facing parameters or input template tags (field filters / variables). Snippet and
+   card-reference template tags don't count — those need no runtime input. Returns a 400 so the
+   limitation surfaces clearly rather than silently running the card with defaults."
+  [card]
+  (when (seq (qp.card/combined-parameters-and-template-tags card))
+    (throw (ex-info (str "This question takes parameters, which agent execution does not yet "
+                         "support. Run it in Metabase, or save a parameterless version.")
+                    {:status-code 400 :card-id (:id card)}))))
+
+(api.macros/defendpoint :post "/v1/question/:id/query"
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
+  "Run a saved question (card) and return its results.
+
+  Executes the query stored on the card under the caller's permissions and returns rows +
+  column metadata — the same response shape as /v1/execute.
+
+  Parameterized questions are NOT supported: if the card declares parameters or input
+  template tags (field filters / variables), this returns a 400. Run it in Metabase, or
+  save a parameterless version."
+  {:scope metabot/agent-question-execute
+   :tool  {:name "execute_question"
+           :description (str "Run a saved question by id and return its rows with column metadata, "
+                             "row count, and execution time. Use this to get the current results of "
+                             "an existing saved question. Does NOT support parameterized questions — "
+                             "if the question takes parameters or template-tag input, this returns an "
+                             "error.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body]
+  (let [card (api/check-404 (t2/select-one :model/Card id))]
+    (reject-parameterized-card! card)
+    (qp.card/process-query-for-card
+     card :api
+     :context    :question
+     :middleware {:process-viz-settings? false})))
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
