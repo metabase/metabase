@@ -33,7 +33,3 @@ export type {
   DataAppFactory,
   DataAppMetabaseProviderProps,
 } from "metabase-enterprise/data_apps/sandbox";
-export type {
-  ActionKindFromDataAppSchema,
-  ActionParametersFromDataAppSchema,
-} from "./hooks/public/use-action";
