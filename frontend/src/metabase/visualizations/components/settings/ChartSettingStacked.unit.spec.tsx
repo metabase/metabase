@@ -3,13 +3,14 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
+import { createMockSingleSeries } from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 function getSeries(metrics: string[]): Series {
   return [
-    {
-      card: {
+    createMockSingleSeries(
+      {
         dataset_query: {
           type: "native",
           native: {
@@ -27,58 +28,60 @@ function getSeries(metrics: string[]): Series {
           "graph.metrics": metrics,
         },
       },
-      data: {
-        rows: [
-          ["dogs", 50, 45],
-          ["cats", 45, 20],
-        ],
-        cols: [
-          {
-            display_name: "PETS",
-            source: "native",
-            field_ref: [
-              "field",
-              "PETS",
-              {
-                "base-type": "type/Text",
-              },
-            ],
-            name: "PETS",
-            base_type: "type/Text",
-            effective_type: "type/Text",
-          },
-          {
-            display_name: "MALE",
-            source: "native",
-            field_ref: [
-              "field",
-              "MALE",
-              {
-                "base-type": "type/Integer",
-              },
-            ],
-            name: "MALE",
-            base_type: "type/Integer",
-            effective_type: "type/Integer",
-          },
-          {
-            display_name: "FEMALE",
-            source: "native",
-            field_ref: [
-              "field",
-              "FEMALE",
-              {
-                "base-type": "type/Integer",
-              },
-            ],
-            name: "FEMALE",
-            base_type: "type/Integer",
-            effective_type: "type/Integer",
-          },
-        ],
+      {
+        data: {
+          rows: [
+            ["dogs", 50, 45],
+            ["cats", 45, 20],
+          ],
+          cols: [
+            {
+              display_name: "PETS",
+              source: "native",
+              field_ref: [
+                "field",
+                "PETS",
+                {
+                  "base-type": "type/Text",
+                },
+              ],
+              name: "PETS",
+              base_type: "type/Text",
+              effective_type: "type/Text",
+            },
+            {
+              display_name: "MALE",
+              source: "native",
+              field_ref: [
+                "field",
+                "MALE",
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              name: "MALE",
+              base_type: "type/Integer",
+              effective_type: "type/Integer",
+            },
+            {
+              display_name: "FEMALE",
+              source: "native",
+              field_ref: [
+                "field",
+                "FEMALE",
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              name: "FEMALE",
+              base_type: "type/Integer",
+              effective_type: "type/Integer",
+            },
+          ],
+        },
       },
-    },
-  ] as unknown as Series;
+    ),
+  ];
 }
 
 const setup = (seriesMetrics: string[]) => {

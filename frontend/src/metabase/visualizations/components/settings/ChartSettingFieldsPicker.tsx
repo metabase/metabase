@@ -41,7 +41,17 @@ const convertField = (field: Field | SortableField): Field | SortableField => {
 };
 
 const convertFieldsToSortableFields = (fields: Field[]): SortableField[] =>
-  fields.map((field) => convertField(field) as SortableField);
+  fields.map((field) => {
+    if (field === undefined) {
+      return UNDEFINED_ITEM_KEY;
+    }
+
+    if (field === null) {
+      return NULL_ITEM_KEY;
+    }
+
+    return field;
+  });
 
 export const ChartSettingFieldsPicker = ({
   value: fields = [],
@@ -68,7 +78,7 @@ export const ChartSettingFieldsPicker = ({
     id: SortableField | number;
     newIndex: number;
   }) => {
-    const field = convertField(sortableField as SortableField) as Field;
+    const field = convertField(String(sortableField));
     const oldIndex = fields.indexOf(field);
 
     onChange(moveElement(fields, oldIndex, newIndex));
@@ -96,7 +106,7 @@ export const ChartSettingFieldsPicker = ({
       id: SortableField | number;
       index: number;
     }) => {
-      const field = convertField(sortableField) as Field;
+      const field = convertField(sortableField);
 
       return (
         <Sortable
@@ -114,8 +124,8 @@ export const ChartSettingFieldsPicker = ({
                 showColumnSettingForIndicies?.includes(fieldIndex)
               }
               key={id}
-              value={field as string}
-              options={calculateOptions(field) as Option[]}
+              value={field || undefined}
+              options={calculateOptions(field)}
               onChange={(updatedField: Field) => {
                 const fieldsCopy = [...fields];
                 // this swaps the position of the existing value

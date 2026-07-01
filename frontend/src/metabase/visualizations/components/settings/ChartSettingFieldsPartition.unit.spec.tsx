@@ -1,5 +1,4 @@
 import { render, screen } from "__support__/ui";
-import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type { Partition } from "metabase/visualizations/visualizations/PivotTable/partitions";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -14,7 +13,7 @@ describe("ChartSettingFieldsPartition", () => {
     render(
       <ChartSettingFieldsPartition
         partitions={partitions}
-        columns={[createMockColumn() as RemappingHydratedDatasetColumn]}
+        columns={[createMockColumn()]}
         getColumnTitle={(column) => column.display_name}
         onChange={jest.fn()}
         onShowWidget={jest.fn()}
@@ -32,7 +31,7 @@ describe("ChartSettingFieldsPartition", () => {
           createMockColumn({
             name: fieldName,
             display_name: fieldName,
-          }) as RemappingHydratedDatasetColumn,
+          }),
         ]}
         getColumnTitle={(column) => column.display_name}
         value={{ rows: [fieldName], columns: [], values: [] }}
