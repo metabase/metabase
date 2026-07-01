@@ -3488,7 +3488,6 @@
            app-db
            appearance
            collections
-           config
            events
            lib
            logger
