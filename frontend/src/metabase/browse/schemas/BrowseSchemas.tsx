@@ -121,7 +121,6 @@ export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
   const dbId = Urls.extractEntityId(params.slug);
 
   if (dbId == null) {
-    // react-router already url-decodes route params, so `slug` is the raw db name here.
     return <DatabaseNameRedirect name={params.slug} />;
   }
 
