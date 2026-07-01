@@ -98,6 +98,22 @@
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
 
+(deftest search-content-types-test
+  (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-new-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
+                       :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
+                       :model/Collection _ {:name "AgentSearchAcmeCollection"}]
+          (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                                   {:term_queries ["AgentSearchAcme"]})
+                             :data
+                             (map (juxt :name :type))
+                             set)]
+            (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
+            (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
+            (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
+
 (deftest coerce-query-list-test
   (let [coerce #'agent-api.api/coerce-query-list]
     (testing "arrays pass through unchanged"

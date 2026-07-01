@@ -147,7 +147,7 @@ export function MetricExpressionPill({
                         <Badge
                           key={i}
                           circle
-                          c="text-hover"
+                          c="text-brand-hover"
                           style={{ marginInlineStart: "0.2em" }}
                         >
                           {segment}

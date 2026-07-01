@@ -1,5 +1,7 @@
 import fetchMock from "fetch-mock";
 
+import { PLUGIN_API, reinitialize } from "metabase/plugins";
+
 import { ApiClient } from "./client";
 
 describe("api", () => {
@@ -12,6 +14,8 @@ describe("api", () => {
 
     afterEach(() => {
       fetchMock.removeRoutes().clearHistory();
+      // Reset any plugin request handlers installed by a test.
+      reinitialize();
     });
 
     it("substitutes :tag URL placeholders from `params`", async () => {
@@ -145,16 +149,17 @@ describe("api", () => {
       // from the body field — not just from URL params.
       fetchMock.get("path:/api/embed/card/SOME_JWT/query", { rows: [] });
 
-      apiInstance.beforeRequestHandlers.push(async (config) => {
-        if (config.url === "/api/card/:cardId/query") {
-          return {
-            ...config,
-            method: "GET" as const,
-            url: "/api/embed/card/:token/query",
-          };
-        }
-        return config;
-      });
+      PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds =
+        async (config) => {
+          if (config.url === "/api/card/:cardId/query") {
+            return {
+              ...config,
+              method: "GET" as const,
+              url: "/api/embed/card/:token/query",
+            };
+          }
+          return config;
+        };
 
       await apiInstance.request({
         method: "POST",
@@ -171,19 +176,20 @@ describe("api", () => {
       expect(call?.options?.body).toBeFalsy();
     });
 
-    it("omits params with undefined values from the querystring", async () => {
+    it("omits params with null/undefined values from the querystring", async () => {
       fetchMock.get("path:/api/search", { items: [] });
 
       await apiInstance.request({
         method: "GET",
         url: "/api/search",
-        params: { q: "foo", limit: undefined, offset: 0 },
+        params: { q: "foo", limit: undefined, cursor: null, offset: 0 },
       });
 
       const call = fetchMock.callHistory.lastCall();
       expect(call?.url).toContain("q=foo");
       expect(call?.url).toContain("offset=0");
       expect(call?.url).not.toContain("limit");
+      expect(call?.url).not.toContain("cursor");
     });
   });
 

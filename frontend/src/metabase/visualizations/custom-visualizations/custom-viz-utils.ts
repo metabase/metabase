@@ -1,13 +1,13 @@
 import { getSubpathSafeUrl } from "metabase/urls";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { formatValue as internalFormatValue } from "metabase/visualizations/lib/formatting/value";
 import type {
+  ColumnSettings,
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
 
-export function formatValue(value: unknown, options?: OptionsType): string {
+export function formatValue(value: unknown, options?: ColumnSettings): string {
   const result = internalFormatValue(value, {
     ...options,
     jsx: false,

@@ -36,6 +36,7 @@
   application-db
   data-source
   db-type
+  do-after-commit
   in-transaction?
   quoting-style
   unique-identifier]
@@ -66,8 +67,6 @@
   qualify
   query
   select-or-insert!
-  streaming-reducible
-  streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
   with-conflict-retry]

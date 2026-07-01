@@ -225,7 +225,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
 
   it("should allow setting create queries to 'query builder and native' in database view", () => {
     cy.visit("/admin/permissions/");
-    cy.get("label").contains("Databases").click();
+    cy.findByRole("tab", { name: "Databases" }).click();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a database to see group permissions");
@@ -526,7 +526,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
   it("should allow setting create queries to 'query builder only' in database view", () => {
     cy.visit("/admin/permissions/");
-    cy.get("label").contains("Databases").click();
+    cy.findByRole("tab", { name: "Databases" }).click();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a database to see group permissions");

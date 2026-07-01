@@ -99,21 +99,30 @@
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
 (mr/def ::search-result-item
-  "A table, metric, or model returned from search."
+  "A table, model, metric, saved question, dashboard, or collection returned from search.
+   The map is intentionally open: the underlying search enriches results with extra fields
+   (e.g. `:database_name`, `:portable_entity_id`, metric base-table info) that callers may
+   ignore. Only the keys agents commonly rely on are declared here."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum "table" "metric" "model"]]
+   [:type [:enum "table" "metric" "model" "question" "dashboard" "collection"]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
    [:database_schema {:optional true} [:maybe :string]]
    [:verified {:optional true} [:maybe :boolean]]
+   [:official {:optional true} [:maybe :boolean]]
+   ;; Present on questions, dashboards, metrics, and models — the collection the entity lives in.
+   [:collection {:optional true} [:maybe :map]]
+   ;; Present on collection results — the parent location path (e.g. "/12/34/").
+   [:location {:optional true} [:maybe :string]]
    [:updated_at {:optional true} [:maybe :any]]
    [:created_at {:optional true} [:maybe :any]]])
 
 (mr/def ::search-response
-  "Search results containing tables, metrics, and models matching the query."
+  "Search results containing tables, models, metrics, saved questions, dashboards, and
+   collections matching the query."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
@@ -146,14 +155,15 @@
     :else           v))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
-  "Search for tables, metrics, and models.
+  "Search for tables, models, metrics, saved questions, dashboards, and collections.
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :title "Search Tables, Metrics, and Models"
-           :description (str "Search for tables, metrics, and models in Metabase. "
+           :title "Search Metabase Content"
+           :description (str "Search for tables, models, metrics, saved questions, dashboards, and collections "
+                             "in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
@@ -171,7 +181,7 @@
   (let [results (metabot-search/search
                  {:term-queries     (or (coerce-query-list term-queries) [])
                   :semantic-queries (or (coerce-query-list semantic-queries) [])
-                  :entity-types     ["table" "metric" "model"]
+                  :entity-types     ["table" "metric" "model" "question" "dashboard" "collection"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
