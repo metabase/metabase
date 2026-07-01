@@ -438,6 +438,21 @@ const SdkDashboardInner = ({
     ],
   );
 
+  // "Edit question" renders the question via adhocQuestionUrl without going through
+  // onNavigateToNewCardFromDashboard, so push a nav entry here to keep the back button.
+  const onEditQuestionWithNav = useCallback(
+    (question: Parameters<typeof onEditQuestion>[0]) => {
+      sdkNavigation?.push({
+        type: "open-card",
+        virtual: true,
+        name: question.displayName() ?? t`Question`,
+        onPop: () => onNavigateBackToDashboard(),
+      });
+      onEditQuestion(question);
+    },
+    [onEditQuestion, sdkNavigation, onNavigateBackToDashboard],
+  );
+
   if (isLocaleLoading) {
     return (
       <MaybeStyledWrapper
@@ -598,7 +613,7 @@ const SdkDashboardInner = ({
           .with({ finalRenderMode: "dashboard" }, () => (
             <SdkDashboardProvider
               plugins={plugins}
-              onEditQuestion={onEditQuestion}
+              onEditQuestion={onEditQuestionWithNav}
             >
               {children ?? (
                 <MaybeStyledWrapper
