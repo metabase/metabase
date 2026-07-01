@@ -1,12 +1,7 @@
 (ns metabase.transforms-rest.api.transform-test-run
-  "Generalized chained test-run endpoint: `/api/transform-test/:target-type/:id/…`.
-
-  One address that carries the target *type* (`transform` | `card`); the handler
-  branches on it. The multipart request contract, the response shape, and the
-  error→HTTP-status mapping are identical across types — the branches differ only
-  in the read-check and which orchestrator/inputs fn they call. The shared HTTP
-  helpers (parsing, response shaping, schemas, error mapping) live in
-  `metabase.transforms-rest.api.util`."
+  "Chained test-run endpoints: `/api/transform-test/:target-type/:id/…`, where
+  `target-type` is `transform` or `card`. The multipart contract, response shape,
+  and error→HTTP-status mapping are the same for both target types."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -20,8 +15,7 @@
    [toucan2.core :as t2]))
 
 (def keep-me
-  "Loaded for side effects (registers this ns's endpoints); referenced from the
-  api-routes require list."
+  "Loaded for side effects (registers this ns's endpoints)."
   nil)
 
 (defn- parse-source-ids

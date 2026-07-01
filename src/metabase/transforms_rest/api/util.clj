@@ -2,9 +2,8 @@
   "Shared HTTP contract for transform test-run endpoints: multipart parsing,
   response shaping, the error→HTTP-status mapping, and the response schemas.
 
-  Consumed by both the transform-target endpoints
-  ([[metabase.transforms-rest.api.transform]]) and the generalized chained
-  endpoints ([[metabase.transforms-rest.api.transform-test-run]])."
+  Consumed by the generalized chained test-run endpoints
+  ([[metabase.transforms-rest.api.transform-test-run]])."
   (:require
    [clojure.string :as str]
    [metabase.util.i18n :refer [tru]]

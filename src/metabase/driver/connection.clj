@@ -246,9 +246,7 @@
   (str "the " (name *connection-type*) " connection"))
 
 (defn assert-connection-type!
-  "Assert that `*connection-type*` is currently `expected` (one of [[connection-types]]).
-
-   The sanctioned way for code with a connection-context precondition to verify it."
+  "Assert that `*connection-type*` is currently `expected` (one of [[connection-types]])."
   [expected]
   (assert (= *connection-type* expected)
           (str "Expected " expected " connection context, got " *connection-type*)))

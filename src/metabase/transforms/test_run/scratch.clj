@@ -281,11 +281,9 @@
 (defn- list-tables-in-schema
   "Return a seq of table-name strings in `schema` on `db-id`."
   [db-id ^String schema]
-  ;; Uses information_schema rather than driver/describe-database: describe-database
-  ;; lists the entire database (all schemas, potentially hundreds of tables) and requires
-  ;; a full DB-level driver call. A scoped information_schema query is cheaper,
-  ;; schema-specific, and works correctly on Postgres and most SQL databases without
-  ;; driver-specific code. Used only by the janitor (admin/maintenance operation).
+  ;; information_schema rather than driver/describe-database: the latter lists the
+  ;; whole database (every schema) via a full DB-level driver call; a scoped
+  ;; information_schema query is cheaper and schema-specific.
   (let [result (qp/process-query
                 {:database db-id
                  :type     :native

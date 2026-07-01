@@ -198,13 +198,13 @@
   [card source-ids all-transforms]
   (let [card-table-ids (card-refs/card->tables card)
         producer-of    (ordering/dependency-producer-map all-transforms)
-        ;; Step 2: classify each physical table the card reads.
-        ;; nil-producer tables are immediate fixture leaves; produced tables seed the slice.
+        ;; Classify each physical table the card reads: nil-producer tables are
+        ;; immediate fixture leaves; produced tables seed the slice.
         {seed-table-ids    true
          boundary-table-ids false}
         (group-by (fn [tid] (some? (producer-of {:table tid}))) card-table-ids)
         seed-ids           (into #{} (keep (fn [tid] (producer-of {:table tid}))) seed-table-ids)
-        ;; Step 3: walk the seed transforms' upstream closure, then apply source-id cutoff.
+        ;; Walk the seed transforms' upstream closure, then apply the source-id cutoff.
         {deps :dependencies} (ordering/transform-ordering (vec seed-ids) all-transforms)
         {:keys [slice order bad-sources]} (compute-slice deps source-ids seed-ids)]
     (when (seq bad-sources)
@@ -217,7 +217,7 @@
               {:error-type  ::sources-not-ancestors
                :bad-sources bad-sources
                :card-id     (:id card)})))
-    ;; Step 4: fixtures = card's raw boundary tables + slice's leaf deps.
+    ;; fixtures = card's raw boundary tables + slice's leaf deps.
     (let [card-fixtures  (into #{} (map (fn [tid] {:table tid})) boundary-table-ids)
           id->transform  (u/index-by :id all-transforms)
           chain-fixtures (leaf-deps slice

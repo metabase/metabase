@@ -1,21 +1,7 @@
 (ns ^:mb/driver-tests metabase.transforms.test-run.assertions-test
-  "Tests for the assertion evaluation subsystem.
-
-  ## Test strategy
-
-  Pure/warehouse-free tests (Steps 9.1–9.4) exercise the factored pipeline stages
-  in isolation — they do not require a database connection. The factoring makes
-  this possible: the SQL builder, interpret, and prepare stages are pure
-  `data → data`.
-
-  DB-gated tests (Steps 9.5–9.9) use `:postgres` and run the full round-trip
-  through [[metabase.transforms.test-run.assertions/run-assertions!]] on a minimal
-  native scratch setup (a single-node transform on the test-data schema producing a
-  small output table). They exercise: all-pass batched path, mixed pass/fail with the
-  50-row cap actually truncating, warn-severity, the `:batched → :per-assertion`
-  runtime-error fallback, and strategy equivalence.
-
-  Steps 10 (chain wiring) and 11 (HTTP endpoint) live in `chain_test.clj`."
+  "Tests for the assertion evaluation subsystem
+  ([[metabase.transforms.test-run.assertions]]). Some are pure (no database); the
+  `:postgres`-gated tests run the full round-trip through `run-assertions!`."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -30,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 ;;; ===========================================================================
-;;; Step 9.1 — build-combined-assertion-sql (:cte binding)
+;;; build-combined-assertion-sql (:cte binding)
 ;;; ===========================================================================
 
 (deftest build-combined-assertion-sql-cte-test
@@ -70,7 +56,7 @@
       (is (not (.contains sql "1;)"))))))
 
 ;;; ===========================================================================
-;;; Step 9.2 — build-combined-assertion-sql (:table binding)
+;;; build-combined-assertion-sql (:table binding)
 ;;; ===========================================================================
 
 (deftest build-combined-assertion-sql-table-binding-test
@@ -88,7 +74,7 @@
         (is (.contains sql "'check_a'"))))))
 
 ;;; ===========================================================================
-;;; Step 9.3 — prepare-one fault isolation (unit-level, no DB)
+;;; prepare-one fault isolation (unit-level, no DB)
 ;;; ===========================================================================
 
 (deftest prepare-one-fault-isolation-test
@@ -123,15 +109,11 @@
           (is (= :passed (:status r))))))))
 
 ;;; ===========================================================================
-;;; Step 9.3b — interpret fault isolation (the original test, renamed to match
-;;; what it actually tests)
+;;; interpret fault isolation
 ;;; ===========================================================================
 
 (deftest interpret-fault-isolation-test
   (testing "interpret handles an :error PreparedAssertion alongside a clean one"
-    ;; Verifies interpret's defensiveness when a PreparedAssertion has :error.
-    ;; This is the layer that callers interact with; the prepare-one unit above
-    ;; verifies the full count of results from multiple bad+good entries.
     (let [prepared [{:name "bad_assertion" :severity :error :error "rewrite failed: parse error"}
                     {:name "good_assertion" :severity :error :rewritten-sql "SELECT * FROM t WHERE 1=0"}]
           raw-results [{:name "good_assertion" :failing-count 0 :sample nil}]
@@ -150,7 +132,7 @@
           (is (= :passed (:status good))))))))
 
 ;;; ===========================================================================
-;;; Step 9.4 — interpret maps counts → results with correct severity logic
+;;; interpret maps counts → results with correct severity logic
 ;;; ===========================================================================
 
 (deftest interpret-passed-test
@@ -239,28 +221,15 @@
       (is (= spec (:spec binding))))))
 
 ;;; ===========================================================================
-;;; Steps 9.5–9.9 — DB-gated postgres tests
-;;;
-;;; These tests call run-assertions! against a live Postgres scratch table. They
-;;; share the test-data schema and use a simple single-column table seeded directly
-;;; via scratch/seed! so no Transform model is needed.
-;;;
-;;; Scratch setup: seed a two-column table (id int, val int) with rows via
-;;; driver.conn/with-transform-connection + scratch/seed!. The mapping gives us
-;;; the scratch output spec; we build a :cte binding and call run-assertions!.
-;;;
-;;; All tests follow the same postgres-gating pattern as chain_test.clj:
-;;;   (mt/with-premium-features #{})
-;;;   (mt/test-drivers #{:postgres})
-;;;   (mt/dataset test-data ...)
+;;; DB-gated postgres tests — run-assertions! against a live Postgres scratch table
 ;;; ===========================================================================
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 9.5 — all-pass via one combined query
+;;; all-pass via one combined query
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-all-pass-test
-  (testing "Step 9.5: all-pass → single combined query, all assertions :passed"
+  (testing "all-pass→ single combined query, all assertions :passed"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -312,11 +281,11 @@
                     (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 9.6 — mixed pass/fail with 50-row cap actually exceeded
+;;; mixed pass/fail with 50-row cap actually exceeded
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-mixed-pass-fail-cap-test
-  (testing "Step 9.6: mixed pass/fail — failing assertion gets lazy sample capped at 50"
+  (testing "mixed pass/fail— failing assertion gets lazy sample capped at 50"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -378,11 +347,11 @@
                     (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 9.7 — warn-severity: full run, per-entry :warn, not :failed
+;;; warn-severity: full run, per-entry :warn, not :failed
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-warn-severity-test
-  (testing "Step 9.7: :warn severity firing → per-entry :warn, overall does not flip to :failed"
+  (testing ":warn severityfiring → per-entry :warn, overall does not flip to :failed"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -443,20 +412,15 @@
                     (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 9.8 — :batched → :per-assertion fallback on runtime warehouse error
+;;; :batched → :per-assertion fallback on runtime warehouse error
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-batched-fallback-test
-  (testing "Step 9.8: runtime warehouse error in batched query → falls back to :per-assertion, still attributes results"
-    ;; The key challenge: the bad assertion must pass prepare (rewrite+verify succeed)
-    ;; but fail at execution time in the combined SQL.
-    ;;
-    ;; Strategy: provide an assertion with a column reference that does not exist
-    ;; in the scratch table. The verify guard only checks TABLE references (not
-    ;; column references), so it passes prepare. But at execution time, the combined
-    ;; UNION ALL query fails because the column doesn't exist → fallback fires.
-    ;; The per-assertion strategy runs each assertion individually: the bad one gets
-    ;; an :error raw result, the good one still executes and contributes a count.
+  (testing "runtime warehouse errorin batched query → falls back to :per-assertion, still attributes results"
+    ;; The bad assertion references a non-existent column: verify checks only table
+    ;; refs, so it passes prepare, then fails at execution in the combined UNION ALL,
+    ;; triggering the per-assertion fallback. The bad one gets an :error raw result;
+    ;; the good one still executes and contributes a count.
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -520,11 +484,11 @@
                     (scratch/cleanup! db-id db mapping nil)))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 9.9 — strategy equivalence: :batched and :per-assertion yield same verdicts
+;;; strategy equivalence: :batched and :per-assertion yield same verdicts
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-strategy-equivalence-test
-  (testing "Step 9.9: :batched and :per-assertion strategies yield identical verdicts"
+  (testing ":batched and :per-assertion strategiesyield identical verdicts"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data

@@ -135,7 +135,7 @@
     (quote-literal \"Tito's Tacos\")              ; -> \"'Tito''s Tacos'\"
     (quote-literal \"Tito's Tacos\" :backslashes) ; -> \"'Tito\\'s Tacos'\"
 
-  `escape-style` defaults to `:ansi`. Carries the same trust caveat as [[escape-sql]]: NOT safe for
+  `escape-style` defaults to `:ansi`. Same trust caveat as [[escape-sql]]: not safe for
   sanitizing user input — pass parameters separately where supported."
   (^String [^String s]
    (quote-literal s :ansi))

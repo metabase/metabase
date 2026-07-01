@@ -9,9 +9,8 @@
   - [[card->tables]] walks the source-card graph to its physical leaves — every
     table reachable, with the intervening cards unwound.
 
-  The immediate/transitive split is the load-bearing distinction. A card whose
-  source is another card hides that card's tables behind a `:cards` reference;
-  unwinding them is the walk's job, not the single-layer reader's."
+  A card whose source is another card hides that card's tables behind a `:cards`
+  reference; [[card->tables]] unwinds them."
   (:require
    [clojure.set :as set]
    [metabase.lib-be.core :as lib-be]
@@ -96,12 +95,10 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn batch-load-cards
-  "Load every `:model/Card` whose id is in `ids` in one query. Public as a seam:
-  the layer-batching contract is verified by spying on this call.
+  "Load every `:model/Card` whose id is in `ids` in one query.
 
-  Archived cards are included — a lineage may run through an archived intermediate
-  model; only cards absent from the table, the deleted ones, drop out of the
-  result."
+  Archived cards are included (a lineage may run through an archived intermediate
+  model); deleted cards, absent from the table, drop out of the result."
   [ids]
   (t2/select :model/Card :id [:in ids]))
 
@@ -117,10 +114,9 @@
   `card` must be a `:model/Card` row with a `:dataset_query` key."
   [card]
   {:pre [(some? (:dataset_query card))]}
-  ;; Bind the metadata-provider cache for the whole walk: without it, every
-  ;; application-database-metadata-provider call builds a fresh provider and pays
-  ;; its own metadata round-trips; with it, same-db-id calls collapse to a cached
-  ;; lookup after the first, so per-card construction within a layer is free.
+  ;; Cache providers across the walk: otherwise every
+  ;; application-database-metadata-provider call rebuilds a fresh provider and
+  ;; re-pays its metadata round-trips.
   (lib-be/with-metadata-provider-cache
     (let [root-refs (card->immediate-refs card)]
       (loop [tables   (:tables root-refs)

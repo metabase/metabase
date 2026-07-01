@@ -9,8 +9,7 @@
 
   Native-SQL transforms are rewritten by string replacement; MBQL transforms are
   compiled under a metadata-provider override. Both paths run the same three
-  `verify` guards over the final SQL (defense-in-depth); see [[verify]] and its
-  guard comments.
+  `verify` guards over the final SQL; see [[verify]].
 
   Any guard failure, or any compile/rewrite failure, becomes a single typed error:
   `ex-info` with `:error-type ::cannot-test-run` (plus `:guard` and the offending
@@ -19,15 +18,12 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.metadata :as lib.metadata]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
-  (:import
-   (clojure.lang ExceptionInfo)
-   (org.graalvm.polyglot PolyglotException)))
+   [metabase.util.log :as log]
+   [metabase.workspaces.table-remapping :as ws.remap]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,58 +67,39 @@
     (fn [acc {real-schema :schema real-table :table} scratch-spec]
       (let [target {:schema (quote-identifier driver (:schema scratch-spec))
                     :table  (quote-identifier driver (:table scratch-spec))}]
-        ;; Register both bare and qualified forms: on the sqlglot backend an unused
-        ;; key is a no-op, so registering both is safe and covers every qualification
-        ;; form a native transform might use.
+        ;; Register both bare and qualified forms; an unused key is a no-op on the
+        ;; sqlglot backend.
         (cond-> (assoc acc {:table real-table} target)
           real-schema (assoc {:schema real-schema :table real-table} target))))
     {}
     mapping)})
 
 (defn rewrite-native-sql
-  "Rewrite `sql` with `sql-tools/replace-names`, redirecting input-table refs in
-  `mapping` (`{real-spec → scratch-spec}`) to their scratch targets. `backend` is
-  the pinned parser backend (used only for error reporting). Wraps backend-specific
-  parse exceptions into the typed `::cannot-test-run` error.
-
-  Public so the native rewrite can be exercised directly in tests
-  without a live compile."
+  "Rewrite `sql`, redirecting the input-table references in `mapping`
+  (`{real-spec → scratch-spec}`) to their scratch targets. `backend` is the pinned
+  parser backend, used only for error reporting; backend-specific parse exceptions
+  are wrapped as `::cannot-test-run`."
   [driver sql mapping backend]
-  (try
-    (sql-tools/replace-names driver sql (mapping->replacements driver mapping))
-    (catch PolyglotException e
-      ;; sqlglot fail-closed shape: PolyglotException, message starts "ParseError", ex-data nil.
+  (ws.remap/rewrite-table-refs
+   driver sql (mapping->replacements driver mapping)
+   {:on-parse-error
+    (fn [_sql e]
       (cannot-test-run!
        (str "This transform can't be test-run: its SQL could not be parsed/rewritten. " (ex-message e))
-       {:guard ::rewrite :parser-backend backend} e))
-    (catch ExceptionInfo e
-      ;; macaw fail-closed shape: ExceptionInfo "Unable to parse" / "Unknown rename".
-      (cannot-test-run!
-       (str "This transform can't be test-run: its SQL could not be parsed/rewritten. " (ex-message e))
-       {:guard ::rewrite :parser-backend backend} e))))
+       {:guard ::rewrite :parser-backend backend} e))}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; MBQL path: metadata-provider override compile
 ;;; ---------------------------------------------------------------------------
 
-(defn- table-override-fn
-  "Build the `f` for `transforming-metadata-provider`. `id->override-map` maps a
-  table id to the `{:name :schema}` overrides to merge onto its `:metadata/table`.
-  All non-table metadata passes through untouched."
-  [id->override-map]
-  (fn [{metadata-type :lib/type} results]
-    (if (= metadata-type :metadata/table)
-      (mapv (fn [t] (merge t (get id->override-map (:id t)))) results)
-      results)))
-
 (defn override-provider
-  "Wrap the BASE application-database provider for `db-id` with a
-  `transforming-metadata-provider` that overrides each mapped input table's
-  `:name`/`:schema` to its scratch spec. The caller binds this provider exactly
-  once via `qp.store/with-metadata-provider`."
+  "Return the application-database metadata provider for `db-id` with each mapped
+  input table's `:name`/`:schema` overridden to its scratch spec. `id->override-map`
+  maps a table id to its `{:name :schema}` scratch override. Bind the result once
+  via `qp.store/with-metadata-provider`."
   [db-id id->override-map]
-  (lib.metadata/transforming-metadata-provider
-   (table-override-fn id->override-map)
+  (ws.remap/override-metadata-provider
+   (fn [t] (get id->override-map (:id t)))
    (lib-be/application-database-metadata-provider db-id)))
 
 (defn id->override
@@ -130,10 +107,9 @@
   `input-tables` (which carry both `:id` and the real `:schema`/`:name`).
   Keyed by table id so the override matches on `(:id t)`, not name/schema pairs.
 
-  V1 limitation: MBQL nodes reading an upstream scratch output lack a synced
-  Table id (the upstream output was never materialized), so `id->override` cannot
-  build an entry for it. The verify guards catch the dangling ref and throw
-  `::cannot-test-run`. Native chains do not have this issue."
+  An MBQL node reading an upstream scratch output has no synced Table id (that
+  output was never materialized), so no override entry is built for it; the
+  dangling ref then trips [[verify]]."
   [input-tables mapping]
   (into {}
         (keep (fn [{:keys [id schema name]}]
@@ -174,113 +150,35 @@
    #{}
    mapping))
 
-(defn- dangling-qualifier-tokens
-  "Parser-based detection of dangling table qualifiers. Returns the set of
-  forbidden tokens (lowercased) that the parser reports as `:missing-table-alias`
-  — i.e. a column qualifier (`schema.table.col`) whose table is not in scope
-  because the FROM-only rewrite retargeted the table source but left the
-  qualifier behind.
-
-  This is scope-aware and precise: it flags only genuine dangling qualifiers,
-  never legitimate lib-generated join aliases (e.g. a derived-subquery alias
-  `\"Products\"`), which a blunt string match would false-positive on. The
-  parser normalizes identifier case, so we compare against lowercased forbidden
-  tokens."
-  [driver sql forbidden-lc]
-  (let [errors (try
-                 (:errors (sql-tools/field-references driver sql))
-                 (catch Throwable _ #{}))]
-    (into #{}
-          (keep (fn [{:keys [type name]}]
-                  (when (and (= type :missing-table-alias)
-                             (contains? forbidden-lc (some-> name u/lower-case-en)))
-                    (u/lower-case-en name))))
-          errors)))
-
-(defn- token-survives-as-string-literal?
-  "True when `token` survives in `sql` as a whole identifier (identifier-boundary
-  aware: underscore is an identifier char), matched case-sensitively.
-
-  String-literal occurrences (`WHERE x = 'orders'`) fail closed — the
-  caller names this guard explicitly for that reason. Case-sensitive matching
-  avoids false-positives on case-different quoted identifiers; genuine dangling
-  qualifiers are caught precisely by [[dangling-qualifier-tokens]]."
-  [^String token ^String sql]
-  (let [pat (re-pattern (str "(?<![A-Za-z0-9_])"
-                             (java.util.regex.Pattern/quote token)
-                             "(?![A-Za-z0-9_])"))]
-    (boolean (re-find pat sql))))
+(def ^:private remap-guard->resolve-guard
+  {::ws.remap/non-empty-refs     ::non-empty-refs
+   ::ws.remap/refs-subset-allowed ::refs-subset-scratch
+   ::ws.remap/token-survival     ::token-survival})
 
 (defn verify
-  "Run the three verify guards against `final-sql`. Returns `final-sql` on success;
-  throws the typed `::cannot-test-run` error (naming the guard + offending
+  "Run the reference-safety guards against `final-sql`. Returns `final-sql` on
+  success; throws the typed `::cannot-test-run` error (naming the guard + offending
   refs/token) on any failure.
 
   - `driver`       — driver keyword (for default-schema + parsing).
   - `mapping`      — `{real-spec → scratch-spec}` from `seed!`.
   - `final-sql`    — the rewritten / override-compiled SQL string.
-  - `safe-aliases` — set of bare table-name strings that are known-safe and
-                     exempt from Guard 2 (they are CTE-bound by the caller, not
-                     real warehouse tables). Default `#{}`. The assertions
-                     subsystem passes `#{\"test_output\"}` here — `test_output` is
-                     bound by the combined-assertion CTE wrapper, not a production
-                     table, so Guard 2 must not flag it."
+  - `safe-aliases` — bare table-name strings exempt from the no-real-table guard
+                     (they are CTE-bound by the caller, not real warehouse tables).
+                     Default `#{}`."
   ([driver mapping final-sql]
    (verify driver mapping final-sql #{}))
   ([driver mapping final-sql safe-aliases]
-   (let [refs (sql-tools/referenced-tables-raw driver final-sql)]
-     ;; Guard 1: non-empty refs — but only when mapping is non-empty.
-     ;; A parse error on a rewritten SQL loses refs that existed (guard must fire).
-     ;; A zero-table transform has an empty mapping and empty refs vacuously — safe,
-     ;; nothing to protect; Guard 2 still catches any stray refs if they appear.
-     (when (and (seq mapping) (empty? refs))
-       (cannot-test-run!
-        (str "This transform can't be test-run: the rewritten SQL has no resolvable"
-             " table references (it may have failed to parse).")
-        {:guard ::non-empty-refs :sql final-sql}))
-     ;; Guard 2: every ref ∈ scratch specs OR a known-safe alias.
-     ;; safe-aliases are CTE-bound by the caller (e.g. test_output) — they never
-     ;; refer to real warehouse tables so exempting them is safe.
-     (let [scratch    (scratch-ref-set driver mapping)
-           normalized (map #(normalize-ref driver %) refs)
-           safe-lc    (into #{} (map u/lower-case-en) safe-aliases)
-           stray      (remove (fn [{:keys [table] :as ref}]
-                                (or (scratch ref)
-                                    (contains? safe-lc (u/lower-case-en table))))
-                              normalized)]
-       (when (seq stray)
-         (cannot-test-run!
-          (str "This transform can't be test-run: the rewritten SQL references"
-               " table(s) that are not scratch tables: " (pr-str (vec stray))
-               ". An input table was not mapped to a scratch table.")
-          {:guard ::refs-subset-scratch :stray-refs (vec stray) :scratch scratch})))
-     ;; Guard 3: no original schema/table token survives.
-     ;; (a) Parser-based, scope-aware: a dangling table qualifier left behind by a
-     ;;     FROM-only rewrite surfaces as a `:missing-table-alias` error. This is
-     ;;     precise — it never flags legitimate lib-generated join aliases.
-     ;; (b) String-based, case-sensitive: catches a real table token surviving in a
-     ;;     string literal (fail-closed-by-design) without colliding with
-     ;;     case-different quoted identifiers.
-     ;; Note: safe-aliases are caller-bound CTE names, not original table tokens,
-     ;; so they are absent from forbidden-tokens and Guard 3 does not flag them.
-     (let [forbidden    (forbidden-tokens mapping)
-           forbidden-lc (into #{} (map u/lower-case-en) forbidden)
-           dangling     (dangling-qualifier-tokens driver final-sql forbidden-lc)]
-       (when-let [token (first dangling)]
-         (cannot-test-run!
-          (str "This transform can't be test-run: the original table " (pr-str token)
-               " still appears as a dangling column qualifier (e.g. `" token ".col`)"
-               " in the rewritten SQL. The FROM-only rewrite retargeted the table"
-               " source but left the qualifier behind, producing unrunnable SQL.")
-          {:guard ::token-survival :surviving-token token :sql final-sql}))
-       (doseq [token forbidden]
-         (when (token-survives-as-string-literal? token final-sql)
-           (cannot-test-run!
-            (str "This transform can't be test-run: the original identifier "
-                 (pr-str token) " still appears in the rewritten SQL (e.g. inside a"
-                 " string literal). It cannot be safely test-run.")
-            {:guard ::token-survival :surviving-token token :sql final-sql}))))
-     final-sql)))
+   (ws.remap/verify-only-references
+    driver final-sql
+    {:normalize-ref    #(normalize-ref driver %)
+     :allowed-refs     (scratch-ref-set driver mapping)
+     :forbidden-tokens (forbidden-tokens mapping)
+     :safe-aliases     safe-aliases
+     :on-violation     (fn [msg {:keys [guard] :as extra}]
+                         (cannot-test-run!
+                          (str "This transform can't be test-run: " msg)
+                          (assoc extra :guard (remap-guard->resolve-guard guard guard))))})))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry point
@@ -331,7 +229,7 @@
         (if native?
           ;; Native path: compile, then rewrite the SQL string to scratch names.
           ;; Carry qp.compile's output intact; only rewrite :query. Never deconstruct or
-          ;; rebuild the :lib/type map (mirrors the workspace hook in transforms_base/query.clj).
+          ;; rebuild the :lib/type map.
           (let [compiled (transforms-base.u/compile-source transform nil)]
             (update compiled :query #(rewrite-native-sql driver % mapping backend)))
           ;; MBQL path: compile under a metadata-provider override (no string rewrite).
@@ -341,11 +239,10 @@
                 provider (override-provider db-id (id->override input-tables mapping))]
             (qp.store/with-metadata-provider provider
               (transforms-base.u/compile-source transform nil))))]
-    ;; Verify (both paths, defense-in-depth) — throws on any guard failure.
+    ;; Verify (both paths) — throws on any guard failure.
     (verify driver mapping (:query compiled))
     (log/debug "Resolved test transform" {:driver driver :parser-backend backend :native? native?})
-    ;; :compiled is qp.compile/compile's output, passed verbatim to driver/run-transform!
-    ;; by the orchestrator — never deconstructed or rebuilt here.
+    ;; :compiled is qp.compile/compile's output, passed verbatim to driver/run-transform!.
     {:driver         driver
      :compiled       compiled
      :target         output-target

@@ -20,7 +20,7 @@
     from; `inputs/resolve-table-dep` fails closed on it
     (`::transform-dep-not-supported`).
   - **MBQL nodes reading upstream outputs** are not supported and fail at
-    `resolve` time with `::cannot-test-run`. Native chains are the clean v1 path.
+    `resolve` time with `::cannot-test-run`.
   - **Card target / MBQL card:** the card's source tables must be synced;
     `id->override` keys by table id — an unsynced output has no id to key on.
   - **Card target / native card:** a table-qualified column ref (`orders.amount`)
@@ -110,8 +110,7 @@
   `mapping`, writing its output to a fresh per-node scratch table.
 
   Returns the resolved artifact (with `:target` = the node's `{:schema :table}`
-  scratch output spec and `:parser-backend`). Appends nothing to shared state —
-  the caller threads the mapping and tracks scratch tables."
+  scratch output spec and `:parser-backend`)."
   [{:keys [transform mapping db db-id drv schema nonce input-tables timeout-ms]}]
   (let [catalog   (driver.sql/db-slot-value drv db)
         out-spec  (scratch/scratch-output-target schema nonce
@@ -368,8 +367,7 @@
   Security: the card is executed via raw `qp/process-query` (no card-caching
   middleware, no sandbox re-evaluation against scratch tables). The caller is
   responsible for `read-check :model/Card` before calling this fn. `resolve/verify`
-  is the safety proof — it fails closed if any non-scratch table reference survives
-  in the final SQL.
+  rejects the SQL if any non-scratch table reference survives.
 
   MBQL card precondition: the card's source tables must be materialized and synced
   so `id->override` can map them by table id.

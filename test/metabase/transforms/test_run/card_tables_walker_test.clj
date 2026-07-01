@@ -4,9 +4,7 @@
   The primary contract under test:
   - Returns the set of all physical table ids transitively reachable through the
     card→source-card graph (breadth-first, cycle-safe, deduped).
-  - Achieves this layer by layer: one `t2/select :model/Card` per BFS layer, not
-    per card. The batching-contract test spies on the loader to enforce the
-    invariant."
+  - Loads one `t2/select :model/Card` per BFS layer, not per card."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -100,21 +98,16 @@
           "orders from direct ref + people via inner card"))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Batching-contract test — the heart of this task
+;;; Batching-contract test
 ;;;
-;;; Strategy: with-dynamic-fn-redefs `batch-load-cards` (the public seam wrapping
-;;; `(t2/select :model/Card :id [:in …])`) to a counting wrapper, and verify that
-;;; the load count equals the number of BFS layers, not the number of cards.
+;;; Redefs `batch-load-cards` to a counting wrapper and asserts the load count is
+;;; the number of BFS layers, not the number of cards.
 ;;;
 ;;; Diamond A→{B,C}→D:
 ;;;   Layer 1: expand root A → frontier {B, C}  → 1 batch load of {B,C}
 ;;;   Layer 2: expand {B,C} → frontier {D}       → 1 batch load of {D}
 ;;;   Layer 3: expand {D}   → frontier {}         → no load (D has no card refs)
 ;;;   Total: 2 batch loads, not 3 per-card loads.
-;;;
-;;; The test fails against naive per-card depth-first recursion — which would issue
-;;; three loads, one each for B, C, and D — and passes only against the
-;;; layer-batched walk.
 ;;; ---------------------------------------------------------------------------
 
 (deftest batching-contract-test

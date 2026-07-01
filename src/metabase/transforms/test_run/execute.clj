@@ -1,13 +1,8 @@
 (ns metabase.transforms.test-run.execute
-  "Shared low-level execution seams for transform test runs.
+  "Execution helpers for transform test runs: translate a resolved artifact into a
+  `driver/run-transform!` call, and read the output table back via the QP.
 
-  These helpers sit directly above `driver/run-transform!` and the read-back QP
-  query. They carry no orchestration logic — no seeding, no cleanup, no diffing —
-  only the mechanical translation between a resolved artifact and a
-  `run-transform!` call, plus reading the result back.
-
-  These functions assume they run inside `driver.conn/with-transform-connection`
-  (the orchestrator wraps the whole run)."
+  These functions assume they run inside `driver.conn/with-transform-connection`."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
@@ -18,13 +13,9 @@
 (set! *warn-on-reflection* true)
 
 (defn assert-all-test-tables!
-  "Belt-and-braces DDL guard: assert that every table name in `names-to-check`
-  satisfies `scratch/test-table-name?`. Throws `::pre-execution-guard-failed`
-  (a 500-level internal invariant) on any failure.
-
-  This is the last line of defense before a CTAS executes. If `seed!` or an
-  output-target builder returned a name that did not match the test prefix, this
-  assertion prevents routing the CTAS at a real production table."
+  "Assert that every table name in `names-to-check` satisfies
+  `scratch/test-table-name?`; throws `::pre-execution-guard-failed` on any failure.
+  Guards a CTAS against ever targeting a name that isn't a test-scratch table."
   [names-to-check]
   (let [bad (remove scratch/test-table-name? names-to-check)]
     (when (seq bad)
@@ -73,8 +64,7 @@
   emitted SQL (BigQuery, SQL Server).
 
   Schema and table are identifiers, not values — they must be driver-quoted, not
-  passed as JDBC parameters.  `sql.u/quote-name` produces the driver-appropriate
-  quoting (double quotes for Postgres/ANSI, backticks for MySQL, etc.)."
+  passed as JDBC parameters."
   [db-id drv output-target]
   (let [catalog (:db output-target)
         schema  (:schema output-target)

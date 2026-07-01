@@ -112,10 +112,7 @@
 
   `raw-dep` is a `table-dependencies` entry (`{:table id}`, `{:transform id}`, or
   `{:table-ref {…}}`). The returned fn maps it to the id of the transform that
-  produces that table, or nil when none does (a raw warehouse table). Shares the
-  resolution context (`output-table-map` + `target-ref-map`) with
-  `transform-ordering`, exposed so callers can classify a node's inputs as
-  produced-internally vs. boundary leaves."
+  produces that table, or nil when none does (a raw warehouse table)."
   [all-transforms]
   (let [output-tables (output-table-map all-transforms)
         all-ids       (into #{} (map :id) all-transforms)

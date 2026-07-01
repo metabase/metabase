@@ -2357,7 +2357,8 @@
            tracing
            transforms-base
            upload
-           util}
+           util
+           workspaces}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2707,7 +2708,9 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{premium-features
+   :uses #{lib
+           premium-features
+           sql-tools
            util}}
 
   xrays
@@ -3629,7 +3632,6 @@
            sample-data
            server
            settings
-           sql-tools
            util
            workspaces
            enterprise/serialization}

@@ -53,10 +53,10 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.workspaces.table-remapping :as oss.remap]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -286,15 +286,16 @@
    Fail-closed: throws `ex-info` with `:type qp.error-type/qp` on parse failure. A workspace
    child must not silently pass canonical refs through to the warehouse."
   [driver sql remappings]
-  (try
-    (let [replacements {:tables (build-table-replacements remappings)}]
-      (sql-tools/replace-names driver sql replacements {:allow-unused? true}))
-    (catch Exception e
-      (throw (ex-info "Workspace table remapping failed: cannot parse SQL"
-                      {:type   qp.error-type/qp
-                       :sql    sql
-                       :driver driver}
-                      e)))))
+  (oss.remap/rewrite-table-refs
+   driver sql {:tables (build-table-replacements remappings)}
+   ;; remappings is a db-global set; most entries won't appear in any one query.
+   {:allow-unused? true
+    :on-parse-error (fn [_sql e]
+                      (throw (ex-info "Workspace table remapping failed: cannot parse SQL"
+                                      {:type   qp.error-type/qp
+                                       :sql    sql
+                                       :driver driver}
+                                      e)))}))
 
 ; TODO Is this the same as prune-no-level?
 (defn- spec->consumer-shape

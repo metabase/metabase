@@ -20,6 +20,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.workspaces.table-remapping :as oss.remap]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -758,9 +759,8 @@
   "Wrap `mp` with a remapping layer. Each spec-pair is `[from to]` where from/to
    are `[schema table]` 2-tuples or `[db schema table]` 3-tuples."
   [mp & spec-pairs]
-  (let [remappings (into {} (map (fn [[from to]] [(->spec from) (->spec to)])) spec-pairs)
-        transform  (#'ws.middleware/table-transform (#'ws.middleware/table-remapper remappings))]
-    (lib.metadata/transforming-metadata-provider transform mp)))
+  (let [remappings (into {} (map (fn [[from to]] [(->spec from) (->spec to)])) spec-pairs)]
+    (oss.remap/override-metadata-provider (#'ws.middleware/table->overrides remappings) mp)))
 
 (defn- tables-by-id
   "Return `{id {:schema s :name n}}` for all tables visible through `mp`."

@@ -1,14 +1,10 @@
 (ns metabase.transforms.test-run.resolve-test
   "Tests for metabase.transforms.test-run.resolve.
 
-  Test strategy / layering:
-  - The native rewrite (`rewrite-native-sql`) and the three-guard `verify` are
-    pure with respect to the database (they only parse). They are therefore
-    tested directly against those two functions — no DB needed.
-  - `resolve-test-transform` end-to-end (compile + rewrite/override + verify)
-    needs a real metadata provider, so those tests run gated under postgres with
-    `mt/dataset test-data` (bare symbol) and proper `lib/native-query` /
-    `lib/query` MBQL 5 values — the shapes `native-query-transform?` recognises."
+  `rewrite-native-sql` and the three-guard `verify` only parse, so they are tested
+  directly with no DB. `resolve-test-transform` end-to-end (compile + rewrite/override
+  + verify) needs a real metadata provider, so those tests are gated under postgres
+  with `mt/dataset test-data`."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -154,8 +150,7 @@
            ::resolve/token-survival)))))
 
 (deftest case-12-cte-shadow-test
-  (testing "case 12: CTE whose name shadows a mapped real table, no real reference.
-            Document observed behavior."
+  (testing "case 12: CTE whose name shadows a mapped real table, no real reference"
     ;; `WITH orders AS (...) SELECT * FROM orders` — the only `orders` is the CTE.
     ;; On sqlglot, replace-names mis-rewrites the final CTE-ref to scratch_orders.
     ;; referenced-tables-raw correctly excludes CTE names, so guard 1 sees [] -> fails
@@ -222,13 +217,10 @@
 
 (deftest token-survival-case-different-quoted-alias-passes-test
   (testing "a case-different quoted alias of a mapped table must not trip guard 3"
-    ;; The false positive that motivated the two-pronged guard-3 design: the lib
-    ;; derives join aliases from table display names, so joining `products` compiles
-    ;; to `... AS "Products"` — a legitimate alias over a scratch table. The original
-    ;; single case-insensitive regex spec flagged that alias as the forbidden token
-    ;; `products`, rejecting every MBQL join. This unit test pins the requirement
-    ;; directly at the `verify` level, independent of the lib's current aliasing
-    ;; behavior (the gated MBQL-join integration test covers it only incidentally).
+    ;; The lib derives join aliases from table display names, so joining `products`
+    ;; compiles to `... AS "Products"` — a legitimate alias over a scratch table. A
+    ;; case-insensitive token check would flag that alias as the forbidden `products`,
+    ;; rejecting every MBQL join.
     (let [mapping {{:schema "public" :table "orders"}   {:schema "public" :table "scratch_orders"}
                    {:schema "public" :table "products"} {:schema "public" :table "scratch_products"}}
           sql     (str "SELECT \"Products\".\"id\" FROM \"public\".\"scratch_orders\" "
@@ -237,11 +229,11 @@
       (is (string? (resolve/verify :postgres mapping sql))))))
 
 ;;; ===========================================================================
-;;; String-literal fail-closed-by-design (documented)
+;;; String-literal fail-closed
 ;;; ===========================================================================
 
 (deftest string-literal-fails-closed-by-design-test
-  (testing "a string literal containing a real table token fails guard 3 by design"
+  (testing "a string literal containing a real table token fails guard 3"
     ;; `WHERE src = 'orders'` — the string literal `'orders'` matches the boundary-aware
     ;; regex; this is an accepted fail-closed false positive, with the surviving token named.
     (let [sql "SELECT id FROM scratch_orders WHERE src = 'orders'"]
@@ -250,16 +242,12 @@
            ::resolve/token-survival)))))
 
 (deftest string-literal-check-is-case-sensitive-by-design-test
-  (testing "the string-literal scan is deliberately case-sensitive — pinning both sides"
-    ;; The asymmetry is a design decision, not an oversight: the scan must never
-    ;; collide with case-different quoted identifiers (the lib derives join aliases
-    ;; from display names — `AS "Products"` for table `products` — and a
-    ;; case-insensitive scan would reject every MBQL join; see
-    ;; token-survival-case-different-quoted-alias-passes-test). The cost is that a
-    ;; case-different string literal slips through — harmless, since string literals
-    ;; were never the correctness hazard (dangling qualifiers are, and the
-    ;; parser-based check catches those in any case). If you are about to make this
-    ;; scan case-insensitive: don't.
+  (testing "the string-literal scan is case-sensitive — pinning both sides"
+    ;; A case-insensitive scan would collide with case-different quoted identifiers
+    ;; (join aliases like `AS "Products"` for table `products`), rejecting every MBQL
+    ;; join. The cost is that a case-different string literal slips through; that is
+    ;; harmless, since the dangling-qualifier hazard is caught by the parser-based
+    ;; check regardless.
     (let [fails  "SELECT id FROM scratch_orders WHERE src = 'orders'"
           passes "SELECT id FROM scratch_orders WHERE src = 'ORDERS'"]
       (is (cannot-test-run?

@@ -374,7 +374,7 @@
 ;;;
 ;;; The MBQL card is stored via `mt/with-temp :model/Card`, so its
 ;;; `dataset_query` is lib-normalized (pMBQL form) when the endpoint reads it
-;;; back — the path W2 fixed but that was only verified for native stored cards.
+;;; back.
 ;;;
 ;;; Topology: same t1 (enrich) slice as native tests; card does COUNT(*) over
 ;;; the enriched scratch table via MBQL source-table → 4 rows → count = 4.
@@ -511,16 +511,16 @@
 ;;; ===========================================================================
 
 ;;; ===========================================================================
-;;; Step 10 — Assertions wired into run-chain-test! and run-card-chain-test!
+;;; Assertions wired into run-chain-test! and run-card-chain-test!
 ;;;
 ;;; All tests run on :postgres with the standard test-data chain (t1 → t2).
 ;;; Assertion SQL is written against the real table names (orders, people,
 ;;; t2's real output table) — the harness remaps them to scratch at run time.
-;;; The `test_output` alias is also exercised (Step 10.5).
+;;; The `test_output` alias is also exercised.
 ;;; ===========================================================================
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 10.1 — passing assertion (transform target)
+;;; passing assertion (transform target)
 ;;; ---------------------------------------------------------------------------
 
 (deftest chain-assertion-passing-test
@@ -556,7 +556,7 @@
                   (is (zero? (get-in result [:assertions 0 :failing_row_count]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 10.2 — failing assertion (transform target)
+;;; failing assertion (transform target)
 ;;; ---------------------------------------------------------------------------
 
 (deftest chain-assertion-failing-test
@@ -591,7 +591,7 @@
                   (is (= :failed (get-in result [:assertions 0 :status]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 10.3 — warn-severity failing assertion does not fail the run
+;;; warn-severity failing assertion does not fail the run
 ;;; ---------------------------------------------------------------------------
 
 (deftest chain-assertion-warn-does-not-fail-run-test
@@ -625,7 +625,7 @@
                   (is (pos? (get-in result [:assertions 0 :failing_row_count]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 10.4 — no expected CSV, assertions only
+;;; no expected CSV, assertions only
 ;;; ---------------------------------------------------------------------------
 
 (deftest chain-assertions-only-no-expected-test
@@ -659,7 +659,7 @@
                   (is (= :passed (get-in result [:assertions 0 :status]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 10.5 — test_output alias works in assertions (transform target)
+;;; test_output alias works in assertions (transform target)
 ;;; ---------------------------------------------------------------------------
 
 (deftest chain-assertion-test-output-alias-test
@@ -692,7 +692,7 @@
                   (is (= :passed (get-in result [:assertions 0 :status]))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 10.6 — card target, assertions via :cte binding (no extra scratch table)
+;;; card target, assertions via :cte binding (no extra scratch table)
 ;;; ---------------------------------------------------------------------------
 
 (deftest card-chain-assertion-cte-binding-test
@@ -721,11 +721,11 @@
                   (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
-;;; Step 11 — HTTP endpoint wires assertions
+;;; HTTP endpoint wires assertions
 ;;; ===========================================================================
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 11.1 — assertions=[] → same response shape as before (regression)
+;;; assertions=[] → same response shape as before (regression)
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-endpoint-empty-assertions-regression-test
@@ -760,7 +760,7 @@
                     (is (nil? (:assertions resp)))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 11.2 — assertions + no expected → 200 + assertion results
+;;; assertions + no expected → 200 + assertion results
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-endpoint-assertions-no-expected-test
@@ -802,7 +802,7 @@
                     (is (= "passed" (-> resp :assertions first :status)))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 11.3 — assertions + expected → 200 + diff + assertions
+;;; assertions + expected → 200 + diff + assertions
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-endpoint-assertions-and-expected-test
@@ -846,7 +846,7 @@
                     (is (= "passed" (-> resp :assertions first :status)))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 11.4 — malformed assertions JSON → 400
+;;; malformed assertions JSON → 400
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-endpoint-malformed-assertions-test
@@ -871,7 +871,7 @@
                   "assertions" "this is not json"})))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 11.5 — assertion referencing a real table → 422
+;;; assertion referencing a real table → 422
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-endpoint-assertion-real-table-reference-test
@@ -894,10 +894,10 @@
                                     people-f   people-rows
                                     expected-f correct-expected-csv]
                 ;; products is a real table not in the mapping — verify guard 2 fires.
-                ;; Since per-assertion prepare captures this as a terminal error (not a
-                ;; run-level throw), the response is 200 with the assertion as :failed.
-                ;; This is the correct design: a bad assertion is a test-run result, not
-                ;; an HTTP-level error. The 422 path is for run-level errors.
+                ;; Per-assertion prepare captures this as a terminal error (not a
+                ;; run-level throw), so the response is 200 with the assertion as :failed.
+                ;; A bad assertion is a test-run result, not an HTTP-level error; the 422
+                ;; path is for run-level errors.
                 (let [assertions-json (json/encode
                                        [{:name "escapes_to_real_table"
                                          :sql  "SELECT * FROM products WHERE price < 0"
@@ -918,7 +918,7 @@
                     (is (string? (-> resp :assertions first :error_message)))))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Step 11.6 — no expected and no assertions → 400
+;;; no expected and no assertions → 400
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-endpoint-no-expected-no-assertions-test
@@ -992,11 +992,10 @@
 ;;; ===========================================================================
 
 (deftest chain-cleanup-runs-inside-transform-connection-test
-  ;; CONTRACT (documented in scratch.clj:29-34): every call to scratch/cleanup!
-  ;; issued by run-chain-test! must occur while *connection-type* is bound to
-  ;; :transform. On databases with separate write-data credentials the DROP TABLE
-  ;; issued by cleanup! would run on read credentials if cleanup! fires after
-  ;; with-transform-connection unwinds, leaking all scratch tables.
+  ;; Every scratch/cleanup! call from run-chain-test! must run while
+  ;; *connection-type* is bound to :transform. On databases with separate
+  ;; write-data credentials, a cleanup! that fires after with-transform-connection
+  ;; unwinds would issue its DROP TABLE on read credentials, leaking scratch tables.
   ;;
   ;; The single-credential test DB makes this invisible at the table level; we
   ;; observe it by intercepting scratch/cleanup! and capturing *connection-type*
@@ -1035,11 +1034,10 @@
                      "got: " (pr-str @captured)))))))))
 
 ;;; ===========================================================================
-;;; Single-node subgraph: behaviors ported from the removed single-transform path
+;;; Single-node subgraph: source-ids=#{} (degenerate slice = {target})
 ;;;
-;;; All use run-chain-test! with source-ids=#{} (degenerate slice = {target}).
-;;; The subgraph path with no sources is functionally identical to the old
-;;; run-test! single-transform path; these tests prove coverage is preserved.
+;;; run-chain-test! with no sources is functionally identical to the
+;;; single-transform path.
 ;;; ===========================================================================
 
 ;;; ---------------------------------------------------------------------------

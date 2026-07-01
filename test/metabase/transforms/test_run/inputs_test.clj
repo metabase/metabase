@@ -1,12 +1,5 @@
 (ns metabase.transforms.test-run.inputs-test
-  "Tests for strict input resolution: required-input-tables and match-fixtures.
-
-  Test strategy:
-  - Pure/driver-free tests use mt/with-temp to create minimal app-DB fixtures.
-  - Integration tests that need real dependency extraction (native SQL, MBQL) use
-    postgres+test-data; they are tagged :transforms/table per the execute_test pattern.
-  - Source-card dep extraction is tested via mt/with-temp Card + mt/with-driver :postgres
-    since the preprocess pipeline needs a real DB."
+  "Tests for strict input resolution: required-input-tables and match-fixtures."
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]

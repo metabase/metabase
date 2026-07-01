@@ -66,20 +66,20 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.query-processor.store :as qp.store]
+   [metabase.workspaces.table-remapping :as oss.remap]))
 
 (set! *warn-on-reflection* true)
 
-(defn- table-remapper
-  "Build a function that remaps table metadata according to `remappings`.
-   The returned fn merges `:db`, `:schema`, and `:name` overrides onto any table whose
-   `(:schema, :name)` matches a `from` spec."
+(defn- table->overrides
+  "Override `{:db :schema :name}` for any `:metadata/table` whose `(:schema, :name)`
+   matches a `from` spec in `remappings`, else nil (passthrough). Matched on
+   `(:schema, :name)`, not `:db` — sync doesn't populate `:db` on `:metadata/table`."
   [remappings]
   (let [schema-table-index (into {}
                                  (map (fn [[from-spec to-spec]]
@@ -92,18 +92,8 @@
                                             :name   to-name}])))
                                  remappings)]
     (fn [table-metadata]
-      (merge table-metadata
-             (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table-metadata))
-                                      (ws.table-remapping/denormalize-level (:name table-metadata))])))))
-
-(defn- table-transform
-  "Wrap a per-table function `f` into a transform suitable for [[lib.metadata/transforming-metadata-provider]].
-   Only applies `f` when the metadata spec's `:lib/type` is `:metadata/table`; all other types pass through."
-  [f]
-  (fn [{metadata-type :lib/type} results]
-    (if (= metadata-type :metadata/table)
-      (into [] (map f) results)
-      results)))
+      (get schema-table-index [(ws.table-remapping/denormalize-level (:schema table-metadata))
+                               (ws.table-remapping/denormalize-level (:name table-metadata))]))))
 
 ;;; ------------------------------------------------- Helpers --------------------------------------------------
 ;;;
@@ -128,9 +118,7 @@
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
-  (let [remapping-mp (lib.metadata/transforming-metadata-provider
-                      (table-transform (table-remapper remappings))
-                      mp)]
+  (let [remapping-mp (oss.remap/override-metadata-provider (table->overrides remappings) mp)]
     (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
       ;; this has no body so it looks like this is a no-op. But the with-metadata-provider sets the metadata provider and then
       ;; doesn't pop it. We could use the private function that this uses: qp.store/set-metadata-provider!, or we could use the

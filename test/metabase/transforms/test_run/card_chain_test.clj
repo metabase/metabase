@@ -121,10 +121,9 @@
 (defn- mbql-count-card
   "An MBQL card that counts rows in enriched — `SELECT COUNT(*) FROM enriched`.
 
-  The card's `:source-table` is set to `tbl-id` (the app-DB Table id of
-  the enriched temp table). The MBQL path in `run-card-query!` compiles
-  under `override-provider`, which overrides enriched's `:name`/`:schema`
-  to t1's scratch output spec, so the compiler emits scratch-qualified SQL."
+  `:source-table` is `tbl-id` (the app-DB Table id of the enriched temp table),
+  so the MBQL compile path overrides enriched's `:name`/`:schema` to t1's scratch
+  output spec and emits scratch-qualified SQL."
   [db-id tbl-id]
   {:id           nil
    :dataset_query {:database db-id

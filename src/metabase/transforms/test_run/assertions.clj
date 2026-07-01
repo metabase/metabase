@@ -312,7 +312,7 @@
        :error_message     error})))
 
 (defn- interpret
-  "Stage 4 (shared): PreparedAssertions + raw strategy results → assertion-result maps.
+  "PreparedAssertions + raw strategy results → assertion-result maps.
 
   `prepared`    — vector of all PreparedAssertions from `prepare` (includes `:error` entries).
   `raw-results` — vector of raw result maps from `run-strategy` (runnable-only, same order
