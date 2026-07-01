@@ -66,7 +66,9 @@ export const chartSettingNestedSettings =
               objectSettings,
               changedSettings,
             );
-          } else {
+          } else if (objectSettings != null) {
+            // Objects without stored settings must not be added as `undefined`
+            // entries, which would corrupt the settings map (EMB-1940).
             newSettings[currentKey] = objectSettings;
           }
           return newSettings;
