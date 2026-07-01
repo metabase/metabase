@@ -1,29 +1,8 @@
 .root {
-  --badge-height-xs: 1rem;
-  --badge-height-sm: 1.5rem;
-  --badge-lh: 0.9375rem;
-  --badge-fz-xs: 0.6875rem;
-  --badge-fz-sm: var(--badge-fz-xs);
-  --badge-radius: 1rem;
+  --badge-radius: 1rem; /* 16px */
 
   text-transform: none;
-
-  &[data-variant="light"] {
-    /* background-color: var(--mb-color-background_surface-brand-subtle); */
-    background-color: var(--mb-color-background-disabled);
-    color: var(--mb-color-text-primary);
-
-    [data-mantine-color-scheme="dark"] & {
-      background-color: var(--mb-color-border);
-    }
-  }
-
-  &[data-variant="filled"] {
-    background-color: var(--mb-color-background-brand);
-    color: var(--mb-color-text-primary-inverse);
-
-    [data-mantine-color-scheme="dark"] & {
-      color: var(--mb-color-text-primary);
-    }
-  }
+  font-weight: 600;
+  line-height: 0.9375rem; /* 15px */
+  letter-spacing: 0;
 }
