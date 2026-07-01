@@ -1,6 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import { IndexRoute, Route, type RouteComponent } from "react-router";
 
+import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -74,6 +75,8 @@ export function getDataStudioRoutes(
           <Route path="schema-viewer" component={SchemaViewerUpsellPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
+
+        <Route path="*" component={NotFound} />
       </Route>
     </Route>
   );
