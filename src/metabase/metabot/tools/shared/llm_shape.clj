@@ -110,6 +110,17 @@
   (when s
     (str/replace s "|" "\\u007c")))
 
+(defn- truncate
+  "Cap `s` at `max-len` characters, appending an ellipsis when truncated.
+  Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
+  Returns nil for nil input."
+  [s max-len]
+  (when s
+    (let [s (str s)]
+      (if (> (count s) max-len)
+        (str (subs s 0 max-len) "...")
+        s))))
+
 (defn- database-type-or-unknown
   "Return database type or 'unknown' if nil."
   [database-type]
@@ -128,6 +139,7 @@
    :is_field (= type :field)
    :is_collection (= type :collection)
    :is_related_table (= type :related_table)
+   :is_related_tables (= type :related_tables)
    :is_metric (= type :metric)
    :is_table (= type :table)
    :is_model (= type :model)
@@ -275,17 +287,50 @@
            :segment_definition_description definition-description}
           (drill-in-location-context "segment" m))))
 
+(def ^:private max-related-table-description-length
+  "Cap on a related table's description."
+  512)
+
 (defn- related-table->xml
-  "Format a related table for LLM consumption."
-  [{:keys [id name related_by database_name fully_qualified_name fields]}]
+  "Format a related table for LLM consumption.
+  Used for both :related_tables and :related_tables_without_columns."
+  [{:keys [id name related_by database_name database_schema description fields]}]
   (render-llm-template
    :related_table
-   {:related_table_id            (when (some? id) (str id))
-    :related_table_name          name
-    :related_table_related_by    related_by
-    :related_table_database_name database_name
-    :related_table_fqn           fully_qualified_name
-    :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
+   {:related_table_id              (when (some? id) (str id))
+    :related_table_name            name
+    :related_table_related_by_name (:name related_by)
+    :related_table_related_by_id   (str (:id related_by))
+    :related_table_database_name   database_name
+    :related_table_fqn             (fully-qualified-name database_schema name)
+    :related_table_description     (when (not-empty description)
+                                     (truncate description max-related-table-description-length))
+    :related_table_fields_xml      (when (seq fields) (str/join "\n" (map field->xml fields)))}))
+
+(defn- related-tables->xml
+  "Render the related-tables block for a table/model.
+
+  `related-tables` carry their fields; `without-fields` do not.  They are rendered as the same `<related-table>`
+  element, but grouped under a note that their columns were omitted, so the LLM can fetch them individually if
+  needed. `total` is the full related-tables count before any cap.  When it exceeds the surfaced set we tell the LLM
+  the list is truncated.
+
+  Returns nil when there is nothing to render."
+  [related-tables without-fields total]
+  (let [with-fields-xml    (when (seq related-tables)
+                             (str/join "" (map related-table->xml related-tables)))
+        without-fields-xml (when (seq without-fields)
+                             (str/join "" (map related-table->xml without-fields)))
+        surfaced           (+ (count related-tables) (count without-fields))
+        truncated?         (boolean (and total (> total surfaced)))]
+    (when (or with-fields-xml without-fields-xml)
+      (render-llm-template
+       :related_tables
+       {:related_tables_with_fields_xml    with-fields-xml
+        :related_tables_without_fields_xml without-fields-xml
+        :related_tables_surfaced           surfaced
+        :related_tables_truncated          truncated?
+        :related_tables_total              total}))))
 
 (defn- dimension-source-table
   "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus
@@ -358,7 +403,8 @@
    without a separate `entity_details` call — it's the first slot of every portable FK in
    the representations-format `construct_notebook_query` tool."
   [{:keys [id name database_id database_name database_engine database_schema
-           description fields related_tables measures segments]}]
+           description fields related_tables related_tables_total
+           related_tables_without_fields measures segments]}]
   (let [fqn (fully-qualified-name database_schema name)]
     (render-llm-template
      :table
@@ -371,8 +417,9 @@
       :table_description        description
       :table_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
-      :table_related_tables_xml (when (seq related_tables)
-                                  (str/join "" (map related-table->xml related_tables)))
+      :table_related_tables_xml (related-tables->xml related_tables
+                                                     related_tables_without_fields
+                                                     related_tables_total)
       :table_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :table_segments_xml       (when (seq segments)
@@ -400,7 +447,8 @@
    representations form used elsewhere. Note: Python uses <metabase-model> tag but closes
    with </model>."
   [{:keys [id name description verified fields database_id database_name database_engine
-           related_tables measures segments portable_entity_id query_json]}]
+           related_tables related_tables_total related_tables_without_fields
+           measures segments portable_entity_id query_json]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -416,8 +464,9 @@
       :model_query_json         (repr-data->llm-block query_json)
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
-      :model_related_tables_xml (when (seq related_tables)
-                                  (str/join "\n" (map related-table->xml related_tables)))
+      :model_related_tables_xml (related-tables->xml related_tables
+                                                     related_tables_without_fields
+                                                     related_tables_total)
       :model_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :model_segments_xml       (when (seq segments)
