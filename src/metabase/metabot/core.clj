@@ -20,6 +20,8 @@
   agent-query-execute
   agent-question-create
   agent-question-update
+  agent-metric-create
+  agent-metric-update
   agent-resource-read
   agent-search
   agent-sql-execute]

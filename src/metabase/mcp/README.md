@@ -62,6 +62,8 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:sql:execute`       | `execute_sql`                                                                                                  |
 | `agent:question:create`   | `create_question`                                                                                              |
 | `agent:question:update`   | `update_question` (also covers "move card to collection")                                                      |
+| `agent:metric:create`     | `create_metric`                                                                                                |
+| `agent:metric:update`     | `update_metric` (also covers "move metric to collection")                                                      |
 | `agent:dashboard:create`  | `create_dashboard`                                                                                             |
 | `agent:dashboard:update`  | `update_dashboard`                                                                                             |
 | `agent:collection:create` | `create_collection`                                                                                            |
@@ -102,6 +104,8 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `create_question`   | Save a query as a named question (card). Accepts a `query_handle` from `construct_query`.                         |
 | `update_question`   | Update a saved question. Patch semantics. Setting `collection_id` moves the card. Setting `archived` archives it. |
+| `create_metric`     | Save a query as a reusable metric. Accepts a `query_handle` from `construct_query`. The query needs one aggregation and at most one date grouping. |
+| `update_metric`     | Update a saved metric. Patch semantics. Setting `collection_id` moves it; setting `archived` archives it. A replacement `query` must still be a valid metric. |
 | `create_dashboard`  | Create a new dashboard, optionally populated with saved questions (auto-positioned on the grid).                  |
 | `update_dashboard`  | Update a dashboard's metadata (name, description, collection, archived).                                          |
 | `create_collection` | Create a new collection. Optionally nested under a `parent_collection_id`.                                        |

@@ -327,7 +327,7 @@
 ;; handle, but it's a UI tool that resolves the handle itself (see `metabase.mcp.resources`) and
 ;; never reaches this dispatch path, so it's intentionally absent here.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "query" "create_question" "update_question"})
+  #{"execute_query" "query" "create_question" "update_question" "create_metric" "update_metric"})
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
