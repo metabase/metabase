@@ -19539,408 +19539,6 @@
         "tags" : [ "/api/comment" ]
       }
     },
-    "/api/curated-search" : {
-      "get" : {
-        "operationId" : "get-api-curated-search",
-        "summary" : "GET /api/curated-search",
-        "description" : "Get all curated search entries, paginated.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "data" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "entity" : {
-                            "type" : "object",
-                            "properties" : {
-                              "id" : {
-                                "type" : "integer"
-                              },
-                              "model" : {
-                                "type" : "string"
-                              },
-                              "name" : {
-                                "type" : "string"
-                              }
-                            },
-                            "required" : [ "model", "id" ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "search_prompt" : {
-                            "type" : "string"
-                          },
-                          "usage_instructions" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "verified" : {
-                            "type" : "boolean"
-                          }
-                        },
-                        "required" : [ "id", "search_prompt", "entity", "verified" ]
-                      }
-                    },
-                    "limit" : {
-                      "type" : "integer"
-                    },
-                    "offset" : {
-                      "type" : "integer"
-                    },
-                    "total" : {
-                      "type" : "integer"
-                    }
-                  },
-                  "required" : [ "data", "total", "limit", "offset" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/curated-search" ]
-      },
-      "post" : {
-        "operationId" : "post-api-curated-search",
-        "summary" : "POST /api/curated-search",
-        "description" : "Create a new curated search entry.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "entity" : {
-                      "type" : "object",
-                      "properties" : {
-                        "id" : {
-                          "type" : "integer"
-                        },
-                        "model" : {
-                          "type" : "string"
-                        },
-                        "name" : {
-                          "type" : "string"
-                        }
-                      },
-                      "required" : [ "model", "id" ]
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "search_prompt" : {
-                      "type" : "string"
-                    },
-                    "usage_instructions" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "verified" : {
-                      "type" : "boolean"
-                    }
-                  },
-                  "required" : [ "id", "search_prompt", "entity", "verified" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "entity" : {
-                    "type" : "object",
-                    "properties" : {
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "model" : {
-                        "type" : "string",
-                        "enum" : [ "table", "card", "model", "metric", "question" ]
-                      },
-                      "name" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "model", "id" ]
-                  },
-                  "search_prompt" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "usage_instructions" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "verified" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "search_prompt", "entity" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/curated-search" ]
-      }
-    },
-    "/api/curated-search/{id}" : {
-      "get" : {
-        "operationId" : "get-api-curated-search-id",
-        "summary" : "GET /api/curated-search/{id}",
-        "description" : "Get a curated search entry by ID.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "entity" : {
-                      "type" : "object",
-                      "properties" : {
-                        "id" : {
-                          "type" : "integer"
-                        },
-                        "model" : {
-                          "type" : "string"
-                        },
-                        "name" : {
-                          "type" : "string"
-                        }
-                      },
-                      "required" : [ "model", "id" ]
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "search_prompt" : {
-                      "type" : "string"
-                    },
-                    "usage_instructions" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "verified" : {
-                      "type" : "boolean"
-                    }
-                  },
-                  "required" : [ "id", "search_prompt", "entity", "verified" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/curated-search" ]
-      },
-      "put" : {
-        "operationId" : "put-api-curated-search-id",
-        "summary" : "PUT /api/curated-search/{id}",
-        "description" : "Update a curated search entry by ID. Only the provided fields are changed; sending a null\n  usage_instructions clears it.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "entity" : {
-                      "type" : "object",
-                      "properties" : {
-                        "id" : {
-                          "type" : "integer"
-                        },
-                        "model" : {
-                          "type" : "string"
-                        },
-                        "name" : {
-                          "type" : "string"
-                        }
-                      },
-                      "required" : [ "model", "id" ]
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "search_prompt" : {
-                      "type" : "string"
-                    },
-                    "usage_instructions" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "verified" : {
-                      "type" : "boolean"
-                    }
-                  },
-                  "required" : [ "id", "search_prompt", "entity", "verified" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "entity" : {
-                    "type" : "object",
-                    "properties" : {
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "model" : {
-                        "type" : "string",
-                        "enum" : [ "table", "card", "model", "metric", "question" ]
-                      },
-                      "name" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "model", "id" ]
-                  },
-                  "search_prompt" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "usage_instructions" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "verified" : {
-                    "type" : "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/curated-search" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-curated-search-id",
-        "summary" : "DELETE /api/curated-search/{id}",
-        "description" : "Delete a curated search entry by ID.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/curated-search" ]
-      }
-    },
     "/api/dashboard" : {
       "get" : {
         "operationId" : "get-api-dashboard",
@@ -39434,6 +39032,384 @@
           }
         },
         "tags" : [ "/api/oauth" ]
+      }
+    },
+    "/api/osi/ai-context" : {
+      "get" : {
+        "operationId" : "get-api-osi-ai-context",
+        "summary" : "GET /api/osi/ai-context",
+        "description" : "Get all ai_context entries, paginated.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "ai_context" : {
+                            "type" : "object",
+                            "properties" : {
+                              "examples" : {
+                                "type" : "array",
+                                "items" : {
+                                  "type" : "string",
+                                  "maxLength" : 1000
+                                },
+                                "maxItems" : 50
+                              },
+                              "instructions" : {
+                                "oneOf" : [ {
+                                  "type" : "string",
+                                  "maxLength" : 5000
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "synonyms" : {
+                                "type" : "array",
+                                "items" : {
+                                  "type" : "string",
+                                  "maxLength" : 1000
+                                },
+                                "maxItems" : 50
+                              }
+                            }
+                          },
+                          "entity_local_id" : {
+                            "type" : "integer"
+                          },
+                          "entity_type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "entity_type", "entity_local_id", "ai_context" ]
+                      }
+                    },
+                    "limit" : {
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/osi/ai-context" ]
+      }
+    },
+    "/api/osi/ai-context/reconcile" : {
+      "post" : {
+        "operationId" : "post-api-osi-ai-context-reconcile",
+        "summary" : "POST /api/osi/ai-context/reconcile",
+        "description" : "Force a reconcile of the library entity index against the application database, blocking until a\n  reconcile covering this call finishes.\n  Returns the index mutations (`index`) separately from execution timing (`execution`: how long the run\n  waited to start, then how long it ran).\n  This call never reuses a reconcile already in progress (it may have started before your latest change);\n  it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls\n  share.\n  Requires the semantic search feature; returns a 400 when it isn't configured.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "execution" : {
+                      "type" : "object",
+                      "properties" : {
+                        "ran_ms" : {
+                          "type" : "integer"
+                        },
+                        "waited_ms" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "waited_ms", "ran_ms" ]
+                    },
+                    "index" : {
+                      "type" : "object",
+                      "properties" : {
+                        "deleted" : {
+                          "type" : "integer"
+                        },
+                        "inserted" : {
+                          "type" : "integer"
+                        },
+                        "unchanged" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "inserted", "deleted", "unchanged" ]
+                    }
+                  },
+                  "required" : [ "index", "execution" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/osi/ai-context" ]
+      }
+    },
+    "/api/osi/ai-context/{entity-type}/{entity-local-id}" : {
+      "get" : {
+        "operationId" : "get-api-osi-ai-context-entity-type-entity-local-id",
+        "summary" : "GET /api/osi/ai-context/{entity-type}/{entity-local-id}",
+        "description" : "Get the ai_context entry for an entity by its logical `(entity_type, entity_local_id)` key.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "entity-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "entity-local-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "ai_context" : {
+                      "type" : "object",
+                      "properties" : {
+                        "examples" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string",
+                            "maxLength" : 1000
+                          },
+                          "maxItems" : 50
+                        },
+                        "instructions" : {
+                          "oneOf" : [ {
+                            "type" : "string",
+                            "maxLength" : 5000
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "synonyms" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string",
+                            "maxLength" : 1000
+                          },
+                          "maxItems" : 50
+                        }
+                      }
+                    },
+                    "entity_local_id" : {
+                      "type" : "integer"
+                    },
+                    "entity_type" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "entity_type", "entity_local_id", "ai_context" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/osi/ai-context" ]
+      },
+      "put" : {
+        "operationId" : "put-api-osi-ai-context-entity-type-entity-local-id",
+        "summary" : "PUT /api/osi/ai-context/{entity-type}/{entity-local-id}",
+        "description" : "Create or replace (upsert) the ai_context for an entity, addressed by its logical key. One row per\n  entity: an existing row is updated in place rather than duplicated, and the compound primary key plus the\n  upsert keep two concurrent writers from racing in a duplicate row.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "entity-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "entity-local-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "ai_context" : {
+                      "type" : "object",
+                      "properties" : {
+                        "examples" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string",
+                            "maxLength" : 1000
+                          },
+                          "maxItems" : 50
+                        },
+                        "instructions" : {
+                          "oneOf" : [ {
+                            "type" : "string",
+                            "maxLength" : 5000
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "synonyms" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string",
+                            "maxLength" : 1000
+                          },
+                          "maxItems" : 50
+                        }
+                      }
+                    },
+                    "entity_local_id" : {
+                      "type" : "integer"
+                    },
+                    "entity_type" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "entity_type", "entity_local_id", "ai_context" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "ai_context" : {
+                    "type" : "object",
+                    "properties" : {
+                      "examples" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "maxLength" : 1000
+                        },
+                        "maxItems" : 50
+                      },
+                      "instructions" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "maxLength" : 5000
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "synonyms" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "maxLength" : 1000
+                        },
+                        "maxItems" : 50
+                      }
+                    }
+                  }
+                },
+                "required" : [ "ai_context" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/osi/ai-context" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-osi-ai-context-entity-type-entity-local-id",
+        "summary" : "DELETE /api/osi/ai-context/{entity-type}/{entity-local-id}",
+        "description" : "Delete the ai_context entry for an entity by its logical key.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "entity-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "entity-local-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/osi/ai-context" ]
       }
     },
     "/api/permissions/graph" : {
