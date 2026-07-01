@@ -67,10 +67,7 @@ export function initializePlugin() {
                 to={`${Urls.collection(collection)}/cleanup`}
                 rightSection={
                   hasStaleItems ? (
-                    <Badge
-                      color="brand"
-                      variant="filled"
-                    >{t`Recommended`}</Badge>
+                    <Badge color="brand">{t`Recommended`}</Badge>
                   ) : null
                 }
               >
