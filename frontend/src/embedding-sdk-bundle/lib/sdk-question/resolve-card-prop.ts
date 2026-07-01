@@ -18,13 +18,22 @@ export function resolveCardProp(
     }
   }
 
+  const shouldSetDisplayLock =
+    input.visualization != null || input.displayIsLocked != null;
+
   return {
     dataset_query: input.query,
-    // Public-facing `visualization` maps to the internal card `display`.
-    display: input.visualization,
-    // Default to locking the chosen display so the query builder doesn't
-    // reset it to a "sensible default" after results load..
-    displayIsLocked: input.displayIsLocked ?? true,
+    // Public-facing `visualization` maps to the internal card `display`. When
+    // omitted, mirror the legacy `query` prop and let query results pick a
+    // better unlocked display later.
+    display: input.visualization ?? "table",
+    ...(shouldSetDisplayLock
+      ? {
+          // Default to locking an explicitly chosen display so the query builder
+          // doesn't reset it to a "sensible default" after results load.
+          displayIsLocked: input.displayIsLocked ?? true,
+        }
+      : {}),
     visualization_settings: input.visualizationSettings ?? {},
   };
 }
