@@ -271,6 +271,7 @@
 
 (def ^:private all-tool-names
   #{"construct_query"
+    "construct_native_query"
     "create_collection"
     "create_dashboard"
     "create_metric"
@@ -660,7 +661,7 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"search" "construct_query" "query" "execute_query" "execute_sql"
+  #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "read_resource"
     "create_question" "create_metric" "create_dashboard"
     "update_question" "update_metric" "update_dashboard" "create_collection"})
@@ -702,6 +703,10 @@
                     _              (call-tool session-id "search" {:term_queries ["orders"]})
                     ;; Query construction + execution
                     construct-data (call-tool session-id "construct_query" {:query orders-query})
+                    native-data    (call-tool session-id "construct_native_query"
+                                              {:database_id (mt/id)
+                                               :sql         "SELECT 1"})
+                    _              (is (uuid? (parse-uuid (:query_handle native-data))))
                     _              (call-tool session-id "query" {:query orders-query})
                     _              (call-tool session-id "execute_query"
                                               {:query_handle (:query_handle construct-data)})

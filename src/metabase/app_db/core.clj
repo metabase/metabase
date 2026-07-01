@@ -36,6 +36,7 @@
   application-db
   data-source
   db-type
+  do-after-commit
   in-transaction?
   quoting-style
   unique-identifier]
