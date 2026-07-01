@@ -147,36 +147,39 @@
     (mbr/list-result (if tree? :collections-tree :collections-root)
                      (mbr/extract-readable "Collection" colls {:page page}))))
 
+;; `activity-feed/get-recents` sets each item's `:model` to a KEYWORD (see the
+;; `fill-recent-view-info` methods, which emit `:model :card` / `:collection` /
+;; …), so these maps key on keywords. Keying on strings (as an earlier version
+;; did) matched nothing and dropped *every* recent.
 (defn- recent-model->mbr-model
-  "Activity-feed shorthand -> MBR model name."
+  "Activity-feed recent `:model` keyword -> MBR model name."
   [model]
   (case model
-    "card"      "Card"
-    "dataset"   "Card"
-    "metric"    "Card"
-    "dashboard" "Dashboard"
-    "table"     "Table"
-    "model"     "Card"
+    (:card :dataset :metric :model) "Card"
+    :dashboard                      "Dashboard"
+    :table                          "Table"
+    :collection                     "Collection"
+    :document                       "Document"
     nil))
 
 (defn- recent-model->toucan
+  "Activity-feed recent `:model` keyword -> Toucan model."
   [model]
   (case model
-    "card"      :model/Card
-    "dataset"   :model/Card
-    "metric"    :model/Card
-    "model"     :model/Card
-    "dashboard" :model/Dashboard
-    "table"     :model/Table
+    (:card :dataset :metric :model) :model/Card
+    :dashboard                      :model/Dashboard
+    :table                          :model/Table
+    :collection                     :model/Collection
+    :document                       :model/Document
     nil))
 
 (defn- fetch-user-recents []
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
                         :recents)
                     [])
-        ;; Group recents by their target Toucan model so we batch each model's
-        ;; MBR extraction. Activity-feed entries that don't map to an MBR model
-        ;; we know how to extract (e.g. snippets) fall through unchanged.
+        ;; Extract each recent as MBR. An entry whose `:model` we can't map
+        ;; (e.g. a snippet) is dropped by `keep` — the mapped set is exhaustive
+        ;; for the MBR entity types, so only genuinely-unsupported models vanish.
         items   (->> recents
                      (keep (fn [{:keys [id model timestamp]}]
                              (when-let [tm (recent-model->toucan model)]
@@ -362,6 +365,10 @@
 
 ;; ----- Card (model / question) -----
 
+;; Forward decl: a `:metric` card routed to `/card/{id}/fields` funnels through
+;; the same metric-details path as `/metric/{id}/dimensions` (defined below).
+(declare metric-dimensions)
+
 (defn- fetch-card
   "type-str is \"model\" / \"question\" / \"card\". The MBR Card includes
    :dataset_query in portable form, so query shape, joins, expressions, and
@@ -389,18 +396,24 @@
   (let [card (resolve-card-or-404 id-str)]
     (if (:status-code card)
       card
-      ;; entity-type from the resolved card's :type (:question/:model), not the
-      ;; URI segment — get-table-details only knows :question/:model, so passing
-      ;; the canonical "card" segment through verbatim would throw.
-      ;;
-      ;; NOTE (pre-existing, separate from this PR): unlike the card *body* (whose
-      ;; :dataset_query/:result_metadata go through redact-sandboxed), the /fields
-      ;; path emits column names via get-table-details' user-aware metadata
-      ;; provider. Whether that provider sandbox-filters the field list for a
-      ;; column-sandboxed user is unverified here; if it doesn't, /fields could
-      ;; enumerate hidden column names. Tracked as a follow-up — not changed in
-      ;; this PR to keep the diff scoped to the MBR migration.
-      (table-details (:type card) (:id card) true))))
+      ;; A metric card's "fields" are its queryable dimensions, a different column
+      ;; set than table fields — get-table-details only handles :question/:model
+      ;; (a :metric hits :else -> 400). Route metrics through the same
+      ;; metric-details path as /metric/{id}/dimensions so `card` stays canonical.
+      (if (= :metric (:type card))
+        (metric-dimensions (:id card))
+        ;; entity-type from the resolved card's :type (:question/:model), not the
+        ;; URI segment — get-table-details only knows :question/:model, so passing
+        ;; the canonical "card" segment through verbatim would throw.
+        ;;
+        ;; NOTE (pre-existing, separate from this PR): unlike the card *body* (whose
+        ;; :dataset_query/:result_metadata go through redact-sandboxed), the /fields
+        ;; path emits column names via get-table-details' user-aware metadata
+        ;; provider. Whether that provider sandbox-filters the field list for a
+        ;; column-sandboxed user is unverified here; if it doesn't, /fields could
+        ;; enumerate hidden column names. Tracked as a follow-up — not changed in
+        ;; this PR to keep the diff scoped to the MBR migration.
+        (table-details (:type card) (:id card) true)))))
 
 (defn- fetch-card-field [_type-str id-str field-id]
   (let [card (resolve-card-or-404 id-str)]
@@ -436,18 +449,59 @@
       (mbr/entity-result (mbr/extract-as-user "Card" card))
       {:status-code 404 :output (str "Metric " id-str " not found")})))
 
+(defn- resolve-metric-or-404
+  "Resolve a metric Card by URI segment (entity_id NanoID *or* legacy numeric id)
+   via [[mbr/resolve-user-entity]], then verify it is actually a `:metric` card.
+   Mirrors [[resolve-card-or-404]]. Returns the Toucan instance or a 404 map."
+  [id-str]
+  (let [card (mbr/resolve-user-entity :model/Card id-str)]
+    (if (and card (= :metric (:type card)))
+      card
+      {:status-code 404 :output (str "Metric " id-str " not found")})))
+
+(defn- metric-dimensions
+  "Shared body for `/metric/{id}/dimensions` and the `:metric` branch of
+   `/card/{id}/fields`. `metric-id` is the numeric Card id. `get-metric-details`
+   expects `?`-suffixed option keys; `:with-field-values? false` swaps the
+   field-values fetch for `identity`, so it must be spelled exactly."
+  [metric-id]
+  (entity-details/get-metric-details {:metric-id                  metric-id
+                                      :with-queryable-dimensions? true
+                                      :with-field-values?         false}))
+
 (defn- fetch-metric-dimensions [id-str]
-  (entity-details/get-metric-details {:metric-id                 (parse-long id-str)
-                                      :with-queryable-dimensions true
-                                      :with-field-values         false}))
+  (let [card (resolve-metric-or-404 id-str)]
+    (if (:status-code card)
+      card
+      (metric-dimensions (:id card)))))
 
 (defn- fetch-metric-dimension [id-str dim-id]
-  (field-stats/field-values {:entity-type "metric"
-                             :entity-id   (parse-long id-str)
-                             :field-id    dim-id
-                             :limit       30}))
+  (let [card (resolve-metric-or-404 id-str)]
+    (if (:status-code card)
+      card
+      (field-stats/field-values {:entity-type "metric"
+                                 :entity-id   (:id card)
+                                 :field-id    dim-id
+                                 :limit       30}))))
 
 ;; ----- Transform -----
+
+(defn- resolve-transform-id-or-404
+  "Resolve a Transform URI segment to the numeric id `transforms/get-transform`
+   consumes. Transform is an entity_id-bearing model (`:hook/entity-id`), so MBR
+   advertises `metabase://transform/{entity_id}`.
+
+   A NanoID segment resolves via [[mbr/resolve-user-entity]] to its numeric id
+   (404 if no such transform). A numeric segment is passed through verbatim — we
+   leave the existence/perm decision to `transforms/get-transform` downstream
+   (404 missing / 403 denied), matching the legacy `parse-long` behavior. No perm
+   check here. Returns the numeric id or a 404 map."
+  [id-str]
+  (if (some-> id-str parse-long)
+    (parse-long id-str)
+    (if-let [instance (mbr/resolve-user-entity :model/Transform id-str)]
+      (:id instance)
+      {:status-code 404 :output (str "Transform " id-str " not found")})))
 
 (defn- fetch-transform [id-str]
   ;; transforms/get-transform runs the read-check (404 if missing, 403 if denied)
@@ -455,39 +509,48 @@
   ;; re-selects by (:id instance) via serdes, so those extra keys are inert — no
   ;; need for a second t2/select-one. Use ->mbr (not extract-as-user) since the
   ;; read-check already happened inside get-transform.
-  (mbr/entity-result (mbr/->mbr "Transform" (transforms/get-transform (parse-long id-str)))))
+  (let [id (resolve-transform-id-or-404 id-str)]
+    (if (map? id)
+      id
+      (mbr/entity-result (mbr/->mbr "Transform" (transforms/get-transform id))))))
 
 (defn- fetch-transform-sources [id-str query-params]
-  (let [transform        (transforms/get-transform (parse-long id-str))
-        source-table-ids (transform-source-table-ids transform)
-        ;; Mixes the source Database with its source Tables, so build the full
-        ;; combined item vector (tables hydrated fully, no paging) and paginate it.
-        tables           (when (seq source-table-ids)
-                           (mbr/extract-readable "Table"
-                                                 (t2/select :model/Table
-                                                            :id [:in (set source-table-ids)])))
-        db-id            (:source_database_id transform)
-        db               (when db-id (t2/select-one :model/Database db-id))
-        items            (cond-> []
-                           db     (conj (mbr/->mbr "Database" db))
-                           tables (into tables))]
-    (mbr/list-result :transform-sources (paginate-items items (:page query-params)))))
+  (let [id (resolve-transform-id-or-404 id-str)]
+    (if (map? id)
+      id
+      (let [transform        (transforms/get-transform id)
+            source-table-ids (transform-source-table-ids transform)
+            ;; Mixes the source Database with its source Tables, so build the full
+            ;; combined item vector (tables hydrated fully, no paging) and paginate it.
+            tables           (when (seq source-table-ids)
+                               (mbr/extract-readable "Table"
+                                                     (t2/select :model/Table
+                                                                :id [:in (set source-table-ids)])))
+            db-id            (:source_database_id transform)
+            db               (when db-id (t2/select-one :model/Database db-id))
+            items            (cond-> []
+                               db     (conj (mbr/->mbr "Database" db))
+                               tables (into tables))]
+        (mbr/list-result :transform-sources (paginate-items items (:page query-params)))))))
 
 (defn- fetch-transform-target [id-str]
-  (let [transform    (transforms/get-transform (parse-long id-str))
-        ;; The target table is hydrated by `transforms/get-transform` without a per-table
-        ;; permission check (the read-check on the Transform itself only verifies *source*
-        ;; tables are readable). Gate it here so users who can read the transform definition
-        ;; but lack perms on the target database don't see the target's name/schema.
-        target-table (when-let [tt (:table transform)]
-                       (when (mi/can-read? tt)
-                         (t2/select-one :model/Table (:id tt))))
-        db-id        (:target_db_id transform)
-        db           (when db-id (t2/select-one :model/Database db-id))
-        items        (cond-> []
-                       db           (conj (mbr/->mbr "Database" db))
-                       target-table (conj (mbr/->mbr "Table" target-table)))]
-    (mbr/list-result :transform-target (paginate-items items nil))))
+  (let [id (resolve-transform-id-or-404 id-str)]
+    (if (map? id)
+      id
+      (let [transform    (transforms/get-transform id)
+            ;; The target table is hydrated by `transforms/get-transform` without a per-table
+            ;; permission check (the read-check on the Transform itself only verifies *source*
+            ;; tables are readable). Gate it here so users who can read the transform definition
+            ;; but lack perms on the target database don't see the target's name/schema.
+            target-table (when-let [tt (:table transform)]
+                           (when (mi/can-read? tt)
+                             (t2/select-one :model/Table (:id tt))))
+            db-id        (:target_db_id transform)
+            db           (when db-id (t2/select-one :model/Database db-id))
+            items        (cond-> []
+                           db           (conj (mbr/->mbr "Database" db))
+                           target-table (conj (mbr/->mbr "Table" target-table)))]
+        (mbr/list-result :transform-target (paginate-items items nil))))))
 
 ;; ----- Dashboard -----
 

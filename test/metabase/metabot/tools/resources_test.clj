@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -790,6 +791,28 @@
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://user/recent-items"]})]
         (is (str/includes? output "\"list-type\":\"recent-items\""))))))
 
+(deftest read-user-recents-surfaces-all-model-types-test
+  (testing "recent items include every MBR model type, including collections and documents.
+
+           get-recents sets :model to a KEYWORD; keying the model maps on strings matched nothing
+           and dropped *every* recent (and collection/document had no mapping at all). This seeds one
+           recent of each type and asserts they all come back."
+    (let [uid (mt/user->id :crowberto)]
+      (mt/with-current-user uid
+        (mt/with-temp [:model/Collection {coll-id :id}  {:name "RECENT-COLL"}
+                       :model/Card       {card-id :id}  {:name "RECENT-CARD"}
+                       :model/Dashboard  {dash-id :id}  {:name "RECENT-DASH"}
+                       :model/Document   {doc-id :id}   {:name "RECENT-DOC" :creator_id uid}]
+          (doseq [[model id] [[:model/Collection coll-id]
+                              [:model/Card       card-id]
+                              [:model/Dashboard  dash-id]
+                              [:model/Document   doc-id]]]
+            (recent-views/update-users-recent-views! uid model id :view))
+          (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://user/recent-items"]})]
+            (doseq [needle ["RECENT-COLL" "RECENT-CARD" "RECENT-DASH" "RECENT-DOC"]]
+              (is (str/includes? output needle)
+                  (str needle " should appear in recent-items (regression: keyword :model + missing collection/document mapping dropped recents)")))))))))
+
 (deftest read-list-shape-test
   (testing "list responses always carry list-type/total/page/pages/truncated keys in MBR JSON"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -967,3 +990,123 @@
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
                     structured))))))))
+
+;; ===== entity_id reaches metric + transform drill-down sub-routes =====
+;;
+;; MBR advertises entity_id URIs (metabase://metric/{eid}, metabase://transform/{eid},
+;; metabase://card/{eid}). Several drill-down handlers used to `(parse-long id-str)`, so a
+;; 21-char NanoID -> nil -> 400/404. Each test asserts the entity_id form is non-error AND
+;; the numeric form still works (backcompat).
+
+(defn- metric-query
+  "A count metric over the products table, breaking out on Category."
+  []
+  (let [mp (mt/metadata-provider)]
+    (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $
+      (lib/aggregate $ (lib/count)))))
+
+(deftest metric-dimensions-entity-id-and-numeric-test
+  (testing "metabase://metric/{id}/dimensions resolves both entity_id (NanoID) and numeric id"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {id :id eid :entity_id} {:type :metric :dataset_query (metric-query)}]
+        (testing "numeric id (backcompat)"
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  (read-resource/read-resource {:uris [(str "metabase://metric/" id "/dimensions")]}))))
+        (testing "entity_id (NanoID) — used to parse-long to nil -> 400"
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  (read-resource/read-resource {:uris [(str "metabase://metric/" eid "/dimensions")]}))))))))
+
+(deftest metric-single-dimension-entity-id-and-numeric-test
+  (testing "metabase://metric/{id}/dimensions/{dim} resolves both entity_id and numeric id"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {id :id eid :entity_id} {:type :metric :dataset_query (metric-query)}]
+        ;; A real queryable dimension of the products metric — Category field id.
+        (let [dim-id (mt/id :products :category)]
+          (testing "numeric id (backcompat)"
+            (is (=? {:resources [{:content map?}]}
+                    (read-resource/read-resource
+                     {:uris [(str "metabase://metric/" id "/dimensions/" dim-id)]}))))
+          (testing "entity_id (NanoID)"
+            (is (=? {:resources [{:content map?}]}
+                    (read-resource/read-resource
+                     {:uris [(str "metabase://metric/" eid "/dimensions/" dim-id)]})))))))))
+
+(deftest metric-dimensions-round-trip-via-serdes-entity-id-test
+  (testing "fetch a metric, read its entity_id from the MBR, feed it back through /dimensions"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {id :id} {:type :metric :dataset_query (metric-query)}]
+        (let [mbr-eid (t2/select-one-fn :entity_id :model/Card :id id)]
+          ;; The advertised contract: the entity_id in serdes/meta is directly usable.
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  (read-resource/read-resource
+                   {:uris [(str "metabase://metric/" mbr-eid "/dimensions")]}))))))))
+
+(deftest metric-dimensions-field-values-option-key-test
+  (testing "with-field-values? false suppresses field-value fetching (correct ?-suffixed key)"
+    ;; get-metric-details reads :with-field-values? (with the ?). The old code passed
+    ;; :with-field-values (no ?), so the option was silently ignored. If the ? key is honored,
+    ;; field-values-fn is swapped for identity and no queryable dimension carries :field-values.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {id :id} {:type :metric :dataset_query (metric-query)}]
+        (let [so   (get-in (read-resource/read-resource
+                            {:uris [(str "metabase://metric/" id "/dimensions")]})
+                           [:resources 0 :content :structured-output])
+              dims (:queryable-dimensions so)]
+          (is (seq dims) "metric should expose queryable dimensions")
+          (is (every? #(not (contains? % :field-values)) dims)
+              "no dimension may carry :field-values when with-field-values? is false"))))))
+
+(deftest card-fields-routes-metric-to-dimensions-test
+  (testing "metabase://card/{metric_eid}/fields routes a :metric card to its dimensions (not table-details)"
+    ;; get-table-details only handles :question/:model — a :metric hit :else -> 400. The
+    ;; canonical `card` type must funnel metrics through the metric-dimensions path.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {id :id eid :entity_id} {:type :metric :dataset_query (metric-query)}]
+        (testing "numeric id returns dimension-shaped content, not an error"
+          (let [so (get-in (read-resource/read-resource
+                            {:uris [(str "metabase://card/" id "/fields")]})
+                           [:resources 0 :content :structured-output])]
+            (is (map? so))
+            (is (= :metric (:type so)) "the metric-details rollup carries type :metric")
+            (is (contains? so :queryable-dimensions)
+                "card/{metric}/fields must return the metric's queryable dimensions")))
+        (testing "entity_id (NanoID) also routes to the metric dimensions path"
+          (is (=? {:resources [{:content {:structured-output {:type :metric}}}]}
+                  (read-resource/read-resource {:uris [(str "metabase://card/" eid "/fields")]}))))))))
+
+(deftest transform-entity-id-and-numeric-test
+  (testing "metabase://transform/{id}[/sources|/target] resolves both entity_id and numeric id"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Transform {id :id eid :entity_id}
+                       {:name   "EID Transform"
+                        :source {:type  "query"
+                                 :query (lib/native-query (mt/metadata-provider)
+                                                          "SELECT * FROM products WHERE category = 'Gadget'")}}]
+          (doseq [[label id-seg] [["numeric id" (str id)] ["entity_id (NanoID)" eid]]]
+            (testing label
+              (testing "/transform/{id}"
+                (is (=? {:resources [{:content {:structured-output map?}}]}
+                        (read-resource/read-resource {:uris [(str "metabase://transform/" id-seg)]}))))
+              (testing "/transform/{id}/sources"
+                (is (=? {:resources [{:content {:structured-output map?}}]}
+                        (read-resource/read-resource {:uris [(str "metabase://transform/" id-seg "/sources")]}))))
+              (testing "/transform/{id}/target"
+                (is (=? {:resources [{:content {:structured-output map?}}]}
+                        (read-resource/read-resource {:uris [(str "metabase://transform/" id-seg "/target")]})))))))))))
+
+(deftest transform-round-trip-via-serdes-entity-id-test
+  (testing "fetch a transform, read its entity_id, feed it back through the drill-down URLs"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Transform {id :id}
+                       {:name   "RoundTrip Transform"
+                        :source {:type  "query"
+                                 :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
+          (let [eid (t2/select-one-fn :entity_id :model/Transform :id id)]
+            (is (=? {:resources [{:content {:structured-output map?}}]}
+                    (read-resource/read-resource {:uris [(str "metabase://transform/" eid)]})))
+            (is (=? {:resources [{:content {:structured-output map?}}]}
+                    (read-resource/read-resource {:uris [(str "metabase://transform/" eid "/sources")]})))
+            (is (=? {:resources [{:content {:structured-output map?}}]}
+                    (read-resource/read-resource {:uris [(str "metabase://transform/" eid "/target")]})))))))))
