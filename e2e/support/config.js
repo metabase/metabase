@@ -40,10 +40,11 @@ const {
 const cypressSplit = require("cypress-split");
 
 const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
-// Cypress sets the project root to the config file's directory, so cwd-relative
-// paths land under e2e/support/. Anchor to __dirname so output lands at repo
-// root (where the workflow uploads from) and we read .nyc_output from wherever
-// @cypress/code-coverage actually wrote it (next to the config).
+// The Cypress config process runs with cwd = this file's directory
+// (e2e/support), so @cypress/code-coverage writes .nyc_output/out.json here.
+// NYC_OUTPUT_FILE is anchored to __dirname to read from that same place;
+// COVERAGE_MANIFEST_RAW_DIR points at e2e/coverage-manifest-raw, which the
+// nightly workflow uploads.
 const COVERAGE_MANIFEST_RAW_DIR = path.resolve(
   __dirname,
   "../coverage-manifest-raw",
@@ -273,7 +274,16 @@ const defaultConfig = {
       }
 
       if (isInstrumented) {
-        writeSpecCoverageEntry(spec);
+        // Never let a bad/partial coverage file abort the nightly shard — at
+        // worst we lose this spec's entry, not the whole run.
+        try {
+          writeSpecCoverageEntry(spec);
+        } catch (error) {
+          console.error(
+            "[coverage] failed to write spec entry (ignored)",
+            error,
+          );
+        }
       }
     });
 

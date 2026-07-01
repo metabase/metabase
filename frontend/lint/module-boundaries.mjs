@@ -347,4 +347,11 @@ function buildEnforcedRules(elements, rules) {
 
 const enforcedRules = buildEnforcedRules(elements, rules);
 
-export { elements, rules, enforcedRules };
+// The coarse "feature" tier, derived from element types so consumers (the e2e
+// affected-test planner, coverage analysis) share one definition. Pass `els` to
+// use injected elements in tests; defaults to the real registry.
+function getFeatureModules(els = elements) {
+  return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
+}
+
+export { elements, rules, enforcedRules, getFeatureModules };

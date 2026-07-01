@@ -10,24 +10,25 @@ const REPO_ROOT = path.resolve(
   "../..",
 );
 
-// Maps a source file to its module using the same element registry the
-// boundary linter uses, so module identity is canonical across both tools.
-// Accepts absolute paths (as embedded by Istanbul) or repo-relative paths.
-// Returns the element type (e.g. "feature/dashboard", "shared/databases")
-// or null for files outside the registry (node_modules, cljs, build output).
+// Precompiled once, in element order (precedence: e.g. mlv1 before mlv2, with
+// the catch-all shared/other last). Same matcher as the affected-tests planner
+// (micromatch.makeRe with dot:true), so module identity is consistent across
+// both tools. dot:true so files in dot-directories (e.g. .storybook) still map.
+const NODES = elements.map((el) => ({
+  type: el.type,
+  regex: micromatch.makeRe(el.pattern, { dot: true }),
+}));
+
+// Maps a source file to its module. Accepts absolute paths (as embedded by
+// Istanbul) or repo-relative paths. Returns the element type (e.g.
+// "feature/dashboard", "shared/databases") or null for files outside the
+// registry (node_modules, cljs, build output).
 export function fileToModule(file) {
   const rel = path.isAbsolute(file) ? path.relative(REPO_ROOT, file) : file;
   if (rel.startsWith("..")) {
     return null;
   }
-  // First match wins — elements are ordered for precedence (e.g. mlv1 before
-  // mlv2, with the catch-all shared/other last).
-  for (const element of elements) {
-    if (micromatch.isMatch(rel, element.pattern)) {
-      return element.type;
-    }
-  }
-  return null;
+  return NODES.find((node) => node.regex.test(rel))?.type ?? null;
 }
 
 export { REPO_ROOT };

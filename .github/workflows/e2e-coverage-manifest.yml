@@ -1,7 +1,7 @@
 name: E2E Coverage Manifest
 
 # Nightly: builds an instrumented frontend, runs the e2e suite sharded to
-# record which source files each spec exercises, and publishes a spec -> module
+# record which source files each spec exercises, and publishes a spec -> files
 # manifest used for selective e2e runs on PRs.
 #
 # Isolated from the PR e2e path on purpose — the per-shard worker
@@ -9,11 +9,6 @@ name: E2E Coverage Manifest
 # never affect PR test results.
 
 on:
-  # TEMPORARY: runs on push to the dev branch so we can iterate before the
-  # workflow exists on the default branch (workflow_dispatch needs that).
-  # Remove this push trigger before merging.
-  push:
-    branches: [dev-2016-add-e2e-instrumentation]
   schedule:
     # Nightly, after the day's merges have settled (UTC).
     - cron: "0 7 * * *"
@@ -48,7 +43,7 @@ jobs:
       - name: Build instrumented uberjar
         run: ./bin/build.sh
       - name: Upload instrumented uberjar
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: instrumented-uberjar
           path: target/uberjar/metabase.jar
@@ -91,6 +86,10 @@ jobs:
     if: always()
     runs-on: ubuntu-22.04
     timeout-minutes: 15
+    # github-script lists/downloads the previous manifest artifact.
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
@@ -98,16 +97,49 @@ jobs:
       # merge-multiple unions every shard's per-spec dir into one tree; the
       # per-spec file design means no conflict resolution is needed.
       - name: Download all shard coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: coverage-shard-*
           path: e2e/coverage-manifest-raw
           merge-multiple: true
+      # Backfill source: the newest existing manifest is the previous nightly
+      # (this run hasn't uploaded yet). build-coverage-manifest.mjs carries over
+      # any still-existing spec that didn't run today.
+      - name: Download previous manifest for backfill
+        id: prev
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const fs = require("fs");
+            const { owner, repo } = context.repo;
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner, repo, name: "spec-file-manifest", per_page: 20,
+            });
+            const art = (data.artifacts ?? [])
+              .filter((a) => !a.expired)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            if (!art) {
+              console.log("No previous manifest; nothing to backfill.");
+              return;
+            }
+            const dl = await github.rest.actions.downloadArtifact({
+              owner, repo, artifact_id: art.id, archive_format: "zip",
+            });
+            fs.writeFileSync("prev-manifest.zip", Buffer.from(dl.data));
+            core.setOutput("found", "true");
+      - name: Unzip previous manifest
+        if: steps.prev.outputs.found == 'true'
+        run: unzip -o prev-manifest.zip -d prev-manifest
+      # GITHUB_SHA (the master commit this nightly built from) is stamped into
+      # the manifest as `builtAt`, so a PR can later pick the manifest closest
+      # to its own point in history. See resolve-coverage-manifest.mjs.
       - name: Build coverage manifest
+        env:
+          PREV_MANIFEST: ${{ steps.prev.outputs.found == 'true' && 'prev-manifest/spec-file-manifest.json' || '' }}
         run: node e2e/coverage/build-coverage-manifest.mjs
       - name: Upload manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: spec-module-manifest
-          path: e2e/coverage/spec-module-manifest.json
+          name: spec-file-manifest
+          path: e2e/coverage/spec-file-manifest.json
           retention-days: 30

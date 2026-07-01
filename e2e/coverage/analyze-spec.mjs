@@ -8,7 +8,8 @@
 //                             A file where every function fired the same count in both
 //                             is treated as "boot only" and dropped.
 //   2-modules.json          — those files mapped to module identities
-//   3-modules-features.json — modules filtered to the hand-curated "feature" set
+//   3-modules-features.json — modules filtered to the "feature" tier from the
+//                             boundaries config (module-boundaries.mjs)
 //
 // The baseline is the slug listed in BASELINE_SLUG below — currently the
 // coverage-baseline spec that just signs in and visits /.
@@ -21,44 +22,23 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-import { fileToModule } from "./file-to-module.mjs";
+import { getFeatureModules } from "../../frontend/lint/module-boundaries.mjs";
 
-const REPO_ROOT = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
+import { discriminatingFiles } from "./baseline.mjs";
+import { REPO_ROOT, fileToModule } from "./file-to-module.mjs";
+
 const RAW_DIR = path.join(REPO_ROOT, "e2e/coverage-manifest-raw");
 const ANALYSIS_DIR = path.join(REPO_ROOT, "e2e/coverage/analysis");
-const FEATURE_SET_FILE = path.join(REPO_ROOT, "e2e/coverage/feature-modules.json");
 const BASELINE_SLUG =
   "e2e__test__scenarios__coverage-baseline.cy.spec.js";
-
-function loadFeatureSet() {
-  const { features } = JSON.parse(fs.readFileSync(FEATURE_SET_FILE, "utf8"));
-  return new Set(features);
-}
 
 function loadCoverage(slug) {
   const file = path.join(RAW_DIR, `${slug}.json`);
   if (!fs.existsSync(file)) return null;
   const data = JSON.parse(fs.readFileSync(file, "utf8"));
-  // Wrap was added when raw output moved into the prod path; accept both
-  // shapes so local raw files collected before the change still analyze.
+  // Accept both the wrapped `{ coverage }` entry and a bare coverage object.
   return data.coverage ?? data;
-}
-
-// Spec touched the file "in addition" to baseline iff ANY function in the
-// file has spec_count > baseline_count. A function that fired the same number
-// of times in both is treated as boot-only and ignored.
-function fileExceedsBaseline(specCov, baselineCov) {
-  const sf = specCov.f || {};
-  const bf = baselineCov?.f || {};
-  for (const [idx, count] of Object.entries(sf)) {
-    if (count > (bf[idx] || 0)) return true;
-  }
-  return false;
 }
 
 function analyzeOne(slug, featureSet, baselineCov) {
@@ -70,10 +50,7 @@ function analyzeOne(slug, featureSet, baselineCov) {
 
   // Stage 1: files where at least one function fired more times in this spec
   // than in baseline (file-level greater-delta).
-  const files = Object.entries(cov)
-    .filter(([file, fc]) => fileExceedsBaseline(fc, baselineCov[file]))
-    .map(([file]) => path.relative(REPO_ROOT, file))
-    .sort();
+  const files = discriminatingFiles(cov, baselineCov, REPO_ROOT);
 
   // Stage 2: distinct modules those files belong to.
   const modules = new Set();
@@ -107,7 +84,7 @@ function analyzeOne(slug, featureSet, baselineCov) {
 }
 
 function main() {
-  const featureSet = loadFeatureSet();
+  const featureSet = new Set(getFeatureModules());
   const baselineCov = loadCoverage(BASELINE_SLUG);
   if (!baselineCov) {
     console.error(

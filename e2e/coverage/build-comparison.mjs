@@ -17,12 +17,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const REPO_ROOT = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
+import { REPO_ROOT } from "./file-to-module.mjs";
+
 const ANALYSIS_DIR = path.join(REPO_ROOT, "e2e/coverage/analysis");
 const OUTPUT_FILE = path.join(ANALYSIS_DIR, "comparison.json");
 

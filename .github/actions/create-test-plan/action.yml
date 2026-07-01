@@ -17,6 +17,9 @@ inputs:
   loki-infra-touched:
     description: Whether Loki infra changed.
     required: true
+  e2e-infra-touched:
+    description: Whether e2e harness/support code changed.
+    required: true
   shared-sources-touched:
     description: Whether cljc/cljs/package.json changed.
     required: true
@@ -40,6 +43,28 @@ runs:
   steps:
     - name: Prepare Node + Bun
       uses: ./.github/actions/prepare-node-bun
+    # Resolve the nightly e2e coverage manifest closest to this PR's history
+    # (resolve-coverage-manifest.mjs: list artifacts -> compare API -> download
+    # -> unzip, no deep clone). Sets `path` when found; create-test-plan.ts maps
+    # its spec->files to modules and narrows the e2e run. Absent => e2e in full.
+    - name: Resolve closest-ancestor e2e coverage manifest
+      id: manifest
+      uses: actions/github-script@v9
+      with:
+        script: | # js
+          const { pathToFileURL } = require("url");
+          const { resolveCoverageManifest } = await import(
+            pathToFileURL(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/resolve-coverage-manifest.mjs`,
+            ).href,
+          );
+          const result = await resolveCoverageManifest({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            headSha: context.payload.pull_request?.head?.sha ?? context.sha,
+          });
+          core.setOutput("path", result?.path ?? "");
     - name: Create test plan
       id: compute
       shell: bash
@@ -49,8 +74,10 @@ runs:
         BE_CHANGED_FILES: ${{ inputs.be-changed-files }}
         UNIT_INFRA_TOUCHED: ${{ inputs.unit-infra-touched }}
         LOKI_INFRA_TOUCHED: ${{ inputs.loki-infra-touched }}
+        E2E_INFRA_TOUCHED: ${{ inputs.e2e-infra-touched }}
         SHARED_SOURCES_TOUCHED: ${{ inputs.shared-sources-touched }}
         DEP_GRAPH_JSON: dependency-graph.json
+        E2E_SPEC_MANIFEST: ${{ steps.manifest.outputs.path }}
       run: |
         # on failure create-test-plan falls back to the rules graph.
         bun install --frozen-lockfile || true

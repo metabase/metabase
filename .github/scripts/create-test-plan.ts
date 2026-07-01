@@ -8,6 +8,7 @@ import { elements, rules } from "../../frontend/lint/module-boundaries.mjs";
 
 import { type FileDependency, parseCruiseModules } from "./affected-modules";
 import { createTestPlan } from "./affected-tests";
+import { listSpecFiles } from "./e2e-spec-globs.mjs";
 
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.js",
@@ -29,13 +30,6 @@ const STORY_GLOBS = [
   "enterprise/frontend/**/*.stories.jsx",
   "enterprise/frontend/**/*.stories.ts",
   "enterprise/frontend/**/*.stories.tsx",
-];
-
-const E2E_GLOBS = [
-  "e2e/test/scenarios/**/*.cy.spec.js",
-  "e2e/test/scenarios/**/*.cy.spec.jsx",
-  "e2e/test/scenarios/**/*.cy.spec.ts",
-  "e2e/test/scenarios/**/*.cy.spec.tsx",
 ];
 
 function listFiles(globs: string[]): string[] {
@@ -74,6 +68,31 @@ function readFileDependencies(): FileDependency[] | null {
   return null;
 }
 
+// Reads the nightly coverage manifest (E2E_SPEC_MANIFEST): { builtAt, specs:
+// { spec -> files } }. Returns the specs map, or null so e2e falls back to a
+// full run when the manifest is missing/unparseable (same safety as the graph).
+function readE2eSpecFiles(): Record<string, string[]> | null {
+  const path = process.env.E2E_SPEC_MANIFEST;
+  if (path && existsSync(path)) {
+    try {
+      const { specs } = JSON.parse(readFileSync(path, "utf8"));
+      if (specs && typeof specs === "object") {
+        process.stderr.write(`Using e2e coverage manifest from ${path}.\n`);
+        return specs;
+      }
+    } catch (error) {
+      process.stderr.write(
+        `Failed to read ${path}; e2e will run in full: ${error}\n`,
+      );
+    }
+  } else {
+    process.stderr.write(
+      "No E2E_SPEC_MANIFEST found; e2e will run in full.\n",
+    );
+  }
+  return null;
+}
+
 const testPlan = createTestPlan({
   elements,
   rules,
@@ -82,10 +101,12 @@ const testPlan = createTestPlan({
   testFilesBySuite: {
     unit: listFiles(UNIT_GLOBS),
     loki: listFiles(STORY_GLOBS),
-    e2e: listFiles(E2E_GLOBS),
+    e2e: listSpecFiles(),
   },
+  e2eSpecFiles: readE2eSpecFiles(),
   unitInfraTouched: process.env.UNIT_INFRA_TOUCHED === "true",
   lokiInfraTouched: process.env.LOKI_INFRA_TOUCHED === "true",
+  e2eInfraTouched: process.env.E2E_INFRA_TOUCHED === "true",
   sharedSourcesTouched: process.env.SHARED_SOURCES_TOUCHED === "true",
   feFilesChanged: csvToList(process.env.FE_CHANGED_FILES).length,
   beFilesChanged: csvToList(process.env.BE_CHANGED_FILES).length,

@@ -57,7 +57,7 @@ jobs:
 
       # The orchestrator built and uploaded this in an earlier job of the same run.
       - name: Download instrumented uberjar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: instrumented-uberjar
           path: target/uberjar
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload shard coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-shard-${{ inputs.split_index }}
           path: e2e/coverage-manifest-raw/
