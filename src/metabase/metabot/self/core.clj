@@ -306,7 +306,7 @@
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
-    :error            -> error
+    :error            -> [start + start-step]? error
     :usage            -> (accumulated; emitted as finish.message_metadata)
     :finish           -> (ignored — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
@@ -324,7 +324,15 @@
                                (if-let [id @current-text-id]
                                  (do (vreset! current-text-id nil)
                                      (rf result (format-sse-event {:type "text-end" :id id})))
-                                 result))]
+                                 result))
+           ensure-started    (fn [result]
+                               (if @started?
+                                 result
+                                 (do (vreset! started? true)
+                                     (-> result
+                                         (rf (format-sse-event {:type      "start"
+                                                                :messageId (or message-id (mkid))}))
+                                         (rf (format-sse-event {:type "start-step"}))))))]
        (fn
          ([] (rf))
          ([result]
@@ -401,7 +409,7 @@
                 (vreset! error? true)
                 (when-let [code (some-> (:error-code (:error part)) name)]
                   (vreset! finish-error-code code))
-                (rf result (format-error-line part)))
+                (rf (ensure-started result) (format-error-line part)))
 
               :finish
               result

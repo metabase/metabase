@@ -491,15 +491,21 @@
            (-> (sse-events [{:type :mystery :id "x"}]) first :type)))))
 
 (deftest parts->aisdk-sse-xf-error-test
-  (testing "plain error emits an error event and flips finish_reason"
+  (testing "an error before any :start synthesizes start + start-step, and flips finish_reason"
     (let [events (sse-events [{:type :error :error {:message "Something went wrong"}}])]
-      (is (= [{:type "error" :errorText "Something went wrong"}
-              {:type "finish" :finishReason "error"}]
-             events))))
+      (is (=? [{:type "start" :messageId string?}
+               {:type "start-step"}
+               {:type "error" :errorText "Something went wrong"}
+               {:type "finish-step"}
+               {:type "finish" :finishReason "error"}]
+              events))))
   (testing "a typed error's code rides finish.messageMetadata"
     (let [events (sse-events [{:type :error :error {:message    "You have reached your AI usage limit."
                                                     :error-code :ai_usage_limit_reached}}])]
-      (is (=? [{:type "error" :errorText "You have reached your AI usage limit."}
+      (is (=? [{:type "start" :messageId string?}
+               {:type "start-step"}
+               {:type "error" :errorText "You have reached your AI usage limit."}
+               {:type "finish-step"}
                {:type "finish" :finishReason "error"
                 :messageMetadata {:errorCode "ai_usage_limit_reached"}}]
               events))))
