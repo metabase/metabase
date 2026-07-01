@@ -61,21 +61,19 @@ export const SdkAdHocQuestion = ({
     [questionPath],
   );
 
-  const { options, deserializedCard, questionId } = useMemo(() => {
+  const { options, deserializedCard } = useMemo(() => {
     const { options, serializedCard } = parseHash(location.hash);
     const deserializedCard = serializedCard
       ? deserializeCard(serializedCard)
       : undefined;
 
-    return {
-      options,
-      deserializedCard,
-      questionId: resolveQuestionId(
-        params.slug,
-        deserializedCard as { dataset_query?: { type?: string } } | undefined,
-      ),
-    };
-  }, [location.hash, params.slug]);
+    return { options, deserializedCard };
+  }, [location.hash]);
+
+  const questionId = resolveQuestionId(
+    params.slug,
+    deserializedCard as { dataset_query?: { type?: string } } | undefined,
+  );
 
   return (
     <SdkQuestion
