@@ -309,14 +309,14 @@
 ;;; --------------------------------------------- Construct Native Query ---------------------------------------------
 
 (mr/def ::construct-native-query-request
-  "Request body for /v2/construct-native-query: a target database and a raw SQL string."
+  "Request body for /v1/construct-native-query: a target database and a raw SQL string."
   [:map {:closed true}
    [:database_id {:tool/description "Numeric id of the database to run the SQL against."}
     ms/PositiveInt]
    [:sql {:tool/description "The raw SQL query text."}
     ms/NonBlankString]])
 
-(api.macros/defendpoint :post "/v2/construct-native-query" :- ::construct-query-response
+(api.macros/defendpoint :post "/v1/construct-native-query" :- ::construct-query-response
   "Construct a native (raw SQL) query against a database.
 
   Wraps `sql` into a serialized native query and returns it base64-encoded — the same

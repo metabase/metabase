@@ -640,7 +640,7 @@
 
 (deftest construct-native-query-test
   (testing "Wraps SQL into a base64-encoded MBQL 5 native query (same shape as /v2/construct-query output)"
-    (let [resp    (mt/user-http-request :crowberto :post 200 "agent/v2/construct-native-query"
+    (let [resp    (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
                                         {:database_id (mt/id)
                                          :sql         "SELECT 1 AS n"})
           decoded (-> resp :query u/decode-base64 json/decode+kw)]
@@ -650,17 +650,17 @@
               decoded))))
   (testing "Returns 403 when the caller cannot access the target database"
     (mt/with-no-data-perms-for-all-users!
-      (mt/user-http-request :rasta :post 403 "agent/v2/construct-native-query"
+      (mt/user-http-request :rasta :post 403 "agent/v1/construct-native-query"
                             {:database_id (mt/id)
                              :sql         "SELECT 1"})))
   (testing "Returns 404 for a non-existent database"
-    (mt/user-http-request :crowberto :post 404 "agent/v2/construct-native-query"
+    (mt/user-http-request :crowberto :post 404 "agent/v1/construct-native-query"
                           {:database_id Integer/MAX_VALUE
                            :sql         "SELECT 1"})))
 
 (deftest create-native-question-test
   (testing "Saves a native SQL query (from construct_native_query) as a question"
-    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-native-query"
+    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
                                                {:database_id (mt/id)
                                                 :sql         "SELECT 1 AS n"})
           create-resp    (mt/user-http-request :crowberto :post 200 "agent/v1/question"
@@ -673,7 +673,7 @@
                 (:dataset_query card))))
       (t2/delete! :model/Card :id (:id create-resp))))
   (testing "Returns 403 when the caller lacks native-query permission"
-    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v2/construct-native-query"
+    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
                                                {:database_id (mt/id)
                                                 :sql         "SELECT 1 AS n"})]
       (mt/with-no-data-perms-for-all-users!
