@@ -27,3 +27,7 @@ export type {
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
+export type {
+  ActionKindFromDataAppSchema,
+  ActionParametersFromDataAppSchema,
+} from "./hooks/public/use-action";
