@@ -1592,7 +1592,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: starred
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: false
                   remarks: True if the page is starred
                   constraints:

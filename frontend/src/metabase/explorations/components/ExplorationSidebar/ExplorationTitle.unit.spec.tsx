@@ -77,6 +77,8 @@ describe("ExplorationTitle", () => {
     await userEvent.type(input, "Renamed exploration");
     await userEvent.tab();
 
-    expect(await screen.findByText("Failed to update name")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Failed to update name"),
+    ).toBeInTheDocument();
   });
 });

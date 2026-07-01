@@ -4,10 +4,7 @@ import { useMemo } from "react";
 import { getStore } from "__support__/entities-store";
 import { TestWrapper } from "__support__/ui";
 import { Api } from "metabase/api";
-import {
-  createPage,
-  createQuery,
-} from "metabase/explorations/test-utils";
+import { createPage, createQuery } from "metabase/explorations/test-utils";
 import { mainReducers } from "metabase/reducers-main"; // eslint-disable-line boundaries/element-types
 import { createMockState } from "metabase/redux/store/mocks";
 import { Stack, Text } from "metabase/ui";

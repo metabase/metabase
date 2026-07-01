@@ -94,11 +94,11 @@
                        :model/Exploration       e   {:name "expl" :creator_id (:id u)}
                        :model/ExplorationThread th  {:exploration_id (:id e) :position 0}
                        :model/Document          thread-doc {:name (str tag "-thread")
-                                                            :document (text->prose-mirror-ast "")
+                                                            :document (documents.test-util/text->prose-mirror-ast "")
                                                             :creator_id (:id u)
                                                             :exploration_thread_id (:id th)}
                        :model/Document          standalone {:name (str tag "-standalone")
-                                                            :document (text->prose-mirror-ast "")
+                                                            :document (documents.test-util/text->prose-mirror-ast "")
                                                             :creator_id (:id u)}]
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q tag :models "document")
                 ids    (set (map :id (:data results)))]
