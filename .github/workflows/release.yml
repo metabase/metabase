@@ -584,14 +584,14 @@ jobs:
             const R = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
-            const releaseVersion = R.getLinerReleaseVersion(version);
+            const releaseVersion = R.getLinearReleaseName(version);
 
             const preRelease = R.isPreReleaseVersion(version);
             core.setOutput('release_version', releaseVersion);
 
             // if we're doing a beta, we want to update the stage (keep it open) instead of completing it
             core.setOutput('command', preRelease ? 'update' : 'complete');
-            core.setOutput('stage', preRelease ? 'beta' ; 'Released');
+            core.setOutput('stage', preRelease ? 'beta' : 'Released');
 
       - name: Advance / complete the Linear release
         uses: linear/linear-release-action@v0

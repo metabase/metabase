@@ -83,9 +83,14 @@ jobs:
               : `v0.${major}.0`;                   // .0 not cut yet (done manually)
             const linearReleaseName = R.getLinearReleaseName(releaseVersion);
 
-            core.setOutput('release_version', releaseVersion);
+            console.log({
+              REF_NAME, CURRENT_VERSION, INPUT_VERSION,
+              major, lastMinorTag, releaseVersion, linearReleaseName,
+            });
+
+            core.setOutput('release_version', linearReleaseName);
             core.setOutput('base_ref', lastMinorTag ?? '');
-            core.setOutput('linear_release_name', linearReleaseName);
+
             core.info(`Linear release ${linearReleaseName} (baseline: ${lastMinorTag ?? 'none'})`);
 
       - name: Sync / update / complete the Linear release
