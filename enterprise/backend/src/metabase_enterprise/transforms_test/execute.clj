@@ -1,14 +1,14 @@
-(ns metabase.transforms.test-run.execute
+(ns metabase-enterprise.transforms-test.execute
   "Execution helpers for transform test runs: translate a resolved artifact into a
   `driver/run-transform!` call, and read the output table back via the QP.
 
   These functions assume they run inside `driver.conn/with-transform-connection`."
   (:require
+   [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
-   [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.test-run.scratch :as scratch]))
+   [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
 

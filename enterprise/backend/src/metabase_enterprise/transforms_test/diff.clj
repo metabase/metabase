@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.diff
+(ns metabase-enterprise.transforms-test.diff
   "Schema-coerced, multiset diff engine for transform test runs.
 
   Entry point: [[diff]].

@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.inputs
+(ns metabase-enterprise.transforms-test.inputs
   "Strict input resolution for transform test runs.
 
   Two public entry points:

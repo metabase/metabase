@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.scratch
+(ns metabase-enterprise.transforms-test.scratch
   "Scratch-table lifecycle for transform test runs.
 
   Scratch tables are ephemeral Postgres (or other driver) tables created during a

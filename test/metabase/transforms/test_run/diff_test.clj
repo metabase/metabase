@@ -17,7 +17,7 @@
   The diff engine must canonicalize both sides before comparing."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.transforms.test-run.diff :as diff]
+   [metabase-enterprise.transforms-test.diff :as diff]
    [metabase.util.json :as json])
   (:import
    (java.math BigInteger)

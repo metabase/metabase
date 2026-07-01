@@ -12,11 +12,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.execute :as execute]
+   [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
-   [metabase.query-processor.core :as qp]
-   [metabase.transforms.test-run.execute :as execute]
-   [metabase.transforms.test-run.scratch :as scratch]))
+   [metabase.query-processor.core :as qp]))
 
 (set! *warn-on-reflection* true)
 

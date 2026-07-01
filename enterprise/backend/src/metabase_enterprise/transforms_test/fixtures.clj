@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.fixtures
+(ns metabase-enterprise.transforms-test.fixtures
   "Fixture-CSV parsing for transform test runs.
 
   Entry point: [[parse-fixture]].

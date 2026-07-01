@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.card-refs
+(ns metabase-enterprise.transforms-test.card-refs
   "Extract a Card's table references for sub-graph derivation in a card-target test
   run. A Card here is any saved query — question, model, or metric.
 

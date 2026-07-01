@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.assertions
+(ns metabase-enterprise.transforms-test.assertions
   "Evaluate assertions for a transform test run.
 
   An assertion is a SQL query that passes iff it returns zero rows. Its SQL
@@ -8,10 +8,10 @@
   Entry point: [[run-assertions!]]."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms-test.diff :as diff]
+   [metabase-enterprise.transforms-test.resolve :as resolve]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
-   [metabase.transforms.test-run.diff :as diff]
-   [metabase.transforms.test-run.resolve :as resolve]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

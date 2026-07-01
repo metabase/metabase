@@ -1,6 +1,6 @@
 (ns ^:mb/driver-tests metabase.transforms.test-run.card-chain-test
   "End-to-end tests for the card-target chained test-run orchestrator
-  ([[metabase.transforms.test-run.chain/run-card-chain-test!]]).
+  ([[metabase-enterprise.transforms-test.chain/run-card-chain-test!]]).
 
   ## Test topology
 
@@ -40,14 +40,14 @@
   - card-subgraph-input-tables returns the correct leaf descriptors"
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.transforms-test.chain :as chain]
+   [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
-   [metabase.transforms.test-run.chain :as chain]
-   [metabase.transforms.test-run.scratch :as scratch]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -343,7 +343,7 @@
                     (reset! thrown e)))
                 (testing "throws ::cannot-test-run"
                   (is (some? @thrown))
-                  (is (= :metabase.transforms.test-run.resolve/cannot-test-run
+                  (is (= :metabase-enterprise.transforms-test.resolve/cannot-test-run
                          (:error-type (ex-data @thrown)))
                       (str "Expected ::cannot-test-run; got: " (pr-str (ex-data @thrown)))))))))))))
 

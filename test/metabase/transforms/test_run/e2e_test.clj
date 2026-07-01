@@ -19,14 +19,14 @@
 
   - Asserts the cleanup and no-TransformRun invariants at the API level.
 
-  These tests exercise the subgraph endpoint (`POST /api/transform-test/transform/:id/subgraph`)
+  These tests exercise the subgraph endpoint (`POST /api/ee/transform-test/transform/:id/subgraph`)
   with `sources=[]`, the degenerate single-node case."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.api]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
-   [metabase.transforms-rest.api.transform-test-run]
    [metabase.transforms.test-run.test-util :refer [with-temp-csv-files]]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -56,7 +56,7 @@
   {:request-options {:headers {"content-type" "multipart/form-data"}}})
 
 (defn- subgraph-test-run-url [transform-id]
-  (format "transform-test/transform/%d/subgraph" transform-id))
+  (format "ee/transform-test/transform/%d/subgraph" transform-id))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Fixture CSV content
@@ -152,7 +152,7 @@
 
 (deftest e2e-join-aggregation-passed-test
   (testing "E2E: JOIN orders→people + aggregation with NULL/boolean/date fixtures → 200 passed"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id      (mt/id)
@@ -211,8 +211,8 @@
 
 (deftest e2e-join-aggregation-failed-test
   (testing "E2E: mutate one expected cell (TX order_count 99) → 200 failed with named diff"
-    ;; Uses POST /transform-test/transform/:id/subgraph with sources=[] (degenerate single-node).
-    (mt/with-premium-features #{}
+    ;; Uses POST /ee/transform-test/transform/:id/subgraph with sources=[] (degenerate single-node).
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id      (mt/id)

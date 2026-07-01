@@ -7,13 +7,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.query-processor.core :as qp]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
-   [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.test-run.scratch :as scratch]))
+   [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
 

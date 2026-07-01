@@ -2,10 +2,10 @@
   "Tests for strict input resolution: required-input-tables and match-fixtures."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.inputs :as inputs]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [metabase.transforms.test-run.inputs :as inputs]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 

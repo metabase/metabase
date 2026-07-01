@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.subgraph
+(ns metabase-enterprise.transforms-test.subgraph
   "Sub-graph resolution for chained transform test runs.
 
   Given a *target* (a transform id or a card) and a set of user-selected *source*
@@ -23,9 +23,9 @@
     immediate fixtures independent of the selected sources."
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.transforms-test.card-refs :as card-refs]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
-   [metabase.transforms.test-run.card-refs :as card-refs]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)

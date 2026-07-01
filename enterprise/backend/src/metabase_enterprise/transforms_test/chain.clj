@@ -1,4 +1,4 @@
-(ns metabase.transforms.test-run.chain
+(ns metabase-enterprise.transforms-test.chain
   "Synchronous orchestrator for *chained* (sub-graph) transform test runs.
 
   Entry points:
@@ -30,6 +30,15 @@
   Errors are typed `ex-info` carrying `:error-type`."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.transforms-test.assertions :as assertions]
+   [metabase-enterprise.transforms-test.card-refs :as card-refs]
+   [metabase-enterprise.transforms-test.diff :as diff]
+   [metabase-enterprise.transforms-test.execute :as execute]
+   [metabase-enterprise.transforms-test.fixtures :as fixtures]
+   [metabase-enterprise.transforms-test.inputs :as inputs]
+   [metabase-enterprise.transforms-test.resolve :as resolve]
+   [metabase-enterprise.transforms-test.scratch :as scratch]
+   [metabase-enterprise.transforms-test.subgraph :as subgraph]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
@@ -40,15 +49,6 @@
    [metabase.query-processor.core :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.transforms.test-run.assertions :as assertions]
-   [metabase.transforms.test-run.card-refs :as card-refs]
-   [metabase.transforms.test-run.diff :as diff]
-   [metabase.transforms.test-run.execute :as execute]
-   [metabase.transforms.test-run.fixtures :as fixtures]
-   [metabase.transforms.test-run.inputs :as inputs]
-   [metabase.transforms.test-run.resolve :as resolve]
-   [metabase.transforms.test-run.scratch :as scratch]
-   [metabase.transforms.test-run.subgraph :as subgraph]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

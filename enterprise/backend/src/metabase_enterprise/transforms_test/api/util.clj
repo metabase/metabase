@@ -1,9 +1,6 @@
-(ns metabase.transforms-rest.api.util
+(ns metabase-enterprise.transforms-test.api.util
   "Shared HTTP contract for transform test-run endpoints: multipart parsing,
-  response shaping, the error→HTTP-status mapping, and the response schemas.
-
-  Consumed by the generalized chained test-run endpoints
-  ([[metabase.transforms-rest.api.transform-test-run]])."
+  response shaping, the error→HTTP-status mapping, and the response schemas."
   (:require
    [clojure.string :as str]
    [metabase.util.i18n :refer [tru]]
@@ -21,39 +18,39 @@
   statement timeout throws an untyped exception (no `:error-type`), so it is not
   in this map and currently surfaces as a generic 500."
   {;; Fixture errors — 400: caller supplied wrong CSV content.
-   :metabase.transforms.test-run.fixtures/header-mismatch        400
-   :metabase.transforms.test-run.fixtures/unparseable-cell        400
+   :metabase-enterprise.transforms-test.fixtures/header-mismatch        400
+   :metabase-enterprise.transforms-test.fixtures/unparseable-cell        400
    ;; Diff errors — 400: caller supplied bad options.
-   :metabase.transforms.test-run.diff/unknown-ignore-columns      400
-   :metabase.transforms.test-run.diff/unsupported-option          400
+   :metabase-enterprise.transforms-test.diff/unknown-ignore-columns      400
+   :metabase-enterprise.transforms-test.diff/unsupported-option          400
    ;; Input resolution errors — 400 or 422.
-   :metabase.transforms.test-run.inputs/missing-fixtures          400
-   :metabase.transforms.test-run.inputs/unknown-fixture-keys      400
-   :metabase.transforms.test-run.inputs/unsupported-transform-type 422
-   :metabase.transforms.test-run.inputs/cannot-determine-inputs   422
-   :metabase.transforms.test-run.inputs/table-not-found           422
-   :metabase.transforms.test-run.inputs/transform-dep-not-supported 422
+   :metabase-enterprise.transforms-test.inputs/missing-fixtures          400
+   :metabase-enterprise.transforms-test.inputs/unknown-fixture-keys      400
+   :metabase-enterprise.transforms-test.inputs/unsupported-transform-type 422
+   :metabase-enterprise.transforms-test.inputs/cannot-determine-inputs   422
+   :metabase-enterprise.transforms-test.inputs/table-not-found           422
+   :metabase-enterprise.transforms-test.inputs/transform-dep-not-supported 422
    ;; Resolve errors — 422.
-   :metabase.transforms.test-run.resolve/cannot-test-run          422
-   :metabase.transforms.test-run.resolve/unsupported-transform-type 422
+   :metabase-enterprise.transforms-test.resolve/cannot-test-run          422
+   :metabase-enterprise.transforms-test.resolve/unsupported-transform-type 422
    ;; Execution errors — 500.
-   :metabase.transforms.test-run.scratch/seed-failed              500
-   :metabase.transforms.test-run.execute/pre-execution-guard-failed 500
-   :metabase.transforms.test-run.execute/execution-failed         500
+   :metabase-enterprise.transforms-test.scratch/seed-failed              500
+   :metabase-enterprise.transforms-test.execute/pre-execution-guard-failed 500
+   :metabase-enterprise.transforms-test.execute/execution-failed         500
    ;; Chained (sub-graph) test-run errors.
-   :metabase.transforms.test-run.subgraph/sources-not-ancestors   400
-   :metabase.transforms.test-run.subgraph/cycle                   422
-   :metabase.transforms.test-run.chain/cross-database-subgraph    422
-   :metabase.transforms.test-run.chain/target-not-found           422
-   :metabase.transforms.test-run.chain/missing-database-id        422
+   :metabase-enterprise.transforms-test.subgraph/sources-not-ancestors   400
+   :metabase-enterprise.transforms-test.subgraph/cycle                   422
+   :metabase-enterprise.transforms-test.chain/cross-database-subgraph    422
+   :metabase-enterprise.transforms-test.chain/target-not-found           422
+   :metabase-enterprise.transforms-test.chain/missing-database-id        422
    ;; Assertion-specific errors.
    ;; ::assertion-rewrite-failed and ::assertion-execution-failed are per-assertion
    ;; internal states captured in the response body, not HTTP-level errors; they are
    ;; mapped here only for the case where one is thrown at the run level.
-   :metabase.transforms.test-run.assertions/assertion-execution-failed  500
-   :metabase.transforms.test-run.assertions/assertion-rewrite-failed    422
+   :metabase-enterprise.transforms-test.assertions/assertion-execution-failed  500
+   :metabase-enterprise.transforms-test.assertions/assertion-rewrite-failed    422
    ;; assertions-parse-error fires at request-parse time (malformed JSON / missing fields).
-   :metabase.transforms-rest.api.util/assertions-parse-error             400})
+   :metabase-enterprise.transforms-test.api.util/assertions-parse-error             400})
 
 (defn parse-input-table-ids
   "Extract input fixture files from the multipart params.

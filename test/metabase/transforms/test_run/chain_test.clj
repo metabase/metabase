@@ -1,8 +1,8 @@
 (ns ^:mb/driver-tests metabase.transforms.test-run.chain-test
   "End-to-end tests for the chained (sub-graph) test-run orchestrator
-  ([[metabase.transforms.test-run.chain/run-chain-test!]]) and the generalized HTTP
-  endpoints (`POST /api/transform-test/:target-type/:id/subgraph`,
-  `GET /api/transform-test/:target-type/:id/subgraph-inputs`).
+  ([[metabase-enterprise.transforms-test.chain/run-chain-test!]]) and the generalized HTTP
+  endpoints (`POST /api/ee/transform-test/:target-type/:id/subgraph`,
+  `GET /api/ee/transform-test/:target-type/:id/subgraph-inputs`).
 
   Builds a 2-node native chain on the test-data schema:
 
@@ -16,17 +16,18 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.transforms-test.api.util :as api-util]
+   [metabase-enterprise.transforms-test.chain :as chain]
+   [metabase-enterprise.transforms-test.core :as test-run.core]
+   [metabase-enterprise.transforms-test.execute :as test-run.execute]
+   [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.transforms-rest.api.transform]
-   [metabase.transforms-rest.api.util :as api-util]
    [metabase.transforms.core :as transforms.core]
-   [metabase.transforms.test-run.chain :as chain]
-   [metabase.transforms.test-run.execute :as test-run.execute]
-   [metabase.transforms.test-run.scratch :as scratch]
    [metabase.transforms.test-run.test-util :refer [with-temp-csv-files]]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -96,7 +97,7 @@
 
 (deftest chain-native-passed-test
   (testing "2-node native chain runs end-to-end and passes against the correct expected CSV"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -137,7 +138,7 @@
 
 (deftest chain-native-failed-test
   (testing "wrong expected CA count → failed with a named diff, scratch still cleaned"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -173,14 +174,14 @@
 (def ^:private multipart-content-type
   {:request-options {:headers {"content-type" "multipart/form-data"}}})
 
-(defn- subgraph-inputs-url [id] (format "transform-test/transform/%d/subgraph-inputs" id))
-(defn- subgraph-test-run-url [id] (format "transform-test/transform/%d/subgraph" id))
-(defn- card-subgraph-inputs-url [id] (format "transform-test/card/%d/subgraph-inputs" id))
-(defn- card-subgraph-test-run-url [id] (format "transform-test/card/%d/subgraph" id))
+(defn- subgraph-inputs-url [id] (format "ee/transform-test/transform/%d/subgraph-inputs" id))
+(defn- subgraph-test-run-url [id] (format "ee/transform-test/transform/%d/subgraph" id))
+(defn- card-subgraph-inputs-url [id] (format "ee/transform-test/card/%d/subgraph-inputs" id))
+(defn- card-subgraph-test-run-url [id] (format "ee/transform-test/card/%d/subgraph" id))
 
 (deftest subgraph-inputs-endpoint-test
   (testing "GET subgraph-inputs returns the leaf input tables for (target, sources)"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -205,7 +206,7 @@
 
 (deftest subgraph-test-run-endpoint-passed-test
   (testing "POST subgraph runs the chain and returns 200 passed"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -239,7 +240,7 @@
 
 (deftest subgraph-test-run-endpoint-bad-source-test
   (testing "POST subgraph with a source that does not feed the target → 400 error envelope"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -272,7 +273,7 @@
                     (is (string? (get-in resp [:error :message])))))))))))))
 
 ;;; ===========================================================================
-;;; HTTP endpoints: card target (generalized /api/transform-test/card/…)
+;;; HTTP endpoints: card target (generalized /api/ee/transform-test/card/…)
 ;;;
 ;;; The card reads `enriched` — a synced table produced by transform t1 — so the
 ;;; slice is {t1} with leaves {orders, people}: the transform-target tests with a
@@ -300,7 +301,7 @@
 
 (deftest card-subgraph-inputs-endpoint-test
   (testing "GET card subgraph-inputs returns the card's boundary leaf tables"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
@@ -318,7 +319,7 @@
 
 (deftest card-subgraph-test-run-endpoint-passed-test
   (testing "POST card subgraph runs a card target over the chain → 200 passed"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -349,7 +350,7 @@
 
 (deftest card-subgraph-test-run-endpoint-failed-test
   (testing "POST card subgraph with wrong expected CSV → 200 failed"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
@@ -419,7 +420,7 @@
 
 (deftest card-mbql-subgraph-inputs-endpoint-test
   (testing "GET card/subgraph-inputs for a stored MBQL card returns the leaf tables"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
@@ -437,7 +438,7 @@
 
 (deftest card-mbql-subgraph-test-run-endpoint-passed-test
   (testing "POST card/subgraph for a stored MBQL card → 200 passed"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -463,7 +464,7 @@
 
 (deftest card-mbql-subgraph-test-run-endpoint-failed-test
   (testing "POST card/subgraph for a stored MBQL card with wrong expected CSV → 200 failed"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -504,7 +505,7 @@
 (deftest unknown-target-type-rejected-test
   (testing "unrecognised target-type returns 404 — the route enum no longer includes \"metric\"; use target-type=card for metric cards"
     (is (= "API endpoint does not exist."
-           (mt/user-http-request :crowberto :get 404 "transform-test/metric/1/subgraph-inputs")))))
+           (mt/user-http-request :crowberto :get 404 "ee/transform-test/metric/1/subgraph-inputs")))))
 
 ;;; ===========================================================================
 ;;; Contract: cleanup! runs inside the transform connection context
@@ -525,7 +526,7 @@
 
 (deftest chain-assertion-passing-test
   (testing "run-chain-test! with a passing assertion → :passed + :assertions [{:status :passed}]"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -561,7 +562,7 @@
 
 (deftest chain-assertion-failing-test
   (testing "run-chain-test! with a failing assertion → :failed, positive failing_row_count"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -596,7 +597,7 @@
 
 (deftest chain-assertion-warn-does-not-fail-run-test
   (testing "warn-severity failing assertion → overall :passed, assertion :warn"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -630,7 +631,7 @@
 
 (deftest chain-assertions-only-no-expected-test
   (testing "run-chain-test! with no expected CSV and passing assertion → :passed, :diff nil"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -664,7 +665,7 @@
 
 (deftest chain-assertion-test-output-alias-test
   (testing "assertion SQL referencing test_output (not the real table name) runs correctly"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -697,7 +698,7 @@
 
 (deftest card-chain-assertion-cte-binding-test
   (testing "run-card-chain-test! with assertions via CTE binding — no extra scratch table"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -730,7 +731,7 @@
 
 (deftest subgraph-endpoint-empty-assertions-regression-test
   (testing "POST /subgraph with assertions=[] → 200 passed, same shape as before"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -765,7 +766,7 @@
 
 (deftest subgraph-endpoint-assertions-no-expected-test
   (testing "POST /subgraph with assertions and no expected → 200, :assertions in response"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -807,7 +808,7 @@
 
 (deftest subgraph-endpoint-assertions-and-expected-test
   (testing "POST /subgraph with assertions AND expected → 200, both :diff and :assertions"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -851,7 +852,7 @@
 
 (deftest subgraph-endpoint-malformed-assertions-test
   (testing "POST /subgraph with malformed assertions JSON → 400"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -876,7 +877,7 @@
 
 (deftest subgraph-endpoint-assertion-real-table-reference-test
   (testing "POST /subgraph with assertion referencing a real (non-scratch) table → 200 with :failed assertion"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -923,7 +924,7 @@
 
 (deftest subgraph-endpoint-no-expected-no-assertions-test
   (testing "POST /subgraph with no expected and no assertions → 400"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp            (mt/metadata-provider)
@@ -1001,7 +1002,7 @@
   ;; observe it by intercepting scratch/cleanup! and capturing *connection-type*
   ;; at each call, then asserting every capture equals :transform.
   (testing "all cleanup! calls occur inside with-transform-connection (success path)"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [schema        "public"
@@ -1046,7 +1047,7 @@
 
 (deftest subgraph-single-node-ignore-columns-test
   (testing "run-chain-test! with sources=#{} and ignore_columns → :passed despite ts mismatch"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id          (mt/id)
@@ -1080,7 +1081,7 @@
 
 (deftest subgraph-single-node-seed-creates-missing-target-schema-test
   (testing "single-node run-chain-test! seeds a transform whose target schema does not exist yet"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [db-id        (mt/id)
@@ -1122,7 +1123,7 @@
   ;; In this case, the DROP may not have run, but `scratch/sweep-old-test-tables!`
   ;; will clean up later.
   (testing "single-node run-chain-test! with a pg_sleep transform → throws on timeout"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [schema      "public"
@@ -1181,7 +1182,7 @@
 
 (deftest subgraph-single-node-endpoint-ignore-columns-test
   (testing "POST /subgraph with sources=[] and ignore_columns → 200 passed"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp        (mt/metadata-provider)
@@ -1214,7 +1215,7 @@
     ;; FROM-only rewrite, triggering guard 3 → ::cannot-test-run (422).
     ;; The resolve check fires after seed but before execution; scratch-table cleanup
     ;; on this error path is covered by chain-cleanup-runs-inside-transform-connection-test.
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp        (mt/metadata-provider)
@@ -1235,13 +1236,13 @@
                   (testing "status is error"
                     (is (= "error" (:status resp))))
                   (testing "error type is cannot-test-run"
-                    (is (= (pr-str :metabase.transforms.test-run.resolve/cannot-test-run)
+                    (is (= (pr-str :metabase-enterprise.transforms-test.resolve/cannot-test-run)
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-header-mismatch-400-test
   ;; Regression: ::fixtures/header-mismatch was missing from test-run-error-http-status.
   (testing "POST /subgraph with wrong CSV headers → 400 + error envelope (::fixtures/header-mismatch)"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp        (mt/metadata-provider)
@@ -1264,13 +1265,13 @@
                     (is (= "error" (:status resp))
                         "header-mismatch must return error envelope, not 500"))
                   (testing "error type indicates header mismatch"
-                    (is (= (pr-str :metabase.transforms.test-run.fixtures/header-mismatch)
+                    (is (= (pr-str :metabase-enterprise.transforms-test.fixtures/header-mismatch)
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-unknown-ignore-columns-400-test
   ;; Regression: ::diff/unknown-ignore-columns was missing from test-run-error-http-status.
   (testing "POST /subgraph with nonexistent ignore_columns → 400 + error envelope"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp        (mt/metadata-provider)
@@ -1294,12 +1295,12 @@
                     (is (= "error" (:status resp))
                         "unknown-ignore-columns must return error envelope, not 500"))
                   (testing "error type indicates unknown ignore columns"
-                    (is (= (pr-str :metabase.transforms.test-run.diff/unknown-ignore-columns)
+                    (is (= (pr-str :metabase-enterprise.transforms-test.diff/unknown-ignore-columns)
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-malformed-options-json-400-test
   (testing "POST /subgraph with malformed options JSON → 400"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp        (mt/metadata-provider)
@@ -1321,7 +1322,7 @@
 
 (deftest subgraph-transform-target-permissions-403-test
   (testing "POST /subgraph for a transform target enforces read-check → 403 for non-admin"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Transform t {}]
         (with-temp-csv-files [expected-f "x\n1\n"]
           (mt/user-http-request
@@ -1350,7 +1351,7 @@
 
 (deftest subgraph-inputs-cannot-determine-inputs-422-test
   (testing "GET /subgraph-inputs — cannot-determine-inputs error → 422"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [mp (mt/metadata-provider)]
@@ -1359,10 +1360,10 @@
                                      :query (lib/native-query mp "SELECT user_id FROM orders")}
                             :target {:schema "public" :type "table" :name (mt/random-name)}}]
               (mt/with-dynamic-fn-redefs
-                [transforms.core/subgraph-input-tables
+                [test-run.core/subgraph-input-tables
                  (fn [& _]
                    (throw (ex-info "Cannot determine inputs for this transform."
-                                   {:error-type :metabase.transforms.test-run.inputs/cannot-determine-inputs})))]
+                                   {:error-type :metabase-enterprise.transforms-test.inputs/cannot-determine-inputs})))]
                 (let [resp (mt/user-http-request
                             :crowberto :get 422 (subgraph-inputs-url (:id t)))]
                   (testing "status is error"
@@ -1373,7 +1374,7 @@
 
 (deftest subgraph-inputs-permissions-403-test
   (testing "GET /subgraph-inputs — user without read access → 403"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Transform t {}]
         (mt/user-http-request
          :rasta :get 403 (subgraph-inputs-url (:id t)))))))
@@ -1393,3 +1394,19 @@
                                        {:status-code 402})))]
               (mt/user-http-request
                :crowberto :get 402 (subgraph-inputs-url (:id t))))))))))
+
+(deftest subgraph-requires-dependencies-feature-402-test
+  (testing "POST /subgraph — the :dependencies capability gate rejects with 402 for both target types"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (with-enrich-card [t1 card]
+            (with-temp-csv-files [expected-f correct-expected-csv]
+              (testing "transform target"
+                (mt/user-http-request
+                 :crowberto :post 402 (subgraph-test-run-url (:id t1))
+                 multipart-content-type {"expected" expected-f}))
+              (testing "card target"
+                (mt/user-http-request
+                 :crowberto :post 402 (card-subgraph-test-run-url (:id card))
+                 multipart-content-type {"expected" expected-f})))))))))

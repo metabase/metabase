@@ -16,9 +16,9 @@
   Cards read from various subsets of {table-100, table-150, table-200, table-999}."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms.test-run.card-refs :as card-refs]
-   [metabase.transforms.test-run.subgraph :as subgraph]))
+   [metabase-enterprise.transforms-test.card-refs :as card-refs]
+   [metabase-enterprise.transforms-test.subgraph :as subgraph]
+   [metabase.transforms-base.interface :as transforms-base.i]))
 
 (set! *warn-on-reflection* true)
 

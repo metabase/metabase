@@ -1,16 +1,16 @@
 (ns ^:mb/driver-tests metabase.transforms.test-run.assertions-test
   "Tests for the assertion evaluation subsystem
-  ([[metabase.transforms.test-run.assertions]]). Some are pure (no database); the
+  ([[metabase-enterprise.transforms-test.assertions]]). Some are pure (no database); the
   `:postgres`-gated tests run the full round-trip through `run-assertions!`."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.transforms-test.assertions :as assertions]
+   [metabase-enterprise.transforms-test.fixtures :as fixtures]
+   [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver.connection :as driver.conn]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
-   [metabase.transforms.test-run.assertions :as assertions]
-   [metabase.transforms.test-run.fixtures :as fixtures]
-   [metabase.transforms.test-run.scratch :as scratch]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

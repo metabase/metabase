@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.card-tables-walker-test
-  "Tests for [[metabase.transforms.test-run.card-refs/card->tables]].
+  "Tests for [[metabase-enterprise.transforms-test.card-refs/card->tables]].
 
   The primary contract under test:
   - Returns the set of all physical table ids transitively reachable through the
@@ -7,10 +7,10 @@
   - Loads one `t2/select :model/Card` per BFS layer, not per card."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.card-refs :as card-refs]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.transforms.test-run.card-refs :as card-refs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

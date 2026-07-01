@@ -6,7 +6,7 @@
   executor's driver-gated e2e test."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.transforms.test-run.subgraph :as subgraph]))
+   [metabase-enterprise.transforms-test.subgraph :as subgraph]))
 
 (set! *warn-on-reflection* true)
 

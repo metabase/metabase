@@ -2351,14 +2351,11 @@
            run-tracking
            search
            settings
-           sql-tools
            task
            task-history
            tracing
            transforms-base
-           upload
-           util
-           workspaces}
+           util}
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
@@ -2367,8 +2364,7 @@
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}
-   :model-imports #{:model/Card
-                    :model/Collection
+   :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
                     :model/Table
@@ -2378,6 +2374,7 @@
   {:team "Graphy"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
+           metabase.transforms-base.ordering
            metabase.transforms-base.util}
    ;; TODO regressions — transforms-base should not depend on :model/Transform or
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
@@ -2409,16 +2406,14 @@
   {:team "Gadget"
    :api  #{metabase.transforms-rest.api.transform
            metabase.transforms-rest.api.transform-job
-           metabase.transforms-rest.api.transform-tag
-           metabase.transforms-rest.api.transform-test-run}
+           metabase.transforms-rest.api.transform-tag}
    :uses #{api
            models
            request
            transforms
            transforms-base
            util}
-   :model-imports #{:model/Card
-                    :model/Transform
+   :model-imports #{:model/Transform
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
@@ -3604,6 +3599,28 @@
                     :model/Field
                     :model/Table
                     :model/TransformRun}}
+
+  enterprise/transforms-test
+  {:team "Graphy"
+   ;; core is only used within this module, so it is not an :api member.
+   :api  #{metabase-enterprise.transforms-test.api}
+   :uses #{api
+           driver
+           lib
+           lib-be
+           premium-features
+           query-processor
+           sql-tools
+           transforms
+           transforms-base
+           upload
+           util
+           workspaces}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform}}
 
   enterprise/upload-management
   {:team "UX West"

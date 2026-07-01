@@ -1,8 +1,8 @@
-(ns metabase.transforms.test-run.resolve
+(ns metabase-enterprise.transforms-test.resolve
   "Resolve a transform into a fully-resolved, executable artifact for a test run.
 
   Entry point: [[resolve-test-transform]] — given a transform value, the
-  scratch-table `mapping` from [[metabase.transforms.test-run.scratch/seed!]],
+  scratch-table `mapping` from [[metabase-enterprise.transforms-test.scratch/seed!]],
   and the redirected `output-target`, it produces the executable artifact.
 
   ## Two compile paths
@@ -195,7 +195,7 @@
   Arguments:
   - `transform`     — a `:query` transform value (native SQL or MBQL).
   - `mapping`       — `{real-spec → scratch-spec}` from
-                      [[metabase.transforms.test-run.scratch/seed!]].
+                      [[metabase-enterprise.transforms-test.scratch/seed!]].
   - `output-target` — the redirected `:target` (passed through to the artifact).
   - `opts`          — map with:
     - `:db`           — the `:model/Database` row (for the driver keyword).

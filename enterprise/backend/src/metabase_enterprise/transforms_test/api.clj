@@ -1,14 +1,18 @@
-(ns metabase.transforms-rest.api.transform-test-run
-  "Chained test-run endpoints: `/api/transform-test/:target-type/:id/…`, where
+(ns metabase-enterprise.transforms-test.api
+  "Chained test-run endpoints: `/api/ee/transform-test/:target-type/:id/…`, where
   `target-type` is `transform` or `card`. The multipart contract, response shape,
   and error→HTTP-status mapping are the same for both target types."
   (:require
+   [metabase-enterprise.transforms-test.api.util :as api-util]
+   [metabase-enterprise.transforms-test.core :as test-run.core]
+   [metabase-enterprise.transforms-test.subgraph :as subgraph]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.transforms-rest.api.util :as api-util]
+   [metabase.premium-features.core :as premium-features]
    [metabase.transforms.core :as transforms.core]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -40,6 +44,32 @@
                          :sources     ids})))
       (set ids))))
 
+(defn- check-test-run-allowed!
+  "Throw a 402 unless the run is allowed: the instance must have the `:dependencies`
+  capability, and every transform the run exercises must have its per-type feature
+  enabled and not be locked. `slice-transforms-thunk` returns those transforms."
+  [slice-transforms-thunk]
+  (api/check (premium-features/has-feature? :dependencies)
+             [402 {:message    (deferred-tru "Transform test runs require the Dependency Tracking feature.")
+                   :error-code "metabase_transforms_test_run_unavailable"}])
+  (doseq [transform (slice-transforms-thunk)]
+    (transforms.core/check-feature-enabled! transform)
+    (api/check (not (transforms.core/transform-locked? transform))
+               [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
+                     :error-code "metabase_transforms_locked"}])))
+
+(defn- transform-slice-transforms
+  "The transforms exercised by a transform-target run — the sub-graph slice."
+  [target-id source-ids all-transforms]
+  (let [{:keys [slice]} (subgraph/resolve-subgraph target-id source-ids all-transforms)]
+    (keep (u/index-by :id all-transforms) slice)))
+
+(defn- card-slice-transforms
+  "The transforms exercised by a card-target run — the sub-graph slice."
+  [card source-ids all-transforms]
+  (let [{:keys [slice]} (subgraph/card->necessary-fixtures card source-ids all-transforms)]
+    (keep (u/index-by :id all-transforms) slice)))
+
 (defn- run-subgraph-test-run!
   "Execute a chained (sub-graph) test run for target transform `target-id` from
   parsed multipart params.
@@ -47,7 +77,7 @@
   Reads the `expected` file part (optional when `assertions` is non-empty), the
   `sources` JSON part (selected boundary source ids), the `input-<id>` leaf
   fixtures, the `options` JSON part, and the `assertions` JSON part, then
-  delegates to `transforms.core/run-chain-test!`.
+  delegates to `test-run.core/run-chain-test!`.
 
   Returns the HTTP response map directly. Never throws — typed errors are mapped
   via `api-util/test-run-error-http-status`; unknown errors become 500."
@@ -65,7 +95,8 @@
           opts           (assoc (api-util/parse-test-run-options (get multipart-params "options"))
                                 :assertions parsed-assertions)]
       (try
-        (let [record (transforms.core/run-chain-test! target-id source-ids fixtures-by-id expected-file opts)]
+        (check-test-run-allowed! #(transform-slice-transforms target-id source-ids (t2/select :model/Transform)))
+        (let [record (test-run.core/run-chain-test! target-id source-ids fixtures-by-id expected-file opts)]
           {:status 200
            :body   (api-util/run-record->response record)})
         (catch clojure.lang.ExceptionInfo e
@@ -96,7 +127,8 @@
           opts           (assoc (api-util/parse-test-run-options (get multipart-params "options"))
                                 :assertions parsed-assertions)]
       (try
-        (let [record (transforms.core/run-card-chain-test! card source-ids fixtures-by-id expected-file opts)]
+        (check-test-run-allowed! #(card-slice-transforms card source-ids (t2/select :model/Transform)))
+        (let [record (test-run.core/run-card-chain-test! card source-ids fixtures-by-id expected-file opts)]
           {:status 200
            :body   (api-util/run-record->response record)})
         (catch clojure.lang.ExceptionInfo e
@@ -145,12 +177,8 @@
    {{:as multipart-params} :multipart-params}]
   (case target-type
     "transform"
-    (let [transform (api/read-check :model/Transform id)]
-      (transforms.core/check-feature-enabled! transform)
-      (api/check (not (transforms.core/transform-locked? transform))
-                 [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
-                       :error-code "metabase_transforms_locked"}])
-      (run-subgraph-test-run! id multipart-params))
+    (do (api/read-check :model/Transform id)
+        (run-subgraph-test-run! id multipart-params))
 
     "card"
     (let [card (api/read-check :model/Card id)]
@@ -174,15 +202,22 @@
                          [:sources {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
   (case target-type
     "transform"
-    (let [transform (api/read-check :model/Transform id)]
-      (transforms.core/check-feature-enabled! transform)
-      (inputs-response #(transforms.core/subgraph-input-tables id (set sources) (t2/select :model/Transform))))
+    (do (api/read-check :model/Transform id)
+        (inputs-response
+         (fn []
+           (let [all-transforms (t2/select :model/Transform)]
+             (check-test-run-allowed! #(transform-slice-transforms id (set sources) all-transforms))
+             (test-run.core/subgraph-input-tables id (set sources) all-transforms)))))
 
     "card"
     (let [card (api/read-check :model/Card id)]
-      (inputs-response #(transforms.core/card-subgraph-input-tables card (set sources) (t2/select :model/Transform))))))
+      (inputs-response
+       (fn []
+         (let [all-transforms (t2/select :model/Transform)]
+           (check-test-run-allowed! #(card-slice-transforms card (set sources) all-transforms))
+           (test-run.core/card-subgraph-input-tables card (set sources) all-transforms)))))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/transform-test` routes."
+  "`/api/ee/transform-test` routes."
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)))

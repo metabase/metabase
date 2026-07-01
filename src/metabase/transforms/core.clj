@@ -16,7 +16,6 @@
    [metabase.transforms.notification]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
-   [metabase.transforms.test-run.chain]
    [metabase.transforms.usage]
    [metabase.transforms.util]
    [potemkin :as p]))
@@ -84,9 +83,4 @@
   update-job-tags!]
  [metabase.transforms.models.transform-tag
   tag-name-exists?
-  tag-name-exists-excluding?]
- [metabase.transforms.test-run.chain
-  run-chain-test!
-  subgraph-input-tables
-  run-card-chain-test!
-  card-subgraph-input-tables])
+  tag-name-exists-excluding?])

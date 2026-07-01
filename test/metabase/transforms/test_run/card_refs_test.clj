@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.card-refs-test
-  "Tests for [[metabase.transforms.test-run.card-refs/card->immediate-refs]].
+  "Tests for [[metabase-enterprise.transforms-test.card-refs/card->immediate-refs]].
 
   Every case asserts:
   - the correct table ids land in `:tables`
@@ -7,10 +7,10 @@
   - the function does not recurse (source cards' physical tables stay hidden)"
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.card-refs :as card-refs]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [metabase.transforms.test-run.card-refs :as card-refs]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 

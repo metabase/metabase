@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.resolve-test
-  "Tests for metabase.transforms.test-run.resolve.
+  "Tests for metabase-enterprise.transforms-test.resolve.
 
   `rewrite-native-sql` and the three-guard `verify` only parse, so they are tested
   directly with no DB. `resolve-test-transform` end-to-end (compile + rewrite/override
@@ -7,12 +7,12 @@
   with `mt/dataset test-data`."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.resolve :as resolve]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
-   [metabase.test :as mt]
-   [metabase.transforms.test-run.resolve :as resolve]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
