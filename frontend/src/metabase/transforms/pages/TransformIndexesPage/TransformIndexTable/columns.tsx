@@ -2,13 +2,15 @@ import { t } from "ttag";
 
 import { parseTimestampWithTimezone } from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Ellipsified, Group, Icon, Tooltip } from "metabase/ui";
+import { Ellipsified, Flex, Group, Icon, Tooltip } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { TableIndexEntry } from "metabase-types/api";
 
 import { IndexRowMenu } from "./IndexRowMenu";
 import type { IndexRow } from "./types";
 import { formatStatus, getIndexName } from "./utils";
+
+const ACTIONS_COLUMN_WIDTH = 56;
 
 type Actions = {
   onEdit: (index: TableIndexEntry) => void;
@@ -134,14 +136,16 @@ export function getColumns({
     columns.push({
       id: "actions",
       header: "",
-      width: 40,
+      width: ACTIONS_COLUMN_WIDTH,
       enableSorting: false,
       cell: ({ row }) => (
-        <IndexRowMenu
-          index={row.original}
-          onEdit={actions.onEdit}
-          onDelete={actions.onDelete}
-        />
+        <Flex justify="center">
+          <IndexRowMenu
+            index={row.original}
+            onEdit={actions.onEdit}
+            onDelete={actions.onDelete}
+          />
+        </Flex>
       ),
     });
   }
