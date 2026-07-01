@@ -22,23 +22,27 @@ export const Comments = {
 function getDocumentNodeButton({
   targetId,
   childTargetId,
-  hasComments,
   isCardEmbedNode,
 }: {
   targetId: DocumentId;
   childTargetId: string;
+  // Kept for call-site compatibility; the node comment link no longer
+  // varies by comment state (see comment on threadPath below).
   hasComments?: boolean;
   isCardEmbedNode?: boolean;
 }) {
-  const threadUrl = `/document/${targetId}/comments/${childTargetId}${hasComments ? "" : "?new=true"}`;
-
   if (isCardEmbedNode) {
     return cy.findByRole("button", { name: "Comments" });
-  } else {
-    return getDocumentNodeButtons().filter(
-      (_, element) => element.getAttribute("href") === threadUrl,
-    );
   }
+
+  // The comment link points at the node's thread path plus whatever query
+  // params are currently on the URL (`useCommentUrl` appends `location.search`).
+  // It no longer carries a `?new=true` marker, so match on the path only.
+  const threadPath = `/document/${targetId}/comments/${childTargetId}`;
+  return getDocumentNodeButtons().filter(
+    (_, element) =>
+      (element.getAttribute("href") ?? "").split("?")[0] === threadPath,
+  );
 }
 
 function getDocumentNodeButtons() {
