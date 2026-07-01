@@ -214,7 +214,6 @@
 (set! *warn-on-reflection* true)
 
 (defn- test-drivers []
-  ;; coverage probe: drop the redshift/clickhouse/sqlserver exclusion to see what actually passes in CI.
   (mt/normal-drivers-with-feature :transforms/table))
 
 (defn- target-table-gen [prefix]
