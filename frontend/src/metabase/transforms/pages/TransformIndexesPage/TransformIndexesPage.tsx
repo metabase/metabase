@@ -3,10 +3,14 @@ import { t } from "ttag";
 
 import {
   skipToken,
+  useDeleteTableIndexMutation,
   useGetTransformQuery,
   useListTableIndexesQuery,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -68,6 +72,7 @@ function TransformIndexesContent({
     isLoading,
     error,
   } = useListTableIndexesQuery({ "transform-id": transform.id });
+  const { deleteIndex, confirmationModal } = useDeleteIndex();
   const targetTableExists = transform.table != null;
   const hasRequestableIndexes =
     Object.keys(transform.requestable_indexes ?? {}).length > 0;
@@ -77,6 +82,7 @@ function TransformIndexesContent({
   } | null>(null);
 
   const handleCreate = () => setEditorState({});
+  const handleEdit = (index: TableIndexEntry) => setEditorState({ index });
 
   if (isLoading || !isNullOrUndefined(error)) {
     return (
@@ -102,7 +108,12 @@ function TransformIndexesContent({
         {indexes.length === 0 ? (
           <NoIndexes />
         ) : (
-          <TransformIndexTable indexes={indexes} />
+          <TransformIndexTable
+            indexes={indexes}
+            readOnly={readOnly}
+            onEdit={handleEdit}
+            onDelete={deleteIndex}
+          />
         )}
       </TitleSection>
       {editorState != null && (
@@ -112,6 +123,40 @@ function TransformIndexesContent({
           onClose={() => setEditorState(null)}
         />
       )}
+      {confirmationModal}
     </>
   );
+}
+
+function useDeleteIndex() {
+  const [sendToast] = useToast();
+  const [deleteTableIndex] = useDeleteTableIndexMutation();
+  const { modalContent: confirmationModal, show: showConfirmation } =
+    useConfirmation();
+
+  function deleteIndex(index: TableIndexEntry) {
+    const requestId = index.request?.id;
+    if (requestId == null) {
+      return;
+    }
+    showConfirmation({
+      title: t`Delete this index?`,
+      message: t`This removes the index from the warehouse.`,
+      confirmButtonText: t`Delete`,
+      confirmButtonProps: { color: "danger" },
+      onConfirm: async () => {
+        try {
+          await deleteTableIndex(requestId).unwrap();
+          sendToast({ message: t`Index deleted` });
+        } catch (deleteError) {
+          sendToast({
+            message: getErrorMessage(deleteError, t`Failed to delete index`),
+            icon: "warning",
+          });
+        }
+      },
+    });
+  }
+
+  return { deleteIndex, confirmationModal };
 }

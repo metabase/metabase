@@ -4,14 +4,27 @@ import { parseTimestampWithTimezone } from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Ellipsified, Group, Icon, Tooltip } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import type { TableIndexEntry } from "metabase-types/api";
 
+import { IndexRowMenu } from "./IndexRowMenu";
 import type { IndexRow } from "./types";
 import { formatStatus, getIndexName } from "./utils";
 
-export function getColumns(
-  systemTimezone: string | undefined,
-): TreeTableColumnDef<IndexRow>[] {
-  return [
+type Actions = {
+  onEdit: (index: TableIndexEntry) => void;
+  onDelete: (index: TableIndexEntry) => void;
+};
+
+type ColumnsProps = {
+  systemTimezone: string | undefined;
+  actions: Actions | undefined;
+};
+
+export function getColumns({
+  systemTimezone,
+  actions,
+}: ColumnsProps): TreeTableColumnDef<IndexRow>[] {
+  const columns: TreeTableColumnDef<IndexRow>[] = [
     {
       id: "name",
       header: t`Name`,
@@ -116,4 +129,22 @@ export function getColumns(
       },
     },
   ];
+
+  if (actions != null) {
+    columns.push({
+      id: "actions",
+      header: "",
+      width: 40,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <IndexRowMenu
+          index={row.original}
+          onEdit={actions.onEdit}
+          onDelete={actions.onDelete}
+        />
+      ),
+    });
+  }
+
+  return columns;
 }

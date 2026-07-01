@@ -15,11 +15,19 @@ import { getIndexKey } from "./utils";
 
 type TransformIndexTableProps = {
   indexes: TableIndexEntry[];
+  readOnly?: boolean;
+  onEdit: (index: TableIndexEntry) => void;
+  onDelete: (index: TableIndexEntry) => void;
 };
 
 const DEFAULT_SORTING: SortingState = [{ id: "name", desc: false }];
 
-export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
+export function TransformIndexTable({
+  indexes,
+  readOnly,
+  onEdit,
+  onDelete,
+}: TransformIndexTableProps) {
   const systemTimezone = useSetting("system-timezone");
   const { data: usersResponse } = useListUsersQuery();
   const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
@@ -48,7 +56,14 @@ export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
     [indexes, usersById],
   );
 
-  const columns = useMemo(() => getColumns(systemTimezone), [systemTimezone]);
+  const columns = useMemo(
+    () =>
+      getColumns({
+        systemTimezone,
+        actions: readOnly ? undefined : { onEdit, onDelete },
+      }),
+    [systemTimezone, readOnly, onEdit, onDelete],
+  );
 
   const treeTableInstance = useTreeTableInstance<IndexRow>({
     data: rows,
