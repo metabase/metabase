@@ -35,13 +35,10 @@ const metabotResponseWithNavigateTo = `${metabotResponse}
 
 const metabotRetryResponse = `0:"Retry: Here is the [question link](${adHocQuestionPath})"`;
 
-const sqlEditorPath = `/question#${btoa(
-  JSON.stringify({
-    dataset_query: { database: 1, type: "native", native: { query: "" } },
-  }),
-)}`;
-const metabotResponseWithSqlEditor = `0:"Opening the SQL editor for you."
-2:{"type":"navigate_to","version":1,"value":"${sqlEditorPath}"}`;
+// Captured navigate_to event verbatim from a real embedding Metabot response
+// (database id swapped from 2 to 1 to match this env's Sample Database).
+const metabotResponseWithSqlEditor = `0:"I'll direct you to the SQL editor for the Sample Database so you can write a query for the most popular products!"
+2:{"type":"navigate_to","version":1,"value":"/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5IjoiIn19fQ=="}`;
 
 describe("scenarios > embedding-sdk > metabot-question", () => {
   const setup = (response: string) => {
