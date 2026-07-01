@@ -11,7 +11,7 @@ if docker ps -a --format '{{.Names}}' | grep -qx "$PG_CONTAINER"; then
 else
   echo "== Starting Postgres ($PG_CONTAINER) on network $NET, volume $PG_VOLUME =="
   docker run -d --name "$PG_CONTAINER" --network "$NET" --network-alias "$PG_HOST" \
-    -v "$PG_VOLUME:/var/lib/postgresql/data" \
+    -v "$PG_VOLUME:/var/lib/postgresql" \
     -e POSTGRES_USER="$PG_USER" -e POSTGRES_PASSWORD="$PG_PASS" -e POSTGRES_DB="$PG_DB" \
     postgres:18
 fi

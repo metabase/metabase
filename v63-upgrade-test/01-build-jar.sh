@@ -4,14 +4,18 @@
 set -euo pipefail
 . "$(dirname "$0")/config.sh"
 
-: "${GH_TOKEN:?Set GH_TOKEN (mage jar-download needs it to pull the CI artifact)}"
-
 mkdir -p "$BUILD_DIR"
 
-echo "== Downloading master EE uberjar via mage =="
-( cd "$METABASE_DIR" && ./bin/mage jar-download master "$BUILD_DIR" )
-
-SRC_JAR="$(ls -t "$BUILD_DIR"/metabase_branch_master_*.jar | head -1)"
+SRC_JAR="$(ls -t "$BUILD_DIR"/metabase_branch_master_*.jar 2>/dev/null | head -1 || true)"
+if [ -n "$SRC_JAR" ] && [ -z "${FORCE_DOWNLOAD:-}" ]; then
+  echo "== Reusing existing master jar (skip download): $SRC_JAR =="
+  echo "   (set FORCE_DOWNLOAD=1 to re-fetch the latest CI artifact)"
+else
+  : "${GH_TOKEN:?Set GH_TOKEN (mage jar-download needs it to pull the CI artifact)}"
+  echo "== Downloading master EE uberjar via mage =="
+  ( cd "$METABASE_DIR" && ./bin/mage jar-download master "$BUILD_DIR" )
+  SRC_JAR="$(ls -t "$BUILD_DIR"/metabase_branch_master_*.jar | head -1)"
+fi
 echo "Source jar: $SRC_JAR"
 cp "$SRC_JAR" "$JAR_FINAL"
 
@@ -28,7 +32,10 @@ major="$(printf '%s' "$FAKE_TAG" | cut -d'.' -f2)"
 echo "Parsed major_version = $major (H2 removal fires when >= 63)"
 
 echo "== Stripping org/h2/* from the uberjar =="
-zip -q -d "$JAR_FINAL" 'org/h2/*' || true
+# CI's update-build.yml only does `zip -d 'org/h2/*'`, which misses the multi-release-jar
+# overlay classes under META-INF/versions/N/org/h2/ (still loaded on Java 9+). Strip both so
+# H2 is fully gone. NOTE: the real workflow needs the second pattern too.
+zip -q -d "$JAR_FINAL" 'org/h2/*' 'META-INF/versions/*/org/h2/*' || true
 
 echo "== Asserting H2 classes are gone =="
 h2count="$(unzip -l "$JAR_FINAL" | grep -c 'org/h2/' || true)"
