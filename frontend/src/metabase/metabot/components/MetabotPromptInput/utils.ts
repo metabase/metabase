@@ -81,6 +81,10 @@ export const parseClipboardTextAsParagraphs = (
   return Slice.maxOpen(fragment);
 };
 
+// Matches both entity mentions (`metabase://question/123`) and ad-hoc chart
+// mentions (`metabase://adhoc/<base64>`). Broadened from the shared
+// METABSE_PROTOCOL_MD_LINK (numeric-only id) so the non-numeric base64 id of an
+// ad-hoc chart is captured too.
 const MENTION_REGEX = /\[([^\]]+)\]\(metabase:\/\/([^/]+)\/([^)]+)\)/g;
 
 export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {

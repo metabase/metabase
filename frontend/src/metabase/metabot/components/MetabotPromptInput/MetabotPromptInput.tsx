@@ -5,7 +5,7 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import Text from "@tiptap/extension-text";
 import { TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
@@ -36,6 +36,30 @@ import {
   parseMetabotMessageToTiptapDoc,
   serializeTiptapToMetabotMessage,
 } from "./utils";
+
+/**
+ * Inserts a pasted Metabot chart into the prompt as an ad-hoc @mention chip (the
+ * chart is NOT saved); the whole chart is encoded into the chip and, on submit,
+ * decoded into the request's ad-hoc context.
+ */
+function insertAdhocChartMention(editor: Editor, payload: ChartClipboardPayload) {
+  const encoded = encodeAdhocChartPayload({
+    query: payload.dataset_query,
+    display: payload.display,
+    name: payload.name,
+    description: payload.description,
+    visualization_settings: payload.visualization_settings,
+  });
+  editor
+    .chain()
+    .focus()
+    .insertContent({
+      type: "adhocChartMention",
+      attrs: { payload: encoded, label: payload.name },
+    })
+    .insertContent(" ")
+    .run();
+}
 
 export interface MetabotPromptInputProps {
   value: string;
@@ -216,26 +240,10 @@ export const MetabotPromptInput = forwardRef<
       ],
     );
 
-    // Pasting a copied Metabot chart inserts an ad-hoc @mention chip (the chart
-    // is NOT saved); on submit it is decoded into the request's ad-hoc context.
     onPasteChartRef.current = (payload: ChartClipboardPayload) => {
-      if (!editor) {
-        return;
+      if (editor) {
+        insertAdhocChartMention(editor, payload);
       }
-      const encoded = encodeAdhocChartPayload({
-        query: payload.dataset_query,
-        display: payload.display,
-        name: payload.name,
-      });
-      editor
-        .chain()
-        .focus()
-        .insertContent({
-          type: "adhocChartMention",
-          attrs: { payload: encoded, label: payload.name },
-        })
-        .insertContent(" ")
-        .run();
     };
 
     useImperativeHandle(ref, () => {

@@ -1,6 +1,7 @@
 import { useClipboard } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { noop } from "underscore";
 
@@ -14,6 +15,7 @@ import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { getSetting } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Anchor,
@@ -56,42 +58,37 @@ export function MetabotInlineChart({
   const savedCardId = useSelector((state) =>
     getSavedChartCardId(state, entityId),
   );
+  const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+
+  const question = useMemo(() => {
+    const base = new Question({
+      dataset_query: datasetQuery,
+      visualization_settings: {},
+      name: title,
+      description,
+      ...(display != null ? { display, displayIsLocked: true } : {}),
+    });
+    // The model usually provides a display; fall back to the query's default
+    // rather than hardcoding a display type.
+    return display != null ? base : base.setDefaultDisplay();
+  }, [datasetQuery, title, description, display]);
+
+  const card = useMemo(() => question.card(), [question]);
 
   const clipboardPayload = useMemo(
     () =>
-      serializeChartClipboard({
-        name: title,
-        description,
-        display: display ?? "table",
-        dataset_query: datasetQuery,
-        visualization_settings: {},
-      }),
-    [title, description, display, datasetQuery],
+      serializeChartClipboard(
+        {
+          name: title,
+          description,
+          display: question.display(),
+          dataset_query: datasetQuery,
+          visualization_settings: {},
+        },
+        siteUrl,
+      ),
+    [title, description, question, datasetQuery, siteUrl],
   );
-
-  const handleCopyEvent = (event: React.ClipboardEvent) => {
-    const hasTextSelection = !!window.getSelection()?.toString();
-    if (hasTextSelection) {
-      return;
-    }
-    event.preventDefault();
-    event.clipboardData.setData("text/plain", clipboardPayload);
-  };
-
-  const question = useMemo(
-    () =>
-      new Question({
-        dataset_query: datasetQuery,
-        display: display ?? "table",
-        displayIsLocked: display != null,
-        visualization_settings: {},
-      })
-        .setDisplayName(title)
-        .setDescription(description ?? null),
-    [datasetQuery, display, title, description],
-  );
-
-  const card = useMemo(() => question.card(), [question]);
 
   const link = useMemo(
     () =>
@@ -136,12 +133,7 @@ export function MetabotInlineChart({
   };
 
   return (
-    <Box
-      className={S.container}
-      data-testid="metabot-inline-chart"
-      tabIndex={0}
-      onCopy={handleCopyEvent}
-    >
+    <Box className={S.container} data-testid="metabot-inline-chart">
       <Flex className={S.header} align="center" gap="sm">
         <Anchor
           className={S.title}
@@ -164,29 +156,30 @@ export function MetabotInlineChart({
             <Icon name="copy" size={16} />
           </ActionIcon>
         </Tooltip>
-        {savedCardId != null && (
-          <Anchor
-            component={ForwardRefLink}
-            to={Urls.question(question.setId(savedCardId))}
-            target="_blank"
-            size="sm"
-            c="text-secondary"
-          >
-            <Flex align="center" gap="xs">
-              <Icon name="check" size={14} />
+        {match({ savedCardId, readonly })
+          .with({ savedCardId: P.number.select() }, (id) => (
+            <Button
+              component={ForwardRefLink}
+              to={Urls.question(question.setId(id))}
+              target="_blank"
+              variant="subtle"
+              color="text-secondary"
+              size="compact-xs"
+              leftSection={<Icon name="check" size={14} />}
+            >
               {t`Saved`}
-            </Flex>
-          </Anchor>
-        )}
-        {savedCardId == null && !readonly && (
-          <Button
-            variant="subtle"
-            size="xs"
-            onClick={() => setIsSaveModalOpen(true)}
-          >
-            {t`Save`}
-          </Button>
-        )}
+            </Button>
+          ))
+          .with({ readonly: true }, () => null)
+          .otherwise(() => (
+            <Button
+              variant="subtle"
+              size="compact-xs"
+              onClick={() => setIsSaveModalOpen(true)}
+            >
+              {t`Save`}
+            </Button>
+          ))}
       </Flex>
       <Box className={S.viz}>
         {chartError ? (
