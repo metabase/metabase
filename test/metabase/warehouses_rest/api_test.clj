@@ -2826,3 +2826,19 @@
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
                                        {:write_data_details {:host "write-host"
                                                              :write-data-connection true}}))))))))
+
+(deftest update-database-preserves-overlay-details-test
+  (testing "PUT /api/database/:id without write_data_details/provider_name keys"
+    (testing "preserves nullable fields instead of nil-ing them out"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
+                                                    :details            {:host "localhost"}
+                                                    :write_data_details {:host "write-host"}
+                                                    :provider_name      "AWS RDS"}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:name "Renamed DB"})
+            (is (=? {:name               "Renamed DB"
+                     :write_data_details {:host "write-host"}
+                     :provider_name      "AWS RDS"}
+                    (t2/select-one :model/Database :id db-id)))))))))
