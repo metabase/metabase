@@ -12,11 +12,6 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 
-/**
- * While editing a dashboard, lets the user paste a copied Metabot chart (see
- * `chart-clipboard`) onto the canvas: the ad-hoc chart is materialized into a
- * dashboard question and placed as a new dashcard.
- */
 export function useDashboardChartPaste() {
   const dispatch = useDispatch();
   const [createCard] = useCreateCardMutation();

@@ -3,24 +3,18 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { createMockCard } from "metabase-types/api/mocks";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
-// `useDashboardContext` needs a fully-loaded dashboard and `addCardToDashboard`
-// fans out to card/data/metadata fetches; both are their own tested concerns, so
-// only those two are stubbed. The store, createCard request, and undo toast run
-// for real.
+// Placing a dashcard is `addCardToDashboard`'s own responsibility (and fans out
+// to card/data/metadata fetches covered by its action spec); here we only assert
+// the hook calls it with the right args. Everything else runs for real.
 const mockAddCardToDashboard = jest.fn((_opts: unknown) => () =>
   Promise.resolve(),
 );
-const mockUseDashboardContext = jest.fn();
-
-jest.mock("metabase/dashboard/context", () => ({
-  ...jest.requireActual("metabase/dashboard/context"),
-  useDashboardContext: () => mockUseDashboardContext(),
-}));
 jest.mock("metabase/dashboard/actions", () => ({
   ...jest.requireActual("metabase/dashboard/actions"),
   addCardToDashboard: (opts: unknown) => mockAddCardToDashboard(opts),
@@ -47,12 +41,15 @@ function setup({
   isEditing = true,
   selectedTabId = null,
 }: { isEditing?: boolean; selectedTabId?: number | null } = {}) {
-  mockUseDashboardContext.mockReturnValue({
-    dashboard: { id: 7 },
-    isEditing,
-    selectedTabId,
-  });
-  renderWithProviders(<TestComponent />);
+  renderWithProviders(
+    <MockDashboardContext
+      dashboard={createMockDashboard({ id: 7 })}
+      isEditing={isEditing}
+      selectedTabId={selectedTabId}
+    >
+      <TestComponent />
+    </MockDashboardContext>,
+  );
 }
 
 function paste(text: string) {
