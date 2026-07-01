@@ -47,27 +47,35 @@
 
 (def ^:private response-schema
   {:type       "object"
-   :properties {:score     {:type        "number"
+   :properties {:reasoning {:type        "string"
+                            :description "One sentence: state the DOMAIN FIT and the TEMPORAL FIT, then justify the score."}
+                :score     {:type        "number"
                             :minimum     0
                             :maximum     1
-                            :description "Relevance in [0.0, 1.0]. 1 = events directly explain notable moments in the chart; 0.5 = same domain, partial alignment; 0 = unrelated."}
-                :reasoning {:type        "string"
-                            :description "One short sentence justifying the score, retained for debugging only."}}
-   :required   ["score" "reasoning"]})
+                            :description "Relevance in [0.0, 1.0]. >=0.7 = recommend showing this timeline overlaid on the chart (domain matches what the chart measures and events fall within its time range); <0.4 = unrelated domain or events outside the range."}}
+   :required   ["reasoning" "score"]})
 
 (def ^:private rubric-preamble
-  "You are an analytics assistant rating how relevant a timeline of events is for understanding a single chart.
+  "You are an analytics assistant deciding whether a timeline of events is worth overlaying on a single chart to help a user understand it. Your score decides whether we surface the timeline to the user, so treat it as a recommendation (should we show this?), not a proof (does this provably explain every movement?).
 
-You see the chart's stats (notable moments include outliers, significant changes, patterns, and the most recent change), the user's question that motivated the analysis, the timeline's name and description, and the timeline's events with their timestamps.
+You see the chart's statistics (notable moments: outliers, significant changes, trend, patterns, and the most recent change), the user's question that motivated the analysis, the timeline's name and description, and the timeline's events with their timestamps.
+
+Judge two things:
+1. DOMAIN FIT - does the timeline's subject plausibly relate to what the chart measures? (e.g. marketing, sales, or pricing events for a revenue chart; environmental, weather, or policy events for a water-quality chart.)
+2. TEMPORAL FIT - do the events fall within the chart's time range, and ideally near its notable moments?
 
 Score in [0.0, 1.0]:
-- 1.0   events directly correspond in time to notable moments in the chart and plausibly explain them
-- 0.7+  several events temporally align with key points and the timeline's domain matches what the chart measures
-- 0.4   moderately related (same domain, or a few events near key points)
-- 0.2   weakly related (events present but don't line up; or domain is loosely related)
-- 0.0   unrelated, no events, or actively misleading
+- 0.9-1.0  Strong on both axes: events land on or near the chart's notable moments AND the domain plausibly explains them.
+- 0.7-0.85 Clearly relevant and worth showing: the domain matches what the chart measures AND the events fall within the chart's active time range. Score in this band even if you cannot tie each event to a specific spike - an analyst looking at this chart would want these events overlaid. Most genuinely useful timelines belong here.
+- 0.4-0.6  Partially relevant: the domain matches but the events sit mostly outside the chart's time range, OR the events are in range but the domain is only loosely related to what the chart measures.
+- 0.1-0.3  Weakly related: little domain connection and events that barely overlap the time range.
+- 0.0      Unrelated, no events, events entirely outside the chart's time range, or actively misleading.
 
-Be calibrated. Most timelines are weakly related (~0.2-0.5); reserve >=0.8 for timelines that clearly explain what the chart shows.
+Calibration rules:
+- 0.7 is the bar for 'recommend showing this'. If DOMAIN FIT is clear AND at least some events fall within the chart's time range, do NOT score below 0.7 just because the events do not pinpoint a specific spike.
+- If the events fall entirely outside the chart's time range, or the domain is unrelated to what the chart measures, score below 0.4 (usually 0.0), no matter how notable the events are in the abstract.
+
+First write one sentence of reasoning that explicitly states the DOMAIN FIT and the TEMPORAL FIT; then give a score consistent with that reasoning.
 
 Always return a single object matching the supplied schema. Do not respond with prose.
 
@@ -80,7 +88,7 @@ Always return a single object matching the supplied schema. Do not respond with 
 
 (defn- chart->representation
   [chart-config]
-  (let [stats (interestingness/compute-chart-stats chart-config {:deep? false})]
+  (let [stats (interestingness/compute-chart-stats chart-config {:deep? true})]
     (interestingness/generate-representation
      {:title           (:title chart-config)
       :display-type    (:display_type chart-config)

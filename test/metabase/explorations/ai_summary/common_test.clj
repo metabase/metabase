@@ -5,6 +5,7 @@
   `run-with-repair` — exercises its control flow against a stubbed `call-llm`
   via `with-redefs`."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.explorations.ai-summary.common :as common]))
 
@@ -255,3 +256,37 @@
           (is (= []       (:validation-errors a2)))
           (is (= 1 (:attempt a1)))
           (is (= 2 (:attempt a2))))))))
+
+;;; ---------------------------------------------- final-attempt-diagnostics ----------------------------------------------
+;;;
+;;; `final-attempt-diagnostics` formats what the model returned on the final failed
+;;; attempt into the give-up WARN log line. We test the (private) formatter directly.
+
+(deftest final-attempt-diagnostics-no-tool-call-test
+  (testing "nil response → no-tool-call?=true, with usage, reasoning size, and emitted text"
+    (let [s (#'common/final-attempt-diagnostics
+             {:response nil
+              :trace    {:text      "I'll answer in prose instead"
+                         :reasoning (apply str (repeat 50 "x"))
+                         :usage     {:promptTokens 100 :completionTokens 16000}}})]
+      (is (str/includes? s "no-tool-call?=true"))
+      (is (str/includes? s "completionTokens 16000") "token usage is logged")
+      (is (str/includes? s "50 chars") "reasoning's true size is logged up front")
+      (is (str/includes? s "I'll answer in prose instead")))))
+
+(deftest final-attempt-diagnostics-with-response-test
+  (testing "non-nil response → no-tool-call?=false; missing text/reasoning render as (none)"
+    (let [s (#'common/final-attempt-diagnostics
+             {:response {:document {:bad 1}}
+              :trace    {:usage {:promptTokens 5 :completionTokens 6}}})]
+      (is (str/includes? s "no-tool-call?=false"))
+      (is (str/includes? s "text=(none)"))
+      (is (str/includes? s "reasoning=(none)")))))
+
+(deftest final-attempt-diagnostics-elides-long-text-and-reasoning-test
+  (testing "Oversized text and reasoning are elided in the log line rather than dumped whole"
+    (let [big (apply str (repeat 9000 "x"))
+          s   (#'common/final-attempt-diagnostics {:response nil :trace {:text big :reasoning big}})]
+      (is (str/includes? s "...") "elide marker present")
+      (is (str/includes? s "9000 chars") "reasoning's true size is still logged")
+      (is (< (count s) 9000) "neither field was dumped at full length"))))

@@ -213,3 +213,38 @@
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
                     metabot.self/call-llm-structured (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (ti/score-query-timeline (:id q) (:id tl))))))))
+
+(deftest prompt-uses-two-axis-rubric-and-deep-stats-test
+  (testing "the prompt sent to the LLM carries the domain/temporal-fit rubric and deep-stat notable moments"
+    (mt/with-temp [:model/User u {:email "ti-prompt@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u)
+                                     :dataset_query (count-query)}
+                   :model/Timeline tl {:name "Promotions" :creator_id (:id u)}
+                   :model/TimelineEvent _e {:timeline_id  (:id tl)
+                                            :name         "Big sale"
+                                            :timestamp    #t "2025-04-01T00:00:00Z"
+                                            :time_matters true
+                                            :timezone     "UTC"
+                                            :icon         "star"
+                                            :creator_id   (:id u)}]
+      (let [thread   (temp-thread! (:id u) "Why did revenue jump?")
+            q        (done-query! (:id thread) (:id card))
+            captured (atom nil)]
+        (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                      metabot.self/call-llm-structured
+                      (fn [_ messages _ _ _ _]
+                        (reset! captured (-> messages first :content))
+                        {:score 0.9 :reasoning "ok"})]
+          (ti/score-query-timeline (:id q) (:id tl)))
+        (let [msg @captured]
+          (is (some? msg) "the LLM was invoked and its user message captured")
+          (testing "two-axis (domain + temporal fit) rubric is wired in"
+            (is (re-find #"DOMAIN FIT" msg))
+            (is (re-find #"TEMPORAL FIT" msg)))
+          (testing "deep-stat notable moments reach the prompt (deep? true)"
+            (is (re-find #"Most Recent Change" msg))))))))
+
+(deftest response-schema-is-reasoning-first-test
+  (testing "reasoning is required before score so the model reasons then commits to a number"
+    (is (= ["reasoning" "score"] (:required @#'ti/response-schema)))
+    (is (= [:reasoning :score] (keys (:properties @#'ti/response-schema))))))

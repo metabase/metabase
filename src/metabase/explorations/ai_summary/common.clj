@@ -32,7 +32,8 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.string :as u.str])
   (:import
    (clojure.lang ExceptionInfo)
    (java.io ByteArrayInputStream)))
@@ -485,6 +486,27 @@
      :value             value
      :validation-errors (vec (validate-fn value))}))
 
+(def ^:private max-logged-model-chars
+  "Cap on how many chars of the model's emitted text / reasoning we put in the give-up WARN log"
+  2000)
+
+(defn- final-attempt-diagnostics
+  "Diagnostic string describing what the model actually returned on the *final*
+  (failed) attempt, for the WARN log when a phase gives up. Text and reasoning are
+  elided to [[max-logged-model-chars]]; reasoning keeps its true size up front
+  (a large block alongside a max-tokens completion count is the budget-exhaustion
+  tell)."
+  [{:keys [response trace]}]
+  (let [{:keys [text reasoning usage]} trace]
+    (str "no-tool-call?=" (nil? response)
+         "; usage=" (pr-str usage)
+         "; reasoning=" (if-let [r (not-empty reasoning)]
+                          (str (count r) " chars: " (u.str/elide r max-logged-model-chars))
+                          "(none)")
+         "; text=" (if-let [t (not-empty text)]
+                     (u.str/elide t max-logged-model-chars)
+                     "(none)"))))
+
 (defn run-with-repair
   "Phase-agnostic LLM call + validate + one repair retry. Returns
 
@@ -524,8 +546,10 @@
           (if (empty? (:validation-errors attempt-2))
             (do (log/infof "AI Summary %s for thread %d: repair succeeded on retry" phase-name thread-id)
                 {:value (:value attempt-2) :attempts [attempt-1 attempt-2] :outcome :ok})
-            (do (log/warnf "AI Summary %s for thread %d: repair failed; giving up.\nErrors:\n%s"
-                           phase-name thread-id (format-errors (:validation-errors attempt-2)))
+            (do (log/warnf "AI Summary %s for thread %d: repair failed; giving up.\nErrors:\n%s\nModel output: %s"
+                           phase-name thread-id
+                           (format-errors (:validation-errors attempt-2))
+                           (final-attempt-diagnostics attempt-2))
                 {:value        nil
                  :attempts     [attempt-1 attempt-2]
                  :outcome      :failed
