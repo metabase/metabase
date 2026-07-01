@@ -11,6 +11,7 @@ type IndexRowMenuProps = {
 
 export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
   const isManaged = index.metabase_managed && index.request?.id !== undefined;
+  const isPendingDeletion = index.request?.status === "delete-pending";
 
   if (!isManaged) {
     return null;
@@ -27,6 +28,7 @@ export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
         <Menu.Item
           leftSection={<Icon name="pencil" />}
           onClick={() => onEdit(index)}
+          disabled={isPendingDeletion}
         >
           {t`Edit`}
         </Menu.Item>
@@ -34,6 +36,7 @@ export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
           c="danger"
           leftSection={<Icon name="trash" />}
           onClick={() => onDelete(index)}
+          disabled={isPendingDeletion}
         >
           {t`Delete`}
         </Menu.Item>
