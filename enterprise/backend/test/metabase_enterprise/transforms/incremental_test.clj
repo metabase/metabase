@@ -214,7 +214,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- test-drivers []
-  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse :sqlserver))
+  ;; redshift/clickhouse have no incremental append path yet; sqlserver does (see the IDENTITY_INSERT handling in the
+  ;; sqlserver driver's run-transform! [:sqlserver :table-incremental]).
+  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse))
 
 (defn- target-table-gen [prefix]
   {:type     :table

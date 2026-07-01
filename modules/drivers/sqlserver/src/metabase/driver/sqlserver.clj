@@ -1,6 +1,6 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:refer-clojure :exclude [mapv get-in])
+  (:refer-clojure :exclude [mapv get-in some])
   (:require
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
@@ -35,7 +35,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [mapv get-in]]
+   [metabase.util.performance :as perf :refer [mapv get-in some]]
    [next.jdbc :as next.jdbc])
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
@@ -1113,6 +1113,42 @@
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
     [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
+
+(defn- identity-column?
+  [{:keys [is_identity]}]
+  (if (number? is_identity) (pos? (long is_identity)) (boolean is_identity)))
+
+(defn- target-column-info
+  "Columns of `qualified-table` (in definition order) and whether the table has an IDENTITY column."
+  [database qualified-table]
+  (let [rows (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                         ["SELECT name, is_identity FROM sys.columns WHERE object_id = OBJECT_ID(?) ORDER BY column_id"
+                          qualified-table])]
+    {:columns       (mapv :name rows)
+     :has-identity? (boolean (some identity-column? rows))}))
+
+;; The full run's `SELECT ... INTO` inherits the source's IDENTITY column, so a plain `INSERT ... SELECT` append that
+;; carries explicit id values is rejected. When the target has an identity column, wrap the append in IDENTITY_INSERT
+;; with an explicit column list so the source ids are written verbatim; otherwise fall back to the generic append.
+(defmethod driver/run-transform! [:sqlserver :table-incremental]
+  [driver {:keys [conn-spec database output-table query] :as transform-details} _opts]
+  (let [target     (keyword output-table)
+        table-name (first (sql.qp/format-honeysql driver target))]
+    (if-not (driver/table-exists? driver database {:schema (namespace target) :name (name target)})
+      (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-transform driver transform-details)]))
+      (let [{:keys [columns has-identity?]} (target-column-info database table-name)]
+        (if-not has-identity?
+          (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-insert driver transform-details)]))
+          (let [{sql-query :query sql-params :params} query
+                insert (format "INSERT INTO %s (%s) %s"
+                               table-name (str/join ", " (map quote-field columns)) sql-query)]
+            ;; `execute-raw-queries!` runs the batch on one connection, so IDENTITY_INSERT stays in scope for the
+            ;; insert. It returns one result map per statement; the insert is the 2nd, and carries the row count.
+            (second (driver/execute-raw-queries!
+                     driver conn-spec
+                     [[(format "SET IDENTITY_INSERT %s ON" table-name)]
+                      [insert sql-params]
+                      [(format "SET IDENTITY_INSERT %s OFF" table-name)]]))))))))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]
