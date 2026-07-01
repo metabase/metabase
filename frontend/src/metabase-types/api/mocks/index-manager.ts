@@ -1,4 +1,10 @@
-import type { TableIndexEntry, TableIndexRequest } from "metabase-types/api";
+import type {
+  IndexField,
+  IndexMethod,
+  RequestableIndexes,
+  TableIndexEntry,
+  TableIndexRequest,
+} from "metabase-types/api";
 
 export const createMockTableIndexRequest = (
   opts?: Partial<TableIndexRequest>,
@@ -36,4 +42,54 @@ export const createMockTableIndexEntry = (
   access_method: null,
   request: createMockTableIndexRequest(),
   ...opts,
+});
+
+const INDEX_NAME_FIELD: IndexField = {
+  name: "name",
+  "display-name": "Give your index a name",
+  type: "string",
+  required: true,
+};
+
+export const createMockIndexMethod = (
+  opts?: Partial<IndexMethod>,
+): IndexMethod => ({
+  lifecycle: "standalone",
+  fields: [INDEX_NAME_FIELD],
+  ...opts,
+});
+
+export const createMockRequestableIndexes = (): RequestableIndexes => ({
+  btree: createMockIndexMethod({
+    fields: [
+      INDEX_NAME_FIELD,
+      {
+        name: "unique",
+        "display-name": "Enforce uniqueness across rows for indexed columns.",
+        type: "boolean",
+      },
+      {
+        name: "columns",
+        "display-name": "Columns",
+        description:
+          "The column(s) the index will be built on. Usually the ones you filter or join by.",
+        type: "columns",
+        required: true,
+        directions: true,
+      },
+    ],
+  }),
+  gin: createMockIndexMethod({
+    fields: [
+      INDEX_NAME_FIELD,
+      {
+        name: "columns",
+        "display-name": "Columns",
+        description:
+          "The column(s) the index will be built on. Usually the ones you filter or join by.",
+        type: "columns",
+        required: true,
+      },
+    ],
+  }),
 });
