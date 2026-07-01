@@ -115,20 +115,18 @@
   "Maximum number of ids per `:in` clause, to stay under database parameter limits."
   1000)
 
-(defn- content-id-batches
-  "Seq of `[model id-batch]` pairs over the content models in `by-model` (a map of `{model-name [ids ...]}`), each batch
-   capped at [[query-batch-size]] so its `:in :id` clause stays under database parameter limits."
-  [by-model]
-  (for [model (filter (set serdes.models/content) (keys by-model))
-        batch (partition-all query-batch-size (get by-model model))]
+(defn- resize-batch
+  [[model batch]]
+  (for [batch (partition-all query-batch-size batch)]
     [model batch]))
 
 (defn- entity-deps
   "The dependency contribution of a single entity, as a `{:visited :deps}` value: the entity's own `[model id]` as
    visited, plus every reference it makes (via [[serdes/serialization-dependencies]]), tagged with the `:via` entity
-   that made it."
-  [model entity]
-  (let [via [model (:id entity)]]
+   that made it. The model name is read off the entity, which [[serdes/extract-query]] returns as a modeled row."
+  [entity]
+  (let [model (name (t2/model entity))
+        via   [model (:id entity)]]
     {:visited #{via}
      :deps    (mapv #(assoc % :via via)
                     (serdes/serialization-dependencies model entity))}))
@@ -150,13 +148,17 @@
   This is the dependency-satisfaction equivalent of the real extraction pass: it shares the extract queries and the
   per-model dependency derivation, differing only in that it neither serializes nor stores anything."
   [by-model coll-set opts]
-  (transduce
-   (mapcat (fn [[model id-batch]]
-             (eduction (map #(entity-deps model %))
-                       (serdes/extract-query model (merge opts {:collection-set coll-set
-                                                                :where          [:in :id id-batch]})))))
-   merge-deps
-   (content-id-batches by-model)))
+  (let [content-models (set serdes.models/content)]
+    (transduce
+     (comp
+      (filter #(contains? content-models (key %)))
+      (mapcat resize-batch)
+      (mapcat (fn [[model batch]]
+                (serdes/extract-query model (merge opts {:collection-set coll-set
+                                                         :where          [:in :id batch]}))))
+      (map entity-deps))
+     merge-deps
+     by-model)))
 
 (defn- existing-ids
   "The subset of `ids` that exist as rows of `model` (a model-name string), queried in bounded `:in` batches."
