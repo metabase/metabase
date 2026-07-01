@@ -911,6 +911,100 @@
   ;; that make end-to-end coverage redundant.
   )
 
+;;; ----------------------------------------------- Create Document Tests ------------------------------------------
+
+(deftest create-document-test
+  (testing "Creates a document from Markdown, defaulting to the caller's personal collection"
+    (mt/with-model-cleanup [:model/Document]
+      (let [personal-id   (:id (collection/user->personal-collection (mt/user->id :rasta)))
+            personal-name (collection/user->personal-collection-name (mt/user->id :rasta) :user)
+            resp          (mt/user-http-request :rasta :post 200 "agent/v1/document"
+                                                {:name    "Agent Report"
+                                                 :content "# Heading\n\nSome **bold** analysis."})]
+        (is (=? {:id              pos?
+                 :name            "Agent Report"
+                 :collection_id   personal-id
+                 :collection_path personal-name}
+                resp))
+        (testing "the Markdown was converted to a ProseMirror AST"
+          (let [doc (t2/select-one :model/Document :id (:id resp))]
+            (is (= "application/json+vnd.prose-mirror" (:content_type doc)))
+            (is (= {:type "doc"
+                    :content [{:type "heading" :attrs {:level 1} :content [{:type "text" :text "Heading"}]}
+                              {:type "paragraph"
+                               :content [{:type "text" :text "Some "}
+                                         {:type "text" :text "bold" :marks [{:type "bold"}]}
+                                         {:type "text" :text " analysis."}]}]}
+                   (:document doc)))))))))
+
+(deftest create-document-explicit-null-collection-test
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (mt/with-model-cleanup [:model/Document]
+      (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/document"
+                                       {:name          "Agent Root Doc"
+                                        :content       "Body"
+                                        :collection_id nil})]
+        (is (=? {:collection_id   nil
+                 :collection_path "Our analytics"}
+                resp))))))
+
+(deftest create-document-collection-test
+  (testing "Creates a document in a specific collection and reports its path"
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Doc Collection"}]
+        (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/document"
+                                         {:name          "Collection Doc"
+                                          :content       "Body"
+                                          :collection_id coll-id})]
+          (is (=? {:collection_id   coll-id
+                   :collection_path "Our analytics / Agent Doc Collection"}
+                  resp))))))
+  (testing "Returns a frontend URL"
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+        (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/document"
+                                         {:name "URL Doc" :content "Body"})]
+          (is (= (str "https://mb.example.com/document/" (:id resp)) (:url resp))))))))
+
+(deftest create-document-embedded-card-test
+  (testing "A {{card:ID}} directive embeds the saved question, cloning it into the document"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Embedded Q"
+                                                :dataset_query (orders-count-query)
+                                                :display       :bar}]
+        (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/document"
+                                         {:name    "Doc With Chart"
+                                          :content (str "# Analysis\n\n{{card:" card-id "}}")})
+              doc  (t2/select-one :model/Document :id (:id resp))
+              embed (->> (get-in doc [:document :content])
+                         (filter #(= "cardEmbed" (:type %)))
+                         first)]
+          (is (some? embed))
+          (testing "the embed points at a card owned by the document (a clone, not the original)"
+            (let [embedded-card-id (get-in embed [:attrs :id])]
+              (is (pos? embedded-card-id))
+              (is (= (:id resp) (t2/select-one-fn :document_id :model/Card :id embedded-card-id))))))))))
+
+(deftest create-document-missing-card-test
+  (testing "Returns 404 when an embedded card id does not exist"
+    (mt/with-model-cleanup [:model/Document]
+      (mt/user-http-request :rasta :post 404 "agent/v1/document"
+                            {:name "Bad Embed" :content "{{card:999999}}"}))))
+
+(deftest create-document-unreadable-card-test
+  (testing "Returns 403 when the caller cannot read an embedded card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Locked Coll"}
+                       :model/Card {card-id :id} {:name          "Locked Q"
+                                                  :collection_id coll-id
+                                                  :dataset_query (orders-count-query)}]
+          (mt/user-http-request :rasta :post 403 "agent/v1/document"
+                                {:name          "Should Fail"
+                                 :content       (str "{{card:" card-id "}}")
+                                 ;; target a collection rasta can write to so the failure is the card read-check
+                                 :collection_id nil}))))))
+
 ;;; ----------------------------------------------- Update Question Tests ------------------------------------------
 
 (deftest update-question-patch-fields-test

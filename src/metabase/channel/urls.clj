@@ -33,6 +33,11 @@
   [^Integer id]
   (format "/question/%d" id))
 
+(defn document-path
+  "Relative frontend path for a `Document` with ID, e.g. \"/document/10\"."
+  [^Integer id]
+  (format "/document/%d" id))
+
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 

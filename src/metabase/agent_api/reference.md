@@ -572,6 +572,39 @@ Response:
 }
 ```
 
+### POST /v1/document
+
+Create a Document - a rich-text report page that can embed saved questions
+(charts) alongside prose. The `content` field is Markdown and is converted to
+the document's internal format server-side. To embed an existing saved question
+inline, place `{{card:<id>}}` on its own line (create the question first with
+POST /v1/question). Each embedded question must be readable by the caller.
+
+If `collection_id` is omitted the document is saved to the caller's personal
+collection; pass an explicit `null` to save it to the root collection.
+
+Request:
+
+```json
+{
+  "name": "Q3 Revenue Analysis",
+  "content": "# Q3 Revenue\n\nRevenue grew **15%** QoQ.\n\n{{card:42}}\n\n## Takeaways\n\n- Widgets led growth\n- AOV trending up",
+  "collection_id": 12
+}
+```
+
+Response:
+
+```json
+{
+  "id": 7,
+  "name": "Q3 Revenue Analysis",
+  "url": "http://localhost:3000/document/7",
+  "collection_id": 12,
+  "collection_path": "Our analytics / Marketing"
+}
+```
+
 ## Typical workflow
 
 1. **Search** - POST /v1/search to find relevant tables, metrics, cards, or dashboards
@@ -584,7 +617,8 @@ Response:
    POST /v2/query to construct and execute in one round-trip with pagination
 5. **Save (optional)** - POST /v1/question to persist the query as a saved
    question; PUT /v1/question/{id} to update one; POST /v1/dashboard to
-   bundle questions into a dashboard; POST /v1/collection to create a
+   bundle questions into a dashboard; POST /v1/document to write a rich-text
+   report that embeds saved questions inline; POST /v1/collection to create a
    collection
 6. **Iterate** - Adjust the query and repeat steps 3-4
 

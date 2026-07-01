@@ -39,6 +39,25 @@
             (is (empty? unknown)
                 (str label " has keys that don't match any tool name: " (vec unknown)))))))))
 
+(defn- tool-named [scopes tool-name]
+  (some #(when (= tool-name (:name %)) %) (mcp.tools/list-tools scopes)))
+
+(deftest ^:parallel create-document-tool-published-test
+  (testing "create_document is generated from the agent-api endpoint and published as an MCP tool"
+    (let [tool (tool-named #{::api.scope/unrestricted} "create_document")]
+      (is (some? tool) "create_document should be present under the unrestricted scope")
+      (is (re-find #"(?i)markdown" (:description tool))
+          "description should tell the agent it authors in Markdown")
+      (let [props (get-in tool [:inputSchema :properties])]
+        (is (contains? props :name))
+        (is (contains? props :content))
+        (is (contains? props :collection_id)))))
+  (testing "create_document is gated by the agent:document:create scope"
+    (is (some? (tool-named #{"agent:document:create"} "create_document")))
+    (is (some? (tool-named #{"agent:document:*"} "create_document")))
+    (is (nil? (tool-named #{"agent:search"} "create_document"))
+        "a scope set without document:create must not expose create_document")))
+
 (defn- data-node?
   "True if `x` is a value type our published JSON-Schema-shaped tool schemas
    are allowed to contain. Visited via `walk/postwalk`, which traverses every

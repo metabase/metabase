@@ -15,6 +15,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.core :as documents]
+   [metabase.documents.prose-mirror :as documents.prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1353,6 +1355,81 @@
      :parent_id     parent_collection_id
      :location      (:location coll)
      :description   (:description coll)}))
+
+;;; ------------------------------------------------- Create Document ------------------------------------------------
+
+(mr/def ::create-document-request
+  "Request shape for `create_document`. `:content` is Markdown (converted to the document's
+  ProseMirror AST server-side); a paragraph that is exactly `{{card:<id>}}` embeds saved question
+  `<id>` inline."
+  [:map
+   [:name {:tool/description "Title for the document."}
+    [:string {:min 1 :max 254}]]
+   [:content {:tool/description (str "The document body as Markdown. Supports headings, bold/italic, "
+                                     "inline code, links, bulleted and numbered lists, code blocks, "
+                                     "blockquotes, and horizontal rules. To embed an existing saved "
+                                     "question (chart) inline, put it on its own line as {{card:ID}} "
+                                     "where ID is a saved-question id from create_question.")}
+    ms/NonBlankString]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::create-document-response
+  [:map
+   [:id              ms/PositiveInt]
+   [:name            ms/NonBlankString]
+   [:url             :string]
+   [:collection_id   [:maybe ms/PositiveInt]]
+   [:collection_path :string]])
+
+(api.macros/defendpoint :post "/v1/document" :- ::create-document-response
+  "Create a new Document — a rich-text page that can embed saved questions (charts) inline.
+
+  The `content` parameter is Markdown and is converted to the document's internal format.
+  Embed an existing saved question by placing `{{card:ID}}` on its own line (create the question
+  first with `create_question`). Each embedded question must be readable by the caller.
+  If `collection_id` is omitted the document is saved to the caller's personal collection.
+  Pass an explicit `null` to save it to the root collection.
+  The response `collection_path` is the saved location."
+  {:scope metabot/agent-document-create
+   :tool  {:name "create_document"
+           :description (str "Create a Document in Metabase: a rich-text report page that can embed "
+                             "saved questions (charts) alongside prose. Pass the body as Markdown in "
+                             "`content`. To embed an existing saved question, create it with "
+                             "create_question, then put {{card:ID}} on its own line in the Markdown. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
+                             "Report the saved location from the response `collection_path`. "
+                             "Returns the document URL.")}}
+  [_route-params
+   _query-params
+   {:keys [content]
+    document-name :name
+    :as body}
+   :- ::create-document-request]
+  ;; `nil` means the root collection, so only default to the personal collection when the key is
+  ;; absent. `(or ...)` would silently turn an explicit `null` into personal.
+  (let [collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))
+        ;; why do we need this?
+        ast           (documents/markdown->prose-mirror content)
+        ;; Read-check every embedded saved question up front: `create-document!` clones embedded
+        ;; cards into the document (read-checking the ones it finds), but a `{{card:ID}}` pointing
+        ;; at a non-existent or unreadable card would otherwise be silently dropped, leaving a
+        ;; broken embed. Surfacing a 403/404 here is the clearer behaviour.
+        embedded-ids  (documents.prose-mirror/card-ids
+                       {:document     ast
+                        :content_type documents.prose-mirror/prose-mirror-content-type})]
+    (doseq [card-id embedded-ids]
+      (api/read-check :model/Card card-id))
+    (let [doc (documents/create-document! {:name          document-name
+                                           :document      ast
+                                           :collection_id collection_id})]
+      {:id              (:id doc)
+       :name            (:name doc)
+       :url             (frontend-url (channel.urls/document-path (:id doc)))
+       :collection_id   (:collection_id doc)
+       :collection_path (collection-path (:collection_id doc))})))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
