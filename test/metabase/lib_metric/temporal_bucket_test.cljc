@@ -146,7 +146,7 @@
 
 (deftest ^:parallel temporal-bucket-handles-various-units-test
   (testing "temporal-bucket works with various temporal units"
-    (doseq [unit [:day :week :month :quarter :year :hour :minute]]
+    (doseq [unit [:day :week :month :quarter :year :hour :minute :second]]
       (let [projection [:dimension {:temporal-unit unit} uuid-datetime]
             result (lib-metric.projection/temporal-bucket projection)]
         (is (= unit (:unit result)) (str "Failed for unit: " unit))))))

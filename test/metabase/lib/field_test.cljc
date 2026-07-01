@@ -490,13 +490,13 @@
                                   (assoc-in [2 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :datetime])
             :selected-unit    :month-of-year
-            :selected-index   13
+            :selected-index   14
             :expected-options (-> lib.temporal-bucket/datetime-bucket-options
-                                  (update 2 dissoc :default)
-                                  (assoc-in [4 :default] true))}
+                                  (update 3 dissoc :default)
+                                  (assoc-in [5 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :time])
             :selected-unit    :minute
-            :selected-index   0
+            :selected-index   1
             :expected-options lib.temporal-bucket/time-bucket-options}]]
     (testing (str (:base-type metadata) " Field")
       (doseq [[what x] {"column metadata" metadata, "field ref" (lib/ref metadata)}]

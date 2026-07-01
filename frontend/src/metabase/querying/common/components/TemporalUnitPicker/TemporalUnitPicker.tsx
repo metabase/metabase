@@ -5,7 +5,7 @@ import { Box, DefaultSelectItem, Text } from "metabase/ui";
 import type { TemporalUnit } from "metabase-types/api";
 
 const MIN_WIDTH = 180;
-const INITIAL_VISIBLE_ITEMS_COUNT = 7;
+const INITIAL_VISIBLE_ITEMS_COUNT = 8;
 
 export interface TemporalUnitItem {
   value: TemporalUnit;

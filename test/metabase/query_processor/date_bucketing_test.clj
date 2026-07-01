@@ -411,10 +411,13 @@
   (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time)))
 
 (deftest group-by-minute-test
-  (testing "This dataset doesn't have multiple events in a minute, the results are the same as the default grouping"
+  (testing (str "This dataset doesn't have multiple events in a minute and its raw timestamps have zero seconds, "
+                "so grouping by :minute or :second returns the same rows as the default grouping")
     (mt/test-drivers (mt/normal-drivers)
-      (is (= (group-by-minute-test-expected-rows driver/*driver*)
-             (sad-toucan-incidents-with-bucketing! :minute :pacific))))))
+      (doseq [unit [:minute :second]]
+        (testing (str "unit " unit)
+          (is (= (group-by-minute-test-expected-rows driver/*driver*)
+                 (sad-toucan-incidents-with-bucketing! unit :pacific))))))))
 
 (deftest group-by-minute-of-hour-test
   (testing "Grouping by minute of hour is not affected by timezones"

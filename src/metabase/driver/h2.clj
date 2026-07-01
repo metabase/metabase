@@ -432,6 +432,7 @@
       (h2x/with-database-type-info "integer")))
 
 (defmethod sql.qp/date [:h2 :default]          [_ _ expr] expr)
+(defmethod sql.qp/date [:h2 :second]           [_ _ expr] (date-trunc :second expr))
 (defmethod sql.qp/date [:h2 :second-of-minute] [_ _ expr] (extract-integer :second expr))
 (defmethod sql.qp/date [:h2 :minute]           [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:h2 :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))

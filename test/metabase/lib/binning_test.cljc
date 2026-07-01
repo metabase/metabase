@@ -64,10 +64,10 @@
            (complement :lib/temporal-unit)
            (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
       (is (=?
-           {:lib/temporal-unit :minute}
+           {:lib/temporal-unit :second}
            (lib/breakout-column query -1 (second (lib/breakouts query)))))
       (is (=?
-           {:lib/temporal-unit :minute}
+           {:lib/temporal-unit :second}
            (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
 
 (deftest ^:parallel binning-equality-test

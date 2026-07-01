@@ -340,7 +340,6 @@
 (def ^:private hidden-bucketing-options
   "Options that are technically legal in MBQL, but that should be hidden in the UI."
   #{:millisecond
-    :second
     :second-of-minute
     :year-of-era})
 

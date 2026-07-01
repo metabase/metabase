@@ -560,6 +560,7 @@
   (h2x/->integer (extract-from-timestamp unit expr)))
 
 (defmethod sql.qp/date [:postgres :default]          [_ _ expr] expr)
+(defmethod sql.qp/date [:postgres :second]           [_ _ expr] (date-trunc :second expr))
 (defmethod sql.qp/date [:postgres :second-of-minute] [_ _ expr] (extract-integer :second expr))
 (defmethod sql.qp/date [:postgres :minute]           [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:postgres :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))

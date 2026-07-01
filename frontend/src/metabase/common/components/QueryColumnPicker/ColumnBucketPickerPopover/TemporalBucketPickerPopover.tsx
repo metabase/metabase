@@ -9,7 +9,7 @@ import * as Lib from "metabase-lib";
 
 import type { CommonBucketPickerProps } from "./types";
 
-export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
+export const INITIALLY_VISIBLE_ITEMS_COUNT = 8;
 
 function getBucketItem(
   query: Lib.Query,

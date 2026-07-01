@@ -82,6 +82,7 @@
 (defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
 
 (defmethod sql.qp/date [:druid-jdbc :default] [_ _ expr] expr)
+(defmethod sql.qp/date [:druid-jdbc :second] [_ _ expr] (date-trunc :second expr))
 (defmethod sql.qp/date [:druid-jdbc :minute] [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:druid-jdbc :hour] [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:druid-jdbc :day] [_ _ expr] (date-trunc :day expr))

@@ -199,7 +199,7 @@
     [:dimensions [:ref ::context.row]]]])
 
 (mr/def ::drill-thru.zoom-in.timeseries.next-unit
-  [:enum :quarter :month :week :day :hour :minute])
+  [:enum :quarter :month :week :day :hour :minute :second])
 
 (mr/def ::drill-thru.zoom-in.timeseries
   [:merge

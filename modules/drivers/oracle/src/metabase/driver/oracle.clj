@@ -251,6 +251,9 @@
   (let [t (h2x/->timestamp v)]
     (h2x/->integer [:floor [::h2x/extract :second t]])))
 
+;; Oracle's TRUNC has no 'SS' format, but CAST to DATE drops fractional seconds while preserving H:M:S.
+;; Oracle's DATE is actually a second-precision datetime, so this is the correct :second truncation.
+(defmethod sql.qp/date [:oracle :second]           [_ _ v] (h2x/->date v))
 (defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
 (defmethod sql.qp/date [:oracle :minute-of-hour]   [_ _ v] [::h2x/extract :minute (h2x/->timestamp v)])

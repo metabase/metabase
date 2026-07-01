@@ -118,7 +118,7 @@
                            :database-position          7
                            :fingerprint
                            {:global {:distinct-count 200, :nil% 0.0}}}
-        expected-units    #{:minute :hour
+        expected-units    #{:second :minute :hour
                             :day :week :month :quarter :year
                             :minute-of-hour :hour-of-day
                             :day-of-week :day-of-month :day-of-year
@@ -157,7 +157,8 @@
 (deftest ^:parallel temporal-bucketing-options-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                   (lib/with-fields [(meta/field-metadata :products :created-at)]))]
-    (is (= [{:unit :minute}
+    (is (= [{:unit :second}
+            {:unit :minute}
             {:unit :hour}
             {:unit :day}
             {:unit :week}
@@ -185,7 +186,8 @@
 
 (deftest ^:parallel temporal-bucketing-options-expressions-test
   (testing "Temporal bucketing should be available for Date and DateTime-valued expressions"
-    (is (=? [{:unit :minute}
+    (is (=? [{:unit :second}
+             {:unit :minute}
              {:unit :hour}
              {:unit :day}
              {:unit :week}
@@ -232,7 +234,8 @@
 
 (deftest ^:parallel short-name-display-info-test
   (let [query (lib.tu/venues-query)]
-    (is (= {"minute"          false
+    (is (= {"second"          false
+            "minute"          false
             "hour"            false
             "day"             false
             "week"            false

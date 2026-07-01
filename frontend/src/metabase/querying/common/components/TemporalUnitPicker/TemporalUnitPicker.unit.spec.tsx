@@ -59,8 +59,8 @@ describe("TemporalUnitPicker", () => {
     expect(queryOption("More…")).not.toBeInTheDocument();
   });
 
-  it("should not allow to expand when there are 7 items or less in the list", () => {
-    setup({ availableItems: DEFAULT_ITEMS.slice(0, 7) });
+  it("should not allow to expand when there are 8 items or less in the list", () => {
+    setup({ availableItems: DEFAULT_ITEMS.slice(0, 8) });
     expect(getOption("Year")).toBeInTheDocument();
     expect(queryOption("More…")).not.toBeInTheDocument();
   });

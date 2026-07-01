@@ -54,7 +54,8 @@ describe("ColumnBucketPickerPopover", () => {
     const buckets = Lib.availableTemporalBuckets(query, 0, dateColumn);
     await setupTemporalBucketPicker({ column: dateColumn });
 
-    expect(screen.getAllByRole("menuitem")).toHaveLength(7);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(8);
+    expect(screen.getByText("Second")).toBeInTheDocument();
     expect(screen.getByText("Minute")).toBeInTheDocument();
     expect(screen.getByText("Year")).toBeInTheDocument();
 
@@ -148,7 +149,7 @@ describe("ColumnBucketPickerPopover", () => {
     await userEvent.click(screen.getByLabelText("Temporal bucket"));
     await screen.findByText("Month");
 
-    expect(screen.getAllByRole("menuitem")).toHaveLength(7);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(8);
   });
 
   it("shouldn't collapse after popover is closed if the selected bucket is in the hidden part", async () => {

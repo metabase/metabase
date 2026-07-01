@@ -428,6 +428,7 @@
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
+(defmethod sql.qp/date [:snowflake :second]          [_ _ expr] (date-trunc :second expr))
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:snowflake :minute-of-hour]  [_ _ expr] (extract :minute expr))
 (defmethod sql.qp/date [:snowflake :hour]            [_ _ expr] (date-trunc :hour expr))

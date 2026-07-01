@@ -410,6 +410,7 @@ function(bin) {
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column
+          :second           (truncate :second)
           :second-of-minute (extract $second column)
           :minute           (truncate :minute)
           :minute-of-hour   (extract $minute column)

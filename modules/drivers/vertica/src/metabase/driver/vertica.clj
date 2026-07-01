@@ -113,6 +113,7 @@
 (def ^:private extract-integer (comp h2x/->integer extract))
 
 (defmethod sql.qp/date [:vertica :default]         [_driver _unit expr] expr)
+(defmethod sql.qp/date [:vertica :second]          [_driver _unit expr] (date-trunc :second expr))
 (defmethod sql.qp/date [:vertica :minute]          [_driver _unit expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:vertica :minute-of-hour]  [_driver _unit expr] (extract-integer :minute expr))
 (defmethod sql.qp/date [:vertica :hour]            [_driver _unit expr] (date-trunc :hour expr))

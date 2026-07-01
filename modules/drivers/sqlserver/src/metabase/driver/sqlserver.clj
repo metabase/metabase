@@ -265,6 +265,13 @@
             [hour minute second fraction precision])
       (h2x/with-database-type-info "time")))
 
+(defmethod sql.qp/date [:sqlserver :second]
+  [_driver _unit expr]
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
+    (time-from-parts (date-part :hour expr) (date-part :minute expr) (date-part :second expr) 0 0)
+    ;; datetime2(0) has second precision (0 fractional-second digits); casting drops any fractional seconds.
+    (h2x/cast "datetime2(0)" expr)))
+
 (defmethod sql.qp/date [:sqlserver :minute]
   [_driver _unit expr]
   (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)

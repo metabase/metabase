@@ -215,6 +215,10 @@
   [_ _ expr]
   [:second (in-report-zone expr)])
 
+(defmethod sql.qp/date [:starburst :second]
+  [_ _ expr]
+  [:date_trunc (h2x/literal :second) (in-report-zone expr)])
+
 (defmethod sql.qp/date [:starburst :minute]
   [_ _ expr]
   [:date_trunc (h2x/literal :minute) (in-report-zone expr)])

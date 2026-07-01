@@ -529,6 +529,13 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str (h2x/->datetime expr))))
 
+(defmethod sql.qp/date [:mysql :second]
+  [_driver _unit expr]
+  (let [format-str (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
+                     "%H:%i:%s"
+                     "%Y-%m-%d %H:%i:%s")]
+    (trunc-with-format format-str expr)))
+
 (defmethod sql.qp/date [:mysql :minute]
   [_driver _unit expr]
   (let [format-str (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)

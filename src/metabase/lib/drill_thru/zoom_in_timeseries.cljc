@@ -102,7 +102,8 @@
     :week    (i18n/tru "See this month by week")
     :day     (i18n/tru "See this week by day")
     :hour    (i18n/tru "See this day by hour")
-    :minute  (i18n/tru "See this hour by minute")))
+    :minute  (i18n/tru "See this hour by minute")
+    :second  (i18n/tru "See this minute by second")))
 
 (mu/defn zoom-in-timeseries-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries]
   "Zooms in on some window, showing it in finer detail.

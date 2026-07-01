@@ -504,6 +504,7 @@
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
 
+(defmethod sql.qp/date [:bigquery-cloud-sdk :second]           [_ _ expr] (trunc   :second    expr))
 (defmethod sql.qp/date [:bigquery-cloud-sdk :second-of-minute] [_ _ expr] (extract :second    expr))
 (defmethod sql.qp/date [:bigquery-cloud-sdk :minute]           [_ _ expr] (trunc   :minute    expr))
 (defmethod sql.qp/date [:bigquery-cloud-sdk :minute-of-hour]   [_ _ expr] (extract :minute    expr))

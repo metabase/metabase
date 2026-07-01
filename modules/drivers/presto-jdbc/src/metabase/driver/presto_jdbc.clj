@@ -250,6 +250,7 @@
 (defn- date-trunc [unit x] [:date_trunc (h2x/literal unit) x])
 
 (defmethod sql.qp/date [:presto-jdbc :default]         [_ _ expr] expr)
+(defmethod sql.qp/date [:presto-jdbc :second]          [_ _ expr] (date-trunc :second expr))
 (defmethod sql.qp/date [:presto-jdbc :minute]          [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:presto-jdbc :minute-of-hour]  [_ _ expr] [:minute expr])
 (defmethod sql.qp/date [:presto-jdbc :hour]            [_ _ expr] (date-trunc :hour expr))
@@ -355,6 +356,10 @@
 (defmethod sql.qp/date [:presto-jdbc :default]
   [_driver _unit expr]
   expr)
+
+(defmethod sql.qp/date [:presto-jdbc :second]
+  [_driver _unit expr]
+  [:date_trunc (h2x/literal :second) (in-report-zone expr)])
 
 (defmethod sql.qp/date [:presto-jdbc :minute]
   [_driver _unit expr]

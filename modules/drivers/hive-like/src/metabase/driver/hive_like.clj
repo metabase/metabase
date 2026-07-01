@@ -97,6 +97,7 @@
   (str-to-date format-str (date-format format-str expr)))
 
 (defmethod sql.qp/date [:hive-like :default]         [_ _ expr] expr)
+(defmethod sql.qp/date [:hive-like :second]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm:ss" (h2x/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (h2x/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] [:minute (h2x/->timestamp expr)])
 (defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (h2x/->timestamp expr)))

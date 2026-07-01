@@ -142,6 +142,10 @@
   [expr]
   (date-trunc :'toMonday expr))
 
+(defmethod sql.qp/date [:clickhouse :second]
+  [_ _ expr]
+  (date-trunc :'toStartOfSecond expr))
+
 (defmethod sql.qp/date [:clickhouse :minute]
   [_ _ expr]
   (date-trunc :'toStartOfMinute expr))

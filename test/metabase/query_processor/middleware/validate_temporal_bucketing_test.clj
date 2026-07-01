@@ -43,7 +43,10 @@
                                          [:datetime-tz :month   true]
                                          [:date        :minute  false]
                                          [:time-tz     :minute  true]
-                                         [:datetime-tz :minute  true]]]
+                                         [:datetime-tz :minute  true]
+                                         [:date        :second  false]
+                                         [:time-tz     :second  true]
+                                         [:datetime-tz :second  true]]]
               (if valid?
                 (testing (format "Valid combinations (%s × %s) should return query as-is" field unit)
                   (is (=? (lib.schema.util/remove-lib-uuids (query field unit))
