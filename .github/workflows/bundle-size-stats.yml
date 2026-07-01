@@ -23,8 +23,9 @@ jobs:
     timeout-minutes: 15
     env:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-      # Only record a data point when a bundle's gzipped size moved by at least
-      # this percent vs the last plotted point, keeping the chart to real changes.
+      # Only record a data point when a bundle's as-served size (brotli where the
+      # build ships .br, else gzip) moved by at least this percent vs the last
+      # plotted point, keeping the chart to real changes.
       MIN_DELTA_PERCENT: "1"
     steps:
       - name: Check out the code
@@ -44,6 +45,7 @@ jobs:
             "frontend_client/app/dist/*" \
             "frontend_client/app/embed.js" \
             "frontend_client/app/embedding-sdk/*" \
+            "frontend_client/app/embedding-sdk.js" \
             -d resources
           unzip -o -j "temp/uberjar/metabase.jar" version.properties -d artifacts
       - name: Download bundle stats and SDK package artifacts
