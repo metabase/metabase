@@ -109,3 +109,24 @@
         (is (= [{:type :text :text "a"} {:type :text :text "b"}] result))
         (is (= 1 (count trace)))
         (is (= "agent.turn" (:name (first trace))))))))
+
+(deftest ^:parallel checked-session-id-test
+  (testing "supplied ids that name a safe file pass through verbatim"
+    (is (= "abc-123.def_4" (ait/checked-session-id "abc-123.def_4"))))
+  (testing "a nil supplied id mints a fresh uuid"
+    (let [id (ait/checked-session-id nil)]
+      (is (string? id))
+      (is (uuid? (parse-uuid id)))))
+  (testing "unsafe ids throw rather than reaching the log-file path (no traversal)"
+    (doseq [bad ["../../etc/passwd" ".." "a/b" ".hidden" "has space" ""]]
+      (is (thrown? clojure.lang.ExceptionInfo (ait/checked-session-id bad))
+          (str "should reject " (pr-str bad))))))
+
+(deftest with-eval-session-rejects-unsafe-id-test
+  (testing "with-eval-session validates a caller-supplied id when capture is enabled"
+    (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly true)]
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (ait/with-eval-session "../../pwned" :body)))))
+  (testing "with the gate off it stays inert — the body runs, no validation"
+    (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly false)]
+      (is (= :body (ait/with-eval-session "../../pwned" :body))))))

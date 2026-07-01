@@ -1822,6 +1822,12 @@
                        :http/request (:body request)
                        :http/user-id (or (:metabase-user-id request) api/*current-user-id*)}
                       (base-routes request
+                                   ;; Relies on `respond` firing synchronously on this thread (see
+                                   ;; above): if an endpoint ever responds async, `*parent*` is
+                                   ;; unbound there and this `record!` no-ops, so the span captures
+                                   ;; no status/response. A streaming `:body` likewise won't JSON-
+                                   ;; encode (the log sink drops that span). Both fail soft; the
+                                   ;; trace is just incomplete for async/streaming agent-api responses.
                                    (fn eval-traced-respond [response]
                                      (when (ait/capture-active?)
                                        (ait/record! {:http/status   (:status response)

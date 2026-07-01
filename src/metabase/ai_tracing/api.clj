@@ -7,6 +7,7 @@
   is intended for dedicated eval instances only."
   (:require
    [clojure.java.io :as io]
+   [metabase.ai-tracing.core :as ait]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -24,14 +25,11 @@
   ^File []
   (io/file (or (System/getProperty "logfile.path") "target/log") "eval-traces"))
 
-;; Safe filename: must start alphanumeric, then alphanumerics / `.` `_` `-`. No `/` ⇒ no path
-;; traversal; the leading-alphanumeric rule also rejects ids starting with `.` (e.g. `..`).
-(def ^:private safe-session-id-re #"[A-Za-z0-9][A-Za-z0-9._-]*")
-
 (defn- trace-file
-  "Resolve the JSONL file for `session-id`, or nil if the id is unsafe or would escape the trace dir."
+  "Resolve the JSONL file for `session-id`, or nil if the id is unsafe or would escape the trace dir.
+   `ait/safe-session-id-re` is the same pattern enforced at write time when the id is minted."
   ^File [session-id]
-  (when (re-matches safe-session-id-re (str session-id))
+  (when (re-matches ait/safe-session-id-re (str session-id))
     (let [dir (.getCanonicalFile (trace-dir))
           f   (.getCanonicalFile (io/file dir (str session-id ".jsonl")))]
       ;; defense in depth: the resolved file must sit directly inside the trace dir

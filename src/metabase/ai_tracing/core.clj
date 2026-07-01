@@ -68,6 +68,29 @@
   drives the per-session log file routing."
   nil)
 
+(def safe-session-id-re
+  "A session id becomes BOTH a log-file name (the RoutingAppender's `${ctx:mb-eval-session-id}.jsonl`)
+  and a URL path segment on the read endpoint, so it must be filesystem/URL safe: start alphanumeric
+  (rejects `.`/`..`), then only alphanumerics / `.` `_` `-` (no `/` ⇒ no path traversal). This is the
+  single source of truth — enforced at the mint/supply boundary ([[checked-session-id]], via
+  [[with-eval-session]]) AND at the read boundary (`metabase.ai-tracing.api`)."
+  #"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+(defn checked-session-id
+  "Return a safe session id: mint a fresh uuid when `supplied` is nil, otherwise validate it against
+  [[safe-session-id-re]]. Throws on a supplied id that isn't safe — the id names a file written by
+  the RoutingAppender, so an unsafe value (e.g. `../../etc/x`) must never reach it. We throw rather
+  than silently substituting a uuid so a caller that named a trace file gets an error instead of a
+  trace it can't find."
+  ^String [supplied]
+  (if (nil? supplied)
+    (str (random-uuid))
+    (let [id (str supplied)]
+      (when-not (re-matches safe-session-id-re id)
+        (throw (ex-info "Invalid eval-session-id: must start alphanumeric and contain only [A-Za-z0-9._-]"
+                        {:session-id id})))
+      id)))
+
 (defn capture-active?
   "True when an eval capture is in progress on this thread."
   []
@@ -178,9 +201,10 @@
 
 (defmacro with-eval-session
   "Generic eval-session entrypoint. When capture is enabled and not already active, establish a
-  FRESH capture: bind [[*capture*]] (the in-memory tree), [[*session-id*]] (use `supplied-id` or
-  mint a fresh uuid), and reset [[*parent*]] to nil. When already [[capture-active?]], INHERIT the
-  outer bindings (nesting). Inert (body only) when eval-capture is disabled.
+  FRESH capture: bind [[*capture*]] (the in-memory tree), [[*session-id*]] (a [[checked-session-id]]
+  of `supplied-id`, or a fresh uuid), and reset [[*parent*]] to nil. When already [[capture-active?]],
+  INHERIT the outer bindings (nesting). Inert (body only) when eval-capture is disabled. Throws if
+  `supplied-id` is present but not [[safe-session-id-re]] (it names a file — no path traversal).
 
   Session-id is minted eagerly here so callers can read [[*session-id*]] before the first span.
 
@@ -192,7 +216,7 @@
      (cond
        (capture-active?)       (do ~@body)            ; inherit / nest
        (eval-capture-enabled?) (binding [*capture*    (atom [])
-                                         *session-id* (or supplied# (str (random-uuid)))
+                                         *session-id* (checked-session-id supplied#)
                                          *parent*     nil]
                                  ~@body)
        :else                   (do ~@body))))         ; inert
