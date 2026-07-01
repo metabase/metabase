@@ -14,8 +14,8 @@
 
 import { normalizeFrontendJunit } from "./adapters/frontend.ts";
 import {
+  applyQuarantineGate,
   junitFailuresToFailedTests,
-  runQuarantineGate,
 } from "./quarantine.ts";
 import { log } from "./util.ts";
 
@@ -23,16 +23,13 @@ async function main(): Promise<void> {
   log("frontend quarantine gate starting");
   const env = process.env;
   const suite = env.CI_CONDUCTOR_TEST_SUITE || "frontend";
-  const result = await runQuarantineGate({
+  await applyQuarantineGate({
     suite,
     failures: junitFailuresToFailedTests(normalizeFrontendJunit()),
     baseUrl: env.CI_CONDUCTOR_BASE_URL,
     secret: env.CI_CONDUCTOR_WEBHOOK_SECRET,
     dryRun: env.QUARANTINE_DRY_RUN !== "false",
   });
-  if (result.enforced) {
-    process.exitCode = 1;
-  }
 }
 
 main().catch((error) => {

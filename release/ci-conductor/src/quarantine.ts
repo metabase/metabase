@@ -191,12 +191,14 @@ function finish(opts: {
 }
 
 /**
- * Run the quarantine gate for one suite: print a readable, dry-run-aware report
- * of which failures are quarantined and return the verdict. Source-agnostic —
- * each suite's entrypoint resolves its own `failures` and `suite` and applies
- * `enforced` to the process exit code. Never throws.
+ * Check one suite's failures against the quarantine gate: print a readable,
+ * dry-run-aware report of which failures are quarantined and return the verdict.
+ * Pure w.r.t. process state — it computes and returns a `GateResult` but never
+ * touches the exit code; `applyQuarantineGate` is the adapter that enacts it.
+ * Source-agnostic — each suite's entrypoint resolves its own `failures` and
+ * `suite`. Never throws.
  */
-export async function runQuarantineGate(opts: {
+export async function checkQuarantineGate(opts: {
   suite: string;
   failures: FailedTest[];
   baseUrl: string | undefined;
@@ -262,4 +264,18 @@ export async function runQuarantineGate(opts: {
         : `all ${failures.length} failure(s) are quarantined`,
     dryRun,
   });
+}
+
+/**
+ * Impure adapter over `checkQuarantineGate`: run the check, then apply the
+ * verdict to the process exit code (non-zero only when `enforced`). This is the
+ * one place the gate touches process state, so the engine stays testable.
+ */
+export async function applyQuarantineGate(
+  opts: Parameters<typeof checkQuarantineGate>[0],
+): Promise<void> {
+  const result = await checkQuarantineGate(opts);
+  if (result.enforced) {
+    process.exitCode = 1;
+  }
 }

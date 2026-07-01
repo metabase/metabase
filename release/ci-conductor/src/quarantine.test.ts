@@ -5,10 +5,10 @@ import {
   type FailedTest,
   type GateResult,
   type QuarantineEntry,
+  checkQuarantineGate,
   compareFailedToQuarantine,
   junitFailuresToFailedTests,
   matchKey,
-  runQuarantineGate,
 } from "./quarantine.ts";
 
 const failed = (
@@ -164,7 +164,7 @@ describe("junitFailuresToFailedTests", () => {
   });
 });
 
-describe("runQuarantineGate", () => {
+describe("checkQuarantineGate", () => {
   const failure: FailedTest = {
     test_name: "renders",
     test_path: "Suite",
@@ -174,7 +174,7 @@ describe("runQuarantineGate", () => {
   // Both branches under test return before any fetch, so no network is touched.
   // Capture the gate's log lines so we can assert on the printed verdict.
   async function runCapturingLogs(
-    opts: Parameters<typeof runQuarantineGate>[0],
+    opts: Parameters<typeof checkQuarantineGate>[0],
   ): Promise<{ result: GateResult; verdict: string | undefined }> {
     const lines: string[] = [];
     const original = console.log;
@@ -182,7 +182,7 @@ describe("runQuarantineGate", () => {
       lines.push(args.map(String).join(" "));
     };
     try {
-      const result = await runQuarantineGate(opts);
+      const result = await checkQuarantineGate(opts);
       return { result, verdict: lines.find((l) => l.includes("VERDICT:")) };
     } finally {
       console.log = original;

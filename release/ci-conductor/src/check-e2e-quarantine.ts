@@ -17,7 +17,7 @@
 
 import { readFileSync } from "node:fs";
 
-import { type FailedTest, runQuarantineGate } from "./quarantine.ts";
+import { type FailedTest, applyQuarantineGate } from "./quarantine.ts";
 import { log } from "./util.ts";
 
 const {
@@ -63,16 +63,13 @@ function readFailedTests(file: string): FailedTest[] {
 }
 
 async function main(): Promise<void> {
-  const result = await runQuarantineGate({
+  await applyQuarantineGate({
     suite: TEST_SUITE,
     failures: readFailedTests(failuresFile),
     baseUrl: CI_CONDUCTOR_BASE_URL,
     secret: CI_CONDUCTOR_WEBHOOK_SECRET,
     dryRun: isDryRun,
   });
-  if (result.enforced) {
-    process.exitCode = 1;
-  }
 }
 
 // Only run when invoked directly (`bun src/check-e2e-quarantine.ts`), not on import.
