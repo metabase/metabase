@@ -773,7 +773,9 @@
                  :collection_path "Our analytics / Agent Metric Collection"
                  :description     "A test metric"}
                 create-resp))
-        (t2/delete! :model/Card :id (:id create-resp)))))
+        (t2/delete! :model/Card :id (:id create-resp))))))
+
+(deftest create-metric-rejects-invalid-metric-test
   (testing "Returns 400 when the query is not a valid metric (no aggregation)"
     (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                {:query (orders-query :limit 10)})]
@@ -781,7 +783,9 @@
            (mt/user-http-request :rasta :post 400 "agent/v1/metric"
                                  {:name  "Not A Metric"
                                   :query (:query construct-resp)})
-           "metric"))))
+           "metric")))))
+
+(deftest create-metric-permission-checks-test
   (testing "Returns 403 when caller cannot run the proposed query"
     (mt/with-restored-data-perms!
       (mt/with-non-admin-groups-no-root-collection-perms
