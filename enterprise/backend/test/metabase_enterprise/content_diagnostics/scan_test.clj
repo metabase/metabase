@@ -61,11 +61,12 @@
             (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
               (let [row (first (filter #(and (= :dashboard (:entity_type %)) (= s4 (:entity_id %))) rows))]
                 (is (some? (:last_active_at row)))))
-            (testing "denormalized sort columns (entity_name/created_at/creator_id) are stamped at scan time"
+            (testing "denormalized columns (entity_name/created_at/creator_id/creator_name) are stamped at scan time"
               (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
                 (is (some? (:entity_name row)))
                 (is (some? (:entity_created_at row)))
-                (is (some? (:entity_creator_id row)))))
+                (is (some? (:entity_creator_id row)))
+                (is (some? (:entity_creator_name row)))))
             (testing "duration histogram recorded one ok observation"
               (is (<= 1 (:count (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms
                                                  {:status "ok"})))))
@@ -135,12 +136,15 @@
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
             (let [insert     (fn [scan threshold]
                                (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
-                                                                {:scan_id      scan
-                                                                 :entity_type  :card
-                                                                 :entity_id    card-id
-                                                                 :finding_type   :stale
-                                                                 :last_active_at (t/offset-date-time 2025 9 1)
-                                                                 :details        {:threshold_days threshold}})))
+                                                                {:scan_id             scan
+                                                                 :entity_type         :card
+                                                                 :entity_id           card-id
+                                                                 :finding_type        :stale
+                                                                 :last_active_at      (t/offset-date-time 2025 9 1)
+                                                                 :entity_name         "Quarterly Revenue"
+                                                                 :entity_creator_id   (mt/user->id :rasta)
+                                                                 :entity_creator_name "Rasta Toucan"
+                                                                 :details             {:threshold_days threshold}})))
                   old-id     (insert "scan-old" 30)
                   new-id     (insert "scan-new" 90)
                   serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")
@@ -155,15 +159,17 @@
                   (is (= 1 (:total resp)))))
               (testing "the served finding has flat identity + a nested typed details (collection, description, owner, creator)"
                 (let [row (first (filter #(= new-id (:id %)) (:data (serve))))]
-                  (is (= "Quarterly Revenue" (:entity_display_name row)))
-                  (testing "collection breadcrumb nested under details"
+                  (testing "entity_display_name served from the denormalized entity_name"
+                    (is (= "Quarterly Revenue" (:entity_display_name row))))
+                  (testing "collection breadcrumb still live-hydrated (not denormalized)"
                     (is (= coll-id (get-in row [:details :collection :id]))))
                   (testing "threshold_days stays in details; last_active_at is hoisted to a top-level property"
                     (is (= 90 (get-in row [:details :threshold_days])))
                     (is (some? (:last_active_at row)))
                     (is (not (contains? (:details row) :last_active_at))))
-                  (testing "creator hydrated as a normalized user object"
+                  (testing "creator served from the denormalized columns (id + common_name, no live hydrate)"
                     (is (= (mt/user->id :rasta) (get-in row [:details :creator :id])))
+                    (is (= "Rasta Toucan" (get-in row [:details :creator :name])))
                     (is (= "user" (get-in row [:details :creator :type]))))
                   (testing "card has no owner column → owner is null"
                     (is (nil? (get-in row [:details :owner]))))))
@@ -317,16 +323,18 @@
                          :model/Card {card-b :id} {:collection_id coll-id}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
             ;; each attr orders A,B differently so the column under test is isolated
-            (let [insert (fn [card nm created creator active]
+            ;; creator NAME order (Amy < Zoe) is the inverse of creator ID order (5 < 10) → isolates name-sort
+            (let [insert (fn [card nm created creator-id creator-name active]
                            (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "s" :entity_type :card :entity_id card
-                                                             :finding_type      :stale :details {}
-                                                             :entity_name       nm
-                                                             :entity_created_at created
-                                                             :entity_creator_id creator
-                                                             :last_active_at    active})))
-                  a-fid (insert card-a "Alpha" (t/offset-date-time 2025 1 1) 10 (t/offset-date-time 2025 6 1))
-                  b-fid (insert card-b "Beta"  (t/offset-date-time 2025 6 1) 5  (t/offset-date-time 2025 1 1))
+                                                             :finding_type        :stale :details {}
+                                                             :entity_name         nm
+                                                             :entity_created_at   created
+                                                             :entity_creator_id   creator-id
+                                                             :entity_creator_name creator-name
+                                                             :last_active_at      active})))
+                  a-fid (insert card-a "Alpha" (t/offset-date-time 2025 1 1) 10 "Amy" (t/offset-date-time 2025 6 1))
+                  b-fid (insert card-b "Beta"  (t/offset-date-time 2025 6 1) 5  "Zoe" (t/offset-date-time 2025 1 1))
                   order (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
                                                             "ee/content-diagnostics/stale" kvs))))]
               (testing "name — Alpha < Beta"
@@ -334,8 +342,9 @@
                 (is (= [b-fid a-fid] (order :sort-column "name" :sort-direction "desc"))))
               (testing "created-at — Jan before Jun"
                 (is (= [a-fid b-fid] (order :sort-column "created-at" :sort-direction "asc"))))
-              (testing "created-by — creator id 5 before 10"
-                (is (= [b-fid a-fid] (order :sort-column "created-by" :sort-direction "asc"))))
+              (testing "created-by — by creator NAME (Amy < Zoe), independent of the 10-vs-5 id order"
+                (is (= [a-fid b-fid] (order :sort-column "created-by" :sort-direction "asc")))
+                (is (= [b-fid a-fid] (order :sort-column "created-by" :sort-direction "desc"))))
               (testing "last-used-at — Jan before Jun"
                 (is (= [b-fid a-fid] (order :sort-column "last-used-at" :sort-direction "asc")))))))))))
 

@@ -95,34 +95,19 @@
                                     :where  [:in :collection_id pids]}]]]))))
 
 ;;; ----------------------------------- display hydration (shared layer) --------------------------------
-;;; Every finding's display context — entity name, collection breadcrumb, description, owner, creator —
-;;; is hydrated **live** (always-current; a renamed/moved entity shows correctly) and **batched per
-;;; entity-type**, never per row: ≤1 entity select + ≤1 `:creator` hydrate per entity-type on the page,
-;;; plus a small fixed number of collection queries for the breadcrumbs (one select + the
-;;; permission-filtered `:effective_ancestors` hydrate). Page-size-independent (no per-row N+1). This is
-;;; the layer each per-finding-type endpoint reuses.
-
-(defn- normalize-user
-  "A hydrated `:model/User` → the response's normalized user object `{id, name, email, type}`, or nil.
-  `name` is the user's `common_name` (added on every User select). Used for both `creator` and the
-  Metabase-account case of `owner`."
-  [user]
-  (when user
-    {:id    (:id user)
-     :name  (:common_name user)
-     :email (:email user)
-     :type  :user}))
+;;; A finding's display values come from two places. **Denormalized** (frozen at scan time, preferred over
+;;; live hydration — some drift between scans is acceptable): `entity_display_name`, `created_at`,
+;;; `last_active_at`, and the `creator` object (id + name). **Live-hydrated** (still current, batched per
+;;; entity-type — no per-row N+1): the entity `description` and the permission-filtered `collection`
+;;; breadcrumb, neither of which is denormalized. This is the layer each per-finding-type endpoint reuses.
 
 (defn- entity-context
-  "For one entity-type's id set → `{entity-id → {:name :description :collection_id :creator}}`.
-  Card and Dashboard both carry `creator_id` (hydrated via `:creator`) and have **no** owner column, so
-  `owner` is nil for them — Document/Transform owner hydration lands with their stale coverage."
+  "For one entity-type's id set → `{entity-id → {:description :collection_id}}`. Only the **non-denormalized**
+  display fields are hydrated live — the `description` and the `collection_id` that feeds the breadcrumb;
+  name + creator are served from the finding's denormalized columns (no `:name`/`:creator` hydrate)."
   [entity-type ids]
   (when-let [model (detect/entity-type->model entity-type)]
-    (let [rows (t2/hydrate (t2/select [model :id :name :description :collection_id :creator_id]
-                                      :id [:in (set ids)])
-                           :creator)]
-      (m/index-by :id rows))))
+    (m/index-by :id (t2/select [model :id :description :collection_id] :id [:in (set ids)]))))
 
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
@@ -144,9 +129,10 @@
             colls))))
 
 (defn- hydrate-findings
-  "Project stored findings into the served shape: flat identity + `entity_display_name`, plus a nested
-  typed `details` = stored verdict ∪ {collection breadcrumb, description, owner, creator}. Batched and
-  page-size-independent (see the layer note above)."
+  "Project stored findings into the served shape: flat identity + denormalized `entity_display_name` /
+  `created_at` / `last_active_at`, plus a nested typed `details` = stored verdict ∪ {collection breadcrumb,
+  description, owner, creator}. Name + creator come from the finding's denormalized columns; description +
+  collection are live-hydrated. Batched, page-size-independent (see the layer note above)."
   [findings]
   (let [ctx-by-type (into {} (for [[etype rows] (group-by :entity_type findings)]
                                [etype (entity-context etype (map :entity_id rows))]))
@@ -154,22 +140,25 @@
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
         breadcrumbs (collection-breadcrumbs coll-ids)]
-    (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at last_active_at entity_created_at details]}]
+    (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at last_active_at entity_created_at
+                       entity_name entity_creator_id entity_creator_name details]}]
             (let [entity (get-in ctx-by-type [entity_type entity_id])]
               {:id                  id
                :finding_type        finding_type
                :entity_type         entity_type
                :entity_id           entity_id
                :detected_at         detected_at
-               :entity_display_name (:name entity)
+               :entity_display_name entity_name
                :last_active_at      last_active_at
                :created_at          entity_created_at
                :details             (merge details
                                            {:collection  (get breadcrumbs (:collection_id entity))
                                             :description (:description entity)
-                                            ;; card/dashboard have no owner column → null; creator is the author.
+                                            ;; card/dashboard have no owner column → null.
                                             :owner       nil
-                                            :creator     (normalize-user (:creator entity))})}))
+                                            ;; creator denormalized (id + common_name) — no live :creator hydrate.
+                                            :creator     (when entity_creator_id
+                                                           {:id entity_creator_id :name entity_creator_name :type :user})})}))
           findings)))
 
 (defn- last-scan-at
@@ -180,13 +169,23 @@
 ;;; -------------------------------------------- response schema ----------------------------------------
 
 (def ^:private NormalizedUser
-  "A finding's `owner`/`creator`: a Metabase user `{id,name,email,type:user}`, or — for an external
-  transform owner — `{email,type:external}`, or nil. Keys optional to admit both variants."
+  "A finding's `owner`: a Metabase user `{id,name,email,type:user}`, or — for an external transform owner —
+  `{email,type:external}`, or nil. Keys optional to admit both variants."
   [:maybe [:map
            [:id    {:optional true} [:maybe :int]]
            [:name  {:optional true} [:maybe :string]]
            [:email {:optional true} [:maybe :string]]
            [:type  :keyword]]])
+
+(def ^:private Creator
+  "A finding's `creator`: always a real Metabase user (`creator_id` is a FK → `core_user`), served from the
+  denormalized `entity_creator_id`/`entity_creator_name` as `{id, name, type:user}`, or nil for entity types
+  with no creator. **No `email`** (deliberately not denormalized — closed map forbids it), and `type` is
+  always `:user` (a creator is never external, unlike owner)."
+  [:maybe [:map {:closed true}
+           [:id   :int]
+           [:name [:maybe :string]]
+           [:type [:= :user]]]])
 
 (def ^:private StaleFinding
   "Served `stale` finding: flat identity + nested typed `details`."
@@ -206,7 +205,7 @@
      [:collection     [:maybe :map]]
      [:description    [:maybe :string]]
      [:owner          NormalizedUser]
-     [:creator        NormalizedUser]
+     [:creator        Creator]
      [:threshold_days {:optional true} :int]]]])
 
 (def ^:private sort-directions
@@ -217,12 +216,12 @@
   "Sortable stale-list params → their native `content_diagnostics_finding` column. The entity attributes
   (`name`/`created-at`/`last-used-at`/`created-by`) are **denormalized at scan time** (see
   `detect/stale-checker`), so sorting stays a plain indexed `ORDER BY` with no join. `created-by` orders by
-  `entity_creator_id` (groups findings by creator; not alphabetical — that would need a `core_user` join)."
+  the denormalized creator `common_name` (`entity_creator_name`) — alphabetical, no `core_user` join."
   {:detected-at  :detected_at
    :entity-type  :entity_type
    :name         :entity_name
    :created-at   :entity_created_at
-   :created-by   :entity_creator_id
+   :created-by   :entity_creator_name
    :last-used-at :last_active_at})
 
 (def ^:private stale-entity-types

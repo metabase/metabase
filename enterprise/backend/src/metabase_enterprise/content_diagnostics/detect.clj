@@ -45,23 +45,29 @@
                          :limit          nil
                          :offset         nil
                          :sort-column    :name
-                         :sort-direction :asc})]
+                         :sort-direction :asc})
+        ;; batch-resolve creator_id → common_name once (F ≪ N; bounded by distinct creators) so the
+        ;; creator name is denormalized at scan time and served without a live `:creator` hydrate.
+        creator-id->name (if-let [ids (not-empty (into #{} (keep :creator_id) rows))]
+                           (t2/select-pk->fn :common_name :model/User :id [:in ids])
+                           {})]
     (for [{:keys [id model last_used_at created_at creator_id] entity-name :name} rows
           :let  [et (model->entity-type model)]
           :when et]
-      {:entity-type       et
-       :entity-id         id
-       :finding-type      :stale
+      {:entity-type         et
+       :entity-id           id
+       :finding-type        :stale
        ;; freeze the scan-time activity anchor (D17): `last_used_at` for cards, `last_viewed_at` for
        ;; dashboards (the stale query aliases both to `last_used_at`). `nil` ⇒ never used/ran. Top-level
        ;; column (not in `details`) so it's served flat and SQL-filterable by the threshold-days param.
-       :last-active-at    last_used_at
-       ;; denormalized entity attributes → native ORDER BY columns (name / created_at / creator). Display
-       ;; still hydrates the live name/creator; created_at is immutable so the frozen copy equals live.
-       :entity-name       entity-name
-       :entity-created-at created_at
-       :entity-creator-id creator_id
-       :details           {:threshold_days threshold}})))
+       :last-active-at      last_used_at
+       ;; denormalized entity attributes → native ORDER BY columns AND the served display values (name /
+       ;; created_at / creator). Preferred over live hydration; some drift between scans is acceptable.
+       :entity-name         entity-name
+       :entity-created-at   created_at
+       :entity-creator-id   creator_id
+       :entity-creator-name (get creator-id->name creator_id)
+       :details             {:threshold_days threshold}})))
 
 (def checkers
   "Ordered checker registry. Each entry **declares** the finding-types it owns and a 0-arg `:run` fn
@@ -133,7 +139,7 @@
     (t2/with-transaction [_conn]
       (t2/insert! :model/ContentDiagnosticsFinding
                   (for [{:keys [entity-type entity-id finding-type details scope-collection-id last-active-at
-                                entity-name entity-created-at entity-creator-id]} chunk]
+                                entity-name entity-created-at entity-creator-id entity-creator-name]} chunk]
                     {:scan_id             scan-id
                      :entity_type         entity-type
                      :entity_id           entity-id
@@ -143,6 +149,7 @@
                      :entity_name         entity-name
                      :entity_created_at   entity-created-at
                      :entity_creator_id   entity-creator-id
+                     :entity_creator_name entity-creator-name
                      :details             details})))))
 
 (defn scan!

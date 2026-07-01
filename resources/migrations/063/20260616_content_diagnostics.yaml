@@ -200,3 +200,30 @@ databaseChangeLog:
                   name: finding_type
               - column:
                   name: last_active_at
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:11
+      author: yb
+      comment: Content Diagnostics — denormalized entity_creator_name (sort by creator name + display)
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: entity_creator_name
+                  type: varchar(254)
+                  remarks: Creator's common_name at scan time (resolved from creator_id). Sort key for created-by + served in details.creator; display prefers this over live hydration.
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:12
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_creator_name
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_creator
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_creator_name
