@@ -71,16 +71,9 @@
     (keep (u/index-by :id all-transforms) slice)))
 
 (defn- run-subgraph-test-run!
-  "Execute a chained (sub-graph) test run for target transform `target-id` from
-  parsed multipart params.
-
-  Reads the `expected` file part (optional when `assertions` is non-empty), the
-  `sources` JSON part (selected boundary source ids), the `input-<id>` leaf
-  fixtures, the `options` JSON part, and the `assertions` JSON part, then
-  delegates to `test-run.core/run-chain-test!`.
-
-  Returns the HTTP response map directly. Never throws — typed errors are mapped
-  via `api-util/test-run-error-http-status`; unknown errors become 500."
+  "Execute a sub-graph test run for target transform `target-id`, returning an HTTP
+  response map. Typed test-run errors become error responses; other exceptions
+  propagate."
   [target-id multipart-params]
   (let [expected-part   (get multipart-params "expected")
         assertions-part (get multipart-params "assertions")
@@ -108,11 +101,8 @@
               (throw e))))))))
 
 (defn- run-card-subgraph-test-run!
-  "Execute a chained (sub-graph) test run whose target is Card `card` from parsed
-  multipart params — the card analogue of `run-subgraph-test-run!`.
-
-  Returns the HTTP response map directly. Never throws — typed errors are mapped
-  via `api-util/test-run-error-http-status`; unknown errors become 500."
+  "Execute a sub-graph test run for target Card `card`, returning an HTTP response
+  map. Typed test-run errors become error responses; other exceptions propagate."
   [card multipart-params]
   (let [expected-part   (get multipart-params "expected")
         assertions-part (get multipart-params "assertions")

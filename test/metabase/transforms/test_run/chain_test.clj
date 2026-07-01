@@ -503,7 +503,7 @@
            {"expected" expected-f}))))))
 
 (deftest unknown-target-type-rejected-test
-  (testing "unrecognised target-type returns 404 — the route enum no longer includes \"metric\"; use target-type=card for metric cards"
+  (testing "unrecognised target-type returns 404 (metric cards use target-type=card)"
     (is (= "API endpoint does not exist."
            (mt/user-http-request :crowberto :get 404 "ee/transform-test/metric/1/subgraph-inputs")))))
 
