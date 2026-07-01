@@ -6,16 +6,16 @@ import {
   useGetCardQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { ADMIN_NAVBAR_HEIGHT } from "metabase/nav/constants";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Drawer, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
 import { trackAlertsManagementEditClicked } from "../analytics";
 
+import S from "./NotificationDetailSidebar.module.css";
 import { SidebarBody } from "./SidebarBody";
 import { SidebarHeader } from "./SidebarHeader";
 import { SIDEBAR_WIDTH } from "./constants";
@@ -60,25 +60,19 @@ export const NotificationDetailSidebar = ({
 
   return (
     <>
-      <Drawer
-        opened
-        onClose={onClose}
-        position="right"
-        size={SIDEBAR_WIDTH}
-        withCloseButton={false}
-        padding={0}
-        withOverlay={false}
-        lockScroll={false}
-        shadow="lg"
-        zIndex={100}
-        styles={{
-          inner: {
-            top: ADMIN_NAVBAR_HEIGHT,
-            height: `calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`,
-          },
+      <Flex
+        className={S.sidebar}
+        direction="column"
+        w={`${SIDEBAR_WIDTH}px`}
+        h="100%"
+        flex="0 0 auto"
+        style={{
+          borderLeft: "1px solid var(--mb-color-border-neutral)",
         }}
+        bg="background_page-primary"
+        data-testid="notification-detail-sidebar"
       >
-        <Stack h="100%" p="lg" gap="lg">
+        <Stack h="100%" p="lg" gap="lg" style={{ overflowY: "auto" }}>
           <SidebarHeader
             isBulkLoading={isBulkLoading}
             notificationId={notificationId}
@@ -103,7 +97,7 @@ export const NotificationDetailSidebar = ({
             <LoadingAndErrorWrapper loading />
           )}
         </Stack>
-      </Drawer>
+      </Flex>
       {isEditModalOpen && notification && question && (
         <CreateOrEditQuestionAlertModal
           editingNotification={notification}

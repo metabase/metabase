@@ -22,6 +22,7 @@ import {
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { AdminNotification, UserListResult } from "metabase-types/api";
 import {
@@ -179,7 +180,11 @@ const setup = ({
   return renderWithProviders(
     <Route
       path="/monitor/notifications(/:notificationId)"
-      component={NotificationsAdminPage}
+      component={(props) => (
+        <MonitorContent>
+          <NotificationsAdminPage {...props} />
+        </MonitorContent>
+      )}
     />,
     { withRouter: true, initialRoute },
   );
@@ -554,6 +559,14 @@ describe("NotificationsAdminPage", () => {
 
       expect(history?.getCurrentLocation().pathname).toBe(`${PATHNAME}/1`);
       expect(await screen.findByText("Alert 1")).toBeInTheDocument();
+
+      const sidebarRegion = screen.getByTestId("monitor-sidebar-region");
+      expect(
+        within(sidebarRegion).getByTestId("notification-detail-sidebar"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("monitor-main")).not.toContainElement(
+        sidebarRegion,
+      );
 
       await userEvent.click(screen.getByRole("button", { name: "Close" }));
 

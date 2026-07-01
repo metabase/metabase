@@ -1,5 +1,11 @@
 import type { Row, SortingState } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -18,6 +24,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { useMonitorSidebar } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, type SelectionState, Stack } from "metabase/ui";
@@ -30,7 +37,6 @@ import type {
 
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
-import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
 import { NotificationsFilters } from "../NotificationsFilters";
 import { NotificationsSearchInput } from "../NotificationsSearchInput";
 import { NotificationsTable } from "../NotificationsTable";
@@ -57,6 +63,7 @@ export const NotificationsAdminPage = ({
 }: WithRouterProps<RouteParams>) => {
   const notificationId = Urls.extractEntityId(params.notificationId);
   const dispatch = useDispatch();
+  const { setSidebar } = useMonitorSidebar();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [selectedIds, setSelectedIds] = useState<Set<NotificationId>>(
     new Set(),
@@ -197,9 +204,9 @@ export const NotificationsAdminPage = ({
     patchUrlState({ query, page: 0 });
   };
 
-  const handleSidebarClose = () => {
+  const handleSidebarClose = useCallback(() => {
     dispatch(push(Urls.monitorNotifications()));
-  };
+  }, [dispatch]);
 
   const deleteNotifications = useCallback(
     async (
@@ -302,13 +309,10 @@ export const NotificationsAdminPage = ({
   );
 
   const isSidebarOpen = notificationId !== undefined;
-
-  if (isLoading || isFailingLoading || isOwnerlessLoading) {
-    return <LoadingAndErrorWrapper loading />;
-  }
+  const isPageLoading = isLoading || isFailingLoading || isOwnerlessLoading;
 
   const { prevNotificationId, nextNotificationId, notificationSummary } =
-    (() => {
+    useMemo(() => {
       if (notificationId === undefined) {
         return {
           prevNotificationId: undefined,
@@ -332,10 +336,46 @@ export const NotificationsAdminPage = ({
             : undefined,
         notificationSummary: notifications[index],
       };
-    })();
+    }, [notificationId, notifications]);
+
+  useLayoutEffect(() => {
+    if (isPageLoading || !isSidebarOpen) {
+      setSidebar(null);
+      return;
+    }
+
+    setSidebar(
+      <NotificationDetailSidebar
+        notificationId={notificationId}
+        notificationSummary={notificationSummary}
+        isBulkLoading={isBulkLoading}
+        prevNotificationId={prevNotificationId}
+        nextNotificationId={nextNotificationId}
+        onClose={handleSidebarClose}
+        onDelete={(notification) => handleSidebarDelete(notification.id)}
+      />,
+    );
+
+    return () => setSidebar(null);
+  }, [
+    isPageLoading,
+    isSidebarOpen,
+    notificationId,
+    notificationSummary,
+    isBulkLoading,
+    prevNotificationId,
+    nextNotificationId,
+    handleSidebarClose,
+    handleSidebarDelete,
+    setSidebar,
+  ]);
+
+  if (isPageLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   return (
-    <Stack gap="lg" pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
+    <Stack gap="lg">
       <Flex align="center" gap="sm">
         <MonitorHeaderTitle>{t`Alerts management`}</MonitorHeaderTitle>
       </Flex>
@@ -384,18 +424,6 @@ export const NotificationsAdminPage = ({
           onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
         />
       </Flex>
-
-      {isSidebarOpen && (
-        <NotificationDetailSidebar
-          notificationId={notificationId}
-          notificationSummary={notificationSummary}
-          isBulkLoading={isBulkLoading}
-          prevNotificationId={prevNotificationId}
-          nextNotificationId={nextNotificationId}
-          onClose={handleSidebarClose}
-          onDelete={(notification) => handleSidebarDelete(notification.id)}
-        />
-      )}
 
       <BulkActionBar
         opened={selectedCount > 0}
