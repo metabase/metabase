@@ -164,7 +164,7 @@
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
-        (is (serdes.backfill/has-entity-id? model))))))
+        (is (serdes.backfill/has-entity-id? 1337))))))
 
 (deftest ^:parallel comprehensive-identity-hash-test
   (doseq [model (->> (v2.entity-ids/toucan-models)
