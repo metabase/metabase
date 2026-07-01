@@ -6,12 +6,15 @@ import { materializePastedChart } from "./chart-paste-extension";
 
 const datasetQuery = createMockStructuredDatasetQuery();
 
-const chartText = serializeChartClipboard({
-  name: "Orders by month",
-  display: "bar",
-  dataset_query: datasetQuery,
-  visualization_settings: {},
-});
+const chartText = serializeChartClipboard(
+  {
+    name: "Orders by month",
+    display: "bar",
+    dataset_query: datasetQuery,
+    visualization_settings: {},
+  },
+  "https://metabase.example",
+);
 
 describe("materializePastedChart", () => {
   it("registers a draft card and returns a cardEmbed node for a pasted chart", () => {

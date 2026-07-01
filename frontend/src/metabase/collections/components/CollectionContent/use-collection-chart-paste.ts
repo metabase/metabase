@@ -1,10 +1,13 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Api, useCreateCardMutation } from "metabase/api";
+import { useCreateCardMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { useChartPasteListener } from "metabase/common/hooks/use-chart-paste-listener";
-import type { ChartClipboardPayload } from "metabase/common/utils/chart-clipboard";
+import {
+  type ChartClipboardPayload,
+  chartPayloadToNewCard,
+} from "metabase/common/utils/chart-clipboard";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection } from "metabase-types/api";
@@ -18,30 +21,19 @@ export function useCollectionChartPaste(collection: Collection) {
   const dispatch = useDispatch();
   const [createCard] = useCreateCardMutation();
 
-  const collectionId = collection.id;
-  const collectionName = collection.name;
-  const canWrite = Boolean(collection.can_write);
+  const { id, name, can_write } = collection;
 
   const handlePasteChart = useCallback(
     async (payload: ChartClipboardPayload) => {
       try {
         await createCard({
-          name: payload.name,
-          description: payload.description ?? null,
-          display: payload.display,
-          dataset_query: payload.dataset_query,
-          visualization_settings: payload.visualization_settings,
-          collection_id: canonicalCollectionId(collectionId),
+          ...chartPayloadToNewCard(payload),
+          collection_id: canonicalCollectionId(id),
         }).unwrap();
-        dispatch(
-          Api.util.invalidateTags([
-            { type: "collection", id: `${collectionId}-items` },
-          ]),
-        );
         dispatch(
           addUndo({
             icon: "check_filled",
-            message: t`Chart saved to ${collectionName}`,
+            message: t`Chart saved to ${name}`,
           }),
         );
       } catch {
@@ -54,8 +46,8 @@ export function useCollectionChartPaste(collection: Collection) {
         );
       }
     },
-    [createCard, dispatch, collectionId, collectionName],
+    [createCard, dispatch, id, name],
   );
 
-  useChartPasteListener(canWrite, handlePasteChart);
+  useChartPasteListener(Boolean(can_write), handlePasteChart);
 }

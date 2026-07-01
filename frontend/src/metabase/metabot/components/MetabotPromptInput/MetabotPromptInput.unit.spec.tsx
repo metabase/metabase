@@ -149,12 +149,15 @@ describe("MetabotPromptInput", () => {
 
   describe("pasting a chart", () => {
     const datasetQuery = createMockStructuredDatasetQuery();
-    const chartText = serializeChartClipboard({
-      name: "Orders by month",
-      display: "bar",
-      dataset_query: datasetQuery,
-      visualization_settings: {},
-    });
+    const chartText = serializeChartClipboard(
+      {
+        name: "Orders by month",
+        display: "bar",
+        dataset_query: datasetQuery,
+        visualization_settings: {},
+      },
+      "https://metabase.example",
+    );
 
     const pasteIntoEditor = (text: string) => {
       const event = new Event("paste", { bubbles: true, cancelable: true });
