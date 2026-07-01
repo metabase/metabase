@@ -310,14 +310,14 @@
 ;;; --------------------------------------------- Construct Native Query ---------------------------------------------
 
 (mr/def ::construct-native-query-request
-  "Request body for /v2/construct-native-query: a target database and a raw SQL string."
+  "Request body for /v1/construct-native-query: a target database and a raw SQL string."
   [:map {:closed true}
    [:database_id {:tool/description "Numeric id of the database to run the SQL against."}
     ms/PositiveInt]
    [:sql {:tool/description "The raw SQL query text."}
     ms/NonBlankString]])
 
-(api.macros/defendpoint :post "/v2/construct-native-query" :- ::construct-query-response
+(api.macros/defendpoint :post "/v1/construct-native-query" :- ::construct-query-response
   "Construct a native (raw SQL) query against a database.
 
   Wraps `sql` into a serialized native query and returns it base64-encoded — the same
@@ -342,9 +342,12 @@
   ;; Construction does not run the query, but require the caller to at least be able to see the
   ;; target database so a bogus/inaccessible database_id fails here rather than at save time.
   (api/read-check :model/Database database_id)
-  {:query (-> {:database database_id :type :native :native {:query sql}}
-              json/encode
-              u/encode-base64)})
+  ;; Emit MBQL 5 (via `lib/native-query` + `prepare-for-serialization`, same as `construct_query`)
+  (let [mp (lib-be/application-database-metadata-provider database_id)]
+    {:query (-> (lib/native-query mp sql)
+                lib/prepare-for-serialization
+                json/encode
+                u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
