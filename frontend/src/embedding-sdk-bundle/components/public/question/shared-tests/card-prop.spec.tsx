@@ -47,6 +47,10 @@ export function addCardPropTests({
       visualizationSettings: {},
     };
 
+    const QUERY_ONLY_CARD_OBJECT: MetabaseCard = {
+      query: DATASET_QUERY,
+    };
+
     // A category + numeric dataset so a bar chart has something to render.
     const BAR_CATEGORY_COLUMN = createMockColumn({
       name: "CATEGORY",
@@ -122,6 +126,17 @@ export function addCardPropTests({
 
     it("should render a visualization when given a card object", async () => {
       await setup(CARD_OBJECT);
+
+      expect(screen.getByTestId("query-visualization-root")).toBeVisible();
+      expect(
+        within(screen.getByTestId("table-root")).getByText(
+          TEST_COLUMN.display_name,
+        ),
+      ).toBeVisible();
+    });
+
+    it("should render a visualization when given a card object without a chosen visualization", async () => {
+      await setup(QUERY_ONLY_CARD_OBJECT);
 
       expect(screen.getByTestId("query-visualization-root")).toBeVisible();
       expect(
