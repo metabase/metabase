@@ -16,6 +16,10 @@ import {
   useCustomVizPlugins,
   useCustomVizPluginsIcon,
 } from "./custom-viz-plugins";
+import {
+  customVizRegistry,
+  registerCustomVizPlugin,
+} from "./custom-viz-static";
 import { isWidgetMount } from "./widget-mount";
 
 export function initializePlugin() {
@@ -32,6 +36,8 @@ export function initializePlugin() {
       releaseCustomVizAsset: () => {},
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
+      customVizRegistry,
+      registerCustomVizPlugin,
       isWidgetMount,
       CustomVizSettingWidget,
     });
