@@ -11,7 +11,7 @@
       (let [mp (mt/metadata-provider)
             sql (mt/native-query-with-card-template-tag driver/*driver* "table")
             base-query (lib/native-query mp sql)
-            template-tag (get (lib/template-tags base-query) "table")
+            template-tag (lib/template-tag (lib/template-tags base-query) "table")
             query (lib/with-template-tags base-query
                     {"table" (merge template-tag
                                     {:type :table

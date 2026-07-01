@@ -177,7 +177,7 @@
             (with-transform-cleanup! [table-name "gadget_products"]
               (testing "Cannot create a transform with a required param"
                 (let [base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                      tag          (get (lib/template-tags base-query) "id")
+                      tag          (lib/template-tag (lib/template-tags base-query) "id")
                       query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                       schema       (get-test-schema)
@@ -344,7 +344,7 @@
                                                                :name table-name}})
                   transform-id (:id created)
                   base-query   (lib/native-query (mt/metadata-provider) "select * from foo where {{id}} = id")
-                  tag          (get (lib/template-tags base-query) "id")
+                  tag          (lib/template-tag (lib/template-tags base-query) "id")
                   new-query        (lib/with-template-tags base-query
                                      {"id" (assoc tag :required true)})
                   response     (mt/user-http-request :crowberto :put 400

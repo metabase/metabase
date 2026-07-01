@@ -59,6 +59,6 @@
   [query]
   (if-let [name->tag (seq (lib/template-tags query))]
     (-> query
-        (lib/with-template-tags (update-vals name->tag tag-default))
+        (lib/with-template-tags (mapv (fn [[tag-name tag]] [tag-name (tag-default tag)]) name->tag))
         qp.compile/compile)
     {:query (lib/raw-native-query query)}))

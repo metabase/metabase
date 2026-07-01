@@ -279,14 +279,12 @@
   8 tags, and the rare larger case tolerates O(n) access.
 
   The legacy associative-map form is accepted on normalization via
-  [[normalize-template-tags]], and on serialization (e.g. into the app DB or a serdes
-  export) the pairs are encoded back into the associative-map form so existing stored
-  queries and exports keep their shape."
+  [[normalize-template-tags]]. On serialization (app DB, serdes export) the pairs are encoded
+  back into the associative-map form (in [[metabase.lib.schema/serialize-query]]) so existing
+  stored queries and exports keep their shape."
   [:and
-   {:decode/normalize normalize-template-tags
-    :encode/serialize (fn [template-tags]
-                        (some-> (seq template-tags) (into {})))}
-   [:sequential [:ref ::template-tags.entry]]
+   [:sequential {:decode/normalize normalize-template-tags}
+    [:ref ::template-tags.entry]]
    [:fn
     {:error/message "template tag names must be unique and each pair's key must match its tag's :name"}
     (fn [pairs]
