@@ -1,16 +1,21 @@
 import cx from "classnames";
+import { useEffect } from "react";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { findDatabaseByName } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
@@ -94,11 +99,30 @@ const BrowseSchemasContainer = ({
   );
 };
 
+const DatabaseNameRedirect = ({ name }: { name: string }) => {
+  const dispatch = useDispatch();
+  const { data, isLoading } = useListDatabasesQuery();
+  const database = findDatabaseByName(data?.data ?? [], name);
+
+  useEffect(() => {
+    if (database) {
+      dispatch(replace(Urls.browseDatabase(database)));
+    }
+  }, [database, dispatch]);
+
+  if (isLoading || database) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return <NotFound />;
+};
+
 export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
   const dbId = Urls.extractEntityId(params.slug);
 
   if (dbId == null) {
-    return <NotFound />;
+    // react-router already url-decodes route params, so `slug` is the raw db name here.
+    return <DatabaseNameRedirect name={params.slug} />;
   }
 
   return <BrowseSchemasForDatabase dbId={dbId} params={params} />;
