@@ -3,7 +3,10 @@ import { t } from "ttag";
 
 import { useCreateCardMutation } from "metabase/api";
 import { useChartPasteListener } from "metabase/common/hooks/use-chart-paste-listener";
-import type { ChartClipboardPayload } from "metabase/common/utils/chart-clipboard";
+import {
+  type ChartClipboardPayload,
+  chartPayloadToNewCard,
+} from "metabase/common/utils/chart-clipboard";
 import { addCardToDashboard } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/redux";
@@ -28,11 +31,7 @@ export function useDashboardChartPaste() {
       }
       try {
         const card = await createCard({
-          name: payload.name,
-          description: payload.description ?? null,
-          display: payload.display,
-          dataset_query: payload.dataset_query,
-          visualization_settings: payload.visualization_settings,
+          ...chartPayloadToNewCard(payload),
           dashboard_id: dashboardId,
         }).unwrap();
         await dispatch(

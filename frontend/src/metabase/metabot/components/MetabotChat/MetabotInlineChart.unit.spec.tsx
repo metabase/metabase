@@ -148,7 +148,18 @@ describe("MetabotInlineChart", () => {
     });
 
     it("creates a card with the chart's query and display on save", async () => {
-      fetchMock.post("path:/api/card", createMockCard({ id: 99 }));
+      // The route only matches when the POST body carries the chart's fields, so
+      // asserting it was called verifies the request payload.
+      fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
+        name: "create-card",
+        matchPartialBody: true,
+        body: {
+          display: "bar",
+          name: "Orders by month",
+          description: "Monthly count of orders.",
+          dataset_query: datasetQuery,
+        },
+      });
       setup();
 
       await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -157,14 +168,8 @@ describe("MetabotInlineChart", () => {
       );
 
       await waitFor(() => {
-        expect(fetchMock.callHistory.called("path:/api/card")).toBe(true);
+        expect(fetchMock.callHistory.called("create-card")).toBe(true);
       });
-      const call = fetchMock.callHistory.lastCall("path:/api/card");
-      const body = JSON.parse((call?.options?.body as string) ?? "{}");
-      expect(body.display).toBe("bar");
-      expect(body.name).toBe("Orders by month");
-      expect(body.description).toBe("Monthly count of orders.");
-      expect(body.dataset_query).toEqual(datasetQuery);
     });
 
     it("replaces the Save button with a Saved link after saving", async () => {

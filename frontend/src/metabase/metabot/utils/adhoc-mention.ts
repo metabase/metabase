@@ -3,12 +3,15 @@ import type {
   CardDisplayType,
   DatasetQuery,
   MetabotAdhocQueryInfo,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 export type AdhocChartPayload = {
   query: DatasetQuery;
   display?: CardDisplayType;
   name?: string;
+  description?: string;
+  visualization_settings?: VisualizationSettings;
 };
 
 const ADHOC_MENTION_MD_REGEX =
