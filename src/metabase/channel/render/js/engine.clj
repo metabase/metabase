@@ -11,7 +11,8 @@
    [clojure.java.io :as io]
    [metabase.util.i18n :refer [trs]])
   (:import
-   (org.graalvm.polyglot Context Engine HostAccess Source Value)))
+   (java.io OutputStream)
+   (org.graalvm.polyglot Context Engine HostAccess SandboxPolicy Source Value)))
 
 (set! *warn-on-reflection* true)
 
@@ -61,6 +62,65 @@
       (out System/out)
       (err System/err)
       (allowIO false)
+      (build)))
+
+;;; ---------------------------------------- Untrusted plugin sandbox ----------------------------------------
+;;;
+;;; Stronger sandbox for running *untrusted* custom-viz plugin JS (third-party bundles). Unlike [[context]],
+;;; which relies on `HostAccess/NONE` + config flags in the host JVM, this runs the guest inside a GraalVM
+;;; native-image isolate (separate VM, separate heap) under `SandboxPolicy/UNTRUSTED`, so CPU/heap limits and
+;;; speculative-execution mitigations are enforced by the VM. Requires the `js-isolate-community` artifact on
+;;; the classpath. Built-in static-viz keeps the faster in-process [[context]] path; only plugins pay for the
+;;; isolate.
+
+(def ^:private ^OutputStream discarding-output-stream
+  "Sink for untrusted-guest stdout/stderr — plugin console output is neither trusted nor useful in server
+  logs, and `SandboxPolicy/UNTRUSTED` bounds it via `sandbox.Max*StreamSize` regardless."
+  (proxy [OutputStream] []
+    (write
+      ([_])
+      ([_ _ _]))))
+
+(defn- new-untrusted-plugin-engine
+  "Build the isolate `Engine` shared by every untrusted-plugin context. `engine.MaxIsolateMemory` caps the
+  whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in [[untrusted-plugin-context]]."
+  ^Engine []
+  (.. (Engine/newBuilder (into-array String ["js"]))
+      (sandbox SandboxPolicy/UNTRUSTED)
+      (option "engine.MaxIsolateMemory" "512MB")
+      (out discarding-output-stream)
+      (err discarding-output-stream)
+      (build)))
+
+(defonce ^:private
+  ^{:doc "GraalVM isolate `Engine` shared by every untrusted custom-viz plugin context. Contexts on a shared
+          engine still get isolated global scopes (one plugin can't see another's globals), while sharing the
+          isolate's Truffle runtime + parsed-source cache. Process-lifetime singleton (intentionally never
+          closed)."}
+  shared-untrusted-plugin-engine
+  (delay (new-untrusted-plugin-engine)))
+
+(defn untrusted-plugin-context
+  "Create a `SandboxPolicy/UNTRUSTED` GraalVM isolate `Context` for running untrusted custom-viz plugin JS.
+  The guest runs in a separate isolate heap with VM-enforced CPU/heap/AST limits; like [[context]] it has no
+  host access and no IO, so data must cross the boundary as JSON strings. Requires `js-isolate-community` on
+  the classpath. The `sandbox.*` limits below are all mandatory under `UNTRUSTED` — the context fails to build
+  if any is unset."
+  ^Context []
+  (.. (Context/newBuilder (into-array String ["js"]))
+      (engine @shared-untrusted-plugin-engine)
+      (sandbox SandboxPolicy/UNTRUSTED)
+      ;; HostAccess/UNTRUSTED, not /NONE: the UNTRUSTED policy rejects /NONE (it still permits mutable
+      ;; target-type mappings). /UNTRUSTED is the policy's purpose-built strictest host-access mode.
+      (allowHostAccess HostAccess/UNTRUSTED)
+      (option "sandbox.MaxCPUTime" "10s")       ; wall of guest CPU per render
+      (option "sandbox.MaxHeapMemory" "256MB")  ; must be < engine.MaxIsolateMemory
+      (option "sandbox.MaxASTDepth" "5000")     ; large bundles parse deep; 5000 clears React+ECharts
+      (option "sandbox.MaxThreads" "1")
+      (option "sandbox.MaxOutputStreamSize" "16MB")
+      (option "sandbox.MaxErrorStreamSize" "4MB")
+      (out discarding-output-stream)
+      (err discarding-output-stream)
       (build)))
 
 (defn load-js-string
