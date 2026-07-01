@@ -15,6 +15,7 @@ import {
   BrowseModels,
   BrowseSchemas,
   BrowseTables,
+  TablePermalinkRedirect,
 } from "metabase/browse";
 import { ArchiveCollectionModal } from "metabase/collections/components/ArchiveCollectionModal";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
@@ -310,6 +311,14 @@ export const getRoutes = (store: AppStore) => {
             <Route
               path="databases/:dbId/schema/:schemaName"
               component={BrowseTables}
+            />
+            <Route
+              path="databases/:dbName/schema/:schemaName/table/:tableName"
+              component={TablePermalinkRedirect}
+            />
+            <Route
+              path="databases/:dbName/table/:tableName"
+              component={TablePermalinkRedirect}
             />
 
             {PLUGIN_TABLE_EDITING.getRoutes()}
