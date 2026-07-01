@@ -133,9 +133,9 @@
 
 (def ^:private covered-by-dedicated-round-trip-test?
   "Models that have full export/import coverage in their own round-trip test and so don't need a
-  fixture in this shared baseline. CuratedSearchEntry is covered (in-memory + on-disk) by
-  metabase-enterprise.serialization.v2.curated-search-entry-test."
-  #{"CuratedSearchEntry"})
+  fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
+  metabase-enterprise.serialization.v2.osi-ai-context-test."
+  #{"OsiAiContext"})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."

@@ -42,7 +42,9 @@ export function appendQueryParameters(
 ) {
   for (const key in params) {
     const value = params[key];
-    if (value === undefined) {
+    // Skip nullish values so an absent param never becomes the literal string
+    // `"null"`/`"undefined"` in the querystring.
+    if (value == null) {
       continue;
     }
     if (Array.isArray(value)) {

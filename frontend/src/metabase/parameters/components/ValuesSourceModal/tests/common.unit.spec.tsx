@@ -194,14 +194,12 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: /Pick a column/ }),
-      );
+      await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
       expect(
-        screen.queryByRole("heading", { name: "ID" }),
+        screen.queryByRole("option", { name: "ID" }),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("heading", { name: "Category" }));
+      await userEvent.click(screen.getByRole("option", { name: "Category" }));
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,
@@ -237,7 +235,9 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+        "A\nB\nC",
+      );
     });
 
     it("should display a message when the user has no access to the card", async () => {
@@ -335,7 +335,9 @@ describe("ValuesSourceModal", () => {
           }),
         ],
       });
-      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+      expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+        "A\nB\nC",
+      );
 
       await userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();

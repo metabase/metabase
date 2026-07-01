@@ -195,7 +195,10 @@
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :custom_instructions      (not-empty
                                                              (case template-name
-                                                               "natural-language-querying-only.selmer"
+                                                               ;; both nlq templates (curated + general-search
+                                                               ;; fallback) take the nlq custom instructions
+                                                               ("natural-language-querying-only.selmer"
+                                                                "natural-language-querying-fallback.selmer")
                                                                (metabot.settings/metabot-nlq-system-prompt)
                                                                "sql-querying-only.selmer"
                                                                (metabot.settings/metabot-sql-system-prompt)

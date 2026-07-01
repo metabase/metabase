@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";

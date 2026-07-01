@@ -263,6 +263,13 @@
   (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
     (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
 
+(def ^:private profiles-excluding-recent-views
+  "Profiles for which recent views are never injected. The nlq profile discovers data through the curated
+  library tool rather than general instance search, so arbitrary recently-viewed items (which may not be
+  curated) would undermine that guarantee. (A :nlq request served the general-search fallback keeps the
+  external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for a direct request.)"
+  #{:nlq :nlq-fallback})
+
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
   Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
@@ -270,12 +277,15 @@
 
   When `metabot-id` is provided and the metabot has `use_verified_content` enabled, filters recents down
   to curated content (verified, official-collection, library/published, or authoritative) before taking
-  the top 5, matching how search filters answer sources."
-  [context {:keys [metabot-id] :as _opts}]
+  the top 5, matching how search filters answer sources.
+
+  Skips recents entirely for profiles in [[profiles-excluding-recent-views]]."
+  [context {:keys [metabot-id profile-id] :as _opts}]
   (try
-    ;; When disabled, strip any preexisting :user_recently_viewed so the setting guarantees recent
+    ;; When disabled (or excluded for this profile), strip any preexisting :user_recently_viewed so recent
     ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
-    (if-not (metabot.settings/metabot-recent-views-enabled?)
+    (if (or (not (metabot.settings/metabot-recent-views-enabled?))
+            (contains? profiles-excluding-recent-views profile-id))
       (dissoc context :user_recently_viewed)
       (assoc context :user_recently_viewed
              (let [recents (:recents (activity-feed/get-recents api/*current-user-id*

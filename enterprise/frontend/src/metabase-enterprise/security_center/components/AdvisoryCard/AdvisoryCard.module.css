@@ -20,5 +20,5 @@
 
 .severityNeutral {
   background-color: var(--mb-color-background_surface-disabled);
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
