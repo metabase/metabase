@@ -68,8 +68,7 @@ export function initializePlugin() {
                 rightSection={
                   hasStaleItems ? (
                     <Badge
-                      bg="brand"
-                      size="xs"
+                      color="brand"
                       variant="filled"
                     >{t`Recommended`}</Badge>
                   ) : null
