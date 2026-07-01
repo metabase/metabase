@@ -451,6 +451,11 @@ const configs = [
     plugins: {
       cypress: cypressPlugin,
       "chai-friendly": chaiFriendlyPlugin,
+      // Declared here so the metabase and
+      // import rules below also resolve for non-JS/TS e2e files, e.g. the
+      // coverage tooling `.mjs`, which don't match the `**/*.{js,ts,...}` base.
+      metabase: metabasePlugin,
+      import: importXPlugin,
     },
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
