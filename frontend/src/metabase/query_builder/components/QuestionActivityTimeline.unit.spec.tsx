@@ -8,67 +8,40 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
+import Question from "metabase-lib/v1/Question";
+import {
+  createMockCard,
+  createMockUserListResult,
+} from "metabase-types/api/mocks";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 
-const REVISIONS = [
-  {
-    is_reversion: true,
-    description: "bar",
-    timestamp: "2016-05-08T02:02:07.441Z",
-    user: {
-      common_name: "Bar",
-    },
-  },
-  {
-    is_creation: true,
-    description: "foo",
-    timestamp: "2016-04-08T02:02:07.441Z",
-    user: {
-      common_name: "Foo",
-    },
-  },
-];
+interface SetupOpts {
+  canWrite: boolean;
+}
 
-async function setup({ question }) {
+async function setup({ canWrite }: SetupOpts) {
+  const question = new Question(createMockCard({ can_write: canWrite }));
+
   setupRevisionsEndpoints([
     createMockRevision(),
     createMockRevision({ id: 2 }),
   ]);
-  setupUsersEndpoints([createMockUserInfo()]);
-  renderWithProviders(
-    <QuestionActivityTimeline
-      question={question}
-      revisions={REVISIONS}
-      currentUser={createMockUser()}
-    />,
-  );
+  setupUsersEndpoints([createMockUserListResult()]);
+  renderWithProviders(<QuestionActivityTimeline question={question} />);
   await waitForLoaderToBeRemoved();
 }
 
 describe("QuestionActivityTimeline", () => {
   describe("when the user does not have perms to modify the question", () => {
-    const question = {
-      canWrite: () => false,
-      getModerationReviews: () => [],
-      id: () => 1,
-    };
-
     it("should not render revert action buttons", async () => {
-      await setup({ question });
+      await setup({ canWrite: false });
       expect(() => screen.getByTestId("question-revert-button")).toThrow();
     });
   });
 
   describe("when the user does have perms to modify the question", () => {
-    const question = {
-      canWrite: () => true,
-      getModerationReviews: () => [],
-      id: () => 1,
-    };
-
     it("should render revert action buttons", async () => {
-      await setup({ question });
+      await setup({ canWrite: true });
       expect(screen.getByTestId("question-revert-button")).toBeInTheDocument();
     });
   });
