@@ -547,6 +547,7 @@ const SdkDashboardInner = ({
             ? navigateToNewCardFromDashboard
             : onNavigateToNewCardFromDashboard
         }
+        onEditQuestion={onEditQuestionWithNav}
         onNewQuestion={() => {
           if (isDashboardDirty) {
             show({
@@ -622,10 +623,7 @@ const SdkDashboardInner = ({
             </MaybeStyledWrapper>
           ))
           .with({ finalRenderMode: "dashboard" }, () => (
-            <SdkDashboardProvider
-              plugins={plugins}
-              onEditQuestion={onEditQuestionWithNav}
-            >
+            <SdkDashboardProvider plugins={plugins}>
               {children ?? (
                 <MaybeStyledWrapper
                   skip={skipStyledWrapper}
