@@ -3,6 +3,10 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-temporal-bucketing-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.core :as qp]
    [metabase.test :as mt]))
 
 (mt/defdataset temporal_bucketing_db
@@ -177,3 +181,36 @@
                  (mid-year! :quarter-of-year)))
           (is (= [[4]]
                  (end-of-year! :quarter-of-year))))))))
+
+(deftest clickhouse-uses-report-timezone-bucketing-source-query-test
+  (mt/test-driver :clickhouse
+    (mt/with-report-timezone-id! "Europe/London"
+      (let [mp           (mt/metadata-provider)]
+        (mt/with-temp [:model/Card card {:dataset_query (->> (mt/id :orders)
+                                                             (lib.metadata/table mp)
+                                                             (lib/query mp))}]
+          (let [base       (lib/query mp (lib.metadata/card mp (:id card)))
+                created-at (m/find-first #(= {:table-id (mt/id :orders) :name "created_at"}
+                                             (select-keys % [:table-id :name]))
+                                         (lib/breakoutable-columns base))]
+            (are [bucket start-date end-date expected]
+                 (= expected
+                    (-> base
+                        (lib/filter (lib/between created-at start-date end-date))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (lib/with-temporal-bucket created-at bucket))
+                        (qp/process-query)
+                        (mt/rows)))
+              :day "2016-07-26" "2016-07-31"
+              [["2016-07-26T00:00:00+01:00" 1]
+               ["2016-07-27T00:00:00+01:00" 3]
+               ["2016-07-28T00:00:00+01:00" 2]
+               ["2016-07-29T00:00:00+01:00" 4]
+               ["2016-07-30T00:00:00+01:00" 7]
+               ["2016-07-31T00:00:00+01:00" 3]]
+
+              :week "2016-09-04" "2016-10-01"
+              [["2016-09-04T00:00:00+01:00" 20]
+               ["2016-09-11T00:00:00+01:00" 23]
+               ["2016-09-18T00:00:00+01:00" 18]
+               ["2016-09-25T00:00:00+01:00" 32]])))))))

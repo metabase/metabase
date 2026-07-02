@@ -13,7 +13,7 @@ import {
 } from "metabase/common/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,

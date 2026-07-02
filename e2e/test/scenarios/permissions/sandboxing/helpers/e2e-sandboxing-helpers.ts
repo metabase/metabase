@@ -350,14 +350,12 @@ export const configureSandboxPolicy = (
   cy.log("Modify the sandboxing policy for the 'data' group");
   H.modifyPermission("data", 0, "Row and column security");
 
-  if (databaseId === 1) {
-    H.modal().within(() => {
-      cy.findByText(
-        /Change access to this database to .*Row and column security.*?/,
-      );
-      cy.button("Change").click();
-    });
-  }
+  H.modal().within(() => {
+    cy.findByText(
+      /Change access to this database to .*Row and column security.*?/,
+    );
+    cy.button("Change").click();
+  });
 
   H.modal().findByText(/Configure row and column security for this table/);
 

@@ -50,6 +50,8 @@
   - metabase://metric/{id} - basic metric info
   - metabase://metric/{id}/dimensions - metric with dimensions
   - metabase://metric/{id}/dimensions/{dimension_id} - specific dimension details
+  - metabase://measure/{id} - measure detail (definition + parent table)
+  - metabase://segment/{id} - segment detail (definition + parent table)
   - metabase://transform/{id} - transform details
   - metabase://transform/{id}/sources - tables/databases this transform reads from
   - metabase://transform/{id}/target - table this transform writes to
@@ -513,6 +515,14 @@
                              :field-id    dim-id
                              :limit       30}))
 
+;; ----- Measure / Segment -----
+
+(defn- fetch-measure [id-str]
+  (entity-details/get-measure-details {:measure-id (parse-long id-str)}))
+
+(defn- fetch-segment [id-str]
+  (entity-details/get-segment-details {:segment-id (parse-long id-str)}))
+
 ;; ----- Transform -----
 
 (defn- fetch-transform [id-str]
@@ -620,6 +630,10 @@
       ["metric" id]                                    (fetch-metric id)
       ["metric" id "dimensions"]                       (fetch-metric-dimensions id)
       ["metric" id "dimensions" & rst]                 (fetch-metric-dimension id (str/join "/" rst))
+
+      ;; Measure / Segment
+      ["measure" id]                                   (fetch-measure id)
+      ["segment" id]                                   (fetch-segment id)
 
       ;; Transform
       ["transform" id]                                 (fetch-transform id)
@@ -751,6 +765,8 @@
   - metabase://model/{id}[/fields[/{field_id}]] [/sources]
   - metabase://question/{id}[/fields[/{field_id}]] [/sources]
   - metabase://metric/{id}[/dimensions[/{dim_id}]]
+  - metabase://measure/{id}
+  - metabase://segment/{id}
   - metabase://transform/{id}[/sources|/target]
   - metabase://dashboard/{id}[/items]"
   [{:keys [uris]} :- [:map {:closed true}

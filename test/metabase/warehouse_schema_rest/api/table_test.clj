@@ -1361,6 +1361,37 @@
                       (map :id)
                       set))))))))
 
+(deftest published-only-filter-test
+  (testing "GET /api/table?published-only=true"
+    (testing "filters tables that are not published"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {table-1-id :id} {:db_id db-id
+                                                    :name "table_1"
+                                                    :active true
+                                                    :is_published true}
+                     :model/Table {table-2-id :id} {:db_id db-id
+                                                    :name "table_2"
+                                                    :active true
+                                                    :is_published false}]
+        (testing "both tables returned without filter"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table")
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+        (testing "both tables returned with published-only=false"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :published-only false)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+        (testing "only table-1 is returned with published-only=true"
+          (is (= #{table-1-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :published-only true)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))))))
+
 (deftest no-fks-for-missing-tables-test
   (testing "Check that we don't return foreign keys for missing/inactive tables"
     (mt/with-temp-test-data

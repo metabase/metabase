@@ -1,12 +1,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type {
-  OnBeforeRequestHandler,
-  OnBeforeRequestHandlerConfig,
-} from "metabase/plugins/oss/api";
-import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
+import { getBasename } from "metabase/utils/basename";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
@@ -14,10 +9,12 @@ import { addAntiCsrfToken, updateAntiCsrfToken } from "./csrf";
 import { NetworkError, isRetriableError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
-import { apiRequestManipulationMiddleware } from "./middleware";
+import {
+  type OnBeforeRequestHandlerConfig,
+  apiRequestManipulationMiddleware,
+} from "./middleware";
 import type {
   EventMap,
-  RequestClientInfo,
   RequestInit,
   RequestOptions,
   ResponseFor,
@@ -32,20 +29,13 @@ import {
 const MAX_RETRIES = 10;
 
 export class ApiClient extends EventEmitter<EventMap> {
-  basename = "";
-  apiKey = "";
-  sessionToken: string | undefined;
-  requestClient: RequestClientInfo | undefined;
-
-  beforeRequestHandlers: OnBeforeRequestHandler[] = [];
-
   private buildUrl(
     template: string,
     data: Record<string, unknown>,
     body?: Record<string, unknown>,
   ): URL {
     const relativePath = substituteUrlTags(template, data, body);
-    return new URL(this.basename.concat(relativePath), location.origin);
+    return new URL(getBasename().concat(relativePath), location.origin);
   }
 
   private getClientHeaders(
@@ -55,32 +45,6 @@ export class ApiClient extends EventEmitter<EventMap> {
       Accept: "application/json",
       "Content-Type": "application/json",
     };
-
-    if (this.apiKey) {
-      headers["X-Api-Key"] = this.apiKey;
-    }
-
-    if (this.sessionToken) {
-      headers["X-Metabase-Session"] = this.sessionToken;
-    }
-
-    if (isWithinIframe() && !isEmbeddingSdk()) {
-      headers["X-Metabase-Embedded"] = "true";
-    }
-
-    if (this.requestClient) {
-      if (IFRAMED_IN_SELF) {
-        headers["X-Metabase-Embedded-Preview"] = "true";
-      }
-      if (typeof this.requestClient === "object") {
-        headers["X-Metabase-Client"] = this.requestClient.name;
-        if (this.requestClient.version) {
-          headers["X-Metabase-Client-Version"] = this.requestClient.version;
-        }
-      } else {
-        headers["X-Metabase-Client"] = this.requestClient;
-      }
-    }
 
     const locale = getLocaleHeader();
     if (locale) {
@@ -99,20 +63,17 @@ export class ApiClient extends EventEmitter<EventMap> {
   }
 
   private async _resolveOptions(options: OnBeforeRequestHandlerConfig) {
-    const middlewareResult = await apiRequestManipulationMiddleware(
-      this.beforeRequestHandlers,
-      {
-        ...options,
-        // `headers` is optional on the public API, but handlers may merge into
-        // it, so always hand the pipeline a real object to spread into.
-        headers: options.headers ?? {},
-        // This will transform arrays to objects with numeric keys
-        // we shouldn't be using top level-arrays in the API.
-        // Both bags are defensively copied so middleware can safely mutate them.
-        data: { ...options.data },
-        body: options.body ? { ...options.body } : undefined,
-      },
-    );
+    const middlewareResult = await apiRequestManipulationMiddleware({
+      ...options,
+      // `headers` is optional on the public API, but handlers may merge into
+      // it, so always hand the pipeline a real object to spread into.
+      headers: options.headers ?? {},
+      // This will transform arrays to objects with numeric keys
+      // we shouldn't be using top level-arrays in the API.
+      // Both bags are defensively copied so middleware can safely mutate them.
+      data: { ...options.data },
+      body: options.body ? { ...options.body } : undefined,
+    });
 
     return {
       ...middlewareResult,
@@ -149,7 +110,7 @@ export class ApiClient extends EventEmitter<EventMap> {
 
       if (!init.noEvent && (status === 401 || status === 403)) {
         // Strip basename so listeners (app-main.js) see the relative path.
-        this.emit(status, relativeUrl(this.basename, init.url));
+        this.emit(status, relativeUrl(getBasename(), init.url));
       }
 
       if (!ok) {

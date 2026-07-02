@@ -11,6 +11,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
   cancel-in-progress: true
 
+# Exposed to every driver job so the test-driver action can report failures to
+# ci-conductor (secrets: inherit is already set on the drivers call in
+# run-tests.yml). See DEV-2224.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.

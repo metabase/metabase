@@ -33,8 +33,7 @@
   python-transform?
   query-transform?
   transform-source-database
-  transform-source-type
-  transform-type]
+  transform-source-type]
  [metabase.transforms.util
   add-source-readable
   is-temp-transform-table?]

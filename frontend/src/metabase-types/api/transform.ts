@@ -128,6 +128,16 @@ export type TransformSource = QueryTransformSource | PythonTransformSource;
 export type TransformTargetAppendStrategy = {
   type: "append";
 };
+
+export type MergeKeyColumn = {
+  name?: string;
+  "field-id"?: number | null;
+};
+
+export type TransformTargetMergeStrategy = {
+  type: "merge";
+  "unique-key": MergeKeyColumn[];
+};
 export type DraftTransformSource =
   | Transform["source"]
   | PythonTransformSourceDraft;
@@ -136,7 +146,9 @@ export type DraftTransform = Partial<
   Pick<Transform, "id" | "name" | "description" | "target">
 > & { source: DraftTransformSource };
 
-export type TargetIncrementalStrategy = TransformTargetAppendStrategy;
+export type TargetIncrementalStrategy =
+  | TransformTargetAppendStrategy
+  | TransformTargetMergeStrategy;
 
 export type TransformTargetType = "table" | "table-incremental";
 
