@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DashboardSharingEmbeddingModal } from "metabase/embedding/components/DashboardSharingEmbeddingModal";
+import { DashboardSharingEmbeddingModal } from "metabase/dashboard/components/DashboardSharingEmbeddingModal";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { useGetCurrentResource } from "metabase/embedding/embedding-iframe-sdk-setup/hooks";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
