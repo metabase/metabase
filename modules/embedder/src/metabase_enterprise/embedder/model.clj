@@ -49,10 +49,14 @@
   default `model`) and `:include-token-types?` (default true)."
   []
   (when-let [raw (not-empty (getenv "MB_EMBEDDER_MODEL_SOURCES"))]
-    (try
-      (edn/read-string raw)
-      (catch Exception e
-        (throw (ex-info "MB_EMBEDDER_MODEL_SOURCES is not valid EDN" {:value raw} e))))))
+    (let [parsed (try
+                   (edn/read-string raw)
+                   (catch Exception e
+                     (throw (ex-info "MB_EMBEDDER_MODEL_SOURCES is not valid EDN" {:value raw} e))))]
+      (when-not (map? parsed)
+        (throw (ex-info "MB_EMBEDDER_MODEL_SOURCES must be an EDN map of model name → source entry"
+                        {:value raw})))
+      parsed)))
 
 (defn- model-source
   "Where to load `model-name` from, in priority order:
@@ -74,6 +78,12 @@
   [model-name]
   (let [resource-path (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
         override      (get (model-source-overrides) model-name)]
+    ;; A malformed entry must fail loudly here: falling through to the bundled/zoo branches would either
+    ;; claim no entry exists or silently load a different model than the one the entry meant to select.
+    (when (and override (not (or (:path override) (:url override))))
+      (throw (ex-info (format "MB_EMBEDDER_MODEL_SOURCES entry for %s must have a :path or :url key."
+                              (pr-str model-name))
+                      {:model-name model-name :entry override})))
     (cond
       (:path override)
       (merge {:type :path :include-token-types? true} (assoc override :path (str (:path override))))

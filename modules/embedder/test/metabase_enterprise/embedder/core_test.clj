@@ -77,6 +77,14 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"MB_EMBEDDER_MODEL_SOURCES is not valid EDN"
                             (source-with {"MB_EMBEDDER_MODEL_SOURCES" "{oops"} true))))
+    (testing "a non-map sources env produces a clear error"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"must be an EDN map"
+                            (source-with {"MB_EMBEDDER_MODEL_SOURCES" "[\"my-model\"]"} true))))
+    (testing "an entry without :path or :url fails loudly instead of being silently ignored"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"must have a :path or :url key"
+                            (source-with {"MB_EMBEDDER_MODEL_SOURCES" "{\"my-model\" {:paht \"/models/x\"}}"} true))))
     (testing "the bundled resource is the default, always with token types"
       (is (=? {:type :url :url #"jar:///metabase-embedder/my-model-.*\.zip" :include-token-types? true}
               (source-with {} true))))
