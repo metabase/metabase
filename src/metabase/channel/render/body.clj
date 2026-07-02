@@ -13,6 +13,7 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.formatter.core :as formatter]
    [metabase.geojson.api :as geojson.api]
    [metabase.geojson.settings :as geojson.settings]
@@ -29,7 +30,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -495,6 +497,36 @@
     :html {:content [:div content] :attachments nil}
     :svg  (png->rendered-part render-type (js.svg/svg-string->bytes content))))
 
+(defn- asset->data-uri
+  "Convert an asset's bytes to a data: URI string."
+  [^String asset-name ^bytes asset-bytes]
+  (let [content-type (or (custom-viz-plugin/asset-content-type asset-name)
+                         "application/octet-stream")]
+    (str "data:" content-type ";base64,"
+         (.encodeToString (java.util.Base64/getEncoder) asset-bytes))))
+
+(defn- custom-viz-bundles
+  "If the card has a custom:* display type, resolve the plugin's bundle and assets for static rendering.
+   Assets are included as a map of `{name -> data-uri}` so the static viz JS context
+   can resolve `getAssetUrl` calls without HTTP."
+  [card]
+  (when-let [identifier (render.util/custom-viz-identifier (:display card))]
+    (let [{:keys [manifest] :as plugin}
+          ;; do not load the (potentially multi-MB) :bundle blob just to read the manifest;
+          ;; resolve-bundle / resolve-asset re-fetch bytes from the cache as needed.
+          (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :manifest :bundle_hash :dev_bundle_url]
+                         :identifier identifier :enabled true)]
+      (when-let [content (some-> plugin
+                                 custom-viz-plugin/resolve-bundle
+                                 :content)]
+        (let [asset-names (some-> manifest custom-viz-plugin/asset-paths)
+              assets      (into {}
+                                (keep (fn [asset-name]
+                                        (when-let [bytes (custom-viz-plugin/resolve-asset plugin asset-name)]
+                                          [asset-name (asset->data-uri asset-name bytes)])))
+                                asset-names)]
+          [{:identifier identifier :source content :assets assets}])))))
+
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
 ;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
@@ -502,13 +534,18 @@
 ;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
 ;; Trend charts were added more recently and will not have multi-series.
 (mu/defmethod render :javascript_visualization :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card dashcard data]
+  [_chart-type render-type timezone-id card dashcard data]
   (let [cards-with-data  (series-cards-with-data dashcard card data)
         viz-settings     (or (get dashcard :visualization_settings)
-                             (get card :visualization_settings))]
-    (javascript-visualization->rendered-part
-     render-type
-     (js.svg/*javascript-visualization* cards-with-data viz-settings))))
+                             (get card :visualization_settings))
+        {:keys [content] :as result} (js.svg/*javascript-visualization* cards-with-data viz-settings
+                                                                        (custom-viz-bundles card))]
+    ;; If the custom viz plugin didn't define a StaticVisualizationComponent, RenderChart returns an
+    ;; empty string. Fall back to table rendering.
+    (if (and (render.util/custom-viz-display? (:display card))
+             (str/blank? content))
+      (render :table render-type timezone-id card dashcard data)
+      (javascript-visualization->rendered-part render-type result))))
 
 (mu/defmethod render :region_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
@@ -532,7 +569,7 @@
                                                                :region_name (:region_name geojson)}))]
         (javascript-visualization->rendered-part
          render-type
-         (js.svg/*javascript-visualization* cards-with-data viz-settings))))))
+         (js.svg/*javascript-visualization* cards-with-data viz-settings nil))))))
 
 (defn- number-at
   "The value of `row` at `idx` when it's a number, else nil."

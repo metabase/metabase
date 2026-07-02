@@ -113,7 +113,7 @@
       ;; HostAccess/UNTRUSTED, not /NONE: the UNTRUSTED policy rejects /NONE (it still permits mutable
       ;; target-type mappings). /UNTRUSTED is the policy's purpose-built strictest host-access mode.
       (allowHostAccess HostAccess/UNTRUSTED)
-      (option "sandbox.MaxCPUTime" "10s")       ; wall of guest CPU per render
+      (option "sandbox.MaxCPUTime" "30s")       ; guest CPU budget: cold static-viz bundle load (~4s) + plugin + render; matches the legacy render timeout
       (option "sandbox.MaxHeapMemory" "256MB")  ; must be < engine.MaxIsolateMemory
       (option "sandbox.MaxASTDepth" "5000")     ; large bundles parse deep; 5000 clears React+ECharts
       (option "sandbox.MaxThreads" "1")

@@ -104,6 +104,26 @@
   [binding-name & body]
   `(do-with-static-viz-context (fn [~binding-name] ~@body)))
 
+(defn do-with-untrusted-static-viz-context
+  "Impl for [[with-untrusted-static-viz-context]]. Renders untrusted custom-viz plugin code in a fresh
+  `SandboxPolicy/UNTRUSTED` GraalVM isolate context (see [[js.engine/untrusted-plugin-context]]) with the
+  static-viz bundle loaded, then disposes it. Unlike [[do-with-static-viz-context]] this is NOT pooled:
+  each render gets a clean, fully-isolated context, so no context tainting is needed, and the isolate's
+  VM-enforced CPU/heap limits replace the old manual render timeout. The shared isolate engine's parsed-source
+  cache keeps re-loading the bundle cheap across renders."
+  [f]
+  (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context))]
+    (try
+      (f context)
+      (finally
+        (try (.close context true) (catch Throwable _))))))
+
+(defmacro with-untrusted-static-viz-context
+  "Like [[with-static-viz-context]] but binds `binding-name` to a sandboxed UNTRUSTED isolate context for
+  rendering untrusted custom-viz plugin code."
+  [binding-name & body]
+  `(do-with-untrusted-static-viz-context (fn [~binding-name] ~@body)))
+
 (defn- post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
   fill-opacity=0.0. Our svg image renderer only understands the latter. Mutation is unfortunately necessary as the
@@ -256,20 +276,32 @@
     (svg-string->bytes svg-string)))
 
 (defn ^:dynamic *javascript-visualization*
-  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
-  [cards-with-data dashcard-viz-settings]
-  (let [response (with-static-viz-context context
-                   (.asString (js.engine/execute-fn-name context "javascript_visualization"
-                                                         (json/encode cards-with-data)
-                                                         (json/encode dashcard-viz-settings)
-                                                         (json/encode (cond-> {:applicationColors (appearance/application-colors)
-                                                                               :startOfWeek (lib-be/start-of-week)
-                                                                               :customFormatting (appearance/custom-formatting)
-                                                                               :tokenFeatures (premium-features/token-features)}
-                                                                        *chart-size*
-                                                                        (assoc :width (:width *chart-size*)
-                                                                               :height (:height *chart-size*)
-                                                                               :fitWithinBounds (boolean (:fit-within? *chart-size*))))))))]
+  "Clojure entrypoint to render javascript visualizations. This function is dynamic only for testing purposes.
+   `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom
+   visualization plugins. When present, rendering runs in a sandboxed UNTRUSTED isolate (the plugin code is
+   untrusted third-party JS); built-in charts keep using the fast pooled context."
+  [cards-with-data dashcard-viz-settings custom-viz-bundles]
+  (let [options     (json/encode (cond-> {:applicationColors (appearance/application-colors)
+                                          :startOfWeek       (lib-be/start-of-week)
+                                          :customFormatting  (appearance/custom-formatting)
+                                          :tokenFeatures     (premium-features/token-features)}
+                                   *chart-size*
+                                   (assoc :width (:width *chart-size*)
+                                          :height (:height *chart-size*)
+                                          :fitWithinBounds (boolean (:fit-within? *chart-size*)))))
+        custom-viz? (seq custom-viz-bundles)
+        run         (fn [context]
+                      (doseq [{:keys [identifier source assets]} custom-viz-bundles]
+                        (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
+                        (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier
+                                                   (json/encode (or assets {}))))
+                      (.asString (js.engine/execute-fn-name context "javascript_visualization"
+                                                            (json/encode cards-with-data)
+                                                            (json/encode dashcard-viz-settings)
+                                                            options)))
+        response    (if custom-viz?
+                      (with-untrusted-static-viz-context context (run context))
+                      (with-static-viz-context context (run context)))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
