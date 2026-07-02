@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.classloader.core :as classloader]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
@@ -50,6 +51,7 @@
   [provider-name]
   (case provider-name
     "ai-service" "ais"
+    "in-process" "inproc"
     (clean-provider-name provider-name)))
 
 ;;; Token Counting for OpenAI Models
@@ -366,6 +368,70 @@
 (defmethod pull-model "openai" [_]
   (log/debug "OpenAI provider does not require pulling a model"))
 
+;;;; In-process (plugin) provider
+
+(defn- resolve-in-process-embed-fn
+  "Resolve the embed fn from `metabase-enterprise.embedder.core`, throwing a setup-guidance error when absent.
+  The embedder ships separately as a plugin jar (metabase-embedder-plugin.jar) so the DJL/ONNX Runtime
+  dependency stack stays out of the core uberjar."
+  []
+  (try
+    ;; classloader/require, not clojure.core/require: plugin jars are added to the classpath at runtime
+    ;; and only the shared dynamic classloader can see them.
+    (classloader/require 'metabase-enterprise.embedder.core)
+    (catch Exception e
+      ;; classloader/require wraps the FileNotFoundException in an ExceptionInfo, so check the cause chain.
+      (if (some #(instance? java.io.FileNotFoundException %) (u/full-exception-chain e))
+        (throw (ex-info (str "The 'in-process' embedding provider requires the Metabase embedder plugin. "
+                             "Place metabase-embedder-plugin.jar in your plugins directory "
+                             "(MB_PLUGINS_DIR, default ./plugins) and restart Metabase.")
+                        {:provider "in-process" :status 400}
+                        e))
+        (throw e))))
+  (or (ns-resolve 'metabase-enterprise.embedder.core 'embed-texts)
+      (throw (ex-info "Embedder plugin loaded but does not define embed-texts; plugin/server version mismatch?"
+                      {:provider "in-process" :ns 'metabase-enterprise.embedder.core}))))
+
+(defn- check-in-process-dimensions
+  "Guard against a configured dimension that doesn't match what the plugin model actually produces.
+  Misconfiguration would otherwise poison the pgvector index at its declared width."
+  [{:keys [vector-dimensions]} embeddings]
+  (when-let [^floats embedding (first embeddings)]
+    (let [actual (alength embedding)]
+      (when (not= vector-dimensions actual)
+        (throw (ex-info (format (str "In-process embedder produces %d-dimensional vectors but "
+                                     "ee-embedding-model-dimensions is %d. "
+                                     "Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=%d.")
+                                actual vector-dimensions actual)
+                        {:provider           "in-process"
+                         :actual-dimensions  actual
+                         :configured-dimensions vector-dimensions})))))
+  embeddings)
+
+(defmethod get-embeddings-batch "in-process"
+  [embedding-model texts & {:as _opts}]
+  (let [embed-fn   (resolve-in-process-embed-fn)
+        embeddings (embed-fn texts)]
+    ;; No API usage to meter; count cl100k tokens as an approximation so the volume shows up on the same
+    ;; dashboards as the HTTP providers.
+    (analytics/inc! :metabase-search/semantic-embedding-tokens
+                    {:provider "in-process" :model (:model-name embedding-model)}
+                    (count-tokens-batch texts))
+    (check-in-process-dimensions embedding-model embeddings)))
+
+(defmethod get-embedding "in-process"
+  [embedding-model text & {:as opts}]
+  (first (get-embeddings-batch embedding-model [text] opts)))
+
+(defmethod pull-model "in-process"
+  [embedding-model]
+  ;; The model ships inside the plugin jar, so there is nothing to download. Instead this acts as an
+  ;; explicit warm-up hook: the first embed pays the one-time DJL/ONNX Runtime native init (~430 MB RSS),
+  ;; and calling this lets operators choose when that happens rather than paying it on the first index run.
+  (let [start-ms (u/start-timer)]
+    (get-embedding embedding-model "warm-up probe")
+    (log/info "In-process embedder warmed up in" (long (u/since-ms start-ms)) "ms")))
+
 ;;;; Query prefixes for asymmetric retrieval models
 
 (def ^:private model-family-query-prefixes
@@ -465,10 +531,12 @@
 
 (comment
   ;; Configuration:
-  ;; MB_EE_EMBEDDING_PROVIDER:  "ai-service" (default), "openai", or "ollama"
+  ;; MB_EE_EMBEDDING_PROVIDER:  "ai-service" (default), "openai", "ollama", or "in-process"
   ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"
+  ;;   - in-process: "all-MiniLM-L6-v2" with MB_EE_EMBEDDING_MODEL_DIMENSIONS=384 (requires the
+  ;;     metabase-embedder plugin jar in the plugins directory)
   ;; MB_EE_EMBEDDING_SERVICE_BASE_URL: URL of the embedding service (for ai-service provider)
   ;; MB_EE_EMBEDDING_SERVICE_API_KEY: API key for the embedding service
   ;; MB_EE_OPENAI_API_KEY: your OpenAI API key (for openai provider)

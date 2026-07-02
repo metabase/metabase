@@ -3584,9 +3584,11 @@
            analytics-interface
            api
            app-db
+           classloader
            collections
            config
            connection-pool
+           enterprise/embedder
            events
            lib-be
            llm

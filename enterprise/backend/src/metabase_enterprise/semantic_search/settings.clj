@@ -12,10 +12,12 @@
 
 (def ^:private valid-embedding-providers
   "The set of valid embedding provider names."
-  #{"ai-service" "openai" "ollama"})
+  ;; Values supplied via the env var bypass the :setter validation below; the use-time checks in
+  ;; `metabase-enterprise.semantic-search.embedding` are the real guard.
+  #{"ai-service" "openai" "ollama" "in-process"})
 
 (defsetting ee-embedding-provider
-  (deferred-tru "The embedding provider to use (`openai`, `ollama`, or `ai-service`)")
+  (deferred-tru "The embedding provider to use (`openai`, `ollama`, `ai-service`, or `in-process`)")
   :encryption :no
   :visibility :settings-manager
   :default "ai-service"

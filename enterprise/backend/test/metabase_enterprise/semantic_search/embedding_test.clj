@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.embedding-test
   (:require
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [environ.core :as env]
    [metabase-enterprise.semantic-search.embedding :as embedding]
@@ -89,6 +90,40 @@
              clojure.lang.ExceptionInfo
              #"OpenAI API key not configured"
              (embedding/get-embeddings-batch embedding-model ["test text"])))))))
+
+(deftest in-process-provider-test
+  (let [embedding-model {:provider "in-process"
+                         :model-name "all-MiniLM-L6-v2"
+                         :vector-dimensions 384}]
+    (testing "get-configured-model accepts the in-process provider"
+      (mt/with-temporary-setting-values [ee-embedding-provider "in-process"
+                                         ee-embedding-model "all-MiniLM-L6-v2"
+                                         ee-embedding-model-dimensions 384]
+        (is (= embedding-model (embedding/get-configured-model)))))
+    (testing "unknown providers are still rejected by the setter"
+      (mt/with-temporary-setting-values [ee-embedding-provider "ai-service"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid embedding provider"
+                              (semantic.settings/ee-embedding-provider! "hand-crank")))))
+    (testing "index table name uses the abbreviated provider name"
+      (is (= "index_inproc_all_MiniLM_L6_v2_384" (semantic.index/model-table-name embedding-model))))
+    (testing "a setup-guidance error is thrown when the embedder plugin is absent"
+      (if (io/resource "metabase_enterprise/embedder/core.clj")
+        (testing "embedder module on classpath (:embedder alias); nothing to assert"
+          (is true))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"requires the Metabase embedder plugin"
+                              (embedding/get-embeddings-batch embedding-model ["hello"])))))
+    (testing "with the embed fn stubbed in"
+      (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
+                                  (constantly (fn [texts] (mapv (fn [_] (float-array 384)) texts)))]
+        (testing "matching dimensions pass through"
+          (is (= 384 (alength ^floats (embedding/get-embedding embedding-model "hello")))))
+        (testing "a dimension mismatch produces an actionable error"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=384"
+                                (embedding/get-embedding (assoc embedding-model :vector-dimensions 1024)
+                                                         "hello"))))))))
 
 (deftest test-token-counting
   (testing "count-tokens returns reasonable counts for text"
