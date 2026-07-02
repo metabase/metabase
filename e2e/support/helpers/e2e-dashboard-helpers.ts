@@ -167,12 +167,14 @@ export function editDashboard() {
   // The click can be dropped while the header is still re-rendering (e.g. right
   // after a save). The Edit button only exists in view mode, so if it's still
   // present the click didn't take — re-click it. This can't double-toggle.
-  cy.get("body").then(($body) => {
-    if ($body.find('[aria-label="Edit dashboard"]').length > 0) {
+  // Use cy.document() (not cy.get("body")) so this also works when editDashboard
+  // runs inside a cy.within() block, where cy.get is scoped to the subject.
+  cy.document().then((doc) => {
+    if (doc.querySelector('[aria-label="Edit dashboard"]')) {
       cy.findByLabelText("Edit dashboard").click();
     }
   });
-  cy.findByTestId("edit-bar").should("be.visible");
+  cy.findByText("You're editing this dashboard.");
 }
 
 export function saveDashboard({
