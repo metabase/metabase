@@ -71,6 +71,8 @@
    (java.io ByteArrayInputStream)
    (java.util Iterator)))
 
+; Dirt
+
 (set! *warn-on-reflection* true)
 
 (driver/register! :bigquery-cloud-sdk, :parent #{:sql
