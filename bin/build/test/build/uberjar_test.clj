@@ -62,18 +62,21 @@
 
 (deftest jdbc-driver-services-merger-test
   (testing "merges JDBC driver service files across jars, dropping org.h2.Driver, deduping the rest"
-    (let [existing (java.io.File/createTempFile "java.sql.Driver" "")]
+    (let [existing (java.io.File/createTempFile "java.sql.Driver" "")
+          closed?  (atom false)]
       (try
         ;; simulate the file already accumulated from earlier jars (H2 written by the first jar)
         (spit existing "org.h2.Driver\norg.postgresql.Driver")
         ;; a later jar also contributes the service file (with its own H2 line + a new driver)
-        (#'uberjar/jdbc-driver-services-merger
-         {:existing existing
-          :in       (ByteArrayInputStream.
-                     (.getBytes "org.sqlite.JDBC\norg.h2.Driver\norg.postgresql.Driver"))})
+        (let [in (proxy [ByteArrayInputStream]
+                        [(.getBytes "org.sqlite.JDBC\norg.h2.Driver\norg.postgresql.Driver")]
+                   (close [] (reset! closed? true)))]
+          (#'uberjar/jdbc-driver-services-merger {:existing existing, :in in}))
         (let [lines (str/split-lines (slurp existing))]
           (is (not (some #{"org.h2.Driver"} lines)) "org.h2.Driver is dropped")
           (is (contains? (set lines) "org.postgresql.Driver"))
           (is (contains? (set lines) "org.sqlite.JDBC"))
           (is (= (count lines) (count (distinct lines))) "no duplicate providers"))
+        ;; `in` is the shared JarInputStream tools.build keeps iterating -- closing it breaks the uber build
+        (is (not @closed?) "the handler must not close the incoming stream")
         (finally (.delete existing))))))

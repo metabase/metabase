@@ -203,8 +203,12 @@
   "Conflict handler for the merged `META-INF/services/java.sql.Driver`: concatenate the driver
   providers contributed by each jar, minus `org.h2.Driver`."
   [{:keys [^InputStream in ^File existing]}]
+  ;; Read the current entry's bytes via `.readAllBytes` rather than `slurp`: `in` is the shared
+  ;; JarInputStream tools.build is iterating, and `slurp` would close it, breaking the rest of the uber
+  ;; build ("Stream closed"). `.readAllBytes` reads to the end of the current entry without closing.
   (let [existing-lines (when (.exists existing) (str/split-lines (slurp existing)))
-        merged         (->> (concat existing-lines (str/split-lines (slurp in)))
+        in-lines       (str/split-lines (String. (.readAllBytes in) "UTF-8"))
+        merged         (->> (concat existing-lines in-lines)
                             (remove #(= "org.h2.Driver" (str/trim %)))
                             distinct)]
     (spit existing (str/join "\n" merged)))
