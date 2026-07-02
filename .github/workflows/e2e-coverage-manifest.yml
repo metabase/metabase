@@ -9,11 +9,6 @@ name: E2E Coverage Manifest
 # never affect PR test results.
 
 on:
-  # TEMPORARY: lets us trigger a run from this branch before the workflow exists
-  # on the default branch (workflow_dispatch can't reach a not-yet-merged
-  # workflow). Remove this push trigger before merging.
-  push:
-    branches: [dev-2016-add-e2e-instrumentation]
   schedule:
     # Nightly, after the day's merges have settled (UTC).
     - cron: "0 7 * * *"
