@@ -16,6 +16,9 @@ function NavigateProbe() {
       <button onClick={() => navigate({ pathname: "/obj", search: "?x=1" })}>
         push-object
       </button>
+      <button onClick={() => navigate("/bar?x=1", { state: { from: "here" } })}>
+        push-string-query-state
+      </button>
       <button onClick={() => navigate("/baz", { replace: true })}>
         replace
       </button>
@@ -55,6 +58,16 @@ describe("useNavigate", () => {
     const location = history?.getCurrentLocation();
     expect(location?.pathname).toBe("/obj");
     expect(location?.search).toBe("?x=1");
+  });
+
+  it("splits a string destination carrying both a query and state", async () => {
+    const { history } = setup();
+    await click("push-string-query-state");
+    const location = history?.getCurrentLocation();
+    // The query must land in `search`, not be left glued onto `pathname`.
+    expect(location?.pathname).toBe("/bar");
+    expect(location?.search).toBe("?x=1");
+    expect(location?.state).toEqual({ from: "here" });
   });
 
   it("replaces the current entry instead of pushing", async () => {
