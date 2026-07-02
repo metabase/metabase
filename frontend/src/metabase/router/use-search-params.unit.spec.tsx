@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 
 import { useSearchParams } from "./use-search-params";
 
@@ -11,7 +11,14 @@ function SearchParamsProbe() {
     <div>
       <span data-testid="x">{searchParams.get("x")}</span>
       <span data-testid="y">{searchParams.get("y")}</span>
+      <span data-testid="brand">{searchParams.getAll("brand").join(",")}</span>
+      <span data-testid="is-url-search-params">
+        {String(searchParams instanceof URLSearchParams)}
+      </span>
       <button onClick={() => setSearchParams({ x: "2", y: "9" })}>set</button>
+      <button onClick={() => setSearchParams({ brand: ["nike", "reebok"] })}>
+        set-array
+      </button>
       <button
         onClick={() =>
           setSearchParams((prev) => {
@@ -36,16 +43,23 @@ function setup(initialRoute: string) {
   );
 }
 
+const click = (name: string) =>
+  userEvent.click(screen.getByRole("button", { name }));
+
 describe("useSearchParams", () => {
-  it("reads the current query string as URLSearchParams", () => {
+  it("reads the current query string as a URLSearchParams", () => {
     setup("/foo?x=1");
+
     expect(screen.getByTestId("x")).toHaveTextContent("1");
+    expect(screen.getByTestId("is-url-search-params")).toHaveTextContent(
+      "true",
+    );
   });
 
   it("navigates to the new query string when set", async () => {
     const { history } = setup("/foo?x=1");
 
-    await userEvent.click(screen.getByRole("button", { name: "set" }));
+    await click("set");
 
     expect(screen.getByTestId("x")).toHaveTextContent("2");
     expect(screen.getByTestId("y")).toHaveTextContent("9");
@@ -53,10 +67,28 @@ describe("useSearchParams", () => {
     expect(history?.getCurrentLocation().search).toBe("?x=2&y=9");
   });
 
+  it("pushes by default so the previous query stays in history", async () => {
+    const { history } = setup("/foo?x=1");
+
+    await click("set");
+    expect(screen.getByTestId("x")).toHaveTextContent("2");
+
+    act(() => history?.goBack());
+    expect(screen.getByTestId("x")).toHaveTextContent("1");
+  });
+
+  it("expands array values into repeated params", async () => {
+    setup("/foo");
+
+    await click("set-array");
+
+    expect(screen.getByTestId("brand")).toHaveTextContent("nike,reebok");
+  });
+
   it("supports a functional updater over the previous params", async () => {
     setup("/foo?x=1");
 
-    await userEvent.click(screen.getByRole("button", { name: "update" }));
+    await click("update");
 
     expect(screen.getByTestId("x")).toHaveTextContent("3");
   });
