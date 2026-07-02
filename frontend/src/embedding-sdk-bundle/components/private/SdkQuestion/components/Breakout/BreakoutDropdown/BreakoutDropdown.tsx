@@ -104,7 +104,7 @@ export const BreakoutDropdown = (
 ) => {
   const { question } = useSdkQuestionContext();
 
-  if (!shouldRenderQueryBuilderEditingControl(question)) {
+  if (!question || !shouldRenderQueryBuilderEditingControl(question)) {
     return null;
   }
 
