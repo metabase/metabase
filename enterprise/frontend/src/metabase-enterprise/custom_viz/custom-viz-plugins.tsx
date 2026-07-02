@@ -17,6 +17,7 @@ import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useColorScheme } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { retry } from "metabase/utils/retry";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -295,6 +296,13 @@ export type LoadCustomVizPluginOptions = {
   sandboxMode?: SandboxMode;
 };
 
+class BundleFetchError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+    this.name = "BundleFetchError";
+  }
+}
+
 /**
  * Dynamically load a custom viz plugin bundle, call its factory,
  * decompose the returned definition, and register it as a Metabase
@@ -329,28 +337,26 @@ export async function loadCustomVizPlugin(
       params.v = currentHash;
     }
 
-    const fetchBundle = () =>
-      api.fetch({
+    const fetchBundle = async () => {
+      const res = await api.fetch({
         method: "GET",
         url: plugin.bundle_url,
         params,
         cache: "no-store",
       });
-    const maxAttempts = plugin.dev_bundle_url ? 5 : 1;
+      if (!res.ok) {
+        throw new BundleFetchError(res.status);
+      }
+      return res;
+    };
     const isLatest = () => loadStartedSeq.get(plugin.id) === loadSeq;
 
-    let res = await fetchBundle();
-    for (
-      let attempt = 2;
-      attempt <= maxAttempts && !res.ok && res.status >= 500 && isLatest();
-      attempt++
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      res = await fetchBundle();
-    }
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
+    const res = await retry(fetchBundle, {
+      maxRetries: plugin.dev_bundle_url ? 4 : 0,
+      delayMs: () => 300,
+      shouldRetry: (error) =>
+        isLatest() && error instanceof BundleFetchError && error.status >= 500,
+    });
 
     const text = await res.text();
 
