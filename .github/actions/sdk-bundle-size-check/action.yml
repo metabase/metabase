@@ -73,7 +73,6 @@ runs:
             "frontend_client/app/dist/*" \
             "frontend_client/app/embed.js" \
             "frontend_client/app/embedding-sdk/*" \
-            "frontend_client/app/embedding-sdk.js" \
             -d "$2/resources" >/dev/null || true
         }
 
