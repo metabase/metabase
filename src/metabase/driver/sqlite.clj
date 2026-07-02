@@ -202,7 +202,10 @@
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
-(defmethod sql.qp/date [:sqlite :default] [_driver _unit expr] expr)
+;; SQLite stores datetimes as text; equality against a QP-supplied `DATETIME(...)` value only matches
+;; when the column is normalized the same way. `strftime`-based units (`:minute`, `:hour`, `:day`, ...)
+;; do this already; for `:default` (no truncation) we still need to canonicalize both sides.
+(defmethod sql.qp/date [:sqlite :default] [_driver _unit expr] (->datetime expr))
 
 (defmethod sql.qp/date [:sqlite :second]
   [_driver _unit expr]

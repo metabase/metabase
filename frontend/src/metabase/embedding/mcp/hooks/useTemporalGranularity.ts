@@ -70,10 +70,13 @@ export function useTemporalGranularity(
     ? Lib.temporalBucket(temporalColumn)
     : null;
 
-  const currentUnit = currentBucket
-    ? (Lib.displayInfo(query, stageIndex, currentBucket)
-        .shortName as TemporalUnit)
+  const currentShortName = currentBucket
+    ? Lib.displayInfo(query, stageIndex, currentBucket).shortName
     : undefined;
+  const currentUnit: TemporalUnit | undefined =
+    currentShortName && currentShortName !== "default"
+      ? currentShortName
+      : undefined;
 
   const availableBuckets = temporalColumn
     ? Lib.availableTemporalBuckets(query, stageIndex, temporalColumn)

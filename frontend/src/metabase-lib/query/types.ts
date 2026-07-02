@@ -3,13 +3,13 @@ import type {
   CardId,
   DatabaseId,
   DatasetColumn,
+  DatetimeUnit,
   FieldId,
   FieldValuesType,
   RowValue,
   SchemaId,
   TableId,
   TableVisibilityType,
-  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -148,7 +148,7 @@ declare const BucketSymbol: unique symbol;
 export type Bucket = unknown & { _opaque: typeof BucketSymbol };
 
 export type BucketDisplayInfo = {
-  shortName: TemporalUnit;
+  shortName: DatetimeUnit;
   displayName: string;
   default?: boolean;
   selected?: boolean;

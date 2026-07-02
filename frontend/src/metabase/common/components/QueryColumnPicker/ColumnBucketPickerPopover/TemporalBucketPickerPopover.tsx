@@ -37,37 +37,61 @@ export function TemporalBucketPickerPopover({
   classNames,
 }: CommonBucketPickerProps) {
   const selectedBucket = useMemo(() => Lib.temporalBucket(column), [column]);
+  const isExplicitlyUnbucketed = useMemo(
+    () =>
+      selectedBucket != null &&
+      Lib.displayInfo(query, stageIndex, selectedBucket).shortName ===
+        "default",
+    [query, stageIndex, selectedBucket],
+  );
 
   const items: BucketItem[] = useMemo(
     () => [
       ...buckets.map((bucket) => getBucketItem(query, stageIndex, bucket)),
       {
         displayName: t`Don't bin`,
-        isSelected: !selectedBucket && isEditing,
+        isSelected: isEditing && (isExplicitlyUnbucketed || !selectedBucket),
       },
     ],
-    [buckets, selectedBucket, isEditing, query, stageIndex],
+    [
+      buckets,
+      selectedBucket,
+      isExplicitlyUnbucketed,
+      isEditing,
+      query,
+      stageIndex,
+    ],
   );
 
   const triggerLabel = useMemo(() => {
-    const displayBucket = isEditing
-      ? selectedBucket
-      : buckets.find((bucket) => {
-          const info = Lib.displayInfo(query, stageIndex, bucket);
-          return info.default;
-        });
+    const displayBucket =
+      isEditing && !isExplicitlyUnbucketed
+        ? selectedBucket
+        : !isEditing
+          ? buckets.find((bucket) => {
+              const info = Lib.displayInfo(query, stageIndex, bucket);
+              return info.default;
+            })
+          : undefined;
     if (displayBucket) {
       const info = Lib.displayInfo(query, stageIndex, displayBucket);
       return t`by ${info.displayName.toLowerCase()}`;
     }
     return t`Unbinned`;
-  }, [query, stageIndex, isEditing, selectedBucket, buckets]);
+  }, [
+    query,
+    stageIndex,
+    isEditing,
+    isExplicitlyUnbucketed,
+    selectedBucket,
+    buckets,
+  ]);
 
   const handleSelect = useCallback(
     (item: BucketItem) => {
       const index = items.indexOf(item);
-      const bucket = buckets.at(index) ?? null;
-      onSelect(Lib.withTemporalBucket(column, bucket));
+      const bucket = buckets.at(index);
+      onSelect(Lib.withTemporalBucket(column, bucket ?? "default"));
     },
     [column, items, buckets, onSelect],
   );
