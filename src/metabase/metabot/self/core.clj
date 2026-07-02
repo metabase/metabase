@@ -36,7 +36,7 @@
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
   Required:
-    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-4.1-mini\")
+    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
 
   Optional:
     :system      - System prompt string

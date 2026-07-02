@@ -1528,10 +1528,10 @@
 (deftest ^:parallel bigquery-field-filter-alias-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [mp    (mt/metadata-provider)
-          sql   "SELECT title as title, category AS category
-                 FROM sha_c1baee7db240aa419104c2d925a07a4d4faeeb24_test_data.products p
-                 WHERE 1=1 [[ AND {{category}} ]]
-                 ORDER BY p.title ASC;"
+          sql   (format "SELECT title as title, category AS category
+                         FROM %s.products p
+                         WHERE 1=1 [[ AND {{category}} ]]
+                         ORDER BY p.title ASC;" (get-test-data-name))
           product-category (lib/ref (lib.metadata/field mp (mt/id :products :category)))
           query (-> (lib/native-query mp sql)
                     (lib/with-template-tags {"category" {:name "category"
