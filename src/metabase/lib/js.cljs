@@ -2004,27 +2004,28 @@
 
 (defn- template-tags-js->cljs
   [tags]
-  ;; Build ordered `[name tag]` pairs, preserving the JS object's key insertion order. ES string-keyed
-  ;; objects iterate in insertion order, so this keeps the FE's display order intact. See #5136.
+  ;; Build an ordered sequence of tag maps, preserving the JS object's key insertion order. ES
+  ;; string-keyed objects iterate in insertion order, so this keeps the FE's display order intact.
+  ;; See #5136.
   (into []
         (map (fn [^js tag-name]
-               [tag-name
-                (-> (gobject/get tags tag-name)
-                    remove-undefined-properties
-                    js->clj
-                    (perf/update-keys keyword)
-                    (update :type keyword)
-                    (m/update-existing :widget-type #(some-> % keyword))
-                    (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))]))
+               (-> (gobject/get tags tag-name)
+                   remove-undefined-properties
+                   js->clj
+                   (perf/update-keys keyword)
+                   (assoc :name tag-name)
+                   (update :type keyword)
+                   (m/update-existing :widget-type #(some-> % keyword))
+                   (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))
         (array-seq (js/Object.keys tags))))
 
 (defn- template-tags-cljs->js
   [tags]
-  ;; Build a JS object key-by-key in pairs order. ES string-keyed objects preserve insertion order,
-  ;; so the FE reads the tags back in display order. See #5136.
+  ;; Build a JS object key-by-key in tag order (keyed by each tag's :name). ES string-keyed objects
+  ;; preserve insertion order, so the FE reads the tags back in display order. See #5136.
   (let [obj (js-obj)]
-    (doseq [[tag-name tag] tags]
-      (gobject/set obj tag-name
+    (doseq [tag tags]
+      (gobject/set obj (:name tag)
                    (-> tag
                        (update :type name)
                        (m/update-existing :widget-type #(some-> % u/qualified-name))

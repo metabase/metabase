@@ -54,8 +54,8 @@
    (fn rf
      ([m]
       (not-empty (persistent! m)))
-     ([m [template-tag-name template-tag]]
-      (assoc! m template-tag-name template-tag)))
+     ([m template-tag]
+      (assoc! m (:name template-tag) template-tag)))
    (transient {})
    query))
 
@@ -64,9 +64,9 @@
   [query :- ::lib.schema/query]
   (not-empty
    (into #{}
-         (map (fn [[template-tag-name template-tag]]
-                (assoc template-tag :lib.walk/template-tag-name template-tag-name)))
-         (all-template-tags-map query))))
+         (map (fn [template-tag]
+                (assoc template-tag :lib.walk/template-tag-name (:name template-tag))))
+         (vals (all-template-tags-map query)))))
 
 (mu/defn all-template-tags-in-order :- [:maybe [:sequential {:min 1} ::lib.schema.template-tag/template-tag]]
   "Return all template tags in native stages of `query`, in display order (stage order, then
@@ -78,8 +78,8 @@
   (transduce-stages
    (comp (filter (fn [stage] (= (:lib/type stage) :mbql.stage/native)))
          (mapcat (fn [stage]
-                   (map (fn [[template-tag-name template-tag]]
-                          (assoc template-tag :lib.walk/template-tag-name template-tag-name))
+                   (map (fn [template-tag]
+                          (assoc template-tag :lib.walk/template-tag-name (:name template-tag)))
                         (:template-tags stage)))))
    (fn rf
      ([acc] (not-empty acc))

@@ -308,14 +308,24 @@
 
 (defmethod ->mbql5 :mbql.stage/native
   [stage]
-  ;; `:template-tags` may arrive as the legacy associative map OR the canonical `[name tag]` pairs; update each
-  ;; tag's :dimension in either case, preserving the shape (normalization later canonicalizes to pairs).
+  ;; `:template-tags` arrives from legacy MBQL 4 as a map `{name tag}` (or as the canonical tag
+  ;; sequence / the transitional pairs form); convert to the MBQL 5 tag-sequence form, updating
+  ;; each tag's :dimension. (Normalization later re-canonicalizes.)
   (m/update-existing stage :template-tags
                      (fn [template-tags]
-                       (into (empty template-tags)
-                             (map (fn [entry]
-                                    [(first entry) (m/update-existing (second entry) :dimension ->mbql5)]))
-                             template-tags))))
+                       (letfn [(->tag [x]
+                                 (cond
+                                   (map? x)                                 (m/update-existing x :dimension ->mbql5)
+                                   (and (sequential? x) (= (count x) 2))
+                                   (let [[k v] x]
+                                     (->tag (assoc v :name k)))
+                                   :else x))]
+                         (cond
+                           (map? template-tags)
+                           (into [] (map (fn [[k v]] (->tag (assoc v :name k)))) template-tags)
+                           (sequential? template-tags)
+                           (into [] (map ->tag) template-tags)
+                           :else template-tags)))))
 
 (defmethod ->mbql5 :mbql/join
   [join]
@@ -752,10 +762,10 @@
   (-> (into {}
             (map (fn [[k v]]
                    [k (if (= k :template-tags)
-                        ;; MBQL 5 stores template tags as an ordered sequence of `[name tag]` pairs;
-                        ;; legacy MBQL 4 stores them as an associative map `{name tag}`. Order is not
-                        ;; expressible in the legacy form (see #5136).
-                        (into {} (map (fn [[tag-name tag]] [tag-name (->legacy-MBQL tag)])) v)
+                        ;; MBQL 5 stores template tags as an ordered sequence of tag maps; legacy MBQL 4
+                        ;; stores them as an associative map `{name tag}` keyed by each tag's :name. Order
+                        ;; is not expressible in the legacy form (see #5136).
+                        (into {} (map (juxt :name ->legacy-MBQL)) v)
                         (->legacy-MBQL v))]))
             (disqualify stage))
       ;; a native stage becomes

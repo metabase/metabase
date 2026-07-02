@@ -477,8 +477,9 @@
    {tags :template-tags, params :parameters, :as _stage} :- ::lib.schema/stage]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
-    (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag metadata-providerable tag params)]]
+    (into {} (for [tag tags
+                   :let    [k (:name tag)
+                            v (value-for-tag metadata-providerable tag params)]]
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
                  [(or (lib/match-and-normalize-tag-name k) k) v])))

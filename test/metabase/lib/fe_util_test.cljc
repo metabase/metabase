@@ -1074,18 +1074,18 @@
                  :database 1
                  :stages [{:lib/type :mbql.stage/native
                            :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
-                           :template-tags [["snippet: filter1" {:type :snippet
-                                                                :snippet-id 10
-                                                                :snippet-name "filter1"
-                                                                :name "snippet: filter1"
-                                                                :display-name "Filter 1"
-                                                                :id "def456"}]
-                                           ["snippet: filter2" {:type :snippet
-                                                                :snippet-id 20
-                                                                :snippet-name "filter2"
-                                                                :name "snippet: filter2"
-                                                                :display-name "Filter 2"
-                                                                :id "ghi789"}]]}]}]
+                           :template-tags [{:type :snippet
+                                            :snippet-id 10
+                                            :snippet-name "filter1"
+                                            :name "snippet: filter1"
+                                            :display-name "Filter 1"
+                                            :id "def456"}
+                                           {:type :snippet
+                                            :snippet-id 20
+                                            :snippet-name "filter2"
+                                            :name "snippet: filter2"
+                                            :display-name "Filter 2"
+                                            :id "ghi789"}]}]}]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}

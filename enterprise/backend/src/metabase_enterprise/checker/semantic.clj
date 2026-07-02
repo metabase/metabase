@@ -442,7 +442,7 @@
     (reduce
      (fn [acc stage]
        (let [;; Snippets from template-tags
-             snippets (->> (map second (:template-tags stage))
+             snippets (->> (:template-tags stage)
                            (filter #(= "snippet" (get % :type)))
                            (keep :snippet-name))
              ;; Measures and metrics from aggregation clauses

@@ -63,19 +63,18 @@
                                         1]
                          :widget-type  :string/contains}))))
 
-(deftest ^:parallel normalize-template-tags-pairs-test
-  (testing "the canonical pairs form is idempotent and reasserts :name from the key"
-    (let [pairs [["a" {:type :text, :name "a", :display-name "A", :id "id-a"}]
-                 ["b" {:type :number, :name "b", :display-name "B", :id "id-b"}]]]
-      (is (= pairs
-             (lib/normalize ::lib.schema.template-tag/template-tags pairs)))
-      ;; a stale :name inside a tag is overwritten by the pair key
-      (is (= pairs
-             (lib/normalize ::lib.schema.template-tag/template-tags
-                            [["a" {:type :text, :name "WRONG", :display-name "A", :id "id-a"}]
-                             ["b" {:type :number, :name "b", :display-name "B", :id "id-b"}]])))))
-  (testing "the legacy associative-map form is normalized to ordered pairs (map iteration order)"
-    (is (= [["x" {:type :text, :name "x", :display-name "X", :id "id-x"}]]
+(deftest ^:parallel normalize-template-tags-seq-test
+  (testing "the canonical sequence form is idempotent"
+    (let [tags [{:type :text, :name "a", :display-name "A", :id "id-a"}
+                {:type :number, :name "b", :display-name "B", :id "id-b"}]]
+      (is (= tags
+             (lib/normalize ::lib.schema.template-tag/template-tags tags)))))
+  (testing "the transitional [name tag] pairs form normalizes to the sequence"
+    (is (= [{:type :text, :name "a", :display-name "A", :id "id-a"}]
+           (lib/normalize ::lib.schema.template-tag/template-tags
+                          [["a" {:type :text, :display-name "A", :id "id-a"}]]))))
+  (testing "the legacy associative-map form is normalized to the sequence (map iteration order)"
+    (is (= [{:type :text, :name "x", :display-name "X", :id "id-x"}]
            (lib/normalize ::lib.schema.template-tag/template-tags
                           {"x" {:type :text, :name "x", :display-name "X", :id "id-x"}}))))
   (testing "empty/nil normalize to nil (filtered out by the stage schema)"
@@ -83,12 +82,13 @@
     (is (nil? (lib/normalize ::lib.schema.template-tag/template-tags [])))
     (is (nil? (lib/normalize ::lib.schema.template-tag/template-tags nil))))
   (testing "duplicate names are dropped in favor of the first occurrence"
-    (is (= [["x" {:type :text, :name "x", :display-name "X", :id "first"}]]
+    (is (= [{:type :text, :name "x", :display-name "X", :id "first"}]
            (lib/normalize ::lib.schema.template-tag/template-tags
-                          [["x" {:type :text, :display-name "X", :id "first"}]
-                           ["x" {:type :text, :display-name "X", :id "second"}]])))))
+                          [{:type :text, :name "x", :display-name "X", :id "first"}
+                           {:type :text, :name "x", :display-name "X", :id "second"}])))))
 
-(deftest ^:parallel validate-template-tags-pairs-test
-  (testing "a pair whose key does not match the tag's :name is invalid"
+(deftest ^:parallel validate-template-tags-seq-test
+  (testing "two tags sharing a :name are invalid"
     (is (me/humanize (mr/explain ::lib.schema.template-tag/template-tags
-                                 [["x" {:type :text, :name "y", :display-name "X", :id "id"}]])))))
+                                 [{:type :text, :name "x", :display-name "X", :id "id-1"}
+                                  {:type :text, :name "x", :display-name "X", :id "id-2"}])))))

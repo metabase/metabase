@@ -452,7 +452,7 @@
 
 (defn- template-tag-stages
   [template-tags]
-  (for [{:keys [card-id snippet-id] tag-type :type} (map second template-tags)
+  (for [{:keys [card-id snippet-id] tag-type :type} template-tags
         :when (#{:card :snippet} tag-type)]
     (case tag-type
       :card {:source-card card-id}

@@ -228,66 +228,76 @@
    [:ref ::template-tag-map.validate-names]])
 
 (defn normalize-template-tags
-  "Idempotently coerce `template-tags` into the canonical ordered form: a vector of
-  `[tag-name tag]` pairs, each with `(:name tag) = tag-name`, with duplicate names dropped
-  in favor of their first occurrence.
+  "Idempotently coerce `template-tags` into the canonical ordered form: a vector of tag
+  maps, each carrying its own `:name`, with duplicate names dropped in favor of the first
+  occurrence.
 
-  Accepts either the canonical pairs form `[[tag-name tag] ...]` or the legacy associative
-  map form `{tag-name tag}`. The legacy map form is translated in map-iteration order;
-  for <=8 tags that preserves insertion order (array map), and beyond that it is whatever
-  the (hash) map yields -- the best we can do for legacy data that never recorded order.
-  New queries build the pairs form directly via
-  [[metabase.lib.native/extract-template-tags]], which preserves SQL-text order regardless
-  of tag count. See https://github.com/metabase/metabase/issues/5136"
+  A tag map already identifies itself via its `:name`, so the collection is just a sequence
+  of tags -- no separate name-as-key. (The earlier `[tag-name tag]` pair form was redundant:
+  the name lived both in the pair and inside the tag.)
+
+  Accepts:
+  - the canonical form `[tag ...]` (each tag a map with `:name`),
+  - the transitional `[tag-name tag]` pairs form, and
+  - the legacy associative map `{tag-name tag}`.
+
+  The legacy map form is translated in map-iteration order; for <=8 tags that preserves
+  insertion order (array map), and beyond that it is whatever the (hash) map yields -- the
+  best we can do for legacy data that never recorded order. New queries build the sequence
+  directly via [[metabase.lib.native/extract-template-tags]], which preserves SQL-text order
+  regardless of tag count. See https://github.com/metabase/metabase/issues/5136"
   [template-tags]
   (when (some? template-tags)
-    (letfn [(->pair [entry]
-              (let [tag-name (some-> (first entry) common/normalize-string-key)
-                    tag      (second entry)]
-                (when (and tag-name (map? tag))
-                  [tag-name (assoc tag :name tag-name)])))]
+    (letfn [(entry->tag [entry]
+              ;; A tag map (canonical), or a transitional [tag-name tag] pair. Tag maps may still
+              ;; carry string keys right after a JSON round-trip (before the ::template-tag child
+              ;; decoder keywordizes them), so look up :name either way.
+              (cond
+                (map? entry)
+                (let [tag-name (some-> (or (:name entry) (get entry "name")) common/normalize-string-key)]
+                  (when tag-name
+                    (assoc entry :name tag-name)))
+                (and (sequential? entry)
+                     (= (count entry) 2)
+                     (string? (first entry))
+                     (map? (second entry)))
+                (let [tag-name (common/normalize-string-key (first entry))]
+                  (when tag-name
+                    (assoc (second entry) :name tag-name)))))]
       (cond
         (map? template-tags)
-        (not-empty (into [] (keep ->pair) template-tags))
+        (not-empty (into [] (map (fn [[tag-name tag]] (assoc tag :name tag-name))) template-tags))
 
         (sequential? template-tags)
         (let [seen (volatile! #{})]
           (not-empty
            (into []
                  (keep (fn [entry]
-                         (let [pair (->pair entry)]
-                           (when-let [tag-name (first pair)]
+                         (when-let [tag (entry->tag entry)]
+                           (let [tag-name (:name tag)]
                              (when-not (@seen tag-name)
                                (vswap! seen conj tag-name)
-                               pair)))))
+                               tag)))))
                  template-tags)))
 
         :else nil))))
 
-(mr/def ::template-tags.entry
-  "A single `[tag-name tag]` pair in [[::template-tags]]."
-  [:tuple ::name ::template-tag])
-
 (mr/def ::template-tags
-  "Canonical schema for a native query's `:template-tags`: an ordered sequence of
-  `[tag-name tag]` pairs.
+  "Canonical schema for a native query's `:template-tags`: an ordered sequence of tag maps.
 
   Order is significant -- it is the order in which template-tag filter widgets render
   (https://github.com/metabase/metabase/issues/5136) -- so this is a sequence rather than
   an associative map (Clojure maps lose insertion order past the array-map threshold).
+  Each tag carries its own `:name` (no separate name-as-key), and names must be unique.
   Lookups by name are a linear scan, which is fine: queries almost always have fewer than
   8 tags, and the rare larger case tolerates O(n) access.
 
-  The legacy associative-map form is accepted on normalization via
-  [[normalize-template-tags]]. On serialization (app DB, serdes export) the pairs are encoded
-  back into the associative-map form (in [[metabase.lib.schema/serialize-query]]) so existing
-  stored queries and exports keep their shape."
+  The legacy associative-map form is accepted on normalization via [[normalize-template-tags]]."
   [:and
    [:sequential {:decode/normalize normalize-template-tags}
-    [:ref ::template-tags.entry]]
+    [:ref ::template-tag]]
    [:fn
-    {:error/message "template tag names must be unique and each pair's key must match its tag's :name"}
-    (fn [pairs]
-      (let [names (map first pairs)]
-        (and (= (count names) (count (set names)))
-             (every? (fn [[tag-name tag]] (= tag-name (:name tag))) pairs))))]])
+    {:error/message "template tag :name values must be unique"}
+    (fn [tags]
+      (let [names (map :name tags)]
+        (= (count names) (count (set names)))))]])

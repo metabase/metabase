@@ -358,10 +358,10 @@
    template-tags-spec     :- [:maybe ::lib.schema.test-spec/test-template-tags-spec]]
   (let [adjusted-spec (into {} (map (fn [[k v]] [k (adjust-template-tag query v)]))
                             (some-> template-tags-spec not-empty))]
-    (mapv (fn [[tag-name tag]]
-            [tag-name (if-let [override (get adjusted-spec tag-name)]
-                        (merge tag override)
-                        tag)])
+    (mapv (fn [tag]
+            (if-let [override (get adjusted-spec (:name tag))]
+              (merge tag override)
+              tag))
           (some-> inferred-template-tags not-empty))))
 
 (mu/defn- add-template-tags :- ::lib.schema/query

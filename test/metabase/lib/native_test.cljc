@@ -209,19 +209,19 @@
 (deftest ^:parallel with-template-tags-test
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")
         original-tags (lib/template-tags query)
-        original-map  (into {} original-tags)]
+        original-map  (lib/template-tags->map original-tags)]
     (is (= (assoc-in original-map ["myid" :display-name] "My ID")
            (-> query
                (lib/with-template-tags {"myid" (assoc (original-map "myid") :display-name "My ID")})
                lib/template-tags
-               (->> (into {})))))
+               (->> (lib/template-tags->map)))))
     (testing "Changing query keeps updated template tags"
       (is (= (assoc-in original-map ["myid" :display-name] "My ID")
              (-> query
                  (lib/with-template-tags {"myid" (assoc (original-map "myid") :display-name "My ID")})
                  (lib/with-native-query "select * from venues where category_id = {{myid}}")
                  lib/template-tags
-                 (->> (into {}))))))
+                 (->> (lib/template-tags->map))))))
     (testing "Doesn't introduce garbage"
       (is (= original-tags
              (-> query
@@ -243,7 +243,7 @@
                                 :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
                                 :name "tag"
                                 :type :text}}]
-        (is (= new-template-tags (into {} (lib/template-tags (lib/with-template-tags query new-template-tags)))))))
+        (is (= new-template-tags (lib/template-tags->map (lib/template-tags (lib/with-template-tags query new-template-tags)))))))
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs :default)
          #"Must be a native query"
@@ -258,7 +258,7 @@
     (let [query         (lib/native-query meta/metadata-provider "{{x}} {{y}} {{z}}")
           original-tags (lib/template-tags query)]
       (is (=? {"x" {}, "y" {}, "z" {}}
-              (into {} original-tags)))
+              (lib/template-tags->map original-tags)))
       (is (= ["x" "y" "z"]
              (lib/template-tag-names original-tags)))
       (let [updated-tags {"y" (lib/template-tag original-tags "y"), "x" (lib/template-tag original-tags "x")}
@@ -698,7 +698,7 @@
                                                                        :display-name "(New display name)"
                                                                        :snippet-name "expensive_venues"
                                                                        :snippet-id   1}})
-                  (update-in [:stages 0 :template-tags] (partial into {}))))))))
+                  (update-in [:stages 0 :template-tags] lib/template-tags->map)))))))
 
 (deftest ^:parallel basic-native-query-table-references-test
   (testing "should find id-based native query table references"

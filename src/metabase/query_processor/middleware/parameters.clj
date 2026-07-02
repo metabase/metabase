@@ -16,7 +16,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [mapv some]]))
 
 (mu/defn- expand-stage :- ::lib.schema/stage
   "Expand `:parameters` in one stage map that contains them."
@@ -88,10 +88,10 @@
   "Find the template tag in `template-tags` that matches `param`'s target."
   [template-tags param]
   (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
-    ;; `template-tags` is the ordered pairs form, so lookups are a linear scan (fine: queries almost
-    ;; always have <8 tags, see #5136).
-    (or (some (fn [[tag-name tag]] (when (= tag-name name-or-id) tag)) template-tags) ; handle name
-        (some (fn [[_tag-name tag]] ; handle id (defensive, may be unnecessary)
+    ;; `template-tags` is the ordered tag-sequence form, so lookups are a linear scan on :name
+    ;; (fine: queries almost always have <8 tags, see #5136).
+    (or (some (fn [tag] (when (= (:name tag) name-or-id) tag)) template-tags) ; handle name
+        (some (fn [tag] ; handle id (defensive, may be unnecessary)
                 (when (= (:id tag) name-or-id)
                   tag))
               template-tags))))
@@ -157,9 +157,8 @@
 (mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tags
   [template-tags :- ::lib.schema.template-tag/template-tags
    database-id   :- ::lib.schema.id/database]
-  (into []
-        (map (fn [[tag-name tag]]
-               [tag-name (cond-> tag (= (:type tag) :snippet) (assoc :database database-id))]))
+  (mapv (fn [tag]
+          (cond-> tag (= (:type tag) :snippet) (assoc :database database-id)))
         template-tags))
 
 (mu/defn- hoist-database-for-snippet-tags :- ::lib.schema/query

@@ -24,7 +24,7 @@
 (deftest replace-tags-with-number-tag-test
   (testing "Query with :number template tag gets default value substituted"
     (let [query (lib/native-query meta/metadata-provider "SELECT * FROM venues WHERE id = {{id}}")
-          tags (mapv (fn [[tag-name tag]] [tag-name (assoc tag :type :number)])
+          tags (mapv (fn [tag] (assoc tag :type :number))
                      (lib/template-tags query))
           query-with-tags (lib/with-template-tags query tags)]
       (is (=? {:query "SELECT * FROM venues WHERE id = 1"
@@ -34,7 +34,7 @@
 (deftest replace-tags-with-date-tag-test
   (testing "Query with :date template tag gets default value substituted"
     (let [query (lib/native-query meta/metadata-provider "SELECT * FROM venues WHERE created_at = {{date}}")
-          tags (mapv (fn [[tag-name tag]] [tag-name (assoc tag :type :date)])
+          tags (mapv (fn [tag] (assoc tag :type :date))
                      (lib/template-tags query))
           query-with-tags (lib/with-template-tags query tags)]
       (is (=? {:query "SELECT * FROM venues WHERE created_at = ?"

@@ -63,30 +63,30 @@
   (let [stage     (first (:stages query))
         sql       (:native stage)
         ttags     (:template-tags stage)
-        card-tags  (into [] (filter (fn [[_ tag]] (= (:type tag) :card))) ttags)
-        table-tags (into [] (filter (fn [[_ tag]] (= (:type tag) :table))) ttags)]
+        card-tags  (into [] (filter (fn [tag] (= (:type tag) :card))) ttags)
+        table-tags (into [] (filter (fn [tag] (= (:type tag) :table))) ttags)]
     (when-not (or (str/includes? sql card-placeholder-prefix)
                   (str/includes? sql table-placeholder-prefix))
       (let [;; Replace card tags
             sql-after-cards
-            (reduce (fn [s [tag-name tag]]
+            (reduce (fn [s tag]
                       (str/replace s
-                                   (str "{{" tag-name "}}")
+                                   (str "{{" (:name tag) "}}")
                                    (str card-placeholder-prefix (:card-id tag))))
                     sql
                     card-tags)
 
             ;; Replace table tags
             modified-sql
-            (reduce (fn [s [tag-name tag]]
+            (reduce (fn [s tag]
                       (str/replace s
-                                   (str "{{" tag-name "}}")
+                                   (str "{{" (:name tag) "}}")
                                    (str table-placeholder-prefix (:table-id tag))))
                     sql-after-cards
                     table-tags)
 
             remaining-tags
-            (into [] (remove (fn [[_ tag]] (#{:card :table} (:type tag)))) ttags)
+            (into [] (remove (fn [tag] (#{:card :table} (:type tag)))) ttags)
 
             modified-query
             (-> query

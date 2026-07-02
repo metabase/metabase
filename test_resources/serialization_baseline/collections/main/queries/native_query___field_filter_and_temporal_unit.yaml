@@ -17,46 +17,43 @@ dataset_query:
         AND {{date_filter}}
       GROUP BY {{created_at}}, PRODUCTS.CATEGORY
     template-tags:
-    - - category_filter
-      - dimension:
-        - field
-        - {}
-        - - Sample Database
-          - PUBLIC
-          - PRODUCTS
-          - CATEGORY
-        display-name: Category
-        id: bb000001-0000-0000-0000-000000000001
-        name: category_filter
-        type: dimension
-        widget-type: string/=
-    - - created_at
-      - default: month
-        dimension:
-        - field
-        - {}
-        - - Sample Database
-          - PUBLIC
-          - ORDERS
-          - CREATED_AT
-        display-name: Group By
-        id: bb000003-0000-0000-0000-000000000003
-        name: created_at
-        sectionid: date
-        type: temporal-unit
-    - - date_filter
-      - dimension:
-        - field
-        - {}
-        - - Sample Database
-          - PUBLIC
-          - ORDERS
-          - CREATED_AT
-        display-name: Order Date
-        id: bb000002-0000-0000-0000-000000000002
-        name: date_filter
-        type: dimension
-        widget-type: date/range
+    - dimension:
+      - field
+      - {}
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      display-name: Category
+      id: bb000001-0000-0000-0000-000000000001
+      name: category_filter
+      type: dimension
+      widget-type: string/=
+    - default: month
+      dimension:
+      - field
+      - {}
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      display-name: Group By
+      id: bb000003-0000-0000-0000-000000000003
+      name: created_at
+      sectionid: date
+      type: temporal-unit
+    - dimension:
+      - field
+      - {}
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      display-name: Order Date
+      id: bb000002-0000-0000-0000-000000000002
+      name: date_filter
+      type: dimension
+      widget-type: date/range
     lib/type: mbql.stage/native
   lib/type: mbql/query
 visualization_settings:
