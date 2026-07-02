@@ -754,21 +754,18 @@
    (prometheus/gauge :metabase-mq/publish-buffer-depth
                      {:description "Messages sitting in the publish buffer awaiting flush."
                       :labels [:channel]})
-   (prometheus/counter :metabase-mq/publish-buffer-flush-errors
-                       {:description "Publish buffer flush failures where messages were re-buffered for retry."
-                        :labels [:channel]})
-   (prometheus/counter :metabase-mq/queue-batch-permanent-failures
-                       {:description "Queue batches that exhausted retries."
-                        :labels [:backend :channel]})
-   (prometheus/counter :metabase-mq/queue-batch-retries
-                       {:description "Queue batches retried after transient failure."
-                        :labels [:backend :channel]})
    (prometheus/counter :metabase-mq/messages-received
                        {:description "Individual messages delivered to handlers."
                         :labels [:transport :channel]})
    (prometheus/counter :metabase-mq/handler-errors
-                       {:description "Errors thrown by queue message handlers."
+                       {:description "Errors thrown by queue message batch handlers."
                         :labels [:transport :channel]})
+   (prometheus/counter :metabase-mq/batches-retried
+                       {:description (str "Queue batches that will be re-attempted, by `reason`")
+                        :labels [:channel :reason]})
+   (prometheus/counter :metabase-mq/batches-dropped
+                       {:description (str "Queue batches permanently dropped by `reason`")
+                        :labels [:channel :reason]})
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
                        {:description "Number of sync operation failures."

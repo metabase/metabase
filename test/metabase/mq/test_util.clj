@@ -12,7 +12,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
-   [metabase.mq.impl :as mq.impl]
    [metabase.mq.init :as mq.init]
    [metabase.mq.listener :as listener]
    [metabase.mq.memory :as memory]
@@ -20,6 +19,7 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
+   [metabase.mq.queue.polling :as q.polling]
    [metabase.mq.queue.registry :as q.registry]))
 
 (set! *warn-on-reflection* true)
@@ -42,7 +42,7 @@
   (cond-> #{}
     (seq @publish-buffer/*publish-buffer*)        (conj :publish-buffer-nonempty)
     (seq @publish-buffer/*publish-retry-batches*) (conj :publish-retry-batches-nonempty)
-    (seq (mq.impl/busy-channels))                 (conj :busy-channels)
+    (seq (q.polling/busy-channels))               (conj :busy-channels)
     (not (layer-drained? ctx))                    (conj :memory-messages-pending)))
 
 (defn wait-for-idle!

@@ -92,11 +92,13 @@
    is reached; otherwise freezes it into `*publish-retry-batches*` with an exponential-backoff
    deadline so it retries independently of fresh accumulation."
   [channel messages attempts ^Exception e]
-  (analytics/inc! :metabase-mq/publish-buffer-flush-errors {:channel (name channel)})
   (if (and (pos? *publish-buffer-max-attempts*) (>= attempts *publish-buffer-max-attempts*))
-    (log/warnf "Dropping %d messages for %s after %d flush failures: %s"
-               (count messages) channel attempts (ex-message e))
+    (do
+      (analytics/inc! :metabase-mq/batches-dropped {:channel (name channel) :reason "publish-exhausted"})
+      (log/errorf e "Dropping %d messages for %s after %d flush failures. Last error: %s"
+                  (count messages) channel attempts (ex-message e)))
     (let [backoff (flush-retry-backoff-ms attempts)]
+      (analytics/inc! :metabase-mq/batches-retried {:channel (name channel) :reason "publish"})
       (log/errorf e "Error flushing publish buffer for %s, retrying in %dms (attempt %d)"
                   channel backoff attempts)
       (swap! *publish-retry-batches* conj

@@ -11,9 +11,127 @@
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.settings :as mq.settings]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.util.concurrent Callable ExecutorService Executors Future)))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------- Worker pool & in-flight (busy) tracking -------------------------------
+
+(def ^:private active-handlers
+  "channel keyword → {:future Future, :gen Object}. Tracks which channels have an in-flight delivery
+  on the worker pool, so a channel is delivered by at most one worker at a time (and so publishers
+  know not to wake the loop for a channel that's already being processed)."
+  (atom {}))
+
+(def ^:private worker-pool
+  "Shared thread pool that runs message delivery off the poll thread, so a slow listener doesn't
+  stall polling."
+  (atom nil))
+
+(defn channel-busy?
+  "Returns true if `channel` currently has an in-flight delivery on the worker pool."
+  [channel]
+  (contains? @active-handlers channel))
+
+(defn busy-channels
+  "Returns the set of channels that currently have an in-flight delivery."
+  []
+  (set (keys @active-handlers)))
+
+(defn start-worker-pool!
+  "Starts the shared worker pool for non-blocking message delivery. Idempotent.
+  Returns `true` if THIS call created the pool, `false` if one was already running."
+  []
+  (let [pool (Executors/newCachedThreadPool)]
+    (if (compare-and-set! worker-pool nil pool)
+      true
+      (do (.shutdown ^ExecutorService pool) false))))
+
+(defn shutdown-worker-pool!
+  "Cancels all active handler futures and shuts down the worker pool."
+  []
+  (doseq [[_ {:keys [^Future future]}] @active-handlers]
+    (when future
+      (.cancel future true)))
+  (reset! active-handlers {})
+  (when-let [^ExecutorService pool @worker-pool]
+    (.shutdownNow pool)
+    (reset! worker-pool nil)))
+
+(defn- handle-batch-failure!
+  "Decides retry vs. permanent failure for a just-failed batch based on its prior failure count, then
+  tells the backend to re-enqueue or drop it. No-ops if the backend no longer owns/knows the batch
+  (`failure-count` returns nil). `error` is the exception that failed the batch, passed through for
+  diagnostic logging."
+  [backend channel batch-id error]
+  (when-let [failures (q.backend/failure-count backend channel batch-id)]
+    (mq.impl/handle-batch-failure-policy! channel failures error
+                                          #(q.backend/retry-batch! backend channel batch-id)
+                                          #(q.backend/fail-batch! backend channel batch-id))))
+
+(defn- deliver-and-ack!
+  "Worker-thread body for one fetched batch: run the shared delivery core, then ack or nack the stored
+  batch based on the outcome. A delivered or undecodable batch is acked (removed from the store); a
+  failed batch runs the retry/drop policy; a batch whose listener has vanished is left in place for
+  the stale-recovery sweep to re-drive later. `batch-id`/`backend` are nil in tests that only exercise
+  the busy-slot bookkeeping."
+  [channel payload batch-id backend]
+  (let [result (mq.impl/deliver! channel payload)]
+    (cond
+      (= mq.impl/no-listener result) nil
+      (instance? Throwable result)   (when batch-id (handle-batch-failure! backend channel batch-id result))
+      :else                          (when batch-id (q.backend/batch-successful! backend channel batch-id)))))
+
+(defn submit-delivery!
+  "Submits one fetched batch to the worker pool for non-blocking delivery. Returns true if submitted,
+  false if `channel` already has an in-flight delivery (enforcing at most one worker per channel).
+  Uses `bound-fn` to convey dynamic bindings to the worker thread.
+
+  The busy-check and slot claim are atomic via a single `swap-vals!`. A per-submission generation
+  object prevents a completed future's cleanup from clobbering a resubmission that won the slot
+  between the finally and the dissoc."
+  [channel payload batch-id backend]
+  (let [gen     (Object.)
+        [old _] (swap-vals! active-handlers
+                            (fn [handlers]
+                              (if (contains? handlers channel)
+                                handlers
+                                (assoc handlers channel {:future nil :gen gen}))))]
+    (if (contains? old channel)
+      false
+      (let [^Callable task (bound-fn []
+                             (try
+                               (deliver-and-ack! channel payload batch-id backend)
+                               (finally
+                                 ;; Only remove if this generation still owns the slot
+                                 (swap! active-handlers
+                                        (fn [handlers]
+                                          (if (identical? gen (:gen (get handlers channel)))
+                                            (dissoc handlers channel)
+                                            handlers)))
+                                 (mq.polling/notify-all!))))
+            f    (try
+                   (.submit ^ExecutorService @worker-pool task)
+                   (catch Throwable t
+                     ;; The slot was already claimed above. If the submit itself fails (e.g. the
+                     ;; worker pool isn't running / was shut down, so the deref or .submit throws),
+                     ;; release the slot we claimed before propagating — otherwise the channel stays
+                     ;; marked busy forever and the queue silently stops delivering.
+                     (swap! active-handlers
+                            (fn [handlers]
+                              (if (identical? gen (:gen (get handlers channel)))
+                                (dissoc handlers channel)
+                                handlers)))
+                     (throw t)))]
+        ;; Only set the future if this generation still owns the slot
+        (swap! active-handlers
+               (fn [handlers]
+                 (if (identical? gen (:gen (get handlers channel)))
+                   (assoc-in handlers [channel :future] f)
+                   handlers)))
+        true))))
 
 (def ^:private stale-check-interval-ms (* 60 1000))
 (def ^:private heartbeat-interval-ms   (* 2 60 1000))
@@ -49,8 +167,8 @@
           (analytics/inc! :metabase-mq/batch-stale-recoveries
                           {:backend backend-name :transport "queue" :channel channel} recovered))
         (when (and failed (pos? failed))
-          (analytics/inc! :metabase-mq/queue-batch-permanent-failures
-                          {:backend backend-name :channel channel} failed))))))
+          (analytics/inc! :metabase-mq/batches-dropped
+                          {:channel (name channel) :reason "stale-recovery-exhausted"} failed))))))
 
 (defn notify-on-publish!
   "Wakes the poll loop for `poll-context` so it picks up a freshly published message — unless
@@ -60,7 +178,7 @@
   No-ops when `poll-context` is nil: push backends (e.g. Quartz) have no poll loop to wake — their
   `publish!` already arranges delivery — so they carry no poll context."
   [poll-context channel]
-  (when (and poll-context (not (mq.impl/channel-busy? channel)))
+  (when (and poll-context (not (channel-busy? channel)))
     (mq.polling/notify! (:poll-state poll-context))))
 
 (defn make-poll-context
@@ -88,10 +206,10 @@
     (mq.polling/periodically! last-depth-gauge-ms depth-gauge-interval-ms "depth gauge"
                               #(report-depths! backend backend-name))
     (let [found? (boolean
-                  (when-let [available (seq (remove mq.impl/channel-busy? (listener/queue-names)))]
+                  (when-let [available (seq (remove channel-busy? (listener/queue-names)))]
                     (when-let [batches (seq (q.backend/fetch! backend available))]
                       (doseq [{:keys [queue payload batch-id]} batches]
-                        (mq.impl/submit-delivery! queue payload batch-id backend {:batch-id batch-id}))
+                        (submit-delivery! queue payload batch-id backend))
                       true)))]
       (analytics/inc! :metabase-mq/queue-poll-results {:backend backend-name :result (if found? "work" "empty")})
       found?)))

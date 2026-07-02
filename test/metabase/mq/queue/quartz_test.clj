@@ -18,7 +18,7 @@
   (:import
    (java.util Properties)
    (java.util.concurrent CountDownLatch CyclicBarrier TimeUnit)
-   (org.quartz JobDetail Scheduler)
+   (org.quartz JobDataMap JobDetail JobExecutionContext JobExecutionException Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -67,6 +67,9 @@
 
 (defn- publish! [queue & msgs]
   (q.backend/publish! q.quartz/backend queue (payload/encode (vec msgs))))
+
+(defn- job-triggers [^Scheduler scheduler queue]
+  (.getTriggersOfJob scheduler (#'q.quartz/queue-job-key queue)))
 
 (deftest quartz-delivers-published-message-test
   (testing "a published batch is delivered to the registered listener"
@@ -126,12 +129,81 @@
              (is (= ::none (deref extra-attempt 2500 ::none))
                  "no further attempts after the batch is dropped"))))))))
 
-(deftest quartz-no-listener-is-dropped-test
-  (testing "a message for a queue with no listener is delivered-and-dropped (no error, no retry loop)"
+(deftest quartz-no-listener-returns-marker-test
+  (testing "deliver! returns the no-listener marker (not nil/success) when no listener is running, so the caller defers rather than dropping"
     (mt/with-temp-scheduler!
       (let [queue (keyword "queue" (str "quartz-nolistener-" (random-uuid)))]
-        ;; deliver-reporting! treats a missing listener as success, so nothing is rescheduled.
-        (is (true? (mq.impl/deliver-reporting! queue (payload/encode ["orphan"]))))))))
+        (is (= mq.impl/no-listener (mq.impl/deliver! queue (payload/encode ["orphan"]))))))))
+
+(deftest quartz-undecodable-payload-is-dropped-test
+  (testing "an undecodable payload is dropped (no throw, no retry) and metered, never reaching the listener"
+    (mt/with-prometheus-system! [_ system]
+      (let [called (atom false)
+            queue  (keyword "queue" (str "quartz-baddecode-" (random-uuid)))]
+        (do-with-queue!
+         queue
+         (fn [_msgs] (reset! called true))
+         (fn []
+           (is (= mq.impl/undecodable (mq.impl/deliver! queue "not-json{{{"))
+               "deliver! drops an undecodable payload (returns the undecodable marker) rather than throwing past the retry/drop logic")
+           (is (false? @called)
+               "the listener is never invoked for an undecodable payload")
+           (is (pos? (mt/metric-value system :metabase-mq/batches-dropped
+                                      {:channel (name queue) :reason "undecodable"}))
+               "the drop is surfaced as batches-dropped{reason=undecodable}")))))))
+
+(deftest quartz-undecodable-payload-dropped-without-listener-test
+  (testing "an undecodable payload is dropped as `undecodable` even when no listener is running on this node — it is NOT treated as no-listener (which would needlessly refire a poison payload that can never decode)"
+    (mt/with-prometheus-system! [_ system]
+      (let [queue (keyword "queue" (str "quartz-baddecode-nolistener-" (random-uuid)))]
+        ;; no listener registered here — decoding happens first, so a poison payload is dropped as
+        ;; undecodable rather than deferred as no-listener
+        (is (= mq.impl/undecodable (mq.impl/deliver! queue "not-json{{{"))
+            "an undecodable payload returns the undecodable marker (dropped), not the no-listener marker")
+        (is (pos? (mt/metric-value system :metabase-mq/batches-dropped
+                                   {:channel (name queue) :reason "undecodable"}))
+            "the drop is metered as undecodable, not deferred/mislabeled as no-listener")))))
+
+(deftest quartz-handler-failure-returns-cause-test
+  (testing "deliver! returns the failure (carrying the handler's exception as its cause) so the caller can retry/drop with the cause"
+    (mt/with-temp-scheduler!
+      (let [queue (keyword "queue" (str "quartz-cause-" (random-uuid)))]
+        (do-with-queue!
+         queue
+         (fn [_msgs] (throw (ex-info "kaboom" {:detail 42})))
+         (fn []
+           (let [result (mq.impl/deliver! queue (payload/encode ["x"]))]
+             (is (instance? Throwable result) "a failed delivery returns the throwable, not a boolean")
+             ;; sliced-invoke-fn wraps per-chunk failures, so the handler's exception is the cause.
+             (is (= "kaboom" (ex-message (ex-cause result)))
+                 "the handler's exception is preserved as the cause for diagnostics"))))))))
+
+(deftest deliver-batch-refires-immediately-when-handoff-fails-test
+  (testing "if deliver-batch! can't durably hand off (its reschedule throws), it throws JobExecutionException with refireImmediately so Quartz re-runs the job rather than dropping the message"
+    (let [queue   (keyword "queue" (str "quartz-refire-" (random-uuid)))
+          payload (payload/encode ["x"])
+          ctx     (reify JobExecutionContext
+                    (getMergedJobDataMap [_]
+                      (doto (JobDataMap.)
+                        (.put "queue" (name queue))
+                        (.put "payload" payload)
+                        (.put "attempt" "0")))
+                    (getScheduler [_] nil))]
+      (q.registry/register-queue! queue {:transactional :try})
+      (listener/batch-listen! queue (fn [_msgs] (throw (ex-info "handler boom" {}))))
+      (try
+        ;; simulate the scheduler being momentarily unavailable so the retry can't be written
+        (with-redefs-fn {#'q.quartz/schedule-message-trigger! (fn [& _] (throw (ex-info "scheduler down" {})))}
+          (fn []
+            (let [ex (try (#'q.quartz/deliver-batch! ctx) nil
+                          (catch JobExecutionException e e))]
+              (is (instance? JobExecutionException ex)
+                  "a failed hand-off throws a JobExecutionException")
+              (is (true? (.refireImmediately ^JobExecutionException ex))
+                  "with refireImmediately set, so Quartz re-runs the job immediately"))))
+        (finally
+          (listener/unlisten! queue)
+          (swap! q.registry/*queues* dissoc queue))))))
 
 (defn- run-concurrency-probe!
   "Publishes two batches to `queue` whose listener parks on a `CyclicBarrier` of 2. If both batches
@@ -182,6 +254,20 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"scheduler is not running"
            (publish! (keyword "queue" (str "quartz-nosched-" (random-uuid))) "x"))))))
+
+(deftest quartz-requeue-no-listener-reschedules-not-refires-test
+  (testing "no listener on this node re-schedules the message back into the store (so it goes back through acquisition and node-affinity routes it to a node that has the listener), rather than refiring it here — a refire would loop on this node forever"
+    (mt/with-temp-scheduler!
+      (let [^Scheduler scheduler (task.impl/scheduler)
+            queue                (keyword "queue" (str "quartz-nolistener-requeue-" (random-uuid)))]
+        (#'q.quartz/ensure-queue-job! scheduler queue false)
+        (try
+          (#'q.quartz/requeue-no-listener! scheduler queue (payload/encode ["x"]) 0)
+          (let [triggers (job-triggers scheduler queue)]
+            (is (= 1 (count triggers))
+                "a single re-queue trigger is placed back into the store (re-acquired via affinity, not fired here)")
+            (is (instance? Trigger (first triggers))))
+          (finally (.deleteJob scheduler (#'q.quartz/queue-job-key queue))))))))
 
 (deftest quartz-exclusive-job-not-downgraded-test
   (testing "a node that disagrees about :exclusive can't downgrade an existing exclusive job"

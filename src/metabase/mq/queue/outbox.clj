@@ -17,6 +17,7 @@
   This makes a message published iff the business transaction that produced it commits, regardless
   of which backend the queue ultimately uses — the outbox table always lives in the app DB."
   (:require
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.mq.payload :as payload]
    [metabase.mq.queue.registry :as q.registry]
@@ -35,9 +36,27 @@
   so the sweep only ever picks up rows a crash left behind."
   (* 60 1000))
 
-(def ^:private recovery-batch-size
-  "How many outbox rows [[recover-outbox!]] claims per transaction."
+(def ^:private recovery-page-size
+  "How many outbox rows [[recover-outbox!]] claims per transaction (one keyset-paginated page)."
   50)
+
+(def ^:private recovery-retry-base-ms
+  "Base delay before the recovery sweep retries a row after its first failed publish. Each further
+  consecutive failure doubles the delay ([[retry-delay-ms]]), capped at [[recovery-retry-max-ms]]."
+  (* 60 1000))
+
+(def ^:private recovery-retry-max-ms
+  "Cap on the exponential backoff between failed recovery publishes, so a row that keeps failing is
+  still retried at least this often. Rows are never dropped — a committed message is retried until
+  it publishes — so this bounds how long a transient backend outage delays delivery."
+  (* 10 60 1000))
+
+(defn retry-delay-ms
+  "Backoff (ms) before the recovery sweep retries a row on its 1-based `attempts`-th consecutive
+  failed publish: 1m, 2m, 4m, 8m … doubling, capped at [[recovery-retry-max-ms]]. Public for testing."
+  [attempts]
+  (long (min recovery-retry-max-ms
+             (* recovery-retry-base-ms (Math/pow 2 (dec attempts))))))
 
 (defn- for-update-clause
   "FOR UPDATE clause for the recovery sweep: SKIP LOCKED on Postgres/MySQL so concurrent sweeps on
@@ -104,40 +123,71 @@
       (mdb/before-commit! insert-outbox-rows!)
       (mdb/after-commit! publish-outbox-rows!))))
 
+(defn- bump-failed-row
+  "Records one failed recovery publish into `acc`: bump the row's `publish_attempts` and schedule its
+  next retry at `now` + exponential backoff ([[retry-delay-ms]]). The row is never dropped — a
+  publish failure is almost always transient (backend/DB connectivity), and the outbox's guarantee is
+  that a committed message is eventually delivered — so it is retried until it publishes."
+  [acc ^Instant now {:keys [id queue_name publish_attempts]} ^Exception e]
+  (let [next-attempts (inc publish_attempts)
+        delay-ms      (retry-delay-ms next-attempts)]
+    (log/warn e "Failed to publish queue outbox row during recovery; will retry with backoff"
+              {:queue queue_name :outbox-id id :publish-attempts next-attempts :retry-delay-ms delay-ms})
+    (analytics/inc! :metabase-mq/batches-retried {:channel queue_name :reason "outbox-recovery"})
+    (update acc :bumps conj {:id id :next-attempt-at (Timestamp/from (.plusMillis now delay-ms))})))
+
+(defn- recover-page!
+  "Runs one transaction of the recovery sweep over up to [[recovery-page-size]] *due* rows, in id order
+  starting after `after-id` (keyset pagination). Publishes each row independently: published rows are
+  deleted; failed rows are bumped and backed off ([[bump-failed-row]]). Returns
+  `[recovered next-after-id]`, where `next-after-id` is the id to resume the next page from, or nil
+  when this page was empty (no more due rows)."
+  [after-id]
+  (t2/with-transaction [_conn]
+    (let [now    (Instant/now)
+          now-ts (Timestamp/from now)
+          rows (t2/query {:select   [:id :queue_name :payload :publish_attempts]
+                          :from     [:queue_message_outbox]
+                          :where    [:and
+                                     [:> :id after-id]
+                                     [:or
+                                      [:and [:= :next_attempt_at nil]
+                                       [:< :created_at (Timestamp/from (.minusMillis now recovery-age-ms))]]
+                                      [:<= :next_attempt_at now-ts]]]
+                          :order-by [[:id :asc]]
+                          :limit    recovery-page-size
+                          :for      (for-update-clause)})
+          {:keys [recover-ids bumps]}
+          (reduce (fn [acc {:keys [id queue_name payload] :as row}]
+                    (try
+                      (transport/publish-encoded! (keyword "queue" queue_name) payload)
+                      (update acc :recover-ids conj id)
+                      (catch Exception e
+                        (bump-failed-row acc now row e))))
+                  {:recover-ids [] :bumps []}
+                  rows)]
+      ;; published rows are removed; failed rows have their attempt count bumped and next retry scheduled.
+      (when (seq recover-ids) (t2/delete! :queue_message_outbox :id [:in recover-ids]))
+      (doseq [{:keys [id next-attempt-at]} bumps]
+        (t2/update! :queue_message_outbox :id id
+                    {:publish_attempts [:+ :publish_attempts [:inline 1]]
+                     :next_attempt_at  next-attempt-at}))
+      ;; rows are ordered by id asc, so the last row's id is where the next page resumes; nil = done.
+      [(count recover-ids) (when (seq rows) (:id (last rows)))])))
+
 (defn recover-outbox!
   "Republishes outbox rows a crash left behind — rows older than [[recovery-age-ms]] (the normal
-  after-commit path deletes its rows immediately)."
+  after-commit path deletes its rows immediately).
+
+  Rows are never dropped — a publish failure should be transient and the outbox's guarantee is that a committed message
+  is eventually delivered — so a failing row is retried forever (with backoff).
+  The sweep never revisits rows within a sweep.
+
+  Returns the number of rows successfully republished."
   []
-  (loop [total 0]
-    ;; The `with-transaction` holds the FOR UPDATE locks for the whole batch until commit, so another
-    ;; node can't re-claim these rows while we work through them.
-    (let [{:keys [claimed deleted]}
-          (t2/with-transaction [_conn]
-            (let [threshold (Timestamp/from (.minusMillis (Instant/now) recovery-age-ms))
-                  rows      (t2/query {:select   [:id :queue_name :payload]
-                                       :from     [:queue_message_outbox]
-                                       :where    [:< :created_at threshold]
-                                       :order-by [[:id :asc]]
-                                       :limit    recovery-batch-size
-                                       :for      (for-update-clause)})
-                  ;; publish every row, collecting the ids that succeeded, then delete them in a
-                  ;; single batched DELETE — only rows whose publish succeeded are removed.
-                  published-ids (reduce
-                                 (fn [ids {:keys [id queue_name payload]}]
-                                   (try
-                                     (transport/publish-encoded! (keyword "queue" queue_name) payload)
-                                     (conj ids id)
-                                     (catch Exception e
-                                       (log/error e "Error publishing outbox row during recovery; a later sweep will retry"
-                                                  {:queue queue_name :outbox-id id})
-                                       ids)))
-                                 [] rows)]
-              (when (seq published-ids)
-                (t2/delete! :queue_message_outbox :id [:in published-ids]))
-              {:claimed (count rows)
-               :deleted (count published-ids)}))]
-      ;; Stop once the batch wasn't full, or no row could be published (e.g. an all-failing batch) —
-      ;; recurring then would re-claim the same undeletable rows forever.
-      (if (and (= claimed recovery-batch-size) (pos? deleted))
-        (recur (long (+ total deleted)))
-        (+ total deleted)))))
+  (loop [total    0
+         after-id 0]
+    (let [[recovered next-after-id] (recover-page! after-id)]
+      (if next-after-id
+        (recur (long (+ total recovered)) (long next-after-id))
+        total))))

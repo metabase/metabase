@@ -28,13 +28,15 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.task.core :as task])
+   [metabase.task.core :as task]
+   [metabase.util.log :as log])
   (:import
    (java.util Date)
-   (org.quartz JobDetail JobExecutionContext Scheduler)))
+   (org.quartz JobDetail JobExecutionContext JobExecutionException Scheduler SimpleScheduleBuilder)))
 
 (set! *warn-on-reflection* true)
 
@@ -49,9 +51,9 @@
 
 ;; Job-data keys. All values are stored as strings so the data map round-trips through the JDBC
 ;; JobStore regardless of the `org.quartz.jobStore.useProperties` setting.
-(def ^:private data-queue   "queue")
-(def ^:private data-payload "payload")
-(def ^:private data-attempt "attempt")
+(def ^:private data-queue    "queue")
+(def ^:private data-payload  "payload")
+(def ^:private data-attempt  "attempt")
 
 (defn retry-delay-ms
   "Backoff (ms) before redelivering a failed batch on its 1-based `attempt`-th retry: 1s, 2s, 4s …
@@ -63,39 +65,83 @@
 (defn- queue-job-key [queue]
   (jobs/key (name queue) job-group))
 
+(defn- ignore-misfire-schedule
+  "One-shot simple schedule with `MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY`. Queue triggers use this
+  so a trigger no node with a listener has picked up yet stays `WAITING` and always-acquirable (rather than
+  being re-dated or dropped by Quartz's misfire recovery) until a capable node acquires it — or the
+  age reaper ([[metabase.mq.task.queue-reaper]]) removes it. It also keeps such triggers out of the
+  misfire-scan queries entirely."
+  ^SimpleScheduleBuilder []
+  (.withMisfireHandlingInstructionIgnoreMisfires (SimpleScheduleBuilder/simpleSchedule)))
+
 (defn- schedule-message-trigger!
-  "Adds a one-shot trigger to `queue`'s durable job (which must already exist) that fires at
-  `start-at`, carrying `payload` and the retry `attempt` counter in the trigger's data map."
+  "Adds a one-shot trigger to `queue`'s durable job (which must already exist) that fires at `start-at`,
+  carrying `payload` and the retry `attempt` counter in the trigger's data map."
   [^Scheduler scheduler queue payload attempt ^Date start-at]
   (.scheduleJob scheduler
                 (triggers/build
                  (triggers/with-identity (triggers/key (str (random-uuid)) job-group))
                  (triggers/for-job (queue-job-key queue))
                  (triggers/start-at start-at)
+                 (triggers/with-schedule (ignore-misfire-schedule))
                  (triggers/using-job-data {data-payload payload
                                            data-attempt (str attempt)}))))
 
+(defn- requeue-no-listener!
+  "Handles a fired batch for a queue with no listener running on *this* node — with node-affinity, the
+  rare race where the listener was torn down between acquisition and execution.
+
+  We must *re-schedule* not refire: a refire re-runs on THIS node and bypasses acquisition, so it would
+  loop here until node shutdown and never reach a capable node."
+  [^Scheduler scheduler queue payload attempt]
+  (analytics/inc! :metabase-mq/batches-retried {:channel (name queue) :reason "no-listener"})
+  (log/debugf "Queue %s has no listener on this node; re-queuing for a node that does." queue)
+  (schedule-message-trigger! scheduler queue payload attempt (Date.)))
+
 (defn- deliver-batch!
-  "Shared job body. Reads the merged job+trigger data, delivers the batch, and on listener failure
-  reschedules a fresh trigger (attempt+1, backoff) onto the firing scheduler — or drops it once
-  `queue-max-retries` is reached. Rescheduling uses `(.getScheduler ctx)` rather than the dynamic
-  `(task/scheduler)`, which isn't bound on Quartz's worker threads; in a cluster the retry lands in
-  the shared JDBC store so any node can pick it up."
+  "Shared job body. Reads the merged job+trigger data and dispatches on the delivery result:
+
+    - no listener for the queue is running on *this* node - have to reschedule.
+    - the listener threw - reschedule a fresh trigger (attempt+1, backoff), or drop once
+      `queue-max-retries` is reached.
+    - delivered (or an undecodable payload that was dropped) — nothing more to do.
+
+  The body only returns normally (letting Quartz complete the one-shot trigger) once the message has
+  been delivered or its retry/requeue is *durably committed*. If instead our own hand-off fails —
+  the reschedule can't be written because the scheduler's DB is momentarily unavailable — we throw a
+  `JobExecutionException` with `refireImmediately`, so Quartz re-runs this exact job now rather than treating
+  the one-shot as done and dropping the batch. The goal is to elave no window where Quartz considers the job finished
+  but the message hasn't been handed off. A refire re-runs with the same job data, so `attempt` is
+  unchanged — a refire doesn't burn the retry budget.
+
+  Rescheduling uses `(.getScheduler ctx)` rather than the dynamic `(task/scheduler)`, which isn't bound
+  on Quartz's worker threads; in a cluster the retry lands in the shared JDBC store so any node can
+  pick it up."
   [^JobExecutionContext ctx]
   (let [data    (.getMergedJobDataMap ctx)
         queue   (keyword "queue" (.getString data data-queue))
         payload (.getString data data-payload)
         attempt (Integer/parseInt (or (.getString data data-attempt) "0"))]
-    (when-not (mq.impl/deliver-reporting! queue payload)
-      (let [next-attempt (inc attempt)
-            labels       {:backend (name backend-id) :channel (name queue)}]
-        (mq.impl/handle-batch-failure-policy!
-         queue labels attempt
-         #(schedule-message-trigger! (.getScheduler ctx) queue payload next-attempt
-                                     (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt)))))
-         (constantly nil))))
-    ;; Quartz's Job.execute returns void — the body's tail must be nil for the deftype to compile.
-    nil))
+    (try
+      (let [result (mq.impl/deliver! queue payload)]
+        (cond
+          (= mq.impl/no-listener result)
+          (requeue-no-listener! (.getScheduler ctx) queue payload attempt)
+
+          (instance? Throwable result)
+          (let [next-attempt (inc attempt)]
+            (mq.impl/handle-batch-failure-policy!
+             queue attempt result
+             #(schedule-message-trigger! (.getScheduler ctx) queue payload next-attempt
+                                         (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt)))))
+             (constantly nil)))))
+      ;; Delivered, or the retry/requeue is durably committed. Return nil so Quartz completes the
+      ;; one-shot trigger.
+      nil
+      (catch Throwable t
+        ;; We couldn't hand the message off (couldn't schedule the retry, etc.). Don't let Quartz drop
+        ;; the fired one-shot — have it re-run this job immediately instead.
+        (throw (doto (JobExecutionException. t) (.setRefireImmediately true)))))))
 
 (task/defjob ^{:doc "Delivers a queue batch (non-exclusive queues; runs concurrently)."}
   QueueMessageJob

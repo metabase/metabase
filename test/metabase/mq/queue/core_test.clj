@@ -3,11 +3,11 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]
    [metabase.mq.core :as mq]
-   [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.payload :as payload]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
+   [metabase.mq.queue.polling :as q.polling]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
@@ -272,7 +272,7 @@
 (deftest exclusive-queue-single-active-handler-test
   "Verifies that submit-delivery! returns false for a channel that already has an
    active handler, enforcing at-most-one concurrent delivery per channel."
-  (mq.impl/start-worker-pool!)
+  (q.polling/start-worker-pool!)
   (mq.tu/with-test-mq [_test-mq]
     (let [queue-name :queue/exclusive-concurrency-test
           started    (CountDownLatch. 1)   ; counted down once the worker thread enters the listener
@@ -280,14 +280,14 @@
       (mq.tu/listen! queue-name
                      (fn [_] (.countDown started) (.await release)))
       (testing "First submission succeeds and marks the channel as busy"
-        (is (true? (mq.impl/submit-delivery! queue-name (payload/encode ["msg1"]) nil nil nil)))
+        (is (true? (q.polling/submit-delivery! queue-name (payload/encode ["msg1"]) nil nil)))
         (is (.await started 5 TimeUnit/SECONDS) "worker thread started and entered the listener")
-        (is (true? (mq.impl/channel-busy? queue-name))))
+        (is (true? (q.polling/channel-busy? queue-name))))
       (testing "Second submission returns false while channel is busy"
-        (is (false? (mq.impl/submit-delivery! queue-name (payload/encode ["msg2"]) nil nil nil))))
+        (is (false? (q.polling/submit-delivery! queue-name (payload/encode ["msg2"]) nil nil))))
       (.countDown release) ; Release the listener
       (testing "Channel is no longer busy after delivery completes"
-        (is (true? (mq.tu/wait-for! #(not (mq.impl/channel-busy? queue-name)) 5000))
+        (is (true? (mq.tu/wait-for! #(not (q.polling/channel-busy? queue-name)) 5000))
             "active-handlers clears once delivery completes"))
       (mq/unlisten! queue-name))))
 
@@ -295,11 +295,11 @@
   (testing "if submitting to the worker pool fails (e.g. pool not running), the channel slot is
             released rather than left permanently busy — otherwise the queue would silently stop
             delivering forever"
-    (with-redefs [mq.impl/worker-pool     (atom nil) ; deref/.submit NPEs
-                  mq.impl/active-handlers (atom {})]
+    (with-redefs [q.polling/worker-pool     (atom nil) ; deref/.submit NPEs
+                  q.polling/active-handlers (atom {})]
       (let [queue-name :queue/submit-failure-test]
         (is (thrown? Exception
-                     (mq.impl/submit-delivery! queue-name (payload/encode ["x"]) nil nil nil))
+                     (q.polling/submit-delivery! queue-name (payload/encode ["x"]) nil nil))
             "the submit failure propagates to the caller")
-        (is (false? (mq.impl/channel-busy? queue-name))
+        (is (false? (q.polling/channel-busy? queue-name))
             "the channel is not left marked busy after the failed submit")))))

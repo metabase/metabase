@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.transport :as transport]
+   [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]))
 
 (set! *warn-on-reflection* true)
@@ -63,6 +64,30 @@
         (publish-buffer/flush-publish-buffer!)
         (is (empty? @publish-buffer/*publish-retry-batches*)
             "Batch dropped after reaching max attempts")))))
+
+(deftest flush-emits-retry-and-drop-metrics-test
+  (testing "a re-buffered flush failure surfaces as batches-retried{publish}; the eventual drop as batches-dropped{publish-exhausted}"
+    (mt/with-prometheus-system! [_ system]
+      (binding [publish-buffer/*publish-buffer*               (atom {})
+                publish-buffer/*publish-retry-batches*        (atom [])
+                publish-buffer/*publish-buffer-ms*            0
+                publish-buffer/*publish-buffer-max-ms*        0
+                publish-buffer/*publish-buffer-max-attempts*  2
+                publish-buffer/*publish-buffer-retry-base-ms* 0]
+        (with-dynamic-fn-redefs [transport/publish! (fn [_channel _messages]
+                                                      (throw (ex-info "always fails" {})))]
+          (reset! publish-buffer/*publish-buffer*
+                  {:queue/test {:messages ["msg1"] :deadline-ms 1 :created-ms 1}})
+          ;; flush 1: fails -> attempts=1 < max=2 -> re-buffered (retried)
+          (publish-buffer/flush-publish-buffer!)
+          (is (= 1 (count @publish-buffer/*publish-retry-batches*)) "batch frozen for retry after the first failure")
+          (is (pos? (mt/metric-value system :metabase-mq/batches-retried {:channel "test" :reason "publish"}))
+              "a re-buffered flush failure increments batches-retried{reason=publish}")
+          ;; flush 2: retry fails -> attempts=2 >= max=2 -> dropped
+          (publish-buffer/flush-publish-buffer!)
+          (is (empty? @publish-buffer/*publish-retry-batches*) "batch dropped after reaching max attempts")
+          (is (pos? (mt/metric-value system :metabase-mq/batches-dropped {:channel "test" :reason "publish-exhausted"}))
+              "the drop is surfaced as batches-dropped{reason=publish-exhausted}"))))))
 
 (deftest flush-retry-backoff-grows-exponentially-test
   (testing "the backoff helper doubles each attempt and is capped"

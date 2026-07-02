@@ -40,6 +40,23 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
+              - column:
+                  name: publish_attempts
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: >-
+                    Number of consecutive times the recovery sweep has failed to publish this row.
+                    Drives the exponential backoff between recovery attempts; the row is never
+                    dropped (it is retried until it publishes).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_attempt_at
+                  type: ${timestamp_type}
+                  remarks: >-
+                    Earliest time the recovery sweep may retry this row after a failed publish
+                    (now + exponential backoff). Null until the first failure; until then the sweep
+                    gates on created_at instead.
 
   - changeSet:
       id: v63.qmoutbox2
@@ -77,3 +94,15 @@ databaseChangeLog:
                 autovacuum_analyze_scale_factor,
                 autovacuum_analyze_threshold
               )
+
+  - changeSet:
+      id: v63.qmoutbox4
+      author: nvoxland
+      comment: Index queue_message_outbox.next_attempt_at for the recovery sweep's due-row lookup
+      changes:
+        - createIndex:
+            tableName: queue_message_outbox
+            indexName: idx_queue_message_outbox_next_attempt_at
+            columns:
+              - column:
+                  name: next_attempt_at

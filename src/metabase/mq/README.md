@@ -66,8 +66,11 @@ publish, the message is lost. The transactional outbox (`metabase.mq.queue.outbo
    deleted once its publish has succeeded.
 3. **recovery** — a periodic sweep (`recover-outbox!`, driven by the Quartz job in
    `metabase.mq.task.outbox`) republishes any rows older than ~1 minute that a crash — or a failed
-   after-commit publish — left behind, then deletes them. It claims rows with
-   `FOR UPDATE SKIP LOCKED`, so concurrent sweeps on different nodes pick up disjoint rows.
+   after-commit publish — left behind, deleting each row once its publish succeeds. It claims rows
+   with `FOR UPDATE SKIP LOCKED`, so concurrent sweeps on different nodes pick up disjoint rows. A
+   publish failure is almost always transient (backend/DB connectivity), so a failing row is **never
+   dropped**: its `publish_attempts` is bumped and its next retry scheduled with exponential backoff
+   (`next_attempt_at`, 1m doubling up to 1h), and it is retried until it publishes.
 
 The net guarantee: **a message is published if and only if the business transaction that produced it
 commits**, regardless of which backend the queue uses — the outbox table always lives in the app DB.

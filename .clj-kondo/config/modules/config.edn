@@ -1410,6 +1410,7 @@
    :api  #{metabase.mq.init}
    :uses #{analytics-interface
            app-db
+           classloader
            settings
            startup
            task

@@ -11,6 +11,7 @@
    [metabase.mq.transport :as transport]
    [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs :refer [with-dynamic-fn-redefs]]
    [toucan2.core :as t2])
   (:import
@@ -36,6 +37,8 @@
   (t2/delete! :queue_message_outbox :queue_name [:in test-queue-names])
   (try (t) (finally (t2/delete! :queue_message_outbox :queue_name [:in test-queue-names]))))
 
+;; These tests read/write the `queue_message_outbox` table directly, so the app-db must be migrated.
+(use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each clear-outbox!)
 
 (defn- outbox-count [qname]
@@ -279,3 +282,100 @@
                    :payload    (payload/encode ["fresh"])})
       (is (= 0 (outbox/recover-outbox!)) "no rows old enough to recover")
       (is (= 1 (outbox-count "outbox-recover")) "fresh row left in place"))))
+
+(defn- ->instant
+  "Coerce a timestamp column value to an Instant — the app DB may hand it back as an OffsetDateTime
+  (Postgres timestamptz) or a java.sql.Timestamp (H2), depending on the backend."
+  ^java.time.Instant [t]
+  (condp instance? t
+    java.time.OffsetDateTime (.toInstant ^java.time.OffsetDateTime t)
+    java.sql.Timestamp       (.toInstant ^java.sql.Timestamp t)
+    java.time.Instant        t))
+
+(def ^:private stale-ts (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000))))
+
+(defn- insert-stale-row! [payload]
+  (t2/insert-returning-pk! :queue_message_outbox
+                           {:queue_name "outbox-recover" :payload payload :created_at stale-ts}))
+
+(defn- always-fail-publish []
+  (fn [_channel _payload] (throw (ex-info "always boom" {}))))
+
+(deftest recover-outbox-bumps-attempts-on-publish-failure-test
+  (testing "a row whose publish keeps failing is retained with its attempts bumped and a future retry scheduled — not dropped, and not re-attempted within the same sweep"
+    (mq.tu/with-test-mq [_ctx]
+      (let [id (insert-stale-row! (payload/encode ["poison"]))]
+        (with-dynamic-fn-redefs [transport/publish-encoded! (always-fail-publish)]
+          (is (= 0 (outbox/recover-outbox!)) "nothing recovered"))
+        (is (t2/exists? :queue_message_outbox :id id) "poison row retained for a later sweep")
+        (let [row (t2/select-one [:queue_message_outbox :publish_attempts :next_attempt_at] :id id)]
+          (is (= 1 (:publish_attempts row))
+              "attempts bumped exactly once for the one sweep (the failed row is skipped, not re-claimed)")
+          (is (some? (:next_attempt_at row)) "a backed-off retry time is scheduled"))))))
+
+(deftest recover-outbox-never-drops-and-backs-off-failing-row-test
+  (testing "a row whose publish always fails is retried with exponential backoff forever — never dropped"
+    (mq.tu/with-test-mq [_ctx]
+      (let [id (insert-stale-row! (payload/encode ["always-fails"]))]
+        (with-dynamic-fn-redefs [transport/publish-encoded! (always-fail-publish)]
+          ;; sweep 1: attempt bumped and a future next_attempt_at scheduled (backing off)
+          (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
+          (let [row (t2/select-one [:queue_message_outbox :publish_attempts :next_attempt_at] :id id)]
+            (is (= 1 (:publish_attempts row)) "attempts bumped")
+            (is (.isAfter (->instant (:next_attempt_at row)) (Instant/now))
+                "next attempt scheduled in the future"))
+          ;; immediate re-sweep: the row is not due yet, so it is skipped (attempts unchanged)
+          (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
+          (is (= 1 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] :id id)))
+              "a row that is not yet due is not re-attempted before its backoff elapses")
+          ;; force the row due and sweep again: re-attempted, attempt count grows, still retained
+          (t2/update! :queue_message_outbox :id id
+                      {:next_attempt_at (Timestamp/from (.minusSeconds (Instant/now) 1))})
+          (is (= 0 (outbox/recover-outbox!)) "nothing recovered")
+          (is (= 2 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] :id id)))
+              "a due row is re-attempted and its attempt count keeps growing")
+          (is (t2/exists? :queue_message_outbox :id id)
+              "the row is never dropped no matter how many times it fails"))))))
+
+(deftest retry-delay-ms-is-exponential-and-capped-test
+  (testing "recovery retry backoff doubles per consecutive failure and is capped"
+    (is (= [60000 120000 240000 480000 (* 10 60 1000)] (map outbox/retry-delay-ms [1 2 3 4 5]))
+        "exponential: 1m base, doubling — attempt 5 would be 16m but caps at the 10m max")
+    (is (= (* 10 60 1000) (outbox/retry-delay-ms 50)) "capped at the max backoff")
+    (is (= (* 10 60 1000) (outbox/retry-delay-ms 100000)) "no overflow at extreme attempt counts")))
+
+(deftest recover-outbox-poison-row-does-not-block-newer-rows-test
+  (testing "a full page of poison rows at the head does not starve the recoverable rows behind them in the same sweep"
+    (mq.tu/with-test-mq [_ctx]
+      ;; shrink the per-transaction page so two poison rows fill it; the good row (higher id) is only
+      ;; reachable on the next loop iteration, which the old code never got to (it stopped on deleted=0).
+      (with-redefs-fn {#'outbox/recovery-page-size 2}
+        (fn []
+          (let [poison  (payload/encode ["poison"])
+                good    (payload/encode ["good"])
+                _p1     (insert-stale-row! poison)
+                _p2     (insert-stale-row! poison)
+                good-id (insert-stale-row! good)
+                published    (atom [])
+                real-publish (dynamic-redefs/original-fn #'transport/publish-encoded!)]
+            (with-dynamic-fn-redefs [transport/publish-encoded!
+                                     (fn [channel payload]
+                                       (if (= payload poison)
+                                         (throw (ex-info "boom" {}))
+                                         (do (swap! published conj payload)
+                                             (real-publish channel payload))))]
+              (is (= 1 (outbox/recover-outbox!))
+                  "the good row is recovered despite the full batch of poison rows ahead of it"))
+            (is (= [good] @published) "the good row was published exactly once")
+            (is (not (t2/exists? :queue_message_outbox :id good-id)) "good row published and deleted")
+            (is (= 2 (outbox-count "outbox-recover")) "only the two poison rows remain")))))))
+
+(deftest recover-outbox-emits-retry-metric-on-publish-failure-test
+  (testing "a recovery failure that will be retried surfaces as batches-retried{recovery} (rows are never dropped)"
+    (mt/with-prometheus-system! [_ system]
+      (mq.tu/with-test-mq [_ctx]
+        (insert-stale-row! (payload/encode ["fails"]))
+        (with-dynamic-fn-redefs [transport/publish-encoded! (always-fail-publish)]
+          (outbox/recover-outbox!)
+          (is (pos? (mt/metric-value system :metabase-mq/batches-retried {:channel "outbox-recover" :reason "outbox-recovery"}))
+              "a failed recovery publish that will be retried increments batches-retried{reason=recovery}"))))))
