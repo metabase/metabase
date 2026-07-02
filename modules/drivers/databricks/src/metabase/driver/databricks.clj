@@ -104,7 +104,7 @@
   (str/split schema #"\."))
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
-  [driver [tag _opts identifier-type components :as _identifier]]
+  [_driver [tag identifier-type components :as _identifier]]
   (let [components (if (or (and (= identifier-type :table)
                                 (>= (count components) 2))
                            (and (= identifier-type :field)
@@ -114,7 +114,7 @@
                      (let [first-split (split-catalog+schema (first components))]
                        (into first-split (rest components)))
                      components)]
-    (sql.qp/->honeysql :hive-like (sql.qp/mbql-clause driver tag identifier-type components))))
+    (sql.qp/->honeysql :hive-like [tag identifier-type components])))
 
 (defn- get-tables-sql
   [driver {:keys [catalog multi-level-schema]}]
