@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-complexity-score.cli-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.cli :as tools.cli]
    [metabase-enterprise.data-complexity-score.cli :as cli]
@@ -152,6 +153,18 @@
                                                     :representation-dir representation-fixture-dir
                                                     :embeddings         "precomputed.json"
                                                     :embedder           "in-process"})))))
+
+(deftest embedder-override-fingerprint-test
+  (testing "an --embedder override is folded into the persisted fingerprint so it can't shadow cron scores"
+    (let [override         (#'cli/embedder-override "in-process")
+          plain            (task.complexity-score/current-fingerprint)
+          with-override    (task.complexity-score/current-fingerprint
+                            (#'cli/override-fingerprint-fragment override))]
+      (is (not= plain with-override))
+      (is (str/includes? with-override ":cli-embedder-override"))
+      (is (str/includes? with-override "all-MiniLM-L6-v2"))
+      (testing "no override leaves the fingerprint unchanged"
+        (is (= plain (task.complexity-score/current-fingerprint (#'cli/override-fingerprint-fragment nil))))))))
 
 (deftest ^:parallel cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"

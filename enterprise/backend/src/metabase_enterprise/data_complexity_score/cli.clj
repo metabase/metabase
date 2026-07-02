@@ -177,6 +177,16 @@
                     :embedding-model-meta in-process-descriptor})
     nil))
 
+(defn- override-fingerprint-fragment
+  "Synonym-axis fingerprint fragment describing an active `--embedder` override, nil without one.
+  Replaces the configured fragment in the persisted fingerprint so override rows describe what actually
+  ran and can't shadow scores produced with the configured embedder."
+  [override]
+  (when override
+    {:synonym-source  :cli-embedder-override
+     :embedding-model (:embedding-model-meta override)
+     :text-variant    embedders/default-text-variant}))
+
 (defn- run-appdb-mode!
   "Score against the live appdb; optionally persist the row.
   Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
@@ -188,7 +198,9 @@
                     (assoc :metabot-scope (metabot-scope/internal-metabot-scope)
                            :emit-snowplow? false)))]
     (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
+      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint
+                                            (override-fingerprint-fragment override))
+                                           "appdb" result))
     result))
 
 (defn- run-representation-mode!
@@ -203,7 +215,8 @@
                                                     library universe embedder
                                                     (select-keys override [:embedding-model-meta]))]
     (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint)
+      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint
+                                            (override-fingerprint-fragment override))
                                            (str "representation:" digest)
                                            result))
     result))

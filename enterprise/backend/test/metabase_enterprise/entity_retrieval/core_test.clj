@@ -59,7 +59,11 @@
     (testing "the provider override validates like the global setting"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid embedding provider"
-                            (retrieval.settings/ee-library-embedding-provider! "in-porcess"))))))
+                            (retrieval.settings/ee-library-embedding-provider! "in-porcess")))
+      (testing "but clearing it with an empty string passes like nil"
+        (mt/with-temporary-setting-values [ee-library-embedding-provider "in-process"]
+          (retrieval.settings/ee-library-embedding-provider! "")
+          (is (nil? (retrieval.settings/ee-library-embedding-provider))))))))
 
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'entity-retrieval.core/score)]

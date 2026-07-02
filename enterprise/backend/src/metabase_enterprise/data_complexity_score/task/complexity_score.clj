@@ -25,14 +25,19 @@
 (defn current-fingerprint
   "String capturing everything that changes the meaning or shape of an emitted score.
   Includes `formula-version`, `format-version`, `weights`, `synonym-threshold`, and the synonym-axis fragment
-  from [[synonym-source/fingerprint-fragment]] (source toggles, configured embedder, pgvector index swaps)."
-  []
-  (pr-str (into (sorted-map)
-                (merge {:formula-version   complexity/formula-version
-                        :format-version    complexity/format-version
-                        :synonym-threshold complexity/synonym-similarity-threshold
-                        :weights           complexity/weights}
-                       (synonym-source/fingerprint-fragment)))))
+  from [[synonym-source/fingerprint-fragment]] (source toggles, configured embedder, pgvector index swaps).
+  `synonym-fragment-override` replaces the configured fragment when the caller ran with a different
+  embedder (the CLI's `--embedder` flag), so those rows can't shadow scores from the configured setup."
+  ([]
+   (current-fingerprint nil))
+  ([synonym-fragment-override]
+   (pr-str (into (sorted-map)
+                 (merge {:formula-version   complexity/formula-version
+                         :format-version    complexity/format-version
+                         :synonym-threshold complexity/synonym-similarity-threshold
+                         :weights           complexity/weights}
+                        (or synonym-fragment-override
+                            (synonym-source/fingerprint-fragment)))))))
 
 (defn maybe-advance-last-fingerprint!
   "Advance [[settings/data-complexity-scoring-last-fingerprint]] only if Snowplow accepted the publish.

@@ -20,7 +20,9 @@
   :export? false
   :doc false
   :setter (fn [new-value]
-            (embedding/validate-provider! new-value)
+            ;; not-empty: the string setter stores "" as nil (the documented way to clear back to the
+            ;; global provider), so a blank value must pass validation like nil does.
+            (embedding/validate-provider! (not-empty new-value))
             (setting/set-value-of-type! :string :ee-library-embedding-provider new-value)))
 
 (defsetting ee-library-embedding-model
