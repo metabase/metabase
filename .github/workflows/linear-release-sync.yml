@@ -26,6 +26,7 @@ permissions:
 
 jobs:
   sync-linear-release:
+    continue-on-error: true
     if: ${{ github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
