@@ -5,13 +5,13 @@ import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import { getCollection } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { getCollection } from "metabase/common/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
+import { trackSearchClick } from "metabase/common/search/analytics";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
-import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
   getDocsUrl,

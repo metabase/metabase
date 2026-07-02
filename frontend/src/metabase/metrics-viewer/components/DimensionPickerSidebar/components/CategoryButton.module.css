@@ -1,0 +1,75 @@
+.categoryItem {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 2rem;
+  padding-inline: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary);
+  font-size: 0.875rem;
+  line-height: 1rem;
+}
+
+.settingsButton {
+  display: none;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-background_page-tertiary);
+  color: var(--mb-color-icon-primary);
+}
+
+.categoryRow {
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+
+  &.selected {
+    .categoryItem {
+      background-color: var(--mb-color-background_surface-selected);
+      color: var(--mb-color-text-brand);
+    }
+  }
+
+  &:not(.selected):hover {
+    .categoryItem {
+      background-color: var(--mb-color-background_surface-hover);
+    }
+  }
+
+  &:hover,
+  &.expanded {
+    .settingsButton {
+      display: inline-flex;
+    }
+  }
+
+  .settingsButton:hover {
+    background-color: var(--mb-color-background_surface-hover);
+    color: var(--mb-color-text-brand);
+  }
+
+  &.expanded .settingsButton {
+    background-color: var(--mb-color-background_surface-selected);
+  }
+}
+
+.itemIcon {
+  color: currentcolor;
+}
+
+.itemLabel {
+  overflow: hidden;
+  color: currentcolor;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

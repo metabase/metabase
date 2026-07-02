@@ -33,7 +33,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         flexGrow: 1,
         flexBasis: 0,
       }}
-      bg={active ? "background-hover" : undefined}
+      bg={active ? "background_surface-hover" : undefined}
       c="text-primary"
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
@@ -61,7 +61,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
                 status={item.extra.moderatedStatus}
                 filled
                 size={14}
-                color="brand"
+                color="core-brand"
                 style={{
                   verticalAlign: "text-bottom",
                 }}

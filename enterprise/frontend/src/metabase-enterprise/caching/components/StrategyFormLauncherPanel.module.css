@@ -1,0 +1,25 @@
+.root {
+  overflow-y: auto;
+}
+
+.section {
+  padding: var(--mantine-spacing-lg);
+}
+
+.divided {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.stack {
+  gap: var(--mantine-spacing-md);
+}
+
+@media screen and (max-width: 40em) {
+  .section {
+    padding: 0.75rem;
+  }
+
+  .stack {
+    gap: var(--mantine-spacing-sm);
+  }
+}

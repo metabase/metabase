@@ -1,0 +1,131 @@
+name: Bundle Size Stats
+
+# Reuses the uberjar built on every master merge: downloads the jar (for the
+# emitted JS) plus the bundle-stats and embedding-sdk artifacts, measures
+# initial/total bundle sizes, and appends them to stats.metabase.com.
+
+on:
+  workflow_run:
+    workflows: ["Build Uberjar"]
+    types: [completed]
+    branches: [master]
+
+concurrency:
+  group: bundle-size-stats-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-size-stats:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    env:
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Download EE uberjar
+        uses: ./.github/actions/fetch-artifact
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          edition: ee
+          extract-path: temp/uberjar
+      - name: Extract front-end bundles from uberjar
+        run: |
+          mkdir -p resources artifacts
+          unzip -o "temp/uberjar/metabase.jar" \
+            "frontend_client/app/dist/*" \
+            "frontend_client/app/embed.js" \
+            "frontend_client/app/embedding-sdk/*" \
+            -d resources
+          unzip -o -j "temp/uberjar/metabase.jar" version.properties -d artifacts
+      - name: Download bundle stats and SDK package artifacts
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const fs = require("fs");
+
+            async function fetchArtifact(name) {
+              const res = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name,
+                per_page: 1,
+              });
+              const artifact = res.data?.artifacts?.[0];
+              if (!artifact) {
+                console.log(`Artifact not found: ${name}`);
+                return "";
+              }
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: "zip",
+              });
+              fs.writeFileSync(`${name}.zip`, Buffer.from(download.data));
+              console.log(`Downloaded ${name}`);
+              return `${name}.zip`;
+            }
+
+            const sha = process.env.HEAD_SHA;
+            core.exportVariable("STATS_ZIP", await fetchArtifact(`metabase-bundle-stats-ee-${sha}`));
+            core.exportVariable("PKG_ZIP", await fetchArtifact(`embedding-sdk-${sha}`));
+      - name: Extract stats and SDK package
+        run: |
+          mkdir -p artifacts resources/embedding-sdk
+          if [ -n "$STATS_ZIP" ]; then unzip -o "$STATS_ZIP" -d artifacts; fi
+          if [ -n "$PKG_ZIP" ]; then unzip -o "$PKG_ZIP" -d resources/embedding-sdk; fi
+      - name: Measure bundle sizes
+        run: node ./.github/scripts/measure-bundle-sizes.js | tee artifacts/bundle-sizes.json
+      - name: Upload sizes to Stats
+        uses: actions/github-script@v9
+        env:
+          API_KEY: ${{ secrets.STATS_API_KEY }}
+        with:
+          script: | # js
+            const fs = require("fs");
+            const { uploadCsvToMb } = require("${{ github.workspace }}/.github/scripts/csv-to-mb.js");
+
+            const measurements = JSON.parse(
+              fs.readFileSync("${{ github.workspace }}/artifacts/bundle-sizes.json", "utf8"),
+            );
+
+            const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+            const commit = process.env.HEAD_SHA.slice(0, 12);
+
+            // version.properties (extracted from the uberjar) carries the build's tag.
+            // Non-release (master) builds report tag=vUNKNOWN, so leave Version empty there.
+            const versionProps = "${{ github.workspace }}/artifacts/version.properties";
+            const rawVersion = fs.existsSync(versionProps)
+              ? (fs.readFileSync(versionProps, "utf8").match(/^tag=(.*)$/m)?.[1]?.trim() ?? "")
+              : "";
+            const version = rawVersion === "vUNKNOWN" ? "" : rawVersion;
+
+            const data = measurements.map(measurement => ({
+              "Date": date,
+              "Version": version,
+              "Commit": commit,
+              "Bundle": measurement.bundle,
+              "Kind": measurement.kind, // "initial" or "total"
+              "Raw bytes": measurement.rawBytes,
+              "Gzip bytes": measurement.gzipBytes,
+              "Brotli bytes": measurement.brotliBytes ?? "", // as-served; empty when no .br shipped
+              "File count": measurement.fileCount,
+            }));
+
+            console.table(data);
+
+            uploadCsvToMb({
+              baseUrl: "https://stats.metabase.com",
+              tableId: 79417,
+              jsonData: data,
+              mode: "append",
+            }).then(() => {
+              console.log("Bundle sizes uploaded successfully");
+            }).catch(error => {
+              console.error("Error uploading bundle sizes:", error);
+              process.exit(1);
+            });

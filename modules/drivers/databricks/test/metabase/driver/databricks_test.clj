@@ -18,6 +18,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- maybe-qualify-schema
@@ -31,20 +32,21 @@
   (mt/test-driver
     :databricks
     (testing "`driver/describe-database` implementation returns expected results for inclusion of test-data schema."
-      (is (= {:tables
-              #{{:name "venues", :schema (maybe-qualify-schema "test-data"), :description nil}
-                {:name "checkins", :schema (maybe-qualify-schema "test-data"), :description nil}
-                {:name "users", :schema (maybe-qualify-schema "test-data"), :description nil}
-                {:name "people", :schema (maybe-qualify-schema "test-data"), :description nil}
-                {:name "categories", :schema (maybe-qualify-schema "test-data"), :description nil}
-                {:name "reviews", :schema (maybe-qualify-schema "test-data"), :description nil}
-                {:name "orders", :schema (maybe-qualify-schema "test-data"), :description nil}
-                {:name "products", :schema (maybe-qualify-schema "test-data"), :description nil}}}
-             (driver/describe-database :databricks (mt/db)))))
+      (is (= #{{:name "venues", :schema (maybe-qualify-schema "test-data"), :description nil}
+               {:name "checkins", :schema (maybe-qualify-schema "test-data"), :description nil}
+               {:name "users", :schema (maybe-qualify-schema "test-data"), :description nil}
+               {:name "people", :schema (maybe-qualify-schema "test-data"), :description nil}
+               {:name "categories", :schema (maybe-qualify-schema "test-data"), :description nil}
+               {:name "reviews", :schema (maybe-qualify-schema "test-data"), :description nil}
+               {:name "orders", :schema (maybe-qualify-schema "test-data"), :description nil}
+               {:name "products", :schema (maybe-qualify-schema "test-data"), :description nil}}
+             (into #{} (:tables (driver/describe-database :databricks (mt/db)))))))
     (testing "`driver/describe-database` returns expected results for `all` schema filters."
-      (let [actual-tables (driver/describe-database :databricks (-> (mt/db)
-                                                                    (update :details dissoc :schema-filters-patterns)
-                                                                    (update :details assoc :schema-filters-type "all")))]
+      (let [actual-tables (update (driver/describe-database :databricks (-> (mt/db)
+                                                                            (update :details dissoc :schema-filters-patterns)
+                                                                            (update :details assoc :schema-filters-type "all")))
+                                  ;; `:tables` is a reducible (streamed); realize it for the set ops below
+                                  :tables #(into #{} %))]
         (testing "tables from multiple schemas were found"
           (are [name schema] (contains? (:tables actual-tables)
                                         {:name name, :schema schema, :description nil})
@@ -55,9 +57,11 @@
         (testing "information_schema is excluded"
           (is (empty? (filter #(str/includes? "information_schema" (:schema %)) (:tables actual-tables)))))))
     (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
-      (let [actual-tables (driver/describe-database :databricks (update (mt/db) :details assoc
-                                                                        :schema-filters-patterns (maybe-qualify-schema "test-data")
-                                                                        :schema-filters-type "exclusion"))]
+      (let [actual-tables (update (driver/describe-database :databricks (update (mt/db) :details assoc
+                                                                                :schema-filters-patterns (maybe-qualify-schema "test-data")
+                                                                                :schema-filters-type "exclusion"))
+                                  ;; `:tables` is a reducible (streamed); realize it for the set ops below
+                                  :tables #(into #{} %))]
         (testing "tables from multiple schemas were found"
           (is (not (contains? (set (map :schema (:tables actual-tables))) (maybe-qualify-schema "test-data"))))
           (is (contains? (:tables actual-tables) {:name "airport", :schema (maybe-qualify-schema "airports"), :description nil}))
@@ -148,10 +152,11 @@
                (set fields)))))))
 
 (deftest ^:parallel describe-fks-test
-  (mt/test-driver
-    :databricks
-    (let [fks (vec (driver/describe-fks :databricks (mt/db) {:schema-names [(maybe-qualify-schema "test-data")]
-                                                             :table-names ["orders"]}))]
+  (mt/test-driver :databricks
+    (let [fks (vec (driver/describe-fks :databricks
+                                        (lib.metadata/database (mt/metadata-provider))
+                                        {:schema-names [(maybe-qualify-schema "test-data")]
+                                         :table-names ["orders"]}))]
       (testing "Only fks from current catalog are registered"
         (is (= 2 (count fks))))
       (testing "Expected fks are returned"
@@ -474,7 +479,17 @@
     (testing "Can connect returns true for catalog that is present on the instance"
       (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
     (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
-      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
+      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))
+    (testing "Disallows unsafe connection parameters"
+      (let [details (assoc (:details (mt/db)) :additional-options "VolumeOperationAllowedLocalPaths=/etc/hosts")]
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks details)))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks (update details
+                                                                       :additional-options
+                                                                       u/lower-case-en))))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/validate-db-details! :databricks details)))))))
 
 (deftest can-connect-using-m2m-test
   (mt/test-driver

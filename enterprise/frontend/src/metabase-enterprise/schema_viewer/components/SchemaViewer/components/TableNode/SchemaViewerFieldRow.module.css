@@ -1,0 +1,50 @@
+.row {
+  position: relative;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &[data-clickable]:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &[data-clickable] .icon,
+  &[data-clickable] .clickableName {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.icon {
+  color: var(--mb-color-text-secondary);
+}
+
+.name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.handle {
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  border: none;
+  opacity: 0;
+}
+
+.expandIndicator {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  width: 0.675rem;
+  height: 0.675rem;
+  border-radius: 50%;
+  background: var(--mb-color-white);
+  border: 1px solid var(--node-border-color, var(--mb-color-border-neutral));
+  pointer-events: none;
+  z-index: 1;
+}

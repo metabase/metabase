@@ -11,12 +11,12 @@
   flex-shrink: 1;
   height: 100%;
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 
   :global {
     /* merge view styles */
     .cm-collapsedLines {
-      background: var(--mb-color-background-secondary) !important;
+      background: var(--mb-color-background_page-secondary) !important;
       color: var(--mb-color-text-tertiary);
 
       &:before,
@@ -56,7 +56,7 @@
 }
 
 .tag {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 
   & * {
     color: inherit;

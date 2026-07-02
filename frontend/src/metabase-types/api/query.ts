@@ -157,7 +157,8 @@ type NestedQueryTableId = string;
 type SourceTableId = TableId | NestedQueryTableId;
 
 export type StructuredQuery = {
-  "source-table"?: SourceTableId;
+  // `null` is the legacy MBQL marker for a not-yet-selected source table
+  "source-table"?: SourceTableId | null;
   "source-query"?: StructuredQuery;
   aggregation?: AggregationClause;
   breakout?: BreakoutClause;

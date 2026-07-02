@@ -70,6 +70,7 @@
   set-default-group-permissions!
   set-default-database-permissions!
   set-default-table-permissions!
+  set-default-table-permissions-bulk!
   with-global-permissions-lock
   with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
@@ -82,7 +83,12 @@
  [metabase.permissions.models.permissions
   namespace-clause
   can-read-audit-helper
+  can-read-via-parent-collection?
+  collection-based-visibility-search-models
+  collection-id-only-read-method
+  collection-id-only-read-models
   current-user-has-application-permissions?
+  define-collection-based-visibility!
   grant-application-permissions!
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!

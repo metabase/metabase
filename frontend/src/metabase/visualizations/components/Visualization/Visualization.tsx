@@ -26,7 +26,7 @@ import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
-import { getTokenFeature } from "metabase/setup/selectors";
+import { getTokenFeature } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
@@ -40,11 +40,13 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
+import { prefetchEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/lazy";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import {
@@ -67,7 +69,6 @@ import {
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   Card,
   CardId,
@@ -172,15 +173,16 @@ type VisualizationOwnProps = {
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
+  onZoomRow?: (rowIndex: number) => void;
   onOpenChartSettings?: (data: {
     initialChartSettings?: { section: string };
     showSidebarTitle?: boolean;
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
   onBrush?: ((range: { start: number; end: number }) => void) | null;
-  onHeaderColumnReorder?: (columnName: string) => void;
+  onHeaderColumnReorder?: (columnIndex: number) => void;
   onChangeLocation?: (location: Location) => void;
-  onUpdateQuestion?: () => void;
+  onUpdateQuestion?: (question: Question) => void;
   onUpdateVisualizationSettings?: (
     settings: VisualizationSettings,
     question?: Question,
@@ -352,10 +354,24 @@ class Visualization extends PureComponent<
     ) {
       this.updateWarnings();
     }
+    if (prevState.visualization !== this.state.visualization) {
+      this.maybePrefetchEChartsRenderer();
+    }
   }
 
   componentDidMount() {
     this.updateWarnings();
+    this.maybePrefetchEChartsRenderer();
+  }
+
+  // Kick off loading the (lazy) echarts chunk as soon as an echarts-based chart
+  // mounts — typically while its data query is still in flight — so the library
+  // downloads in parallel with the data rather than only once the chart is
+  // ready to render.
+  maybePrefetchEChartsRenderer() {
+    if (this.state.visualization?.usesEChartsRenderer) {
+      prefetchEChartsRenderer();
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -723,6 +739,7 @@ class Visualization extends PureComponent<
       onUpdateWarnings,
       titleMenuItems,
       zoomedRowIndex,
+      onZoomRow,
       tableFooterExtraButtons,
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
@@ -796,10 +813,7 @@ class Visualization extends PureComponent<
     }
 
     if (!error && !genericError && series) {
-      noResults = _.every(
-        series,
-        (s) => s && s.data && datasetContainsNoResults(s.data),
-      );
+      noResults = _.every(series, (s) => s && s.data && hasNoResults(s.data));
     }
 
     const extra = (
@@ -978,6 +992,7 @@ class Visualization extends PureComponent<
                     visualizationIsClickable={this.visualizationIsClickable}
                     width={rawWidth}
                     zoomedRowIndex={zoomedRowIndex}
+                    onZoomRow={onZoomRow}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
                       this.props.onChangeCardAndRun

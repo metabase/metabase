@@ -317,3 +317,30 @@
                        (:text %))
           result (prose-mirror/collect-ast doc collector)]
       (is (= ["first" "second" "third"] (vec result))))))
+
+(deftest ^:parallel ast->text-test
+  (testing "joins text from all text nodes across nested blocks, in document order"
+    (let [ast {:type "doc"
+               :content [{:type "heading" :content [{:type "text" :text "Title"}]}
+                         {:type "paragraph" :content [{:type "text" :text "Hello"}
+                                                      {:type "text" :text "world"}]}]}]
+      (is (= "Title Hello world" (prose-mirror/ast->text ast)))))
+  (testing "includes the visible label of reference nodes (smart links, mentions), in document order"
+    (let [ast {:type "doc"
+               :content [{:type "paragraph"
+                          :content [{:type "text" :text "see"}
+                                    {:type prose-mirror/smart-link-type
+                                     :attrs {:model "card" :entityId "abc" :label "Orders Question"}}
+                                    {:type "text" :text "and"}
+                                    {:type "mention" :attrs {:id 7 :label "Jane Doe"}}]}]}]
+      (is (= "see Orders Question and Jane Doe" (prose-mirror/ast->text ast)))))
+  (testing "ignores nodes that render no inline prose (card embeds, label-less references, layout containers)"
+    (let [ast {:type "doc"
+               :content [{:type "paragraph" :content [{:type "text" :text "before"}]}
+                         {:type prose-mirror/card-embed-type :attrs {:id 42}}
+                         {:type prose-mirror/smart-link-type :attrs {:model "card" :entityId "abc"}}
+                         {:type "paragraph" :content [{:type "text" :text "after"}]}]}]
+      (is (= "before after" (prose-mirror/ast->text ast)))))
+  (testing "returns an empty string for an empty document"
+    (is (= "" (prose-mirror/ast->text {:type "doc" :content []})))
+    (is (= "" (prose-mirror/ast->text nil)))))

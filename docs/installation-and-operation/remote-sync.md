@@ -98,7 +98,19 @@ Create a personal access token with read and write repository access. Copy the t
 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read and write** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** and **write_repository** scopes. Tokens have an expiration date (your admin may set a maximum lifetime).
-- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket, search for "repos", and grant `read:repository:bitbucket` and `write:repository:bitbucket` (write does not include read). Tokens expire and can't be modified after creation.
+- **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Give it a name and, under **Scopes**, select:
+
+  - **Repositories**: **Read** and **Write**
+  - **Pull requests**: **Read** and **Write**
+
+  Click **Create** and copy the token immediately, you can't view the token again after closing the dialog.
+
+  The created token must have these scopes (visible in the **View access token** dialog after creation):
+
+  - `repository`
+  - `repository:write`
+  - `pullrequest`
+  - `pullrequest:write`
 
 ### 3. Connect your development Metabase to your repository
 
@@ -152,7 +164,17 @@ Create a personal access token with read-only repository access. Copy the token 
 
 - **GitHub**: Create a [fine-grained personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with **Contents: Read-only** and **Metadata: Read-only** permissions.
 - **GitLab**: In **User Settings** > **Personal access tokens**, [create a token](https://docs.gitlab.com/user/profile/personal_access_tokens/) with **read_repository** scope only.
-- **Bitbucket**: In your [Atlassian account settings](https://id.atlassian.com/manage-profile/security) under **Security**, click **Create API token with scopes**. Select Bitbucket and grant `read:repository:bitbucket` only.
+- **Bitbucket**: In your Bitbucket repository, go to **Repository settings** > **Security** > **Access tokens** and click **Create access token**. Under **Scopes**, select:
+
+  - **Repositories**: **Read**
+  - **Pull requests**: **Read**
+
+  Leave Write and all other scope groups unchecked. Click **Create** and copy the token immediately.
+
+  The created token must have these scopes (visible in the **View access token** dialog after creation):
+
+  - `repository`
+  - `pullrequest`
 
 ### 7. Connect your production Metabase to your repository
 

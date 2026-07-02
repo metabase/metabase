@@ -30,6 +30,16 @@ export function getPluginAssetUrl(
   );
 }
 
+/**
+ * Plain same-origin asset URL. The SDK overrides this to fetch the asset with auth headers and return a blob.
+ */
+export function resolveCustomVizAssetUrl(
+  pluginId: CustomVizPluginId,
+  assetPath: string | null | undefined,
+): Promise<string | undefined> {
+  return Promise.resolve(getPluginAssetUrl(pluginId, assetPath));
+}
+
 export function getCustomPluginIdentifier(
   pluginOrIdentifier: Pick<CustomVizPluginRuntime, "identifier"> | string,
 ): VisualizationDisplay {

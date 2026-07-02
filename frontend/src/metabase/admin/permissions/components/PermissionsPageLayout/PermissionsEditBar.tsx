@@ -1,11 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { t } from "ttag";
 
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
-import { Button } from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EditBar } from "metabase/common/components/EditBar";
+import { Button } from "metabase/ui";
 
 import { PermissionsConfirm } from "../PermissionsConfirm";
 
@@ -27,14 +26,16 @@ export function PermissionsEditBar({
     <Button
       key="save"
       onClick={openModal}
-      className={cx({ disabled: !isDirty })}
-      primary
-      small
+      disabled={!isDirty}
+      variant="filled"
+      size="sm"
     >{t`Save changes`}</Button>
   );
 
   const cancelButton = (
-    <Button small onClick={onCancel} key="cancel">{t`Cancel`}</Button>
+    <Button variant="subtle" size="sm" onClick={onCancel} key="cancel">
+      {t`Cancel`}
+    </Button>
   );
 
   return (

@@ -45,6 +45,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "transform_suggestion" }, () => true)
     .with({ type: "navigate_to" }, () => true)
     .with({ type: "code_edit" }, () => true)
+    .with({ type: "generated_entity" }, () => true)
     .with({ type: "adhoc_viz" }, () => false)
     .with({ type: "static_viz" }, () => false)
     .exhaustive();
@@ -61,7 +62,6 @@ const isUserVisibleDataPartMessage = (
 const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
   match(message)
     .with({ type: "text" }, () => true)
-    .with({ type: "action" }, () => true)
     .with({ type: "data_part" }, (message) =>
       isUserVisibleDataPartMessage(message),
     )
@@ -98,49 +98,43 @@ export const MessageContainer = ({
 
 interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotUserChatMessage;
-  onCopy: () => void;
 }
 
 export const UserMessage = ({
   message,
   className,
   hideActions,
-  onCopy,
   ...props
-}: UserMessageProps) => (
-  <MessageContainer chatRole={message.role} {...props}>
-    {message.type === "text" && (
-      <AIMarkdown
-        className={cx(Styles.message, Styles.messageUser)}
-        singleNewlinesAreParagraphs
-      >
-        {message.message}
-      </AIMarkdown>
-    )}
+}: UserMessageProps) => {
+  const clipboard = useClipboard({ timeout: 2000 });
 
-    {message.type === "action" && (
-      <Flex direction="column" gap="xs">
-        <Flex align="center" gap="xs">
-          <Text className={cx(Styles.message, Styles.messageUserAction)}>
-            {message.userMessage}
-          </Text>
-        </Flex>
-      </Flex>
-    )}
-
-    <Flex className={Styles.messageActions}>
-      {!hideActions && (
-        <ActionIcon
-          h="sm"
-          data-testid="metabot-chat-message-copy"
-          onClick={onCopy}
+  return (
+    <MessageContainer chatRole={message.role} {...props}>
+      {message.type === "text" && (
+        <AIMarkdown
+          className={cx(Styles.message, Styles.messageUser)}
+          singleNewlinesAreParagraphs
         >
-          <Icon name="copy" size="1rem" />
-        </ActionIcon>
+          {message.message}
+        </AIMarkdown>
       )}
-    </Flex>
-  </MessageContainer>
-);
+
+      <Flex className={Styles.messageActions}>
+        {!hideActions && (
+          <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
+            <ActionIcon
+              h="sm"
+              data-testid="metabot-chat-message-copy"
+              onClick={() => clipboard.copy(message.message)}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </Flex>
+    </MessageContainer>
+  );
+};
 
 interface FeedbackButtonProps {
   disabled: boolean;
@@ -165,7 +159,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
         <Icon
           name={icon}
           size="1rem"
-          c={hasBeenClicked ? "brand" : "currentColor"}
+          c={hasBeenClicked ? "core-brand" : "currentColor"}
         />
       </ActionIcon>
     );
@@ -177,8 +171,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   debug: boolean;
   readonly: boolean;
   onRetry?: (messageId: string) => void;
-  onCopy: (messageId: string) => void;
-  showFeedbackButtons: boolean;
+  getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
@@ -189,9 +182,8 @@ export const AgentMessage = ({
   className,
   debug,
   readonly,
-  onCopy,
+  getCopyText,
   onRetry,
-  showFeedbackButtons,
   setFeedbackMessage,
   submittedFeedback,
   onInternalLinkClick,
@@ -199,11 +191,8 @@ export const AgentMessage = ({
   ...props
 }: AgentMessageProps) => {
   const messageId = "externalId" in message ? (message.externalId ?? "") : "";
-  const canGiveFeedback = !!(
-    showFeedbackButtons &&
-    setFeedbackMessage &&
-    messageId
-  );
+  const canGiveFeedback = !!(setFeedbackMessage && messageId);
+  const clipboard = useClipboard({ timeout: 2000 });
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
@@ -231,11 +220,11 @@ export const AgentMessage = ({
         .exhaustive()}
       {!hideActions && (
         <Flex className={Styles.messageActions}>
-          <Tooltip label={t`Copy`}>
+          <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
             <ActionIcon
               h="sm"
               data-testid="metabot-chat-message-copy"
-              onClick={() => onCopy(message.id)}
+              onClick={() => clipboard.copy(getCopyText())}
             >
               <Icon name="copy" size="1rem" />
             </ActionIcon>
@@ -266,7 +255,6 @@ export const AgentMessage = ({
               </Tooltip>
             </>
           )}
-
           {onRetry && (
             <Tooltip label={t`Retry`}>
               <ActionIcon
@@ -301,10 +289,10 @@ const AgentTurnAlert = ({
     direction="column"
     gap="xs"
     p="sm"
-    bd="1px solid var(--mb-color-border)"
+    bd="1px solid var(--mb-color-border-neutral)"
     bdrs="sm"
     data-testid="metabot-chat-message-turn-alert"
-    bg="background-primary"
+    bg="background_page-primary"
   >
     <Flex align="center" gap="sm">
       <Icon
@@ -422,7 +410,6 @@ export const Messages = ({
   isDoingScience,
   debug,
   readonly = false,
-  showFeedbackButtons = false,
   onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
@@ -430,14 +417,12 @@ export const Messages = ({
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
-  showFeedbackButtons?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
   const visibleMessages = useMemo(
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
   );
-  const clipboard = useClipboard();
   const [sendToast] = useToast();
 
   const [feedbackState, setFeedbackState] = useState<{
@@ -469,27 +454,16 @@ export const Messages = ({
     }
   };
 
-  const onAgentMessageCopy = useCallback(
+  const getAgentReplyCopyText = useCallback(
     (messageId: string) => {
       const allMessages = getFullAgentReply(messages, messageId);
       const textMessages = allMessages.filter(
         (msg): msg is MetabotAgentTextChatMessage =>
           msg.role === "agent" && msg.type === "text",
       );
-      clipboard.copy(textMessages.map((msg) => msg.message).join("\n\n"));
+      return textMessages.map((msg) => msg.message).join("\n\n");
     },
-    [messages, clipboard],
-  );
-
-  const setFeedbackModal = useCallback(
-    (data: { messageId: string; positive: boolean } | undefined) => {
-      if (!showFeedbackButtons) {
-        return;
-      }
-
-      setFeedbackState((prev) => ({ ...prev, modal: data }));
-    },
-    [showFeedbackButtons],
+    [messages],
   );
 
   return (
@@ -504,9 +478,10 @@ export const Messages = ({
             debug={debug}
             readonly={readonly}
             onRetry={onRetryMessage}
-            onCopy={onAgentMessageCopy}
-            showFeedbackButtons={showFeedbackButtons}
-            setFeedbackMessage={setFeedbackModal}
+            getCopyText={() => getAgentReplyCopyText(message.id)}
+            setFeedbackMessage={(data) =>
+              setFeedbackState((prev) => ({ ...prev, modal: data }))
+            }
             submittedFeedback={
               "externalId" in message && message.externalId
                 ? feedbackState.submitted[message.externalId]
@@ -521,13 +496,6 @@ export const Messages = ({
             data-testid="metabot-chat-message"
             message={message}
             hideActions={isDoingScience && visibleMessages.length === index + 1}
-            onCopy={() => {
-              const copyText =
-                message.type === "action"
-                  ? `${message.userMessage}: ${message.message}`
-                  : message.message;
-              clipboard.copy(copyText);
-            }}
           />
         );
       })}
@@ -535,7 +503,9 @@ export const Messages = ({
       {feedbackState.modal && (
         <MetabotFeedbackModal
           {...feedbackState.modal}
-          onClose={() => setFeedbackModal(undefined)}
+          onClose={() =>
+            setFeedbackState((prev) => ({ ...prev, modal: undefined }))
+          }
           onSubmit={submitFeedback}
         />
       )}

@@ -1,0 +1,54 @@
+.leftControls {
+  position: absolute;
+  top: 0.25rem;
+  left: 0;
+}
+
+.leftControlsCompact {
+  display: none;
+}
+
+.compactChartTypeButton {
+  background: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.75rem;
+  color: var(--mb-color-text-primary);
+  height: 2.5rem;
+  width: 2.5rem;
+
+  &.compactChartTypeButton:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.compactChartMenuDropdown {
+  border-radius: var(--mantine-radius-lg);
+  min-width: 14rem;
+}
+
+.compactChartMenuItem {
+  border-radius: var(--mantine-radius-md);
+  color: var(--mb-color-text-primary);
+  min-height: 2rem;
+
+  &.compactChartMenuItem:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+.compactChartMenuItemSelected,
+.compactChartMenuItemSelected.compactChartMenuItem:hover {
+  background-color: var(--mb-color-background_surface-selected);
+  color: var(--mb-color-brand);
+}
+
+@container metric-controls (max-width: 56rem) {
+  .leftControlsFull {
+    display: none;
+  }
+
+  .leftControlsCompact {
+    display: flex;
+    top: auto;
+  }
+}

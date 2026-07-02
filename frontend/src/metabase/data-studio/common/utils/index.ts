@@ -9,7 +9,7 @@ import type {
 
 export { createEmptyStateItem } from "./create-empty-space-item";
 export { getDatasetQueryPreviewUrl } from "./get-dataset-query-preview-url";
-export { getResultMetadata } from "./get-result-metadata";
+export { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
 
 // TODO Alex P 12/05/2025 Fix the endpoint to return sensible data
 export const hasLibraryCollection = (

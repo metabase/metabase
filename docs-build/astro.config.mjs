@@ -30,7 +30,10 @@ const docsDir = process.env.DOCS_CONTENT_DIR
 // (marketing-site URLs). Lives under public/ so Astro copies it into
 // dist/ at build time; the delivery hop consumes it to wire those into
 // the marketing site's redirect layer.
-const marketingSidecar = path.resolve(__dirname, "public/marketing-redirects.json");
+const marketingSidecar = path.resolve(
+  __dirname,
+  "public/marketing-redirects.json",
+);
 const { redirects, inDocsCount, marketingCount } = loadRedirects({
   docsDir,
   sidecarPath: marketingSidecar,
@@ -74,13 +77,18 @@ export default defineConfig({
       // degrades to a broken <img> instead of failing the whole build. Runs
       // after include_file so transcluded images are rewritten too. The
       // orchestrator copies the image files into the output. Must come last.
-      ...(versioned ? [[remarkVersionImages, { base, contentDir: docsDir }]] : []),
+      ...(versioned
+        ? [[remarkVersionImages, { base, contentDir: docsDir }]]
+        : []),
     ],
     rehypePlugins: [
       rehypeSlug,
       [rehypeAutolinkHeadings, { behavior: "wrap" }],
       [rehypeInternalLinks, { base }],
-      [rehypeExternalLinks, { target: "_blank", rel: ["noopener", "noreferrer"] }],
+      [
+        rehypeExternalLinks,
+        { target: "_blank", rel: ["noopener", "noreferrer"] },
+      ],
       rehypeBlockquoteClasses,
     ],
     shikiConfig: {

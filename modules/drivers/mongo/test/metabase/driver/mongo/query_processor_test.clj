@@ -24,11 +24,11 @@
 
 (deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
-    (testing "should be able to extract :collection from :source-query")
-    (is (= "checkins"
-           (#'mongo.qp/query->collection-name {:query {:source-query
-                                                       {:collection "checkins"
-                                                        :native     []}}})))
+    (testing "should be able to extract :collection from :source-query"
+      (is (= "checkins"
+             (#'mongo.qp/query->collection-name {:query {:source-query
+                                                         {:collection "checkins"
+                                                          :native     []}}}))))
     (testing "should work for nested-nested queries"
       (is (= "checkins"
              (#'mongo.qp/query->collection-name {:query {:source-query {:source-query
@@ -235,7 +235,6 @@
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :filter      [:= $tips.source.username "tupac"]}))))
-
           (is (= {:projections ["source.username" "count"]
                   :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
                                            "count" {"$sum" 1}}}
@@ -436,7 +435,7 @@
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Mixed integer and date arithmetic works with Mongo 5+"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
+        (mt/with-dynamic-fn-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
           (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
             (is (= {"$expr"
                     {"$lt"
@@ -467,7 +466,7 @@
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Date arithmetic fails with Mongo 4-"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
+        (mt/with-dynamic-fn-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Date arithmetic not supported in versions before 5"
@@ -591,9 +590,9 @@
             compiled (qp.compile/compile query)
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
-                                   ;; Following expression ensures index is an integer.
+                                    ;; Following expression ensures index is an integer.
                                     index (parse-long (re-find #"\d+$" let-var-name))]
-                               ;; Following expression tests that index is unique.
+                                ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))
                             #{}

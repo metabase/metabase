@@ -1,12 +1,11 @@
 import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
-import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import { useGetDatabaseUsageInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/redux";
-import { MetabaseApi } from "metabase/services";
 import {
   Alert,
   Box,
@@ -68,8 +67,8 @@ export const DeleteDatabaseModal = ({
 }: DeleteDatabaseModalProps) => {
   const dispatch = useDispatch();
 
-  const { value: usageInfo, loading } = useAsync(
-    async () => await MetabaseApi.db_usage_info({ dbId: database.id }),
+  const { data: usageInfo, isLoading: loading } = useGetDatabaseUsageInfoQuery(
+    database.id,
   );
 
   const [isContentRemovalConfirmed, setIsContentRemovalConfirmed] =
@@ -103,9 +102,7 @@ export const DeleteDatabaseModal = ({
   const canDelete =
     (isContentRemovalConfirmed || !hasContent) && isDatabaseNameConfirmed;
 
-  const deleteButtonLabel = hasContent
-    ? t`Delete this content and the DB connection`
-    : t`Delete`;
+  const deleteButtonLabel = t`Delete this DB connection`;
 
   const errorMessage = getErrorMessage(error);
   const hasMoreThanOneEntityType = usageInfo && entityTypesCount(usageInfo) > 1;
@@ -140,7 +137,7 @@ export const DeleteDatabaseModal = ({
                     <UnstyledButton
                       key="button"
                       onClick={handleEditConnectionDetailsClick}
-                      c="brand"
+                      c="core-brand"
                       fw="bold"
                     >{t`edit your connection details.`}</UnstyledButton>
                   )}`}

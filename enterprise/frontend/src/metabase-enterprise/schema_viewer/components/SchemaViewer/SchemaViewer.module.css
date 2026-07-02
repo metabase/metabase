@@ -1,0 +1,41 @@
+.reactFlow {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  /* Value used by React Flow for its internal controls */
+  --canvas-element-z-index: 5;
+  --regular-edge-z-index: 0;
+  --selected-edge-z-index: 1;
+  --node-z-index: 2;
+  --minimap-height: 10rem;
+
+  :global(.react-flow__edges > svg) {
+    z-index: var(--regular-edge-z-index);
+  }
+  /* Position selected edges higher to allow further clicks on selected edge */
+  :global(.react-flow__edges > svg:has(> .react-flow__edge.selected)) {
+    z-index: var(--selected-edge-z-index);
+  }
+
+  :global(.react-flow__minimap) {
+    height: var(--minimap-height);
+  }
+}
+
+.entryInput {
+  z-index: var(--canvas-element-z-index);
+}
+
+.appSwitcher {
+  margin-right: 2.5rem;
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.centerLoader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}

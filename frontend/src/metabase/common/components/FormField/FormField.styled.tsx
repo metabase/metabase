@@ -66,13 +66,13 @@ export const FieldDescription = styled.div`
 `;
 
 export const FieldInfoIcon = styled(Icon)`
-  color: var(--mb-color-background-tertiary-inverse);
+  color: var(--mb-color-background_page-tertiary-inverse);
   margin-left: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 

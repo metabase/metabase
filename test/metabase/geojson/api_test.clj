@@ -1,6 +1,7 @@
 (ns metabase.geojson.api-test
   (:require
    [clj-http.fake :as fake]
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.geojson.api :as api.geojson]
    [metabase.geojson.settings :as geojson.settings]
@@ -160,7 +161,7 @@
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
       ;; issues. This ensures we give a good error message in this case.
       (with-open [server (non-responding-server)]
-        (with-redefs [geojson.settings/valid-geojson-url? (constantly true)]
+        (mt/with-dynamic-fn-redefs [geojson.settings/valid-geojson-url? (constantly true)]
           (let [never-responds-url (str "http://localhost:" (-port server))]
             (testing "error is returned if URL connection fails"
               (is (= "GeoJSON URL failed to load"
@@ -186,6 +187,24 @@
         (testing "fetching a broken URL should fail"
           (is (= "GeoJSON URL failed to load"
                  (mt/user-http-request :rasta :get 400 "geojson/middle-earth"))))))))
+
+(deftest region-geojson-test
+  (testing "built-in regions resolve from the classpath without a network fetch"
+    (let [us (api.geojson/region-geojson "us_states")]
+      (is (= "STATE" (:region_key us)))
+      (is (pos? (count (get-in us [:data "features"]))))))
+  (testing "unknown / nil regions resolve to nil"
+    (is (nil? (api.geojson/region-geojson "not-a-real-region")))
+    (is (nil? (api.geojson/region-geojson nil))))
+  (with-geojson-mocks
+    (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
+      (memoize/memo-clear! @#'api.geojson/fetch-geojson-data)
+      (testing "user-defined custom maps are fetched and parsed"
+        (is (= "Point" (get-in (api.geojson/region-geojson "middle-earth") [:data "type"]))))
+      (memoize/memo-clear! @#'api.geojson/fetch-geojson-data)
+      (testing "returns nil when custom GeoJSON is disabled"
+        (mt/with-temp-env-var-value! [mb-custom-geojson-enabled false]
+          (is (nil? (api.geojson/region-geojson "middle-earth"))))))))
 
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"

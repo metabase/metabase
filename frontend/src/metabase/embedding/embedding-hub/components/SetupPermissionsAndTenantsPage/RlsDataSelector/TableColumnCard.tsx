@@ -154,7 +154,7 @@ export const TableColumnCard = ({
             w="100%"
             px="0.75rem"
             py="sm"
-            bg="background-primary"
+            bg="background_page-primary"
             bdrs="xs"
           >
             <Text

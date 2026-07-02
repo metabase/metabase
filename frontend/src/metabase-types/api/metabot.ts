@@ -189,12 +189,31 @@ export type MetabotAgentResponse = {
 export type MetabotProvider =
   | "metabase"
   | "anthropic"
+  | "azure"
+  | "bedrock"
   | "openai"
   | "openrouter";
 
+export interface BedrockCredentials {
+  "access-key-id"?: string | null;
+  "secret-access-key"?: string | null;
+  region?: string | null;
+  "session-token"?: string | null;
+}
+
+export interface AzureCredentials {
+  "api-key"?: string | null;
+  "base-url"?: string | null;
+}
+
+/** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
+ * material, Azure sends an API key and base URL. */
+export interface MetabotCredentials
+  extends BedrockCredentials, AzureCredentials {}
+
 export interface MetabotSettingsResponse {
   value: string | null;
-  "api-key-error"?: string | null;
+  "credentials-error"?: string | null;
   models: {
     id: string;
     display_name: string;
@@ -206,6 +225,7 @@ export interface UpdateMetabotSettingsRequest {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  credentials?: MetabotCredentials | null;
 }
 
 /* Metabot - Suggested Prompts */
@@ -245,6 +265,11 @@ export type DeleteSuggestedMetabotPromptRequest = {
   metabot_id: MetabotId;
   prompt_id: SuggestedMetabotPrompt["id"];
 };
+
+export type RegenerateSuggestedMetabotPromptsResponse =
+  | { status: "generated"; prompt_count: number }
+  | { status: "no-library-content" }
+  | { status: "ai-produced-no-prompts" };
 
 export const METABOT_ISSUE_TYPE_VALUES = [
   "ui-bug",

@@ -78,7 +78,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
   {
     alwaysExpanded,
     canToggleSections,
-    color: colorProp = "brand",
+    color: colorProp = "core-brand",
     getItemClassName = (item: TItem) => {
       if (
         typeof item === "object" &&

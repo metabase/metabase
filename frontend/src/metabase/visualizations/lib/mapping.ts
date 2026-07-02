@@ -1,20 +1,30 @@
 import * as d3 from "d3";
 import type { Feature, Position } from "geojson";
-import L from "leaflet";
 
-import type { RowValue } from "metabase-types/api";
+// getCanonicalRowKey lives in a Leaflet-free module so the static-viz bundle can use it; re-exported
+// here to keep existing import sites working.
+export { getCanonicalRowKey } from "./region-codes";
 
-import { COUNTRY_NAME_TO_CODE, STATE_CODES } from "./mapping_codes";
+export type BoundsCoordinates = {
+  northEast: { lat: number; lng: number };
+  southWest: { lat: number; lng: number };
+};
 
-export function computeMinimalBounds(features: Feature[]) {
+// Leaflet-free bounds calculation, so this module (and eager consumers such as
+// the geojson API) stay out of the leaflet bundle. Leaflet consumers turn these
+// plain coordinates into an `L.LatLngBounds` where they need one.
+export function computeMinimalBoundsCoordinates(
+  features: Feature[],
+): BoundsCoordinates {
   const points = getAllFeaturesPoints(features);
-  const [west, east] = d3.extent(points, (d) => d[0]);
-  const [north, south] = d3.extent(points, (d) => d[1]);
+  const [minLng, maxLng] = d3.extent(points, (d) => d[0]);
+  const [minLat, maxLat] = d3.extent(points, (d) => d[1]);
 
-  return L.latLngBounds(
-    L.latLng(south ?? 0, west ?? 0), // SW
-    L.latLng(north ?? 0, east ?? 0), // NE
-  );
+  // Matches the normalized corners that `L.latLngBounds` would produce.
+  return {
+    southWest: { lat: minLat ?? 0, lng: minLng ?? 0 },
+    northEast: { lat: maxLat ?? 0, lng: maxLng ?? 0 },
+  };
 }
 
 export function getAllFeaturesPoints(features: Feature[]): Position[] {
@@ -40,29 +50,4 @@ export function getAllFeaturesPoints(features: Feature[]): Position[] {
   }
 
   return points;
-}
-
-const stateNamesMap = new Map(
-  STATE_CODES.map(([key, name]) => [name.toLowerCase(), key.toLowerCase()]),
-);
-
-/**
- * Canonicalizes row values to match those in the GeoJSONs.
- *
- * Currently transforms US state names to state codes for the "us_states" region map, and just lowercases all others.
- */
-export function getCanonicalRowKey(key: RowValue, region?: string): string {
-  const normalizedKey = String(key).toLowerCase();
-  // Special case for supporting both US state names and state codes
-  // This should be ok because we know there's no overlap between state names and codes, and we know the "us_states" region map expects codes
-  if (region === "us_states" && stateNamesMap.has(normalizedKey)) {
-    return stateNamesMap.get(normalizedKey) as string; // ok to cast because 1 line above we check presence of the key in the map
-  } else if (
-    region === "world_countries" &&
-    normalizedKey in COUNTRY_NAME_TO_CODE
-  ) {
-    return COUNTRY_NAME_TO_CODE[normalizedKey];
-  } else {
-    return normalizedKey;
-  }
 }

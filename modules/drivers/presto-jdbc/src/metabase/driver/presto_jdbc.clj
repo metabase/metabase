@@ -568,7 +568,7 @@
   [driver conn schema table-name]
   (try
     (let [sql (sql-jdbc.describe-database/simple-select-probe-query driver schema table-name)]
-        ;; if the query completes without throwing an Exception, we can SELECT from this table
+      ;; if the query completes without throwing an Exception, we can SELECT from this table
       (jdbc/reducible-query {:connection conn} sql)
       true)
     (catch Throwable _
@@ -611,6 +611,14 @@
                          (all-schemas driver conn catalog))]
          {:tables (reduce set/union #{} schemas)})))))
 
+(defn- column->field
+  [database-pos {:keys [column type comment]}]
+  (cond-> {:name              column
+           :database-type     type
+           :base-type         (presto-type->base-type type)
+           :database-position database-pos}
+    (not (str/blank? comment)) (assoc :field-comment comment)))
+
 (defmethod driver/describe-table :presto-jdbc
   [driver database {schema :schema, table-name :name}]
   (let [{:keys [catalog]} (driver.conn/effective-details database)]
@@ -625,18 +633,13 @@
           :name   table-name
           :fields (into
                    #{}
-                   (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                  {:name              column
-                                   :database-type     type
-                                   :base-type         (presto-type->base-type type)
-                                   :database-position idx}))
+                   (map-indexed column->field)
                    (jdbc/reducible-query {:connection conn} sql))})))))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
 ;;; implementation doesn't try to use it.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :presto-jdbc
-  [_driver _database _table]
+(defmethod driver/describe-fks :presto-jdbc
+  [_driver _database & {:as _options}]
   nil)
 
 (defmethod driver/can-connect? :presto-jdbc
@@ -826,7 +829,7 @@
             (or (instance? OffsetDateTime t)
                 (instance? ZonedDateTime t))
             (-> (t/offset-date-time t)
-              ;; tests are expecting this to be in the UTC offset, so convert to that
+                ;; tests are expecting this to be in the UTC offset, so convert to that
                 (t/with-offset-same-instant (t/zone-offset 0)))
 
             ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.

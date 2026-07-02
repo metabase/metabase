@@ -35,6 +35,7 @@ export const cardDisplayTypes = [
   "boxplot",
   "waterfall",
   "sankey",
+  "treemap",
   "list",
 ] as const;
 

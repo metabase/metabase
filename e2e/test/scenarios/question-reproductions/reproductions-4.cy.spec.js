@@ -568,7 +568,7 @@ describe("issue 41464", () => {
 
     cy.findByTestId("query-builder-main").within(() => {
       cy.findByTestId("loading-indicator").should("be.visible");
-      cy.findByText("No results!", { timeout: 500 }).should("not.exist");
+      cy.findByText("No results", { timeout: 500 }).should("not.exist");
     });
   });
 });

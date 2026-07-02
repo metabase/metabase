@@ -98,8 +98,7 @@
   :doc "Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
   If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
 
-  This setting also applies to individual queries executed within transforms, so make sure the duration is long enough
-  that it doesn't timeout any long-running queries in your transforms.
+  This setting does not apply to queries executed within transforms; those are governed by MB_TRANSFORM_TIMEOUT instead.
 
   Please be aware that other services (like Nginx) may still drop long-running queries.")
 
@@ -146,14 +145,23 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+(def ^:dynamic *allow-testing-sqlite-connections*
+  "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
+  users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
+  Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
+  false)
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
 
 (defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
-  terminates JDBC driver queries that run too long. This should be the same as the query timeout in
-  [[metabase.query-processor.context/query-timeout-ms]] and should not be overridden without a very good reason."
+  "Kill data-warehouse connections that have been checked out but not returned to the pool after this many seconds.
+  Acts as a leak-detector safety net — per-query timeouts are enforced separately via `Statement.setQueryTimeout`.
+  Defaults to the current `*query-timeout-ms*` in seconds, which is `MB_DB_QUERY_TIMEOUT_MINUTES` outside transforms
+  and `MB_TRANSFORM_TIMEOUT` inside [[metabase.driver.connection/with-transform-connection]] — so the transform pool
+  (a separate c3p0 pool keyed on `:transform`) gets a leak-detector tuned to transform-length runtimes without
+  weakening the leak-detector on the default pool used by ad-hoc queries."
   :visibility :internal
   :type       :integer
   :getter     #'-jdbc-data-warehouse-unreturned-connection-timeout-seconds
@@ -205,3 +213,12 @@
   :export? true
   :type :integer
   :default 1000)
+
+(defsetting sync-max-fields-per-table
+  "Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)

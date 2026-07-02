@@ -21,6 +21,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
@@ -83,115 +84,118 @@
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [query (mt/mbql-query checkins
-                    {:aggregation [[:count]]})
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
-        (testing "\nAPI Response"
-          (is (=?
-               {:data                   {:rows             [[1000]]
-                                         :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
-                                         :native_form      true
-                                         :results_timezone "UTC"}
-                :row_count              1
-                :status                 "completed"
-                :context                "ad-hoc"
-                :json_query             (-> (mt/mbql-query checkins
-                                              {:aggregation [[:count]]})
-                                            (assoc-in [:query :aggregation] [["count"]])
-                                            (assoc :type "query")
-                                            (merge query-defaults))
-                :started_at             true
-                :running_time           true
-                :average_execution_time nil
-                :database_id            (mt/id)}
-               (format-response result))))
-        (testing "\nSaved QueryExecution"
-          (is (= {:hash             true
-                  :row_count        1
-                  :result_rows      1
-                  :context          :ad-hoc
-                  :executor_id      (mt/user->id :crowberto)
-                  :native           false
-                  :pulse_id         nil
-                  :card_id          nil
-                  :is_sandboxed     false
-                  :dashboard_id     nil
-                  :transform_id     nil
-                  :lens_id          nil
-                  :lens_params      nil
-                  :error            nil
-                  :id               true
-                  :action_id        nil
-                  :cache_hit        false
-                  :cache_hash       false
-                  :parameterized    false
-                  :database_id      (mt/id)
-                  :started_at       true
-                  :running_time     true
-                  :embedding_client nil
-                  :embedding_hostname nil
-                  :embedding_path nil
-                  :embedding_route nil
-                  :embedding_sdk_version nil
-                  :metabase_version true
-                  :auth_method      true
-                  :ip_address       nil
-                  :is_db_routed     false
-                  :is_impersonated  false
-                  :parameters       nil
-                  :tenant_id        nil
-                  :user_agent       nil
-                  :sanitized_user_agent nil}
-                 (format-response (most-recent-query-execution-for-query query)))))))))
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [query (mt/mbql-query checkins
+                      {:aggregation [[:count]]})
+              result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+          (testing "\nAPI Response"
+            (is (=?
+                 {:data                   {:rows             [[1000]]
+                                           :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
+                                           :native_form      true
+                                           :results_timezone "UTC"}
+                  :row_count              1
+                  :status                 "completed"
+                  :context                "ad-hoc"
+                  :json_query             (-> (mt/mbql-query checkins
+                                                {:aggregation [[:count]]})
+                                              (assoc-in [:query :aggregation] [["count"]])
+                                              (assoc :type "query")
+                                              (merge query-defaults))
+                  :started_at             true
+                  :running_time           true
+                  :average_execution_time nil
+                  :database_id            (mt/id)}
+                 (format-response result))))
+          (testing "\nSaved QueryExecution"
+            (is (= {:hash             true
+                    :row_count        1
+                    :result_rows      1
+                    :context          :ad-hoc
+                    :executor_id      (mt/user->id :crowberto)
+                    :native           false
+                    :pulse_id         nil
+                    :card_id          nil
+                    :is_sandboxed     false
+                    :dashboard_id     nil
+                    :transform_id     nil
+                    :lens_id          nil
+                    :lens_params      nil
+                    :error            nil
+                    :id               true
+                    :action_id        nil
+                    :cache_hit        false
+                    :cache_hash       false
+                    :parameterized    false
+                    :database_id      (mt/id)
+                    :started_at       true
+                    :running_time     true
+                    :embedding_client nil
+                    :embedding_hostname nil
+                    :embedding_path nil
+                    :embedding_route nil
+                    :embedding_sdk_version nil
+                    :metabase_version true
+                    :auth_method      true
+                    :ip_address       nil
+                    :is_db_routed     false
+                    :is_impersonated  false
+                    :parameters       nil
+                    :tenant_id        nil
+                    :user_agent       nil
+                    :sanitized_user_agent nil}
+                   (format-response (most-recent-query-execution-for-query query))))))))))
 
 (deftest failure-test
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
   (testing "POST /api/dataset"
     (testing "\nA failed query should return a 400 response from the API"
-      ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
-      ;; that it exists and contains the substring "Syntax error in SQL statement"
-      (let [query  {:database (mt/id)
-                    :type     "native"
-                    :native   {:query "foobar"}}
-            result (mt/user-http-request :crowberto :post 400 "dataset" query)]
-        (testing "\nAPI Response"
-          (is (malli= [:map
-                       [:data        [:map
-                                      [:rows [:= []]]
-                                      [:cols [:= []]]]]
-                       [:row_count   [:= 0]]
-                       [:status      [:= "failed"]]
-                       [:context     [:= "ad-hoc"]]
-                       [:error       #"Syntax error in SQL statement"]
-                       [:json_query  [:map
-                                      [:database   [:= (mt/id)]]
-                                      [:type       [:= "native"]]
-                                      [:native     [:map
-                                                    [:query [:= "foobar"]]]]
-                                      [:middleware [:map
-                                                    [:add-default-userland-constraints? [:= true]]
-                                                    [:js-int-to-string?                 [:= true]]]]]]
-                       [:database_id [:= (mt/id)]]
-                       [:state       [:= "42000"]]
-                       [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
-                      result)))
-        (testing "\nSaved QueryExecution"
-          (is (malli=
-               [:map
-                [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
-                [:id           ms/PositiveInt]
-                [:result_rows  [:= 0]]
-                [:row_count    [:= 0]]
-                [:context      [:= :ad-hoc]]
-                [:error        #"Syntax error in SQL statement"]
-                [:database_id  [:= (mt/id)]]
-                [:executor_id  [:= (mt/user->id :crowberto)]]
-                [:native       [:= true]]
-                [:pulse_id     nil?]
-                [:card_id      nil?]
-                [:dashboard_id nil?]]
-               (most-recent-query-execution-for-query query))))))))
+      ;; QueryExecutions are saved in async batches by default; save them synchronously so we can assert on them
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
+        ;; that it exists and contains the substring "Syntax error in SQL statement"
+        (let [query  {:database (mt/id)
+                      :type     "native"
+                      :native   {:query "foobar"}}
+              result (mt/user-http-request :crowberto :post 400 "dataset" query)]
+          (testing "\nAPI Response"
+            (is (malli= [:map
+                         [:data        [:map
+                                        [:rows [:= []]]
+                                        [:cols [:= []]]]]
+                         [:row_count   [:= 0]]
+                         [:status      [:= "failed"]]
+                         [:context     [:= "ad-hoc"]]
+                         [:error       #"Syntax error in SQL statement"]
+                         [:json_query  [:map
+                                        [:database   [:= (mt/id)]]
+                                        [:type       [:= "native"]]
+                                        [:native     [:map
+                                                      [:query [:= "foobar"]]]]
+                                        [:middleware [:map
+                                                      [:add-default-userland-constraints? [:= true]]
+                                                      [:js-int-to-string?                 [:= true]]]]]]
+                         [:database_id [:= (mt/id)]]
+                         [:state       [:= "42000"]]
+                         [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
+                        result)))
+          (testing "\nSaved QueryExecution"
+            (is (malli=
+                 [:map
+                  [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
+                  [:id           ms/PositiveInt]
+                  [:result_rows  [:= 0]]
+                  [:row_count    [:= 0]]
+                  [:context      [:= :ad-hoc]]
+                  [:error        #"Syntax error in SQL statement"]
+                  [:database_id  [:= (mt/id)]]
+                  [:executor_id  [:= (mt/user->id :crowberto)]]
+                  [:native       [:= true]]
+                  [:pulse_id     nil?]
+                  [:card_id      nil?]
+                  [:dashboard_id nil?]]
+                 (most-recent-query-execution-for-query query)))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -260,9 +264,9 @@
                                       (some #(str/includes? % long-col-name) native-form-lines)))
           ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
           ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-          native-sub-query     (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
-                                             (fn mock-truncate-alias
-                                               [ss & _] ss)]
+          native-sub-query     (mt/with-dynamic-fn-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                                           (fn mock-truncate-alias
+                                                             [ss & _] ss)]
                                  ;; make sure the schema checks don't fail for aliases > 60 characters
                                  (mu/disable-enforcement
                                    (-> (mt/mbql-query people
@@ -320,7 +324,7 @@
   (testing "POST /api/dataset/:format"
     (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
       ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (doseq [:let     [query {:database (mt/id)
                                  :type     :query
                                  :query    {:source-table (mt/id :venues)}
@@ -369,7 +373,7 @@
 (deftest non-download-queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
                 "(this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)")
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+    (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (let [{row-count :row_count, :as result}
             (mt/user-http-request :crowberto :post 202 "dataset"
                                   {:database (mt/id)
@@ -792,7 +796,6 @@
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
             (is (= 140 (count rows)))
-
             (is (= ["AK" "Google" 0 119] (first rows)))
             (is (= ["AK" "Organic" 0 89] (second rows)))
             (is (= ["WA" nil 2 148] (nth rows 135)))
@@ -809,7 +812,6 @@
             (is (= "completed" (:status result)))
             (is (= 4 (count (get-in result [:data :cols]))))
             (is (= 137 (count rows)))
-
             (is (= ["AK" "Google" 0 27] (first rows)))
             (is (= ["AK" "Organic" 0 25] (second rows)))
             (is (= ["VA" nil 2 29] (nth rows 130)))
@@ -881,7 +883,6 @@
                                                             (mt/id :people :source)]})
                          :values set)]
           (is (set/subset? #{["Doohickey"] ["Facebook"]} values))))
-
       (testing "search"
         (let [values (-> (mt/user-http-request :crowberto :post 200
                                                "dataset/parameter/search/g"
@@ -892,7 +893,6 @@
           ;; results matched on g, does not include Doohickey (which is in above results)
           (is (set/subset? #{["Widget"] ["Google"]} values))
           (is (not (contains? values ["Doohickey"])))))
-
       (testing "deduplicates the values returned from multiple fields"
         (let [values (-> (mt/user-http-request :crowberto :post 200
                                                "dataset/parameter/values"
@@ -906,7 +906,7 @@
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
-      (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
+      (mt/with-dynamic-fn-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card {source-card-id :id}]
             (is (= mock-default-result
@@ -917,7 +917,6 @@
                                                        :type                 :string/=,
                                                        :name                 "Text"
                                                        :id                   "abc"}})))))
-
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card {source-card-id :id} {:archived true}]
             (is (= mock-default-result
@@ -928,6 +927,33 @@
                                                        :type                 :string/=,
                                                        :name                 "Text"
                                                        :id                   "abc"}})))))))))
+
+(deftest ^:parallel parameter-values-join-aliased-value-field-test
+  (testing "value_field referencing a joined column of the source model returns values instead of 400 (#75407)"
+    (let [mp                (mt/metadata-provider)
+          venues-table      (lib.metadata/table mp (mt/id :venues))
+          categories-table  (lib.metadata/table mp (mt/id :categories))
+          venue-category-id (lib.metadata/field mp (mt/id :venues :category_id))
+          categories-id     (lib.metadata/field mp (mt/id :categories :id))
+          source-query      (lib/join (lib/query mp venues-table)
+                                      (lib/join-clause categories-table
+                                                       [(lib/= venue-category-id categories-id)]))]
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query source-query)]
+        (binding [custom-values/*max-rows* 3]
+          (let [parameter {:name                 "Category name"
+                           :slug                 "category_name"
+                           :id                   (str (random-uuid))
+                           :type                 :string/=
+                           :values_query_type    :list
+                           :values_source_type   :card
+                           :values_source_config {:card_id     card-id
+                                                  :value_field [:field "Categories__NAME" {:base-type :type/Text}]}}
+                values    (->> (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
+                                                     {:parameter parameter :field_ids []})
+                               :values
+                               (map first)
+                               set)]
+            (is (= #{"American" "Artisan" "Asian"} values))))))))
 
 (deftest ^:parallel parameter-remapping-test
   (testing "field values"
@@ -1031,7 +1057,7 @@
 (deftest pivot-exports-ignore-query-constraints
   (testing "POST /api/dataset/:format with pivot-results=true"
     (testing "Downloading pivot CSV/JSON/XLSX results shouldn't be subject to the default query constraints"
-      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (let [query {:database   (mt/id)
                      :type       :query
                      :query      {:source-table (mt/id :venues)

@@ -1,7 +1,6 @@
-import { strategies } from "metabase/admin/performance/constants/complex";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { getCollectionPathAsString } from "metabase/collections/utils";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
+import { PLUGIN_CACHING, strategies } from "metabase/plugins";
 import { enterpriseOnlyCachingStrategies } from "metabase-enterprise/caching/constants";
 import {
   type AdaptiveStrategy,

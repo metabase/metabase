@@ -15,7 +15,7 @@ export const MetabotResetLongChatButton = ({
         key="reset"
         data-testid="metabot-reset-long-chat"
         display="inline"
-        c="brand"
+        c="core-brand"
         td="underline"
         onClick={onResetConversation}
       >{c("'it' refers to a chat with an AI agent")

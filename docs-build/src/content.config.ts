@@ -28,11 +28,11 @@ const laxFields = z.object({
   title: laxString,
   summary: laxString,
   redirect_from: z.preprocess(
-    (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string") : undefined),
+    (v) =>
+      Array.isArray(v) ? v.filter((x) => typeof x === "string") : undefined,
     z.array(z.string()).optional(),
   ),
 });
-
 const docs = defineCollection({
   loader: glob({
     pattern: [

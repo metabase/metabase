@@ -11,7 +11,7 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
-  enableHoverHighlight?: boolean;
+  onHoverChange?: (childTargetId: string | undefined) => void;
 }
 
 export const Discussions = ({
@@ -19,7 +19,7 @@ export const Discussions = ({
   comments,
   targetId,
   targetType,
-  enableHoverHighlight = false,
+  onHoverChange,
 }: DiscussionProps) => {
   const threads = useMemo(
     () => getCommentThreads(comments, childTargetId),
@@ -36,7 +36,7 @@ export const Discussions = ({
               comments={thread.comments}
               targetId={targetId}
               targetType={targetType}
-              enableHoverHighlight={enableHoverHighlight}
+              onHoverChange={onHoverChange}
             />
           </Box>
         </Fragment>

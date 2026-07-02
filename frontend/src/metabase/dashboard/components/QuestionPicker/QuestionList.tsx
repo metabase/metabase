@@ -14,7 +14,7 @@ import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
-import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -56,6 +56,7 @@ export function QuestionList({
   const isVisualizerModalOpen = !!visualizerModalCardId;
 
   const selectedTabId = useSelector(getSelectedTabId);
+  const dashboardId = useSelector(getDashboardId);
 
   useEffect(() => {
     setQueryOffset(0);
@@ -91,6 +92,7 @@ export function QuestionList({
             : ["card", "dataset", "metric"],
           offset: queryOffset,
           limit: DEFAULT_SEARCH_LIMIT,
+          context: "entity-picker",
         }
       : skipToken,
   );
@@ -188,8 +190,12 @@ export function QuestionList({
       {isVisualizerModalOpen && (
         <VisualizerModalWithCardId
           cardId={visualizerModalCardId}
-          onSave={(visualization) => {
-            dispatch(
+          dashboardId={dashboardId ?? undefined}
+          onSave={async (visualization) => {
+            // Await the dispatch before closing: the thunk commits the new
+            // dashcard (and its series) only after fetching the referenced
+            // cards, so closing early can race a subsequent dashboard save.
+            await dispatch(
               addCardWithVisualization({ visualization, tabId: selectedTabId }),
             );
             setVisualizerModalCardId(null);

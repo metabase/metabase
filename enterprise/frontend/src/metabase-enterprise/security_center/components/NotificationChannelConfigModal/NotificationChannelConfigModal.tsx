@@ -6,7 +6,10 @@ import { useSetting, useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { Button, Flex, Group, Icon, Modal, Stack } from "metabase/ui";
 
-import { useNotificationConfig } from "../../hooks/use-notification-config";
+import {
+  serializeNotificationConfig,
+  useNotificationConfig,
+} from "../../hooks/use-notification-config";
 
 import { EmailChannelCard } from "./EmailChannelCard/EmailChannelCard";
 import { SlackChannelCard } from "./SlackChannelCard/SlackChannelCard";
@@ -53,7 +56,7 @@ export function NotificationChannelConfigModal({
   const handleSendTest = useCallback(async () => {
     setIsSendingTest(true);
     try {
-      await sendTestNotification().unwrap();
+      await sendTestNotification(serializeNotificationConfig(config)).unwrap();
       sendToast({
         message: t`Test notification sent`,
         toastColor: "success",
@@ -67,7 +70,7 @@ export function NotificationChannelConfigModal({
     } finally {
       setIsSendingTest(false);
     }
-  }, [sendTestNotification, sendToast]);
+  }, [sendTestNotification, sendToast, config]);
 
   const emailHasRecipients =
     config.email.sendToAllAdmins || config.email.handler.recipients.length > 0;

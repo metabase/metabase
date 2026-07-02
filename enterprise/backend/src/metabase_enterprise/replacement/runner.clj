@@ -82,10 +82,9 @@
                             (eduction (comp (keep :definition)
                                             (map #(lib/query metadata-provider %)))
                                       (vals measures))))]
-
       (when (seq queries)
         ;; Extract all referenced entity IDs across all queries
-        (let [referenced-ids (lib/all-referenced-entity-ids queries)]
+        (let [referenced-ids (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})]
           ;; Bulk load all metadata at once
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge {} cards tables dashboards transforms segments measures))))
@@ -115,7 +114,6 @@
                      :card  (t2/select-one-fn :database_id :model/Card :id (second old-source))
                      :table (t2/select-one-fn :db_id :model/Table :id (second old-source)))
         batch-size 500]
-
     ;; phase 1: Upgrade field refs for ALL transitive dependents
     (doseq [batch (partition-all batch-size all-transitive-dependents)]
       (lib-be/with-metadata-provider-cache
@@ -126,14 +124,12 @@
             ;; upgrade! knows how to handle all entity types including dashboards
             (replacement.field-refs/upgrade-field-refs! entity object)
             (replacement.protocols/advance! progress)))))
-
     ;; phase 2: Swap sources for ALL transitive dependents (with batched metadata warming)
     (let [failures (atom [])]
       (doseq [batch (partition-all batch-size all-transitive-dependents)]
         (lib-be/with-metadata-provider-cache
           (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
                 loaded            (bulk-load-metadata-for-entities! metadata-provider batch)]
-
             (doseq [entity batch
                     :let   [object (get loaded entity)]]
               (try
@@ -142,7 +138,6 @@
                   (log/warnf e "Failed to swap %s, continuing with next entity" entity)
                   (swap! failures conj {:entity entity :error (ex-message e)})))
               (replacement.protocols/advance! progress)))))
-
       (when-let [fs (seq @failures)]
         (throw (ex-info (failure-message fs (count all-transitive-dependents))
                         {:failures fs}))))))
@@ -204,17 +199,14 @@
      ;; phase 1: execute the transform
      (transforms/execute! transform (cond-> {:run-method :manual}
                                       user-id (assoc :user-id user-id)))
-
      ;; phase 2: find the output table, copy metadata overrides, and swap sources
      (let [table (or (transforms/output-table transform)
                      (throw (ex-info "Output table not found after transform execution"
                                      {:transform-id (:id transform)})))]
        (copy-model-metadata-overrides! card-id (:id table))
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
-
      ;; phase 3: unpersist the model if it was persisted
      (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
-
      ;; phase 4: convert the model to a saved question
      (t2/update! :model/Card card-id {:type :question}))))

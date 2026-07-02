@@ -44,31 +44,48 @@
     ;;                 events (extra universe repeat).
     (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
       (testing "library score matches the hand-derived total"
-        (is (= {:total      215
-                :components {:entity-count      {:measurement 6.0 :score 60}
-                             :name-collisions   {:measurement 1.0 :score 100}
-                             :synonym-pairs     {:measurement 1.0 :score 50}
-                             :field-count       {:measurement 3.0 :score 3}
-                             :repeated-measures {:measurement 1.0 :score 2}}}
+        ;;  size  = 60 (entity) + 3 (field) = 63
+        ;;  amb   = 100 (collisions) + 50 (synonyms) + 2 (repeated-measures) = 152
+        ;;  total = 215
+        (is (= {:score      215
+                :components {:size      {:score      63
+                                         :components {:entity-count {:measurement 6.0 :score 60}
+                                                      :field-count  {:measurement 3.0 :score 3}}}
+                             :ambiguity {:score      152
+                                         :components {:name-collisions   {:measurement 1.0 :score 100}
+                                                      :synonym-pairs     {:measurement 1.0 :score 50}
+                                                      :repeated-measures {:measurement 1.0 :score 2}}}}}
                (:library result))))
       (testing "universe score matches the hand-derived total"
-        (is (= {:total      409
-                :components {:entity-count      {:measurement 10.0 :score 100}
-                             :name-collisions   {:measurement 2.0  :score 200}
-                             :synonym-pairs     {:measurement 2.0  :score 100}
-                             :field-count       {:measurement 5.0  :score 5}
-                             :repeated-measures {:measurement 2.0  :score 4}}}
+        ;;  size  = 100 (entity) + 5 (field) = 105
+        ;;  amb   = 200 (collisions) + 100 (synonyms) + 4 (repeated-measures) = 304
+        ;;  total = 409
+        (is (= {:score      409
+                :components {:size      {:score      105
+                                         :components {:entity-count {:measurement 10.0 :score 100}
+                                                      :field-count  {:measurement 5.0  :score 5}}}
+                             :ambiguity {:score      304
+                                         :components {:name-collisions   {:measurement 2.0  :score 200}
+                                                      :synonym-pairs     {:measurement 2.0  :score 100}
+                                                      :repeated-measures {:measurement 2.0  :score 4}}}}}
                (:universe result))))
-      (testing "meta has formula-version + threshold + weights but no :embedding-model (offline mode)"
+      (testing "meta has formula-version + format-version + threshold + weights but no :embedding-model (offline mode)"
+        ;; Literal 1/1 here is intentional — flags accidental version bumps that would invalidate the
+        ;; emitted fingerprint without an explicit code-change reviewer call.
         (is (= {:formula-version   1
+                :format-version    1
                 :synonym-threshold 0.8
                 :weights           complexity/weights
                 :metabot-source    :universe-fallback}
-               (:meta result))))))
+               (:meta result)))))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-2
   (testing "the schema-less widgets table (under databases/<db>/tables/, no schema dir) loads into :universe"
     (let [{:keys [universe]} (representation/load-dir representation-fixture-dir)]
       (is (some #(= "widgets" (:name %)) universe)
-          "schema-less Table directory should be picked up by the loader")))
+          "schema-less Table directory should be picked up by the loader"))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-3
   (testing "audit-DB content (is_audit: true) is excluded from :universe — both Tables and Cards"
     ;; Mirrors the live appdb scorer's `[:not= audit/audit-db-id]` filter. The fixture has
     ;; `databases/audit_database/...` (`is_audit: true`) with a `query_log` Table and a
@@ -79,7 +96,9 @@
       (is (not (contains? names "query_log"))
           "Table in is_audit DB must not appear in :universe")
       (is (not (contains? names "Audit Metric"))
-          "Card whose database_id is the audit DB must not appear in :universe")))
+          "Card whose database_id is the audit DB must not appear in :universe"))))
+
+(deftest ^:parallel representation-fixture-scores-deterministically-test-4
   (testing "FieldValues side-car YAMLs (`*___fieldvalues.yaml`) under fields/ do not inflate :field-count"
     ;; The fixture's `events/fields/event_id___fieldvalues.yaml` is a real-shape serdes side-car
     ;; sitting next to a Field YAML. `load-yamls-of-model` must skip it; otherwise the events Table
@@ -97,13 +116,13 @@
   (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
     (testing "without --output, stdout gets single-line JSON"
       (let [stdout (with-out-str (#'cli/write-result! result nil))]
-        (is (= 215 (-> stdout (json/decode true) :library :total)))
+        (is (= 215 (-> stdout (json/decode true) :library :score)))
         (is (not (re-find #"\n.+" stdout)) "stdout JSON should be single-line")))
     (testing "with --output, the file gets pretty JSON and stdout stays silent"
       (let [tmp    (doto (java.io.File/createTempFile "complexity-cli-output-" ".json") .deleteOnExit)
             stdout (with-out-str (#'cli/write-result! result (.getAbsolutePath tmp)))]
         (is (= "" stdout))
-        (is (= 215 (-> (slurp tmp) (json/decode true) :library :total)))))))
+        (is (= 215 (-> (slurp tmp) (json/decode true) :library :score)))))))
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
@@ -134,7 +153,7 @@
                                    []
                                    (embedders/file-embedder embeddings)
                                    {})
-                                  [:library :components :synonym-pairs :measurement]))]
+                                  [:library :components :ambiguity :components :synonym-pairs :measurement]))]
         (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.80: NOT a synonym"
           (is (= 0.0 (score-pairs {"alpha" [1.0 0.0]
                                    "beta"  [0.5 0.866]}))))

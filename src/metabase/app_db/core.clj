@@ -9,6 +9,7 @@
   Namespaces outside of src/metabase/app_db/ should not use any metabase.app-db.* namespace but use this api namespace."
   (:refer-clojure :exclude [compile])
   (:require
+   [clojure.core.memoize :as memoize]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
@@ -38,35 +39,26 @@
   in-transaction?
   quoting-style
   unique-identifier]
-
  [mdb.connection-pool-setup
   recent-activity?]
-
  [mdb.data-source
   broken-out-details->DataSource]
-
  [mdb.env
   db-file]
-
  [mdb.jdbc-protocols
   clob->str]
-
  [mdb.encryption
   decrypt-db
   encrypt-db]
-
  [metabase.app-db.format
   format-sql]
-
  [mdb.setup
   can-connect-to-data-source?
   migrate!
   quote-for-application-db]
-
  [mdb.spec
   make-subname
   spec]
-
  [metabase.app-db.query
   compile
   isa
@@ -79,10 +71,8 @@
   type-keyword->descendants
   update-or-insert!
   with-conflict-retry]
-
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
-
  [liquibase
   changelog-by-id])
 
@@ -164,10 +154,10 @@
   `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
   this."
   [f]
-  (let [f* (memoize (fn [_application-db-id & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (unique-identifier) args))))
+  (memoize/memo
+   (vary-meta
+    (fn [& args] (apply f args))
+    assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as

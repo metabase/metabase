@@ -147,7 +147,8 @@
             (driver/drop-table! driver db-id (:name table-schema))))))))
 
 (deftest transform-schema-created-if-needed-test
-  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas
+                                                         :test/dynamic-dataset-loading]})
     (mt/dataset transforms-dataset/transforms-test
       (let [schema (str "transform_schema_" (mt/random-name))]
         (try
@@ -237,7 +238,6 @@
                                                                :source {:type  :query
                                                                         :query query}
                                                                :target target-table}]
-
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
                            #"ERROR: permission denied for database transforms-test"
@@ -368,7 +368,9 @@
     (let [calls (atom [])
           record-call! (fn [call-name] (swap! calls conj call-name))
           mock-query "CREATE TABLE test_schema.test_table AS (SELECT 1 AS x);"
-          mock-rows [[1]]
+          ;; `execute-raw-queries!` yields one `{:rows-affected N}` map per statement; `run-transform!`
+          ;; returns `(last …)`, which must satisfy `::driver/run-transform-result`.
+          mock-rows [{:rows-affected 1}]
           transform-details {:output-table :test_schema/test_table
                              :database {:id 1}
                              :transform-type :table}]
@@ -506,21 +508,21 @@
                                               [(format "DROP OWNED BY %s;" readonly-user)]
                                               [(format "DROP ROLE IF EXISTS %s;" readonly-user)]])))))))))
 
-(deftest transform-creates-write-pool-test
+(deftest transform-creates-transform-pool-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:transforms/table]})
     (when config/ee-available?
       (mt/with-premium-features #{:writable-connection}
         (mt/dataset transforms-dataset/transforms-test
-          (let [db-id             (mt/id)
-                write-cache-key   [db-id :write-data]
-                schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
-                old-write-details (:write_data_details (mt/db))]
+          (let [db-id               (mt/id)
+                transform-cache-key [db-id :transform]
+                schema              (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                old-write-details   (:write_data_details (mt/db))]
             (when-not old-write-details
               (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
             (try
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
-              (testing "write pool does not exist before transform execution"
-                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (testing "transform pool does not exist before transform execution"
+                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))
               (with-transform-cleanup! [target-table {:type   "table"
                                                       :schema schema
                                                       :name   "pool_test"}]
@@ -535,8 +537,8 @@
                                                              :target target-table}]
                     (transforms.execute/execute! transform {:run-method :manual})
                     (transforms.tu/wait-for-table (:name target-table) 10000)
-                    (testing "write pool is created during transform execution"
-                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))
+                    (testing "transform pool is created during transform execution"
+                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))))
               (finally
                 (t2/update! :model/Database db-id {:write_data_details old-write-details})
                 (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))))

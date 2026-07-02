@@ -1,13 +1,22 @@
 // TODO: consolidate this component w/ AIAnalysisContent
 
 import cx from "classnames";
-import { type ComponentPropsWithoutRef, memo, useMemo } from "react";
+import {
+  Children,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  isValidElement,
+  memo,
+  useMemo,
+} from "react";
+import { t } from "ttag";
 
 import {
   Markdown,
   type MarkdownProps,
 } from "metabase/common/components/Markdown";
 import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
+import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 
 import S from "./AIMarkdown.module.css";
 import { InternalLink } from "./components/InternalLink";
@@ -18,8 +27,57 @@ type AIMarkdownProps = MarkdownProps & {
   singleNewlinesAreParagraphs?: boolean;
 };
 
+// SEC-505: block all images; to support them we'll need detection for valid/allowed image sources
+const DISALLOWED_ELEMENTS = ["img"];
+
 const splitMessageLinesAsParagraphs = (message: string) =>
   message.replaceAll(/\r?\n|\r/g, "\n\n");
+
+const getNodeText = (node: ReactNode): string =>
+  Children.toArray(node)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+
+      if (isValidElement<{ children?: ReactNode }>(child)) {
+        return getNodeText(child.props.children);
+      }
+
+      return "";
+    })
+    .join("");
+
+const MarkdownCodeBlock = ({
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"pre">) => {
+  const code = getNodeText(children);
+
+  return (
+    <div className={S.codeBlock}>
+      <pre {...props}>{children}</pre>
+      <CopyButton value={code}>
+        {({ copied, copy }: { copied: boolean; copy: () => void }) => (
+          <Tooltip
+            label={copied ? t`Copied!` : t`Copy code`}
+            opened={copied || undefined}
+          >
+            <ActionIcon
+              aria-label={t`Copy code`}
+              className={S.copyCodeButton}
+              data-testid="metabot-code-block-copy"
+              size="sm"
+              onClick={copy}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </CopyButton>
+    </div>
+  );
+};
 
 const getComponents = ({
   onInternalLinkClick,
@@ -68,6 +126,7 @@ const getComponents = ({
       </div>
     </div>
   ),
+  pre: MarkdownCodeBlock,
 });
 
 export const AIMarkdown = memo(
@@ -95,6 +154,8 @@ export const AIMarkdown = memo(
       <Markdown
         className={cx(S.aiMarkdown, className)}
         components={components}
+        disallowedElements={DISALLOWED_ELEMENTS}
+        unwrapDisallowed
         {...props}
       >
         {normalizedChildren}

@@ -1,8 +1,6 @@
-import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -52,11 +50,8 @@ export const SaveEditButton = () => {
       <span>
         <ActionButton
           actionFn={onSave}
-          className={cx(
-            ButtonsS.Button,
-            ButtonsS.ButtonPrimary,
-            ButtonsS.ButtonSmall,
-          )}
+          variant="filled"
+          size="sm"
           normalText={t`Save`}
           activeText={t`Saving…`}
           failedText={t`Save failed`}

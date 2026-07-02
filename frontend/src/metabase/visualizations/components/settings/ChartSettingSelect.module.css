@@ -1,0 +1,37 @@
+.root {
+  overflow: visible;
+  padding: 0;
+
+  --chart-setting-select-input-padding-right: var(--input-padding-inline-end);
+}
+
+.wrapper {
+  margin-top: 0;
+
+  .section {
+    background-color: unset;
+    z-index: initial;
+  }
+}
+
+.input {
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+  font-weight: bold;
+  pointer-events: unset;
+  padding-right: var(--chart-setting-select-input-padding-right);
+  text-overflow: ellipsis;
+  width: 100%;
+
+  &:not([data-disabled]) {
+    background-color: inherit;
+  }
+
+  &[data-disabled] {
+    background-color: var(--mb-color-background_page-primary);
+  }
+}
+
+.inputWithLeftSection {
+  margin-left: var(--mantine-spacing-xs);
+}

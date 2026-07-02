@@ -111,7 +111,7 @@
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
-                 (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
+                 (mt/with-dynamic-fn-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
                    (try
                      (adjust query)
                      (is false "Failed to throw expected Exception")
@@ -127,7 +127,7 @@
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
-                 (with-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
+                 (mt/with-dynamic-fn-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
                    (is (thrown-with-msg?
                         java.lang.Exception
                         #"Test exception"
@@ -622,17 +622,29 @@
 (deftest ^:parallel default-metric-names-test
   (let [[source-metric mp] (mock-metric)]
     (is (=?
-         {:stages [{:aggregation [[:avg {:display-name (symbol "nil #_\"key is not present.\""), :name "avg"} some?]]}]}
+         {:stages [{:aggregation [[:avg {:display-name "Mock Metric", :name "avg"} some?]]}]}
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
-(deftest ^:parallel include-source-names-test
-  (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
-                                            (add-aggregation-options {:display-name "My cool metric" :name "Named Metric"})))]
-    (is (=?
-         {:stages [{:aggregation [[:avg {:display-name "My cool metric" :name "Named Metric"} some?]]}]}
-         (adjust (-> (lib/query mp (meta/table-metadata :products))
-                     (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
+(deftest ^:parallel metric-name-overrides-inner-display-name-test
+  (testing "Result column should use the metric card's name, not the inner aggregation's display-name (#58307)"
+    (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
+                                              (add-aggregation-options {:display-name "My cool metric" :name "Named Metric"})))]
+      (is (=?
+           {:stages [{:aggregation [[:avg {:display-name "Mock Metric" :name "Named Metric"} some?]]}]}
+           (adjust (-> (lib/query mp (meta/table-metadata :products))
+                       (lib/aggregate (lib.metadata/metric mp (:id source-metric))))))))))
+
+(deftest ^:parallel metric-name-in-returned-columns-test
+  (testing "Returned column display-name should match the metric card name (#58307)"
+    (let [[source-metric mp] (mock-metric meta/metadata-provider
+                                          (-> (basic-metric-query)
+                                              (add-aggregation-options {:display-name "total_price_no_tax_no_discount"}))
+                                          {:name "total_price_no_tax_no_discount_metric"})
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.metadata/metric mp (:id source-metric))))]
+      (is (= "total_price_no_tax_no_discount_metric"
+             (-> query adjust lib/returned-columns last :display-name))))))
 
 (deftest ^:parallel override-source-names-test
   (let [[source-metric mp] (mock-metric (-> (basic-metric-query)
@@ -684,7 +696,7 @@
                  :aggregation  [[:aggregation-options
                                  [:sum [:case [[[:= [:field (meta/id :venues :name) {}] [:value "abc" {}]]
                                                 [:field (meta/id :venues :price) {}]]]]]
-                                 {:display-name "My Cool Aggregation"}]]}
+                                 {:display-name "Mock Metric"}]]}
           expand-macros (fn [mbql-query]
                           (lib.convert/->legacy-MBQL (adjust (lib/query mp (lib.convert/->mbql5 mbql-query)))))]
       (comment
@@ -713,7 +725,6 @@
                  (lib.tu.macros/mbql-query checkins
                    {:joins [{:condition    [:= [:field (meta/id :checkins :id) nil] 2]
                              :source-query before}]})))))
-
       (testing "inside :joins inside :source-query"
         (is (=? (lib.tu.macros/mbql-query nil
                   {:source-query {:source-table (meta/id :checkins)

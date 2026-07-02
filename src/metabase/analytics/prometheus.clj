@@ -170,6 +170,46 @@
            ([] (collect-metrics))
            ([_sampleNameFilter] (collect-metrics))))))))
 
+(defmulti pull-collector
+  "Declare a collect-time metric refresher. Each implementation returns a map of:
+
+    `:min-interval-s` -- run no more often than once every this many seconds
+    `:f`              -- a 0-arg function that refreshes one or more *declared* Prometheus metrics by making
+                         whatever update calls it wants (e.g. [[metabase.analytics-interface.core/set-gauge!]]
+                         or [[inc!]], for any number of metrics)
+
+  The dispatch value is any unique keyword identifying the collector. Implementations are run by
+  [[product-pull-collectors]] on each scrape (throttled by min-interval-s)."
+  {:arglists '([id])}
+  identity)
+
+(defonce ^:private pull-collector-last-runs
+  ;; id -> epoch-ms the collector's function last ran, used to enforce its :min-interval-s
+  (atom {}))
+
+(def ^:private product-pull-collectors
+  "Registered collector that runs the [[pull-collector]] implementations at scrape time, each throttled to
+  its own `:min-interval-s`. A throwing function is skipped without failing the scrape."
+  (letfn [(run-all! []
+            (let [now (System/currentTimeMillis)]
+              (doseq [id (keys (methods pull-collector))]
+                (try
+                  (let [{:keys [min-interval-s f]} (pull-collector id)]
+                    (when (>= (- now (get @pull-collector-last-runs id 0)) (long (* 1000 min-interval-s)))
+                      (swap! pull-collector-last-runs assoc id now)
+                      (f)))
+                  (catch Throwable e
+                    (log/warn e "Error running pull collector" id)))))
+            [])]
+    (delay
+      (collector/named
+       {:name      "metabase_application_pull"
+        :namespace "metabase"}
+       (proxy [Collector] []
+         (collect
+           ([] (run-all!))
+           ([_sampleNameFilter] (run-all!))))))))
+
 (defn- jvm-collectors
   "JVM collectors. Essentially duplicating [[iapetos.collector.jvm]] namespace so we can set our own namespaces rather
   than \"iapetos_internal\""
@@ -269,10 +309,9 @@
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})
-
    (prometheus/histogram :metabase-remote-sync/export-duration-ms
                          {:description "Duration in milliseconds that remote-sync exports took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-remote-sync/exports
                        {:description "Number of remote-sync export calls"})
@@ -280,7 +319,7 @@
                        {:description "Number of failed remote-sync export calls"})
    (prometheus/histogram :metabase-remote-sync/import-duration-ms
                          {:description "Duration in milliseconds that remote-sync imports took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-remote-sync/imports
                        {:description "Number of remote-sync import calls"})
@@ -292,7 +331,6 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
-
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
@@ -311,16 +349,16 @@
                        {:description "Total number of ms updating the index"})
    (prometheus/histogram :metabase-search/index-update-duration-ms
                          {:description "Duration in milliseconds that index update jobs took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/counter :metabase-search/index-reindex-ms
                        {:description "Total number of ms reindexing the index"})
    (prometheus/histogram :metabase-search/index-reindex-duration-ms
                          {:description "Duration in milliseconds that index reindex jobs took."
-      ;; 1ms -> 10minutes
+                          ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
-                     {:description "Number of rows in the active appdb index table."})
+                     {:description "Estimated number of rows in this instance's active appdb search index table."})
    (prometheus/gauge :metabase-search/semantic-index-size
                      {:description "Number of rows in the active semantic index table."})
    (prometheus/gauge :metabase-search/semantic-dlq-size
@@ -333,6 +371,10 @@
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
                        {:description "Number of errors when responding to search requests."})
+   (prometheus/histogram :metabase-search/response-results
+                         {:description "Distribution of the total number of results matched by a search request."
+                          ;; `:total` is capped at *db-max-results* (1000).
+                          :buckets [0 1 2 5 10 25 50 100 250 500 1000]})
    (prometheus/gauge :metabase-search/engine-default
                      {:description "Whether a given engine is being used as the default. User can override via cookie."
                       :labels [:engine]})
@@ -358,6 +400,19 @@
    (prometheus/counter :metabase-search/semantic-db-query-ms
                        {:description "Total number of ms spent querying the search index"
                         :labels [:embedding-model]})
+   ;; the four semantic-vector-* diagnostics are emitted only while the semantic-search-explain setting is on
+   (prometheus/counter :metabase-search/semantic-vector-inner-ms
+                       {:description "Total ms spent in the inner vector subquery (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-vector-tuples-scanned
+                       {:description "Total tuples the vector scan visited, returned plus filter-removed (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-prefilter-pool-size
+                       {:description "Total rows a filter-first (brute-force) scan would have computed distances over (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-vector-scan-used-index
+                       {:description "Count of vector searches by strategy and the plan node chosen for the index-table scan (diagnostic, off by default)"
+                        :labels [:strategy :plan-node]})
    (prometheus/counter :metabase-search/semantic-appdb-scores-ms
                        {:description "Total number of ms spent adding appdb-based scores"})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
@@ -405,7 +460,6 @@
                        {:description "Number of successful semantic search DLQ retries"})
    (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
                        {:description "Number of failed semantic search DLQ retries"})
-
    ;; data-complexity-score timing
    ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
    (prometheus/histogram :metabase-data-complexity/scoring-duration-ms
@@ -415,8 +469,7 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
-
-;; notification metrics
+   ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})
@@ -486,7 +539,6 @@
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-manually-synced
                        {:description "How many times the instance has manually sync'ed their Google Sheets connection."})
-
    ;; transform metrics
    (prometheus/counter :metabase-transforms/job-runs-total
                        {:description "Total number of transform job runs started."
@@ -526,6 +578,24 @@
                           :labels [:stage-label]
                           ;; 10 -> 10M rows
                           :buckets [10 100 1000 10000 100000 1000000 10000000]})
+   (prometheus/counter :metabase-transforms/cancelation-requests
+                       {:description "Number of transform run cancelation requests issued, labeled by status (ok, error)."
+                        :labels [:status]})
+   (prometheus/counter :metabase-transforms/cancelation-completed
+                       {:description "Number of transform run cancelations that completed, labeled by outcome (success, timeout, error)."
+                        :labels [:outcome]})
+   (prometheus/histogram :metabase-transforms/cancelation-latency-ms
+                         {:description "Duration in milliseconds from a cancelation request to its completion, labeled by outcome."
+                          :labels [:outcome]
+                          ;; 20s poll loop + 10min timeout sweep; buckets bracket both tails.
+                          :buckets [100 500 1000 5000 10000 20000 30000 60000 120000 300000 600000]})
+   (prometheus/histogram :metabase-transforms/incremental-rows
+                         {:description "Source-available vs. target-processed row counts for incremental transform runs."
+                          :labels [:type :full-incremental-run]
+                          ;; Decade layout matches `data-transfer-rows`; `0` distinguishes empty
+                          ;; windows from "small but nonzero work"; `100M` covers full-incremental
+                          ;; rebuilds on large sources.
+                          :buckets [0 10 100 1000 10000 100000 1000000 10000000 100000000]})
    ;; Python-transform specific metrics
    (prometheus/histogram :metabase-transforms/python-api-call-duration-ms
                          {:description "Duration of Python runner API calls."
@@ -535,6 +605,15 @@
    (prometheus/counter :metabase-transforms/python-api-calls-total
                        {:description "Total number of Python runner API calls."
                         :labels [:status]})
+   (prometheus/counter :metabase-transforms/timeouts-total
+                       {:description "Number of transform runs and job runs marked timed out (per-run timeout handler or sweeper)."
+                        :labels [:type]})
+   (prometheus/histogram :metabase-transforms/timeout-detection-latency-ms
+                         {:description "Time in ms between a transform run/job exceeding its timeout and the sweeper detecting it."
+                          :labels [:type]
+                          ;; Sweepers run every 10 minutes, so detection latency is bounded by sweep cadence.
+                          ;; 0s -> 30 minutes covers normal case + tail when a sweep is delayed.
+                          :buckets [0 1000 10000 30000 60000 120000 300000 600000 900000 1200000 1800000]})
    (prometheus/counter :metabase-transforms/inspector-discovery
                        {:description "Transform Inspector lens discovery calls."
                         :labels [:status]})
@@ -549,12 +628,12 @@
    (prometheus/counter :metabase-token-check/attempt
                        {:description "Total number of token checks. Includes a status label."
                         :labels [:status]})
-   ;; Write-connection telemetry
+   ;; Connection-type telemetry (default / write-data / admin)
    (prometheus/counter :metabase-db-connection/write-op
-                       {:description "JDBC connection pool acquisitions by connection type (default or write-data)."
+                       {:description "JDBC connection pool acquisitions by connection type (default, write-data, or admin)."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
-                       {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."
+                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback or workspace swap."
                         :labels [:connection-type]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
@@ -647,7 +726,21 @@
    (prometheus/counter :metabase-metabot/turn-started
                        {:description "A metabot turn was started (user row + assistant placeholder inserted)"
                         :labels [:profile-id]})
-
+   (prometheus/counter :metabase-metabot/used-tables-extraction-total
+                       {:description "Number of used-tables extractions attempted."})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-errors
+                       {:description "Number of used-tables extractions that threw an unhandled exception."})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-warnings
+                       {:description "Number of used-table extraction failures caught and logged (may be >1 per invocation)."
+                        :labels [:reason]})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-dropped
+                       {:description "Number of used-tables extraction tasks dropped because the background executor's queue was full."})
+   (prometheus/counter :metabase-metabot/used-tables-extraction-timeouts
+                       {:description "Number of used-tables extractions abandoned because they exceeded the extraction timeout."})
+   (prometheus/histogram :metabase-metabot/used-tables-extraction-duration-ms
+                         {:description "Duration in milliseconds of used-tables extraction."
+                          ;; 1ms -> 30s
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
                        {:description "Number of sync operation failures."
@@ -662,7 +755,6 @@
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
                         :labels [:format]})
-
    ;; experiment metrics
    (prometheus/counter :experiment/runs-total
                        {:description "Number of experiment candidate runs."
@@ -684,7 +776,20 @@
                         :labels [:experiment]})
    (prometheus/counter :experiment/candidate-error-duration-ms
                        {:description "Cumulative duration in milliseconds of experiment candidate code path when it threw."
-                        :labels [:experiment]})])
+                        :labels [:experiment]})
+   ;; security center metrics
+   (prometheus/gauge :metabase-security-center/last-sync-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last successful Security Center."})
+   (prometheus/gauge :metabase-security-center/vulnerable-advisories
+                     {:description "Number of advisories where this Metabase instance is potentially affected."
+                      :labels [:severity :acknowledged]})
+   ;; metaplow analytics metrics
+   (prometheus/counter :metabase-metaplow/errors
+                       {:description "Metaplow event pipeline errors by stage."
+                        :labels [:stage]})
+   (prometheus/gauge :metabase-memoize/cache-size
+                     {:description "Number of entries currently held in a monitored in-memory memoization cache."
+                      :labels [:cache]})])
 
 (defn- quartz-collectors
   []
@@ -735,7 +840,8 @@
                         (collector.ring/initialize registry)
                         (concat (jvm-collectors)
                                 (jetty-collectors)
-                                [@c3p0-collector]
+                                [@c3p0-collector
+                                 @product-pull-collectors]
                                 (product-collectors)
                                 (quartz-collectors)))]
     (when @jvm-hiccup-thread (@jvm-hiccup-thread))

@@ -23,7 +23,6 @@ import {
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
-import { updateMentionsCache } from "metabase/documents/documents.slice";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import {
   METABSE_PROTOCOL_MD_LINK,
@@ -31,6 +30,7 @@ import {
 } from "metabase/metabot/utils/links";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Icon } from "metabase/ui";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
@@ -451,14 +451,15 @@ export const SmartLinkComponent = memo(
     const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
+    const host = useEditorHost();
     useEffect(() => {
       if (entity) {
         const name =
           "display_name" in entity ? entity.display_name : entity?.name;
         updateAttributes({ label: name });
-        dispatch(updateMentionsCache({ entityId, model, name }));
+        dispatch(host.actions.updateMentionsCache({ entityId, model, name }));
       }
-    }, [updateAttributes, dispatch, entity, entityId, model]);
+    }, [updateAttributes, dispatch, host, entity, entityId, model]);
 
     const showLoading = isLoading && !entity;
     if (showLoading) {

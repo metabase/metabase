@@ -7,42 +7,34 @@
    [metabase-enterprise.action-v2.coerce :as coerce]
    [metabase.test :as mt]))
 
-(deftest coercion-conversions-test
+(deftest ^:parallel coercion-conversions-test
   (mt/with-clock #t "2000-01-01T00:00:00Z"
     (let [test-cases
           [{:strategy :Coercion/UNIXSeconds->DateTime
             :input    "2024-03-20T15:30:45Z[UTC]"
             :output   1710948645}
-
            {:strategy :Coercion/UNIXMilliSeconds->DateTime
             :input    "2024-03-20T15:30:45Z[UTC]"
             :output   1710948645000}
-
            {:strategy :Coercion/UNIXMicroSeconds->DateTime
             :input    "2024-03-20T15:30:45Z[UTC]"
             :output   1710948645000000}
-
            {:strategy :Coercion/UNIXNanoSeconds->DateTime
             :input    "2024-03-20T15:30:45Z[UTC]"
             :output   1710948645000000000}
-
            {:strategy :Coercion/YYYYMMDDHHMMSSString->Temporal
             :input    "2024-03-20T15:30Z[UTC]"  ;; Note: seconds set to 00 since the format doesn't preserve seconds
             :output   "20240320153000"}
-
            {:strategy :Coercion/ISO8601->DateTime
             :input    "2024-03-20T15:30:45Z[UTC]"
             :output   "2024-03-20T15:30:45Z[UTC]"}
-
            {:strategy :Coercion/ISO8601->Date
             :input    "2024-03-20T00:00Z[UTC]"
             :output   "2024-03-20"}
-
            {:strategy :Coercion/ISO8601->Time
             :input    "2025-05-01T15:30:45Z[UTC]"
             :reversed #(str/ends-with? % "T15:30:45Z[UTC]")
             :output   "15:30:45"}]]
-
       (doseq [{:keys [strategy input reversed output]} test-cases]
         (testing (format "Testing %s conversions" strategy)
           (let [reversed?        (or reversed #{input})
@@ -52,7 +44,6 @@
               (is (= output (in input))
                   (format "Input conversion failed for %s: expected %s, got %s"
                           strategy output (in input))))
-
             ;; Test output conversion (Database format -> JSON)
             (testing "Output conversion"
               (is (reversed? (out output))
@@ -62,17 +53,18 @@
                             input
                             (str "something like " input))
                           (out output))))
-
             ;; Test roundtrip conversion
             (testing "Roundtrip conversion"
               (is (reversed? (-> input in out))
                   (format "Roundtrip conversion failed for %s: %s -> %s -> %s"
                           strategy input (in input) (out (in input)))))))))))
 
-(deftest coercion-fns-static-test
+(deftest ^:parallel coercion-fns-static-test
   (testing "all coercion pair have to have an in and out function"
-    (testing (every? #(and (fn? (:in %)) (fn? (:out %))) coerce/coercion-fns)))
-
+    (doseq [[k {:keys [in out]}] coerce/coercion-fns]
+      (testing k
+        (is (or (fn? in) (fn? @in)) ":in")
+        (is (or (fn? out) (fn? @in)) ":out"))))
   ;; TODO: fix this test by implementing all strategies
   (let [implemented (set (keys coerce/coercion-fns))
         expected-fns (into #{} (filter (comp #{"Coercion"} namespace)) (descendants :Coercion/*))

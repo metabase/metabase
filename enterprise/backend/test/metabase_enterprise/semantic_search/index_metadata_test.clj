@@ -90,9 +90,7 @@
           ;; note: I might recommend this to throw if no control row, this behaviour is ok for now
           (sut pgvector index-metadata index-id1)
           (is (= [] (semantic.tu/get-control-rows pgvector index-metadata))))
-
         (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
-
         (testing "sets specified index as active"
           (sut pgvector index-metadata index-id1)
           (is (=? [{:active_id index-id1}] (semantic.tu/get-control-rows pgvector index-metadata)))
@@ -223,6 +221,5 @@
                     :table_name        (:table-name index)
                     :index_version     (:version index)}]
                   (semantic.tu/get-metadata-rows pgvector index-metadata)))))
-
       (testing "enforces unique table-name constraint"
         (is (thrown-with-msg? Exception #"duplicate key" (sut pgvector index-metadata index)))))))

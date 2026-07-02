@@ -101,7 +101,7 @@ export function NotebookDataPicker({
     const canSelectTableColumns = table && isRaw && !isDisabled;
     return (
       <NotebookCellItem
-        color="brand"
+        color="core-brand"
         inactive={!table}
         right={canSelectTableColumns && columnPicker}
         containerStyle={{ padding: 0 }}
@@ -113,6 +113,7 @@ export function NotebookDataPicker({
           query={query}
           stageIndex={stageIndex}
           table={table}
+          title={title}
           placeholder={placeholder}
           canChangeDatabase={canChangeDatabase}
           isDisabled={isDisabled}

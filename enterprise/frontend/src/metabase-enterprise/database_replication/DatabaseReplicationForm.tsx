@@ -201,7 +201,12 @@ export const DatabaseReplicationForm = ({
                 </Box>
               )}
 
-              <Card radius="md" bg="background-secondary" p={0} shadow="none">
+              <Card
+                radius="md"
+                bg="background_page-secondary"
+                p={0}
+                shadow="none"
+              >
                 <Flex
                   align="flex-start"
                   direction="row"
@@ -220,7 +225,7 @@ export const DatabaseReplicationForm = ({
                       variant="subtle"
                       size="xs"
                       onClick={() => setShowNoSyncTables(!showNoSyncTables)}
-                      c="brand"
+                      c="core-brand"
                       fz="md"
                       h="auto"
                       mt="xs"
@@ -234,7 +239,7 @@ export const DatabaseReplicationForm = ({
                         justify="flex-start"
                         wrap="nowrap"
                       >
-                        <Text span c="brand">
+                        <Text span c="core-brand">
                           {showNoSyncTables
                             ? t`Hide tables (${noSyncTables.length})`
                             : t`Show tables (${noSyncTables.length})`}
@@ -288,7 +293,12 @@ export const DatabaseReplicationForm = ({
                 )}
               </Card>
 
-              <Card radius="md" bg="background-secondary" p={0} shadow="none">
+              <Card
+                radius="md"
+                bg="background_page-secondary"
+                p={0}
+                shadow="none"
+              >
                 <Flex
                   align="flex-start"
                   direction="row"
@@ -308,7 +318,7 @@ export const DatabaseReplicationForm = ({
                       onClick={() =>
                         setShowReplicatedTables(!showReplicatedTables)
                       }
-                      c="brand"
+                      c="core-brand"
                       fz="md"
                       h="auto"
                       mt="xs"
@@ -322,7 +332,7 @@ export const DatabaseReplicationForm = ({
                         justify="flex-start"
                         wrap="nowrap"
                       >
-                        <Text span c="brand">
+                        <Text span c="core-brand">
                           {showReplicatedTables
                             ? t`Hide tables (${replicatedTables.length})`
                             : t`Show tables (${replicatedTables.length})`}
@@ -377,7 +387,7 @@ export const DatabaseReplicationForm = ({
 
               <Card
                 radius="md"
-                bg="background-secondary"
+                bg="background_page-secondary"
                 p="md"
                 my="sm"
                 shadow="none"

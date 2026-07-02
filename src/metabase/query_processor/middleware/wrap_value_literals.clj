@@ -3,7 +3,6 @@
   information; parses datetime string literals when appropriate."
   (:refer-clojure :exclude [select-keys])
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,6 +20,8 @@
    [metabase.util.performance :refer [select-keys]])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn- value :- :mbql.clause/value
   [info :- :map v]
@@ -185,41 +186,35 @@
   (let [t (parse-temporal-string-literal-to-class s OffsetTime)]
     (lib/time t target-unit)))
 
-(defmethod parse-temporal-string-literal :type/DateTime
-  [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s LocalDateTime)]
-    (lib/absolute-datetime t target-unit)))
-
-(defn- date-literal-string? [s]
-  (not (str/includes? s "T")))
-
-(defmethod parse-temporal-string-literal :type/DateTimeWithTZ
-  [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s OffsetDateTime)
+(defn- parse-datetime-string-literal [s target-unit klass]
+  (let [t (parse-temporal-string-literal-to-class s klass)
         target-unit (if (and (= target-unit :default)
-                             (date-literal-string? s))
+                             (try (LocalDate/parse s) true (catch Exception _ false)))
                       :day
                       target-unit)]
     (lib/absolute-datetime t target-unit)))
 
+(defmethod parse-temporal-string-literal :type/DateTime
+  [_effective-type s target-unit]
+  (parse-datetime-string-literal s target-unit LocalDateTime))
+
+(defmethod parse-temporal-string-literal :type/DateTimeWithTZ
+  [_effective-type s target-unit]
+  (parse-datetime-string-literal s target-unit OffsetDateTime))
+
 (defmethod parse-temporal-string-literal :type/DateTimeWithZoneID
   [_effective-type s target-unit]
-  (let [target-unit (if (and (= target-unit :default)
-                             (date-literal-string? s))
-                      :day
-                      target-unit)
-        t           (parse-temporal-string-literal-to-class s ZonedDateTime)]
-    (lib/absolute-datetime t target-unit)))
+  (parse-datetime-string-literal s target-unit ZonedDateTime))
 
 (defmethod add-type-info String
-  [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
-                                 :or   {parse-datetime-strings? true}}]
-  (if (and (or unit (when info (lib.types.isa/temporal? info)))
+  [s {:keys [unit], :as col} & {:keys [parse-datetime-strings?]
+                                :or   {parse-datetime-strings? true}}]
+  (if (and (or unit (when col (lib.types.isa/temporal? col)))
            parse-datetime-strings?
            (seq s))
-    (let [effective-type ((some-fn :effective-type :base-type) info)]
+    (let [effective-type ((some-fn :effective-type :base-type) col)]
       (parse-temporal-string-literal effective-type s (or unit :default)))
-    (value info s)))
+    (value col s)))
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
@@ -276,11 +271,12 @@
 ;;;
 ;;; Tangentially-related nonsense not used by the middleware
 ;;;
+;;; TODO (Cam 2026-05-14) -- move this into Lib or somewhere else since this is just a raw MBQL transformation that
+;;; only seems to be used by driver-specific parameter compilation code
 
 (defn- type-info-no-query
   "This is like [[type-info*]] but specifically for supporting the legacy/deprecated [[wrap-value-literals-in-mbql]]
   function."
-  {:deprecated "0.57.0"}
   [clause]
   (let [expr-type (lib.schema.expression/type-of-resolved clause)]
     (merge
@@ -306,26 +302,14 @@
                    [:value {:base_type :type/Text, \"foo\"
                             :semantic_type nil,
                             :database_type \"VARCHAR\",
-                            :name \"description\"}]]]
-
-  DEPRECATED: This is for legacy compatibility and should not be used in new code."
-  {:deprecated "0.57.0"}
+                            :name \"description\"}]]]"
   [mbql :- [:cat :keyword [:* :any]]]
   (-> mbql
       lib/->mbql5
       (as-> $mbql (binding [*type-info* (fn [_query _path clause]
-                                          #_{:clj-kondo/ignore [:deprecated-var]}
                                           (type-info-no-query clause))]
                     (-> (lib.walk/walk-clauses*
                          [$mbql]
                          (fn [clause]
                            (wrap-value-literals-in-clause nil nil clause)))
                         first)))))
-
-(mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
-  "Wrapper around `wrap-value-literals-in-mbql5` that converts the clause back to legacy MBQL.
-  DEPRECATED: This is for legacy compatibility and should not be used in new code."
-  {:deprecated "0.57.0"}
-  [mbql :- [:cat :keyword [:* :any]]]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib/->legacy-MBQL (wrap-value-literals-in-mbql5 mbql)))

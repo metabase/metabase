@@ -29,14 +29,6 @@ export type MetabotUserTextChatMessage = {
   message: string;
 };
 
-export type MetabotUserActionChatMessage = {
-  id: string;
-  role: "user";
-  type: "action";
-  message: string;
-  userMessage: string;
-};
-
 export type MetabotAgentTextChatMessage = {
   id: string;
   role: "agent";
@@ -93,9 +85,7 @@ export type MetabotAgentChatMessage =
   | MetabotAgentTurnAbortedMessage
   | MetabotAgentTurnErroredMessage;
 
-export type MetabotUserChatMessage =
-  | MetabotUserTextChatMessage
-  | MetabotUserActionChatMessage;
+export type MetabotUserChatMessage = MetabotUserTextChatMessage;
 
 export type MetabotDebugChatMessage = MetabotDebugToolCallMessage;
 
@@ -135,7 +125,7 @@ export interface MetabotConverstationState {
   };
 }
 
-export const fixedMetabotAgentIds = ["omnibot", "sql"] as const;
+export const fixedMetabotAgentIds = ["omnibot", "sql", "ask"] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;

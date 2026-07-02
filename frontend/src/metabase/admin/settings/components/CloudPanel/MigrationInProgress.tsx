@@ -68,13 +68,13 @@ export const MigrationInProgress = ({
       <MigrationCard>
         <Flex gap="1.5rem" align="start">
           <Flex
-            bg="background-brand"
+            bg="background_surface-brand-subtle"
             h="64px"
             style={{ borderRadius: "50%", flex: "0 0 64px" }}
             justify="center"
             align="center"
           >
-            <Icon name="cloud_filled" size="2.375rem" c="brand" />
+            <Icon name="cloud_filled" size="2.375rem" c="core-brand" />
           </Flex>
           <Box style={{ flex: "1 0 0" }}>
             <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>

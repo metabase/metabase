@@ -22,13 +22,13 @@ export const Sidebar = styled.aside<{
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   z-index: 4;
   width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
   ${(props) =>
     props.side === "left"
-      ? "border-inline-end: 1px solid var(--mb-color-border);"
-      : "border-inline-start: 1px solid var(--mb-color-border);"}
+      ? "border-inline-end: 1px solid var(--mb-color-border-neutral);"
+      : "border-inline-start: 1px solid var(--mb-color-border-neutral);"}
 
   ${breakpointMaxSmall} {
     width: 90vw;
@@ -50,7 +50,7 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   overflow-y: auto;
 
   ${breakpointMinSmall} {
-    width: ${(props) => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
+    width: ${(props) => (props.isOpen ? "100%" : 0)};
   }
 
   ${breakpointMaxSmall} {
@@ -98,7 +98,7 @@ export const LoadingAndErrorContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   text-align: center;
 `;
 

@@ -98,7 +98,6 @@
           (perms/grant-collection-read-permissions! group-id metabot-coll)
           (perms/grant-collection-read-permissions! group-id mb-child-coll1)
           (perms/grant-collection-read-permissions! group-id mb-child-coll2)
-
           (testing "admin can see all cards in metabot collection and subcollections"
             (let [admin-result (mt/with-test-user :crowberto
                                  (metabot.tools.util/get-metrics-and-models (:id metabot)))
@@ -109,7 +108,6 @@
               (is (contains? card-ids (:id mb-metric2)))
               (is (not (contains? card-ids (:id outside-model))))
               (is (not (contains? card-ids (:id outside-metric))))))
-
           (testing "normal user sees only permitted cards"
             (let [user-result (mt/with-test-user :rasta
                                 (metabot.tools.util/get-metrics-and-models (:id metabot)))
@@ -145,7 +143,6 @@
               mp (lib-be/application-database-metadata-provider test-db-id)
               orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               columns (lib/visible-columns orders-query)]
-
           (testing "adds table-reference for implicitly joined columns"
             (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
                   user-name-column (first (filter #(and (= "NAME" (:name %))
@@ -155,26 +152,22 @@
               (is (string? (:table-reference user-name-column)))
               (is (seq (:table-reference user-name-column)))
               (is (= "User" (:table-reference user-name-column)))))
-
           (testing "does not add table-reference for direct table columns"
             (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
                   id-column (first (filter #(and (= "ID" (:name %))
                                                  (not (:fk-field-id %))) processed-columns))]
               (is (some? id-column) "Expected to find direct ORDERS ID column")
               (is (not (contains? id-column :table-reference)))))
-
           (testing "handles columns without fk-field-id or table-id gracefully"
             (let [mock-column {:name "test-column" :type :string}
                   result (metabot.tools.util/add-table-reference orders-query mock-column)]
               (is (= mock-column result))
               (is (not (contains? result :table-reference)))))
-
           (testing "handles columns with fk-field-id but no table-id"
             (let [mock-column {:name "test-fk" :fk-field-id 123}
                   result (metabot.tools.util/add-table-reference orders-query mock-column)]
               (is (= mock-column result))
               (is (not (contains? result :table-reference)))))
-
           (testing "handles columns with table-id but no fk-field-id"
             (let [mock-column {:name "test-field" :table-id (mt/id :orders)}
                   result (metabot.tools.util/add-table-reference orders-query mock-column)]
@@ -196,7 +189,7 @@
                        :model/Metabot unverified-metabot {:name "unverified metabot"
                                                           :collection_id (:id metabot-coll)
                                                           :use_verified_content false}]
-        ;; Mark some content as verified
+          ;; Mark some content as verified
           (moderation/create-review! {:moderated_item_id (:id verified-model)
                                       :moderated_item_type "card"
                                       :moderator_id (mt/user->id :crowberto)
@@ -207,7 +200,6 @@
                                       :moderator_id (mt/user->id :crowberto)
                                       :status "verified"
                                       :text "This is verified"})
-
           (testing "metabot with use_verified_content=true sees only verified content"
             (let [result (mt/with-test-user :crowberto
                            (metabot.tools.util/get-metrics-and-models (:id verified-metabot)))
@@ -216,7 +208,6 @@
               (is (contains? card-ids (:id verified-metric)))
               (is (not (contains? card-ids (:id unverified-model))))
               (is (not (contains? card-ids (:id unverified-metric))))))
-
           (testing "metabot with use_verified_content=false sees all content"
             (let [result (mt/with-test-user :crowberto
                            (metabot.tools.util/get-metrics-and-models (:id unverified-metabot)))
@@ -231,6 +222,33 @@
                       unverified-ids #{(:id unverified-model) (:id unverified-metric)}]
                   (is (every? verified-ids (take 2 ordered-ids)))
                   (is (every? unverified-ids (drop 2 ordered-ids))))))))))))
+
+(deftest metabot-verified-content-library-test
+  (testing "with the :library feature, use_verified_content=true includes library-published metrics/models
+            (BOT-1570), matching collections.curation/curated?"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection lib  {:type "library-metrics" :name "libcoll"}
+                     :model/Collection norm {:name "normcoll"}
+                     :model/Card lib-metric   {:type :metric :collection_id (:id lib)}
+                     :model/Card plain-metric {:type :metric :collection_id (:id norm)}
+                     :model/Metabot metabot {:name "mb" :use_verified_content true}]
+        (let [ids (set (map :id (mt/with-test-user :crowberto
+                                  (metabot.tools.util/get-metrics-and-models (:id metabot)))))]
+          (is (contains? ids (:id lib-metric))       "library-published metric is curated")
+          (is (not (contains? ids (:id plain-metric))) "plain metric is not curated"))))))
+
+(deftest metabot-verified-content-no-feature-test
+  (testing "use_verified_content=true with no curation features active returns nothing, rather than falling
+            through unfiltered to uncurated content"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Collection metabot-coll {:name "mb coll"}
+                     :model/Card _model  {:type :model  :collection_id (:id metabot-coll)}
+                     :model/Card _metric {:type :metric :collection_id (:id metabot-coll)}
+                     :model/Metabot metabot {:name "verified metabot"
+                                             :collection_id (:id metabot-coll)
+                                             :use_verified_content true}]
+        (is (empty? (mt/with-test-user :crowberto
+                      (metabot.tools.util/get-metrics-and-models (:id metabot)))))))))
 
 (deftest get-table-filters-inactive-test
   (testing "get-table only returns active tables"
@@ -249,26 +267,22 @@
                    {:id 303 :name "EMAIL"}]]
       (is (= {:id 301 :name "ID"} (metabot.tools.util/find-column-by-field-id 301 columns)))
       (is (= {:id 303 :name "EMAIL"} (metabot.tools.util/find-column-by-field-id 303 columns)))))
-
   (testing "finds column by string-encoded field ID"
     (let [columns [{:id 301 :name "ID"}
                    {:id 302 :name "NAME"}]]
       (is (= {:id 302 :name "NAME"} (metabot.tools.util/find-column-by-field-id "302" columns)))))
-
   (testing "throws agent error when field ID not found"
     (let [columns [{:id 301 :name "ID"}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Field 999 not found"
            (metabot.tools.util/find-column-by-field-id 999 columns)))))
-
   (testing "throws for nil field ID"
     (let [columns [{:id 301 :name "ID"}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"not found"
            (metabot.tools.util/find-column-by-field-id nil columns)))))
-
   (testing "error data contains agent-error? flag"
     (let [columns [{:id 301 :name "ID"}]]
       (try

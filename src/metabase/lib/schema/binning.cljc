@@ -13,7 +13,9 @@
 (mr/def ::strategy
   [:enum
    {:decode/normalize lib.schema.common/normalize-keyword}
-   :bin-width :default :num-bins])
+   :bin-width
+   :default ; called 'auto' in the GUI
+   :num-bins])
 
 (mr/def ::num-bins
   "Number of bins to use."

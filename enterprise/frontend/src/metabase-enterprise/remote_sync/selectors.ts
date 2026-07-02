@@ -40,9 +40,19 @@ export const getIsError = createSelector(
   (currentTask) => currentTask?.status === "errored",
 );
 
+export const getIsSuccess = createSelector(
+  getCurrentTask,
+  (currentTask) => currentTask?.status === "successful",
+);
+
 export const getErrorMessage = createSelector(
   getCurrentTask,
   (currentTask) => currentTask?.error_message ?? "",
+);
+
+export const getTaskOutcome = createSelector(
+  getCurrentTask,
+  (currentTask) => currentTask?.outcome ?? null,
 );
 
 export const getHasPendingMutation = createSelector(

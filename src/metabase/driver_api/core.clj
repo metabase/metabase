@@ -125,14 +125,11 @@
  logger/level-enabled?
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
- mbql.u/desugar-filter-clause
  mbql.u/expression-with-name
  mbql.u/field-options
- mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
  mbql.u/query->source-table-id
- mbql.u/simplify-compound-filter
  mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source
@@ -167,7 +164,6 @@
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
  qp.util/default-query->remark
  qp.util/query->remark
- qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query
@@ -175,6 +171,7 @@
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting
  sync-util/name-for-logging
+ sync-util/reducible-sync-tables
  system/site-uuid
  upload.db/current-database)
 
@@ -343,7 +340,7 @@
 
 (def MBQLQuery
   "Schema for a legacy MBQL inner query."
-  ::mbql.s/MBQLQuery)
+  ::mbql.s/MBQLInnerQuery)
 
 (def Join
   "Schema for a legacy MBQL join."

@@ -1,0 +1,25 @@
+.container {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--mb-color-background_surface-primary);
+}
+
+.header {
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+}
+
+.title {
+  color: var(--mb-color-text-primary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--mb-color-brand);
+    text-decoration: none;
+  }
+}
+
+.viz {
+  height: 18rem;
+  position: relative;
+}

@@ -89,7 +89,6 @@
   [initialized-plugin-names info]
   (or
    (all-dependencies-satisfied?* initialized-plugin-names info)
-
    (do
      (swap! plugins-with-unsatisfied-deps conj info)
      (log-once (u/format-color 'yellow

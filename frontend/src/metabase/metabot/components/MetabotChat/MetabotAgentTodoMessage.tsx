@@ -40,14 +40,14 @@ export const AgentTodoListMessage = ({
         data-testid="todo-list-header"
       >
         <Flex align="center" justify="center">
-          <Icon name="list" size=".75rem" mr="xs" c="brand" />
-          <Text size="sm" fw="bold" c="brand">{t`Todo List`}</Text>
+          <Icon name="list" size=".75rem" mr="xs" c="core-brand" />
+          <Text size="sm" fw="bold" c="core-brand">{t`Todo List`}</Text>
         </Flex>
         <Flex align="center" justify="center" h="md">
           <Icon
             name={opened ? "chevrondown" : "chevronup"}
             size=".75rem"
-            c="brand"
+            c="core-brand"
           />
         </Flex>
       </Group>
@@ -96,7 +96,7 @@ export const AgentTodoListMessage = ({
                   .with("cancelled", () => (
                     <Flex
                       className={S.statusIndicator}
-                      bg="brand"
+                      bg="core-brand"
                       align="center"
                       justify="center"
                       mr="sm"

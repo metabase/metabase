@@ -4,6 +4,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
@@ -23,7 +24,6 @@
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_chart"))
         (is (contains? (tool-names profile) "edit_chart"))))
-
     (testing "retrieves internal profile with default provider"
       (let [profile (profiles/get-profile :internal)]
         (is (some? profile))
@@ -32,12 +32,11 @@
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
         (is (vector? (:tools profile)))
-      ;; Should have more tools than embedding_next profile
+        ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))
         (is (contains? (tool-names profile) "create_chart"))))
-
     (testing "retrieves transforms_codegen profile"
       (let [profile (profiles/get-profile :transforms_codegen)]
         (is (some? profile))
@@ -48,7 +47,6 @@
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "list_available_fields"))))
-
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (=? {:name :sql
@@ -59,7 +57,6 @@
                 profile))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))))
-
     (testing "retrieves nlq profile"
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
@@ -67,9 +64,10 @@
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
+        ;; nlq offers both the general search and the curated search tool (the latter feature-gated)
         (is (contains? (tool-names profile) "search"))
+        (is (contains? (tool-names profile) "search_curated"))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
-
     (testing "retrieves slackbot profile"
       (let [profile (profiles/get-profile :slackbot)]
         (is (some? profile))
@@ -83,10 +81,8 @@
         (is (contains? (tool-names profile) "static_viz"))
         (is (contains? (tool-names profile) "create_alert"))
         (is (contains? (tool-names profile) "create_dashboard_subscription"))))
-
     (testing "returns nil for unknown profile"
       (is (nil? (profiles/get-profile :unknown-profile))))
-
     (testing "all profiles have required keys"
       (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]
@@ -139,7 +135,6 @@
               "edit_sql_query should NOT be available without permission:write_sql_queries")
           (is (not (contains? tools "replace_sql_query"))
               "replace_sql_query should NOT be available without permission:write_sql_queries")))
-
       (testing "full capabilities including SQL write permission should include SQL tools"
         (let [full-capabilities ["frontend:navigate_user_v1"
                                  "permission:save_questions"
@@ -155,7 +150,6 @@
               "edit_sql_query should be available with permission:write_sql_queries")
           (is (contains? tools "replace_sql_query")
               "replace_sql_query should be available with permission:write_sql_queries")))
-
       (testing "empty capabilities should exclude all capability-gated tools"
         (let [tools (profiles/get-tools-for-profile :internal [])]
           (is (contains? tools "search") "ungated tools should remain")
@@ -164,11 +158,12 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "embedding_next and nlq profiles have identical tool sets"
+  (testing "nlq has the same tools as embedding_next plus the (feature-gated) curated search tool"
     (let [tool-names  (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
           embedding   (profiles/get-profile :embedding_next)
           nlq         (profiles/get-profile :nlq)]
-      (is (= (tool-names nlq) (tool-names embedding)))))
+      (is (= (disj (tool-names nlq) "search_curated")
+             (tool-names embedding)))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "navigate_user is excluded without the capability"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
@@ -180,47 +175,73 @@
         (is (contains? tools "navigate_user"))))))
 
 (deftest transform-feature-capabilities-test
-  (let [orig-has-feature premium-features/has-feature?
+  (let [orig-has-feature (mt/original-fn #'premium-features/has-feature?)
         transform-tools #{#'tools.transforms/write-transform-sql-tool
                           #'tools.transforms/write-transform-python-tool}]
     (testing "Available with features present"
-      (with-redefs [premium-features/has-feature? (fn [feat]
-                                                    (if (#{:transforms-basic :transforms-python} feat)
-                                                      true
-                                                      (orig-has-feature feat)))]
+      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (fn [feat]
+                                                                  (if (#{:transforms-basic :transforms-python} feat)
+                                                                    true
+                                                                    (orig-has-feature feat)))]
         (is (= transform-tools
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))
     (testing "Not available with missing features"
-      (with-redefs [premium-features/is-hosted? (constantly true)
-                    premium-features/has-feature? (fn [feat]
-                                                    (if (#{:transforms-basic :transforms-python} feat)
-                                                      false
-                                                      (orig-has-feature feat)))]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
+                                  premium-features/has-feature? (fn [feat]
+                                                                  (if (#{:transforms-basic :transforms-python} feat)
+                                                                    false
+                                                                    (orig-has-feature feat)))]
         (is (= #{}
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))
     (testing "Sql tool available on self hosted instances"
-      (with-redefs [premium-features/is-hosted? (constantly false)
-                    premium-features/has-feature? (fn [feat]
-                                                    (if (#{:transforms-basic :transforms-python} feat)
-                                                      false
-                                                      (orig-has-feature feat)))]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)
+                                  premium-features/has-feature? (fn [feat]
+                                                                  (if (#{:transforms-basic :transforms-python} feat)
+                                                                    false
+                                                                    (orig-has-feature feat)))]
         (is (= #{#'tools.transforms/write-transform-sql-tool}
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))
     (testing "Python transform tools not available when basic transforms are not available"
-      (with-redefs [premium-features/is-hosted? (constantly true)
-                    premium-features/has-feature? (fn [feat]
-                                                    (cond
-                                                      (#{:transforms-basic} feat)
-                                                      false
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
+                                  premium-features/has-feature? (fn [feat]
+                                                                  (cond
+                                                                    (#{:transforms-basic} feat)
+                                                                    false
 
-                                                      (#{:transforms-python} feat)
-                                                      true
+                                                                    (#{:transforms-python} feat)
+                                                                    true
 
-                                                      :else
-                                                      (orig-has-feature feat)))]
+                                                                    :else
+                                                                    (orig-has-feature feat)))]
         (is (= #{}
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))))
+
+(deftest terminal-tools-test
+  (testing "the :sql profile marks its SQL write tools AND clarification terminal"
+    (is (= #{"create_sql_query" "edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"}
+           (:terminal-tools (profiles/get-profile :sql)))))
+  (testing "the document profile ends the turn on a constructed chart, not on schema collection"
+    (is (= #{"document_construct_model_chart" "document_construct_sql_chart"}
+           (:terminal-tools (profiles/get-profile :document-generate-content)))))
+  (testing "terminality is per-profile — profiles that share these tools don't inherit it"
+    (is (nil? (:terminal-tools (profiles/get-profile :internal))))
+    (is (nil? (:terminal-tools (profiles/get-profile :nlq))))))
+
+(deftest register-profile-validation-test
+  (let [base {:name            :scratch
+              :prompt-template "internal.selmer"
+              :max-iterations  10
+              :temperature     0.3
+              :tools           [#'tools/read-resource-tool]}]
+    (testing "rejects :always-on-skills that don't resolve to a registered skill"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unknown always-on skill"
+                            (#'profiles/register-profile!
+                             (assoc base :always-on-skills [:no-such-skill])))))
+    (testing "rejects :terminal-tools the profile does not expose"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"terminal tools it does not expose"
+                            (#'profiles/register-profile!
+                             (assoc base :terminal-tools #{"nonexistent_tool"})))))))

@@ -78,6 +78,9 @@
             :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
                                                                   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
                                                                                                      :exclude-db-ids [audit/audit-db-id])))
+            :can_access_workspaces   (or api/*is-superuser?* (and api/*is-data-analyst?*
+                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
+                                                                                                     :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
 
@@ -174,7 +177,8 @@
                                                :perm_type :perms/view-data
                                                :perm_value :blocked
                                                :group_id all-users-group-id
-                                               :db_id [:in db-ids])
+                                               :db_id [:in db-ids]
+                                               {:select-distinct [:db_id]})
           impersonation-db-ids (t2/select-fn-set :db_id :model/ConnectionImpersonation
                                                  :group_id all-users-group-id
                                                  :db_id [:in db-ids])
@@ -200,7 +204,8 @@
     (let [blocked-group-ids   (t2/select-fn-set :group_id :model/DataPermissions
                                                 :perm_type :perms/view-data
                                                 :perm_value :blocked
-                                                :group_id [:in group-ids])
+                                                :group_id [:in group-ids]
+                                                {:select-distinct [:group_id]})
           impersonation-group-ids (t2/select-fn-set :group_id :model/ConnectionImpersonation
                                                     :group_id [:in group-ids])
           sandbox-group-ids   (when (premium-features/enable-sandboxes?)
@@ -222,7 +227,8 @@
                                               :db_id db-id
                                               :perm_type :perms/view-data
                                               :perm_value :blocked
-                                              :group_id [:in group-ids])
+                                              :group_id [:in group-ids]
+                                              {:select-distinct [:group_id]})
           sandbox-group-ids (when (premium-features/enable-sandboxes?)
                               (into #{}
                                     (map :group_id)

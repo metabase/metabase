@@ -38,6 +38,7 @@ export interface InsightsMenuItemProps {
   card: Pick<Card, "id" | "collection">;
   label?: string;
   iconName?: IconName;
+  withDivider?: boolean;
 }
 
 const getDefaultPluginAudit = () => ({

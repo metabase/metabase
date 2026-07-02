@@ -22,7 +22,7 @@ You can create a new question from scratch, or build off of an existing question
 
   ![Native editor](./images/native-editor.png)
 
-  Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+  Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](../questions/visualizations/drill-through.md).
   You can also use [Metabot](../ai/metabot.md) to create questions using natural language. Just ask Metabot what you want to know about your data, and it can generate charts and queries for you.
 
 ## Saving questions

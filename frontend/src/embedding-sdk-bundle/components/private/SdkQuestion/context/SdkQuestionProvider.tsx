@@ -74,6 +74,7 @@ export const SdkQuestionProvider = ({
   entityTypes,
   dataPicker,
   targetCollection,
+  initialCollection,
   initialSqlParameters,
   sqlParameters,
   onSqlParametersChange,
@@ -86,6 +87,7 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onDrillThrough,
   onVisualizationChange,
+  initialVisualization,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
@@ -191,6 +193,7 @@ export const SdkQuestionProvider = ({
     deserializedCard,
     initialSqlParameters: effectiveInitialSqlParameters,
     targetDashboardId,
+    initialVisualization,
   });
 
   useWarnConflictingParameterProps({
@@ -317,6 +320,7 @@ export const SdkQuestionProvider = ({
     onCreate: handleCreate,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
     withDownloads,
     withAlerts,
     onRun,

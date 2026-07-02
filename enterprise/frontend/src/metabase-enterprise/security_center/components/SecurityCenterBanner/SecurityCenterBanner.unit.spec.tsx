@@ -14,8 +14,6 @@ import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
 import { SecurityCenterBanner } from "./SecurityCenterBanner";
 
-const DISMISSED_KEY = "security-center-banner-dismissed";
-
 interface SetupOpts {
   isProSelfHosted?: boolean;
   emailConfigured?: boolean;
@@ -60,22 +58,16 @@ function setup({
 }
 
 describe("SecurityCenterBanner", () => {
-  afterEach(() => {
-    localStorage.removeItem(DISMISSED_KEY);
-  });
-
-  it("renders warning banner when no channels are configured", async () => {
+  it("does not render when there is no active advisory", async () => {
     setup();
 
-    expect(
-      await screen.findByText(/Please configure notification channels/),
-    ).toBeInTheDocument();
+    await screen.findByText(() => false).catch(() => {});
+    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
   it("does not render when email is configured", async () => {
     setup({ emailConfigured: true });
 
-    // Wait for API responses to settle, then assert no banner
     await screen.findByText(() => false).catch(() => {});
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
@@ -104,46 +96,19 @@ describe("SecurityCenterBanner", () => {
     ).toBeInTheDocument();
   });
 
-  it("is dismissible when there are no active advisories", async () => {
-    setup();
-
-    await screen.findByTestId("app-banner");
-    expect(screen.getByLabelText("close icon")).toBeInTheDocument();
-  });
-
-  it("is not dismissible when there are active advisories", async () => {
+  it("is not dismissible", async () => {
     setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    // Wait for the error banner text to confirm advisory data has loaded
     await screen.findByText(/Please configure notification channels/);
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
-  it("stays hidden after dismissal when there are no active advisories", async () => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-
-    setup();
-
-    await screen.findByText(() => false).catch(() => {});
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
-  it("shows banner despite dismissal when there are active advisories", async () => {
-    localStorage.setItem(DISMISSED_KEY, "true");
-
+  it("includes a link to security center notification settings", async () => {
     setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
-
-    expect(
-      await screen.findByText(/Please configure notification channels/),
-    ).toBeInTheDocument();
-  });
-
-  it("includes a link to security center notification settings", async () => {
-    setup();
 
     const link = await screen.findByText("Security center");
     expect(link).toHaveAttribute(

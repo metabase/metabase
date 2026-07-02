@@ -26,6 +26,7 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)))
@@ -55,12 +56,17 @@
      (mapv name ks)
      (map #(mapv % ks) result))))
 
+(defn- parse-csv
+  "Parse CSV export bytes, stripping the leading UTF-8 BOM"
+  [s]
+  (csv/read-csv (cond-> s (string? s) u/strip-bom)))
+
 (defn- process-results
   [export-format results]
   (when (seq results)
     (case export-format
       :csv  (cond-> results
-              (not (map? results)) csv/read-csv)
+              (not (map? results)) parse-csv)
       :xlsx (read-xlsx results)
       :json (tabulate-maps results))))
 
@@ -591,7 +597,6 @@
               (testing "The headers also show the Row Totals header"
                 (is (= "Row totals"
                        (last (first result))))))))
-
         (testing "The Columns Properly indicate the pivot row names."
           (let [col1               (map first result)
                 col2               (map second result)
@@ -640,7 +645,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   true
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [[""
                    "Doohickey" "Doohickey"
                    "Gadget" "Gadget"
@@ -713,7 +718,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   true
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [["Created At: Month" "Category" "Sum of Price"]
                   ["May, 2016" "Doohickey" "144.12"]
                   ["May, 2016" "Gadget" "81.58"]
@@ -738,7 +743,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   false
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [["Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
                   ["2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
                  result)))))))
@@ -760,7 +765,7 @@
                                                 (format "card/%d/query/csv" pivot-card-id)
                                                 {:format_rows   true
                                                  :pivot_results true})
-                          csv/read-csv)]
+                          parse-csv)]
           (is (= [["Category" "Created At: Year" "Sum of Price" "Count"]
                   ["Doohickey" "2016" "632.14" "13"]
                   ["Doohickey" "2017" "854.19" "17"]
@@ -809,7 +814,6 @@
                   ["May, 2016" "144.12" "81.58" "75.09" "90.21" "391"]
                   ["June, 2016" "82.92" "75.53" "83.26" "" "241.71"]]
                  (take 3 pivot))))
-
         (testing "but only when `qp.settings/enable-pivoted-exports` is true"
           (mt/with-temporary-setting-values [qp.settings/enable-pivoted-exports false]
             (let [result      (mt/user-http-request :crowberto :post 200
@@ -883,7 +887,7 @@
           (let [result (->> (mt/user-http-request :crowberto :post 200
                                                   (format "card/%d/query/csv" pivot-card-id)
                                                   {:format_rows true})
-                            csv/read-csv)]
+                            parse-csv)]
             (is (= [["Category" "Created At: Month" "Sum of Price"]
                     ["Doohickey" "May, 2016" "144.12"]
                     ["Doohickey" "June, 2016" "82.92"]
@@ -1094,7 +1098,7 @@
 
 (deftest clean-errors-test
   (testing "Queries that error should not include visualization settings (metabase-private #233)"
-    (with-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
+    (mt/with-dynamic-fn-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
       (mt/with-temp [:model/Card {card-id :id} {:display                :table
                                                 :type                   :model
                                                 :dataset_query          {:database (mt/id)
@@ -1620,7 +1624,6 @@
                 val-unscaled (Double/parseDouble (first (second result-unscaled)))]
             (is (= val-scaled
                    (* val-unscaled 2.13)))))
-
         (testing "for json"
           (let [result-scaled (card-download card-scaled {:export-format :json :format-rows true})
                 result-unscaled (card-download card-unscaled {:export-format :json :format-rows true})
@@ -1738,7 +1741,6 @@
                   ["3"            ""      ""      "35.39" "35.39"]
                   ["Grand totals" ""      "53.98" ""      "55.7464"]]
                  (rest result))))))
-
     (mt/dataset test-data
       (mt/with-temp [:model/Card source-model
                      {:dataset_query
@@ -1796,7 +1798,6 @@
                                                    :breakout    [$product_id->products.category
                                                                  $product_id->products.vendor]
                                                    :limit       3})}]
-
           (testing "download"
             (let [res     (card-download pivot-card {:export-format :csv :pivot true :format-rows false})
                   headers (second res)]

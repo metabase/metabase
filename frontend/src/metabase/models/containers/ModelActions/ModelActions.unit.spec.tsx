@@ -19,7 +19,6 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
   createMockSettingsState,
@@ -197,8 +196,6 @@ async function setup({
     checkNotNull(metadata.question(q.id)),
   );
 
-  const modelUpdateSpy = jest.spyOn(Models.actions, "update");
-
   setupDatabasesEndpoints(databases);
   setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
@@ -230,12 +227,12 @@ async function setup({
           <ModalRoute
             path="new"
             modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
+            modalProps={{ transitionProps: { duration: 0 } }}
           />
           <ModalRoute
             path=":actionId"
             modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
+            modalProps={{ transitionProps: { duration: 0 } }}
           />
         </Route>
       </Route>
@@ -246,7 +243,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
+  return { model, history, baseUrl, metadata, usedByQuestions };
 }
 
 async function setupActions({
@@ -263,6 +260,13 @@ async function openActionMenu(action: WritebackAction) {
   const listItem = screen.getByRole("listitem", { name: action.name });
   const menuButton = within(listItem).getByLabelText("ellipsis icon");
   await userEvent.click(menuButton);
+}
+
+async function openHeaderActionsMenu() {
+  const header = screen.getByTestId("model-actions-header");
+  await userEvent.click(
+    within(header).getByRole("button", { name: "Actions" }),
+  );
 }
 
 describe("ModelActions", () => {
@@ -464,7 +468,7 @@ describe("ModelActions", () => {
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
 
-        await userEvent.click(screen.getByLabelText("Actions menu"));
+        await openHeaderActionsMenu();
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
@@ -580,7 +584,7 @@ describe("ModelActions", () => {
       await setupActions({ model: modelCard, actions: [action] });
       fetchMock.modifyRoute("action-post", { response: {} });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
       await userEvent.click(await screen.findByText("Create basic actions"));
 
       await waitFor(() => {
@@ -662,7 +666,7 @@ describe("ModelActions", () => {
         actions: createMockImplicitCUDActions(modelCard.id),
       });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText(/Create basic action/i),
@@ -672,7 +676,7 @@ describe("ModelActions", () => {
     it("doesn't allow to disable implicit actions if they don't exist", async () => {
       await setupActions({ model: modelCard, actions: [] });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText("Disable basic actions"),

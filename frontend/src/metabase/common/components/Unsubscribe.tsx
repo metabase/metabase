@@ -3,7 +3,12 @@ import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
+import {
+  useUndoUnsubscribeFromNotificationByEmailMutation,
+  useUndoUnsubscribeFromPulseMutation,
+  useUnsubscribeFromNotificationByEmailMutation,
+  useUnsubscribeFromPulseMutation,
+} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
@@ -11,11 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import {
-  NotificationUnsubscribeApi,
-  PulseUnsubscribeApi,
-} from "metabase/services";
-import { Center, Stack, Text } from "metabase/ui";
+import { Button, Center, Stack, Text } from "metabase/ui";
 
 import {
   CheckmarkIcon,
@@ -143,7 +144,7 @@ function SuccessfulRequestWrapper({
       <Text fw={700} c="text-secondary" mb="0.75rem" ta="center">
         {text}
       </Text>
-      <Button primary onClick={action}>
+      <Button variant="filled" onClick={action}>
         {buttonText}
       </Button>
     </Stack>
@@ -181,6 +182,13 @@ function useUnsubscribeRequest({
     return undefined;
   }, [hash, email, pulseId, notificationHandlerId]);
 
+  const [unsubscribeFromPulse] = useUnsubscribeFromPulseMutation();
+  const [undoUnsubscribeFromPulse] = useUndoUnsubscribeFromPulseMutation();
+  const [unsubscribeFromNotification] =
+    useUnsubscribeFromNotificationByEmailMutation();
+  const [undoUnsubscribeFromNotification] =
+    useUndoUnsubscribeFromNotificationByEmailMutation();
+
   const {
     value: data,
     loading: isLoading,
@@ -190,17 +198,27 @@ function useUnsubscribeRequest({
       throw new Error(ERRORS.MISSING_REQUIRED_PARAMETERS);
     }
 
-    const api = notificationHandlerId
-      ? NotificationUnsubscribeApi
-      : PulseUnsubscribeApi;
+    const isUnsubscribe = subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE;
 
-    const method =
-      subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE
-        ? api.unsubscribe
-        : api.undo_unsubscribe;
+    const triggers = notificationHandlerId
+      ? {
+          unsubscribe: unsubscribeFromNotification,
+          undo: undoUnsubscribeFromNotification,
+        }
+      : { unsubscribe: unsubscribeFromPulse, undo: undoUnsubscribeFromPulse };
 
-    return await method(params);
-  }, [params, subscriptionChange]);
+    const unsubscribe = isUnsubscribe ? triggers.unsubscribe : triggers.undo;
+
+    return await unsubscribe(params).unwrap();
+  }, [
+    params,
+    subscriptionChange,
+    notificationHandlerId,
+    unsubscribeFromPulse,
+    undoUnsubscribeFromPulse,
+    unsubscribeFromNotification,
+    undoUnsubscribeFromNotification,
+  ]);
 
   return { data, isLoading, error };
 }
