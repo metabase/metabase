@@ -11,6 +11,7 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
+import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { useDashboardUrlQuery } from "./use-dashboard-url-query";
@@ -39,7 +40,7 @@ const DASHBOARD_ID = 1;
 type SetupOptions = {
   dashboardId?: number | null;
   parameters?: ReturnType<typeof createMockParameter>[];
-  parameterValues?: Record<string, unknown>;
+  parameterValues?: Record<string, ParameterValueOrArray | null | undefined>;
   tabs?: { id: number; name: string }[];
   selectedTabId?: number | null;
   pathname?: string;
