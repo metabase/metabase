@@ -394,14 +394,21 @@
                   new-id (:id (first (filter :active rows)))]
               (is (= 2 (count rows)) "stale-schema sync should produce a duplicate pair")
               (is (some? new-id) "a freshly-synced active row exists")
-              (let [a-field-id (t2/select-one-pk :model/Field :table_id new-id)]
+              (let [a-field    (t2/select-one [:model/Field :id :name :base_type] :table_id new-id)
+                    a-field-id (:id a-field)]
                 (mt/with-temp [:model/Card {card-id :id}
-                               {:database_id   audit/audit-db-id
-                                :table_id      new-id
-                                :dataset_query {:database audit/audit-db-id
-                                                :type     :query
-                                                :query    (cond-> {:source-table new-id}
-                                                            a-field-id (assoc :fields [[:field a-field-id nil]]))}}]
+                               {:database_id     audit/audit-db-id
+                                :table_id        new-id
+                                :dataset_query   {:database audit/audit-db-id
+                                                  :type     :query
+                                                  :query    (cond-> {:source-table new-id}
+                                                              a-field-id (assoc :fields [[:field a-field-id nil]]))}
+                                ;; legacy-style result_metadata (id at position 1), as the QP stores it
+                                :result_metadata (when a-field-id
+                                                   [{:name      (:name a-field)
+                                                     :base_type (:base_type a-field)
+                                                     :id        a-field-id
+                                                     :field_ref [:field a-field-id nil]}])}]
                   (testing "ensure-audit-db-installed! self-heals without destroying the customer card"
                     (ee-audit/ensure-audit-db-installed!)
                     (is (true? (t2/exists? :model/Card :id card-id))
@@ -415,7 +422,13 @@
                       (when a-field-id
                         (is (some? ref-field-id) "card's field ref survived the rewrite")
                         (is (= healed-tid (t2/select-one-fn :table_id :model/Field :id ref-field-id))
-                            "card's field ref must resolve to a field on the survivor table")))))))))))))
+                            "card's field ref must resolve to a field on the survivor table")
+                        (testing "result_metadata (legacy field_ref) is remapped onto the survivor"
+                          (let [col (-> healed :result_metadata first)]
+                            (is (= healed-tid (t2/select-one-fn :table_id :model/Field :id (:id col)))
+                                "result_metadata :id resolves to a survivor field")
+                            (is (= (:id col) (nth (:field_ref col) 1))
+                                "result_metadata legacy :field_ref id matches the remapped :id")))))))))))))))
 
 (deftest checksum-not-advanced-until-host-adjust-completes-test
   ;; GHY-3974 Mode B: `last-analytics-checksum` must not advance until the audit DB is fully back at the

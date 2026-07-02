@@ -3,7 +3,6 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -377,24 +376,30 @@
                     [id survivor-field-id])))
           (t2/select [:model/Field :id :name] :table_id orphan-table-id))))
 
-(defn- repoint-refs
-  "Rewrite an MBQL / result-metadata form, moving references off the orphan table onto the survivor:
-   `:source-table orphan-table-id` becomes `survivor-table-id`, and id-based `:field` refs are remapped onto the
-   survivor's fields via `field-id-remap`."
-  [form orphan-table-id survivor-table-id field-id-remap]
-  (walk/postwalk
-   (fn [x]
-     (cond
-       (lib/clause-of-type? x :field)
-       (if-let [survivor-field-id (some-> (lib/field-ref-id x) field-id-remap)]
-         (lib/with-field-ref-id x survivor-field-id)
-         x)
+(defn- remap-result-metadata-ref
+  "Remap the Field ID of a single result-metadata `:field_ref` via `field-id-remap`. Handles legacy refs
+   (`[:field id opts]`, `[:field-id id]`, id second) and pMBQL refs (`[:field opts id]`, id last). Non-field refs and
+   ids with no remapping are returned unchanged."
+  [field-id-remap ref]
+  (if (and (vector? ref) (#{:field :field-id} (first ref)))
+    (let [idx (if (map? (second ref)) 2 1)
+          id  (nth ref idx nil)]
+      (if (and (pos-int? id) (field-id-remap id))
+        (assoc ref idx (field-id-remap id))
+        ref))
+    ref))
 
-       (and (map? x) (= orphan-table-id (:source-table x)))
-       (assoc x :source-table survivor-table-id)
-
-       :else x))
-   form))
+(defn- remap-result-metadata
+  "Remap orphan Field IDs onto survivor fields in a card's `result_metadata` columns — the `:id`,
+   `:fk_target_field_id`, and `:field_ref` of each column — via `field-id-remap`. Result metadata is stored, not a
+   Lib query, so it's handled here rather than by the Lib query helpers."
+  [field-id-remap result-metadata]
+  (mapv (fn [col]
+          (cond-> col
+            (field-id-remap (:id col))                 (update :id field-id-remap)
+            (field-id-remap (:fk_target_field_id col)) (update :fk_target_field_id field-id-remap)
+            (:field_ref col)                           (update :field_ref #(remap-result-metadata-ref field-id-remap %))))
+        result-metadata))
 
 (defn- repoint-cards-to-survivor!
   "Move every card that references `orphan-table-id` onto `survivor-table-id` by rewriting its query and result
@@ -402,17 +407,14 @@
    column alone is silently reverted — and the orphan's FK is ON DELETE CASCADE, so a card left behind is destroyed
    when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
   [orphan-table-id survivor-table-id]
-  (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)
-        rewrite        #(repoint-refs % orphan-table-id survivor-table-id field-id-remap)]
+  (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
     (doseq [card (t2/select :model/Card :table_id orphan-table-id)]
       (t2/update! :model/Card (:id card)
-                  (cond-> {:dataset_query (rewrite (:dataset_query card))}
+                  (cond-> {:dataset_query (-> (:dataset_query card)
+                                              (lib/replace-table-ids {orphan-table-id survivor-table-id})
+                                              (lib/replace-field-ids field-id-remap))}
                     (:result_metadata card)
-                    (assoc :result_metadata
-                           (mapv (fn [col]
-                                   (cond-> col
-                                     (contains? field-id-remap (:id col)) (assoc :id (field-id-remap (:id col)))))
-                                 (rewrite (:result_metadata card)))))))))
+                    (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card))))))))
 
 (defn- reconcile-audit-db-duplicates!
   "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical
