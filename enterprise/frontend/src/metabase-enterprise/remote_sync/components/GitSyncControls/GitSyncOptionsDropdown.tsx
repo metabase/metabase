@@ -85,14 +85,9 @@ export const GitSyncOptionsDropdown = ({
 
         {isSwitchBranchDisabled ? (
           <Badge
-            color="text-primary"
-            bg="background_page-secondary"
-            size="md"
-            fz="12px"
-            py="md"
             my="xs"
-            style={{ textTransform: "none" }}
-            bdrs="sm"
+            size="sm"
+            variant="light"
           >{t`Branch set by an environment variable`}</Badge>
         ) : (
           <Combobox.Option
