@@ -30,6 +30,7 @@
    [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
+   (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
@@ -320,6 +321,17 @@
   []
   (pos? *connection-recursion-depth*))
 
+(defn- connection-checkout-timeout?
+  "True if `e` (or anything in its cause chain) is a c3p0 pool-checkout timeout, i.e. the data-warehouse connection
+  pool was exhausted and the wait exceeded [[driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms]].
+  c3p0 signals this by throwing a `SQLException` caused by a `com.mchange.v2.resourcepool.TimeoutException`."
+  [^Throwable e]
+  (loop [cause e]
+    (cond
+      (nil? cause)                        false
+      (instance? TimeoutException cause)  true
+      :else                               (recur (.getCause cause)))))
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -341,10 +353,19 @@
                          (try
                            (.getConnection conn-data-source)
                            (catch Throwable e
-                             (throw (ex-info (tru "Unable to connect to the database: {0}" (ex-message e))
-                                             {:type   driver-api/qp.error-type.unable-to-acquire-connection
-                                              :driver driver}
-                                             e))))))]
+                             ;; A c3p0 `checkoutTimeout` blows up as a SQLException caused by a
+                             ;; `com.mchange.v2.resourcepool.TimeoutException` — the pool is saturated, so tag it as a
+                             ;; timed-out-acquiring-connection error, which the QP streaming layer turns into an HTTP
+                             ;; 429 (telling the frontend to back off) rather than a generic connection error.
+                             (let [timed-out? (connection-checkout-timeout? e)]
+                               (throw (ex-info (if timed-out?
+                                                 (tru "Too many queries are running. Please try again in a moment.")
+                                                 (tru "Unable to connect to the database: {0}" (ex-message e)))
+                                               {:type   (if timed-out?
+                                                          driver-api/qp.error-type.timed-out-acquiring-connection
+                                                          driver-api/qp.error-type.unable-to-acquire-connection)
+                                                :driver driver}
+                                               e)))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]

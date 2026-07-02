@@ -127,6 +127,20 @@
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
+(defsetting jdbc-data-warehouse-connection-pool-checkout-timeout-ms
+  "Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  [[jdbc-data-warehouse-max-connection-pool-size]] before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 429 rather than letting the request queue grow without limit."
+  :visibility :internal
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a \"too many requests\" (HTTP 429) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.")
+
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))

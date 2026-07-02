@@ -232,3 +232,23 @@
                         :native   {:query "SELECT 1"}}
               response (mt/user-http-request :crowberto :post 400 "dataset" query)]
           (is (= "unable-to-acquire-connection" (:error_type response))))))))
+
+(deftest connection-pool-checkout-timeout-returns-429-test
+  (testing "A c3p0 checkout timeout (saturated pool) surfaces to the frontend as an HTTP 429"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
+                                             :engine  driver/*driver*}]
+        (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                      sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [_driver _db-or-id-or-spec _options]
+                        (reify javax.sql.DataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException.
+                                    "An attempt by a client to checkout a Connection has timed out."
+                                    (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))))]
+          (let [query    {:database (:id tmp-db)
+                          :type     :native
+                          :native   {:query "SELECT 1"}}
+                response (mt/user-http-request :crowberto :post 429 "dataset" query)]
+            (is (= "timed-out-acquiring-connection" (:error_type response)))))))))
