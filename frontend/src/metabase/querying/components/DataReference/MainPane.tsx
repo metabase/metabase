@@ -5,6 +5,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 
 import {
   NodeListItemIcon,
@@ -31,6 +32,16 @@ export const MainPane = ({
           {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
         </p>
         <ul>
+          {PLUGIN_LIBRARY.isEnabled && (
+            <li>
+              <NodeListItemLink
+                onClick={() => onItemClick({ type: "library" })}
+              >
+                <NodeListItemIcon name="repository" />
+                <NodeListItemName>{t`Library`}</NodeListItemName>
+              </NodeListItemLink>
+            </li>
+          )}
           {data?.data?.map((database) => (
             <li key={database.id}>
               <NodeListItemLink
