@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -1352,6 +1352,20 @@ describe("issue 13347", () => {
       database: WRITABLE_DB_ID,
       native: {
         query: "SELECT * FROM ORDERS",
+      },
+    });
+
+    // The normal user belongs to the data group, which would otherwise get
+    // query-builder access to this database by default. Revoke create-queries so
+    // the user cannot build new questions on it - the condition this issue is
+    // about. (Avoid view-data "blocked", which needs the advanced-permissions
+    // token feature this spec doesn't have.)
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.DATA_GROUP]: {
+        [WRITABLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
       },
     });
 

@@ -125,6 +125,14 @@ jobs:
         with:
           test-suite: fe-tests-unit
           adapter: frontend
+      - name: Quarantine gate (dry run)
+        if: ${{ always() && steps.fe-tests.outcome != 'success' }}
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: frontend
+          test-suite: fe-tests-unit
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && github.event_name != 'workflow_dispatch'

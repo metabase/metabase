@@ -46,15 +46,15 @@
 
 ;;; ------------------------------------------------- Transform Type Predicates -------------------------------------------------
 
-(defn transform-type
-  "Get the type of a transform"
-  [transform]
-  (-> transform :source :type keyword))
+(defn- type-is?
+  "True if `m`'s keywordized `:type` equals `t`."
+  [m t]
+  (= t (keyword (:type m))))
 
 (defn query-transform?
   "Check if this is a query transform: native query / mbql query."
   [transform]
-  (= :query (transform-type transform)))
+  (type-is? (:source transform) :query))
 
 (defn native-query-transform?
   "Check if this is a native query transform.
@@ -63,6 +63,45 @@
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
       (lib/native-only-query? query))))
+
+(defn python-transform?
+  "Check if this is a Python transform."
+  [transform]
+  (type-is? (:source transform) :python))
+
+(defn incremental-target?
+  "True if `transform` writes to an incremental table."
+  [transform]
+  (type-is? (:target transform) :table-incremental))
+
+(defn merge-target?
+  "True if `transform`'s target uses the merge strategy."
+  [transform]
+  (type-is? (get-in transform [:target :target-incremental-strategy]) :merge))
+
+(defn checkpoint-source?
+  "True if `transform`'s source uses the checkpoint strategy."
+  [transform]
+  (type-is? (get-in transform [:source :source-incremental-strategy]) :checkpoint))
+
+(defn transform-source-database
+  "Get the source database from a transform"
+  [transform]
+  (cond
+    (query-transform? transform)  (-> transform :source :query :database)
+    (python-transform? transform) (-> transform :source :source-database)))
+
+(defn full-incremental-run?
+  "True when an incremental transform should drop-and-recreate the target rather than append.
+  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
+  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
+  change. Stays true across failed attempts since the predicate only inspects
+  `:last_checkpoint_value`."
+  [transform]
+  (and (incremental-target? transform)
+       (nil? (:last_checkpoint_value transform))))
+
+;;; ------------------------------------------------- Table Template Tags -------------------------------------------------
 
 (defn table-template-tag-name
   "Return the name (key) of the table template tag in `query` that refers to `table-id`, or nil.
@@ -90,18 +129,6 @@
         table-id (when field-id (t2/select-one-fn :table_id :model/Field field-id))]
     (table-template-tag-name (:query source) table-id)))
 
-(defn python-transform?
-  "Check if this is a Python transform."
-  [transform]
-  (= :python (transform-type transform)))
-
-(defn transform-source-database
-  "Get the source database from a transform"
-  [transform]
-  (case (transform-type transform)
-    :query (-> transform :source :query :database)
-    :python (-> transform :source :source-database)))
-
 ;;; ------------------------------------------------- Transform Normalization -------------------------------------------------
 
 (defn normalize-transform
@@ -109,7 +136,7 @@
   This should be called on transforms before processing them to ensure queries are in the expected format."
   [transform]
   (if (and (map? transform)
-           (= (:type transform) "transform")
+           (type-is? transform :transform)
            (get-in transform [:source :query]))
     (update-in transform [:source :query] lib-be/normalize-query)
     transform))
@@ -119,13 +146,13 @@
   Throws if the source type cannot be detected.
   Note: The transform should be normalized (via `normalize-transform`) before calling this function."
   [source]
-  (case (keyword (:type source))
-    :python :python
-    :query  (if (lib/native-only-query? (:query source))
-              :native
-              :mbql)
-    (throw (ex-info (str "Unknown transform source type: " (:type source))
-                    {:source source}))))
+  (cond
+    (type-is? source :python) :python
+    (type-is? source :query)  (if (lib/native-only-query? (:query source))
+                                :native
+                                :mbql)
+    :else (throw (ex-info (str "Unknown transform source type: " (:type source))
+                          {:source source}))))
 
 ;;; ------------------------------------------------- Feature Checks -------------------------------------------------
 
@@ -197,16 +224,6 @@
   [base-type]
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
-
-(defn full-incremental-run?
-  "True when an incremental transform should drop-and-recreate the target rather than append.
-  Fires whenever `last_checkpoint_value` is nil — covers the literal first run, and any run after the
-  `:model/Transform` before-update hook clears the watermark on a `checkpoint-filter-field-id`
-  change. Stays true across failed attempts since the predicate only inspects
-  `:last_checkpoint_value`."
-  [{:keys [target last_checkpoint_value]}]
-  (and (= :table-incremental (keyword (:type target)))
-       (nil? last_checkpoint_value)))
 
 (defn- encode-checkpoint-value [v]
   (if (number? v)
@@ -310,17 +327,17 @@
    :lo                         values in the source table must be > this :value.
    :hi                         values in the source table must be <= this :value.
    :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
-  [{:keys [source target] :as transform}]
+  [{:keys [source] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
-    (when (and (= "table-incremental" (:type target))
+    (when (and (incremental-target? transform)
                (native-query-transform? transform)
                (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
                           (lib/template-tags (:query source)))))
       (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
                                "Please add a table variable to the query and update the checkpoint field."))]
         (throw (ex-info msg {:transform-message msg}))))
-    (when (and (= "table-incremental" (:type target))
+    (when (and (incremental-target? transform)
                (not checkpoint-filter-field-id))
       (let [msg (i18n/tru (str "Incremental transform is enabled but no checkpoint field is selected. "
                                "Please select a checkpoint field in the transform settings."))]
@@ -614,6 +631,28 @@
   [transform]
   (t2/select-one :model/Table :transform_id (:id transform)))
 
+(defn merge-target-unique-key
+  "Physical column names of a transform's `merge` unique key, or nil when the target isn't a merge target."
+  [transform]
+  (when (merge-target? transform)
+    (not-empty (mapv :name (get-in transform [:target :target-incremental-strategy :unique-key])))))
+
+(defn target-column-names
+  "Physical column names of a transform's synced target table, ordered by position, or nil."
+  [transform]
+  (when-let [table (output-table transform)]
+    (not-empty (t2/select-fn-vec :name [:model/Field :name :position]
+                                 :table_id (:id table) :active true
+                                 {:order-by [[:position :asc]]}))))
+
+(defn validate-merge-unique-key!
+  "Throws if any of `unique-key` is not present in `columns`. Returns `unique-key`."
+  [unique-key columns]
+  (when-let [missing (not-empty (remove (set columns) unique-key))]
+    (let [msg (i18n/tru "Merge unique key references columns not present in the target: {0}"
+                        (str/join ", " missing))]
+      (throw (ex-info msg {:transform-message msg}))))
+  unique-key)
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------
