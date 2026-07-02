@@ -1072,11 +1072,11 @@ describe("issue 35840", () => {
 
   function checkColumnMapping(path: string[]) {
     H.pickEntity({ path, select: true });
-    H.modal().findByText("Pick a column…").click();
-    H.popover().findAllByText("Category").eq(0).click();
+    H.modal().findByPlaceholderText("Pick a column…").click();
+    cy.findByRole("listbox").findAllByText("Category").eq(0).click();
     H.modal().within(() => {
-      cy.findByText("Category").should("be.visible");
-      cy.findByText("Category, Category").should("not.exist");
+      cy.findByDisplayValue("Category").should("be.visible");
+      cy.findByDisplayValue("Category, Category").should("not.exist");
     });
   }
 

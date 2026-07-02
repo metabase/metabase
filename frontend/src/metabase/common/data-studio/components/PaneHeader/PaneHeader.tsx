@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { FC, ReactNode } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -16,6 +16,8 @@ import {
   Group,
   Stack,
   type StackProps,
+  Tabs,
+  type TabsTabProps,
   Tooltip,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
@@ -134,40 +136,45 @@ export function PaneHeaderInput({
 
 type PaneHeaderTabsProps = {
   tabs: PaneHeaderTab[];
-  withBackground?: boolean;
 };
 
-export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
+/**
+ * Mantine's `Tabs.Tab` is built with the non-polymorphic `factory`, so
+ * `component`/`to` aren't in its prop types. However it still accepts the
+ * prop and it works as expected, thus type casting.
+ */
+const LinkTab = Tabs.Tab as FC<
+  TabsTabProps & { component: typeof Link; to: string }
+>;
+
+function isTabSelected(tab: PaneHeaderTab, pathname: string) {
+  const { to, isSelected } = tab;
+  return typeof isSelected === "function"
+    ? isSelected(pathname)
+    : (isSelected ?? to === pathname);
+}
+
+export function PaneHeaderTabs({ tabs }: PaneHeaderTabsProps) {
   const { pathname } = useSelector(getLocation);
-  const backgroundColor = withBackground
-    ? "background_page-secondary"
-    : "transparent";
+  const activeTab = tabs.find((tab) => isTabSelected(tab, pathname));
 
   return (
-    <Group gap="sm">
-      {tabs.map(({ label, to, icon, isGated, isSelected }) => {
-        const selected =
-          typeof isSelected === "function"
-            ? isSelected(pathname)
-            : (isSelected ?? to === pathname);
-        return (
-          <Button
+    <Tabs variant="pills" value={activeTab?.to ?? null}>
+      <Tabs.List>
+        {tabs.map(({ label, to, icon, isGated }) => (
+          <LinkTab
             key={label}
+            value={to}
             component={Link}
             to={to}
-            size="sm"
-            radius="xl"
-            c={selected ? "core-brand" : undefined}
-            bg={selected ? "background_surface-selected" : backgroundColor}
-            bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
             rightSection={isGated ? <UpsellGem.New size={14} /> : null}
           >
             {label}
-          </Button>
-        );
-      })}
-    </Group>
+          </LinkTab>
+        ))}
+      </Tabs.List>
+    </Tabs>
   );
 }
 

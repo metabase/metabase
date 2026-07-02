@@ -282,7 +282,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.findByText("You've made changes to permissions.");
 
       // Switching to databases focus should not show any warnings
-      cy.get("label").contains("Databases").click();
+      cy.findByRole("tab", { name: "Databases" }).click();
 
       cy.url().should("include", "/admin/permissions/data/database");
       H.modal().should("not.exist");
@@ -422,7 +422,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
             groups: {},
             revision: data.response.body.revision,
           }).then(() => {
-            cy.get("label").contains("Databases").click();
+            cy.findByRole("tab", { name: "Databases" }).click();
             H.selectSidebarItem("Sample Database");
 
             H.modal().findByText("Someone just changed permissions");

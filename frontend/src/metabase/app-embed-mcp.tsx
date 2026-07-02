@@ -8,8 +8,10 @@ import { createRoot } from "react-dom/client";
 import "metabase/embedding-sdk/vendors-side-effects";
 
 import { api } from "metabase/api/client";
+import { setSessionTokenHeader } from "metabase/embedding/lib/embedding-request-auth";
 import { McpUiAppRoute } from "metabase/embedding/mcp/McpUiAppRoute";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { PLUGIN_API } from "metabase/plugins";
 
 // Load EE plugins (whitelabeling, etc.) - no-op in OSS
 import "sdk-iframe-embedding-ee-plugins";
@@ -28,7 +30,8 @@ if (instanceUrl) {
 }
 
 if (sessionToken) {
-  api.sessionToken = sessionToken;
+  PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+    setSessionTokenHeader(sessionToken);
 }
 
 function init() {
