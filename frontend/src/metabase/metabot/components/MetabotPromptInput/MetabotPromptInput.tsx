@@ -15,7 +15,6 @@ import {
   parseChartClipboard,
 } from "metabase/common/utils/chart-clipboard";
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { encodeAdhocChartPayload } from "metabase/metabot/utils/adhoc-mention";
 import { useSelector } from "metabase/redux";
 import {
   MetabotMentionExtension,
@@ -29,7 +28,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DatabaseId } from "metabase-types/api";
 
-import { AdhocChartMention } from "./AdhocChartMention";
+import { ChartMention } from "./ChartMention";
 import S from "./MetabotPromptInput.module.css";
 import {
   parseClipboardTextAsParagraphs,
@@ -37,23 +36,20 @@ import {
   serializeTiptapToMetabotMessage,
 } from "./utils";
 
-function insertAdhocChartMention(
-  editor: Editor,
-  payload: ChartClipboardPayload,
-) {
-  const encoded = encodeAdhocChartPayload({
-    query: payload.dataset_query,
-    display: payload.display,
-    name: payload.name,
-    description: payload.description,
-    visualization_settings: payload.visualization_settings,
-  });
+function insertChartMention(editor: Editor, payload: ChartClipboardPayload) {
+  if (!payload.chart_id) {
+    return;
+  }
   editor
     .chain()
     .focus()
     .insertContent({
-      type: "adhocChartMention",
-      attrs: { payload: encoded, label: payload.name },
+      type: "chartMention",
+      attrs: {
+        chartId: payload.chart_id,
+        label: payload.name,
+        display: payload.display,
+      },
     })
     .insertContent(" ")
     .run();
@@ -67,6 +63,7 @@ export interface MetabotPromptInputProps {
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onStop: () => void;
+  onPasteChart?: (payload: ChartClipboardPayload) => void;
   suggestionConfig: {
     suggestionModels: SuggestionModel[];
     onlyDatabaseId?: DatabaseId;
@@ -86,6 +83,7 @@ export const MetabotPromptInput = forwardRef<
       onChange,
       onSubmit,
       onStop,
+      onPasteChart,
       ...props
     },
     ref,
@@ -124,7 +122,7 @@ export const MetabotPromptInput = forwardRef<
           ),
         },
       }),
-      AdhocChartMention,
+      ChartMention,
     ];
 
     const editor = useEditor(
@@ -174,7 +172,7 @@ export const MetabotPromptInput = forwardRef<
               const payload = parseChartClipboard(
                 e.clipboardData?.getData("text/plain"),
               );
-              if (!payload) {
+              if (!payload?.chart_id) {
                 return false;
               }
               e.preventDefault();
@@ -240,8 +238,9 @@ export const MetabotPromptInput = forwardRef<
 
     onPasteChartRef.current = (payload: ChartClipboardPayload) => {
       if (editor) {
-        insertAdhocChartMention(editor, payload);
+        insertChartMention(editor, payload);
       }
+      onPasteChart?.(payload);
     };
 
     useImperativeHandle(ref, () => {

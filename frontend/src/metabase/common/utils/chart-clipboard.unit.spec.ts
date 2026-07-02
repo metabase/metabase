@@ -58,6 +58,26 @@ describe("chart-clipboard", () => {
     });
   });
 
+  it("round-trips the chart id and query id when present", () => {
+    const text = serializeChartClipboard(
+      {
+        name: "Orders by month",
+        display: "bar",
+        dataset_query: datasetQuery,
+        visualization_settings: {},
+        chart_id: "chart-1",
+        query_id: "query-1",
+      },
+      SITE_URL,
+    );
+
+    expect(text).toContain("mb_chart_id=chart-1");
+    expect(text).toContain("mb_query_id=query-1");
+    const parsed = parseChartClipboard(text);
+    expect(parsed?.chart_id).toBe("chart-1");
+    expect(parsed?.query_id).toBe("query-1");
+  });
+
   it("does not double up the slash when the site url has a trailing slash", () => {
     const text = serializeChartClipboard(
       {

@@ -153,6 +153,7 @@ export const MetabotChat = ({
               {/* conversation messages */}
               <Messages
                 messages={metabot.messages}
+                agentId={config.agentId}
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
@@ -193,6 +194,7 @@ export const MetabotChat = ({
               onChange={metabot.setPrompt}
               onSubmit={handleEditorSubmit}
               onStop={metabot.cancelRequest}
+              onPasteChart={metabot.onPasteChart}
               suggestionConfig={{
                 suggestionModels: config.suggestionModels,
               }}

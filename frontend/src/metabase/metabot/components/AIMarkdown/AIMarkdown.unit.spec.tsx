@@ -10,7 +10,12 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 import { AIMarkdown } from "./AIMarkdown";
 
-const setup = (props: { children: string }) => {
+const setup = (props: {
+  children: string;
+  resolveChartLink?: (
+    url: string | undefined,
+  ) => { href: string; display?: "bar" } | undefined;
+}) => {
   setupEnterprisePlugins();
   const settings = mockSettings({ "site-url": "http://localhost:3000" });
 
@@ -37,6 +42,23 @@ describe("AIMarkdown", () => {
     expect(link).toBeInTheDocument();
 
     // Verify it's rendered as a smart link by checking for the icon
+    expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+  });
+
+  it("should render a generated-chart mention as plain label text when it cannot be resolved", async () => {
+    setup({ children: "[Orders by month](metabase://chart/chart-1)" });
+
+    expect(await screen.findByText("Orders by month")).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("should render a resolvable generated-chart mention as an icon chip", async () => {
+    setup({
+      children: "[Orders by month](metabase://chart/chart-1)",
+      resolveChartLink: () => ({ href: "/question#abc", display: "bar" }),
+    });
+
+    expect(await screen.findByText("Orders by month")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
   });
 
