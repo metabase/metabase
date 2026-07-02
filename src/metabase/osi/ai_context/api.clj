@@ -125,12 +125,14 @@
   This call never reuses a reconcile already in progress (it may have started before your latest change);
   it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls
   share.
-  Requires the semantic search feature; returns a 400 when it isn't configured."
+  Requires the library entity-retrieval feature; returns a 400 when the index is unavailable (the feature
+  isn't licensed, or the pgvector store or embedding backend isn't configured)."
   [_route-params
    _query-params]
   (api/check-superuser)
   (api/check-400 (entity-retrieval/force-reconcile!)
-                 "The library entity index requires semantic search, which is not configured."))
+                 (str "The library entity index is unavailable: it needs the library entity-retrieval "
+                      "feature plus a configured pgvector store and embedding backend.")))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:entity-type/:entity-local-id"
