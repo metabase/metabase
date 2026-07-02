@@ -55,7 +55,10 @@ const setup = ({
     createError
       ? {
           status: 400,
-          body: { errors: { email: "Email address already in use." } },
+          body: {
+            error_code: "email-already-in-use",
+            errors: { email: "Email address already in use." },
+          },
         }
       : CREATED_USER,
   );

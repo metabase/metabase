@@ -55,17 +55,17 @@ describe("getErrorMessage", () => {
 });
 
 describe("isEmailAlreadyInUse", () => {
-  it("flags only a 400 carrying errors.email", () => {
+  it("flags only a body carrying the email-already-in-use error_code", () => {
     expect(
       isEmailAlreadyInUse({
         status: 400,
-        data: { errors: { email: "Email address already in use." } },
+        data: { error_code: "email-already-in-use" },
       }),
     ).toBe(true);
-    expect(isEmailAlreadyInUse({ status: 400, data: { errors: {} } })).toBe(
-      false,
-    );
-    expect(isEmailAlreadyInUse({ status: 500 })).toBe(false);
+    expect(
+      isEmailAlreadyInUse({ status: 400, data: { error_code: "archived" } }),
+    ).toBe(false);
+    expect(isEmailAlreadyInUse({ status: 400, data: {} })).toBe(false);
     expect(isEmailAlreadyInUse(undefined)).toBe(false);
   });
 });

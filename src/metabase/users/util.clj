@@ -64,8 +64,9 @@
     :as   attributes} :- [:map
                           [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
   (api/check-superuser)
-  (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
-              "email" (tru "Email address already in use."))
+  (api/check-400 (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
+                 {:errors     {:email (tru "Email address already in use.")}
+                  :error_code "email-already-in-use"})
   (api/checkp (not (and tenant-id
                         (not (setting/get :use-tenants))))
               "tenant_id"

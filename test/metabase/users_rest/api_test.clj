@@ -944,7 +944,8 @@
 (deftest create-user-mixed-case-email-2
   (testing "POST /api/user/:id"
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
-      (is (=? {:errors {:email "Email address already in use."}}
+      (is (=? {:errors     {:email "Email address already in use."}
+               :error_code "email-already-in-use"}
               (mt/user-http-request :crowberto :post 400 "user"
                                     {:first_name "Something"
                                      :last_name "Random"
