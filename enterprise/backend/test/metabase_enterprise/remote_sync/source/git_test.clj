@@ -295,6 +295,42 @@
             (is (= ["Incremental" "Initial commit"]
                    (map :message (git/log (assoc remote :branch "master")))))))))))
 
+(deftest empty-commit?-detects-no-op-tree-test
+  (testing "empty-commit? is true exactly when the staged tree matches the parent commit's tree"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/a.yaml" "content A"
+                                                   "collections/b.yaml" "content B"})]
+        (testing "re-staging identical content is empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "content A"})
+            (is (true? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "staging a real content change is not empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "changed A"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "adding a new file is not empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/c.yaml" :content "content C"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "deleting a path that isn't in the tree is empty"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-delete! c "collections/does-not-exist.yaml")
+            (is (true? (source.p/empty-commit? c)))
+            (source.p/abort-commit! c)))
+        (testing "none of the aborted no-op checks moved the branch"
+          (is (= ["Initial commit"] (map :message (git/log master)))))
+        (testing "empty-commit? then finish-commit! still commits a real change (tree written once, memoized)"
+          (let [c (source.p/open-commit (source.p/snapshot master))]
+            (source.p/stage-upsert! c {:path "collections/a.yaml" :content "changed A"})
+            (is (false? (source.p/empty-commit? c)))
+            (source.p/finish-commit! c "Edit A"))
+          (is (= ["Edit A" "Initial commit"] (map :message (git/log master))))
+          (is (= "changed A" (source.p/read-file (source.p/snapshot master) "collections/a.yaml"))))))))
+
 (deftest apply-changes-preserves-deep-unchanged-subtree-test
   (testing "an incremental upsert leaves deeply-nested, unrelated subtrees untouched (carried forward by id)"
     (mt/with-temp-dir [remote-dir nil]
