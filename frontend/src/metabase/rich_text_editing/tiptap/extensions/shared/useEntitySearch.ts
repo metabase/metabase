@@ -7,7 +7,6 @@ import {
 } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   MentionableUser,
   RecentItem,
@@ -28,6 +27,11 @@ import {
   useBuildSearchMenuItems,
 } from "./suggestionHooks";
 import { buildUserMenuItems, filterRecents } from "./suggestionUtils";
+
+// This search previously had no debouncing, so start relaxed at 200ms — shorter than the shared
+// SEARCH_DEBOUNCE_DURATION (500ms) used by the command palette / search bar — to minimize the change
+// in experience. Revisit lengthening toward 500ms for consistency once the shorter delay proves enough.
+const ENTITY_SEARCH_DEBOUNCE_MS = 200;
 
 export type EntitySearchOptions = Omit<
   SearchRequest,
@@ -66,7 +70,7 @@ export function useEntitySearch({
 
   // Debounce the server search so typing an @-mention fires one request when the query settles,
   // not one per keystroke. Client-side recents/user filtering stays on the raw query for responsiveness.
-  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
+  const debouncedQuery = useDebouncedValue(query, ENTITY_SEARCH_DEBOUNCE_MS);
   const isDebouncing = query !== debouncedQuery;
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {

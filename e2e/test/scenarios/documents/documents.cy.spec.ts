@@ -815,6 +815,11 @@ describe("documents", () => {
 
         H.addToDocument("@ord", false);
 
+        // Wait for the debounced mention search to populate before navigating.
+        H.documentMentionDialog()
+          .findByRole("option", { name: /Orders, Count$/ })
+          .should("exist");
+
         cy.realPress("{downarrow}");
         cy.realPress("{downarrow}");
 
