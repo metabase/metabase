@@ -39,7 +39,7 @@ These drive the keyword match{% if has_semantic_search %} (one half of every sea
 {% if has_semantic_search %}**These operators only shape the keyword half.** The meaning-match embeds your query *literally* and ignores operator semantics, and results are the union of both halves — so an operator that restricts the keyword half doesn't restrict the meaning half. In practice:
 - `"exact phrase"` and rare/exact tokens compose well — they sharpen the keyword half toward a precise hit.
 - **Negation is unreliable:** `-word` drops the token from the keyword half, but the meaning-match has no notion of "not" and can surface the excluded thing anyway. Don't rely on `-` to exclude; filter it out yourself when reading results.
-- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a query returns nothing, the tool retries once with the tokens `or`-joined as a safety net — but you'll get better-ranked results by writing the `or`-form yourself with the actual synonyms you suspect.{% endif %}
+- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a spaces-only (all-AND) query returns nothing, don't just resend it — reach for `or` yourself, joining the actual synonyms and abbreviations you suspect, so a single stray token can't collapse the result set to empty.{% endif %}
 
 ## What is and isn't searched
 

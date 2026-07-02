@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
@@ -163,7 +164,7 @@
         direct-rows  (when (seq direct-ids)
                        (t2/hydrate (t2/select [:model/Collection :id :name :location :type] :id [:in direct-ids])
                                    :effective_location))
-        id->eff-loc  (into {} (map (juxt :id :effective_location)) direct-rows)
+        id->eff-loc  (u/index-by :id :effective_location direct-rows)
         ;; Chase ancestors from the *raw* location so library-member detection (which reads the
         ;; root's :type, not its name) still works even when the root isn't readable. Only the
         ;; ancestor delta needs fetching — direct collections are already in hand.
@@ -174,7 +175,7 @@
         ancestor-rows    (when (seq ancestor-delta)
                            (t2/select [:model/Collection :id :name :location :type]
                                       :id [:in ancestor-delta]))
-        id->row      (into {} (map (juxt :id identity)) (concat direct-rows ancestor-rows))
+        id->row      (u/index-by :id (concat direct-rows ancestor-rows))
         path-of      (fn [coll-id]
                        (when-let [{:keys [name]} (get id->row coll-id)]
                          ;; Only readable ancestors (from :effective_location) contribute names,
@@ -184,6 +185,11 @@
                            (str/join "/" (concat ancestor-names [name])))))
         library?     (premium-features/has-feature? :library)
         ;; A collection's root is its top-level ancestor, or itself when it's already top-level.
+        ;; NOTE: the root is chased from the *raw* location, not `:effective_location`, so for a
+        ;; readable item whose root ancestor is unreadable, `library_member` reflects that hidden
+        ;; root's *type*. This is an accepted disclosure: it leaks one bit (library-type or not)
+        ;; of type metadata about an already-visible item, never a name, and the flag is a
+        ;; curation signal that must stay accurate even when the root isn't directly readable.
         root-type-of (fn [coll-id]
                        (let [root-id (or (first (ancestor-ids (get-in id->row [coll-id :location])))
                                          coll-id)]
@@ -356,7 +362,12 @@
              (not (str/includes? q "\""))
              (not (re-find #"(?i)\bor\b" q)))
     (let [tokens (->> (str/split q #"\s+")
-                      (map str/trim)
+                      ;; Strip clinging edge punctuation so "sales, revenue" broadens to
+                      ;; "sales or revenue", not "sales, or revenue". This also drops a leading
+                      ;; `-` (negation): the OR-broadening fallback deliberately ignores exclusion
+                      ;; intent — keyword negation is already documented as unreliable, and on a
+                      ;; zero-hit last resort surfacing "-refunds" as "refunds" beats nothing.
+                      (map #(str/replace % #"^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$" ""))
                       (remove str/blank?)
                       (remove #(query-broadening-stopwords (u/lower-case-en %))))]
       (when (> (count tokens) 1)
@@ -443,12 +454,17 @@
                                    collection-id       (assoc :collection collection-id)))]
                             (:data (search/search search-context))))
         primary         (run-engine query)
-        ;; Zero-hit fallback is appdb-only. The semantic engine already fuses keyword and
-        ;; vector matching, so OR-broadening on top is redundant; the `in-place` engine
-        ;; uses different matching semantics (LIKE patterns) where this rewrite doesn't
-        ;; apply cleanly. So we gate explicitly on `:search.engine/appdb`.
+        ;; Zero-hit fallback is Postgres-appdb-only. The `or`-rewrite relies on Postgres
+        ;; tsquery semantics, where lowercase `or` compiles to `|`. It does NOT hold for:
+        ;;   - the semantic engine, which already fuses keyword + vector matching (redundant);
+        ;;   - the `in-place` engine, whose LIKE-pattern matching has no `|` notion;
+        ;;   - appdb on H2, whose specialization ANDs whitespace-split tokens as LIKE patterns
+        ;;     (see `metabase.search.appdb.specialization.h2/wildcard-tokens`) — there the
+        ;;     `or`-joined query is strictly *narrower*, the opposite of broadening.
+        ;; So we gate on appdb AND a Postgres app-db backend.
         results         (or (when (and (empty? primary)
-                                       (= picked-engine :search.engine/appdb))
+                                       (= picked-engine :search.engine/appdb)
+                                       (= :postgres (mdb/db-type)))
                               (when-let [broadened (broaden-query query)]
                                 (log/infof "[METABOT-SEARCH] Zero hits for '%s'; broadening to '%s'"
                                            query broadened)

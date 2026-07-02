@@ -155,7 +155,9 @@
    _query-params
    {:keys [query]}
    :- [:map
-       [:query {:tool/description "Search query string. Phrase it as a short noun phrase or question fragment, e.g. \"orders by region\" or \"monthly active users\"."}
+       [:query {:tool/description (str "Search query string. Phrase it as a short noun phrase or "
+                                       "question fragment, e.g. \"orders by region\" or "
+                                       "\"monthly active users\".")}
         ms/NonBlankString]]]
   (let [results (metabot-search/search
                  {:query        query

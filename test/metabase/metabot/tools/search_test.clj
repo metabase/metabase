@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
@@ -11,6 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -398,18 +400,18 @@
                      :model/Table      {final-table-id :id}    {:db_id db-id :data_layer :final}
                      :model/Table      {internal-table-id :id} {:db_id db-id :data_layer :internal}]
         (testing "collection items: true when the root collection is a library type, not merely shared/official"
-          (let [by-id (->> (mt/with-test-user :crowberto
-                             (#'search/enrich-with-collection-paths
-                              [{:type "model" :id 1 :collection {:id lib-coll-id}}
-                               {:type "model" :id 2 :collection {:id official-coll-id}}]))
-                           (into {} (map (juxt :id identity))))]
+          (let [by-id (u/index-by :id
+                                  (mt/with-test-user :crowberto
+                                    (#'search/enrich-with-collection-paths
+                                     [{:type "model" :id 1 :collection {:id lib-coll-id}}
+                                      {:type "model" :id 2 :collection {:id official-coll-id}}])))]
             (is (true?  (:library_member (by-id 1))) "item in a library collection")
             (is (false? (:library_member (by-id 2))) "item in an official (non-library) collection")))
         (testing "tables: true only when the data layer is :final"
-          (let [by-id (->> (#'search/enrich-tables-with-data-layer
-                            [{:type "table" :id final-table-id}
-                             {:type "table" :id internal-table-id}])
-                           (into {} (map (juxt :id identity))))]
+          (let [by-id (u/index-by :id
+                                  (#'search/enrich-tables-with-data-layer
+                                   [{:type "table" :id final-table-id}
+                                    {:type "table" :id internal-table-id}]))]
             (is (true?  (:library_member (by-id final-table-id)))    ":final tables are library members")
             (is (false? (:library_member (by-id internal-table-id))) ":internal tables are not"))))))
   (testing "without the :library feature, tables are not flagged"
@@ -454,9 +456,44 @@
       "a or b"                    nil                                    ; already an OR query
       "Orders OR Revenue"         nil                                    ; `or` match is case-insensitive too
       "\"monthly revenue\""       nil                                    ; quoted = deliberate exact match
+      "sales, revenue"            "sales or revenue"                     ; clinging edge punctuation is stripped
+      "sales -refunds"            "sales or refunds"                     ; leading `-` stripped: the fallback deliberately ignores negation intent
       "the of for"                nil                                    ; collapses to <2 tokens after stopwords
       ""                          nil
       nil                         nil)))
+
+(deftest broaden-query-retry-wiring-test
+  ;; `with-test-user` wraps the whole test so the app DB is initialized *before* any `with-redefs`
+  ;; below stubs `mdb/db-type` — otherwise a lazy DB init inside the redef window would see the H2
+  ;; test DB reporting itself as `:postgres` and fail the version check.
+  (mt/with-test-user :crowberto
+    (testing "a zero-hit search retries once with the broadened query — but only on a Postgres appdb engine"
+      (let [calls       (atom [])
+            fake-search (fn [ctx] (swap! calls conj (:search-string ctx)) {:data []})
+            run!        (fn [engines default db-type]
+                          (reset! calls [])
+                          (with-redefs [search-core/search           fake-search
+                                        search.engine/active-engines (constantly engines)
+                                        search.engine/default-engine (constantly default)
+                                        mdb/db-type                  (constantly db-type)
+                                        ;; No metabot-id and always-empty results, so the metabot
+                                        ;; row is irrelevant; stub the lookup (the `:model/Metabot`
+                                        ;; table isn't present in the OSS test DB).
+                                        t2/select-one                (constantly nil)]
+                            (#'search/search {:query "hard bounce rate"}))
+                          @calls)]
+        (testing "Postgres appdb: empty primary triggers a second call with the OR-broadened string"
+          (is (= ["hard bounce rate" "hard or bounce or rate"]
+                 (run! #{:search.engine/appdb} :search.engine/appdb :postgres))))
+        (testing "appdb on H2 does NOT retry — its LIKE-AND token semantics make the OR-join narrower, not broader"
+          (is (= ["hard bounce rate"]
+                 (run! #{:search.engine/appdb} :search.engine/appdb :h2))))
+        (testing "semantic engine does NOT retry — it already fuses keyword + vector matching"
+          (is (= ["hard bounce rate"]
+                 (run! #{:search.engine/semantic :search.engine/appdb} :search.engine/appdb :postgres))))
+        (testing "in-place engine does NOT retry — LIKE-pattern matching has no `|` notion"
+          (is (= ["hard bounce rate"]
+                 (run! #{:search.engine/in-place} :search.engine/in-place :postgres))))))))
 
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
@@ -479,7 +516,7 @@
                                                                                 :query    {:source-table (mt/id :orders)}}}
                        :model/Dashboard {dash-id :id} {:name "PortableEID Sample Dashboard"}]
           (let [results      (search/search {:query "PortableEID Sample"})
-                by-id        (into {} (map (juxt (juxt :id :type) identity)) results)
+                by-id        (u/index-by (juxt :id :type) results)
                 question-res (get by-id [q-id "question"])
                 model-res    (get by-id [m-id "model"])
                 dash-res     (get by-id [dash-id "dashboard"])]
@@ -510,7 +547,7 @@
                           {:model "table" :id (mt/id :orders)}
                           {:model "card" :id q-id}              ; normalized to "question"
                           {:model "model" :id Integer/MAX_VALUE}]) ; nonexistent → dropped
-                by-id   (into {} (map (juxt (juxt :type :id) identity)) results)]
+                by-id   (u/index-by (juxt :type :id) results)]
             (testing "model ref hydrates with type, name, and portable_entity_id"
               (is (=? {:type "model" :name "Hydrate Sample Model" :portable_entity_id m-eid
                        :database_id (mt/id)}
@@ -572,7 +609,7 @@
                                                      :query    {:source-table (mt/id :orders)
                                                                 :aggregation  [[:count]]}}}]
           (let [results   (search/search {:query "BaseTable Sample Metric"})
-                by-id     (into {} (map (juxt (juxt :id :type) identity)) results)
+                by-id     (u/index-by (juxt :id :type) results)
                 metric-res (get by-id [metric-id "metric"])
                 db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
                 orders-t  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
@@ -584,6 +621,38 @@
             (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
+
+(deftest ^:parallel measure-segment-base-tables-test
+  (testing (str "Measures and segments reach the LLM with the same `base_table_*` affordance as\n"
+                "metrics, but via a different path: their search row already carries the join'd\n"
+                "table fields, so postprocess-search-result copies `:table_*` through as\n"
+                "`:base_table_*`, and enrich-with-base-tables only assembles the portable FK\n"
+                "once `:database_name` is set. (enrich's metric branch does a DB lookup; the\n"
+                "measure/segment branch is pure, so this needs no index.)")
+    (doseq [model ["measure" "segment"]]
+      (testing model
+        (let [raw  {:model              model
+                    :id                 7
+                    :name               (str "Sample " model)
+                    :description        "desc"
+                    :database_id        10
+                    :table_id           42
+                    :table_name         "orders"
+                    :table_schema       "public"
+                    :table_display_name "Orders"}
+              post (#'search/postprocess-search-result raw)]
+          (testing "postprocess copies the join'd table fields through as :base_table_*"
+            (is (=? {:type                    model
+                     :database_id             10
+                     :base_table_id           42
+                     :base_table_name         "orders"
+                     :base_table_schema       "public"
+                     :base_table_display_name "Orders"}
+                    post)))
+          (testing "enrich-with-base-tables assembles the portable FK once :database_name is known"
+            (let [enriched (first (#'search/enrich-with-base-tables
+                                   [(assoc post :database_name "My DB")]))]
+              (is (= ["My DB" "public" "orders"] (:base_table_portable_fk enriched))))))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
