@@ -1086,10 +1086,12 @@ function(bin) {
                      [:field _ (opts :guard (not= (:join-alias opts) alias))] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
-                                             ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
-                                             ;; aliases should also contain no . characters (#32182).
-                                             ;; - Spaces are allowed in columns and need to be replaced in let (#52807)
-                                             (str/replace #"[~\. -]" "_")
+                                             ;; Mongo `$lookup` let variable names allow ASCII letters, digits,
+                                             ;; underscores, and non-ASCII characters; any other ASCII character
+                                             ;; (e.g. `~`, `.`, space, `-`, `:`) trips a parser error. Match only
+                                             ;; disallowed ASCII characters so non-ASCII chars in source names are
+                                             ;; preserved (#32182, #52807, #76722).
+                                             (str/replace #"[\p{ASCII}&&[^A-Za-z0-9_]]" "_")
                                              (str "__" (next-alias-index)))]
                                {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]
