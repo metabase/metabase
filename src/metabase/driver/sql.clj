@@ -239,13 +239,26 @@
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
 (defn- merge-delete-query
-  "DELETE the rows of `target` whose `unique-key` matches a row in `temp`."
-  [driver target temp unique-key]
-  (let [cols (mapv keyword unique-key)
-        lhs  (if (= 1 (count cols)) (first cols) (into [:composite] cols))]
-    (sql.qp/format-honeysql driver
-                            {:delete-from target
-                             :where       [:in lhs {:select cols, :from [temp]}]})))
+  "DELETE the rows of `target` whose `unique-key` matches a row in `temp`.
+
+   `delete-strategy` selects how the match is expressed:
+     - `:in`     — uncorrelated `WHERE (k…) IN (SELECT k… FROM temp)`
+     - `:exists` — correlated `WHERE EXISTS (SELECT 1 FROM temp WHERE temp.k = target.k …)"
+  [driver target temp unique-key delete-strategy]
+  (let [honeysql (case delete-strategy
+                   :exists (let [temp-col   (fn [c] (keyword (name temp) c))
+                                 target-col (fn [c] (keyword (name target) c))]
+                             {:delete-from target
+                              :where       [:exists {:select [[[:inline 1]]]
+                                                     :from   [temp]
+                                                     :where  (into [:and]
+                                                                   (map (fn [c] [:= (temp-col c) (target-col c)]))
+                                                                   unique-key)}]})
+                   :in     (let [cols (mapv keyword unique-key)
+                                 lhs  (if (= 1 (count cols)) (first cols) (into [:composite] cols))]
+                             {:delete-from target
+                              :where       [:in lhs {:select cols, :from [temp]}]}))]
+    (sql.qp/format-honeysql driver honeysql)))
 
 (defn- merge-insert-query
   "INSERT every row of `temp` into `target`."
@@ -255,11 +268,11 @@
 
 (defn compile-merge
   "Returns `[sql params]` queries that upsert the rows of `select` (a compiled `{:query sql :params}`)
-   into `target`. `merge-spec` is `{:unique-key [col-names] :columns [all-col-names]}`."
-  [driver target select {:keys [unique-key]}]
+   into `target`. `merge-spec` is `{:unique-key [col-names] :columns [all-col-names] :delete-strategy k}`."
+  [driver target select {:keys [unique-key delete-strategy] :or {delete-strategy :in}}]
   (let [temp (driver.u/temp-table-name driver target)]
     [(driver/compile-transform driver {:query select, :output-table temp})
-     (merge-delete-query driver target temp unique-key)
+     (merge-delete-query driver target temp unique-key delete-strategy)
      (merge-insert-query driver target temp)
      (driver/compile-drop-table driver temp)]))
 
