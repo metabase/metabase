@@ -373,7 +373,7 @@
          :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
          :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
                                            :visibility_type "hidden" :data_authority :authoritative}]
-        (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true}))
+        (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil}))
               in?     (comp boolean (into #{} (map (juxt :kind :id)) metabot) vector)]
           (is (= {:verified-card       true
                   :official-card       true

@@ -271,6 +271,10 @@
                             (or (contains? verified-ids id)
                                 (contains? official-cids collection_id)
                                 (contains? library-cids collection_id)))
+        ;; nil (not an always-false pred) when the filter is statically empty — curated-only with no
+        ;; curated content anywhere — so `pick-by-row` returns [] without walking the universe.
+        ;; The `(not curated-only?)` disjunct must stay in BOTH the guard and the pred: without the
+        ;; curated filter a nil pred would wrongly mean "empty catalog" instead of "no card filtering".
         in-metabot-card?  (when (and (or (nil? metabot-cids) (seq metabot-cids))
                                      (or (not curated-only?)
                                          (some seq [verified-ids official-cids library-cids])))
