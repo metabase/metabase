@@ -10,7 +10,7 @@ import type {
 
 export type IndexFormValues = Record<string, unknown>;
 
-function defaultFieldValue(field: IndexField): unknown {
+function defaultFieldValue(field: IndexField) {
   switch (field.type) {
     case "boolean":
       return false;
