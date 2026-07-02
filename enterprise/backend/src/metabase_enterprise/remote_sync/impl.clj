@@ -737,7 +737,7 @@
         opts    {:where [:in pk-col (mapv :model_id rows)] :skip-archived true}]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
     (into [] (keep (fn [instance]
-                     (when-let [row (id->row (pk-col instance))]
+                     (when-let [row (id->row (get instance pk-col))]
                        [row (serdes/extract-one model_type opts instance)])))
           (serdes/extract-query model_type opts))))
 
