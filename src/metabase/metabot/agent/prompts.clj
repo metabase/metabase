@@ -10,6 +10,7 @@
   here."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
@@ -26,6 +27,17 @@
   permission alone — is what lets the model write SQL, since they're gated by the
   `permission:write_sql_queries` capability."
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
+
+;; Mirrors the literal sentinels in `metabase.metabot.self.claude` and the `.selmer` templates
+;; (kept as literals here, not a shared require, since the templates themselves already hardcode
+;; the same strings). Stripped from free-text user input so a pasted sentinel can't be mistaken
+;; for the real cache-breakpoint marker when `claude.clj` splits the rendered prompt.
+(def ^:private cache-breakpoint-sentinels
+  ["<<<METABOT_CACHE_BREAKPOINT>>>" "<<<METABOT_USER_CACHE_BREAKPOINT>>>"])
+
+(defn- strip-cache-sentinels
+  [s]
+  (reduce #(str/replace %1 %2 "") s cache-breakpoint-sentinels))
 
 ;;; Template Loading
 
@@ -206,9 +218,12 @@
                                                                (metabot.settings/metabot-chat-system-prompt)))
                                   ;; Per-user instructions, cached separately from the shared prefix
                                   ;; (see `system-user-cache-breakpoint-sentinel`). Auto-scopes to the
-                                  ;; current user via the user-local setting getter.
-                                  :user_custom_instructions (not-empty
-                                                             (metabot.settings/metabot-user-custom-instructions))}]
+                                  ;; current user via the user-local setting getter. Sentinels are
+                                  ;; stripped so a pasted one can't be mistaken for the real
+                                  ;; cache-breakpoint marker downstream.
+                                  :user_custom_instructions (some-> (metabot.settings/metabot-user-custom-instructions)
+                                                                    strip-cache-sentinels
+                                                                    not-empty)}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do

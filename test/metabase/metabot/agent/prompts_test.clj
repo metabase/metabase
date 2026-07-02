@@ -146,3 +146,15 @@
       (is (some? content))
       (is (not (str/includes? content "Here is some information about the user:")))
       (is (not (str/includes? content "<user><name>Jane Doe</name></user>"))))))
+
+(deftest ^:parallel strip-cache-sentinels-test
+  (testing "strips the primary cache breakpoint sentinel"
+    (is (= "before  after"
+           (#'prompts/strip-cache-sentinels "before <<<METABOT_CACHE_BREAKPOINT>>> after"))))
+  (testing "strips both sentinels when both are present"
+    (is (= "a  b  c"
+           (#'prompts/strip-cache-sentinels
+            "a <<<METABOT_CACHE_BREAKPOINT>>> b <<<METABOT_USER_CACHE_BREAKPOINT>>> c"))))
+  (testing "leaves ordinary text untouched"
+    (is (= "just some normal instructions"
+           (#'prompts/strip-cache-sentinels "just some normal instructions")))))

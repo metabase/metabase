@@ -84,6 +84,12 @@
   :feature    :ai-controls
   :doc        false)
 
+(def ^:private max-user-custom-instructions-length
+  "Character cap for `metabot-user-custom-instructions`. It's injected into every
+  Metabot system prompt for the user, so an unbounded value would inflate
+  token cost/context on every request."
+  2000)
+
 (defsetting metabot-user-custom-instructions
   (deferred-tru "Custom instructions for Metabot set by the current user, in addition to any instance-level custom instructions.")
   :type       :string
@@ -92,7 +98,13 @@
   :visibility :authenticated
   :encryption :no
   :export?    false
-  :doc        false)
+  :doc        false
+  :setter     (fn [new-value]
+                (when (and new-value (> (count new-value) max-user-custom-instructions-length))
+                  (throw (ex-info (tru "Custom instructions must be {0} characters or less."
+                                       max-user-custom-instructions-length)
+                                  {:status-code 400})))
+                (setting/set-value-of-type! :string :metabot-user-custom-instructions new-value)))
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")

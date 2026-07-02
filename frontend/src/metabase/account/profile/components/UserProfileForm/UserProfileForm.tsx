@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -151,12 +151,23 @@ const ColorSchemeSwitcher = () => {
   );
 };
 
+// Must match `max-user-custom-instructions-length` in metabot/settings.clj.
+const MAX_CUSTOM_INSTRUCTIONS_LENGTH = 2000;
+
 const MetabotCustomInstructions = () => {
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const [savedInstructions, setSavedInstructions] = useUserSetting(
     "metabot-user-custom-instructions",
   );
   const [value, setValue] = useState(savedInstructions ?? "");
+  const hasSyncedInitialValue = useRef(savedInstructions != null);
+
+  useEffect(() => {
+    if (!hasSyncedInitialValue.current && savedInstructions != null) {
+      hasSyncedInitialValue.current = true;
+      setValue(savedInstructions);
+    }
+  }, [savedInstructions]);
 
   if (!hasMetabotAccess) {
     return null;
@@ -170,6 +181,7 @@ const MetabotCustomInstructions = () => {
       </Text>
       <Textarea
         value={value}
+        maxLength={MAX_CUSTOM_INSTRUCTIONS_LENGTH}
         onChange={(event) => {
           const newValue = event.target.value;
           setValue(newValue);

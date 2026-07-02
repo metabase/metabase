@@ -355,3 +355,21 @@
              (metabot.settings/configured-provider-credentials "anthropic"))))
     (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
       (is (nil? (metabot.settings/configured-provider-credentials "anthropic"))))))
+
+(deftest metabot-user-custom-instructions-length-cap-test
+  (testing "metabot-user-custom-instructions is a user-local setting"
+    (is (=? {:user-local :only}
+            (setting/resolve-setting :metabot-user-custom-instructions))))
+  (mt/with-test-user :rasta
+    (mt/discard-setting-changes [metabot-user-custom-instructions]
+      (testing "accepts a value at or under the length cap"
+        (metabot.settings/metabot-user-custom-instructions! (apply str (repeat 2000 "a")))
+        (is (= 2000 (count (metabot.settings/metabot-user-custom-instructions)))))
+      (testing "rejects a value over the length cap"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"2,000 characters or less"
+             (metabot.settings/metabot-user-custom-instructions! (apply str (repeat 2001 "a"))))))
+      (testing "nil is allowed (clears the setting back to its default)"
+        (metabot.settings/metabot-user-custom-instructions! nil)
+        (is (= "" (metabot.settings/metabot-user-custom-instructions)))))))

@@ -20,13 +20,22 @@ import UserProfileForm from "./UserProfileForm";
 
 const setup = (
   props: UserProfileFormProps,
-  { hasMetabotAccess = true }: { hasMetabotAccess?: boolean } = {},
+  {
+    hasMetabotAccess = true,
+    metabotUserCustomInstructions = null,
+  }: {
+    hasMetabotAccess?: boolean;
+    metabotUserCustomInstructions?: string | null;
+  } = {},
 ) => {
+  const settings = createMockSettings({
+    "metabot-user-custom-instructions": metabotUserCustomInstructions,
+  });
   const state = createMockState({
-    settings: mockSettings(createMockSettings()),
+    settings: mockSettings(settings),
   });
 
-  setupPropertiesEndpoints(createMockSettings());
+  setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
   setupUserMetabotPermissionsEndpoint(
     createMockUserMetabotPermissions({
@@ -84,6 +93,16 @@ describe("UserProfileForm", () => {
       );
       expect(calls.length).toBeGreaterThan(0);
     });
+  });
+
+  it("should populate the Metabot instructions field with a pre-existing value", async () => {
+    setup(getProps(), {
+      metabotUserCustomInstructions: "Focus on marketing data.",
+    });
+
+    expect(
+      await screen.findByDisplayValue("Focus on marketing data."),
+    ).toBeInTheDocument();
   });
 });
 
