@@ -16,6 +16,17 @@
   ;; `metabase-enterprise.semantic-search.embedding` are the real guard.
   #{"ai-service" "openai" "ollama" "in-process"})
 
+(defn validate-embedding-provider!
+  "Throw on an unknown embedding provider name; nil passes (nil-able override settings inherit).
+  Setter validation for the provider settings here and in consumer modules (e.g. the library entity
+  index's override)."
+  [provider]
+  (when (and provider (not (contains? valid-embedding-providers provider)))
+    (throw (ex-info (str "Invalid embedding provider: " (pr-str provider)
+                         ". Valid providers are: " (pr-str valid-embedding-providers))
+                    {:invalid-value provider
+                     :valid-values  valid-embedding-providers}))))
+
 (defsetting ee-embedding-provider
   (deferred-tru "The embedding provider to use (`openai`, `ollama`, `ai-service`, or `in-process`)")
   :encryption :no
@@ -25,11 +36,7 @@
   :export? false
   :doc false
   :setter (fn [new-value]
-            (when (and new-value (not (contains? valid-embedding-providers new-value)))
-              (throw (ex-info (str "Invalid embedding provider: " (pr-str new-value)
-                                   ". Valid providers are: " (pr-str valid-embedding-providers))
-                              {:invalid-value new-value
-                               :valid-values  valid-embedding-providers})))
+            (validate-embedding-provider! new-value)
             (setting/set-value-of-type! :string :ee-embedding-provider new-value)))
 
 (defsetting ee-embedding-model

@@ -4,6 +4,7 @@
    [metabase-enterprise.entity-retrieval.core :as entity-retrieval.core]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
+   [metabase-enterprise.entity-retrieval.settings :as retrieval.settings]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -43,7 +44,11 @@
         (is (= {:provider          "ai-service"
                 :model-name        "text-embedding-3-small"
                 :vector-dimensions 1024}
-               (#'entity-retrieval.core/configured-model)))))))
+               (#'entity-retrieval.core/configured-model)))))
+    (testing "the provider override validates like the global setting"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid embedding provider"
+                            (retrieval.settings/ee-library-embedding-provider! "in-porcess"))))))
 
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'entity-retrieval.core/score)]

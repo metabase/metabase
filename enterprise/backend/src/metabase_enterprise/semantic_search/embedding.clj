@@ -135,6 +135,12 @@
 
 ;;;; Provider SPI
 
+(defn validate-provider!
+  "Throw on an unknown embedding provider name; nil passes.
+  For consumer modules' setting setters — this ns is the module's public face for provider concerns."
+  [provider]
+  (semantic-settings/validate-embedding-provider! provider))
+
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
 
 (defmulti get-embedding
