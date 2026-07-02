@@ -291,10 +291,14 @@
                                           :fitWithinBounds (boolean (:fit-within? *chart-size*)))))
         custom-viz? (seq custom-viz-bundles)
         run         (fn [context]
-                      (doseq [{:keys [identifier source assets]} custom-viz-bundles]
-                        (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
-                        (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier
-                                                   (json/encode (or assets {}))))
+                      (when custom-viz?
+                        ;; initialize_context applies EE overrides so the custom-viz registry is active
+                        ;; before we register plugins; built-in charts don't need it (RenderChart handles setup).
+                        (js.engine/execute-fn-name context "initialize_context" options)
+                        (doseq [{:keys [identifier source assets]} custom-viz-bundles]
+                          (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
+                          (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier
+                                                     (json/encode (or assets {})))))
                       (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                             (json/encode cards-with-data)
                                                             (json/encode dashcard-viz-settings)
