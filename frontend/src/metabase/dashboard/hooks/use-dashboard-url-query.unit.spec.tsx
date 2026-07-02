@@ -1,6 +1,5 @@
 import { act } from "@testing-library/react";
 import type { Location } from "history";
-
 import { push, replace } from "react-router-redux";
 
 import { renderHookWithProviders } from "__support__/ui";
