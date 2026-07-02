@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms-test.diff :as diff]
    [metabase-enterprise.transforms-test.errors :as errors]
+   [metabase-enterprise.transforms-test.execute :as execute]
    [metabase-enterprise.transforms-test.resolve :as resolve]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
@@ -104,9 +105,7 @@
   Returns `{<name-str> <count-long> ...}`."
   [db-id sql]
   (log/debug "Executing combined assertion statement" {:db-id db-id})
-  (let [result (qp/process-query {:database db-id
-                                  :type     :native
-                                  :native   {:query sql}})]
+  (let [result (qp/process-query (execute/native-query db-id sql))]
     (when (not= :completed (:status result))
       (throw (ex-info
               (str "Combined assertion query failed: QP returned " (pr-str (:status result)))
@@ -131,9 +130,7 @@
   (try
     (let [clean-sql  (strip-trailing-semicolon rewritten-sql)
           sample-sql (build-sample-sql output-sql clean-sql)
-          result     (qp/process-query {:database db-id
-                                        :type     :native
-                                        :native   {:query sample-sql}})]
+          result     (qp/process-query (execute/native-query db-id sample-sql))]
       (when (= :completed (:status result))
         {:rows    (get-in result [:data :rows])
          :columns (mapv :name (get-in result [:data :cols]))}))
@@ -155,9 +152,7 @@
   (try
     (let [clean-sql  (strip-trailing-semicolon rewritten-sql)
           count-sql  (build-count-sql output-sql clean-sql)
-          result     (qp/process-query {:database db-id
-                                        :type     :native
-                                        :native   {:query count-sql}})]
+          result     (qp/process-query (execute/native-query db-id count-sql))]
       (if (= :completed (:status result))
         (let [fail-count (long (or (ffirst (get-in result [:data :rows])) 0))]
           {:name name

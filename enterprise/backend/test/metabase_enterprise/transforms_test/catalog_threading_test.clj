@@ -2,8 +2,10 @@
   "Unit tests for catalog (db-slot) threading through scratch specs, transform details,
   and read-back SQL.
 
-  These are purely driver-agnostic tests — no live database connection required.
-  They verify that when a driver has a non-nil db-slot value, that value appears in:
+  These tests require no live warehouse connection — QP execution is stubbed;
+  the read-back tests create temp app-DB Database rows so query construction has
+  real database metadata. They verify that when a driver has a non-nil db-slot
+  value, that value appears in:
     1. The scratch output-target `:db` slot.
     2. The `build-transform-details` `:output-db` field.
     3. The SQL reference rendered by `scratch/spec->sql-ref` (and therefore in
@@ -17,7 +19,9 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
+   [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
@@ -132,50 +136,43 @@
 ;;; 4. read-back SQL is 3-segment for db-slot drivers, 2-segment otherwise
 ;;; ---------------------------------------------------------------------------
 
-(deftest read-back-sql-is-3-segment-for-db-slot-driver-test
-  (testing "read-back SQL contains catalog.schema.table for a db-slot driver"
-    ;; Intercept qp/process-query to capture the SQL without a live DB.
-    (let [captured (atom nil)]
+(defn- captured-read-back-sql!
+  "Run `read-back-output` for `output-target` against a temp Database of `engine`
+  with QP execution stubbed; return the SQL string it submitted."
+  [engine drv output-target]
+  (let [captured (atom nil)]
+    (mt/with-temp [:model/Database db {:engine engine}]
       (with-redefs [qp/process-query
                     (fn [q]
                       (reset! captured q)
                       {:status :completed
                        :data   {:cols [] :rows []}})]
-        (let [output-target {:schema "myschema"
-                             :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
-                             :db     "my_catalog"}]
-          (execute/read-back-output 1 :mysql output-target)))
-      (is (= "SELECT * FROM `my_catalog`.`myschema`.`mb_transform_temp_table_test_abc123_aabbccdd_out`"
-             (get-in @captured [:native :query]))))))
+        (execute/read-back-output (:id db) drv output-target)))
+    (lib/raw-native-query @captured)))
+
+(deftest read-back-sql-is-3-segment-for-db-slot-driver-test
+  (testing "read-back SQL contains catalog.schema.table for a db-slot driver"
+    (is (= "SELECT * FROM `my_catalog`.`myschema`.`mb_transform_temp_table_test_abc123_aabbccdd_out`"
+           (captured-read-back-sql! :mysql :mysql
+                                    {:schema "myschema"
+                                     :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
+                                     :db     "my_catalog"})))))
 
 (deftest read-back-sql-is-2-segment-for-non-db-slot-driver-test
   (testing "read-back SQL is schema.table (2-segment) for postgres"
-    (let [captured (atom nil)]
-      (with-redefs [qp/process-query
-                    (fn [q]
-                      (reset! captured q)
-                      {:status :completed
-                       :data   {:cols [] :rows []}})]
-        (let [output-target {:schema "public"
-                             :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
-                             :db     nil}]
-          (execute/read-back-output 2 :postgres output-target)))
-      (is (= "SELECT * FROM \"public\".\"mb_transform_temp_table_test_abc123_aabbccdd_out\""
-             (get-in @captured [:native :query]))))))
+    (is (= "SELECT * FROM \"public\".\"mb_transform_temp_table_test_abc123_aabbccdd_out\""
+           (captured-read-back-sql! :postgres :postgres
+                                    {:schema "public"
+                                     :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
+                                     :db     nil})))))
 
 (deftest read-back-sql-no-schema-no-db-test
   (testing "read-back SQL is bare table when schema and db are both nil"
-    (let [captured (atom nil)]
-      (with-redefs [qp/process-query
-                    (fn [q]
-                      (reset! captured q)
-                      {:status :completed
-                       :data   {:cols [] :rows []}})]
-        (execute/read-back-output 2 :postgres {:schema nil
-                                               :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
-                                               :db     nil}))
-      (is (= "SELECT * FROM \"mb_transform_temp_table_test_abc123_aabbccdd_out\""
-             (get-in @captured [:native :query]))))))
+    (is (= "SELECT * FROM \"mb_transform_temp_table_test_abc123_aabbccdd_out\""
+           (captured-read-back-sql! :postgres :postgres
+                                    {:schema nil
+                                     :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
+                                     :db     nil})))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; 5. Seed mapping values carry :db slot

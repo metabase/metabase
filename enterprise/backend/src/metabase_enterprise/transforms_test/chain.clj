@@ -159,11 +159,9 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- card-db-id
-  "Database id from a card's dataset_query. A top-level read rather than
-  `lib/database-id`: `:database` is top-level in every MBQL version, and the
-  lib accessor schema-rejects legacy-shaped queries, which callers may pass."
+  "Database id from a card's dataset_query."
   [card]
-  (get-in card [:dataset_query :database]))
+  (lib/database-id (:dataset_query card)))
 
 (defn- card-table-infos
   "Resolve the physical tables a card's query reads to table-info maps."
@@ -206,9 +204,7 @@
   Throws `::errors/execution-failed` on a non-completed status."
   [db-id card-id drv card-sql]
   (log/debug "Running card query under scratch override" {:db-id db-id :drv drv})
-  (let [result (qp/process-query {:database db-id
-                                  :type     :native
-                                  :native   {:query card-sql}})]
+  (let [result (qp/process-query (execute/native-query db-id card-sql))]
     (when (not= :completed (:status result))
       (throw (ex-info
               (str "Card query failed during test run: QP returned "
@@ -371,7 +367,9 @@
   an expected CSV.
 
   Arguments:
-  - `card`                 — a `:model/Card` row with a `:dataset_query` key.
+  - `card`                 — a `:model/Card` row; its `:dataset_query` must be a
+                             lib-normalized MBQL 5 query (the shape the Card model
+                             yields on read).
   - `source-ids`           — set of selected boundary source transform ids.
   - `fixtures-by-table-id` — `{<table-id> <java.io.File>}` CSV files keyed by leaf
                              table id.

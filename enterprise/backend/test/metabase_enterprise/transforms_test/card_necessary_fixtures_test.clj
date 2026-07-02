@@ -39,7 +39,7 @@
   {:id              id
    :target_table_id target-table-id
    :target          {:schema "public" :name (str "t" id "_out") :type "table"}
-   :source          {:type :stub :query {:type :native :database 1 :native {:query "SELECT 1"}}}
+   :source          {:type :stub}
    ::raw-deps       raw-deps})
 
 (defn- stub-deps-lookup

@@ -11,6 +11,7 @@
   [[wrong-expected-csv]] are t2's expected output. e2e-test uses richer local
   fixtures that are load-bearing for its hand-derived expectations."
   (:require
+   [metabase-enterprise.transforms-test.execute :as execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp.core]
@@ -79,12 +80,11 @@
   "Count mb_transform_temp_table_test_* tables in `schema` via information_schema."
   [db-id schema]
   (let [result (qp.core/process-query
-                {:database db-id
-                 :type     :native
-                 :native   {:query  (str "SELECT COUNT(*) FROM information_schema.tables"
-                                         " WHERE table_schema = ?"
-                                         " AND table_name LIKE 'mb_transform_temp_table_test_%'")
-                            :params [schema]}})]
+                (execute/native-query db-id
+                                      (str "SELECT COUNT(*) FROM information_schema.tables"
+                                           " WHERE table_schema = ?"
+                                           " AND table_name LIKE 'mb_transform_temp_table_test_%'")
+                                      [schema]))]
     (-> result (get-in [:data :rows]) first first int)))
 
 ;;; ---------------------------------------------------------------------------

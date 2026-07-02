@@ -7,9 +7,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.execute :as execute]
    [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -208,11 +210,11 @@
                 "scratch table name must pass test-table-name?")
             ;; Read back via QP native query
             (let [result (qp/process-query
-                          {:database db-id
-                           :type :native
-                           :native {:query (str "SELECT id, label, score, active FROM \""
-                                                (:schema scratch-spec) "\".\"" (:table scratch-spec)
-                                                "\" ORDER BY id")}})]
+                          (execute/native-query
+                           db-id
+                           (str "SELECT id, label, score, active FROM \""
+                                (:schema scratch-spec) "\".\"" (:table scratch-spec)
+                                "\" ORDER BY id")))]
               (is (= :completed (:status result)))
               (let [rows (get-in result [:data :rows])]
                 (is (= 3 (count rows)) "all 3 rows seeded")
@@ -247,11 +249,11 @@
           (let [scratch-spec (get mapping {:schema "public" :table "products"})]
             (is (some? scratch-spec))
             (let [result (qp/process-query
-                          {:database db-id
-                           :type :native
-                           :native {:query (str "SELECT \"ProductID\", unit_price FROM \""
-                                                (:schema scratch-spec) "\".\"" (:table scratch-spec)
-                                                "\" ORDER BY \"ProductID\"")}})]
+                          (execute/native-query
+                           db-id
+                           (str "SELECT \"ProductID\", unit_price FROM \""
+                                (:schema scratch-spec) "\".\"" (:table scratch-spec)
+                                "\" ORDER BY \"ProductID\"")))]
               (is (= :completed (:status result)))
               (is (= [[1 9.99] [2 nil]] (get-in result [:data :rows])))))
           (finally
@@ -265,11 +267,10 @@
   "Check whether `table-name` exists in `schema` on the postgres test DB."
   [db-id schema table-name]
   (let [result (qp/process-query
-                {:database db-id
-                 :type :native
-                 :native {:query  (str "SELECT COUNT(*) FROM information_schema.tables"
-                                       " WHERE table_schema = ? AND table_name = ?")
-                          :params [schema table-name]}})]
+                (execute/native-query db-id
+                                      (str "SELECT COUNT(*) FROM information_schema.tables"
+                                           " WHERE table_schema = ? AND table_name = ?")
+                                      [schema table-name]))]
     (= 1 (ffirst (get-in result [:data :rows])))))
 
 (deftest cleanup-drops-all-scratch-tables-test
@@ -518,28 +519,31 @@
 (deftest list-tables-in-schema-uses-parameterized-query-test
   ;; The schema name must be a query parameter, not interpolated: a value like
   ;; "pub'lic" would otherwise produce malformed SQL and crash the janitor. The fn is
-  ;; private, so we intercept qp/process-query to inspect the query map it submits.
+  ;; private, so we intercept qp/process-query to inspect the query it submits.
   (testing "list-tables-in-schema submits a parameterized query (schema in :params, not interpolated)"
     (let [captured-queries (atom [])
-          ;; Intercept qp/process-query to capture the query map without executing
+          ;; Intercept qp/process-query to capture the query without executing
           fake-process (fn [query]
                          (swap! captured-queries conj query)
                          ;; Return a minimal successful result so the caller can proceed
                          {:status :completed
                           :data   {:cols [{:name "table_name"}]
                                    :rows []}})]
-      (with-redefs [qp/process-query fake-process]
-        ;; cleanup-all-test-tables! calls list-tables-in-schema internally
-        ;; Use a schema string with a single quote — this is the injection vector
-        (scratch/cleanup-all-test-tables! 1 {:engine "postgres"} "pub'lic" {}))
+      ;; A real Database row: the query is built against its metadata.
+      (mt/with-temp [:model/Database db {:engine :postgres}]
+        (with-redefs [qp/process-query fake-process]
+          ;; cleanup-all-test-tables! calls list-tables-in-schema internally.
+          ;; Use a schema string with a single quote — this is the injection vector.
+          (scratch/cleanup-all-test-tables! (:id db) db "pub'lic" {})))
       (is (= 1 (count @captured-queries))
           "exactly one query should have been submitted")
-      (let [q (first @captured-queries)
-            native (:native q)]
-        ;; The schema must appear in :params, not embedded in the :query string
-        (is (= ["pub'lic"] (:params native))
+      (let [q      (first @captured-queries)
+            sql    (lib/raw-native-query q)
+            params (:params (lib/query-stage q 0))]
+        ;; The schema must appear in :params, not embedded in the SQL string
+        (is (= ["pub'lic"] params)
             "schema string must be a parameter, not interpolated into SQL")
-        (is (not (str/includes? (:query native) "pub'lic"))
+        (is (not (str/includes? sql "pub'lic"))
             "the schema value must not appear literally in the query string")
-        (is (str/includes? (:query native) "?")
+        (is (str/includes? sql "?")
             "the query must use a ? placeholder for the schema parameter")))))

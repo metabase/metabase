@@ -2,15 +2,27 @@
   "Execution helpers for transform test runs: translate a resolved artifact into a
   `driver/run-transform!` call, and read the output table back via the QP.
 
-  These functions assume they run inside `driver.conn/with-transform-connection`."
+  The driver-facing helpers assume they run inside
+  `driver.conn/with-transform-connection`."
   (:require
    [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
+
+(defn native-query
+  "Build an MBQL 5 native query running `sql` against `db-id`. `params` are
+  positional JDBC parameters for `?` placeholders in `sql`."
+  ([db-id sql]
+   (native-query db-id sql nil))
+  ([db-id sql params]
+   (cond-> (lib/native-query (lib-be/application-database-metadata-provider db-id) sql)
+     (seq params) (lib/update-query-stage 0 assoc :params params))))
 
 (defn assert-all-test-tables!
   "Assert that every table name in `names-to-check` satisfies
@@ -60,9 +72,7 @@
   as returned by `scratch-output-target`."
   [db-id drv output-target]
   (let [sql    (str "SELECT * FROM " (scratch/spec->sql-ref drv output-target))
-        result (qp/process-query {:database db-id
-                                  :type     :native
-                                  :native   {:query sql}})]
+        result (qp/process-query (native-query db-id sql))]
     (when (not= :completed (:status result))
       (throw (ex-info
               (str "Failed to read back scratch output table " (pr-str (:table output-target))

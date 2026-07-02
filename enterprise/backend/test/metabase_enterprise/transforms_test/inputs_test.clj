@@ -6,7 +6,8 @@
    [metabase-enterprise.transforms-test.inputs :as inputs]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,20 +16,18 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- make-native-transform
-  "Build a minimal native-SQL transform value (not a DB row) with the given SQL."
-  [db-id sql]
+  "Build a minimal native-SQL transform value (not a DB row) with the given SQL,
+  against the current test database."
+  [sql]
   {:source {:type :query
-            :query {:database db-id
-                    :type     :native
-                    :native   {:query sql}}}})
+            :query (lib/native-query (mt/metadata-provider) sql)}})
 
 (defn- make-mbql-transform
   "Build a minimal MBQL transform value over a single table."
-  [db-id table-id]
-  {:source {:type :query
-            :query {:database db-id
-                    :type     :query
-                    :query    {:source-table table-id}}}})
+  [table-id]
+  (let [mp (mt/metadata-provider)]
+    {:source {:type  :query
+              :query (lib/query mp (lib.metadata/table mp table-id))}}))
 
 (defn- make-python-transform
   "Build a stub python transform (not :query type)."
@@ -44,7 +43,7 @@
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
         (let [table-id (mt/id :orders)
-              xf       (make-mbql-transform (mt/id) table-id)
+              xf       (make-mbql-transform table-id)
               result   (inputs/required-input-tables xf)]
           (is (= 1 (count result)))
           (let [tbl (first result)]
@@ -83,7 +82,7 @@
   (testing "Native SQL transform returns the referenced synced table"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
-        (let [xf     (make-native-transform (mt/id) "SELECT id, user_id FROM orders LIMIT 10")
+        (let [xf     (make-native-transform "SELECT id, user_id FROM orders LIMIT 10")
               result (inputs/required-input-tables xf)]
           (is (= 1 (count result)))
           (let [tbl (first result)]
@@ -95,7 +94,7 @@
   (testing "Each table-info carries a column schema"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
-        (let [xf     (make-mbql-transform (mt/id) (mt/id :orders))
+        (let [xf     (make-mbql-transform (mt/id :orders))
               result (inputs/required-input-tables xf)
               tbl    (first result)]
           (is (every? (fn [col]
@@ -116,20 +115,17 @@
   (testing "Source-card transform: deps resolve transitively through the card to physical tables"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
-        (mt/with-temp [:model/Card card {:name          "test-orders-card"
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table (mt/id :orders)}}
-                                         :display       "table"
-                                         :visualization_settings {}}]
-          (let [card-source-xf {:source {:type  :query
-                                         :query {:database (mt/id)
-                                                 :type     :query
-                                                 :query    {:source-table (str "card__" (:id card))}}}}
-                result         (inputs/required-input-tables card-source-xf)]
-            ;; The card queries orders → we should get orders as the physical dep
-            (is (= 1 (count result)))
-            (is (= (mt/id :orders) (:id (first result))))))))))
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card card {:name          "test-orders-card"
+                                           :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                           :display       "table"
+                                           :visualization_settings {}}]
+            (let [card-source-xf {:source {:type  :query
+                                           :query (lib/query mp (lib.metadata/card mp (:id card)))}}
+                  result         (inputs/required-input-tables card-source-xf)]
+              ;; The card queries orders → we should get orders as the physical dep
+              (is (= 1 (count result)))
+              (is (= (mt/id :orders) (:id (first result)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; required-input-tables — error cases
@@ -144,19 +140,25 @@
 
 (deftest required-input-tables-extraction-failure-throws-test
   (testing "Any dependency-extraction failure throws a typed error (never returns silent #{})"
-    ;; Source-card with a nonexistent card causes ExceptionInfo during preprocess.
-    ;; We use a real DB so that preprocess actually runs.
+    ;; A source-card transform whose card has since been deleted causes
+    ;; ExceptionInfo during preprocess. We use a real DB so preprocess actually runs.
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
-        (let [xf {:source {:type  :query
-                           :query {:database (mt/id)
-                                   :type     :query
-                                   :query    {:source-table "card__99999"}}}}
-              e  (is (thrown? clojure.lang.ExceptionInfo
-                              (inputs/required-input-tables xf)))]
-          (is (= ::errors/cannot-determine-inputs (-> e ex-data :error-type)))
-          ;; Must carry the cause
-          (is (some? (ex-cause e))))))))
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card doomed
+                         {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+            ;; prepare-for-serialization strips the attached metadata provider (the
+            ;; stored shape), so extraction re-resolves the card and finds it gone
+            ;; instead of hitting the build-time cache.
+            (let [xf {:source {:type  :query
+                               :query (-> (lib/query mp (lib.metadata/card mp (:id doomed)))
+                                          lib/prepare-for-serialization)}}]
+              (t2/delete! :model/Card :id (:id doomed))
+              (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                   (inputs/required-input-tables xf)))]
+                (is (= ::errors/cannot-determine-inputs (-> e ex-data :error-type)))
+                ;; Must carry the cause
+                (is (some? (ex-cause e)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; resolve-table-dep — error cases

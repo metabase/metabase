@@ -26,6 +26,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.transforms-rest.api.transform]
@@ -215,8 +216,7 @@
                      :target          {:schema "public" :type "table" :name enriched-name#}
                      :target_table_id (:id tbl#)}
                     :model/Card ~card-sym
-                    {:dataset_query {:database db-id# :type "native"
-                                     :native   {:query (tu/aggregate-sql enriched-name#)}}}]
+                    {:dataset_query (lib/native-query mp# (tu/aggregate-sql enriched-name#))}]
        ~@body)))
 
 (deftest card-subgraph-inputs-endpoint-test
@@ -328,10 +328,8 @@
                        :target_table_id (:id tbl#)}
                       :model/Card ~card-sym
                       {:database_id   db-id#
-                       :dataset_query {:database db-id#
-                                       :type     "query"
-                                       :query    {:source-table (:id tbl#)
-                                                  :aggregation  [[:count]]}}}]
+                       :dataset_query (-> (lib/query mp# (lib.metadata/table mp# (:id tbl#)))
+                                          (lib/aggregate (lib/count)))}]
          ~@body))))
 
 ;;; 4 fixture orders → enriched has 4 rows → COUNT = 4
@@ -412,9 +410,8 @@
   (testing "card target enforces read-check :model/Card — no collection access → 403"
     (mt/with-temp [:model/Collection coll {}
                    :model/Card card {:collection_id (:id coll)
-                                     :dataset_query {:database (mt/id)
-                                                     :type     "native"
-                                                     :native   {:query "SELECT 1 AS n"}}}]
+                                     :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                      "SELECT 1 AS n")}]
       (mt/with-non-admin-groups-no-collection-perms coll
         (with-temp-csv-files [expected-f "n\n1\n"]
           (mt/user-http-request
@@ -933,13 +930,14 @@
                              (swap! captured-queries conj q)
                              {:status :completed
                               :data   {:cols [] :rows []}})]
-      (with-redefs [qp.core/process-query fake-process]
-        (mt/with-driver :postgres
-          (#'test-run.execute/read-back-output
-           999 :postgres {:schema "pub'lic" :table "mb_transform_temp_table_test_abc_xyz_out"})))
+      (mt/with-temp [:model/Database db {:engine :postgres}]
+        (with-redefs [qp.core/process-query fake-process]
+          (mt/with-driver :postgres
+            (test-run.execute/read-back-output
+             (:id db) :postgres {:schema "pub'lic" :table "mb_transform_temp_table_test_abc_xyz_out"}))))
       (is (= 1 (count @captured-queries))
           "exactly one query submitted")
-      (let [sql (get-in (first @captured-queries) [:native :query])]
+      (let [sql (lib/raw-native-query (first @captured-queries))]
         (is (not (re-find #"FROM pub'lic" sql))
             "raw interpolation of schema with quote must not appear in SQL")
         (is (re-find #"\"pub'lic\"" sql)

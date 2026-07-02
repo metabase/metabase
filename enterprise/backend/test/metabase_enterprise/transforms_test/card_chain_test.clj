@@ -41,6 +41,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-test.chain :as chain]
+   [metabase-enterprise.transforms-test.execute :as execute]
    [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase-enterprise.transforms-test.test-util :as tu]
    [metabase.driver.connection :as driver.conn]
@@ -66,26 +67,25 @@
   "A card that aggregates enriched into (state, count, revenue).
   Under the scratch override, FROM enriched is rewritten to t1's scratch output."
   [db-id enriched-name]
-  {:id           nil
-   :dataset_query {:database db-id
-                   :type     "native"
-                   :native   {:query (str "SELECT state,"
-                                          " count(*) AS order_count,"
-                                          " sum(total) AS revenue"
-                                          " FROM " enriched-name
-                                          " GROUP BY state ORDER BY state")}}})
+  {:id            nil
+   :dataset_query (lib/native-query (lib-be/application-database-metadata-provider db-id)
+                                    (str "SELECT state,"
+                                         " count(*) AS order_count,"
+                                         " sum(total) AS revenue"
+                                         " FROM " enriched-name
+                                         " GROUP BY state ORDER BY state"))})
 
 (defn- mbql-count-card
   "An MBQL card that counts rows in enriched — `SELECT COUNT(*) FROM enriched`.
 
-  `:source-table` is `tbl-id` (the app-DB Table id of the enriched temp table),
+  The source table is `tbl-id` (the app-DB Table id of the enriched temp table),
   so the MBQL compile path overrides enriched's `:name`/`:schema` to t1's scratch
   output spec and emits scratch-qualified SQL."
   [db-id tbl-id]
-  {:id           nil
-   :dataset_query {:database db-id
-                   :type     :query
-                   :query    {:source-table tbl-id :aggregation [[:count]]}}})
+  (let [mp (lib-be/application-database-metadata-provider db-id)]
+    {:id            nil
+     :dataset_query (-> (lib/query mp (lib.metadata/table mp tbl-id))
+                        (lib/aggregate (lib/count)))}))
 
 (defmacro ^:private with-enrich-topology
   "Bind `t1-sym` and `tbl-sym` to the temp transform and table for the enrich
@@ -281,13 +281,13 @@
               ;; rewrite only the mapping entries (enriched → scratch) are redirected;
               ;; `not_a_real_table` has no mapping entry and survives in the rewritten SQL.
               ;; verify catches the surviving non-scratch ref and throws ::cannot-test-run.
-              (let [danger-card {:id           nil
-                                 :dataset_query {:database db-id
-                                                 :type     "native"
-                                                 :native   {:query (str "SELECT state, count(*) AS n"
-                                                                        " FROM " enriched-name
-                                                                        " JOIN not_a_real_table ON 1=1"
-                                                                        " GROUP BY state")}}}
+              (let [danger-card {:id            nil
+                                 :dataset_query (lib/native-query
+                                                 (lib-be/application-database-metadata-provider db-id)
+                                                 (str "SELECT state, count(*) AS n"
+                                                      " FROM " enriched-name
+                                                      " JOIN not_a_real_table ON 1=1"
+                                                      " GROUP BY state"))}
                     thrown      (atom nil)]
                 (try
                   (chain/run-card-chain-test!
@@ -378,10 +378,11 @@
                  (t2/select :model/Transform))
                 ;; After the run, verify that enriched-name (t1's real output) is absent.
                 (let [result (qp.core/process-query
-                              {:database db-id :type :native
-                               :native {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                                    " WHERE table_schema = 'public'"
-                                                    " AND table_name = '" enriched-name "'")}})]
+                              (execute/native-query
+                               db-id
+                               (str "SELECT COUNT(*) FROM information_schema.tables"
+                                    " WHERE table_schema = 'public' AND table_name = ?")
+                               [enriched-name]))]
                   (testing "t1 real output table was never written"
                     (is (= 0 (-> result (get-in [:data :rows]) first first int)))))))))))))
 

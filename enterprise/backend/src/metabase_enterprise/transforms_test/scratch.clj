@@ -35,6 +35,8 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log])
@@ -291,17 +293,17 @@
   ;; information_schema rather than driver/describe-database: the latter lists the
   ;; whole database (every schema) via a full DB-level driver call; a scoped
   ;; information_schema query is cheaper and schema-specific.
-  (let [result (qp/process-query
-                {:database db-id
-                 :type     :native
-                 :native   {:query  (str "SELECT table_name"
-                                         " FROM information_schema.tables"
-                                         " WHERE table_schema = ?"
-                                         " ORDER BY table_name")
-                            ;; Schema passed as JDBC parameter, not interpolated, to avoid
-                            ;; SQL injection / malformed-SQL when the schema name contains
-                            ;; single quotes or other SQL metacharacters.
-                            :params [schema]}})]
+  ;;
+  ;; Schema passed as a JDBC parameter, not interpolated, to avoid SQL injection /
+  ;; malformed SQL when the schema name contains single quotes or other SQL
+  ;; metacharacters. (Not execute/native-query: execute requires this ns.)
+  (let [query  (-> (lib/native-query (lib-be/application-database-metadata-provider db-id)
+                                     (str "SELECT table_name"
+                                          " FROM information_schema.tables"
+                                          " WHERE table_schema = ?"
+                                          " ORDER BY table_name"))
+                   (lib/update-query-stage 0 assoc :params [schema]))
+        result (qp/process-query query)]
     (mapv first (get-in result [:data :rows]))))
 
 (defn cleanup-all-test-tables!
