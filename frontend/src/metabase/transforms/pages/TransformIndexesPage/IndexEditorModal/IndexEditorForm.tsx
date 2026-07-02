@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Form, FormErrorMessage, FormSubmitButton } from "metabase/forms";
-import { Box, Button, Group, Select, Stack, Text } from "metabase/ui";
+import { Form, FormSubmitButton } from "metabase/forms";
+import { Button, Group, Select, Stack, Text } from "metabase/ui";
 import type { IndexField, IndexKind } from "metabase-types/api";
 
 import { IndexFieldInput } from "./IndexFieldInput";
@@ -72,9 +72,6 @@ export function IndexEditorForm({
         {restFields.map((field) => renderField(field))}
 
         <Group justify="flex-end">
-          <Box flex={1}>
-            <FormErrorMessage />
-          </Box>
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
           <FormSubmitButton label={submitLabel} variant="filled" />
         </Group>

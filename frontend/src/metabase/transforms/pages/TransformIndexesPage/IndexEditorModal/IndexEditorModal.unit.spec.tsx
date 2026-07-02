@@ -172,6 +172,12 @@ describe("IndexEditorModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create index" }));
 
     expect(await screen.findByText("Failed to save index")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Failed" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Success" }),
+    ).not.toBeInTheDocument();
   });
 });
 

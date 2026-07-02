@@ -86,6 +86,7 @@ export function IndexEditorModal({
         message: getErrorMessage(submitError, t`Failed to save index`),
         icon: "warning",
       });
+      throw submitError;
     }
   }
 
