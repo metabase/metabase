@@ -153,7 +153,7 @@
    [:description {:optional true} [:maybe :string]]])
 
 (mr/def ::related-table
-  "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
+  "A table related to the queried entity via foreign key. The related_by field is a {:id :name} map identifying the FK field."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
    [:type [:= :table]]
@@ -164,7 +164,7 @@
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:fields {:optional true} [:maybe [:sequential ::field]]]
-   [:related_by {:optional true} [:maybe :string]]])
+   [:related_by {:optional true} [:maybe [:map [:id ::field-id] [:name :string]]]]])
 
 (mr/def ::table
   "Full details of a table including its fields, related tables, metrics, and segments."
