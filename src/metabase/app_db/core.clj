@@ -9,6 +9,7 @@
   Namespaces outside of src/metabase/app_db/ should not use any metabase.app-db.* namespace but use this api namespace."
   (:refer-clojure :exclude [compile])
   (:require
+   [clojure.core.memoize :as memoize]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
@@ -35,6 +36,7 @@
   application-db
   data-source
   db-type
+  do-after-commit
   in-transaction?
   quoting-style
   unique-identifier]
@@ -65,8 +67,6 @@
   qualify
   query
   select-or-insert!
-  streaming-reducible
-  streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
   with-conflict-retry]
@@ -153,10 +153,10 @@
   `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
   this."
   [f]
-  (let [f* (memoize (fn [_application-db-id & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (unique-identifier) args))))
+  (memoize/memo
+   (vary-meta
+    (fn [& args] (apply f args))
+    assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as

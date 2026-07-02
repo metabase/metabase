@@ -17,6 +17,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
+   [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -88,43 +89,40 @@
   (check-params-are-allowed object-embedding-params token-params user-params)
   (check-params-exist object-embedding-params (merge token-params user-params)))
 
-(defn- check-embedding-enabled-for-object
-  "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
-  ([entity id]
-   (api/check (pos-int? id)
-              [400 (tru "{0} id should be a positive integer." (name entity))])
-   (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
+(defn check-embedding-enabled-for-object
+  "Check that embedding is enabled, that the pre-loaded `object` exists, and embedding for `object` is enabled. Callers
+  are responsible for selecting `object` (with at least `:enable_embedding` and `:archived`) exactly once per request
+  and threading it here."
+  [object]
+  (embedding.validation/check-embedding-enabled)
+  (api/check-404 object)
+  (api/check-not-archived object)
+  (api/check (:enable_embedding object)
+             [400 (tru "Embedding is not enabled for this object.")]))
 
-  ([object]
-   (embedding.validation/check-embedding-enabled)
-   (api/check-404 object)
-   (api/check-not-archived object)
-   (api/check (:enable_embedding object)
-              [400 (tru "Embedding is not enabled for this object.")])))
+(def ^{:arglists '([card])} check-embedding-enabled-for-card
+  "Runs check-embedding-enabled-for-object for a pre-loaded Card entity."
+  check-embedding-enabled-for-object)
 
-(def ^{:arglists '([card-id])} check-embedding-enabled-for-card
-  "Runs check-embedding-enabled-for-object for a given Card id"
-  (partial check-embedding-enabled-for-object :model/Card))
-
-(def ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
-  "Runs check-embedding-enabled-for-object for a given Dashboard id"
-  (partial check-embedding-enabled-for-object :model/Dashboard))
+(def ^{:arglists '([dashboard])} check-embedding-enabled-for-dashboard
+  "Runs check-embedding-enabled-for-object for a pre-loaded Dashboard entity."
+  check-embedding-enabled-for-object)
 
 (defn- resolve-card-parameters
-  "Returns parameters for a card (HUH?)" ; TODO - better docstring
-  [card-or-id]
-  (-> (t2/select-one [:model/Card :dataset_query :parameters :card_schema], :id (u/the-id card-or-id))
+  "Returns the combined `:parameters` (including template-tag parameters) for a pre-loaded `card` entity."
+  [card]
+  (-> card
       api.public/combine-parameters-and-template-tags
       :parameters))
 
 (mu/defn- resolve-dashboard-parameters :- [:sequential [:map
                                                         [:id ms/NonBlankString]]]
-  "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
-  that can be passed to various functions in the [[metabase.dashboards-rest.api]] namespace such as
-  [[metabase.dashboards-rest.api/process-query-for-dashcard]]."
-  [dashboard-id :- ms/PositiveInt
-   slug->value  :- :map]
-  (let [parameters (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)
+  "Given a pre-loaded `dashboard` entity and parameters map in the format `slug->value`, return a sequence of
+  parameters with `:id`s that can be passed to various functions in the [[metabase.dashboards-rest.api]] namespace such
+  as [[metabase.dashboards-rest.api/process-query-for-dashcard]]."
+  [dashboard   :- :map
+   slug->value :- :map]
+  (let [parameters (:parameters dashboard)
         slug->id (into {} (map (juxt :slug :id)) parameters)
         slug->type (into {} (map (juxt :slug :type)) parameters)]
     (vec (for [[slug value] slug->value
@@ -296,13 +294,18 @@
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
+(defn unsigned-token->card-id
+  "Get the Card ID from an unsigned token, translating an `entity_id` to a numeric id if necessary."
+  [unsigned-token]
+  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+       (eid-translation/->id :model/Card)))
+
 (defn card-for-unsigned-token
   "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
   `public-card` function that fetches the Card."
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
-  (let [pre-card-id  (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card-id      (eid-translation/->id :model/Card pre-card-id)
+  (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
                                       (t2/select-one-fn :embedding_params :model/Card :id card-id))]
@@ -322,26 +325,21 @@
     :embedded-question))
 
 (defn process-query-for-card-with-params
-  "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
-   an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
-  returned as the API endpoint result."
-  [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
+  "Run the query associated with pre-loaded Card `card` using JWT `token-params`, user-supplied URL `query-params`,
+   an `embedding-params` whitelist, and additional query `options`. Callers are responsible for selecting `card`
+  exactly once per request and threading it here. Returns `StreamingResponse` that should be returned as the API
+  endpoint result."
+  [& {:keys [export-format card embedding-params token-params query-params qp constraints options]
       :or   {qp qp.card/process-query-for-card-default-qp}}]
-  {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
+  {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
+        parameters         (apply-slug->value (resolve-card-parameters card) merged-slug->value)]
     (m/mapply api.public/process-query-for-card-with-id
-              card-id export-format parameters
+              card export-format parameters
               :context     (get-embed-card-context export-format)
               :constraints constraints
               :qp          qp
               options)))
-
-(defn unsigned-token->card-id
-  "Get the Card ID from an unsigned token."
-  [unsigned-token]
-  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-       (eid-translation/->id :model/Card)))
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
@@ -374,13 +372,18 @@
         ;; TODO cleanup
         (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
 
+(defn unsigned-token->dashboard-id
+  "Get the Dashboard ID from an unsigned token, translating an `entity_id` to a numeric id if necessary."
+  [unsigned-token]
+  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+       (eid-translation/->id :model/Dashboard)))
+
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
   the `public-dashboard` function that fetches the Dashboard."
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
-  (let [pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard-id (eid-translation/->id :model/Dashboard pre-dashboard-id)
+  (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
@@ -400,25 +403,35 @@
     :embedded-dashboard))
 
 (defn process-query-for-dashcard
-  "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
-  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params middleware
+  "Return results for running the query belonging to a DashboardCard. Callers are responsible for selecting the
+  `dashboard`, `dashcard`, and `card` entities exactly once per request and threading them here. Returns a
+  `StreamingResponse`."
+  [& {:keys [dashboard dashcard card export-format embedding-params token-params middleware
              query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
-  {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
+  {:pre [(map? dashboard) (map? dashcard) (map? card) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
+        parameters  (resolve-dashboard-parameters dashboard slug->value)]
     (api.public/process-query-for-dashcard
-     :dashboard-id  dashboard-id
-     :card-id       card-id
-     :dashcard-id   dashcard-id
+     :dashboard     dashboard
+     :card          card
+     :dashcard      dashcard
      :export-format export-format
      :parameters    parameters
      :qp            qp
      :context       (get-embed-dashboard-context export-format)
      :constraints   constraints
      :middleware    middleware)))
+
+(defn process-tiles-query-for-dashcard
+  "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but takes pre-loaded Dashboard/DashboardCard/Card
+  entities. Used by the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns
+   a Ring response."
+  [dashboard dashcard card parameters zoom x y lat-field lon-field]
+  (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
+                                              parameters zoom x y lat-field lon-field))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param
@@ -509,12 +522,6 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-(defn unsigned-token->dashboard-id
-  "Get the Dashboard ID from an unsigned token."
-  [unsigned-token]
-  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-       (eid-translation/->id :model/Dashboard)))
-
 (defn dashboard-param-values
   "Common implementation for fetching parameter values for embedding and preview-embedding.
   Optionally pass a map with `:preview` containing `true` (or some non-falsy value) to disable checking
@@ -524,9 +531,9 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
         dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
-        _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
-        slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         dashboard                                      (t2/select-one :model/Dashboard :id dashboard-id)
+        _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard))
+        slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
          published-embedding-params :embedding_params} dashboard
         ;; when previewing an embed, embedding-params should come from the token,
@@ -579,8 +586,8 @@
   ([token param-key value {:keys [preview] :or {preview false}}]
    (let [unsigned-token             (embed/unsign token)
          dashboard-id               (unsigned-token->dashboard-id unsigned-token)
-         _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
          dashboard                  (t2/select-one :model/Dashboard :id dashboard-id)
+         _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)
          id->slug                   (into {} (map (juxt :id :slug)) parameters)

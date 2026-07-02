@@ -41,7 +41,6 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { EmbedApi, PublicApi } from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,
@@ -707,8 +706,10 @@ export const fetchDashboard = createAsyncThunk(
         };
         result = denormalize(dashId, dashboardSchema, entities);
       } else if (dashboardType === "public") {
-        result = await PublicApi.dashboard(
+        result = await runRtkEndpoint(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          publicApi.endpoints.getPublicDashboard,
           { signal: fetchDashboardCancellation.signal },
         );
         result = {
@@ -720,8 +721,10 @@ export const fetchDashboard = createAsyncThunk(
           })),
         };
       } else if (dashboardType === "embed") {
-        result = await EmbedApi.dashboard(
+        result = await runRtkEndpoint(
           { token: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          embedApi.endpoints.getEmbedDashboard,
           { signal: fetchDashboardCancellation.signal },
         );
         result = {

@@ -23,7 +23,7 @@ export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
 
 export const ParameterFormBadge = styled.span`
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   border-radius: var(--mantine-spacing-xs);
 `;

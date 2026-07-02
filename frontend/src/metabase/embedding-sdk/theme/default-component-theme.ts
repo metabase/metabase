@@ -35,7 +35,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     breadcrumbs: {
       expandButton: {
         textColor: "var(--mb-color-text-secondary)",
-        backgroundColor: "var(--mb-color-background-secondary)",
+        backgroundColor: "var(--mb-color-background_page-secondary)",
         hoverTextColor: "var(--mb-color-text-primary-inverse)",
         hoverBackgroundColor: "var(--mb-color-core-brand)",
       },
@@ -54,9 +54,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   dashboard: {
-    backgroundColor: "var(--mb-color-background-primary)",
+    backgroundColor: "var(--mb-color-background_page-primary)",
     card: {
-      backgroundColor: "var(--mb-color-background-primary)",
+      backgroundColor: "var(--mb-color-background_page-primary)",
     },
   },
   question: {
@@ -78,7 +78,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     rowToggle: {
       textColor: "text-primary-inverse",
-      backgroundColor: "text-tertiary", // TODO: should it be "background-tertiary-inverse" ?
+      backgroundColor: "text-disabled", // TODO: should it be "background_page-tertiary-inverse" ?
     },
   },
   cartesian: {

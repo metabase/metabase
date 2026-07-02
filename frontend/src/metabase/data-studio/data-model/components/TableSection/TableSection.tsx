@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import {
   FieldOrderPicker,
   NameDescriptionInput,

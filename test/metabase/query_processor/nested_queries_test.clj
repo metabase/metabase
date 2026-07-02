@@ -757,14 +757,14 @@
 
 (deftest ^:parallel card-perms-test-2
   (testing "perms for a Card with a SQL source query\n"
-    (testing "reading should require that you have read permissions for the Card's Collection")
-    (testing "should be able to save even if you don't have SQL write perms (#6845)"
-      (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                        [(mt/native-query {:query "SELECT * FROM VENUES"})])
-        (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
-               (query-perms/required-perms-for-query (query-with-source-card 1
-                                                                             lib.schema.id/saved-questions-virtual-database-id
-                                                                             :aggregation [:count]))))))))
+    (testing "reading should require that you have read permissions for the Card's Collection"
+      (testing "should be able to save even if you don't have SQL write perms (#6845)"
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/native-query {:query "SELECT * FROM VENUES"})])
+          (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
+                 (query-perms/required-perms-for-query (query-with-source-card 1
+                                                                               lib.schema.id/saved-questions-virtual-database-id
+                                                                               :aggregation [:count])))))))))
 
 (deftest card-perms-test-3
   (testing "perms for Card -> Card -> MBQL Source query\n"
@@ -782,10 +782,10 @@
                            :model/Card       card-2 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query nil
                                                                       {:source-table (format "card__%d" (u/the-id card-1))})}]
-              (testing "read perms for both Cards should be the same as reading the parent collection")
-              (is (= (mi/perms-objects-set collection :read)
-                     (mi/perms-objects-set card-1 :read)
-                     (mi/perms-objects-set card-2 :read)))
+              (testing "read perms for both Cards should be the same as reading the parent collection"
+                (is (= (mi/perms-objects-set collection :read)
+                       (mi/perms-objects-set card-1 :read)
+                       (mi/perms-objects-set card-2 :read))))
               (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1
@@ -1662,12 +1662,9 @@
                     [str int]
                     (qp/process-query query))))))))))
 
-;;; TODO -- not clear why this test is hardcoded to only run against Postgres, and not to run against our other DBs that
-;;; support JSON unfolding e.g. MySQL. FIXME
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel unfolded-json-with-custom-expression-test
   (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
-    (mt/test-driver :postgres
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset json
         (let [field-id (mt/id :json "json_bit → title")]
           (is (=? {:status :completed}

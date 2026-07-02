@@ -115,11 +115,13 @@
 (defn try-start-unless-already-running
   "Start a transform run. Throws ex-info with {:error :already-running} if another
    run is already active (duplicate key violation). Other errors are rethrown.
-   If `user-id` is provided, it will be stored with the run for attribution purposes."
-  [id run-method user-id]
+   If `user-id` is provided, it will be stored with the run for attribution purposes.
+   If `job-run-id` is provided, it will be stored with the run to link it to its parent job run."
+  [id run-method user-id & {:keys [job-run-id]}]
   (try
     (transform-run/start-run! id (cond-> {:run_method run-method}
-                                   user-id (assoc :user_id user-id)))
+                                   user-id    (assoc :user_id user-id)
+                                   job-run-id (assoc :job_run_id job-run-id)))
     (catch Exception e
       (if (duplicate-key-violation? e)
         (throw (ex-info "Transform is already running"

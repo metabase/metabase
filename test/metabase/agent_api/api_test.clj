@@ -36,6 +36,13 @@
                  (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
       (lib/aggregate (lib/count))))
 
+(defn- orders-limit-query
+  "A simple unaggregated orders query with a row limit, built via lib."
+  [n]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/limit n))))
+
 ;;; ------------------------------------------------- Session Auth Tests ------------------------------------------------
 
 (deftest agent-api-session-token-auth-test
@@ -97,6 +104,22 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
+
+(deftest search-content-types-test
+  (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-new-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
+                       :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
+                       :model/Collection _ {:name "AgentSearchAcmeCollection"}]
+          (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                                   {:term_queries ["AgentSearchAcme"]})
+                             :data
+                             (map (juxt :name :type))
+                             set)]
+            (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
+            (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
+            (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
 
 (deftest coerce-query-list-test
   (let [coerce #'agent-api.api/coerce-query-list]
@@ -399,7 +422,23 @@
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:query (orders-query :limit 1000)})))))
+                                  {:query (orders-query :limit 1000)}))))
+  (testing "No explicit :limit defaults to a 2000-row budget, emitting a continuation token for large tables"
+    ;; Regression: previously the default budget equalled the page size (both 200), so the first
+    ;; page exhausted the budget and no continuation token was ever emitted, causing agents to
+    ;; report a false \"200-row hard cap\". The default budget is now 2000.
+    (let [page1 (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                      {:query (orders-query :order-by [["asc" {} (orders-field-ref "ID")]])})]
+      (is (=? {:status             "completed"
+               :row_count          200
+               :continuation_token string?}
+              page1)
+          "first page should include a continuation token when more data exists within the 2000-row budget")
+      (is (=? {:status "completed"
+               :data   {:rows sequential?}}
+              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                    {:continuation_token (:continuation_token page1)}))
+          "continuation token should successfully fetch the next page"))))
 
 (deftest combined-query-accepts-resolved-handle-test
   (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
@@ -528,6 +567,19 @@
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestMetric"]}))))))))
 
+(deftest search-finds-models-test
+  (binding [search.ingestion/*force-sync* true]
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
+                                         :type          :model
+                                         :database_id   (mt/id)
+                                         :dataset_query (orders-count-query)}]
+        (testing "Returns models in search results"
+          (is (=? {:data        [{:type "model" :name "AgentSearchTestModel"}]
+                   :total_count 1}
+                  (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                        {:term_queries ["AgentSearchTestModel"]}))))))))
+
 ;;; ------------------------------------------------ Create Question Tests -------------------------------------------
 
 (deftest create-question-test
@@ -590,6 +642,106 @@
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
+
+;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
+
+(deftest construct-native-query-test
+  (testing "Wraps SQL into a base64-encoded MBQL 5 native query (same shape as /v2/construct-query output)"
+    (let [resp    (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
+                                        {:database_id (mt/id)
+                                         :sql         "SELECT 1 AS n"})
+          decoded (-> resp :query u/decode-base64 json/decode+kw)]
+      (is (=? {:database (mt/id)
+               :lib/type "mbql/query"
+               :stages   [{:lib/type "mbql.stage/native" :native "SELECT 1 AS n"}]}
+              decoded))))
+  (testing "Returns 403 when the caller cannot access the target database"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/user-http-request :rasta :post 403 "agent/v1/construct-native-query"
+                            {:database_id (mt/id)
+                             :sql         "SELECT 1"})))
+  (testing "Returns 404 for a non-existent database"
+    (mt/user-http-request :crowberto :post 404 "agent/v1/construct-native-query"
+                          {:database_id Integer/MAX_VALUE
+                           :sql         "SELECT 1"})))
+
+(deftest create-native-question-test
+  (testing "Saves a native SQL query (from construct_native_query) as a question"
+    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
+                                               {:database_id (mt/id)
+                                                :sql         "SELECT 1 AS n"})
+          create-resp    (mt/user-http-request :crowberto :post 200 "agent/v1/question"
+                                               {:name  "Native Agent Question"
+                                                :query (:query construct-resp)})]
+      (is (=? {:id pos? :name "Native Agent Question" :display "table"} create-resp))
+      (let [card (t2/select-one :model/Card :id (:id create-resp))]
+        (is (= :native (:query_type card)))
+        (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1 AS n"}]}
+                (:dataset_query card))))
+      (t2/delete! :model/Card :id (:id create-resp))))
+  (testing "Returns 403 when the caller lacks native-query permission"
+    (let [construct-resp (mt/user-http-request :crowberto :post 200 "agent/v1/construct-native-query"
+                                               {:database_id (mt/id)
+                                                :sql         "SELECT 1 AS n"})]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                              {:name  "Should Not Save Native"
+                               :query (:query construct-resp)})))))
+
+;;; ----------------------------------------------- Execute Question ------------------------------------------------
+
+(deftest execute-question-test
+  (testing "Runs a saved question and returns rows + column metadata"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-limit-query 5)}]
+      ;; Streaming response returns 202 (accepted) like the other execute endpoints.
+      (let [resp (mt/user-http-request :crowberto :post 202 (format "agent/v1/question/%d/query" card-id))]
+        (is (=? {:status    "completed"
+                 :row_count 5
+                 :data      {:cols (fn [cols] (and (seq cols) (every? :name cols) (every? :base_type cols)))
+                             :rows (fn [rows] (= 5 (count rows)))}}
+                resp)))))
+  (testing "Returns 404 for a non-existent card"
+    (mt/user-http-request :crowberto :post 404
+                          (format "agent/v1/question/%d/query" Integer/MAX_VALUE)))
+  (testing "Returns 403 when the caller lacks read permission on the card"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "No-Read Coll"}
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :dataset_query (orders-limit-query 5)}]
+        (mt/user-http-request :rasta :post 403
+                              (format "agent/v1/question/%d/query" card-id))))))
+
+(deftest execute-question-rejects-parameterized-test
+  (testing "Refuses a card with a native template-tag variable (400)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query         "SELECT {{n}} AS n"
+                                               :template-tags {:n {:id "n" :name "n"
+                                                                   :display-name "N" :type :number}}}}}]
+      (is (re-find #"takes parameters"
+                   (str (mt/user-http-request :crowberto :post 400
+                                              (format "agent/v1/question/%d/query" card-id)))))))
+  (testing "Refuses a card with a configured parameter widget (400)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (orders-limit-query 5)
+                    :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
+      (is (re-find #"takes parameters"
+                   (str (mt/user-http-request :crowberto :post 400
+                                              (format "agent/v1/question/%d/query" card-id))))))))
+
+(deftest create-question-explicit-null-collection-test
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 10)})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                               {:name          "Agent Root Question"
+                                                :query         (:query construct-resp)
+                                                :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              create-resp))
+      (t2/delete! :model/Card :id (:id create-resp)))))
 
 (deftest create-question-collection-path-test
   (testing "collection_path is the full breadcrumb, mirroring the app's location"
@@ -685,6 +837,16 @@
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
                            :question_ids [999999]})))
+
+(deftest create-dashboard-explicit-null-collection-test
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name          "Agent Root Dashboard"
+                                      :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              resp))
+      (t2/delete! :model/Dashboard :id (:id resp)))))
 
 (deftest create-entity-url-test
   (testing "create question/dashboard return a frontend URL"

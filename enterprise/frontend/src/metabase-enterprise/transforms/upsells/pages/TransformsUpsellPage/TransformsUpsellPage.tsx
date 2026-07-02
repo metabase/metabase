@@ -5,8 +5,8 @@ import { jt, t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
@@ -68,7 +68,7 @@ export function TransformsUpsellPage() {
             <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
           }
         />
-        <Center h="100%" bg="background-secondary">
+        <Center h="100%" bg="background_page-secondary">
           <LoadingAndErrorWrapper
             loading={isLoading}
             error={

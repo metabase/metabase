@@ -1267,21 +1267,6 @@ describe("admin > custom visualizations", () => {
     });
 
     it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
-      // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
-      // Call this before any nav-sidebar interaction so we open it only when
-      // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
-      // it unconditionally would close an already-open sidebar.
-      const ensureNavigationSidebarOpen = () => {
-        cy.get("body").then(($body) => {
-          const visible = $body.find(
-            '[data-testid="main-navbar-root"]:visible',
-          ).length;
-          if (!visible) {
-            H.openNavigationSidebar();
-          }
-        });
-      };
-
       H.interceptPluginBundle();
 
       cy.visit("/collection/root");
@@ -1332,7 +1317,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log('Navigate → home via the nav-sidebar "Home" link');
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar().findByText("Home").click();
 
       cy.log("Home recently-viewed section");
@@ -1344,7 +1329,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log("Navigate → dashboard via bookmark link in the nav sidebar");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DASHBOARD_NAME) })
         .click();
@@ -1362,7 +1347,7 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", { name: /Cancel/i }).click();
 
       cy.log("Navigate → document via bookmark link");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DOC_NAME) })
         .click();
@@ -2374,7 +2359,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2394,12 +2378,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin read element id",
       "sandbox-decoy",
-    );
-
-    // The swap is reported to host console for diagnostics.
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div id="root"> with decoy/,
     );
 
     // The real host element was untouched.
@@ -2434,7 +2412,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2457,11 +2434,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin parentNode decoy:",
       "true",
-    );
-
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div.*> with decoy/,
     );
 
     cy.get("[data-plugin-sandbox]")
@@ -2495,7 +2467,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2517,9 +2488,10 @@ describe("sandbox", () => {
       doc.body.removeAttribute("data-mutation-probe-attr");
     });
 
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin observed mutations:",
+      0,
     );
   });
 

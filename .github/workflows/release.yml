@@ -554,6 +554,53 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
+  linear-release-lifecycle:
+    # Advance / finalize the matching Linear release (single "Metabase" pipeline).
+    # Only minors and majors map to a Linear release; patches fold into their minor
+    # and have no release of their own, so we skip them (same gate as the jobs above).
+    # Pre-releases (RC/beta) -> `update` the stage (keep it open); stable -> `complete`.
+    # Requires the LINEAR_RELEASE_ACCESS_KEY secret + the "Metabase" pipeline (see
+    # release/LINEAR_RELEASES.md). The sync side lives in linear-release-sync.yml.
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    needs: [push-tags, check-version]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    continue-on-error: true # don't block the release if Linear fails (we can fix it manually)
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # complete/update target a release by version and do NOT scan commits,
+          # so the default shallow clone is enough (sync, which scans, needs depth 0).
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Resolve the Linear MINOR release + lifecycle command
+        id: linear
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const R = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const version = '${{ inputs.version }}';
+            const releaseVersion = R.getLinearReleaseName(version);
+
+            const preRelease = R.isPreReleaseVersion(version);
+            core.setOutput('release_version', releaseVersion);
+
+            // if we're doing a beta, we want to update the stage (keep it open) instead of completing it
+            core.setOutput('command', preRelease ? 'update' : 'complete');
+            core.setOutput('stage', preRelease ? 'beta' : 'Released');
+
+      - name: Advance / complete the Linear release
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
+          command: ${{ steps.linear.outputs.command }}
+          release_version: ${{ steps.linear.outputs.release_version }}
+          stage: ${{ steps.linear.outputs.stage }}
+
   publish-complete-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [add-extra-tags]

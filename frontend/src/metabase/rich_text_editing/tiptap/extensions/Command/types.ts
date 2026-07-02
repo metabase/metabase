@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/core";
 
-import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type { IconName } from "metabase-types/api";
 export interface CommandOption {
   icon?: IconName;

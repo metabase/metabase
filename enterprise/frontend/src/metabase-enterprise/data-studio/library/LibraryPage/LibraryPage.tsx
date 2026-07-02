@@ -4,10 +4,10 @@ import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import {
   Card,
@@ -51,6 +51,7 @@ function LibraryPageContent() {
   const { treeTableInstance, isChildrenLoading, isLoading, emptyMessage } =
     useLibraryTreeTableInstance({
       collections,
+      isLoadingCollections,
       searchQuery,
       onPublishTableClick: openPublishTableModal,
     });
@@ -75,7 +76,7 @@ function LibraryPageContent() {
           py={0}
         />
         <Stack
-          bg="background-secondary"
+          bg="background_page-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"
