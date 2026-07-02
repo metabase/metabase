@@ -29,6 +29,7 @@ describe("chart-clipboard", () => {
         display: "bar",
         dataset_query: datasetQuery,
         visualization_settings: {},
+        displayIsLocked: true,
       },
       { includeDisplayIsLocked: true },
     );
@@ -58,7 +59,7 @@ describe("chart-clipboard", () => {
     });
   });
 
-  it("round-trips the chart id and query id when present", () => {
+  it("round-trips the chart id and query id inside the hash", () => {
     const text = serializeChartClipboard(
       {
         name: "Orders by month",
@@ -71,8 +72,7 @@ describe("chart-clipboard", () => {
       SITE_URL,
     );
 
-    expect(text).toContain("mb_chart_id=chart-1");
-    expect(text).toContain("mb_query_id=query-1");
+    expect(text).toMatch(/\/question#[A-Za-z0-9_=-]+$/);
     const parsed = parseChartClipboard(text);
     expect(parsed?.chart_id).toBe("chart-1");
     expect(parsed?.query_id).toBe("query-1");

@@ -9,20 +9,16 @@ import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { useMetabotName } from "metabase/metabot/hooks";
-import {
-  type MetabotAgentChatMessage,
-  type MetabotAgentDataPartMessage,
-  type MetabotAgentId,
-  type MetabotAgentTextChatMessage,
-  type MetabotAgentTurnError,
-  type MetabotAgentTurnErroredMessage,
-  type MetabotChatMessage,
-  type MetabotDataPart,
-  type MetabotUserChatMessage,
-  getMetabotRequestState,
+import type {
+  MetabotAgentChatMessage,
+  MetabotAgentDataPartMessage,
+  MetabotAgentTextChatMessage,
+  MetabotAgentTurnError,
+  MetabotAgentTurnErroredMessage,
+  MetabotChatMessage,
+  MetabotDataPart,
+  MetabotUserChatMessage,
 } from "metabase/metabot/state";
-import { resolveChartLink } from "metabase/metabot/utils/resolve-chart-links";
-import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -105,25 +101,16 @@ export const MessageContainer = ({
 interface UserMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotUserChatMessage;
   extraActions?: ReactNode;
-  agentId?: MetabotAgentId;
 }
 
 export const UserMessage = ({
   message,
-  agentId,
   className,
   hideActions,
   extraActions,
   ...props
 }: UserMessageProps) => {
   const clipboard = useClipboard({ timeout: 2000 });
-  const charts = useSelector((state) =>
-    agentId ? getMetabotRequestState(state, agentId)?.charts : undefined,
-  );
-  const resolveLink = useCallback(
-    (url: string | undefined) => resolveChartLink(url, charts),
-    [charts],
-  );
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
@@ -131,7 +118,6 @@ export const UserMessage = ({
         <AIMarkdown
           className={cx(Styles.message, Styles.messageUser)}
           singleNewlinesAreParagraphs
-          resolveChartLink={resolveLink}
         >
           {message.message}
         </AIMarkdown>
@@ -442,7 +428,6 @@ export const getFullAgentReply = (
 
 export const Messages = ({
   messages,
-  agentId,
   onRetryMessage,
   isDoingScience,
   debug,
@@ -451,7 +436,6 @@ export const Messages = ({
   getExtraActions,
 }: {
   messages: MetabotChatMessage[];
-  agentId?: MetabotAgentId;
   onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
   debug: boolean;
@@ -542,7 +526,6 @@ export const Messages = ({
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
-            agentId={agentId}
             hideActions={isDoingScience && visibleMessages.length === index + 1}
             extraActions={getExtraActions?.(message.id)}
           />

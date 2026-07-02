@@ -14,6 +14,7 @@ import {
   METABOT_REQUEST_IDS,
   type MetabotProfileId,
 } from "../constants";
+import type { ConversationChart } from "../utils/links";
 
 import type {
   MetabotAgentId,
@@ -203,6 +204,19 @@ export const getMetabotRequestState = createSelector(
   getMetabotConversation,
   (convo) => convo.state,
 );
+
+export const getConversationChart = (
+  state: State,
+  chartId: string,
+): ConversationChart | undefined => {
+  for (const convo of Object.values(getMetabotState(state).conversations)) {
+    const chart = convo?.state?.charts?.[chartId];
+    if (chart) {
+      return chart;
+    }
+  }
+  return undefined;
+};
 
 export const getIsLongMetabotConversation = createSelector(
   getMessages,

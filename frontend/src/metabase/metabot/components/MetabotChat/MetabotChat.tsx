@@ -153,7 +153,6 @@ export const MetabotChat = ({
               {/* conversation messages */}
               <Messages
                 messages={metabot.messages}
-                agentId={config.agentId}
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
