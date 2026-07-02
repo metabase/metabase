@@ -90,7 +90,5 @@ export function toStructured(
       structured[field.name] = value;
     }
   }
-  // The body is built dynamically from a backend-driven schema; the concrete
-  // shape always matches one of the StructuredIndex variants for these kinds.
-  return structured as unknown as StructuredIndex;
+  return structured as StructuredIndex;
 }
