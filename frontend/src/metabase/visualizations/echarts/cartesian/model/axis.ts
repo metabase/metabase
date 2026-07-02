@@ -725,6 +725,10 @@ export function getTimeSeriesXAxisModel(
     timezone,
     offsetMinutes,
   } = timeSeriesInfo;
+  const shouldDecodeEChartsAxisValue =
+    offsetMinutes == null &&
+    getTimeSeriesIntervalDuration(dataTimeSeriesInterval) <
+      getTimeSeriesIntervalDuration(DAY_INTERVAL);
   const formatter = (value: RowValue, unit?: DateTimeAbsoluteUnit) => {
     const formatUnit =
       unit ?? getFormatUnit(dimensionColumn, dataTimeSeriesInterval);
@@ -760,6 +764,10 @@ export function getTimeSeriesXAxisModel(
   };
   const fromEChartsAxisValue = (rawValue: number) => {
     const date = dayjs.utc(rawValue);
+
+    if (!shouldDecodeEChartsAxisValue) {
+      return date;
+    }
 
     if (offsetMinutes != null) {
       return date.subtract(offsetMinutes, "minute");
