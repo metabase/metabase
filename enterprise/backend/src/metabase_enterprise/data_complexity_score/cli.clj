@@ -133,8 +133,8 @@
 (def ^:private in-process-descriptor
   "Model identity for `--embedder in-process`.
   Mirrors `metabase-enterprise.embedder.core/model-descriptor`; kept as a literal so parsing the flag
-  doesn't need the plugin on the classpath — the provider dispatch resolves it (and errors usefully)
-  only when embeddings are actually requested."
+  doesn't need the plugin on the classpath — the provider dispatch resolves it (and errors usefully) only
+  when embeddings are actually requested."
   {:provider         "in-process"
    :model-name       "all-MiniLM-L6-v2"
    :model-dimensions 384})
@@ -143,9 +143,8 @@
   "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
   default synonym embedder. `nil` when the flag wasn't passed.
 
-  `in-process` goes through [[embedders/provider-embedder]] and thus the registered `in-process`
-  provider — exactly the production code path, including the guidance error when the embedder
-  plugin jar is absent."
+  `in-process` goes through [[embedders/provider-embedder]] and thus the registered `in-process` provider
+  — exactly the production code path, including the guidance error when the embedder plugin jar is absent."
   [embedder-name]
   (case embedder-name
     "in-process" {:embedder             (embedders/provider-embedder in-process-descriptor)
