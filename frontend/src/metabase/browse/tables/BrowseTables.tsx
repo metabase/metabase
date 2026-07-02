@@ -66,7 +66,6 @@ export const BrowseTables = ({
   };
 }) => {
   if (Urls.extractEntityId(dbId) == null) {
-    // react-router already url-decodes route params, so `dbId` is the raw db name here.
     return <BrowseTablesByDatabaseName name={dbId} schemaName={schemaName} />;
   }
 
