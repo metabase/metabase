@@ -43,10 +43,14 @@
   (for [file (.listFiles (io/file (str (.getAbsolutePath (project-root-directory)) "/modules/drivers")))]
     (io/file file "src")))
 
+(mu/defn- embedder-source-root :- (ms/InstanceOfClass java.io.File)
+  ^java.io.File []
+  (io/file (str (.getAbsolutePath (project-root-directory)) "/modules/embedder/src")))
+
 (mu/defn- find-source-files :- [:sequential (ms/InstanceOfClass java.io.File)]
   []
   (mapcat ns.find/find-sources-in-dir
-          (list* (source-root) (enterprise-source-root) (drivers-source-roots))))
+          (list* (source-root) (enterprise-source-root) (embedder-source-root) (drivers-source-roots))))
 
 (mu/defn- module :- [:maybe symbol?]
   "E.g.

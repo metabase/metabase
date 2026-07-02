@@ -1,0 +1,8 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {ai.djl/api                            {:mvn/version "0.36.0"} ; core DJL API
+  ai.djl.huggingface/tokenizers         {:mvn/version "0.36.0"} ; HuggingFace BERT tokenizer JNI wrapper
+  ai.djl.onnxruntime/onnxruntime-engine {:mvn/version "0.36.0"} ; ONNX Runtime engine (pulls Microsoft onnxruntime native libs)
+  }}

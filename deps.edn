@@ -4,10 +4,7 @@
  ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
  ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- {ai.djl/api                                {:mvn/version "0.36.0"}             ; PoC: in-JVM embedder (data-complexity-score) — core DJL API
-  ai.djl.huggingface/tokenizers             {:mvn/version "0.36.0"}             ; PoC: in-JVM embedder — HuggingFace BERT tokenizer JNI wrapper
-  ai.djl.onnxruntime/onnxruntime-engine     {:mvn/version "0.36.0"}             ; PoC: in-JVM embedder — ONNX Runtime engine (pulls Microsoft onnxruntime native libs)
-  amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
+ {amalloy/ring-gzip-middleware              {:mvn/version "0.1.4"}              ; Ring middleware to GZIP responses if client can handle it
   babashka/fs                               {:mvn/version "0.5.27"}             ; Portable filesystem operations
   buddy/buddy-core                          {:mvn/version "1.12.0-430"          ; various cryptographic functions
                                              :exclusions  [commons-codec/commons-codec
@@ -489,6 +486,16 @@
   {:extra-deps
    {metabase/driver-modules {:local/root "modules/drivers"}}}
 
+  ;; for local dev -- include the in-process embedder module (DJL + ONNX Runtime) and its tests.
+  ;; In production this module ships as a separate plugin jar, not in the core uberjar.
+  ;;
+  ;;    clojure -M:dev:ee:ee-dev:embedder
+  :embedder
+  {:extra-deps
+   {metabase/embedder {:local/root "modules/embedder"}}
+   :extra-paths
+   ["modules/embedder/test"]}
+
   ;; for local dev: include drivers as well as their tests.
   ;;
   ;;    clojure -X:dev:drivers:drivers-dev:test
@@ -554,6 +561,8 @@
     "bin/lint-migrations-file/test"
     "bin/release-list/src"
     "bin/release-list/test"
+    "modules/embedder/src"
+    "modules/embedder/test"
     "modules/drivers/athena/src"
     "modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/src"
