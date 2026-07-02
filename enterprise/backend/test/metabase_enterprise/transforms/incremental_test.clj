@@ -679,8 +679,7 @@
 
 (defn- incremental-index-test-drivers
   "Index-supporting drivers that also run incremental transforms (effectively postgres today; the incremental suite
-  excludes redshift/clickhouse/sqlserver -- e.g. sqlserver's SELECT INTO preserves the source IDENTITY column, so the
-  append INSERT...SELECT fails without IDENTITY_INSERT)."
+  excludes redshift/clickhouse/sqlserver)."
   []
   (into #{} (filter (index-util/index-test-drivers)) (test-drivers)))
 
