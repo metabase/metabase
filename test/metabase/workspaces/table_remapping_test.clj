@@ -7,6 +7,8 @@
    [clojure.test :refer :all]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.workspaces.table-remapping :as k]))
 
@@ -68,12 +70,13 @@
 
 (deftest rewrite-table-refs-default-rethrows-test
   (testing "without :on-parse-error, a parse failure propagates"
-    ;; Use an obviously broken input; on backends that tolerate it this is a no-op,
-    ;; so only assert the no-throw-on-valid path here and the throw-path via the
-    ;; explicit handler test above.
-    (is (string? (k/rewrite-table-refs
-                  :postgres "SELECT 1"
-                  {:tables {}})))))
+    ;; Force the failure deterministically — backend parsers are too lenient to
+    ;; guarantee a parse error from any particular SQL string.
+    (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (k/rewrite-table-refs
+                             :postgres "SELECT 1"
+                             {:tables {}}))))))
 
 ;;; --------------------------------- verify-only-references ---------------------------------
 

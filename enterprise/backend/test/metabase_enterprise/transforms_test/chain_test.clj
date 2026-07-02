@@ -4,7 +4,8 @@
   endpoints (`POST /api/ee/transform-test/:target-type/:id/subgraph`,
   `GET /api/ee/transform-test/:target-type/:id/subgraph-inputs`).
 
-  Builds a 2-node native chain on the test-data schema:
+  Builds a 2-node native chain on the test-data schema (see
+  [[metabase-enterprise.transforms-test.test-util]] for the shared fixtures):
 
     t1 (enrich): orders ⋈ people → <enriched>   (per-order rows with state, total)
     t2 (target): <enriched> → aggregate count/revenue by state
@@ -21,7 +22,7 @@
    [metabase-enterprise.transforms-test.core :as test-run.core]
    [metabase-enterprise.transforms-test.execute :as test-run.execute]
    [metabase-enterprise.transforms-test.scratch :as scratch]
-   [metabase-enterprise.transforms-test.test-util :refer [with-temp-csv-files]]
+   [metabase-enterprise.transforms-test.test-util :as tu :refer [with-temp-csv-files]]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
@@ -34,62 +35,39 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- count-test-scratch-tables [db-id schema]
-  (let [result (qp.core/process-query
-                {:database db-id
-                 :type     :native
-                 :native   {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                        " WHERE table_schema = '" schema "'"
-                                        " AND table_name LIKE 'mb_transform_temp_table_test_%'")}})]
-    (-> result (get-in [:data :rows]) first first int)))
-
 ;;; ---------------------------------------------------------------------------
-;;; Fixture CSV content (full real-schema headers; small row sets)
+;;; The chain under test — shared scaffolding
 ;;; ---------------------------------------------------------------------------
 
-(def ^:private people-header
-  "id,address,email,password,name,city,longitude,state,source,birth_date,zip,latitude,created_at")
+(defn- do-with-t1-t2-chain [f]
+  (mt/with-premium-features #{:dependencies}
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [enriched-name (mt/random-name)
+              target-name   (mt/random-name)
+              mp            (mt/metadata-provider)]
+          (mt/with-temp [:model/Transform t1
+                         {:source {:type :query :query (lib/native-query mp tu/enrich-sql)}
+                          :target {:schema "public" :type "table" :name enriched-name}}
+                         :model/Transform t2
+                         {:source {:type :query :query (lib/native-query mp (tu/aggregate-sql enriched-name))}
+                          :target {:schema "public" :type "table" :name target-name}}]
+            (f {:t1            t1
+                :t2            t2
+                :db-id         (mt/id)
+                :schema        "public"
+                :orders-id     (mt/id :orders)
+                :people-id     (mt/id :people)
+                :enriched-name enriched-name
+                :target-name   target-name})))))))
 
-;; 3 people: ids 1 & 3 → CA, id 2 → TX
-(def ^:private people-rows
-  (str people-header "\n"
-       "1,Addr,a@e.com,pw,Alice,SF,\"-1\",CA,g,1990-01-01,94102,\"37\",2020-01-01T00:00:00Z\n"
-       "2,Addr,b@e.com,pw,Bob,Austin,\"-2\",TX,d,1985-01-01,78701,\"30\",2020-01-02T00:00:00Z\n"
-       "3,Addr,c@e.com,pw,Carol,LA,\"-3\",CA,e,1978-01-01,90001,\"34\",2020-01-03T00:00:00Z\n"))
-
-(def ^:private orders-header
-  "id,user_id,product_id,subtotal,tax,total,discount,created_at,quantity")
-
-;; 4 orders: user 1 (CA) → 100 + 50, user 2 (TX) → 200, user 3 (CA) → 30
-(def ^:private orders-rows
-  (str orders-header "\n"
-       "1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n"
-       "2,1,11,45,5,50.00,,2024-01-02T00:00:00Z,1\n"
-       "3,2,12,180,20,200.00,,2024-01-03T00:00:00Z,1\n"
-       "4,3,13,27,3,30.00,,2024-01-04T00:00:00Z,1\n"))
-
-;; Expected target output, ordered by state:
-;;   CA: orders 1,2,4 → count 3, revenue 180.00
-;;   TX: order 3      → count 1, revenue 200.00
-(def ^:private correct-expected-csv
-  "state,order_count,revenue\nCA,3,180.00\nTX,1,200.00\n")
-
-;; CA count deliberately wrong (9 instead of 3).
-(def ^:private wrong-expected-csv
-  "state,order_count,revenue\nCA,9,180.00\nTX,1,200.00\n")
-
-;;; ---------------------------------------------------------------------------
-;;; The chain under test
-;;; ---------------------------------------------------------------------------
-
-(def ^:private enrich-sql
-  (str "SELECT o.id AS order_id, o.total AS total, p.state AS state"
-       " FROM orders o JOIN people p ON o.user_id = p.id"))
-
-(defn- aggregate-sql [enriched-table]
-  (str "SELECT state, count(*) AS order_count, sum(total) AS revenue"
-       " FROM " enriched-table
-       " GROUP BY state ORDER BY state"))
+(defmacro ^:private with-t1-t2-chain
+  "Run `body` inside the standard 2-node chain scaffolding: `:dependencies`
+  premium feature, `:postgres` driver, `test-data` dataset, temp t1/t2 transforms.
+  `ctx-binding` destructures the context map
+  `{:t1 :t2 :db-id :schema :orders-id :people-id :enriched-name :target-name}`."
+  [[ctx-binding] & body]
+  `(do-with-t1-t2-chain (fn [~ctx-binding] ~@body)))
 
 ;;; ===========================================================================
 ;;; Passed: full native chain (source t1 → target t2)
@@ -97,40 +75,26 @@
 
 (deftest chain-native-passed-test
   (testing "2-node native chain runs end-to-end and passes against the correct expected CSV"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [db-id          (mt/id)
-                schema         "public"
-                mp             (mt/metadata-provider)
-                orders-id      (mt/id :orders)
-                people-id      (mt/id :people)
-                enriched-name  (mt/random-name)
-                before-scratch (count-test-scratch-tables db-id schema)
-                before-runs    (t2/count :model/TransformRun)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema schema :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (let [result (chain/run-chain-test!
+    (with-t1-t2-chain [{:keys [t1 t2 db-id schema orders-id people-id]}]
+      (let [before-scratch (tu/count-test-scratch-tables db-id schema)
+            before-runs    (t2/count :model/TransformRun)
+            result         (chain/run-chain-test!
                             (:id t2) #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            correct-expected-csv {})]
-                (testing "status is passed"
-                  (is (= :passed (:status result))
-                      (str "Expected passed; diff: " (pr-str (:diff result)))))
-                (testing "run order is topological (t1 before t2)"
-                  (is (= [(:id t1) (:id t2)] (:order result))))
-                (testing "diff sections are empty"
-                  (is (empty? (get-in result [:diff :missing-rows])))
-                  (is (empty? (get-in result [:diff :extra-rows])))
-                  (is (empty? (get-in result [:diff :cell-mismatches]))))
-                (testing "all scratch tables cleaned up (2 leaves + 2 node outputs)"
-                  (is (= before-scratch (count-test-scratch-tables db-id schema))))
-                (testing "no TransformRun row created"
-                  (is (= before-runs (t2/count :model/TransformRun))))))))))))
+                            {orders-id tu/orders-rows people-id tu/people-rows}
+                            tu/correct-expected-csv {})]
+        (testing "status is passed"
+          (is (= :passed (:status result))
+              (str "Expected passed; diff: " (pr-str (:diff result)))))
+        (testing "run order is topological (t1 before t2)"
+          (is (= [(:id t1) (:id t2)] (:order result))))
+        (testing "diff sections are empty"
+          (is (empty? (get-in result [:diff :missing-rows])))
+          (is (empty? (get-in result [:diff :extra-rows])))
+          (is (empty? (get-in result [:diff :cell-mismatches]))))
+        (testing "all scratch tables cleaned up (2 leaves + 2 node outputs)"
+          (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))
+        (testing "no TransformRun row created"
+          (is (= before-runs (t2/count :model/TransformRun))))))))
 
 ;;; ===========================================================================
 ;;; Failed: wrong expected value triggers a diff mismatch
@@ -138,139 +102,93 @@
 
 (deftest chain-native-failed-test
   (testing "wrong expected CA count → failed with a named diff, scratch still cleaned"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [db-id          (mt/id)
-                schema         "public"
-                mp             (mt/metadata-provider)
-                orders-id      (mt/id :orders)
-                people-id      (mt/id :people)
-                enriched-name  (mt/random-name)
-                before-scratch (count-test-scratch-tables db-id schema)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema schema :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (let [result (chain/run-chain-test!
+    (with-t1-t2-chain [{:keys [t1 t2 db-id schema orders-id people-id]}]
+      (let [before-scratch (tu/count-test-scratch-tables db-id schema)
+            result         (chain/run-chain-test!
                             (:id t2) #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            wrong-expected-csv {})]
-                (testing "status is failed"
-                  (is (= :failed (:status result))))
-                (testing "diff reports the discrepancy"
-                  (is (or (seq (get-in result [:diff :missing-rows]))
-                          (seq (get-in result [:diff :extra-rows]))
-                          (seq (get-in result [:diff :cell-mismatches])))))
-                (testing "scratch cleaned up even on a failed diff"
-                  (is (= before-scratch (count-test-scratch-tables db-id schema))))))))))))
+                            {orders-id tu/orders-rows people-id tu/people-rows}
+                            tu/wrong-expected-csv {})]
+        (testing "status is failed"
+          (is (= :failed (:status result))))
+        (testing "diff pins the CA mismatch: one missing row, one extra row, one cell mismatch"
+          ;; Expected CA count is 9, actual is 3 → the CA row appears once as
+          ;; missing (expected-only) and once as extra (actual-only), paired
+          ;; into a single order_count cell mismatch. The revenue cell's display
+          ;; string depends on the warehouse numeric type, so compare it by value.
+          (let [{:keys [missing-rows extra-rows cell-mismatches]} (:diff result)]
+            (is (= 1 (count missing-rows)))
+            (is (= 1 (count extra-rows)))
+            (let [[m-state m-count m-revenue] (first missing-rows)
+                  [e-state e-count e-revenue] (first extra-rows)]
+              (is (= ["CA" "9"] [m-state m-count]))
+              (is (= ["CA" "3"] [e-state e-count]))
+              (is (zero? (compare 180M (bigdec m-revenue))))
+              (is (zero? (compare 180M (bigdec e-revenue)))))
+            (is (= [{:column             "order_count"
+                     :actual-canonical   "3"
+                     :expected-canonical "9"}]
+                   cell-mismatches))))
+        (testing "scratch cleaned up even on a failed diff"
+          (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))
 
 ;;; ===========================================================================
 ;;; HTTP endpoints: GET subgraph-inputs + POST subgraph
 ;;; ===========================================================================
 
-(def ^:private multipart-content-type
-  {:request-options {:headers {"content-type" "multipart/form-data"}}})
-
-(defn- subgraph-inputs-url [id] (format "ee/transform-test/transform/%d/subgraph-inputs" id))
-(defn- subgraph-test-run-url [id] (format "ee/transform-test/transform/%d/subgraph" id))
-(defn- card-subgraph-inputs-url [id] (format "ee/transform-test/card/%d/subgraph-inputs" id))
-(defn- card-subgraph-test-run-url [id] (format "ee/transform-test/card/%d/subgraph" id))
-
 (deftest subgraph-inputs-endpoint-test
   (testing "GET subgraph-inputs returns the leaf input tables for (target, sources)"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (let [resp (mt/user-http-request :crowberto :get 200 (subgraph-inputs-url (:id t2))
-                                               :sources (:id t1))]
-                (testing "both leaf tables (orders, people) are returned"
-                  (is (= #{orders-id people-id} (set (map :table_id resp)))))
-                (testing "each descriptor carries schema, name, and column headers"
-                  (is (every? (fn [d] (and (string? (:schema d))
-                                           (string? (:name d))
-                                           (seq (:columns d))))
-                              resp)))))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id]}]
+      (let [resp (mt/user-http-request :crowberto :get 200 (tu/subgraph-inputs-url (:id t2))
+                                       :sources (:id t1))]
+        (testing "both leaf tables (orders, people) are returned"
+          (is (= #{orders-id people-id} (set (map :table_id resp)))))
+        (testing "each descriptor carries schema, name, and column headers"
+          (is (every? (fn [d] (and (string? (:schema d))
+                                   (string? (:name d))
+                                   (seq (:columns d))))
+                      resp)))))))
 
 (deftest subgraph-test-run-endpoint-passed-test
   (testing "POST subgraph runs the chain and returns 200 passed"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [db-id          (mt/id)
-                schema         "public"
-                mp             (mt/metadata-provider)
-                orders-id      (mt/id :orders)
-                people-id      (mt/id :people)
-                enriched-name  (mt/random-name)
-                before-scratch (count-test-scratch-tables db-id schema)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema schema :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
-                            multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             (str "input-" people-id) people-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [(:id t1)])})]
-                  (testing "status is passed"
-                    (is (= "passed" (:status resp))
-                        (str "Expected passed; body: " (pr-str resp))))
-                  (testing "no scratch tables remain"
-                    (is (= before-scratch (count-test-scratch-tables db-id schema)))))))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 db-id schema orders-id people-id]}]
+      (let [before-scratch (tu/count-test-scratch-tables db-id schema)]
+        (with-temp-csv-files [orders-f   tu/orders-rows
+                              people-f   tu/people-rows
+                              expected-f tu/correct-expected-csv]
+          (let [resp (mt/user-http-request
+                      :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                      tu/multipart-content-type
+                      {(str "input-" orders-id) orders-f
+                       (str "input-" people-id) people-f
+                       "expected"               expected-f
+                       "sources"                (json/encode [(:id t1)])})]
+            (testing "status is passed"
+              (is (= "passed" (:status resp))
+                  (str "Expected passed; body: " (pr-str resp))))
+            (testing "no scratch tables remain"
+              (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))))
 
 (deftest subgraph-test-run-endpoint-bad-source-test
   (testing "POST subgraph with a source that does not feed the target → 400 error envelope"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)]
-            (mt/with-temp [;; _t1 exists only so t2's reference to enriched-name resolves into a chain.
-                           :model/Transform _t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}
-                           ;; t3 is unrelated — reads orders only, does not feed t2.
-                           :model/Transform t3
-                           {:source {:type :query :query (lib/native-query mp "SELECT id FROM orders")}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 400 (subgraph-test-run-url (:id t2))
-                            multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             (str "input-" people-id) people-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [(:id t3)])})]
-                  (testing "error envelope is returned"
-                    (is (= "error" (:status resp)))
-                    (is (string? (get-in resp [:error :message])))))))))))))
+    (with-t1-t2-chain [{:keys [t2 orders-id people-id]}]
+      ;; t3 is unrelated — reads orders only, does not feed t2.
+      (mt/with-temp [:model/Transform t3
+                     {:source {:type :query :query (lib/native-query (mt/metadata-provider)
+                                                                     "SELECT id FROM orders")}
+                      :target {:schema "public" :type "table" :name (mt/random-name)}}]
+        (with-temp-csv-files [orders-f   tu/orders-rows
+                              people-f   tu/people-rows
+                              expected-f tu/correct-expected-csv]
+          (let [resp (mt/user-http-request
+                      :crowberto :post 400 (tu/subgraph-test-run-url (:id t2))
+                      tu/multipart-content-type
+                      {(str "input-" orders-id) orders-f
+                       (str "input-" people-id) people-f
+                       "expected"               expected-f
+                       "sources"                (json/encode [(:id t3)])})]
+            (testing "error envelope is returned"
+              (is (= "error" (:status resp)))
+              (is (string? (get-in resp [:error :message]))))))))))
 
 ;;; ===========================================================================
 ;;; HTTP endpoints: card target (generalized /api/ee/transform-test/card/…)
@@ -291,12 +209,12 @@
      (mt/with-temp [:model/Table tbl#
                     {:db_id db-id# :schema "public" :name enriched-name# :active true}
                     :model/Transform ~t1-sym
-                    {:source          {:type :query :query (lib/native-query mp# enrich-sql)}
+                    {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
                      :target          {:schema "public" :type "table" :name enriched-name#}
                      :target_table_id (:id tbl#)}
                     :model/Card ~card-sym
                     {:dataset_query {:database db-id# :type "native"
-                                     :native   {:query (aggregate-sql enriched-name#)}}}]
+                                     :native   {:query (tu/aggregate-sql enriched-name#)}}}]
        ~@body)))
 
 (deftest card-subgraph-inputs-endpoint-test
@@ -307,7 +225,7 @@
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
             (with-enrich-card [t1 card]
-              (let [resp (mt/user-http-request :crowberto :get 200 (card-subgraph-inputs-url (:id card))
+              (let [resp (mt/user-http-request :crowberto :get 200 (tu/card-subgraph-inputs-url (:id card))
                                                :sources (:id t1))]
                 (testing "both leaves (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :table_id resp)))))
@@ -326,14 +244,14 @@
                 schema         "public"
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id schema)]
+                before-scratch (tu/count-test-scratch-tables db-id schema)]
             (with-enrich-card [t1 card]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
+              (with-temp-csv-files [orders-f   tu/orders-rows
+                                    people-f   tu/people-rows
+                                    expected-f tu/correct-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
-                            multipart-content-type
+                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
@@ -342,7 +260,7 @@
                     (is (= "passed" (:status resp))
                         (str "Expected passed; body: " (pr-str resp))))
                   (testing "no scratch tables remain"
-                    (is (= before-scratch (count-test-scratch-tables db-id schema)))))))))))))
+                    (is (= before-scratch (tu/count-test-scratch-tables db-id schema)))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Native card, failed case (endpoint)
@@ -356,12 +274,12 @@
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
             (with-enrich-card [t1 card]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f wrong-expected-csv]
+              (with-temp-csv-files [orders-f   tu/orders-rows
+                                    people-f   tu/people-rows
+                                    expected-f tu/wrong-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
-                            multipart-content-type
+                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
@@ -403,7 +321,7 @@
                       {:table_id  (:id tbl#) :name "state"
                        :base_type :type/Text  :position 1 :active true}
                       :model/Transform ~t1-sym
-                      {:source          {:type :query :query (lib/native-query mp# enrich-sql)}
+                      {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
                        :target          {:schema "public" :type "table" :name enriched-name#}
                        :target_table_id (:id tbl#)}
                       :model/Card ~card-sym
@@ -426,7 +344,7 @@
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
             (with-enrich-mbql-card [t1 card]
-              (let [resp (mt/user-http-request :crowberto :get 200 (card-subgraph-inputs-url (:id card))
+              (let [resp (mt/user-http-request :crowberto :get 200 (tu/card-subgraph-inputs-url (:id card))
                                                :sources (:id t1))]
                 (testing "both leaves (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :table_id resp)))))
@@ -444,14 +362,14 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id "public")]
             (with-enrich-mbql-card [t1 card]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
+              (with-temp-csv-files [orders-f   tu/orders-rows
+                                    people-f   tu/people-rows
                                     expected-f mbql-card-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
-                            multipart-content-type
+                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
@@ -460,7 +378,7 @@
                     (is (= "passed" (:status resp))
                         (str "Expected passed; body: " (pr-str resp))))
                   (testing "no scratch tables remain"
-                    (is (= before-scratch (count-test-scratch-tables db-id "public")))))))))))))
+                    (is (= before-scratch (tu/count-test-scratch-tables db-id "public")))))))))))))
 
 (deftest card-mbql-subgraph-test-run-endpoint-failed-test
   (testing "POST card/subgraph for a stored MBQL card with wrong expected CSV → 200 failed"
@@ -470,14 +388,14 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id "public")]
             (with-enrich-mbql-card [t1 card]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
+              (with-temp-csv-files [orders-f   tu/orders-rows
+                                    people-f   tu/people-rows
                                     expected-f mbql-card-wrong-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
-                            multipart-content-type
+                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
@@ -486,7 +404,7 @@
                     (is (= "failed" (:status resp))
                         (str "Expected failed; body: " (pr-str resp))))
                   (testing "no scratch tables remain even on failure"
-                    (is (= before-scratch (count-test-scratch-tables db-id "public")))))))))))))
+                    (is (= before-scratch (tu/count-test-scratch-tables db-id "public")))))))))))))
 
 (deftest card-target-read-check-test
   (testing "card target enforces read-check :model/Card — no collection access → 403"
@@ -498,8 +416,8 @@
       (mt/with-non-admin-groups-no-collection-perms coll
         (with-temp-csv-files [expected-f "n\n1\n"]
           (mt/user-http-request
-           :rasta :post 403 (card-subgraph-test-run-url (:id card))
-           multipart-content-type
+           :rasta :post 403 (tu/card-subgraph-test-run-url (:id card))
+           tu/multipart-content-type
            {"expected" expected-f}))))))
 
 (deftest unknown-target-type-rejected-test
@@ -516,177 +434,70 @@
 ;;; The `test_output` alias is also exercised.
 ;;; ===========================================================================
 
-;;; ---------------------------------------------------------------------------
-;;; passing assertion (transform target)
-;;; ---------------------------------------------------------------------------
-
-(deftest chain-assertion-passing-test
-  (testing "run-chain-test! with a passing assertion → :passed + :assertions [{:status :passed}]"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (let [result (chain/run-chain-test!
-                            (:id t2) #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            correct-expected-csv
-                            {:assertions [{:name "revenue_nonneg"
-                                           :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
-                                           :severity :error}]})]
-                (testing "overall status is :passed"
-                  (is (= :passed (:status result))))
-                (testing ":assertions is a single-entry vector"
-                  (is (= 1 (count (:assertions result)))))
-                (testing "assertion status is :passed"
-                  (is (= :passed (get-in result [:assertions 0 :status]))))
-                (testing "failing_row_count is 0"
-                  (is (zero? (get-in result [:assertions 0 :failing_row_count]))))))))))))
-
-;;; ---------------------------------------------------------------------------
-;;; failing assertion (transform target)
-;;; ---------------------------------------------------------------------------
-
-(deftest chain-assertion-failing-test
-  (testing "run-chain-test! with a failing assertion → :failed, positive failing_row_count"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (let [result (chain/run-chain-test!
-                            (:id t2) #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            correct-expected-csv
-                            {:assertions [{:name "always_fails"
-                                           ;; SELECT * FROM <target> returns rows → always fails
-                                           :sql  (str "SELECT * FROM " target-name)
-                                           :severity :error}]})]
-                (testing "overall status is :failed"
-                  (is (= :failed (:status result))))
-                (testing "failing_row_count > 0"
-                  (is (pos? (get-in result [:assertions 0 :failing_row_count]))))
-                (testing "assertion status is :failed"
-                  (is (= :failed (get-in result [:assertions 0 :status]))))))))))))
-
-;;; ---------------------------------------------------------------------------
-;;; warn-severity failing assertion does not fail the run
-;;; ---------------------------------------------------------------------------
-
-(deftest chain-assertion-warn-does-not-fail-run-test
-  (testing "warn-severity failing assertion → overall :passed, assertion :warn"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (let [result (chain/run-chain-test!
-                            (:id t2) #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            correct-expected-csv
-                            {:assertions [{:name "warn_always_fails"
-                                           :sql  (str "SELECT * FROM " target-name)
-                                           :severity :warn}]})]
-                (testing "overall status is :passed (warn does not flip overall)"
-                  (is (= :passed (:status result))))
-                (testing "assertion status is :warn"
-                  (is (= :warn (get-in result [:assertions 0 :status]))))
-                (testing "failing_row_count > 0"
-                  (is (pos? (get-in result [:assertions 0 :failing_row_count]))))))))))))
-
-;;; ---------------------------------------------------------------------------
-;;; no expected CSV, assertions only
-;;; ---------------------------------------------------------------------------
-
-(deftest chain-assertions-only-no-expected-test
-  (testing "run-chain-test! with no expected CSV and passing assertion → :passed, :diff nil"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (let [result (chain/run-chain-test!
-                            (:id t2) #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            nil  ; no expected CSV
-                            {:assertions [{:name "revenue_nonneg"
-                                           :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
-                                           :severity :error}]})]
-                (testing "overall status is :passed"
-                  (is (= :passed (:status result))))
-                (testing ":diff is nil when no expected CSV"
-                  (is (nil? (:diff result))))
-                (testing ":assertions entry is present and passed"
-                  (is (= :passed (get-in result [:assertions 0 :status]))))))))))))
-
-;;; ---------------------------------------------------------------------------
-;;; test_output alias works in assertions (transform target)
-;;; ---------------------------------------------------------------------------
-
-(deftest chain-assertion-test-output-alias-test
-  (testing "assertion SQL referencing test_output (not the real table name) runs correctly"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (let [result (chain/run-chain-test!
-                            (:id t2) #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            correct-expected-csv
-                            {:assertions [{:name "no_negative_revenue_via_alias"
-                                           ;; Uses test_output alias instead of real table name
-                                           :sql  "SELECT * FROM test_output WHERE revenue < 0"
-                                           :severity :error}]})]
-                (testing "overall status is :passed"
-                  (is (= :passed (:status result))))
-                (testing "assertion using test_output alias passes"
-                  (is (= :passed (get-in result [:assertions 0 :status]))))))))))))
+(deftest chain-assertion-cases-test
+  ;; One standard chain run per case. `assertion-sql` builds the assertion from
+  ;; t2's real output table name (or ignores it and uses the test_output alias).
+  (doseq [{:keys [desc assertion-sql severity expected-csv overall
+                  assertion-status rows-check diff-nil?]}
+          [{:desc             "passing assertion → :passed, zero failing rows"
+            :assertion-sql    (fn [target] (str "SELECT * FROM " target " WHERE revenue < 0"))
+            :severity         :error
+            :expected-csv     tu/correct-expected-csv
+            :overall          :passed
+            :assertion-status :passed
+            :rows-check       :zero}
+           {:desc             "failing assertion → :failed, positive failing_row_count"
+            ;; SELECT * FROM <target> returns rows → always fails
+            :assertion-sql    (fn [target] (str "SELECT * FROM " target))
+            :severity         :error
+            :expected-csv     tu/correct-expected-csv
+            :overall          :failed
+            :assertion-status :failed
+            :rows-check       :pos}
+           {:desc             "warn-severity failing assertion → overall :passed, assertion :warn"
+            :assertion-sql    (fn [target] (str "SELECT * FROM " target))
+            :severity         :warn
+            :expected-csv     tu/correct-expected-csv
+            :overall          :passed
+            :assertion-status :warn
+            :rows-check       :pos}
+           {:desc             "no expected CSV, assertions only → :passed, :diff nil"
+            :assertion-sql    (fn [target] (str "SELECT * FROM " target " WHERE revenue < 0"))
+            :severity         :error
+            :expected-csv     nil
+            :overall          :passed
+            :assertion-status :passed
+            :diff-nil?        true}
+           {:desc             "test_output alias instead of the real table name"
+            :assertion-sql    (fn [_target] "SELECT * FROM test_output WHERE revenue < 0")
+            :severity         :error
+            :expected-csv     tu/correct-expected-csv
+            :overall          :passed
+            :assertion-status :passed}]]
+    (testing desc
+      (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id target-name]}]
+        (let [result (chain/run-chain-test!
+                      (:id t2) #{(:id t1)}
+                      {orders-id tu/orders-rows people-id tu/people-rows}
+                      expected-csv
+                      {:assertions [{:name     "case_assertion"
+                                     :sql      (assertion-sql target-name)
+                                     :severity severity}]})]
+          (testing "overall status"
+            (is (= overall (:status result))))
+          (testing ":assertions is a single-entry vector"
+            (is (= 1 (count (:assertions result)))))
+          (testing "assertion status"
+            (is (= assertion-status (get-in result [:assertions 0 :status]))))
+          (case rows-check
+            :zero (testing "failing_row_count is 0"
+                    (is (zero? (get-in result [:assertions 0 :failing_row_count]))))
+            :pos  (testing "failing_row_count > 0"
+                    (is (pos? (get-in result [:assertions 0 :failing_row_count]))))
+            nil)
+          (when diff-nil?
+            (testing ":diff is nil when no expected CSV"
+              (is (nil? (:diff result))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; card target, assertions via :cte binding (no extra scratch table)
@@ -700,12 +511,12 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id "public")]
             (with-enrich-card [t1 card]
               (let [result (chain/run-card-chain-test!
                             card #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            correct-expected-csv
+                            {orders-id tu/orders-rows people-id tu/people-rows}
+                            tu/correct-expected-csv
                             {:assertions [{:name "result_nonneg_revenue"
                                            ;; test_output refers to the card's compiled SQL CTE
                                            :sql  "SELECT * FROM test_output WHERE revenue < 0"
@@ -715,7 +526,7 @@
                 (testing "assertion status is :passed"
                   (is (= :passed (get-in result [:assertions 0 :status]))))
                 (testing "no extra scratch tables remain (CTE binding creates no tables)"
-                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; HTTP endpoint wires assertions
@@ -727,34 +538,22 @@
 
 (deftest subgraph-endpoint-empty-assertions-test
   (testing "POST /subgraph with assertions=[] → 200 passed"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
-                            multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             (str "input-" people-id) people-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [(:id t1)])
-                             "assertions"             (json/encode [])})]
-                  (testing "status is passed"
-                    (is (= "passed" (:status resp))))
-                  (testing "assertions key is nil (no assertions run)"
-                    (is (nil? (:assertions resp)))))))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id]}]
+      (with-temp-csv-files [orders-f   tu/orders-rows
+                            people-f   tu/people-rows
+                            expected-f tu/correct-expected-csv]
+        (let [resp (mt/user-http-request
+                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     (str "input-" people-id) people-f
+                     "expected"               expected-f
+                     "sources"                (json/encode [(:id t1)])
+                     "assertions"             (json/encode [])})]
+          (testing "status is passed"
+            (is (= "passed" (:status resp))))
+          (testing "assertions key is nil (no assertions run)"
+            (is (nil? (:assertions resp)))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; assertions + no expected → 200 + assertion results
@@ -762,41 +561,28 @@
 
 (deftest subgraph-endpoint-assertions-no-expected-test
   (testing "POST /subgraph with assertions and no expected → 200, :assertions in response"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f orders-rows
-                                    people-f people-rows]
-                (let [assertions-json (json/encode
-                                       [{:name "revenue_nonneg"
-                                         :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
-                                         :severity "error"}])
-                      resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
-                            multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             (str "input-" people-id) people-f
-                             "sources"                (json/encode [(:id t1)])
-                             "assertions"             assertions-json})]
-                  (testing "status is passed"
-                    (is (= "passed" (:status resp))))
-                  (testing ":diff is nil"
-                    (is (nil? (:diff resp))))
-                  (testing ":assertions has one entry"
-                    (is (= 1 (count (:assertions resp)))))
-                  (testing "assertion status is passed"
-                    (is (= "passed" (-> resp :assertions first :status)))))))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id target-name]}]
+      (with-temp-csv-files [orders-f tu/orders-rows
+                            people-f tu/people-rows]
+        (let [assertions-json (json/encode
+                               [{:name "revenue_nonneg"
+                                 :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                 :severity "error"}])
+              resp (mt/user-http-request
+                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     (str "input-" people-id) people-f
+                     "sources"                (json/encode [(:id t1)])
+                     "assertions"             assertions-json})]
+          (testing "status is passed"
+            (is (= "passed" (:status resp))))
+          (testing ":diff is nil"
+            (is (nil? (:diff resp))))
+          (testing ":assertions has one entry"
+            (is (= 1 (count (:assertions resp)))))
+          (testing "assertion status is passed"
+            (is (= "passed" (-> resp :assertions first :status)))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; assertions + expected → 200 + diff + assertions
@@ -804,43 +590,30 @@
 
 (deftest subgraph-endpoint-assertions-and-expected-test
   (testing "POST /subgraph with assertions AND expected → 200, both :diff and :assertions"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                (let [assertions-json (json/encode
-                                       [{:name "no_negative"
-                                         :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
-                                         :severity "error"}])
-                      resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
-                            multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             (str "input-" people-id) people-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [(:id t1)])
-                             "assertions"             assertions-json})]
-                  (testing "status is passed"
-                    (is (= "passed" (:status resp))))
-                  (testing ":diff is present"
-                    (is (some? (:diff resp))))
-                  (testing ":assertions is present"
-                    (is (= 1 (count (:assertions resp)))))
-                  (testing "assertion passed"
-                    (is (= "passed" (-> resp :assertions first :status)))))))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id target-name]}]
+      (with-temp-csv-files [orders-f   tu/orders-rows
+                            people-f   tu/people-rows
+                            expected-f tu/correct-expected-csv]
+        (let [assertions-json (json/encode
+                               [{:name "no_negative"
+                                 :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
+                                 :severity "error"}])
+              resp (mt/user-http-request
+                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     (str "input-" people-id) people-f
+                     "expected"               expected-f
+                     "sources"                (json/encode [(:id t1)])
+                     "assertions"             assertions-json})]
+          (testing "status is passed"
+            (is (= "passed" (:status resp))))
+          (testing ":diff is present"
+            (is (some? (:diff resp))))
+          (testing ":assertions is present"
+            (is (= 1 (count (:assertions resp)))))
+          (testing "assertion passed"
+            (is (= "passed" (-> resp :assertions first :status)))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; malformed assertions JSON → 400
@@ -848,24 +621,14 @@
 
 (deftest subgraph-endpoint-malformed-assertions-test
   (testing "POST /subgraph with malformed assertions JSON → 400"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                enriched-name (mt/random-name)]
-            (mt/with-temp [:model/Transform _t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files [expected-f correct-expected-csv]
-                ;; Send invalid JSON as the assertions part.
-                (mt/user-http-request
-                 :crowberto :post 400 (subgraph-test-run-url (:id t2))
-                 multipart-content-type
-                 {"expected"   expected-f
-                  "assertions" "this is not json"})))))))))
+    (with-t1-t2-chain [{:keys [t2]}]
+      (with-temp-csv-files [expected-f tu/correct-expected-csv]
+        ;; Send invalid JSON as the assertions part.
+        (mt/user-http-request
+         :crowberto :post 400 (tu/subgraph-test-run-url (:id t2))
+         tu/multipart-content-type
+         {"expected"   expected-f
+          "assertions" "this is not json"})))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; assertion referencing a real table → 200
@@ -873,42 +636,29 @@
 
 (deftest subgraph-endpoint-assertion-real-table-reference-test
   (testing "POST /subgraph with assertion referencing a real (non-scratch) table → 200 with :failed assertion"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                target-name   (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name target-name}}]
-              (with-temp-csv-files [orders-f   orders-rows
-                                    people-f   people-rows
-                                    expected-f correct-expected-csv]
-                ;; products is a real table not in the mapping: terminal assertion failure
-                (let [assertions-json (json/encode
-                                       [{:name "escapes_to_real_table"
-                                         :sql  "SELECT * FROM products WHERE price < 0"
-                                         :severity "error"}])
-                      resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id t2))
-                            multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             (str "input-" people-id) people-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [(:id t1)])
-                             "assertions"             assertions-json})]
-                  (testing "response is 200 (assertion error is a run result, not HTTP error)"
-                    (is (= "failed" (:status resp))
-                        "overall status is failed because the assertion has :failed status"))
-                  (testing "assertion is :failed with an error_message"
-                    (is (= "failed" (-> resp :assertions first :status)))
-                    (is (string? (-> resp :assertions first :error_message)))))))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id]}]
+      (with-temp-csv-files [orders-f   tu/orders-rows
+                            people-f   tu/people-rows
+                            expected-f tu/correct-expected-csv]
+        ;; products is a real table not in the mapping: terminal assertion failure
+        (let [assertions-json (json/encode
+                               [{:name "escapes_to_real_table"
+                                 :sql  "SELECT * FROM products WHERE price < 0"
+                                 :severity "error"}])
+              resp (mt/user-http-request
+                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     (str "input-" people-id) people-f
+                     "expected"               expected-f
+                     "sources"                (json/encode [(:id t1)])
+                     "assertions"             assertions-json})]
+          (testing "response is 200 (assertion error is a run result, not HTTP error)"
+            (is (= "failed" (:status resp))
+                "overall status is failed because the assertion has :failed status"))
+          (testing "assertion is :failed with an error_message"
+            (is (= "failed" (-> resp :assertions first :status)))
+            (is (string? (-> resp :assertions first :error_message)))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; no expected and no assertions → 400
@@ -916,27 +666,15 @@
 
 (deftest subgraph-endpoint-no-expected-no-assertions-test
   (testing "POST /subgraph with no expected and no assertions → 400"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema "public" :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files [orders-f orders-rows
-                                    people-f people-rows]
-                (mt/user-http-request
-                 :crowberto :post 400 (subgraph-test-run-url (:id t2))
-                 multipart-content-type
-                 {(str "input-" orders-id) orders-f
-                  (str "input-" people-id) people-f
-                  "sources"                (json/encode [(:id t1)])})))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id]}]
+      (with-temp-csv-files [orders-f tu/orders-rows
+                            people-f tu/people-rows]
+        (mt/user-http-request
+         :crowberto :post 400 (tu/subgraph-test-run-url (:id t2))
+         tu/multipart-content-type
+         {(str "input-" orders-id) orders-f
+          (str "input-" people-id) people-f
+          "sources"                (json/encode [(:id t1)])})))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; parse-assertions unit tests (no DB needed)
@@ -994,37 +732,23 @@
   ;; observe it by intercepting scratch/cleanup! and capturing *connection-type*
   ;; at each call, then asserting every capture equals :transform.
   (testing "all cleanup! calls occur inside with-transform-connection (success path)"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [schema        "public"
-                mp            (mt/metadata-provider)
-                orders-id     (mt/id :orders)
-                people-id     (mt/id :people)
-                enriched-name (mt/random-name)
-                ;; Collect *connection-type* for every cleanup! call.
-                ;; run-chain-test! issues N+1 calls: one per node output + one
-                ;; for the leaf mapping. All must be :transform.
-                captured      (atom [])]
-            (mt/with-temp [:model/Transform t1
-                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
-                            :target {:schema schema :type "table" :name enriched-name}}
-                           :model/Transform t2
-                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
-                            :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (mt/with-dynamic-fn-redefs [scratch/cleanup!
-                                          (fn [& args]
-                                            (swap! captured conj @#'driver.conn/*connection-type*)
-                                            (apply (mt/original-fn #'scratch/cleanup!) args))]
-                (chain/run-chain-test!
-                 (:id t2) #{(:id t1)}
-                 {orders-id orders-rows people-id people-rows}
-                 correct-expected-csv {})))
-            (is (pos? (count @captured))
-                "cleanup! should have been called at least once")
-            (is (every? #{:transform} @captured)
-                (str "every cleanup! call must see *connection-type* = :transform; "
-                     "got: " (pr-str @captured)))))))))
+    (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id]}]
+      ;; Collect *connection-type* for every cleanup! call. run-chain-test!
+      ;; issues N+1 calls: one per node output + one for the leaf mapping.
+      (let [captured (atom [])]
+        (mt/with-dynamic-fn-redefs [scratch/cleanup!
+                                    (fn [& args]
+                                      (swap! captured conj @#'driver.conn/*connection-type*)
+                                      (apply (mt/original-fn #'scratch/cleanup!) args))]
+          (chain/run-chain-test!
+           (:id t2) #{(:id t1)}
+           {orders-id tu/orders-rows people-id tu/people-rows}
+           tu/correct-expected-csv {}))
+        (is (pos? (count @captured))
+            "cleanup! should have been called at least once")
+        (is (every? #{:transform} @captured)
+            (str "every cleanup! call must see *connection-type* = :transform; "
+                 "got: " (pr-str @captured)))))))
 
 ;;; ===========================================================================
 ;;; Single-node subgraph: source-ids=#{} (degenerate slice = {target})
@@ -1045,7 +769,7 @@
                 schema         "public"
                 mp             (mt/metadata-provider)
                 orders-id      (mt/id :orders)
-                before-scratch (count-test-scratch-tables db-id schema)]
+                before-scratch (tu/count-test-scratch-tables db-id schema)]
             (mt/with-temp [:model/Transform t
                            {:source {:type :query
                                      :query (lib/native-query
@@ -1056,7 +780,7 @@
               ;; orders-rows has 4 rows: user_ids 1,1,2,3 → COUNT(*) yields 3 groups.
               (let [result (chain/run-chain-test!
                             (:id t) #{}
-                            {orders-id orders-rows}
+                            {orders-id tu/orders-rows}
                             ;; ts placeholder doesn't match NOW(), but :ignore-columns excludes it.
                             "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"
                             {:ignore-columns #{"ts"}})]
@@ -1064,7 +788,7 @@
                   (is (= :passed (:status result))
                       (str "Expected :passed; diff: " (pr-str (:diff result)))))
                 (testing "scratch tables cleaned up"
-                  (is (= before-scratch (count-test-scratch-tables db-id schema))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; seed! creates a missing target schema (single-node)
@@ -1092,13 +816,13 @@
                 ;; orders-rows has user_ids 1,1,2,3 → 3 groups.
                 (let [result (chain/run-chain-test!
                               (:id t) #{}
-                              {orders-id orders-rows}
+                              {orders-id tu/orders-rows}
                               "user_id,order_count\n1,2\n2,1\n3,1\n" {})]
                   (is (= :passed (:status result))
                       (str "Expected :passed; got: " (pr-str result)))))
               (is (driver/schema-exists? :postgres db-id fresh-schema)
                   "seed! should have created the missing target schema")
-              (is (zero? (count-test-scratch-tables db-id fresh-schema))
+              (is (zero? (tu/count-test-scratch-tables db-id fresh-schema))
                   "no scratch tables should remain in the created schema")
               (finally
                 (driver/execute-raw-queries!
@@ -1125,19 +849,22 @@
                            {:source {:type :query
                                      :query (lib/native-query
                                              mp
-                                             "SELECT total FROM orders WHERE pg_sleep(10) IS NOT NULL")}
+                                             ;; sleep must comfortably exceed the 1 s timeout
+                                             ;; (setQueryTimeout is whole-second granularity, so
+                                             ;; 1000 ms is the smallest enforceable value); if the
+                                             ;; timeout were a no-op the query would *succeed*
+                                             ;; after 3 s and no exception would be thrown at all.
+                                             "SELECT total FROM orders WHERE pg_sleep(3) IS NOT NULL")}
                             :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (let [threw? (try
-                             (chain/run-chain-test!
-                              (:id t) #{}
-                              {orders-id (str orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
-                              "total\n100.00\n"
-                              {:timeout-ms 1000})
-                             false
-                             (catch Exception _ true))]
-                (is threw? "Expected exception from pg_sleep timeout")
-                (is (= before-runs (t2/count :model/TransformRun))
-                    "No TransformRun row after timeout")))))))))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)cancel|timeout"
+                                    (chain/run-chain-test!
+                                     (:id t) #{}
+                                     {orders-id (str tu/orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
+                                     "total\n100.00\n"
+                                     {:timeout-ms 1000}))
+                  "Expected a statement-cancellation exception from the pg_sleep timeout")
+              (is (= before-runs (t2/count :model/TransformRun))
+                  "No TransformRun row after timeout"))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; read-back-output uses quoted identifiers
@@ -1185,12 +912,12 @@
                                                   " FROM orders GROUP BY user_id ORDER BY user_id"))}
                             :target {:schema "public" :type "table" :name (mt/random-name)}}]
               (with-temp-csv-files
-                [orders-f   orders-rows
+                [orders-f   tu/orders-rows
                  ;; orders-rows has user_ids 1,1,2,3 → 3 groups; ts ignored.
                  expected-f "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id t))
-                            multipart-content-type
+                            :crowberto :post 200 (tu/subgraph-test-run-url (:id t))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              "expected"               expected-f
                              "sources"                (json/encode [])
@@ -1213,11 +940,11 @@
                                      :query (lib/native-query mp "SELECT orders.id FROM orders")}
                             :target {:schema "public" :type "table" :name (mt/random-name)}}]
               (with-temp-csv-files
-                [orders-f   orders-rows
+                [orders-f   tu/orders-rows
                  expected-f "id\n1\n"]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 422 (subgraph-test-run-url (:id t))
-                            multipart-content-type
+                            :crowberto :post 422 (tu/subgraph-test-run-url (:id t))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              "expected"               expected-f
                              "sources"                (json/encode [])})]
@@ -1243,8 +970,8 @@
                 [orders-f   "wrong_col_a,wrong_col_b\n1,2\n"
                  expected-f "user_id,order_count\n1,1\n"]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 400 (subgraph-test-run-url (:id t))
-                            multipart-content-type
+                            :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              "expected"               expected-f
                              "sources"                (json/encode [])})]
@@ -1268,11 +995,11 @@
                                              mp "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id")}
                             :target {:schema "public" :type "table" :name (mt/random-name)}}]
               (with-temp-csv-files
-                [orders-f   orders-rows
+                [orders-f   tu/orders-rows
                  expected-f "user_id,order_count\n1,2\n2,1\n3,1\n4,1\n"]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 400 (subgraph-test-run-url (:id t))
-                            multipart-content-type
+                            :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              "expected"               expected-f
                              "sources"                (json/encode [])
@@ -1296,11 +1023,11 @@
                                      :query (lib/native-query mp "SELECT user_id FROM orders")}
                             :target {:schema "public" :type "table" :name (mt/random-name)}}]
               (with-temp-csv-files
-                [orders-f   orders-rows
+                [orders-f   tu/orders-rows
                  expected-f "user_id\n1\n"]
                 (mt/user-http-request
-                 :crowberto :post 400 (subgraph-test-run-url (:id t))
-                 multipart-content-type
+                 :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+                 tu/multipart-content-type
                  {(str "input-" orders-id) orders-f
                   "expected"               expected-f
                   "sources"                (json/encode [])
@@ -1312,8 +1039,8 @@
       (mt/with-temp [:model/Transform t {}]
         (with-temp-csv-files [expected-f "x\n1\n"]
           (mt/user-http-request
-           :rasta :post 403 (subgraph-test-run-url (:id t))
-           multipart-content-type
+           :rasta :post 403 (tu/subgraph-test-run-url (:id t))
+           tu/multipart-content-type
            {"expected" expected-f}))))))
 
 (deftest subgraph-transform-target-feature-flag-402-test
@@ -1331,8 +1058,8 @@
                  (fn [_] (throw (ex-info "Premium features required."
                                          {:status-code 402})))]
                 (mt/user-http-request
-                 :crowberto :post 402 (subgraph-test-run-url (:id t))
-                 multipart-content-type
+                 :crowberto :post 402 (tu/subgraph-test-run-url (:id t))
+                 tu/multipart-content-type
                  {"expected" expected-f})))))))))
 
 (deftest subgraph-inputs-cannot-determine-inputs-422-test
@@ -1351,7 +1078,7 @@
                    (throw (ex-info "Cannot determine inputs for this transform."
                                    {:error-type :metabase-enterprise.transforms-test.errors/cannot-determine-inputs})))]
                 (let [resp (mt/user-http-request
-                            :crowberto :get 422 (subgraph-inputs-url (:id t)))]
+                            :crowberto :get 422 (tu/subgraph-inputs-url (:id t)))]
                   (testing "status is error"
                     (is (= "error" (:status resp))))
                   (testing "error type is cannot-determine-inputs"
@@ -1363,7 +1090,7 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Transform t {}]
         (mt/user-http-request
-         :rasta :get 403 (subgraph-inputs-url (:id t)))))))
+         :rasta :get 403 (tu/subgraph-inputs-url (:id t)))))))
 
 (deftest subgraph-inputs-feature-flag-402-test
   (testing "GET /subgraph-inputs — feature not enabled → 402"
@@ -1379,7 +1106,7 @@
                (fn [_] (throw (ex-info "Premium features required."
                                        {:status-code 402})))]
               (mt/user-http-request
-               :crowberto :get 402 (subgraph-inputs-url (:id t))))))))))
+               :crowberto :get 402 (tu/subgraph-inputs-url (:id t))))))))))
 
 (deftest subgraph-requires-dependencies-feature-402-test
   (testing "POST /subgraph — the :dependencies capability gate rejects with 402 for both target types"
@@ -1387,12 +1114,12 @@
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (with-enrich-card [t1 card]
-            (with-temp-csv-files [expected-f correct-expected-csv]
+            (with-temp-csv-files [expected-f tu/correct-expected-csv]
               (testing "transform target"
                 (mt/user-http-request
-                 :crowberto :post 402 (subgraph-test-run-url (:id t1))
-                 multipart-content-type {"expected" expected-f}))
+                 :crowberto :post 402 (tu/subgraph-test-run-url (:id t1))
+                 tu/multipart-content-type {"expected" expected-f}))
               (testing "card target"
                 (mt/user-http-request
-                 :crowberto :post 402 (card-subgraph-test-run-url (:id card))
-                 multipart-content-type {"expected" expected-f})))))))))
+                 :crowberto :post 402 (tu/card-subgraph-test-run-url (:id card))
+                 tu/multipart-content-type {"expected" expected-f})))))))))

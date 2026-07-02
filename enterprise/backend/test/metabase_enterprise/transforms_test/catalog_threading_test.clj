@@ -14,10 +14,20 @@
    [metabase-enterprise.transforms-test.execute :as execute]
    [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
-   [metabase.query-processor.core :as qp]))
+   [metabase.query-processor.core :as qp]
+   [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
+
+;; The :mysql methods of db-slot-value / quote-name must be registered for these
+;; driver-agnostic tests; nothing else here loads the driver. (mt/test-drivers
+;; would be wrong — it skips unless DRIVERS includes mysql, and no live
+;; connection is needed.)
+(use-fixtures :once (fn [thunk]
+                      (driver/the-initialized-driver :mysql)
+                      (thunk)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Fixtures: synthetic db rows
@@ -157,11 +167,24 @@
 
 (deftest seed-scratch-spec-carries-db-slot-test
   (testing "Each scratch-spec in the seed! mapping carries :db from db-slot-value"
-    ;; We can test this by inspecting scratch-output-target shape — seed! should
-    ;; produce scratch-specs with the same :db structure.
-    ;; Since seed! makes live DDL calls, test the spec shape via scratch-output-target
-    ;; as a proxy (same shape contract).
-    (let [catalog "my_catalog"
-          target  (scratch/scratch-output-target "myschema" "aabbccdd" "in_42" catalog)]
-      (is (= "my_catalog" (:db target))
-          "seed scratch-spec :db should be the catalog"))))
+    ;; Stub the DDL seams — what's under test is seed!'s db-row → catalog → mapping
+    ;; threading, not table creation.
+    (with-redefs [driver/schema-exists?                       (fn [_drv _db-id _schema] true)
+                  transforms-base.u/create-table-from-schema! (fn [_drv _db-id _schema] nil)
+                  driver/insert-from-source!                  (fn [_drv _db-id _schema _source] nil)]
+      (driver.conn/with-transform-connection
+        (let [seed-inputs [{:table-info {:id 42 :schema "real_schema" :name "orders"
+                                         :columns [{:name "id" :base-type :type/Integer :nullable? false}]}
+                            :fixture    {:rows [[1]]}}
+                           {:table-info {:id 43 :schema "real_schema" :name "people"
+                                         :columns [{:name "id" :base-type :type/Integer :nullable? false}]}
+                            :fixture    {:rows [[1]]}}]
+              mapping     (scratch/seed! 1 mysql-db "myschema" seed-inputs "aabbccdd")]
+          (is (= #{{:schema "real_schema" :table "orders"}
+                   {:schema "real_schema" :table "people"}}
+                 (set (keys mapping)))
+              "mapping keys are the real-table specs")
+          (is (every? #(= "my_catalog" (:db %)) (vals mapping))
+              "every scratch-spec carries the mysql catalog in :db")
+          (is (every? #(scratch/test-table-name? (:table %)) (vals mapping))
+              "every scratch-spec table is a test scratch name"))))))

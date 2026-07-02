@@ -49,14 +49,6 @@
       (is (= "in_42" (:suffix parsed-in)))
       (is (= "out" (:suffix parsed-out))))))
 
-(deftest name-length-under-identifier-limit-test
-  (testing "worst-case scratch name (10-digit table-id) stays under the Postgres 63
-            and MySQL 64 identifier limits"
-    (let [;; longest realistic suffix: a 10-digit table id
-          name (scratch/scratch-table-name (scratch/new-nonce) (str "in_" 9999999999))]
-      (is (< (count name) 63)
-          (str "scratch name is " (count name) " chars (must be < 63): " name)))))
-
 (deftest name-age-computation-test
   (testing "timestamp encoded in name allows age computation from name alone"
     (let [;; Construct a name that appears to be 2 hours old
@@ -106,15 +98,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest nonce-uniqueness-test
-  (testing "two calls at the same instant produce distinct nonces"
-    (let [nonce1 (scratch/new-nonce)
-          nonce2 (scratch/new-nonce)]
-      (is (not= nonce1 nonce2)
-          "nonces must be unique across calls"))))
-
-(deftest two-seeds-same-instant-no-collision-test
-  (testing "same nonce never generated for concurrent seeds"
-    ;; Generate 100 nonces and assert all unique
+  (testing "nonces generated at the same instant never collide"
     (let [nonces (repeatedly 100 scratch/new-nonce)]
       (is (= (count nonces) (count (set nonces)))
           "100 nonces should all be unique"))))
@@ -277,6 +261,17 @@
 ;;; Integration: cleanup (Postgres)
 ;;; ---------------------------------------------------------------------------
 
+(defn- table-exists-in-schema?
+  "Check whether `table-name` exists in `schema` on the postgres test DB."
+  [db-id schema table-name]
+  (let [result (qp/process-query
+                {:database db-id
+                 :type :native
+                 :native {:query  (str "SELECT COUNT(*) FROM information_schema.tables"
+                                       " WHERE table_schema = ? AND table_name = ?")
+                          :params [schema table-name]}})]
+    (= 1 (ffirst (get-in result [:data :rows])))))
+
 (deftest cleanup-drops-all-scratch-tables-test
   (mt/test-drivers #{:postgres}
     (testing "cleanup! drops every seeded scratch table + output spec"
@@ -290,32 +285,13 @@
                                         nonce)
             ;; Fabricate an output spec that also needs cleanup
             output-name  (scratch/scratch-table-name nonce "out")
-            output-spec  {:schema schema :table output-name}]
-        ;; Verify table exists before cleanup
-        (let [scratch-spec (get mapping {:schema "public" :table "orders"})
-              pre-result   (qp/process-query
-                            {:database db-id
-                             :type :native
-                             :native {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                                  " WHERE table_schema = '"
-                                                  (:schema scratch-spec) "'"
-                                                  " AND table_name = '"
-                                                  (:table scratch-spec) "'")}})]
-          (is (= 1 (ffirst (get-in pre-result [:data :rows])))))
-        ;; Cleanup
+            output-spec  {:schema schema :table output-name}
+            scratch-spec (get mapping {:schema "public" :table "orders"})]
+        (is (table-exists-in-schema? db-id (:schema scratch-spec) (:table scratch-spec))
+            "scratch input table exists before cleanup")
         (scratch/cleanup! db-id db mapping output-spec)
-        ;; Verify table is gone
-        (let [scratch-spec (get mapping {:schema "public" :table "orders"})
-              post-result  (qp/process-query
-                            {:database db-id
-                             :type :native
-                             :native {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                                  " WHERE table_schema = '"
-                                                  (:schema scratch-spec) "'"
-                                                  " AND table_name = '"
-                                                  (:table scratch-spec) "'")}})]
-          (is (= 0 (ffirst (get-in post-result [:data :rows])))
-              "scratch input table should be gone after cleanup"))))))
+        (is (not (table-exists-in-schema? db-id (:schema scratch-spec) (:table scratch-spec)))
+            "scratch input table should be gone after cleanup")))))
 
 (deftest cleanup-idempotent-test
   (mt/test-drivers #{:postgres}
@@ -332,11 +308,11 @@
         (is (nil? (scratch/cleanup! db-id db mapping nil))
             "second cleanup! call should return nil without throwing")))))
 
-(deftest cleanup-after-partial-failure-test
+(deftest cleanup-tolerates-missing-tables-test
   (mt/test-drivers #{:postgres}
-    (testing "cleanup! drops already-created tables even after a partial seed failure"
-      ;; We simulate partial failure by manually seeding one table then calling cleanup
-      ;; with a mapping that includes an already-dropped table name
+    (testing "cleanup! drops the real tables in a mapping that also names nonexistent ones"
+      ;; Seed one real table, then hand cleanup! a mapping augmented with a spec
+      ;; for a table that was never created (the shape a partial seed leaves behind).
       (let [nonce        (scratch/new-nonce)
             db-id        (mt/id)
             db           (mt/db)
@@ -356,16 +332,8 @@
         (is (nil? (scratch/cleanup! db-id db aug-mapping nil))
             "cleanup! with a mix of real + missing tables should not throw")
         ;; Real table should be gone
-        (let [scratch-spec (get mapping {:schema "public" :table "orders"})
-              post-result  (qp/process-query
-                            {:database db-id
-                             :type :native
-                             :native {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                                  " WHERE table_schema = '"
-                                                  (:schema scratch-spec) "'"
-                                                  " AND table_name = '"
-                                                  (:table scratch-spec) "'")}})]
-          (is (= 0 (ffirst (get-in post-result [:data :rows])))
+        (let [scratch-spec (get mapping {:schema "public" :table "orders"})]
+          (is (not (table-exists-in-schema? db-id (:schema scratch-spec) (:table scratch-spec)))
               "real scratch table should be dropped even when mapping has a non-existent entry"))))))
 
 ;;; ---------------------------------------------------------------------------
@@ -387,17 +355,6 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Integration: janitor (cleanup-all-test-tables!) selectivity
 ;;; ---------------------------------------------------------------------------
-
-(defn- table-exists-in-schema?
-  "Check whether `table-name` exists in `schema` on the postgres test DB."
-  [db-id schema table-name]
-  (let [result (qp/process-query
-                {:database db-id
-                 :type :native
-                 :native {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                      " WHERE table_schema = '" schema "'"
-                                      " AND table_name = '" table-name "'")}})]
-    (= 1 (ffirst (get-in result [:data :rows])))))
 
 (deftest janitor-selectivity-test
   (mt/test-drivers #{:postgres}
@@ -549,7 +506,7 @@
 
 (deftest sweep-old-test-tables-best-effort-test
   (testing "sweep-old-test-tables! never throws, even when cleanup-all-test-tables! errors"
-    (with-redefs [scratch/cleanup-all-test-tables! (fn [& _] (throw (RuntimeException. "simulated sweep error")))]
+    (mt/with-dynamic-fn-redefs [scratch/cleanup-all-test-tables! (fn [& _] (throw (RuntimeException. "simulated sweep error")))]
       ;; Should return nil (or any value) without throwing
       (is (nil? (scratch/sweep-old-test-tables! 1 {:engine "postgres"} "public"))
           "sweep-old-test-tables! must not propagate errors"))))

@@ -158,17 +158,21 @@
           ;; Must carry the cause
           (is (some? (ex-cause e))))))))
 
-(deftest required-input-tables-table-id-not-synced-throws-test
+;;; ---------------------------------------------------------------------------
+;;; resolve-table-dep — error cases
+;;; ---------------------------------------------------------------------------
+
+(deftest resolve-table-dep-table-id-not-synced-throws-test
   (testing "A {:table id} dep whose id doesn't match any synced Table throws a typed error"
-    ;; Test resolve-table-dep directly with a bogus id — exercises the resolution
-    ;; failure without building a real MBQL query under a stub metadata provider.
+    ;; Exercises the resolution failure directly with a bogus id, without building
+    ;; a real MBQL query under a stub metadata provider.
     (let [bogus-id 9999999
           e        (is (thrown? clojure.lang.ExceptionInfo
                                 (inputs/resolve-table-dep {:table bogus-id})))]
       (is (= ::errors/table-not-found (-> e ex-data :error-type)))
       (is (= bogus-id (-> e ex-data :table-id))))))
 
-(deftest required-input-tables-table-ref-not-found-throws-test
+(deftest resolve-table-dep-table-ref-not-found-throws-test
   (testing "A {:table-ref ...} dep whose (db-id, schema, table) matches nothing throws a typed error"
     (let [bad-ref {:database_id 173 :schema "public" :table "nonexistent_xyz"}
           e (is (thrown? clojure.lang.ExceptionInfo
@@ -176,7 +180,7 @@
       (is (= ::errors/table-not-found (-> e ex-data :error-type)))
       (is (= bad-ref (-> e ex-data :table-ref))))))
 
-(deftest required-input-tables-transform-dep-throws-test
+(deftest resolve-table-dep-transform-dep-throws-test
   (testing "A {:transform id} dep (dep on another transform's output) throws a typed error"
     (let [e (is (thrown? clojure.lang.ExceptionInfo
                          (inputs/resolve-table-dep {:transform 42})))]
@@ -234,15 +238,14 @@
       (is (= #{99} (-> e ex-data :unknown-keys))))))
 
 (deftest match-fixtures-both-missing-and-unknown-throws-test
-  (testing "when both missing and unknown keys occur, one of the two typed errors fires"
+  (testing "when both missing and unknown keys occur, missing-fixtures fires (checked first)"
     (let [tables [{:id 10 :schema "public" :name "orders" :columns []}]
           ;; Missing: 10 (no fixture for orders)
           ;; Unknown: 99 (no required table with id 99)
           keys   #{99}
           e      (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/match-fixtures tables keys)))]
-      (is (#{::errors/missing-fixtures ::errors/unknown-fixture-keys}
-           (-> e ex-data :error-type))))))
+      (is (= ::errors/missing-fixtures (-> e ex-data :error-type))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; match-fixtures — missing and unknown together (separate check)

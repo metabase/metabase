@@ -42,6 +42,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-test.chain :as chain]
    [metabase-enterprise.transforms-test.scratch :as scratch]
+   [metabase-enterprise.transforms-test.test-util :as tu]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -52,58 +53,14 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- count-test-scratch-tables [db-id schema]
-  (let [result (qp.core/process-query
-                {:database db-id
-                 :type     :native
-                 :native   {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                        " WHERE table_schema = '" schema "'"
-                                        " AND table_name LIKE 'mb_transform_temp_table_test_%'")}})]
-    (-> result (get-in [:data :rows]) first first int)))
-
-;;; ---------------------------------------------------------------------------
-;;; Shared fixture CSV data
-;;; ---------------------------------------------------------------------------
-
-(def ^:private people-header
-  "id,address,email,password,name,city,longitude,state,source,birth_date,zip,latitude,created_at")
-
-;; 3 people: ids 1 & 3 → CA, id 2 → TX
-(def ^:private people-rows
-  (str people-header "\n"
-       "1,Addr,a@e.com,pw,Alice,SF,\"-1\",CA,g,1990-01-01,94102,\"37\",2020-01-01T00:00:00Z\n"
-       "2,Addr,b@e.com,pw,Bob,Austin,\"-2\",TX,d,1985-01-01,78701,\"30\",2020-01-02T00:00:00Z\n"
-       "3,Addr,c@e.com,pw,Carol,LA,\"-3\",CA,e,1978-01-01,90001,\"34\",2020-01-03T00:00:00Z\n"))
-
-(def ^:private orders-header
-  "id,user_id,product_id,subtotal,tax,total,discount,created_at,quantity")
-
-;; 4 orders: user 1 (CA) → 100 + 50, user 2 (TX) → 200, user 3 (CA) → 30
-(def ^:private orders-rows
-  (str orders-header "\n"
-       "1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n"
-       "2,1,11,45,5,50.00,,2024-01-02T00:00:00Z,1\n"
-       "3,2,12,180,20,200.00,,2024-01-03T00:00:00Z,1\n"
-       "4,3,13,27,3,30.00,,2024-01-04T00:00:00Z,1\n"))
-
 ;;; ---------------------------------------------------------------------------
 ;;; t1 (enrich): orders ⋈ people → enriched (total, state columns)
 ;;;
 ;;; t1's output becomes the card's source table. The card aggregates over it.
-;;; ---------------------------------------------------------------------------
-
-;;; The enrich transform SQL: reads orders and people, produces (total, state).
-(def ^:private enrich-sql
-  "SELECT o.total AS total, p.state AS state FROM orders o JOIN people p ON o.user_id = p.id")
-
-;;; Native card: aggregates enriched into (state, order_count, revenue).
-;;; `FROM enriched` is rewritten to the scratch table at execution time.
+;;; Shared fixtures ([[tu/orders-rows]], [[tu/people-rows]], [[tu/enrich-sql]],
+;;; expected CSVs) live in [[metabase-enterprise.transforms-test.test-util]].
 ;;; CA: 3 orders, total 180.  TX: 1 order, total 200.
-(def ^:private correct-expected-csv
-  "state,order_count,revenue\nCA,3,180.00\nTX,1,200.00\n")
-
-(def ^:private wrong-expected-csv
-  "state,order_count,revenue\nCA,9,180.00\nTX,1,200.00\n")
+;;; ---------------------------------------------------------------------------
 
 (defn- native-agg-card
   "A card that aggregates enriched into (state, count, revenue).
@@ -150,7 +107,7 @@
                       {:table_id  (:id ~tbl-sym) :name "state"
                        :base_type :type/Text  :position 1 :active true}
                       :model/Transform ~t1-sym
-                      {:source          {:type :query :query (lib/native-query mp# enrich-sql)}
+                      {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
                        :target          {:schema "public" :type "table"
                                          :name   ~enriched-name-sym}
                        :target_table_id (:id ~tbl-sym)}]
@@ -168,14 +125,14 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")
+                before-scratch (tu/count-test-scratch-tables db-id "public")
                 before-runs    (t2/count :model/TransformRun)]
             (with-enrich-topology [t1 _tbl enriched-name]
               (let [card   (native-agg-card db-id enriched-name)
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            correct-expected-csv {})]
+                            {orders-id tu/orders-rows people-id tu/people-rows}
+                            tu/correct-expected-csv {})]
                 (testing "status is passed"
                   (is (= :passed (:status result))
                       (str "Expected passed; diff: " (pr-str (:diff result)))))
@@ -186,7 +143,7 @@
                   (is (empty? (get-in result [:diff :extra-rows])))
                   (is (empty? (get-in result [:diff :cell-mismatches]))))
                 (testing "all scratch tables cleaned up (2 leaves + 1 node output)"
-                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))
                 (testing "no TransformRun row created"
                   (is (= before-runs (t2/count :model/TransformRun))))))))))))
 
@@ -202,13 +159,13 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id "public")]
             (with-enrich-topology [t1 _tbl enriched-name]
               (let [card   (native-agg-card db-id enriched-name)
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
-                            wrong-expected-csv {})]
+                            {orders-id tu/orders-rows people-id tu/people-rows}
+                            tu/wrong-expected-csv {})]
                 (testing "status is failed"
                   (is (= :failed (:status result))))
                 (testing "diff reports the discrepancy"
@@ -216,7 +173,7 @@
                           (seq (get-in result [:diff :extra-rows]))
                           (seq (get-in result [:diff :cell-mismatches])))))
                 (testing "scratch cleaned up even on a failed diff"
-                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; Native card: ignore_columns honored
@@ -236,7 +193,7 @@
               (let [card   (native-agg-card db-id enriched-name)
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
+                            {orders-id tu/orders-rows people-id tu/people-rows}
                             wrong-rev-csv {:ignore-columns #{"revenue"}})]
                 (testing "status is passed when revenue is ignored"
                   (is (= :passed (:status result))
@@ -254,14 +211,14 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")
+                before-scratch (tu/count-test-scratch-tables db-id "public")
                 ;; 4 fixture orders → enriched has 4 rows → COUNT = 4
                 expected-csv   "count\n4\n"]
             (with-enrich-topology [t1 tbl _enriched-name]
               (let [card   (mbql-count-card db-id (:id tbl))
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
+                            {orders-id tu/orders-rows people-id tu/people-rows}
                             expected-csv {})]
                 (testing "status is passed"
                   (is (= :passed (:status result))
@@ -269,7 +226,7 @@
                 (testing "run order contains t1"
                   (is (= [(:id t1)] (:order result))))
                 (testing "all scratch tables cleaned up"
-                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; MBQL card: failed (wrong expected value)
@@ -283,13 +240,13 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")
+                before-scratch (tu/count-test-scratch-tables db-id "public")
                 wrong-csv      "count\n99\n"]
             (with-enrich-topology [t1 tbl _enriched-name]
               (let [card   (mbql-count-card db-id (:id tbl))
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
-                            {orders-id orders-rows people-id people-rows}
+                            {orders-id tu/orders-rows people-id tu/people-rows}
                             wrong-csv {})]
                 (testing "status is failed"
                   (is (= :failed (:status result))))
@@ -298,7 +255,7 @@
                           (seq (get-in result [:diff :extra-rows]))
                           (seq (get-in result [:diff :cell-mismatches])))))
                 (testing "scratch cleaned up on failed diff"
-                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; Safety: verify fails closed when card refs an unmapped table
@@ -330,8 +287,8 @@
                 (try
                   (chain/run-card-chain-test!
                    danger-card #{(:id t1)}
-                   {orders-id orders-rows people-id people-rows}
-                   correct-expected-csv {})
+                   {orders-id tu/orders-rows people-id tu/people-rows}
+                   tu/correct-expected-csv {})
                   (catch clojure.lang.ExceptionInfo e
                     (reset! thrown e)))
                 (testing "throws ::cannot-test-run"
@@ -361,8 +318,8 @@
                                               (apply (mt/original-fn #'scratch/cleanup!) args))]
                   (chain/run-card-chain-test!
                    card #{(:id t1)}
-                   {orders-id orders-rows people-id people-rows}
-                   correct-expected-csv {}))))
+                   {orders-id tu/orders-rows people-id tu/people-rows}
+                   tu/correct-expected-csv {}))))
             (is (pos? (count @captured))
                 "cleanup! should have been called at least once")
             (is (every? #{:transform} @captured)
@@ -409,8 +366,8 @@
               (let [card (native-agg-card db-id enriched-name)]
                 (chain/run-card-chain-test!
                  card #{(:id t1)}
-                 {orders-id orders-rows people-id people-rows}
-                 correct-expected-csv {})
+                 {orders-id tu/orders-rows people-id tu/people-rows}
+                 tu/correct-expected-csv {})
                 ;; After the run, verify that enriched-name (t1's real output) is absent.
                 (let [result (qp.core/process-query
                               {:database db-id :type :native
@@ -452,7 +409,7 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id "public")]
             (with-enrich-topology [t1 tbl _enriched-name]
               (let [;; total field was created by with-enrich-topology as position 0
                     total-field-id (t2/select-one-fn :id :model/Field
@@ -461,7 +418,7 @@
                     card           (metric-sum-card db-id (:id tbl) total-field-id)
                     result         (chain/run-card-chain-test!
                                     card #{(:id t1)}
-                                    {orders-id orders-rows people-id people-rows}
+                                    {orders-id tu/orders-rows people-id tu/people-rows}
                                     metric-expected-csv {})]
                 (testing "status is passed"
                   (is (= :passed (:status result))
@@ -469,7 +426,7 @@
                 (testing "run order contains t1"
                   (is (= [(:id t1)] (:order result))))
                 (testing "all scratch tables cleaned up"
-                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; Metric card: failed (wrong expected value)
@@ -483,7 +440,7 @@
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id "public")]
             (with-enrich-topology [t1 tbl _enriched-name]
               (let [total-field-id (t2/select-one-fn :id :model/Field
                                                      :table_id (:id tbl)
@@ -491,7 +448,7 @@
                     card           (metric-sum-card db-id (:id tbl) total-field-id)
                     result         (chain/run-card-chain-test!
                                     card #{(:id t1)}
-                                    {orders-id orders-rows people-id people-rows}
+                                    {orders-id tu/orders-rows people-id tu/people-rows}
                                     metric-wrong-csv {})]
                 (testing "status is failed"
                   (is (= :failed (:status result))))
@@ -500,7 +457,7 @@
                           (seq (get-in result [:diff :extra-rows]))
                           (seq (get-in result [:diff :cell-mismatches])))))
                 (testing "scratch cleaned up on failed diff"
-                  (is (= before-scratch (count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
 
 ;;; ===========================================================================
 ;;; Metric card: card-subgraph-input-tables

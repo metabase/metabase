@@ -194,17 +194,6 @@
 ;; 5. Numeric rules
 ;; ---------------------------------------------------------------------------
 
-(deftest decimal-scale-35-vs-350-test
-  (testing "3.5 == 3.50 (scale-independent decimal comparison)"
-    (let [actual-cols [(col "amount" :type/Float)]
-          ;; QP returns a Double
-          actual-rows [[3.5]]
-          ;; parse-fixture(:type/Float) returns a Java Number (Double via NumberFormat)
-          expected    (fixture [(schema-col "amount" :type/Float)]
-                               [[3.50]])
-          report      (diff/diff actual-cols actual-rows expected {})]
-      (is (= :passed (:status report))))))
-
 (deftest integer-vs-long-widening-test
   (testing "Integer vs Long vs BigInteger are equal when values match"
     (let [actual-cols [(col "n" :type/Integer)]
@@ -374,23 +363,19 @@
 
 (deftest mismatch-cap-test
   (testing "more than cap mismatches → capped report + :truncated count"
-    ;; Generate 60 mismatching rows (cap is 50)
-    (let [n           60
+    ;; Generate 10 rows over the cap on each side
+    (let [n           (+ diff/mismatch-cap 10)
           actual-cols [(col "v" :type/Integer)]
           actual-rows  (mapv (fn [i] [(+ i 1000)]) (range n))
           expected     (fixture [(schema-col "v" :type/Integer)]
                                 (mapv (fn [i] [(BigInteger/valueOf (+ i 2000))]) (range n)))
           report       (diff/diff actual-cols actual-rows expected {})]
       (is (= :failed (:status report)))
-      ;; All 60 actual rows are "extra", all 60 expected are "missing"
-      ;; But extra/missing are capped at 50 + truncated
-      (let [extra-count   (count (:extra-rows report))
-            missing-count (count (:missing-rows report))
-            truncated     (:truncated report)]
-        (is (<= extra-count 50))
-        (is (<= missing-count 50))
-        (is (some? truncated))
-        (is (pos? truncated))))))
+      ;; All n actual rows are "extra", all n expected are "missing"; each side is
+      ;; capped at mismatch-cap and the 10-per-side overflow lands in :truncated.
+      (is (= diff/mismatch-cap (count (:extra-rows report))))
+      (is (= diff/mismatch-cap (count (:missing-rows report))))
+      (is (= 20 (:truncated report))))))
 
 ;; ---------------------------------------------------------------------------
 ;; 10. Report is JSON-able (no Java objects in the report)

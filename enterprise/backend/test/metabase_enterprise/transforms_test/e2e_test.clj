@@ -24,39 +24,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-test.api]
-   [metabase-enterprise.transforms-test.test-util :refer [with-temp-csv-files]]
+   [metabase-enterprise.transforms-test.test-util :as tu :refer [with-temp-csv-files]]
    [metabase.lib.core :as lib]
-   [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------------------------------------------
-;;; Invariant helpers
-;;; ---------------------------------------------------------------------------
-
-(defn- count-test-scratch-tables
-  "Count mb_transform_temp_table_test_* tables in schema via information_schema."
-  [db-id schema]
-  (let [result (qp.core/process-query
-                {:database db-id
-                 :type     :native
-                 :native   {:query (str "SELECT COUNT(*) FROM information_schema.tables"
-                                        " WHERE table_schema = '" schema "'"
-                                        " AND table_name LIKE 'mb_transform_temp_table_test_%'")}})]
-    (-> result (get-in [:data :rows]) first first int)))
-
-;;; ---------------------------------------------------------------------------
-;;; Multipart helper
-;;; ---------------------------------------------------------------------------
-
-(def ^:private multipart-content-type
-  {:request-options {:headers {"content-type" "multipart/form-data"}}})
-
-(defn- subgraph-test-run-url [transform-id]
-  (format "ee/transform-test/transform/%d/subgraph" transform-id))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Fixture CSV content
@@ -160,7 +134,7 @@
                 mp         (mt/metadata-provider)
                 orders-id  (mt/id :orders)
                 people-id  (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id schema)
+                before-scratch (tu/count-test-scratch-tables db-id schema)
                 before-runs    (t2/count :model/TransformRun)]
             (mt/with-temp [:model/Transform transform
                            {:source {:type  :query
@@ -173,8 +147,8 @@
                  people-f   people-5-rows
                  expected-f correct-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id transform))
-                            multipart-content-type
+                            :crowberto :post 200 (tu/subgraph-test-run-url (:id transform))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
@@ -199,7 +173,7 @@
                     (is (empty? (get-in resp [:diff :column-issues]))
                         "No column issues expected in a passing diff"))
                   (testing "no scratch tables remain after successful run"
-                    (is (= before-scratch (count-test-scratch-tables db-id schema))
+                    (is (= before-scratch (tu/count-test-scratch-tables db-id schema))
                         "All scratch tables cleaned up"))
                   (testing "no TransformRun row created"
                     (is (= before-runs (t2/count :model/TransformRun))
@@ -220,7 +194,7 @@
                 mp         (mt/metadata-provider)
                 orders-id  (mt/id :orders)
                 people-id  (mt/id :people)
-                before-scratch (count-test-scratch-tables db-id schema)
+                before-scratch (tu/count-test-scratch-tables db-id schema)
                 before-runs    (t2/count :model/TransformRun)]
             (mt/with-temp [:model/Transform transform
                            {:source {:type  :query
@@ -234,8 +208,8 @@
                  ;; TX order_count is 2 in reality, but expected says 99.
                  expected-f wrong-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (subgraph-test-run-url (:id transform))
-                            multipart-content-type
+                            :crowberto :post 200 (tu/subgraph-test-run-url (:id transform))
+                            tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
                              "expected"               expected-f
@@ -257,7 +231,7 @@
                     (let [row-cells  (concat
                                       (mapcat identity (get-in resp [:diff :missing-rows]))
                                       (mapcat identity (get-in resp [:diff :extra-rows])))
-                          cm-values  (mapcat (fn [m] [(:expected-canonical m) (:actual-canonical m)])
+                          cm-values  (mapcat (juxt :expected-canonical :actual-canonical)
                                              (get-in resp [:diff :cell-mismatches]))
                           all-strs   (map str (concat row-cells cm-values))]
                       (is (some #(or (.contains ^String % "TX") (.contains ^String % "99"))
@@ -265,7 +239,7 @@
                           (str "Expected TX/99 to appear in diff; got: "
                                (pr-str (:diff resp))))))
                   (testing "no scratch tables remain after failed run"
-                    (is (= before-scratch (count-test-scratch-tables db-id schema))
+                    (is (= before-scratch (tu/count-test-scratch-tables db-id schema))
                         "All scratch tables cleaned up even on failed diff"))
                   (testing "no TransformRun row created"
                     (is (= before-runs (t2/count :model/TransformRun))

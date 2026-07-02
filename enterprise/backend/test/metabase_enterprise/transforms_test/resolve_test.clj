@@ -61,14 +61,17 @@
   (testing "case 1: unqualified table ref + unqualified columns"
     ;; sqlglot qualifies the rewritten ref with the target scratch schema (public),
     ;; driver-quoted so the reference is case-preserved and matches the created table.
-    (is (= "SELECT id FROM \"public\".\"scratch_orders\""
-           (rewrite "SELECT id FROM orders" orders->scratch)))
+    ;; (Assert the load-bearing fragment, not the full string — the surrounding
+    ;; formatting is backend pretty-printing and churns on sqlglot version bumps.)
+    (is (re-find #"FROM \"public\"\.\"scratch_orders\""
+                 (rewrite "SELECT id FROM orders" orders->scratch)))
     (is (string? (rewrite+verify "SELECT id FROM orders" orders->scratch)))))
 
 (deftest case-2-schema-qualified-table-alias-qualified-columns-test
   (testing "case 2: schema-qualified table ref, alias-qualified columns"
     (let [rw (rewrite "SELECT o.id, o.total FROM public.orders o" orders->scratch)]
-      (is (= "SELECT o.id, o.total FROM \"public\".\"scratch_orders\" AS o" rw))
+      (is (re-find #"FROM \"public\"\.\"scratch_orders\" AS o" rw)
+          "scratch ref is schema-qualified, quoted, and keeps the alias")
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-3-self-join-test
@@ -182,8 +185,9 @@
     ;; mapping references `customers` but the SQL only uses `orders`; sqlglot ignores
     ;; the unused `customers` key silently (allow-unused? is moot). The rewrite succeeds;
     ;; orders is rewritten, the unused customers key causes no error.
-    (is (= "SELECT id FROM \"public\".\"scratch_orders\""
-           (rewrite "SELECT id FROM orders" orders+customers->scratch)))))
+    (let [rw (rewrite "SELECT id FROM orders" orders+customers->scratch)]
+      (is (re-find #"FROM \"public\"\.\"scratch_orders\"" rw))
+      (is (not (re-find #"customers" rw))))))
 
 (deftest case-15-table-only-key-matches-loosely-on-sqlglot-test
   (testing "case 15: a bare table key matches a schema-qualified ref on sqlglot (loose match)"
@@ -191,8 +195,8 @@
     ;; key matches public.orders. We register both keys, so this is covered, but assert
     ;; the loose-match behavior explicitly with a bare-only mapping.
     (let [bare-only {{:table "orders"} {:schema "public" :table "scratch_orders"}}]
-      (is (= "SELECT id FROM \"public\".\"scratch_orders\""
-             (rewrite "SELECT id FROM public.orders" bare-only))))))
+      (is (re-find #"FROM \"public\"\.\"scratch_orders\""
+                   (rewrite "SELECT id FROM public.orders" bare-only))))))
 
 ;;; ===========================================================================
 ;;; Token-survival edge: a mapped table whose name is a substring of a surviving

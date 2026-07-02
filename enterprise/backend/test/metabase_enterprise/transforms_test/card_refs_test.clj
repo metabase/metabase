@@ -8,27 +8,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-test.card-refs :as card-refs]
+   [metabase-enterprise.transforms-test.test-util :as tu]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------------------------------------------
-;;; Query builders (Lib)
-;;; ---------------------------------------------------------------------------
-
-(defn- table-query
-  "A query reading physical table `table-id`."
-  [table-id]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/table mp table-id))))
-
-(defn- card-query
-  "A query whose source is card `card-id`."
-  [card-id]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/card mp card-id))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; MBQL — physical table source
@@ -36,7 +20,7 @@
 
 (deftest mbql-physical-table-test
   (testing "MBQL question over a single physical table: table id in :tables, :cards empty"
-    (mt/with-temp [:model/Card card {:dataset_query (table-query (mt/id :orders))}]
+    (mt/with-temp [:model/Card card {:dataset_query (tu/table-query (mt/id :orders))}]
       (let [{:keys [tables cards]} (card-refs/card->immediate-refs card)]
         (is (= #{(mt/id :orders)} tables))
         (is (= #{} cards))))))
@@ -50,14 +34,14 @@
     (mt/with-temp [:model/Card card
                    {:dataset_query
                     ;; breakout on a people column reachable from orders via FK forces an implicit join
-                    (let [q           (table-query (mt/id :orders))
+                    (let [q           (tu/table-query (mt/id :orders))
                           people-name (->> (lib/visible-columns q)
                                            (filter #(= (:id %) (mt/id :people :name)))
                                            first)]
                       (lib/breakout q people-name))}]
       (let [{:keys [tables cards]} (card-refs/card->immediate-refs card)]
-        (is (contains? tables (mt/id :orders)) "source table")
-        (is (contains? tables (mt/id :people)) "implicitly joined table")
+        (is (= #{(mt/id :orders) (mt/id :people)} tables)
+            "source table + implicitly joined table, nothing else")
         (is (= #{} cards))))))
 
 ;;; ---------------------------------------------------------------------------
@@ -66,8 +50,8 @@
 
 (deftest mbql-source-card-test
   (testing "MBQL question whose source is another card: source card id in :cards, not its tables"
-    (mt/with-temp [:model/Card source {:dataset_query (table-query (mt/id :orders))}
-                   :model/Card card   {:dataset_query (card-query (:id source))}]
+    (mt/with-temp [:model/Card source {:dataset_query (tu/table-query (mt/id :orders))}
+                   :model/Card card   {:dataset_query (tu/card-query (:id source))}]
       (let [{:keys [tables cards]} (card-refs/card->immediate-refs card)]
         ;; The orders table id must not appear — immediate-only.
         (is (= #{} tables) "physical table behind source card must not appear")
@@ -80,7 +64,7 @@
 (deftest metric-card-test
   (testing "Metric card (:type :metric) is structurally an MBQL card: table id in :tables"
     (mt/with-temp [:model/Card metric {:type          :metric
-                                       :dataset_query (-> (table-query (mt/id :orders))
+                                       :dataset_query (-> (tu/table-query (mt/id :orders))
                                                           (lib/aggregate (lib/count)))}]
       (let [{:keys [tables cards]} (card-refs/card->immediate-refs metric)]
         (is (= #{(mt/id :orders)} tables))
@@ -108,5 +92,5 @@
       ;; The CTE alias 'cte' cannot be resolved to a table id; it should be dropped silently.
       ;; 'orders' inside the CTE definition is parsed and resolved.
       (let [{:keys [tables cards]} (card-refs/card->immediate-refs card)]
-        (is (set? tables))
+        (is (= #{(mt/id :orders)} tables))
         (is (= #{} cards))))))
