@@ -27,6 +27,16 @@ export function isPendingDeletion(index: TableIndexEntry): boolean {
   return index.request?.status === "delete-pending";
 }
 
+export function isPendingStatus(
+  status: TableIndexRequestStatus | undefined,
+): boolean {
+  return (
+    status === "create-pending" ||
+    status === "update-pending" ||
+    status === "delete-pending"
+  );
+}
+
 export function formatStatus(
   status: TableIndexRequestStatus | undefined,
 ): string {

@@ -8,7 +8,7 @@ import type { TableIndexEntry } from "metabase-types/api";
 
 import { IndexRowMenu } from "./IndexRowMenu";
 import type { IndexRow } from "./types";
-import { formatStatus, getIndexName } from "./utils";
+import { formatStatus, getIndexName, isPendingStatus } from "./utils";
 
 const ACTIONS_COLUMN_WIDTH = 56;
 
@@ -81,12 +81,20 @@ export function getColumns({
       enableSorting: true,
       accessorFn: (index) => formatStatus(index.request?.status),
       cell: ({ row, getValue }) => {
-        const errorMessage = row.original.request?.error_message;
+        const request = row.original.request;
+        const errorMessage = request?.error_message;
         return (
           <Group gap="sm" wrap="nowrap">
             <Ellipsified>{String(getValue())}</Ellipsified>
             {errorMessage != null && (
               <Tooltip label={errorMessage}>
+                <Icon name="info_outline" c="text-secondary" />
+              </Tooltip>
+            )}
+            {isPendingStatus(request?.status) && (
+              <Tooltip
+                label={t`Changes will be applied the next time the transform runs`}
+              >
                 <Icon name="info_outline" c="text-secondary" />
               </Tooltip>
             )}

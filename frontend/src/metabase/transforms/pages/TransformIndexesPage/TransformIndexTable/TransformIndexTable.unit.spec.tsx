@@ -2,7 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import { setupUsersEndpoints } from "__support__/server-mocks";
 import {
+  getIcon,
   mockGetBoundingClientRect,
+  queryIcon,
   renderWithProviders,
   screen,
   within,
@@ -123,6 +125,40 @@ describe("TransformIndexTable", () => {
 
     expect(await screen.findByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("Removing")).toBeInTheDocument();
+  });
+
+  it("shows an info tooltip for pending statuses", async () => {
+    setup({
+      indexes: [
+        createMockTableIndexEntry({
+          request: createMockTableIndexRequest({ status: "create-pending" }),
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    await userEvent.hover(getIcon("info_outline"));
+    expect(
+      await screen.findByText(
+        "Changes will be applied the next time the transform runs",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the pending info icon for terminal statuses", async () => {
+    setup({
+      indexes: [
+        createMockTableIndexEntry({
+          request: createMockTableIndexRequest({
+            status: "succeeded",
+            error_message: null,
+          }),
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Succeeded")).toBeInTheDocument();
+    expect(queryIcon("info_outline")).not.toBeInTheDocument();
   });
 
   it("resolves the last modified by user name", async () => {
