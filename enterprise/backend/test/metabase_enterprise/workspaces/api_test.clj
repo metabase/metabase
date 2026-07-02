@@ -1253,34 +1253,36 @@
 
 (deftest run-workspace-transform-success-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run successful execution"
-    (transforms.tu/with-transform-cleanup! [output-table "ws_api_success"]
-      (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
-        (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
-          (mt/with-temp [:model/Transform x1 {:name   "Transform"
-                                              :source {:type  "query"
-                                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
-                                              :target {:type     "table"
-                                                       :database (mt/id)
-                                                       :schema   target-schema
-                                                       :name     output-table}}]
-            (let [ref-id (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") x1))
-                  ws     (ws.tu/ws-done! (:id ws))]
-              (testing "returns succeeded status with isolated table info"
-                (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run"))]
-                  (is (=? {:status     "succeeded"
-                           :message    nil
-                           :start_time some?
-                           :end_time   some?
-                           :table      {:schema (:schema ws)
-                                        :name   (str target-schema "__" output-table)}}
-                          result))))
-              (testing "doesn't create excessive transforms in the db"
-                (is (= (:id x1)
-                       (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]}))))
-              (testing "transform has last_run_at and last_run_status after success"
-                (is (=? {:last_run_at     some?
-                         :last_run_status "succeeded"}
-                        (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))))
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
+                           :snowflake)
+      (transforms.tu/with-transform-cleanup! [output-table "ws_api_success"]
+        (ws.tu/with-workspaces! [ws {:name "Workspace 1"}]
+          (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
+            (mt/with-temp [:model/Transform x1 {:name   "Transform"
+                                                :source {:type  "query"
+                                                         :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                                :target {:type     "table"
+                                                         :database (mt/id)
+                                                         :schema   target-schema
+                                                         :name     output-table}}]
+              (let [ref-id (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") x1))
+                    ws     (ws.tu/ws-done! (:id ws))]
+                (testing "returns succeeded status with isolated table info"
+                  (let [result (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run"))]
+                    (is (=? {:status     "succeeded"
+                             :message    nil
+                             :start_time some?
+                             :end_time   some?
+                             :table      {:schema (:schema ws)
+                                          :name   (str target-schema "__" output-table)}}
+                            result))))
+                (testing "doesn't create excessive transforms in the db"
+                  (is (= (:id x1)
+                         (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]}))))
+                (testing "transform has last_run_at and last_run_status after success"
+                  (is (=? {:last_run_at     some?
+                           :last_run_status "succeeded"}
+                          (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id)))))))))))))
 
 (deftest run-workspace-transform-failure-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run failed execution"

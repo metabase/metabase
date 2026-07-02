@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.impersonation.driver-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.main :as main]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
@@ -702,12 +703,13 @@
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               ;; I've seen different error messages here, not 100% sure why but the important thing is that this fails
-               #"(?s)SQL compilation error.*(?:(?:operation cannot be performed)|(?:Object.*does not exist or not authorized))"
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]})))
+          (is (= "class net.snowflake.client.jdbc.SnowflakeSQLException"
+                 (try
+                   (mt/run-mbql-query venues {:aggregation [[:count]]})
+                   (catch Exception e
+                     ;; can't use `instance?` because this is compiled (but not run)
+                     ;; in jobs where snowflake drivers aren't on the classpath
+                     (str (class (main/root-cause e)))))))
           ;; Non-impersonated user should still be able to query the table
           (request/as-admin
             (is (= [100]

@@ -16,48 +16,50 @@
 
 (deftest run-workspace-transform-no-input-test
   (testing "Executing a workspace transform returns results and rolls back app DB records"
-    (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
-      (let [workspace    (ws.tu/create-ready-ws! "Execute Test Workspace")
-            db-id        (:database_id workspace)
-            body         {:name   "Test Transform"
-                          :source {:type  "query"
-                                   :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})}
-                          :target {:type     "table"
-                                   :database db-id
-                                   :schema   nil
-                                   :name     output-table}}
-            ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
-            ;; get initialized fields
-            workspace    (t2/select-one :model/Workspace (:id workspace))
-            graph        (ws.impl/get-or-calculate-graph! workspace)
-            ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
-            before       {:xf    (t2/count :model/Transform)
-                          :xfrun (t2/count :model/TransformRun)}]
-        (testing "execution returns expected result structure"
-          (is (=? {:status     :succeeded
-                   :start_time some?
-                   :end_time   some?
-                   :table      {:name   #(str/includes? % output-table)
-                                :schema ws-schema}}
-                  (mt/with-current-user (mt/user->id :crowberto)
-                    (ws.impl/run-transform! workspace graph ws-transform))))
-          (is (=? {:last_run_at some?}
-                  (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))
-          (testing "The isolated_table_id gets populated"
-            (ws.impl/get-or-calculate-graph! workspace)
-            (is (=? [{:workspace_id      (:id workspace)
-                      :global_table      output-table
-                      :global_schema     nil
-                      :global_table_id   nil
-                      :isolated_schema   string?
-                      :isolated_table    string?
-                      :isolated_table_id number?}]
-                    (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
-        (testing "app DB records are rolled back"
-          ;; TransformRun is +1 because cascade delete was removed in d1e940e66b5
-          (is (= (update before :xfrun inc)
-                 {:xf    (t2/count :model/Transform)
-                  :xfrun (t2/count :model/TransformRun)})))))))
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
+                           :snowflake)
+      (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
+        (let [workspace    (ws.tu/create-ready-ws! "Execute Test Workspace")
+              db-id        (:database_id workspace)
+              body         {:name   "Test Transform"
+                            :source {:type  "query"
+                                     :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})}
+                            :target {:type     "table"
+                                     :database db-id
+                                     :schema   nil
+                                     :name     output-table}}
+              ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+              ;; get initialized fields
+              workspace    (t2/select-one :model/Workspace (:id workspace))
+              graph        (ws.impl/get-or-calculate-graph! workspace)
+              ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
+              before       {:xf    (t2/count :model/Transform)
+                            :xfrun (t2/count :model/TransformRun)}]
+          (testing "execution returns expected result structure"
+            (is (=? {:status     :succeeded
+                     :start_time some?
+                     :end_time   some?
+                     :table      {:name   #(str/includes? % output-table)
+                                  :schema ws-schema}}
+                    (mt/with-current-user (mt/user->id :crowberto)
+                      (ws.impl/run-transform! workspace graph ws-transform))))
+            (is (=? {:last_run_at some?}
+                    (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))
+            (testing "The isolated_table_id gets populated"
+              (ws.impl/get-or-calculate-graph! workspace)
+              (is (=? [{:workspace_id      (:id workspace)
+                        :global_table      output-table
+                        :global_schema     nil
+                        :global_table_id   nil
+                        :isolated_schema   string?
+                        :isolated_table    string?
+                        :isolated_table_id number?}]
+                      (t2/select :model/WorkspaceOutput :workspace_id (:id workspace) :ref_id (:ref_id ws-transform))))))
+          (testing "app DB records are rolled back"
+            ;; TransformRun is +1 because cascade delete was removed in d1e940e66b5
+            (is (= (update before :xfrun inc)
+                   {:xf    (t2/count :model/Transform)
+                    :xfrun (t2/count :model/TransformRun)}))))))))
 
 (deftest dry-run-sql-workspace-transform-test
   (testing "Dry-running a workspace transform returns rows without persisting"
