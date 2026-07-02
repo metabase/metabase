@@ -5,6 +5,7 @@ import {
   type BadgeColor,
   type BadgeProps,
   Box,
+  Group,
   Text,
 } from "metabase/ui";
 import {
@@ -132,6 +133,17 @@ const Overview = ({ children }: BadgeProps) => (
             1
           </Badge>
         ))}
+      </Box>
+    </StorySection>
+
+    <StorySection title="Indicator">
+      <Box style={{ ...gridStyle, gridTemplateColumns: "24rem 8rem" }}>
+        <StoryJsx>{`<Badge indicator color="…" />`}</StoryJsx>
+        <Group gap="sm">
+          {COLORS.map((color) => (
+            <Badge key={color} indicator color={color} />
+          ))}
+        </Group>
       </Box>
     </StorySection>
   </StoryShowcase>

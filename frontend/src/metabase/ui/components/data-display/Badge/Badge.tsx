@@ -21,10 +21,19 @@ export interface BadgeProps
     Omit<MantineBadgeProps, "color">,
     Omit<ComponentPropsWithoutRef<"div">, keyof MantineBadgeProps | "color"> {
   color?: BadgeColor | MantineBadgeProps["color"];
+  /** Render as a small solid dot. Used as a status indicator. */
+  indicator?: boolean;
 }
 
 export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
-  { color = "neutral", size = "xs", variant = "filled", ...props },
+  {
+    color = "neutral",
+    size = "xs",
+    variant = "filled",
+    indicator,
+    children,
+    ...props
+  },
   ref,
 ) {
   return (
@@ -33,7 +42,10 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
       ref={ref}
       size={size}
       variant={variant}
+      {...(indicator ? { "data-indicator": true } : {})}
       {...props}
-    />
+    >
+      {indicator ? null : children}
+    </MantineBadge>
   );
 });

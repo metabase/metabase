@@ -49,6 +49,14 @@ const OUTLINE_BORDER: Record<BadgeColor, ColorName> = {
 
 const LIGHT_BG: ColorName = "background_surface-secondary";
 
+const INDICATOR_BG: Record<BadgeColor, ColorName> = {
+  neutral: "icon-disabled",
+  brand: "core-brand",
+  negative: "feedback-negative",
+  warning: "feedback-warning",
+  positive: "feedback-positive",
+};
+
 const SIZES = {
   xs: { height: "1rem", paddingX: "0.375rem" }, // 16px / 6px
   sm: { height: "1.5rem", paddingX: "0.5rem" }, // 24px / 8px
@@ -74,7 +82,9 @@ export const badgeOverrides = {
     classNames: {
       root: BadgeStyles.root,
     },
-    vars: (_theme, { size, variant, color: badgeColor }) => {
+    vars: (_theme, props) => {
+      const { size, variant, color: badgeColor } = props;
+      const isIndicator = "data-indicator" in props;
       const { height, paddingX } = SIZES[size === "sm" ? "sm" : "xs"];
       const root: BadgeRootVars = {
         "--badge-height": height,
@@ -85,7 +95,9 @@ export const badgeOverrides = {
       // Legacy `color` values fall through to Mantine's default resolver so
       // existing call sites keep rendering until they are migrated.
       if (isBadgeColor(badgeColor)) {
-        if (variant === "filled") {
+        if (isIndicator) {
+          root["--badge-bg"] = color(INDICATOR_BG[badgeColor]);
+        } else if (variant === "filled") {
           root["--badge-bg"] = color(FILLED_BG[badgeColor]);
           root["--badge-color"] = color(FILLED_TEXT[badgeColor]);
         } else if (variant === "light") {
