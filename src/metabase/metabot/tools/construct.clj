@@ -284,20 +284,7 @@
 
 (defn- query-not-runnable-explanation
   "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli
-  explanation of why; nil when the query is runnable.
-
-  This is the same `::lib.schema/query` validation `metabase.lib.query/can-run` performs (with
-  expression type-checks suppressed exactly as `can-run` does), checked directly rather than
-  through the `mu/defn`-instrumented `can-run` - which under dev instrumentation throws on an
-  invalid query instead of returning false. A constructed question's `can-run-method` is always
-  satisfied (it only restricts `:metric` queries) and `database:` is stamped by repair, so
-  schema validity is the whole gate here.
-
-  This is a backstop: the repair passes already convert the common non-runnable shapes
-  (dangling cross-stage / source-card refs, offset-in-custom-column) into loud `:agent-error?`s
-  upstream. This catches anything else that resolves structurally but is still schema-invalid,
-  so the tool never reports a query the notebook editor can't run/visualize/save as success
-  (BOT-1442)."
+  explanation of why; nil when the query is runnable."
   [pmbql-query]
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
