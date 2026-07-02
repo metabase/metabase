@@ -43,7 +43,7 @@ const SearchButtonView = ({ location, ...props }: SearchButtonProps) => {
     <Button
       h="36px"
       w="240px"
-      c={searchText ? "text-primary" : "text-tertiary"}
+      c={searchText ? "text-primary" : "text-disabled"}
       leftSection={<Icon name="search" c="text-primary" />}
       onClick={handleClick}
       styles={{

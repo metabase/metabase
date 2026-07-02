@@ -536,6 +536,8 @@ import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import trash_filled_component from "./trash_filled.svg?component";
 import trash_filled_source from "./trash_filled.svg?source";
+import treemap_component from "./treemap.svg?component";
+import treemap_source from "./treemap.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_left_source from "./triangle_left.svg?source";
 import triangle_right_component from "./triangle_right.svg?component";
@@ -1630,6 +1632,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     trash_filled: {
       component: trash_filled_component,
       source: trash_filled_source,
+    },
+    treemap: {
+      component: treemap_component,
+      source: treemap_source,
     },
     triangle_left: {
       component: triangle_left_component,

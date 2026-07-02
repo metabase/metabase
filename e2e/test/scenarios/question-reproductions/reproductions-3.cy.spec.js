@@ -1418,14 +1418,14 @@ describe("issue 44637", () => {
     );
 
     H.assertQueryBuilderRowCount(0);
-    H.queryBuilderMain().findByText("No results!").should("exist");
+    H.queryBuilderMain().findByText("No results").should("exist");
     H.queryBuilderFooter().button("Visualization").click();
     H.leftSidebar().within(() => {
       cy.findByTestId("more-charts-toggle").click();
       cy.icon("bar").click();
     });
     H.queryBuilderMain().within(() => {
-      cy.findByText("No results!").should("exist");
+      cy.findByText("No results").should("exist");
       cy.findByText("Something's gone wrong").should("not.exist");
     });
 

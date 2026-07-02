@@ -75,10 +75,16 @@
 
   Note: Unlike searchable-text, transformation functions in search-terms
   (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
-  explosion are specific to full-text search optimization."
+  explosion are specific to full-text search optimization.
+
+  Fields listed in the spec's `:embedding-exclude` set are kept out of the
+  embedding text entirely (but remain in `searchable-text`)."
   [m]
-  (let [search-terms (:search-terms (search.spec/spec (:model m)))
-        field-keys   (cond-> search-terms (map? search-terms) keys)
+  (let [spec         (search.spec/spec (:model m))
+        search-terms (:search-terms spec)
+        excluded     (:embedding-exclude spec #{})
+        field-keys   (->> (cond-> search-terms (map? search-terms) keys)
+                          (remove excluded))
         header       (str "[" (:model m) "]")
         fields        (keep (fn [k]
                               (let [v (get m k)]
@@ -204,7 +210,7 @@
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (spec-index-query-where search-model where-clause)
-       mdb/streaming-reducible-query
+       t2/reducible-query
        (eduction (comp (map #(assoc % :model search-model))
                        (m/distinct-by (juxt :id :model))))))
 

@@ -706,7 +706,7 @@ describe("issue 16756", () => {
 
     // We expect "No results"
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No results!");
+    cy.findByText("No results");
   });
 });
 

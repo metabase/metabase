@@ -551,7 +551,15 @@
         (doseq [sql (cond-> [(format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                              (format "CREATE USER IF NOT EXISTS %s IDENTIFIED BY '%s'"
                                      quoted-user (:password read-user))
-                             (format "GRANT ALL ON %s.* TO %s" quoted-db quoted-user)]
+                             ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
+                             ;; owner auto-privileges, so grant each verb explicitly):
+                             ;;   SELECT       - read its own tables
+                             ;;   INSERT       - CTAS populate + incremental insert
+                             ;;   CREATE TABLE - transform target
+                             ;;   DROP TABLE   - swap/cleanup
+                             ;; (these four also satisfy the atomic-swap RENAME TABLE.)
+                             (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON %s.* TO %s"
+                                     quoted-db quoted-user)]
                       quoted-canonical-db
                       (conj (format "GRANT SHOW DATABASES ON %s.* TO %s"
                                     quoted-canonical-db quoted-user)))]

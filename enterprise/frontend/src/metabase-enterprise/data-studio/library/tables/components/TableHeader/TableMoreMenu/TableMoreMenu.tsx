@@ -2,9 +2,10 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
-import { collectionApi, useUpdateTableMutation } from "metabase/api";
+import { collectionApi } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CollectionPickerModal } from "metabase/common/components/Pickers";
+import { useSetCollection } from "metabase/common/hooks/use-set-collection";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
@@ -23,7 +24,7 @@ export type TableMoreMenuProps = {
 export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
   const dispatch = useDispatch();
   const [modalType, setModalType] = useState<TableModalType>();
-  const [updateTable] = useUpdateTableMutation();
+  const setCollection = useSetCollection();
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -37,10 +38,11 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
 
   const handleMove = async (newCollection: { id: CollectionId }) => {
     const sourceCollectionId = table.collection_id;
-    await updateTable({
-      id: table.id,
-      collection_id: newCollection.id,
-    }).unwrap();
+    await setCollection(
+      { model: "table", id: table.id },
+      { id: newCollection.id },
+      { notify: false },
+    );
     dispatch(
       collectionApi.util.invalidateTags([
         { type: "collection", id: `${sourceCollectionId}-items` },

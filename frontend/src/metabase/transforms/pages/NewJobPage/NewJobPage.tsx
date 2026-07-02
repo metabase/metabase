@@ -9,7 +9,7 @@ import {
   useLazyGetTransformJobQuery,
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/urls";

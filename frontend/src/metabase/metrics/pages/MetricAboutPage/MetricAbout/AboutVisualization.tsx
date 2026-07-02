@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import { MetricCardVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
-import { useCardQueryData } from "metabase/data-studio/common/hooks/use-card-query-data";
+import { MetricCardVisualization } from "metabase/common/data-studio/components/OverviewVisualization";
+import { useCardQueryData } from "metabase/common/data-studio/hooks/use-card-query-data";
 import { Box, Stack } from "metabase/ui";
 import {
   TrendInfo,

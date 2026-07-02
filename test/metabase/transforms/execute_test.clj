@@ -148,7 +148,8 @@
             (driver/drop-table! driver db-id (:name table-schema))))))))
 
 (deftest transform-schema-created-if-needed-test
-  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas
+                                                         :test/dynamic-dataset-loading]})
     (mt/dataset transforms-dataset/transforms-test
       (let [schema (str "transform_schema_" (mt/random-name))]
         (try

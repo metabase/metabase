@@ -8,8 +8,8 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getDataFromClicked } from "metabase/parameters/utils/click-behavior";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 import { removeNewLines } from "metabase/utils/formatting/strings";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
+import type { ColumnSettings } from "metabase-types/api";
 
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
 import { formatValue, getRemappedValue } from "./value";
@@ -35,7 +35,7 @@ export function getUrlProtocol(url: string) {
   }
 }
 
-export function formatUrl(value: string, options: OptionsType = {}) {
+export function formatUrl(value: string, options: ColumnSettings = {}) {
   const { jsx, rich, column, collapseNewlines } = options;
 
   const url = getLinkUrl(value, options);
@@ -79,7 +79,7 @@ export function formatUrl(value: string, options: OptionsType = {}) {
   }
 }
 
-function getLinkText(value: string, options: OptionsType) {
+function getLinkText(value: string, options: ColumnSettings) {
   const { view_as, link_text, clicked, collapseNewlines } = options;
 
   const isExplicitLink = view_as === "link";
@@ -102,7 +102,7 @@ function getLinkText(value: string, options: OptionsType) {
 
 function getLinkUrl(
   value: string,
-  { view_as, link_url, clicked, column }: OptionsType,
+  { view_as, link_url, clicked, column }: ColumnSettings,
 ) {
   const isExplicitLink = view_as === "link";
   const hasCustomizedUrl = link_url && clicked;

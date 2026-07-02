@@ -492,16 +492,38 @@
     ;; TODO this should probably be a function in the sync module
     (t2/update! :model/Table (:id table) {:active false})))
 
+(defn- isolated-drop-target
+  "Resolve `target` to the physical warehouse table to drop.
+
+  On a workspace child the canonical target is backed by an isolation-namespace copy recorded
+  in `table_remapping`; the workspace user can only DROP inside its isolation namespace, so the
+  drop must hit that copy — not the canonical table. Looks the copy up via the general
+  canonical→isolated workspace hook (symmetric with [[canonicalize-target]], which uses the
+  inverse). The isolated namespace lives in `:schema` for schema-based drivers and in `:db` for
+  MySQL; collapse to the single `:schema` slot the driver drop path qualifies on. Off-workspace
+  the hook returns nil and `target` is dropped unchanged."
+  [db-id target]
+  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
+    (if-let [{:keys [db schema name]} (ws.table-remapping/workspace-remap-schema+name db-id lookup-spec)]
+      (assoc target :schema (or schema db) :name name)
+      target)))
+
 (defn delete-target-table!
-  "Delete the target table of a transform and sync it from the app db."
+  "Drop a transform's output table and deactivate its app-db Table row.
+
+  In workspace-isolation mode the transform writes to an isolation-namespace copy, so the drop
+  resolves the canonical `:target` to that copy (see [[isolated-drop-target]]); dropping the
+  canonical name would fail (the workspace user is read-only there) or hit the wrong table. The
+  app-db Table row that gets deactivated is always the canonical `:target`, since that is what
+  sync surfaces. Off-workspace the two are identical."
   [{:keys [id target], :as transform}]
   (when target
-    (let [target (update target :type keyword)
-          database-id (transforms-base.i/target-db-id transform)]
+    (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
         (if-let [{driver :engine :as database} (t2/select-one :model/Database database-id)]
-          (do
-            (driver/drop-transform-target! driver database target)
+          (let [drop-target (->> (update target :type keyword)
+                                 (isolated-drop-target database-id))]
+            (driver/drop-transform-target! driver database drop-target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
             (deactivate-table! database target))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"

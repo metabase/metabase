@@ -180,6 +180,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -687,18 +688,6 @@
    :api  #{}
    :uses :any}
 
-  curated-search
-  {:team "Metabot"
-   :api  #{metabase.curated-search.api
-           metabase.curated-search.core}
-   :uses #{api
-           models
-           premium-features
-           request
-           util}
-   :model-exports #{:model/CuratedSearchEntry}
-   :model-imports #{:model/Card}}
-
   dashboards
   {:team "UX West"
    :api  #{metabase.dashboards.autoplace
@@ -714,6 +703,7 @@
            audit-app
            collections
            config
+           embedding
            events
            lib
            models
@@ -724,6 +714,7 @@
            query-processor
            search
            settings
+           staleness
            sync
            util}
    :model-exports #{:model/Dashboard
@@ -974,6 +965,13 @@
            tiles
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+
+  entity-retrieval
+  {:team "Metabot"
+   :api  #{metabase.entity-retrieval.core
+           metabase.entity-retrieval.mirror}
+   :uses #{premium-features}
+   :model-imports #{:model/OsiAiContext}}
 
   events
   {:team "DevEx"
@@ -1296,9 +1294,9 @@
               channel
               collections
               config
-              curated-search
               documents
               driver
+              entity-retrieval
               interestingness
               legacy-mbql
               lib
@@ -1501,6 +1499,20 @@
            task
            tracing
            util}}
+
+  osi
+  {:team "Metabot"
+   :api  #{metabase.osi.ai-context.api}
+   :uses #{api
+           app-db
+           entity-retrieval
+           models
+           request
+           util}
+   :model-exports #{:model/OsiAiContext}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/Segment}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1722,6 +1734,7 @@
            content-verification
            dashboards
            documents
+           embedding
            events
            graph
            lib
@@ -1737,6 +1750,8 @@
            query-processor
            request
            search
+           settings
+           staleness
            sync
            util
            view-log
@@ -1944,6 +1959,7 @@
            metabase.sample-data.init}
    :uses #{config
            models
+           permissions
            plugins
            settings
            sync
@@ -1951,6 +1967,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DataPermissions
                     :model/Database
                     :model/Field
                     :model/Table}}
@@ -2198,6 +2215,10 @@
               system
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
+
+  staleness
+  {:team "UX West"
+   :api  #{metabase.staleness.core}}
 
   startup
   {:team "DevEx"
@@ -2493,8 +2514,7 @@
                     :model/QueryExecution
                     :model/Segment
                     :model/Table}
-   :uses #{app-db
-           lib
+   :uses #{lib
            lib-be
            models
            settings
@@ -2998,15 +3018,6 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
-  enterprise/curated-search
-  {:team "Metabot"
-   :api  #{metabase-enterprise.curated-search.init}
-   :uses #{premium-features
-           task
-           util
-           enterprise/semantic-search}
-   :model-imports #{:model/CuratedSearchEntry}}
-
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
@@ -3182,6 +3193,22 @@
    ;; embeddings.client/get-embeddings-batch's TODO is executed (move impl + settings here,
    ;; make token tracking a hook). Drop this dep once the relocation lands.
    :uses #{enterprise/semantic-search}}
+
+  enterprise/entity-retrieval
+  {:team "Metabot"
+   :api  #{metabase-enterprise.entity-retrieval.init}
+   :uses #{analytics-interface
+           collections
+           entity-retrieval
+           premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table}}
 
   enterprise/erd
   {:team "Gadget"
@@ -3475,6 +3502,7 @@
            collections
            config
            connection-pool
+           events
            llm
            metabot
            models
@@ -3503,7 +3531,6 @@
            app-db
            appearance
            collections
-           config
            events
            lib
            logger
@@ -3556,11 +3583,11 @@
    :uses #{analytics
            api
            collections
-           embedding
            premium-features
            queries
            request
            settings
+           staleness
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
