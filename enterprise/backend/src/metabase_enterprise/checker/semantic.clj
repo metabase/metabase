@@ -441,8 +441,10 @@
   (let [stages (get-in data [:dataset_query :stages])]
     (reduce
      (fn [acc stage]
-       (let [;; Snippets from template-tags
-             snippets (->> (:template-tags stage)
+       (let [;; Snippets from template-tags (a query stage carries the canonical tag sequence, but raw
+             ;; entity data may still use the legacy associative map)
+             snippets (->> (let [tt (:template-tags stage)]
+                             (if (map? tt) (vals tt) tt))
                            (filter #(= "snippet" (get % :type)))
                            (keep :snippet-name))
              ;; Measures and metrics from aggregation clauses

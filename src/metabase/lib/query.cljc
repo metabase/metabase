@@ -452,11 +452,14 @@
 
 (defn- template-tag-stages
   [template-tags]
-  (for [{:keys [card-id snippet-id] tag-type :type} template-tags
-        :when (#{:card :snippet} tag-type)]
-    (case tag-type
-      :card {:source-card card-id}
-      :snippet {:source-snippet-id snippet-id})))
+  ;; `template-tags` is the canonical tag sequence for a query stage, but a NativeQuerySnippet still
+  ;; stores it as a legacy associative map -- accept either.
+  (let [tags (if (map? template-tags) (vals template-tags) template-tags)]
+    (for [{:keys [card-id snippet-id] tag-type :type} tags
+          :when (#{:card :snippet} tag-type)]
+      (case tag-type
+        :card {:source-card card-id}
+        :snippet {:source-snippet-id snippet-id}))))
 
 (defn- stage-seq* [query-fragment]
   (cond

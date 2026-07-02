@@ -1274,6 +1274,10 @@
        :lib/uuid                     (cond-> m
                                        (not (contains? *required-lib-uuids-for-export* v))
                                        (dissoc :lib/uuid))
+       ;; template-tags live in memory / the app DB as an ordered sequence of tag maps (#5136), but the
+       ;; serialization format (and the @metabase/representations schema) is the legacy associative map
+       ;; `{tag-name tag}`. Convert on export; import normalizes the map back to the sequence.
+       :template-tags                 (update m k #(into {} (map (juxt :name export-mbql)) %))
        #_else                        (update m k export-mbql)))
    m
    m))

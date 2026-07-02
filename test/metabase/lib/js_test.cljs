@@ -152,19 +152,20 @@
 (deftest ^:parallel template-tags-test
   (testing "Snippets in template tags round trip correctly (#33546)"
     (let [db meta/database
-          snippet-name "snippet: my snippet"
-          snippets {snippet-name
-                    {:type :snippet
-                     :name "snippet: my snippet"
-                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4"
-                     :display-name "Snippet: My Snippet"
-                     :snippet-name "my snippet"
-                     :snippet-id 1}}
+          tag {:type         :snippet
+               :name         "snippet: my snippet"
+               :id           "fd5e96f7-08f8-486b-9919-b2ab72857db4"
+               :display-name "Snippet: My Snippet"
+               :snippet-name "my snippet"
+               :snippet-id   1}
+          snippets {(:name tag) tag}
           query (lib.js/with-template-tags
                   (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
-                  (add-undefined-params (clj->js snippets) snippet-name))]
-      (is (= snippets
+                  (add-undefined-params (clj->js snippets) (:name tag)))]
+      ;; in memory, template-tags is the ordered sequence of tag maps (#5136)
+      (is (= [tag]
              (get-in query [:stages 0 :template-tags])))
+      ;; at the JS boundary it is the associative object keyed by tag name
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
 

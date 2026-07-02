@@ -1278,7 +1278,7 @@
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
           (is (=? {:stages [{:lib/type      :mbql.stage/native
-                             :template-tags [{:name "snippet: things" :snippet-id (:entity_id @snippet1s)}]}]}
+                             :template-tags {"snippet: things" {:snippet-id (:entity_id @snippet1s)}}}]}
                   (:dataset_query @extracted))))
         (testing "when loading"
           (let [new-eid   (u/generate-nano-id)

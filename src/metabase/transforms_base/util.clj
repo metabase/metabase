@@ -70,10 +70,10 @@
   This is the table variable the incremental range filter is injected into (see
   `inject-filters-into-table-tag`). When `table-id` is nil, any table template tag qualifies."
   [query table-id]
-  (some (fn [[k v]]
-          (when (and (#{:table "table"} (:type v))
-                     (or (nil? table-id) (= table-id (:table-id v))))
-            k))
+  (some (fn [tag]
+          (when (and (#{:table "table"} (:type tag))
+                     (or (nil? table-id) (= table-id (:table-id tag))))
+            (:name tag)))
         (lib/template-tags query)))
 
 (defn incremental-table-tag-name
@@ -317,7 +317,7 @@
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
     (when (and (= "table-incremental" (:type target))
                (native-query-transform? transform)
-               (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
+               (not (some (fn [tag] (#{:table "table"} (:type tag)))
                           (lib/template-tags (:query source)))))
       (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
                                "Please add a table variable to the query and update the checkpoint field."))]

@@ -251,7 +251,8 @@
                                                                 []
                                                                 [{:id "id" :type "number" :special "hello"}])))
                                          (m/update-existing :dataset_query (letfn [(update-template-tags [template-tags]
-                                                                                     (mapv (fn [[tag-name tag]] [tag-name (dissoc tag :id)]) template-tags))
+                                                                                     (mapv #(dissoc % :id)
+                                                                                           (if (map? template-tags) (vals template-tags) template-tags)))
                                                                                    (update-stage [stage]
                                                                                      (m/update-existing stage :template-tags update-template-tags))
                                                                                    (update-stages [stages]
