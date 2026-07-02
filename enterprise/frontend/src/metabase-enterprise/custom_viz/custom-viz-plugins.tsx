@@ -53,11 +53,8 @@ const failedPluginHashes = new Map<
   CustomVizPluginRuntime["bundle_hash"]
 >();
 
-// Per-plugin monotonic load counters for latest-wins ordering. Dev reloads can
-// overlap (rapid edits or a new build arriving while a fetch is in flight) and
-// resolve out of order; each load is tagged at start and only commits/toasts
-// if it is still the freshest, so a slower older load can't overwrite
-// a newer bundle or fire a stale error.
+// Monotonic per-plugin load counters for latest-wins ordering of overlapping
+// dev reloads.
 const loadStartedSeq = new Map<CustomVizPluginId, number>();
 const loadAppliedSeq = new Map<CustomVizPluginId, number>();
 
@@ -180,11 +177,6 @@ export function useAutoLoadCustomVizPlugin(
   const [loading, setLoadingState] = useState(false);
   const loadingRef = useRef<string | null>(null);
 
-  // Refcount in-flight loads. The visualization is refreshed by unmounting while
-  // loading and remounting (which re-reads the registry) when loading clears;
-  // with overlapping reloads just a boolean would clear after the *first* load
-  // resolves and remount on a stale bundle. Counting keeps `loading` true
-  // until the last (newest) load settles, so the remount reads the freshest registered bundle.
   const loadingCountRef = useRef(0);
   const setLoading = useCallback((isLoading: boolean) => {
     loadingCountRef.current = Math.max(
@@ -336,11 +328,7 @@ export async function loadCustomVizPlugin(
     } else if (currentHash) {
       params.v = currentHash;
     }
-    // In dev mode the bundle is proxied from a dev server that can transiently
-    // fail while mid-rebuild — the endpoint reports this as a 5xx (e.g. 503).
-    // Retry only on those server-side statuses; a 4xx (missing plugin, no
-    // permission) is permanent, so fail fast instead of stalling. Non-dev
-    // bundles come from the backend's on-disk cache and aren't retried.
+
     const fetchBundle = () =>
       api.fetch({
         method: "GET",

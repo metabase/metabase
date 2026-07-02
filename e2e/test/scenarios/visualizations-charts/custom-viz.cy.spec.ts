@@ -1406,9 +1406,6 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
 
-      // Start a fresh dev server for every attempt. The test stops the server as
-      // its final assertion, and `before` does not re-run on a Cypress retry or
-      // during burn-in, so the server must be (re)started per test.
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,
       }).then(({ pid }) => {
@@ -1477,23 +1474,18 @@ describe("admin > custom visualizations", () => {
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
 
-      // Capture the pristine plugin source so we can restore it between
-      // attempts — the test mutates this file (hot-reload check)
       cy.readFile(pluginSrcPath).then((src) => {
         pristineSrc = src;
       });
     });
 
     afterEach(() => {
-      // Stop the dev server started in beforeEach. Idempotent: the test may have
-      // already stopped it as part of its final assertion.
       if (devServerPid != null) {
         cy.task("stopCustomVizDevServer", devServerPid);
         devServerPid = null;
       }
 
-      // Revert any in-test edits to the plugin source so a retry starts from the
-      // scaffolded default ("Above threshold") instead of a mutated label.
+      // Restore the source the test mutated, so a retry starts from the default.
       if (pristineSrc != null) {
         cy.writeFile(pluginSrcPath, pristineSrc);
       }
