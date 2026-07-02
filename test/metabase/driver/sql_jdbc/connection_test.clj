@@ -988,3 +988,18 @@
     (is (integer? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*))))
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :-fns [has-default-port?]})
     (is (nil? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*)))))
+
+(defn- jdbc-driver-registered?
+  "Whether a `java.sql.Driver` of the given `classname` is currently registered with DriverManager."
+  [classname]
+  (boolean (some #(= classname (.getName (class %)))
+                 (enumeration-seq (java.sql.DriverManager/getDrivers)))))
+
+(deftest ^:parallel register-driver-class!-test
+  (testing "loads the JDBC driver class so it self-registers with DriverManager"
+    (is (= "org.h2.Driver" (.getName ^Class (#'sql-jdbc.conn/register-driver-class! "org.h2.Driver"))))
+    (is (jdbc-driver-registered? "org.h2.Driver")))
+  (testing "nil classname is a no-op"
+    (is (nil? (#'sql-jdbc.conn/register-driver-class! nil))))
+  (testing "an unloadable driver class is swallowed (best-effort; falls back to DriverManager discovery)"
+    (is (nil? (#'sql-jdbc.conn/register-driver-class! "com.example.NoSuchDriver")))))

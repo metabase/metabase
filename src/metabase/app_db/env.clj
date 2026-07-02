@@ -91,8 +91,27 @@
      :aws-iam                          mb-db-aws-iam
      :ssl-cert                         mb-db-ssl-cert}))
 
+(def ^:private db-type->jdbc-driver-classname
+  "JDBC driver class to register for each supported application-DB type."
+  {:postgres "org.postgresql.Driver"
+   :mysql    "org.mariadb.jdbc.Driver"
+   :h2       "org.h2.Driver"})
+
+(defn- register-app-db-driver!
+  "Load the application DB's JDBC driver class so it registers itself with [[java.sql.DriverManager]].
+  We do this explicitly rather than relying on DriverManager's `ServiceLoader` auto-discovery: that
+  enumeration aborts on the first `Driver` provider whose class fails to load (e.g. a dangling
+  `org.h2.Driver` entry left in `META-INF/services/java.sql.Driver` after the H2 library is stripped),
+  which can otherwise prevent the app DB's own driver -- e.g. `org.postgresql.Driver` -- from
+  registering. `getConnection` finds drivers registered by either mechanism, so loading it explicitly
+  makes app-DB connectivity independent of the ServiceLoader outcome."
+  [db-type]
+  (when-let [classname (db-type->jdbc-driver-classname db-type)]
+    (Class/forName classname)))
+
 (defn- env->DataSource
   [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id mb-db-aws-iam], :as env-vars}]
+  (register-app-db-driver! db-type)
   (if mb-db-connection-uri
     (mdb.data-source/raw-connection-string->DataSource
      mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id mb-db-aws-iam)

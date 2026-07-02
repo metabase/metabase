@@ -51,3 +51,25 @@
             (testing db-type
               (is (partial= {:mb-db-port 3307}
                             (#'mdb.env/env* db-type))))))))))
+
+(defn- jdbc-driver-registered?
+  "Whether a `java.sql.Driver` of the given `classname` is currently registered with DriverManager."
+  [classname]
+  (boolean (some #(= classname (.getName (class %)))
+                 (enumeration-seq (java.sql.DriverManager/getDrivers)))))
+
+(deftest register-app-db-driver!-test
+  (testing "loads the app-DB JDBC driver class so it self-registers with DriverManager"
+    (#'mdb.env/register-app-db-driver! :postgres)
+    (is (jdbc-driver-registered? "org.postgresql.Driver")))
+  (testing "a db-type with no mapping is a no-op"
+    (is (nil? (#'mdb.env/register-app-db-driver! :not-a-real-db-type)))))
+
+(deftest env->DataSource-registers-driver-test
+  (testing (str "building the app-DB DataSource registers its JDBC driver explicitly, so app-DB "
+                "connectivity does not depend on DriverManager's ServiceLoader enumeration succeeding")
+    (#'mdb.env/env->DataSource :postgres {:mb-db-host   "localhost"
+                                          :mb-db-port   5432
+                                          :mb-db-dbname "metabase"
+                                          :mb-db-user   "u"})
+    (is (jdbc-driver-registered? "org.postgresql.Driver"))))

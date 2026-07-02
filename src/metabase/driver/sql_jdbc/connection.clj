@@ -166,12 +166,30 @@
                                                   (name driver)
                                                   (data-source-name driver (driver.conn/effective-details database)))})
 
+(defn- register-driver-class!
+  "Load the JDBC driver `classname` so it registers itself with [[java.sql.DriverManager]]. The pool
+  connects via `DriverManager/getConnection` (see [[metabase.connection-pool]]), which relies on the
+  driver already being registered; DriverManager's `ServiceLoader` auto-discovery aborts on the first
+  `Driver` provider whose class fails to load (e.g. a dangling `org.h2.Driver` entry left after the H2
+  library is stripped), which can leave other drivers unregistered. Loading it explicitly here makes
+  connectivity independent of that enumeration. Uses the context classloader so plugin driver classes
+  are reachable; best-effort -- a class we can't load falls back to DriverManager's own discovery."
+  [classname]
+  (when classname
+    (try
+      (Class/forName classname true (.getContextClassLoader (Thread/currentThread)))
+      (catch Throwable e
+        (log/debugf e "Could not eagerly load JDBC driver class %s; falling back to DriverManager discovery"
+                    classname)))))
+
 (defn- connection-pool-spec
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
   [{:keys [^DataSource datasource], :as spec} pool-properties]
   (if datasource
     {:datasource (DataSources/pooledDataSource datasource (driver-api/map->properties pool-properties))}
-    (driver-api/connection-pool-spec spec pool-properties)))
+    (do
+      (register-driver-class! (:classname spec))
+      (driver-api/connection-pool-spec spec pool-properties))))
 
 (defn ^:private default-ssh-tunnel-target-port [driver]
   (let [conn-props (driver.u/collect-all-props-by-name (driver/connection-properties driver))
