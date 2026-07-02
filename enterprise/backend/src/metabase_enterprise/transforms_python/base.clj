@@ -347,9 +347,15 @@
             start-ms (u/start-timer)]
         (log! message-log (i18n/tru "Executing Python transform"))
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-        (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
-                                                 {:with-stage-timing-fn with-stage-timing-fn
-                                                  :source-range-params  source-range-params})]
+        ;; Establish a resilient-connection context so the SQL Server source read/export can recover a dropped
+        ;; connection mid-run instead of bailing with "not in a resilient context". No-op for drivers that don't
+        ;; need recovery (nothing is opened, so the finally closes nothing).
+        (let [result (driver/do-with-resilient-connection
+                      (:engine db) db
+                      (fn [_driver _db]
+                        (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
+                                                    {:with-stage-timing-fn with-stage-timing-fn
+                                                     :source-range-params  source-range-params})))]
           (log! message-log (i18n/tru "Python execution finished successfully in {0}"
                                       (u.format/format-milliseconds (u/since-ms start-ms))))
           ;; Check cancellation after python
