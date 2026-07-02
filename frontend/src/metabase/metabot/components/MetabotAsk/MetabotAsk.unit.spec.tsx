@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import { assocIn } from "icepick";
 
 import { screen, waitFor } from "__support__/ui";
@@ -79,7 +80,9 @@ describe("MetabotAsk", () => {
         getData: (type: string) => (type === "text/plain" ? chartText : ""),
       },
     });
-    screen.getByRole("textbox").dispatchEvent(event);
+    act(() => {
+      screen.getByRole("textbox").dispatchEvent(event);
+    });
 
     await waitFor(() => {
       const askState = store.getState().metabot.conversations.ask?.state;

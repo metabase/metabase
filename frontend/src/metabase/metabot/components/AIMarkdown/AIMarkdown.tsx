@@ -16,18 +16,15 @@ import {
   type MarkdownProps,
 } from "metabase/common/components/Markdown";
 import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
-import type { ResolvedChartLink } from "metabase/metabot/utils/resolve-chart-links";
 import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 
 import S from "./AIMarkdown.module.css";
 import { InternalLink } from "./components/InternalLink";
-import { MarkdownChartLink } from "./components/MarkdownChartLink";
 import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
 
 type AIMarkdownProps = MarkdownProps & {
   onInternalLinkClick?: (link: string) => void;
   singleNewlinesAreParagraphs?: boolean;
-  resolveChartLink?: (url: string | undefined) => ResolvedChartLink | undefined;
 };
 
 // SEC-505: block all images; to support them we'll need detection for valid/allowed image sources
@@ -84,8 +81,7 @@ const MarkdownCodeBlock = ({
 
 const getComponents = ({
   onInternalLinkClick,
-  resolveChartLink,
-}: Pick<AIMarkdownProps, "onInternalLinkClick" | "resolveChartLink">) => ({
+}: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
   a: ({
     href,
     children,
@@ -104,17 +100,6 @@ const getComponents = ({
           onInternalLinkClick={onInternalLinkClick}
           name={String(node.children?.[0]?.value ?? "")}
           {...parsed}
-        />
-      );
-    }
-
-    const chartLink = resolveChartLink?.(node.properties.href);
-    if (chartLink) {
-      return (
-        <MarkdownChartLink
-          onInternalLinkClick={onInternalLinkClick}
-          name={String(node.children?.[0]?.value ?? "")}
-          {...chartLink}
         />
       );
     }
@@ -152,14 +137,13 @@ export const AIMarkdown = memo(
   ({
     className,
     onInternalLinkClick,
-    resolveChartLink,
     children,
     singleNewlinesAreParagraphs = false,
     ...props
   }: AIMarkdownProps) => {
     const components = useMemo(
-      () => getComponents({ onInternalLinkClick, resolveChartLink }),
-      [onInternalLinkClick, resolveChartLink],
+      () => getComponents({ onInternalLinkClick }),
+      [onInternalLinkClick],
     );
 
     const normalizedChildren = useMemo(
