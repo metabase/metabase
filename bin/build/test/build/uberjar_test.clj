@@ -57,3 +57,21 @@
                (pr-str unexpected)
                "\nIf benign, add to known-conflicting-prefixes with a comment. "
                "If dangerous, add a conflict handler in build.uberjar.")))))
+
+(deftest jdbc-driver-services-merger-test
+  (testing "merges JDBC driver service files across jars, dropping org.h2.Driver, deduping the rest"
+    (let [existing (java.io.File/createTempFile "java.sql.Driver" "")]
+      (try
+        ;; simulate the file already accumulated from earlier jars (H2 written by the first jar)
+        (spit existing "org.h2.Driver\norg.postgresql.Driver")
+        ;; a later jar also contributes the service file (with its own H2 line + a new driver)
+        (#'uberjar/jdbc-driver-services-merger
+         {:existing existing
+          :in       (java.io.ByteArrayInputStream.
+                     (.getBytes "org.sqlite.JDBC\norg.h2.Driver\norg.postgresql.Driver"))})
+        (let [lines (clojure.string/split-lines (slurp existing))]
+          (is (not (some #{"org.h2.Driver"} lines)) "org.h2.Driver is dropped")
+          (is (contains? (set lines) "org.postgresql.Driver"))
+          (is (contains? (set lines) "org.sqlite.JDBC"))
+          (is (= (count lines) (count (distinct lines))) "no duplicate providers"))
+        (finally (.delete existing))))))
