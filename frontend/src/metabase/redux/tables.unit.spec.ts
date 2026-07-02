@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { getMainStore } from "__support__/entities-store";
+import { getStore } from "__support__/entities-store";
 import {
   setupTableQueryMetadataEndpoint,
   setupUnauthorizedFieldEndpoint,
@@ -33,7 +33,7 @@ describe("fetchTableMetadataAndForeignKeys", () => {
     setupTableQueryMetadataEndpoint(TABLE_A);
     setupUnauthorizedFieldEndpoint(createMockField({ id: FK_TARGET_FIELD_ID }));
 
-    const store = getMainStore();
+    const store = getStore();
 
     // Check there's no permission error
     await expect(
