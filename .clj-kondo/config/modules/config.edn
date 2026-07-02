@@ -1338,6 +1338,7 @@
            metabase.metrics.core}
    :uses #{api
            collections
+           events
            lib
            lib-be
            lib-metric

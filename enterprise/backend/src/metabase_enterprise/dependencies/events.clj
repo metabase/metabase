@@ -32,6 +32,10 @@
 (derive ::card-deps :metabase/event)
 (derive :event/card-create ::card-deps)
 (derive :event/card-update ::card-deps)
+;; Editing a metric's curated dimensions changes only its *upstream* deps (e.g. a dimension mapped to
+;; a joinable table), not its output columns — so it recomputes this card's deps but does not derive
+;; the downstream `::check-card-dependents` / metadata-update handlers.
+(derive :event/metric-dimensions-update ::card-deps)
 
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]

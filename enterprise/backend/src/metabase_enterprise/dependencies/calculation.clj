@@ -48,6 +48,14 @@
     (upstream-deps:native-query query)
     (upstream-deps:mbql-query query)))
 
+(mu/defn- upstream-deps:dimension-mappings :- ::deps.schema/upstream-deps
+  "Dependencies contributed by a metric's curated dimension mappings. A dimension mapped to a table
+   column makes the metric depend on that column's table (dependencies are tracked at table
+   granularity, and each mapping records its column's `:table-id`). Non-metric cards have no
+   dimension mappings, so this yields nothing."
+  [dimension-mappings]
+  {:table (into #{} (keep :table-id) dimension-mappings)})
+
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
   [{{tables :source-tables} :source :as _py-transform}
    :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
@@ -72,13 +80,15 @@
 ;;; ------------------------------------------------ defmethods ------------------------------------------------
 
 (defmethod calculate-deps* :card
-  [_ {query :dataset_query :as card}]
+  [_ {query :dataset_query, dimension-mappings :dimension_mappings :as card}]
   {:pre [(some? query)]}
-  (let [query-deps (upstream-deps:query query)
+  (let [base-deps      (merge-with into
+                                   (upstream-deps:query query)
+                                   (upstream-deps:dimension-mappings dimension-mappings))
         param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
     (reduce (fn [deps card-id]
               (update deps :card (fnil conj #{}) card-id))
-            query-deps
+            base-deps
             param-card-ids)))
 
 (defmethod calculate-deps* :transform

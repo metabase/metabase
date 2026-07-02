@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
@@ -13,6 +14,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -324,6 +326,11 @@
 (defn- write-check-metric! [id]
   (api/write-check (t2/select-one :model/Card :id id :type "metric")))
 
+(defn- notify-dimensions-changed!
+  "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."
+  [id]
+  (events/publish-event! :event/metric-dimensions-update {:object {:id id}}))
+
 (api.macros/defendpoint :get "/:id/dimension"
   :- [:map
       [:added   [:sequential :map]]
@@ -351,7 +358,8 @@
                                                        [:id      ms/NonBlankString]
                                                        [:sources [:sequential [:map [:field-id ms/PositiveInt]]]]]]]]]
   (write-check-metric! id)
-  (metrics/add-dimensions! :metadata/metric id dimensions))
+  (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
+    (notify-dimensions-changed! id)))
 
 (api.macros/defendpoint :post "/:id/dimension/remove"
   :- [:sequential :map]
@@ -360,7 +368,8 @@
    _query-params
    {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
   (write-check-metric! id)
-  (metrics/remove-dimensions! :metadata/metric id dimension_ids))
+  (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
+    (notify-dimensions-changed! id)))
 
 (api.macros/defendpoint :post "/:id/dimension/set-default"
   :- [:sequential :map]
@@ -387,4 +396,7 @@
             [:description  {:optional true} [:maybe :string]]
             [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
   (write-check-metric! id)
-  (metrics/update-dimension! :metadata/metric id dimension-key body))
+  (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
+    ;; Only a source-column change alters the mapping (and thus the deps graph).
+    (when (:source body)
+      (notify-dimensions-changed! id))))
