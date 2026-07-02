@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -48,6 +49,16 @@
                         (log/error e "Failed to publish remote-sync audit event")))))))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
+  (auto-import!))
+
+(defenterprise jekyll-boot-import!
+  "Jekyll mode: reload content from the configured git branch once at boot, so a
+  fresh/wiped app-db converges to the branch state. Reuses the same
+  settings-gated `auto-import!` the AutoImport task runs — but called directly at
+  boot, since Jekyll cuts the scheduler. No-op when remote-sync is disabled or
+  not configured for read-only auto-import."
+  :feature :none
+  []
   (auto-import!))
 
 (def ^:private auto-import-job-key "metabase.task.remote-sync.auto-import.job")
