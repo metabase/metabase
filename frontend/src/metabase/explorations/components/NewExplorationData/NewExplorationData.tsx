@@ -72,7 +72,7 @@ function dimensionToSelection(d: MetricDimension) {
   };
 }
 
-function blockToGroup(block: ExplorationBlock) {
+function blockToSelection(block: ExplorationBlock) {
   if (isMetricBlock(block)) {
     return {
       type: "metric" as const,
@@ -105,7 +105,7 @@ export function buildCreateExplorationRequest(
     prompt: trimmedPrompt.length > 0 ? trimmedPrompt : null,
     timeline_ids: timelines.map((tl) => tl.id),
     collection_id: collectionId,
-    groups: blocks.map(blockToGroup),
+    blocks: blocks.map(blockToSelection),
   };
 }
 

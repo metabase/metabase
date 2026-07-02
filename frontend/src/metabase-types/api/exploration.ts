@@ -118,7 +118,7 @@ export interface CreateExplorationRequest {
   prompt?: string | null;
   collection_id?: CollectionId | null;
   timeline_ids?: TimelineId[];
-  groups: {
+  blocks: {
     type: "metric" | "dimension";
     metrics: ExplorationMetricSelection[];
     dimensions: ExplorationDimensionSelection[];

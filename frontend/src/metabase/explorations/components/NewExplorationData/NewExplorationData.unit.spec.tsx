@@ -307,7 +307,7 @@ describe("NewExplorationData (Research plan)", () => {
       );
       const request = buildCreateExplorationRequest("n", "", [block], [], null);
 
-      expect(request.groups[0].dimensions.map((d) => d.dimension_id)).toEqual([
+      expect(request.blocks[0].dimensions.map((d) => d.dimension_id)).toEqual([
         dimCreatedAt.id,
       ]);
     });
@@ -321,12 +321,12 @@ describe("NewExplorationData (Research plan)", () => {
       );
       const request = buildCreateExplorationRequest("n", "", [block], [], null);
 
-      expect(request.groups[0].metrics.map((m) => m.card_id)).toEqual([
+      expect(request.blocks[0].metrics.map((m) => m.card_id)).toEqual([
         churnMetric.id,
       ]);
     });
 
-    it("sends thread-scoped timeline_ids at the top level (not per group) and tags each block's anchor type", () => {
+    it("sends thread-scoped timeline_ids at the top level (not per block) and tags each block's anchor type", () => {
       const request = buildCreateExplorationRequest(
         "My exploration",
         "",
@@ -339,13 +339,13 @@ describe("NewExplorationData (Research plan)", () => {
       );
 
       expect(request.timeline_ids).toEqual([7, 9]);
-      expect(request.groups).toHaveLength(2);
-      // groups no longer carry timeline_ids
-      for (const group of request.groups) {
-        expect(group).not.toHaveProperty("timeline_ids");
+      expect(request.blocks).toHaveLength(2);
+      // blocks no longer carry timeline_ids
+      for (const block of request.blocks) {
+        expect(block).not.toHaveProperty("timeline_ids");
       }
-      expect(request.groups[0].type).toBe("metric");
-      expect(request.groups[1].type).toBe("dimension");
+      expect(request.blocks[0].type).toBe("metric");
+      expect(request.blocks[1].type).toBe("dimension");
     });
 
     it("uses empty timeline_ids when none are selected", () => {

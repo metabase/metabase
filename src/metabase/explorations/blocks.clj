@@ -82,13 +82,15 @@
   [page queries]
   (or (:dimension_name (first queries)) (:dimension_id page)))
 
-(defn- qualify
-  "Append a variant `qualifier` (e.g. `over time`) to a base name; returns `base` unchanged for
-   the default variant, which has no qualifier."
-  [base qualifier]
-  (if (str/blank? qualifier)
-    base
-    (str base " " qualifier)))
+(defn- page-qualifier
+  "The variant qualifier (e.g. `over time`) for `page`, or `nil` for the default variant."
+  [page]
+  (let [qualifier (variants/variant-qualifier (:query_type page))]
+    (when-not (str/blank? qualifier)
+      qualifier)))
+
+;; Each page-name shape below is one complete `tru` pattern (rather than appending the
+;; qualifier to a shorter pattern) so translators can reorder the qualifier per language.
 
 (defn- page-long-name
   "A page's full, self-describing name, generated from parts: `<metric> by <dimension>
@@ -96,10 +98,11 @@
    page is shown without its block heading for context (comment deep-links, AI-summary chart
    embeds)."
   [page queries card-name-by-id]
-  (qualify (tru "{0} by {1}"
-                (page-metric-name page card-name-by-id)
-                (page-dimension-label page queries))
-           (variants/variant-qualifier (:query_type page))))
+  (let [metric (page-metric-name page card-name-by-id)
+        dim    (page-dimension-label page queries)]
+    (if-let [qualifier (page-qualifier page)]
+      (tru "{0} by {1} {2}" metric dim qualifier)
+      (tru "{0} by {1}" metric dim))))
 
 (defn- page-short-name
   "A page's name with the axis its block heading already shows removed: for a metric-anchored
@@ -107,10 +110,16 @@
    a dimension-anchored block (heading = `By <dimension>`) they vary by metric, so `<metric>
    <variant>`."
   [block page queries card-name-by-id]
-  (let [qualifier (variants/variant-qualifier (:query_type page))]
+  (let [qualifier (page-qualifier page)]
     (if (dimension-anchored? block)
-      (qualify (page-metric-name page card-name-by-id) qualifier)
-      (qualify (by-dimension (page-dimension-label page queries)) qualifier))))
+      (let [metric (page-metric-name page card-name-by-id)]
+        (if qualifier
+          (tru "{0} {1}" metric qualifier)
+          metric))
+      (let [dim (page-dimension-label page queries)]
+        (if qualifier
+          (tru "By {0} {1}" dim qualifier)
+          (by-dimension dim))))))
 
 (defn- capitalize-first
   [s]

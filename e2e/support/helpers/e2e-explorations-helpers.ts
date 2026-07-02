@@ -250,7 +250,7 @@ export function createExplorationViaApi({
         };
       });
 
-      const groups = metrics.map((metric) => ({
+      const blocks = metrics.map((metric) => ({
         type: "metric" as const,
         metrics: [metric],
         dimensions,
@@ -259,7 +259,7 @@ export function createExplorationViaApi({
         name,
         prompt: null,
         collection_id: resolvedCollectionId,
-        groups,
+        blocks,
         timeline_ids: timelineIds,
       });
     })
