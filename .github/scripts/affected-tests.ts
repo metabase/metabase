@@ -14,7 +14,13 @@ import {
 
 export type TestPlanStats = {
   fe_files_changed: number;
+  fe_files_total: number;
   be_files_changed: number;
+  be_files_total: number;
+  unit_infra_touched: boolean;
+  loki_infra_touched: boolean;
+  shared_sources_touched: boolean;
+  fe_modules_total: number;
   fe_modules_changed: number;
   fe_modules_affected_rules: number;
   fe_modules_affected_usage: number;
@@ -48,6 +54,8 @@ export type CreateTestPlanInput = {
   sharedSourcesTouched: boolean;
   feFilesChanged: number;
   beFilesChanged: number;
+  feFilesTotal: number;
+  beFilesTotal: number;
 };
 
 // Tests whose owning module is affected.
@@ -73,6 +81,8 @@ export function createTestPlan({
   sharedSourcesTouched,
   feFilesChanged,
   beFilesChanged,
+  feFilesTotal,
+  beFilesTotal,
 }: CreateTestPlanInput): TestPlan {
   const rulesGraph = buildModuleGraph(elements, rules);
   const usageGraph = fileDependencies
@@ -80,6 +90,8 @@ export function createTestPlan({
     : rulesGraph;
 
   const nodes = rulesGraph.nodes;
+  // Distinct module types (an element type can span several patterns).
+  const totalModules = new Set(elements.map((el) => el.type)).size;
   const changedModules = getChangedModules(nodes, changedFiles);
   const rulesAffected = getAffectedModules(rulesGraph, changedFiles);
   const usageAffected = getAffectedModules(usageGraph, changedFiles);
@@ -104,7 +116,13 @@ export function createTestPlan({
   return {
     stats: {
       fe_files_changed: feFilesChanged,
+      fe_files_total: feFilesTotal,
       be_files_changed: beFilesChanged,
+      be_files_total: beFilesTotal,
+      unit_infra_touched: unitInfraTouched,
+      loki_infra_touched: lokiInfraTouched,
+      shared_sources_touched: sharedSourcesTouched,
+      fe_modules_total: totalModules,
       fe_modules_changed: changedModules.size,
       fe_modules_affected_rules: rulesAffected.size,
       fe_modules_affected_usage: usageAffected.size,
