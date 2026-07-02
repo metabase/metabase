@@ -353,10 +353,6 @@
                          (try
                            (.getConnection conn-data-source)
                            (catch Throwable e
-                             ;; A c3p0 `checkoutTimeout` blows up as a SQLException caused by a
-                             ;; `com.mchange.v2.resourcepool.TimeoutException` — the pool is saturated, so tag it as a
-                             ;; timed-out-acquiring-connection error, which the QP streaming layer turns into an HTTP
-                             ;; 429 (telling the frontend to back off) rather than a generic connection error.
                              (let [timed-out? (connection-checkout-timeout? e)]
                                (throw (ex-info (if timed-out?
                                                  (tru "Too many queries are running. Please try again in a moment.")
