@@ -7,9 +7,10 @@ import { getBasename, setBasename } from "metabase/utils/basename";
  * that apply the given basename and restore the original afterward.
  */
 export function setupBasename(basename = "") {
-  const originalBasename = getBasename();
+  let originalBasename = "";
 
   beforeEach(() => {
+    originalBasename = getBasename();
     setBasename(basename);
   });
 
