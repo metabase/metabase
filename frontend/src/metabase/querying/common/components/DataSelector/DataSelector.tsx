@@ -113,14 +113,6 @@ export interface DataSelectorOwnProps {
   selectedFieldId?: FieldId | FieldReference | null;
   selectedCollectionId?: CollectionId;
 
-  // Legacy props accepted for backwards compatibility but ignored. The selected
-  // entities are derived from the corresponding `selected*Id` props above.
-  selectedDatabase?: unknown;
-  selectedSchema?: unknown;
-  selectedTable?: unknown;
-  selectedField?: unknown;
-  triggerTabIndex?: number;
-
   databaseQuery?: ListDatabasesRequest;
   databases?: Database[];
   schemas?: Schema[];
@@ -142,8 +134,6 @@ export interface DataSelectorOwnProps {
   canSelectSavedQuestion?: boolean;
   useOnlyAvailableDatabase?: boolean;
   useOnlyAvailableSchema?: boolean;
-  hideSingleSchema?: boolean;
-  hideSingleDatabase?: boolean;
 }
 
 interface DataSelectorStateProps {
@@ -294,8 +284,6 @@ export class UnconnectedDataSelector extends Component<
     isInitiallyOpen: false,
     useOnlyAvailableDatabase: true,
     useOnlyAvailableSchema: true,
-    hideSingleSchema: true,
-    hideSingleDatabase: false,
     canChangeDatabase: true,
     hasTriggerExpandControl: true,
     isPopover: true,

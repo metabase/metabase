@@ -280,11 +280,8 @@ export const RemappingPicker = ({
               // feed it plain API entities, which carry the fields it reads.
               databases={[database] as unknown as MetadataDatabase[]}
               isInitiallyOpen={isChoosingInitialFkTarget}
-              selectedDatabase={database}
               selectedDatabaseId={database.id}
-              selectedField={fkRemappingField}
               selectedFieldId={fkRemappingField?.id}
-              selectedTable={fkTargetTable}
               selectedTableId={fkTargetTable?.id}
               setFieldFn={handleFkRemappingFieldChange}
               tables={tables as unknown as MetadataTable[]}
