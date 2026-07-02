@@ -35,6 +35,19 @@ import {
   type SdkInternalNavigationEntry,
 } from "./context";
 
+// Strips props that are only meant for the root dashboard before forwarding to a drill-through target.
+function getDrillThroughDashboardProps({
+  parameters: _parameters,
+  onParametersChange: _onParametersChange,
+  initialParameters: _initialParameters,
+  ...props
+}: Partial<SdkDashboardInnerProps> = {}): Omit<
+  SdkDashboardInnerProps,
+  "dashboardId" | "parameters" | "onParametersChange" | "initialParameters"
+> {
+  return props;
+}
+
 type Props = {
   children: ReactNode;
   dashboardProps?: Partial<Omit<SdkDashboardInnerProps, "dashboardId">>;
@@ -183,7 +196,7 @@ const SdkInternalNavigationProviderInner = ({
   const content = match({ activeEntry: entryToRender })
     .with({ activeEntry: { type: "dashboard" } }, ({ activeEntry }) => (
       <InteractiveDashboardContent
-        {...dashboardProps}
+        {...getDrillThroughDashboardProps(dashboardProps)}
         dashboardId={activeEntry.id}
         initialParameters={activeEntry.parameters}
         enableEntityNavigation

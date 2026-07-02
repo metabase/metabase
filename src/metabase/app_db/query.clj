@@ -217,9 +217,11 @@
   [model select-map & [update-fn]]
   (let [update-fn  (or update-fn (constantly select-map))
         select-kvs (mapcat identity select-map)
-        pks        (t2/primary-keys model)
-        _          (assert (= 1 (count pks)) "This helper does not currently support compound keys")
-        pk-key     (keyword (first pks))
+        pks        (mapv keyword (t2/primary-keys model))
+        ;; The "pk" used to address an update and as the return value: a scalar for a single-column key
+        ;; (unchanged), a `[v1 v2 ...]` vector for a compound key — matching what `insert-returning-pk!`
+        ;; returns and what `t2/update!` accepts for a composite key.
+        pk-of      (fn [row] (if (= 1 (count pks)) ((first pks) row) (mapv #(% row) pks)))
         update-fn  (fn [existing]
                      (let [updated (update-fn existing)]
                        ;; When called with an existing record, returning nil signals "no update needed".
@@ -231,11 +233,11 @@
                          (merge updated select-map))))]
     (with-conflict-retry
       (if-let [existing (apply t2/select-one model select-kvs)]
-        (let [pk (pk-key existing)]
+        (let [pk (pk-of existing)]
           (if-let [updated (update-fn existing)]
             (do (t2/update! model pk updated)
                 ;; the primary key may have been changed by the update, and this is OK.
-                (pk-key updated pk))
+                (pk-of (merge existing updated)))
             ;; update-fn returned nil — no update needed, return existing pk.
             pk))
         ;; Wrap INSERT in a savepoint so that a constraint violation inside an existing

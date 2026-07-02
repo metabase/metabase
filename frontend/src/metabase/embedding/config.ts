@@ -1,5 +1,9 @@
-import { api } from "metabase/api/client";
+import {
+  setEmbedPreviewHeader,
+  setRequestClientHeaders,
+} from "metabase/embedding/lib/embedding-request-auth";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PLUGIN_API } from "metabase/plugins";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 type InternalEmbeddingConfig = {
@@ -13,7 +17,10 @@ const EMBEDDING_CONFIG: InternalEmbeddingConfig = {
 };
 
 export function setIsPublicEmbedding() {
-  api.requestClient = "embedding-public";
+  PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+    setRequestClientHeaders({ name: "embedding-public" });
+  PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
+    setEmbedPreviewHeader;
 
   EMBEDDING_CONFIG.isPublicEmbedding = true;
 }
@@ -25,7 +32,8 @@ export function setIsStaticEmbedding() {
    * embedding iframe (only for Documents at the time of this comment)
    */
   if (!isEmbedPreview()) {
-    api.requestClient = "embedding-iframe-static";
+    PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+      setRequestClientHeaders({ name: "embedding-iframe-static" });
   }
   EMBEDDING_CONFIG.isStaticEmbedding = true;
 }

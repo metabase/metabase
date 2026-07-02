@@ -5,7 +5,7 @@
 const { uploadCsvToMb } = require("./csv-to-mb.js");
 
 // "FE Affected Tests" uploaded table on stats.metabase.com.
-const TABLE_ID = 79841;
+const TABLE_ID = 81818;
 
 const s = JSON.parse(process.env.STATS_JSON);
 console.log("stats", s);
@@ -18,7 +18,13 @@ const row = {
   "Head SHA": process.env.HEAD_SHA,
   "Base SHA": process.env.BASE_SHA,
   "FE Files Changed": s.fe_files_changed,
+  "FE Files Total": s.fe_files_total,
   "BE Files Changed": s.be_files_changed,
+  "BE Files Total": s.be_files_total,
+  "Unit Infra Touched": s.unit_infra_touched,
+  "Loki Infra Touched": s.loki_infra_touched,
+  "Shared Sources Touched": s.shared_sources_touched,
+  "FE Modules Total": s.fe_modules_total,
   "FE Modules Changed": s.fe_modules_changed,
   "FE Modules Affected (Rules)": s.fe_modules_affected_rules,
   "FE Modules Affected (Usage)": s.fe_modules_affected_usage,

@@ -2,14 +2,13 @@ import * as d3 from "d3";
 import ss from "simple-statistics";
 
 import { formatValue } from "metabase/visualizations/lib/formatting";
-import type { ColumnSettings } from "metabase/visualizations/types";
 import {
   isCountry,
   isDimension,
   isMetric,
   isState,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
+import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
 // Shared choropleth (region map) helpers, kept Leaflet-free (unlike the runtime ChoroplethMap) so the
 // static-viz bundle — which runs in GraalJS where Leaflet can't load — can use them too.

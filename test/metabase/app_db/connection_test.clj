@@ -139,6 +139,78 @@
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 
+(deftest after-commit-callback-runs-outside-transaction-bindings-test
+  (let [callback-state (promise)]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-after-commit
+       #(deliver callback-state
+                 {:current-connectable t2.connection/*current-connectable*
+                  :in-transaction?     (mdb.connection/in-transaction?)})))
+    (is (= {:current-connectable nil
+            :in-transaction?     false}
+           (deref callback-state 1000 ::timed-out)))))
+
+(deftest after-commit-callback-does-not-leak-transaction-bindings-into-async-work-test
+  ;; a future conveys dynamic bindings: neither the transaction connection nor the callback accumulator may
+  ;; leak into async work a callback starts, or the future would reuse a pooled-back connection and an async
+  ;; do-after-commit would enqueue into the already-drained accumulator and never run
+  (let [conveyed-connectable (promise)
+        async-callback-ran   (promise)]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-after-commit
+       (fn []
+         (future
+           (deliver conveyed-connectable t2.connection/*current-connectable*)
+           (mdb.connection/do-after-commit #(deliver async-callback-ran true))))))
+    (is (nil? (deref conveyed-connectable 1000 ::timed-out)))
+    (is (true? (deref async-callback-ran 1000 ::timed-out)))))
+
+(deftest after-commit-callbacks-from-rolled-back-nested-transaction-are-discarded-test
+  (let [calls         (atom [])
+        rollback-ex   (ex-info "Rollback nested transaction" {})
+        register-call #(mdb.connection/do-after-commit (fn [] (swap! calls conj %)))]
+    (t2/with-transaction [conn]
+      (register-call :outer-before)
+      (is (thrown?
+           Exception
+           (t2/with-transaction [_ conn]
+             (register-call :nested)
+             (throw rollback-ex))))
+      (register-call :outer-after))
+    (is (= [:outer-before :outer-after] @calls))))
+
+(deftest after-commit-callbacks-discarded-even-when-savepoint-rollback-throws-test
+  (let [calls     (atom [])
+        mock-conn (reify Connection
+                    (rollback [_ _savepoint] (throw (ex-info "Rollback error" {})))
+                    (setAutoCommit [_ _])
+                    (getAutoCommit [_] true)
+                    (setSavepoint [_])
+                    (commit [_]))]
+    (binding [t2.connection/*current-connectable* mock-conn]
+      (t2/with-transaction [_conn]
+        (mdb.connection/do-after-commit (fn [] (swap! calls conj :outer)))
+        ;; the nested body registers a callback then throws; its savepoint rollback also throws
+        (is (thrown?
+             Exception
+             (t2/with-transaction [_]
+               (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested)))
+               (throw (ex-info "boom" {})))))))
+    ;; the nested callback is discarded even though the rollback threw — only :outer survives to run
+    (is (= [:outer] @calls))))
+
+(deftest after-commit-callback-registering-another-runs-it-immediately-test
+  (let [calls (atom [])]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-after-commit
+       (fn []
+         (swap! calls conj :a)
+         ;; the run binds *after-commit-callbacks* to nil, so a do-after-commit here runs immediately (we are
+         ;; logically outside the transaction) rather than enqueuing for a later pass
+         (mdb.connection/do-after-commit (fn [] (swap! calls conj :nested-from-a)))))
+      (mdb.connection/do-after-commit (fn [] (swap! calls conj :b))))
+    (is (= [:a :nested-from-a :b] @calls))))
+
 (deftest rollback-error-handling
   (testing "rollback error handling"
     (let [mock-conn (reify Connection

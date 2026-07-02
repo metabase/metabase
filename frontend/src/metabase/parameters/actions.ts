@@ -71,7 +71,8 @@ export const fetchCardParameterValues =
   }: FetchCardParameterValuesOpts) =>
   (dispatch: DispatchFn, getState: GetState) => {
     const baseRequest: CardParameterValuesRequest = {
-      ...(entityIdentifier ? { entityIdentifier } : { cardId }),
+      cardId,
+      ...(entityIdentifier && { entityIdentifier }),
       paramId: parameter.id,
     };
     const request:
@@ -106,7 +107,8 @@ export const fetchDashboardParameterValues =
   }: FetchDashboardParameterValuesOpts) =>
   (dispatch: DispatchFn, getState: GetState) => {
     const baseRequest: DashboardParameterValuesRequest = {
-      ...(entityIdentifier ? { entityIdentifier } : { dashId: dashboardId }),
+      dashId: dashboardId,
+      ...(entityIdentifier && { entityIdentifier }),
       paramId: parameter.id,
       ...getFilteringParameterValuesMap(parameter, parameters),
     };
