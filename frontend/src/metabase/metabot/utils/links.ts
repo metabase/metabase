@@ -1,8 +1,14 @@
+import { serializeCardForUrl } from "metabase/common/utils/card";
+import type { CardDisplayType, DatasetQuery } from "metabase-types/api";
+
 export const METABSE_PROTOCOL_LINK =
   /metabase:\/\/(?<model>[^\/]+)\/(?<id>\d+)/;
 
 export const METABSE_PROTOCOL_MD_LINK =
   /\[(?<name>[^\]]+)\]\(metabase:\/\/(?<model>[^\/]+)\/(?<id>\d+)\)/;
+
+const METABASE_PROTOCOL_CHART_LINK =
+  /metabase:\/\/chart\/(?<id>[A-Za-z0-9_-]+)/;
 
 export const METABASE_PROTOCOL_ENTITY_MODELS = [
   "question",
@@ -31,9 +37,18 @@ export interface MetabaseProtocolEntity {
   name: string;
 }
 
+export type ParsedMetabaseProtocolLink =
+  | Pick<MetabaseProtocolEntity, "id" | "model">
+  | { id: string; model: "chart" };
+
 export const parseMetabaseProtocolLink = (
   href: string,
-): Pick<MetabaseProtocolEntity, "id" | "model"> | undefined => {
+): ParsedMetabaseProtocolLink | undefined => {
+  const chartId = href.match(METABASE_PROTOCOL_CHART_LINK)?.groups?.id;
+  if (chartId) {
+    return { id: chartId, model: "chart" };
+  }
+
   const match = href.match(METABSE_PROTOCOL_LINK);
 
   if (!match?.groups) {
@@ -73,4 +88,27 @@ export const createMetabaseProtocolLink = ({
   model,
 }: MetabaseProtocolEntity): string => {
   return `[${name}](metabase://${model}/${id})`;
+};
+
+export type ConversationChart = {
+  queries?: DatasetQuery[];
+  visualization_settings?: { chart_type?: CardDisplayType };
+};
+
+export const conversationChartUrl = (
+  chart: ConversationChart,
+): string | undefined => {
+  const query = chart.queries?.[0];
+  if (!query) {
+    return undefined;
+  }
+  const hash = serializeCardForUrl(
+    {
+      display: chart.visualization_settings?.chart_type ?? "table",
+      dataset_query: query,
+      visualization_settings: {},
+    },
+    { includeDisplayIsLocked: true },
+  );
+  return `/question#${hash}`;
 };

@@ -1,20 +1,18 @@
+import { utf8_to_b64url } from "metabase/utils/encoding";
+import { stableStringify } from "metabase/utils/objects";
 import type {
+  Card,
   CardDisplayType,
   DatasetQuery,
-  UnsavedCard,
   VisualizationSettings,
 } from "metabase-types/api";
 import { isCardDisplayType } from "metabase-types/api";
 
-import { deserializeCardFromUrl, serializeCardForUrl } from "./card";
+import { deserializeCardFromUrl } from "./card";
 
 export const CHART_CLIPBOARD_TYPE = "metabase/chart";
 
-const ADHOC_QUESTION_HASH_REGEX = /\/question(?:\?[^#]*)?#([A-Za-z0-9_=-]+)/;
-const CHART_ID_PARAM = "mb_chart_id";
-const QUERY_ID_PARAM = "mb_query_id";
-const CHART_ID_REGEX = new RegExp(`[?&]${CHART_ID_PARAM}=([^&#]+)`);
-const QUERY_ID_REGEX = new RegExp(`[?&]${QUERY_ID_PARAM}=([^&#]+)`);
+const ADHOC_QUESTION_HASH_REGEX = /\/question#([A-Za-z0-9_=-]+)/;
 
 export type ChartClipboardPayload = {
   type: typeof CHART_CLIPBOARD_TYPE;
@@ -32,23 +30,19 @@ export function serializeChartClipboard(
   payload: Omit<ChartClipboardPayload, "type" | "version">,
   siteUrl: string,
 ): string {
-  const card: UnsavedCard & { name: string; description: string | null } = {
-    name: payload.name,
-    description: payload.description ?? null,
-    display: payload.display,
-    dataset_query: payload.dataset_query,
-    visualization_settings: payload.visualization_settings,
-  };
-  const hash = serializeCardForUrl(card, { includeDisplayIsLocked: true });
-  const params = new URLSearchParams();
-  if (payload.chart_id) {
-    params.set(CHART_ID_PARAM, payload.chart_id);
-  }
-  if (payload.query_id) {
-    params.set(QUERY_ID_PARAM, payload.query_id);
-  }
-  const query = params.toString() ? `?${params.toString()}` : "";
-  return `${siteUrl.replace(/\/$/, "")}/question${query}#${hash}`;
+  const hash = utf8_to_b64url(
+    stableStringify({
+      name: payload.name,
+      description: payload.description ?? undefined,
+      display: payload.display,
+      dataset_query: payload.dataset_query,
+      visualization_settings: payload.visualization_settings,
+      displayIsLocked: true,
+      chart_id: payload.chart_id ?? undefined,
+      query_id: payload.query_id ?? undefined,
+    }),
+  );
+  return `${siteUrl.replace(/\/$/, "")}/question#${hash}`;
 }
 
 export function parseChartClipboard(
@@ -58,10 +52,9 @@ export function parseChartClipboard(
   if (!hash) {
     return null;
   }
-  const chartIdMatch = text?.match(CHART_ID_REGEX)?.[1];
-  const queryIdMatch = text?.match(QUERY_ID_REGEX)?.[1];
   try {
-    const card = deserializeCardFromUrl(hash);
+    const card: Card & { chart_id?: unknown; query_id?: unknown } =
+      deserializeCardFromUrl(hash);
     if (
       !isCardDisplayType(card.display) ||
       typeof card.dataset_query !== "object" ||
@@ -77,8 +70,8 @@ export function parseChartClipboard(
       display: card.display,
       dataset_query: card.dataset_query,
       visualization_settings: card.visualization_settings ?? {},
-      chart_id: chartIdMatch ? decodeURIComponent(chartIdMatch) : undefined,
-      query_id: queryIdMatch ? decodeURIComponent(queryIdMatch) : undefined,
+      chart_id: typeof card.chart_id === "string" ? card.chart_id : undefined,
+      query_id: typeof card.query_id === "string" ? card.query_id : undefined,
     };
   } catch {
     return null;

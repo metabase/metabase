@@ -1,5 +1,9 @@
+import { serializeCardForUrl } from "metabase/common/utils/card";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+
 import type { MetabaseProtocolEntity } from "./links";
 import {
+  conversationChartUrl,
   createMetabaseProtocolLink,
   parseMetabaseProtocolLink,
   parseMetabaseProtocolMarkdownLink,
@@ -39,6 +43,38 @@ describe("parseMetabaseProtocolLink", () => {
     expect(
       parseMetabaseProtocolLink("metabase://question/abc"),
     ).toBeUndefined();
+  });
+
+  it("should parse metabase://chart links with non-numeric ids", () => {
+    expect(
+      parseMetabaseProtocolLink(
+        "metabase://chart/8e5b8bf3-4e6e-4ee7-856a-21d37dd0e6c0",
+      ),
+    ).toEqual({ id: "8e5b8bf3-4e6e-4ee7-856a-21d37dd0e6c0", model: "chart" });
+  });
+});
+
+describe("conversationChartUrl", () => {
+  it("builds an ad-hoc question url from a conversation chart", () => {
+    const datasetQuery = createMockStructuredDatasetQuery();
+    const url = conversationChartUrl({
+      queries: [datasetQuery],
+      visualization_settings: { chart_type: "bar" },
+    });
+
+    const hash = serializeCardForUrl(
+      {
+        display: "bar",
+        dataset_query: datasetQuery,
+        visualization_settings: {},
+      },
+      { includeDisplayIsLocked: true },
+    );
+    expect(url).toBe(`/question#${hash}`);
+  });
+
+  it("returns undefined when the chart has no query", () => {
+    expect(conversationChartUrl({ queries: [] })).toBeUndefined();
   });
 });
 
