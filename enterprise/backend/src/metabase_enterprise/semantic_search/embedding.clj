@@ -394,9 +394,10 @@
 
 (defn- check-in-process-dimensions
   "Guard against a configured dimension that doesn't match what the plugin model actually produces.
-  Misconfiguration would otherwise poison the pgvector index at its declared width."
+  Misconfiguration would otherwise poison the pgvector index at its declared width.
+  Callers that don't declare `:vector-dimensions` (e.g. the embeddings.client facade) are not checked."
   [{:keys [vector-dimensions]} embeddings]
-  (when-let [^floats embedding (first embeddings)]
+  (when-let [^floats embedding (and vector-dimensions (first embeddings))]
     (let [actual (alength embedding)]
       (when (not= vector-dimensions actual)
         (throw (ex-info (format (str "In-process embedder produces %d-dimensional vectors but "

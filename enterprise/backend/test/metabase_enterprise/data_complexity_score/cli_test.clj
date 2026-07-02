@@ -157,17 +157,24 @@
            (embedders/normalize-name "Monthly Active Users")))))
 
 (deftest ^:parallel cli-options-embedder-flag-test
-  (testing "tools.cli accepts --embedder jvm and rejects anything else"
-    (testing "valid: --embedder jvm parses through to :options"
-      (let [{:keys [options errors]} (tools.cli/parse-opts ["--embedder" "jvm"] @#'cli/cli-options)]
+  (testing "tools.cli accepts --embedder in-process and rejects anything else"
+    (testing "valid: --embedder in-process parses through to :options"
+      (let [{:keys [options errors]} (tools.cli/parse-opts ["--embedder" "in-process"] @#'cli/cli-options)]
         (is (empty? errors))
-        (is (= "jvm" (:embedder options)))))
+        (is (= "in-process" (:embedder options)))))
     (testing "invalid: --embedder foo produces a validation error and no :embedder in options"
       (let [{:keys [errors]} (tools.cli/parse-opts ["--embedder" "foo"] @#'cli/cli-options)]
         (is (seq errors))
         (is (re-find #"--embedder currently only supports" (first errors))))))
   (testing "embedder-override nil returns nil so the no-flag path doesn't touch DJL/ONNX"
-    (is (nil? (#'cli/embedder-override nil)))))
+    (is (nil? (#'cli/embedder-override nil))))
+  (testing "embedder-override in-process routes through the provider path with matching model meta"
+    (let [{:keys [embedder embedding-model-meta]} (#'cli/embedder-override "in-process")]
+      (is (fn? embedder))
+      (is (= {:provider         "in-process"
+              :model-name       "all-MiniLM-L6-v2"
+              :model-dimensions 384}
+             embedding-model-meta)))))
 
 (deftest ^:parallel file-embedder-test
   (testing "file-embedder converts seqs to ^floats, preserves already-typed arrays, omits absent names"

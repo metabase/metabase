@@ -31,6 +31,7 @@
    [clojure.java.io :as io]
    [clojure.tools.cli :as cli]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
@@ -88,8 +89,8 @@
     :parse-fn #(case % "true" true "false" false ::invalid)
     :validate [#(not= % ::invalid) "--write-to-appdb must be 'true' or 'false'."]]
    ["-o" "--output PATH"             "Write pretty JSON to a file instead of single-line JSON on stdout."]
-   ["-E" "--embedder NAME"           "Override the synonym embedder. 'jvm' runs all-MiniLM-L6-v2 in-process via ONNX Runtime."
-    :validate [#{"jvm"} "--embedder currently only supports 'jvm'."]]
+   ["-E" "--embedder NAME"           "Override the synonym embedder. 'in-process' runs all-MiniLM-L6-v2 in the JVM (needs the embedder plugin or the :embedder dev alias)."
+    :validate [#{"in-process"} "--embedder currently only supports 'in-process'."]]
    ;; Consumed by `metabase.core.bootstrap` when invoked as `java -jar metabase.jar --mode …`. Declared
    ;; here so tools.cli accepts it and `parse-opts` doesn't report it as an unknown flag.
    [nil  "--mode MODE"               "(JAR invocation only; handled by bootstrap before reaching this CLI.)"]
@@ -129,17 +130,26 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
+(def ^:private in-process-descriptor
+  "Model identity for `--embedder in-process`.
+  Mirrors `metabase-enterprise.embedder.core/model-descriptor`; kept as a literal so parsing the flag
+  doesn't need the plugin on the classpath — the provider dispatch resolves it (and errors usefully)
+  only when embeddings are actually requested."
+  {:provider         "in-process"
+   :model-name       "all-MiniLM-L6-v2"
+   :model-dimensions 384})
+
 (defn- embedder-override
   "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
   default synonym embedder. `nil` when the flag wasn't passed.
 
-  `requiring-resolve` keeps DJL + ONNX Runtime out of the load graph for runs that don't opt in.
-  The model meta is read from the jvm-embedder ns itself so both stay in sync if the model is
-  ever swapped."
+  `in-process` goes through [[embedders/provider-embedder]] and thus the registered `in-process`
+  provider — exactly the production code path, including the guidance error when the embedder
+  plugin jar is absent."
   [embedder-name]
   (case embedder-name
-    "jvm" {:embedder             ((requiring-resolve 'metabase-enterprise.data-complexity-score.jvm-embedder/jvm-embedder))
-           :embedding-model-meta @(requiring-resolve 'metabase-enterprise.data-complexity-score.jvm-embedder/model-descriptor)}
+    "in-process" {:embedder             (embedders/provider-embedder in-process-descriptor)
+                  :embedding-model-meta in-process-descriptor}
     nil))
 
 (defn- run-appdb-mode!
