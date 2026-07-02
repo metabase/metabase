@@ -5,7 +5,10 @@ import { useRouter } from "./use-router";
 
 /**
  * react-router v7's `useLocation`, implemented over the v3 location injected
- * into the router context (mirrored into redux `state.routing`).
+ * into the router context (mirrored into redux `state.routing`). Returns the v7
+ * `Location` shape (no v3 `query` field).
+ *
+ * @see https://reactrouter.com/7.18.1/api/hooks/useLocation
  */
 export function useLocation(): Location {
   const { location } = useRouter();

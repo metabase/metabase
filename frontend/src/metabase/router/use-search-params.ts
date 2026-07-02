@@ -8,7 +8,9 @@ import { createSearchParams } from "./utils";
 /**
  * react-router v7's `useSearchParams`, implemented over the v3 location's query
  * string. Returns a `URLSearchParams` view plus a setter that navigates to the
- * same path with the updated query string.
+ * same path with the updated query string (a push by default).
+ *
+ * @see https://reactrouter.com/7.18.1/api/hooks/useSearchParams
  */
 export function useSearchParams(): readonly [
   URLSearchParams,

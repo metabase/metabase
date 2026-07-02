@@ -12,6 +12,8 @@ import { parsePath } from "./utils";
  *
  * - `navigate(to, { replace?, state? })` pushes (or replaces) the location.
  * - `navigate(delta)` moves through the history stack (e.g. `navigate(-1)`).
+ *
+ * @see https://reactrouter.com/7.18.1/api/hooks/useNavigate
  */
 export function useNavigate(): NavigateFunction {
   const dispatch = useDispatch();
