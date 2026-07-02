@@ -101,7 +101,7 @@ async function setup({
 
 describe("QB Actions > updateUrl (navigation producer contract)", () => {
   beforeEach(() => {
-    console.warn = jest.fn();
+    jest.spyOn(console, "warn").mockImplementation(() => {});
     window.history.replaceState({}, "", "/");
   });
 

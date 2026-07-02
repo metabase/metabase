@@ -24,6 +24,10 @@ const locationChange = (payload: Record<string, unknown>) => ({
 const initialState = () => appReducer(undefined, { type: "@@INIT" } as any);
 
 describe("app reducer — navigation reactions", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe("isNavbarOpen on LOCATION_CHANGE", () => {
     it("collapses when navigating to a path in the collapse list", () => {
       const state = appReducer(
