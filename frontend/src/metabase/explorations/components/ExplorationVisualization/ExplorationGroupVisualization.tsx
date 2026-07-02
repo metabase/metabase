@@ -23,6 +23,11 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type {
+  ClickActionsMode,
+  ClickObject,
+  CustomClickAction,
+} from "metabase/visualizations/types";
+import type {
   Comment,
   ExplorationId,
   ExplorationPageNode,
@@ -34,10 +39,18 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
+import {
+  ChartClickPopover,
+  type ChartClickTarget,
+} from "./ChartClickPopover";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import { type LegendItem, buildSeriesGroup } from "./utils";
+import {
+  type LegendItem,
+  buildSeriesGroup,
+  getClickedSegmentValue,
+} from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
@@ -146,6 +159,24 @@ function ExplorationGroupVisualizationChart({
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
+
+  const [clickTarget, setClickTarget] = useState<ChartClickTarget | null>(null);
+
+  const handleVisualizationClick = useCallback((clicked: ClickObject | null) => {
+    if (!clicked?.event) {
+      return;
+    }
+    const segment = getClickedSegmentValue(clicked);
+    if (segment == null || segment.value == null) {
+      return;
+    }
+    setClickTarget({
+      value: segment.value,
+      label: String(segment.value),
+      x: clicked.event.clientX,
+      y: clicked.event.clientY,
+    });
+  }, []);
 
   useEffect(() => {
     const subscriptions = queryIds.map((id) =>
@@ -268,21 +299,32 @@ function ExplorationGroupVisualizationChart({
               key={series[0].card.id}
               series={series}
               stackCount={stackCount}
+              onVisualizationClick={handleVisualizationClick}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
               key={series[0].card.id}
               series={series}
               stackCount={stackCount}
+              onVisualizationClick={handleVisualizationClick}
             />
           ) : (
             <ExplorationMap
               key={series[0].card.id}
               series={series}
               legendItems={legendItems}
+              onVisualizationClick={handleVisualizationClick}
             />
           )}
         </Box>
+        {clickTarget && (
+          <ChartClickPopover
+            explorationId={explorationId}
+            page={page}
+            target={clickTarget}
+            onClose={() => setClickTarget(null)}
+          />
+        )}
         <ActionToolbar
           explorationId={explorationId}
           page={page}
@@ -322,22 +364,41 @@ function ExplorationGroupVisualizationChart({
 interface ExplorationCartesianChartProps {
   series: SingleSeries[];
   stackCount?: number;
+  onVisualizationClick?: (clicked: ClickObject | null) => void;
 }
 
-function ExplorationCartesianChart({ series }: ExplorationCartesianChartProps) {
-  return <ExplorationVisualization rawSeries={series} className={S.chart} />;
+function ExplorationCartesianChart({
+  series,
+  onVisualizationClick,
+}: ExplorationCartesianChartProps) {
+  return (
+    <ExplorationVisualization
+      rawSeries={series}
+      className={S.chart}
+      onVisualizationClick={onVisualizationClick}
+    />
+  );
 }
 
 interface ExplorationHeatMapProps {
   series: SingleSeries[];
   stackCount?: number;
+  onVisualizationClick?: (clicked: ClickObject | null) => void;
 }
 
-function ExplorationHeatMap({ series, stackCount }: ExplorationHeatMapProps) {
+function ExplorationHeatMap({
+  series,
+  stackCount,
+  onVisualizationClick,
+}: ExplorationHeatMapProps) {
   const tableHeight = HEADER_HEIGHT + (stackCount ?? 1) * ROW_HEIGHT;
   return (
     <Box h={tableHeight}>
-      <ExplorationVisualization rawSeries={series} className={S.chart} />
+      <ExplorationVisualization
+        rawSeries={series}
+        className={S.chart}
+        onVisualizationClick={onVisualizationClick}
+      />
     </Box>
   );
 }
@@ -345,9 +406,14 @@ function ExplorationHeatMap({ series, stackCount }: ExplorationHeatMapProps) {
 interface ExplorationMapProps {
   series: SingleSeries[];
   legendItems: LegendItem[];
+  onVisualizationClick?: (clicked: ClickObject | null) => void;
 }
 
-function ExplorationMap({ series, legendItems }: ExplorationMapProps) {
+function ExplorationMap({
+  series,
+  legendItems,
+  onVisualizationClick,
+}: ExplorationMapProps) {
   return (
     <Stack gap="md">
       {legendItems.length > 1 && (
@@ -386,21 +452,45 @@ function ExplorationMap({ series, legendItems }: ExplorationMapProps) {
       )}
       {series.map((s) => (
         <Box key={s.card.id} flex={1} mih="10rem">
-          <ExplorationVisualization rawSeries={[s]} className={S.chart} />
+          <ExplorationVisualization
+            rawSeries={[s]}
+            className={S.chart}
+            onVisualizationClick={onVisualizationClick}
+          />
         </Box>
       ))}
     </Stack>
   );
 }
 
+// A drillable point on an exploration chart carries a value we can scope a follow-up
+// investigation to. This dummy action never renders — the `handleVisualizationClick` override
+// on `Visualization` intercepts the click and opens our own popover — but its presence is what
+// makes the cartesian layer treat value-bearing points as clickable and emit the click at all.
+const EXPLORE_FURTHER_ACTION: CustomClickAction = {
+  name: "explore-further",
+  section: "custom",
+  type: "custom",
+  buttonType: "horizontal",
+};
+
+const EXPLORE_CLICK_MODE: ClickActionsMode = {
+  actionsForClick: (clicked) =>
+    getClickedSegmentValue(clicked)?.value != null
+      ? [EXPLORE_FURTHER_ACTION]
+      : [],
+};
+
 interface ExplorationVisualizationProps {
   rawSeries: SingleSeries[];
   className?: string;
+  onVisualizationClick?: (clicked: ClickObject | null) => void;
 }
 
 export function ExplorationVisualization({
   rawSeries,
   className,
+  onVisualizationClick,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -411,6 +501,8 @@ export function ExplorationVisualization({
         rawSeries={rawSeries}
         className={className}
         onUpdateWarnings={setWarnings}
+        mode={onVisualizationClick ? EXPLORE_CLICK_MODE : undefined}
+        handleVisualizationClick={onVisualizationClick}
       />
     </Box>
   );

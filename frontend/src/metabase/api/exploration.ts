@@ -9,6 +9,7 @@ import type {
   ExplorationId,
   ExplorationQueryId,
   ExplorationThreadId,
+  ExploreFurtherRequest,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
   GetMyExplorationsRequest,
@@ -74,6 +75,15 @@ export const explorationApi = Api.injectEndpoints({
           idTag("exploration", id),
           listTag("exploration"),
         ]),
+    }),
+    exploreFurther: builder.mutation<Exploration, ExploreFurtherRequest>({
+      query: ({ explorationId, ...body }) => ({
+        method: "POST",
+        url: `/api/exploration/${explorationId}/explore-further`,
+        body,
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
     }),
     restartExploration: builder.mutation<Exploration, ExplorationId>({
       query: (id) => ({
@@ -179,6 +189,7 @@ export const {
   useGetExplorationQuery,
   useGetMyExplorationsQuery,
   useCreateExplorationMutation,
+  useExploreFurtherMutation,
   useUpdateExplorationMutation,
   useRestartExplorationMutation,
   useDeleteExplorationMutation,

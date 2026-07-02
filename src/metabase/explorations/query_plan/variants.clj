@@ -150,7 +150,10 @@
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))
         k         (:k params)
-        cache-key [card-id dim-id k]]
+        ;; Include the (possibly "Explore further"-filtered) query in the key: two threads
+        ;; sharing a (card, dim, k) but scoped to different segments must not share top-N
+        ;; discovery results.
+        cache-key [card-id dim-id k (hash (:dataset_query card))]]
     (cache.wrapped/lookup-or-miss
      discovery-cache cache-key
      (fn [_] (or (run-top-k-discovery mp card target dim k) [])))))

@@ -477,6 +477,29 @@ export function getInterestingTimelineIds(
  * Drives the auto-default selection on threads where the user hasn't
  * manually picked a timeline yet.
  */
+/**
+ * Pull the segment value a chart click should scope an "Explore further" drill to. A page keys
+ * off a single dimension, so we want the value of that dimension: for a plain breakdown that's
+ * the only clicked dimension, and for a time-series broken out by a series dimension we prefer
+ * the non-temporal dimension (the series, e.g. "Open") over the time axis. Falls back to the
+ * raw clicked value. Returns `undefined` when there's nothing filterable to drill on.
+ */
+export function getClickedSegmentValue(clicked: {
+  value?: RowValue;
+  dimensions?: { value: RowValue; column: DatasetColumn }[];
+}): { value: RowValue; column?: DatasetColumn } | undefined {
+  const dimensions = clicked.dimensions ?? [];
+  if (dimensions.length > 0) {
+    const nonTemporal = dimensions.find((d) => !isDate(d.column));
+    const picked = nonTemporal ?? dimensions[0];
+    return { value: picked.value, column: picked.column };
+  }
+  if (clicked.value !== undefined) {
+    return { value: clicked.value };
+  }
+  return undefined;
+}
+
 export function getMostInterestingTimelineId(
   queries: ExplorationQuery[],
   availableTimelineIds: ReadonlySet<TimelineId>,

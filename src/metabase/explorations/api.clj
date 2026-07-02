@@ -246,6 +246,34 @@
                :completed_at          nil
                :canceled_at           nil}))
 
+(defn- stringify-dim-types
+  "Turn a block's `:dimensions` back into wire form for re-insertion. The model's read transform
+  keywordizes `:effective_type`/`:semantic_type` (e.g. `:type/Date`); the JSON write transform
+  would otherwise drop the namespace on a bare keyword, so stringify them first."
+  [dimensions]
+  (mapv (fn [dim]
+          (cond-> dim
+            (keyword? (:effective_type dim)) (update :effective_type u/qualified-name)
+            (keyword? (:semantic_type dim))  (update :semantic_type u/qualified-name)))
+        dimensions))
+
+(def ^:private leading-aggregation-prefix-re
+  "Strips a metric name's leading aggregation words (\"Number of \", \"Count of \", \"Sum of \",
+  \"Total \", \"Average \") so `Number of bugs` reduces to the bare noun `bugs`."
+  #"(?i)^(number|count|sum|total|average|avg)\s+(of\s+)?")
+
+(defn- explore-further-thread-name
+  "Build the sidebar name for an \"Explore further\" thread from the metric Card name and the
+  clicked value — e.g. card `Number of bugs` + value `open` → `Open bugs`. Falls back to the
+  card name when the value is blank."
+  [card-name value]
+  (let [v (some-> value str str/trim)]
+    (if (str/blank? v)
+      card-name
+      (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")
+            head (str (str/upper-case (subs v 0 1)) (subs v 1))]
+        (str/trim (str head " " noun))))))
+
 ;;; ----------------------------------------- schemas -----------------------------------------
 
 (def ^:private MetricSelection
@@ -443,6 +471,16 @@
    [:groups       {:optional true} [:maybe [:sequential GroupSelection]]]
    [:timeline_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
+(def ^:private ExploreFurther
+  "Body schema for `POST /api/exploration/:id/explore-further`. `page_id` is the clicked chart's
+  page — its block (metric selection + dimensions) is copied verbatim so the new thread re-runs
+  the same charts — and `value` is the clicked segment the copy is scoped to. `name` overrides
+  the auto-generated thread name."
+  [:map
+   [:page_id ms/PositiveInt]
+   [:value   :any]
+   [:name    {:optional true} [:maybe :string]]])
+
 (def ^:private UpdateExploration
   "Body schema for `PUT /api/exploration/:id`. All fields are optional; only the keys the client
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
@@ -539,6 +577,65 @@
         (events/publish-event! :event/exploration-update
                                {:object updated :user-id api/*current-user-id*})
         (hydrate-exploration updated)))))
+
+(api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
+  "Start a follow-up investigation scoped to a clicked chart segment.
+
+  The user clicked a bar/point on the chart for `page_id`; we copy that page's block (its metric
+  selection + the same dimensions) into a brand-new thread and stamp each metric selection with an
+  `:explore_filter` `{:dimension_id ... :value ...}`. The background planner then materializes the
+  same set of charts, but every query is scoped to `[<page dimension> = <value>]` (see
+  `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new
+  thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [page_id value name]} :- ExploreFurther]
+  (let [exploration (get-exploration-or-404 id)]
+    (api/write-check exploration)
+    (let [page          (api/check-404 (t2/select-one :model/ExplorationPage :id page_id))
+          block         (api/check-404 (t2/select-one :model/ExplorationBlock
+                                                      :id (:exploration_block_id page)))
+          src-thread-id (:exploration_thread_id block)
+          ;; A page keys off exactly one card + dimension + query_type, so these describe the
+          ;; clicked breakout. The query_type tells `build-row-context` how to bucket the filter
+          ;; column so a click on e.g. an "Hour of day" bar filters the right bucket, not the raw
+          ;; datetime.
+          dim-id        (:dimension_id page)
+          query-type    (t2/select-one-fn :query_type :model/ExplorationQuery :page_id page_id)
+          card-id       (:card_id (first (:metrics block)))
+          card-name     (when card-id (t2/select-one-fn :name :model/Card :id card-id))
+          filter-spec   {:dimension_id dim-id :value value :query_type query-type}
+          metrics'      (mapv #(assoc % :explore_filter filter-spec) (:metrics block))
+          timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
+                                          :exploration_thread_id src-thread-id
+                                          {:order-by [[:position :asc] [:id :asc]]})
+          next-position (inc (or (t2/select-one-fn :position :model/ExplorationThread
+                                                   :exploration_id id
+                                                   {:order-by [[:position :desc] [:id :desc]]})
+                                 0))
+          coll-id       (:collection_id exploration)]
+      (t2/with-transaction [_]
+        (let [thread (first (t2/insert-returning-instances!
+                             :model/ExplorationThread
+                             {:exploration_id id
+                              :name           (or (not-empty name)
+                                                  (explore-further-thread-name card-name value))
+                              :position       next-position}))
+              tid    (:id thread)]
+          (insert-thread-default-documents! tid coll-id)
+          (t2/insert! :model/ExplorationBlock
+                      {:exploration_thread_id tid
+                       :type                  (:type block)
+                       :metrics               metrics'
+                       :dimensions            (stringify-dim-types (:dimensions block))
+                       :position              0})
+          (insert-thread-timelines! tid timeline-ids)
+          ;; Stamp `started_at` last — it's the signal the planning worker claims on.
+          (t2/update! :model/ExplorationThread tid {:started_at (t/offset-date-time)})
+          (let [persisted (t2/select-one :model/Exploration :id id)]
+            (events/publish-event! :event/exploration-update
+                                   {:object persisted :user-id api/*current-user-id*})
+            (hydrate-exploration persisted)))))))
 
 (api.macros/defendpoint :get "/dimensions" :- ::DimensionsResponse
   "Hydrated metrics plus a deduplicated dimension list, for the Exploration data modal.

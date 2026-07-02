@@ -125,6 +125,16 @@ export interface CreateExplorationRequest {
   }[];
 }
 
+export interface ExploreFurtherRequest {
+  explorationId: ExplorationId;
+  // The clicked chart's page: its block (metric + dimensions) is copied into the new thread.
+  page_id: number;
+  // The clicked segment value the copied charts are filtered to.
+  value: string | number | boolean | null;
+  // Optional override for the auto-generated thread name.
+  name?: string;
+}
+
 export interface UpdateExplorationRequest {
   id: ExplorationId;
   name?: string | null;

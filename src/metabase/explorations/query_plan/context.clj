@@ -256,6 +256,43 @@
         mp-by-db (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))]
     {:groups (mapv #(group-context % cards mp-by-db) groups)}))
 
+(defn- explore-filter-ref
+  "Bucket the filter column so the `= value` lands on the same bar the user clicked. The clicked
+  page's `query-type` drives it: the temporal-pattern variants extract a fixed unit (day-of-week /
+  hour-of-day), any other breakout on a temporal dim uses that dim's default temporal bucket, and
+  categorical / numeric dims filter on the raw column. Without this, a click on an `Hour of day`
+  bar (value `19`) would filter `<datetime> = 19` and match nothing."
+  [base col-or-ref dim query-type]
+  (case query-type
+    "temporal-pattern-day"  (lib/with-temporal-bucket col-or-ref :day-of-week)
+    "temporal-pattern-hour" (lib/with-temporal-bucket col-or-ref :hour-of-day)
+    (if (= :temporal (first (qp.mbql/default-bucket-for-dim dim)))
+      (qp.mbql/apply-default-bucket base col-or-ref dim)
+      col-or-ref)))
+
+(defn- apply-explore-filter
+  "When the block's metric selection carries an `:explore_filter`
+  `{:dimension_id ... :value ... :query_type ...}` (added by the \"Explore further\" chart drill),
+  scope the metric Card's `dataset_query` to `[<bucketed dimension> = <value>]` so *every* variant
+  built from it inherits the segment — a single injection point, since all the variant builders
+  re-wrap `(lib/query mp (:dataset_query card))`. `filter-dim` is the clicked dimension's snapshot
+  (for its default temporal bucket). Returns `card` untouched when there's no filter, or when the
+  dimension target / value can't be resolved (fail-open: an unfiltered chart beats a crashed row)."
+  [mp card explore-filter mappings filter-dim]
+  (let [{:keys [dimension_id value query_type]} explore-filter]
+    (if (and dimension_id (some? value))
+      (try
+        (let [target     (qp.mbql/find-dimension-target dimension_id mappings)
+              base       (lib/query mp (:dataset_query card))
+              ref-clause (qp.mbql/normalize-target-ref target)
+              col        (lib/find-matching-column base -1 ref-clause
+                                                   (lib/breakoutable-columns base))
+              fref       (explore-filter-ref base (or col ref-clause) filter-dim query_type)
+              filtered   (lib/filter base (lib/= fref value))]
+          (assoc card :dataset_query filtered))
+        (catch Exception _ card))
+      card)))
+
 (defn build-row-context
   "Resolve everything the variant multimethods need to finalize a single
   pending `ExplorationQuery` row at execution time. Returns the ctx map
@@ -283,6 +320,11 @@
     (when (and card block metric thread-dim)
       (let [mp           (lib-be/application-database-metadata-provider (:database_id card))
             mappings     (:dimension_mappings metric)
+            ;; "Explore further" drills persist their clicked segment as `:explore_filter` on
+            ;; the block's metric selection; bake it into the Card query so all variants inherit.
+            card         (apply-explore-filter mp card (:explore_filter metric) mappings
+                                               (get dim-by-id
+                                                    (:dimension_id (:explore_filter metric))))
             target       (qp.mbql/find-dimension-target dimension_id mappings)
             segment      (when segment_id
                            (try
