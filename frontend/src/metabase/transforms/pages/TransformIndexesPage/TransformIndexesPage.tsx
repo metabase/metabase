@@ -9,10 +9,10 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
