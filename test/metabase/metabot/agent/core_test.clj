@@ -7,6 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -141,6 +142,37 @@
                                     :context    {}})))]
             ;; Should get error message
             (is (some #(= :error (:type %)) result))))))))
+
+(deftest context-enriched-once-per-request-test
+  (testing "viewing-context enrichment runs once per request — not per iteration and not per message build (metabase#76493)"
+    (mt/as-admin
+      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+        (let [enrich-calls (atom 0)
+              orig         (mt/original-fn #'user-context/enrich-context-for-template)
+              llm-calls    (atom 0)]
+          (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                      (fn [ctx]
+                                        (swap! enrich-calls inc)
+                                        (orig ctx))
+                                      openrouter/openrouter
+                                      (fn [_]
+                                        (if (= 1 (swap! llm-calls inc))
+                                          (mut/mock-llm-response
+                                           [{:type      :tool-input
+                                             :id        "t1"
+                                             :function  "search"
+                                             :arguments {:semantic_queries ["orders"]}}])
+                                          (mut/mock-llm-response
+                                           [{:type :text :text "done"}])))
+                                      metabot-search/search (fn [_] [])]
+            (into [] (agent/run-agent-loop
+                      {:messages   [{:role :user :content "Hi"}]
+                       :state      {}
+                       :profile-id :embedding_next
+                       :context    {}}))
+            (is (= 2 @llm-calls) "sanity check: the loop ran two iterations")
+            (is (= 1 @enrich-calls)
+                "context enrichment (viewing-context formatting) must run exactly once per request")))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj

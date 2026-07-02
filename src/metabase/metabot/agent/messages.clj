@@ -8,7 +8,6 @@
   (:require
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
-   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.skills :as skills]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -137,21 +136,23 @@
        (filter #(#{:text :tool-input :tool-output} (:type %)))))
 
 (defn- messages-with-injected-context
-  "Returns messages from memory and injects context into the most recent one."
-  [context memory]
+  "Returns messages from memory and injects the template context into the most recent one."
+  [template-context memory]
   (let [all-messages (memory/get-input-messages memory)
         [input-messages [most-recent-message]] (split-at (dec (count all-messages))  all-messages)]
     (if-not (and (= :user (-> most-recent-message :role))
                  (< 0 (count all-messages)))
       all-messages
-      (let [enriched-context (user-context/enrich-context-for-template context)]
-        (conj (vec input-messages)
-              (update most-recent-message :content (partial prompts/inject-context enriched-context)))))))
+      (conj (vec input-messages)
+            (update most-recent-message :content (partial prompts/inject-context template-context))))))
 
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
 
-  Injects the context into the most recent user message.
+  Injects the context into the most recent user message. `template-context` is the
+  pre-enriched template-variable map from `user-context/enrich-context-for-template` —
+  the agent loop computes it once per request (enrichment formats the viewing context,
+  which can be expensive) and shares it between the system message and the history.
 
   Returns a vector of items that are either:
   - `{:role :user, :content \"...\"}` for user messages
@@ -160,8 +161,8 @@
   - `{:type :tool-output, :id ..., :result ...}` for tool results
 
   Each LLM adapter converts this to its own wire format."
-  [context memory]
-  (let [input-messages (messages-with-injected-context context memory)
+  [template-context memory]
+  (let [input-messages (messages-with-injected-context template-context memory)
         steps          (memory/get-steps memory)
         input-parts    (mapcat input-message->parts input-messages)
         step-parts     (mapcat step->parts steps)
@@ -169,7 +170,7 @@
         ;; tool-call/result pair. It is placed after the input messages (so the
         ;; first message is still the user's) and before this turn's steps, which
         ;; keeps it below the system cache breakpoint.
-        preload-parts  (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
+        preload-parts  (skills/dialect-preload-parts (:sql_dialect template-context))
         result         (vec (concat input-parts preload-parts step-parts))]
     (log/info "Building message history"
               {:input-message-count (count input-messages)
@@ -186,14 +187,14 @@
   "Build system message with templated prompt and enriched context.
 
   Parameters:
-  - context: Context map from API (with user_is_viewing, user_recently_viewed, etc.)
+  - template-context: Pre-enriched template-variable map from
+    `user-context/enrich-context-for-template` (computed once per request by the agent loop)
   - profile: Profile map with :prompt-template key
   - tools: Tool registry map (name -> var)
 
   Returns message map with {:role \"system\" :content \"...\"}."
-  [context profile tools]
-  (let [enriched-context (user-context/enrich-context-for-template context)
-        content          (prompts/build-system-message-content
-                          profile enriched-context tools (:capabilities context))]
+  [template-context profile tools]
+  (let [content (prompts/build-system-message-content
+                 profile template-context tools (:capabilities template-context))]
     {:role    "system"
      :content content}))

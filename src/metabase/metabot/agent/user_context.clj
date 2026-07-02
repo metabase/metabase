@@ -405,17 +405,23 @@
 (defn enrich-context-for-template
   "Enrich context with all necessary variables for system prompt template rendering.
 
+  Formatting the viewing context can be expensive (it fetches entity details for every
+  viewed item), so the agent loop calls this once per request and shares the result
+  between the system message and the message history.
+
   Takes raw context from API and returns map suitable for template rendering:
   - :current_time - Formatted user time string
   - :first_day_of_week - Calendar week start (default 'Sunday')
   - :sql_dialect - SQL dialect name (lowercase)
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
-  - :recent_views - Formatted recent views"
+  - :recent_views - Formatted recent views
+  - :capabilities - Request capabilities, passed through for prompt/skill gating"
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
    :sql_dialect (extract-sql-dialect context)
    :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
-   :recent_views (format-recent-views context)})
+   :recent_views (format-recent-views context)
+   :capabilities (:capabilities context)})

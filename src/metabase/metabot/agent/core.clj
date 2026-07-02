@@ -12,6 +12,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -246,10 +247,10 @@
 
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
-  [memory context profile tools iteration tracking-opts link-registry-atom]
+  [memory template-context profile tools iteration tracking-opts link-registry-atom]
   (let [model        (:model profile)
-        system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history context memory)
+        system-msg   (messages/build-system-message template-context profile tools)
+        input-parts  (-> (messages/build-message-history template-context memory)
                          (invert-links @link-registry-atom))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
@@ -442,15 +443,18 @@
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
                                 :msgs     (count messages)})
-    {:profile       profile
-     :tools         tools
-     :context       context
-     :memory-atom   memory-atom
-     :tracking-opts (merge {:profile-id profile-id
-                            :request-id (str (random-uuid))
-                            :source     "metabot_agent"
-                            :tag        "agent"}
-                           tracking-opts)}))
+    {:profile          profile
+     :tools            tools
+     ;; Enriched once per request: enrichment formats the viewing context, which fetches
+     ;; entity details for every viewed item — too expensive to redo on every iteration
+     ;; and message build (metabase#76493).
+     :template-context (user-context/enrich-context-for-template context)
+     :memory-atom      memory-atom
+     :tracking-opts    (merge {:profile-id profile-id
+                               :request-id (str (random-uuid))
+                               :source     "metabot_agent"
+                               :tag        "agent"}
+                              tracking-opts)}))
 
 (defn- initial-loop-state
   "Create initial loop state from agent config and reduction context."
@@ -498,14 +502,14 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+    (let [{:keys [profile tools template-context memory-atom tracking-opts]} agent
           max-iter           (:max-iterations profile 10)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
+          llm-call           (call-llm memory template-context profile tools iteration tracking-opts link-registry-atom)
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing

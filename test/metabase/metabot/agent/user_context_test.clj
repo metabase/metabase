@@ -313,6 +313,16 @@
       (is (= "" (:viewing_context result)))
       (is (= "" (:recent_views result))))))
 
+(deftest ^:parallel enrich-context-passes-capabilities-through-test
+  (testing "capabilities pass through enrichment so prompt/skill gating still sees them"
+    (is (= ["frontend:navigate_user_v1" "frontend:code_edit_v1"]
+           (:capabilities (user-context/enrich-context-for-template
+                           {:capabilities ["frontend:navigate_user_v1" "frontend:code_edit_v1"]}))))))
+
+(deftest ^:parallel enrich-context-without-capabilities-test
+  (testing "absent capabilities enrich to nil rather than throwing"
+    (is (nil? (:capabilities (user-context/enrich-context-for-template {}))))))
+
 (deftest ^:parallel format-entity-includes-measures-and-segments-test
   (testing "table viewing context includes measures and segments when present"
     (mt/with-dynamic-fn-redefs [entity-details/get-table-details
