@@ -1,6 +1,4 @@
 import cx from "classnames";
-import { useEffect } from "react";
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -15,7 +13,6 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
@@ -36,13 +33,13 @@ const DatabaseName = ({ id }: { id: DatabaseId | null | undefined }) => {
 
 const BrowseSchemasContainer = ({
   schemas,
+  dbId,
   params,
 }: {
   schemas: Schema[];
+  dbId: DatabaseId;
   params: any;
 }) => {
-  const { slug } = params;
-  const dbId = Urls.extractEntityId(slug);
   return (
     <Flex
       className={S.browseContainer}
@@ -99,29 +96,32 @@ const BrowseSchemasContainer = ({
   );
 };
 
-const DatabaseNameRedirect = ({ name }: { name: string }) => {
-  const dispatch = useDispatch();
+const BrowseSchemasByDatabaseName = ({
+  name,
+  params,
+}: {
+  name: string;
+  params: { slug: string };
+}) => {
   const { data, isLoading } = useListDatabasesQuery();
   const database = findDatabaseByName(data?.data ?? [], name);
 
-  useEffect(() => {
-    if (database) {
-      dispatch(replace(Urls.browseDatabase(database)));
-    }
-  }, [database, dispatch]);
-
-  if (isLoading || database) {
+  if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  return <NotFound />;
+  if (!database) {
+    return <NotFound />;
+  }
+
+  return <BrowseSchemasForDatabase dbId={database.id} params={params} />;
 };
 
 export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
   const dbId = Urls.extractEntityId(params.slug);
 
   if (dbId == null) {
-    return <DatabaseNameRedirect name={params.slug} />;
+    return <BrowseSchemasByDatabaseName name={params.slug} params={params} />;
   }
 
   return <BrowseSchemasForDatabase dbId={dbId} params={params} />;
@@ -141,5 +141,8 @@ const BrowseSchemasForDatabase = ({
   }
 
   const schemas: Schema[] = (data ?? []).map((name) => ({ id: name, name }));
-  return <BrowseSchemasContainer schemas={schemas} params={params} />;
+
+  return (
+    <BrowseSchemasContainer schemas={schemas} dbId={dbId} params={params} />
+  );
 };
