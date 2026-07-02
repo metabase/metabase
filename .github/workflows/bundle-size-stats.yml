@@ -104,6 +104,7 @@ jobs:
           VERSION_PROPS: artifacts/version.properties
         run: node ./.github/scripts/bundle-size-stats-prepare.js
       - name: Upload sizes (with deltas) to Stats
+        id: upload
         if: steps.prepare.outputs.significant == 'true'
         uses: actions/github-script@v9
         env:
@@ -119,19 +120,26 @@ jobs:
 
             console.table(data);
 
-            uploadCsvToMb({
-              baseUrl: "https://stats.metabase.com",
-              tableId: 79702,
-              jsonData: data,
-              mode: "append",
-            }).then(() => {
+            try {
+              await uploadCsvToMb({
+                baseUrl: "https://stats.metabase.com",
+                tableId: 79702,
+                jsonData: data,
+                mode: "append",
+              });
               console.log("Bundle sizes uploaded successfully");
-            }).catch(error => {
-              console.error("Error uploading bundle sizes:", error);
-              process.exit(1);
-            });
+              core.setOutput("uploaded", "true");
+            } catch (error) {
+              // Stats logging is best-effort: if stats.metabase.com is still
+              // unreachable after the client's retries, keep the run green. The
+              // last-plotted cache is only saved on a successful upload (below),
+              // so this point is re-attempted on the next master build and
+              // nothing is silently dropped.
+              core.warning(`Bundle-size upload failed after retries; leaving run green: ${error.message}`);
+              core.setOutput("uploaded", "false");
+            }
       - name: Remember this as the last plotted point
-        if: steps.prepare.outputs.significant == 'true'
+        if: steps.upload.outputs.uploaded == 'true'
         uses: actions/cache/save@v4
         with:
           path: bundle-size-cache
