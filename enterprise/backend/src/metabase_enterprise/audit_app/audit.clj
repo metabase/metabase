@@ -424,10 +424,10 @@
   the rows being removed is moved onto the survivor (query source-table and field ids rewritten) before they are
   deleted, so no card is lost to the orphan's ON DELETE CASCADE."
   [audit-db-id]
-  ;; sort by id up front so every selection below (including the `referenced?` tiebreak) is deterministic
-  ;; regardless of the order the appdb returns rows in
-  (let [groups (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit-db-id)
-                    (sort-by :id)
+  ;; order by id in the query so every selection below (including the `referenced?` tiebreak) is deterministic;
+  ;; group-by preserves this order within each group
+  (let [groups (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit-db-id
+                               {:order-by [[:id :asc]]})
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
