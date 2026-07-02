@@ -14,7 +14,7 @@ export function IndexPageActions({
   canCreate: boolean;
 }) {
   if (readOnly) {
-    return undefined;
+    return null;
   }
 
   const createButton = (
