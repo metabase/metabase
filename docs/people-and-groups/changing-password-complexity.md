@@ -16,12 +16,12 @@ The default password complexity for both Metabase instances and Metabase Store a
 On self-hosted Metabases, you can configure required password complexity through environment variables:
 
 ```sh
-export MB_PASSWORD_COMPLEXITY=<complexity_score>
+export MB_PASSWORD_COMPLEXITY=<complexity_level>
 export MB_PASSWORD_LENGTH=10
 ```
 You can set either `MB_PASSWORD_COMPLEXITY` or `MB_PASSWORD_LENGTH` independently. 
 
-The options for complexity score are:
+The options for complexity level are:
 
 - `weak`: no constraints.
 - `normal`: at least 1 digit.
