@@ -1,14 +1,14 @@
-import type { MetabaseTheme } from "@metabase/embedding-sdk-react";
-import type { ComponentType } from "react";
+import type { DataAppFactory } from "@metabase/embedding-sdk-react/data-app";
 
 import App from "./App";
 import { sdkTheme } from "./theme";
 
-type Factory = () => {
-  component: ComponentType;
-  theme?: MetabaseTheme;
-};
-
-const factory: Factory = () => ({ component: App, theme: sdkTheme });
+// The data app's entry point. Return the root component plus any `providerProps`
+// the host should apply to `MetabaseProvider` (e.g. `theme`,
+// `allowedCustomVisualizations`).
+const factory: DataAppFactory = () => ({
+  component: App,
+  providerProps: { theme: sdkTheme },
+});
 
 export default factory;

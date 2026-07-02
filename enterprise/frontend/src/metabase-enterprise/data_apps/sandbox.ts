@@ -2,6 +2,7 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 import type * as React from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import { DATA_APP_GLOBAL_NAMES } from "embedding-sdk-package/data-app-dev/bundle";
 
 import { makeDistortionCallback } from "./sandbox/distortions";
 
@@ -35,7 +36,7 @@ export type DataAppFactory = () => {
  *
  * These are injected by the caller rather than imported here so the sandbox
  * stays decoupled from any single SDK instance: the host passes its own realm's
- * React/SDK, and the data-app template's dev harness passes the React/SDK from
+ * React/SDK, and the data-app template's dev entry passes the React/SDK from
  * its installed `@metabase/embedding-sdk-react` — in both cases the bundle runs
  * against exactly one SDK instance. (Importing them here would bundle a second
  * SDK copy into the published `data-app-dev` entry.)
@@ -89,24 +90,27 @@ export function createDataAppSandbox({
         allowedHosts,
       ),
       liveTargetCallback: isLiveTarget,
+      // Global names come from the shared `DATA_APP_GLOBAL_NAMES`, so the bundle's
+      // externals (defined by the SDK build) and these endowments can't drift.
       endowments: Object.getOwnPropertyDescriptors({
-        React: endowments.React,
-        __react_jsx_runtime__: endowments.reactJsxRuntime,
+        [DATA_APP_GLOBAL_NAMES.react]: endowments.React,
+        [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: endowments.reactJsxRuntime,
         ...(!!endowments.reactJsxDevRuntime && {
-          __react_jsx_dev_runtime__: endowments.reactJsxDevRuntime,
+          [DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]:
+            endowments.reactJsxDevRuntime,
         }),
-        __metabase_sdk__: {
+        [DATA_APP_GLOBAL_NAMES.sdk]: {
           ...endowments.sdkExports,
           // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
         },
-        __metabase_data_app__: {
+        [DATA_APP_GLOBAL_NAMES.dataApp]: {
           ...endowments.dataAppExports,
           // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
         },
-        get __dataAppFactory__() {
+        get [DATA_APP_GLOBAL_NAMES.factory]() {
           return captured;
         },
-        set __dataAppFactory__(value: unknown) {
+        set [DATA_APP_GLOBAL_NAMES.factory](value: unknown) {
           captured = value;
         },
       }),
