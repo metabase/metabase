@@ -11,22 +11,6 @@
   output is diffed against an expected CSV. The single-transform case is the
   degenerate slice: `source-ids = #{}` → `slice = #{target-id}`.
 
-  ## v1 scope
-
-  - **Single database.** All slice nodes must share the target's source database;
-    a cross-DB slice fails closed (`::errors/cross-database-subgraph`).
-  - **Materialized leaves only.** A leaf that is another transform's *unmaterialized*
-    output (a never-run sibling) has no synced Table to derive a fixture schema
-    from; `inputs/resolve-table-dep` fails closed on it
-    (`::errors/transform-dep-not-supported`).
-  - **MBQL nodes reading upstream outputs** are not supported and fail at
-    `resolve` time with `::errors/cannot-test-run`.
-  - **Card target / MBQL card:** the card's source tables must be synced;
-    `id->override` keys by table id — an unsynced output has no id to key on.
-  - **Card target / native card:** a table-qualified column ref (`orders.amount`)
-    whose table was rewritten may produce a dangling qualifier, rejected at verify
-    time with `::errors/cannot-test-run`.
-
   Errors are typed `ex-info` carrying `:error-type`."
   (:require
    [medley.core :as m]
@@ -76,8 +60,7 @@
   (-> transform :source :query :database))
 
 (defn- assert-single-database!
-  "Fail closed unless every node in `slice` shares `db-id`. Cross-database
-  sub-graphs are out of scope for v1."
+  "Fail closed unless every node in `slice` shares `db-id`."
   [slice id->transform db-id]
   (let [offenders (into {}
                         (keep (fn [id]
@@ -275,8 +258,8 @@
    :output-table   <string>}              ; the target's scratch output table
   ```
 
-  On error, throws a typed `ex-info` (`:error-type` in ex-data). Cleanup (drop all
-  scratch tables) runs in `finally` on every path."
+  On error, throws a typed `ex-info` (`:error-type` in ex-data). Scratch tables
+  are dropped on every path, including errors."
   [target-id source-ids fixtures-by-table-id expected-csv-file opts]
   (let [timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
         ignore-cols    (get opts :ignore-columns #{})
@@ -310,12 +293,10 @@
                                  :schema               schema})]
           (reset! mapping* mapping)
           (reset! outputs* outputs)
-          ;; Read back the target node's scratch output.
           (let [target-out  (get outputs target-id)
                 qp-result   (execute/read-back-output db-id drv target-out)
                 actual-cols (get-in qp-result [:data :cols])
                 actual-rows (get-in qp-result [:data :rows])
-                ;; Diff against expected CSV when provided; nil otherwise.
                 report      (when expected-csv-file
                               (let [expected (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))]
                                 (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
@@ -377,8 +358,8 @@
   was rewritten may produce dangling qualifiers. `resolve/verify` catches them and
   throws `::errors/cannot-test-run` with the offending token.
 
-  On error, throws a typed `ex-info` (`:error-type` in ex-data). Cleanup runs in
-  `finally` on every path."
+  On error, throws a typed `ex-info` (`:error-type` in ex-data). Scratch tables
+  are dropped on every path, including errors."
   [card source-ids fixtures-by-table-id expected-csv-file opts]
   (let [timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
         ignore-cols    (get opts :ignore-columns #{})
@@ -396,7 +377,6 @@
         _              (assert-single-database! slice id->transform db-id)
         db             (t2/select-one :model/Database :id db-id)
         drv            (keyword (:engine db))
-        ;; Use the first slice node's target schema as the scratch schema, falling back to "public".
         schema         (or (some-> (first order) id->transform :target :schema) "public")
         mapping*       (atom {})
         outputs*       (atom {})]
@@ -436,7 +416,6 @@
                                  r))
                 actual-cols  (get-in qp-result [:data :cols])
                 actual-rows  (get-in qp-result [:data :rows])
-                ;; Diff against expected CSV when provided; nil otherwise.
                 report       (when expected-csv-file
                                (let [expected (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))]
                                  (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))

@@ -78,7 +78,6 @@
   (let [expected-part   (get multipart-params "expected")
         assertions-part (get multipart-params "assertions")
         parsed-assertions (api-util/parse-assertions assertions-part)]
-    ;; At least one of expected or assertions must be present.
     (when (and (nil? expected-part) (empty? parsed-assertions))
       (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
                       {:status-code 400})))
@@ -107,7 +106,6 @@
   (let [expected-part   (get multipart-params "expected")
         assertions-part (get multipart-params "assertions")
         parsed-assertions (api-util/parse-assertions assertions-part)]
-    ;; At least one of expected or assertions must be present.
     (when (and (nil? expected-part) (empty? parsed-assertions))
       (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
                       {:status-code 400})))

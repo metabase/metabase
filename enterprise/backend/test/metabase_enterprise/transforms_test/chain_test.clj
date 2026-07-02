@@ -508,10 +508,6 @@
            (mt/user-http-request :crowberto :get 404 "ee/transform-test/metric/1/subgraph-inputs")))))
 
 ;;; ===========================================================================
-;;; Contract: cleanup! runs inside the transform connection context
-;;; ===========================================================================
-
-;;; ===========================================================================
 ;;; Assertions wired into run-chain-test! and run-card-chain-test!
 ;;;
 ;;; All tests run on :postgres with the standard test-data chain (t1 → t2).
@@ -872,7 +868,7 @@
                   "assertions" "this is not json"})))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; assertion referencing a real table → 422
+;;; assertion referencing a real table → 200
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-endpoint-assertion-real-table-reference-test
@@ -894,11 +890,7 @@
               (with-temp-csv-files [orders-f   orders-rows
                                     people-f   people-rows
                                     expected-f correct-expected-csv]
-                ;; products is a real table not in the mapping — verify guard 2 fires.
-                ;; Per-assertion prepare captures this as a terminal error (not a
-                ;; run-level throw), so the response is 200 with the assertion as :failed.
-                ;; A bad assertion is a test-run result, not an HTTP-level error; the 422
-                ;; path is for run-level errors.
+                ;; products is a real table not in the mapping: terminal assertion failure
                 (let [assertions-json (json/encode
                                        [{:name "escapes_to_real_table"
                                          :sql  "SELECT * FROM products WHERE price < 0"

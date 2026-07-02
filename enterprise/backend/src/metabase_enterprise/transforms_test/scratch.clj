@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transforms-test.scratch
   "Scratch-table lifecycle for transform test runs.
 
-  Scratch tables are ephemeral Postgres (or other driver) tables created during a
+  Scratch tables are ephemeral warehouse tables created during a
   test run to hold fixture data and capture transform output without touching real
   production tables.
 
@@ -188,8 +188,6 @@
   without a catalog segment.
 
   The real-spec keys are `{:schema (:schema table-info) :table (:name table-info)}`.
-  `resolve`'s verify normalization compares against exactly this shape
-  (nil schema → driver default schema; lowercase fold).
 
   On partial failure (some tables created, then an error): drops all already-created
   scratch tables (best-effort, logs failures) then rethrows a typed ex-info."
@@ -210,14 +208,11 @@
               suffix       (str "in_" (:id table-info))
               scratch-name (scratch-table-name nonce suffix)
               tbl-schema   (table-schema-for-seed scratch-name schema table-info)]
-          ;; Create the table
           (transforms-base.u/create-table-from-schema! drv db-id tbl-schema)
           (swap! created conj {:schema schema :table scratch-name})
-          ;; Populate it
           (driver/insert-from-source! drv db-id tbl-schema
                                       {:type :rows
                                        :data (:rows fixture)})
-          ;; Record the mapping
           (swap! mapping assoc real-spec {:schema schema :table scratch-name :db catalog})))
       @mapping
       (catch Throwable e
@@ -267,10 +262,8 @@
                    (log/warn e "Failed to drop scratch table during cleanup!"
                              (keyword schema table-name)))))]
     (driver.conn/assert-connection-type! :transform)
-    ;; Drop all input scratch tables
     (doseq [{:keys [schema table]} (vals mapping)]
       (drop schema table))
-    ;; Drop output scratch table if provided
     (when output-spec
       (drop (:schema output-spec) (:table output-spec)))
     nil))
@@ -315,19 +308,15 @@
         errors      (atom [])]
     (doseq [tbl-name table-names]
       (if-let [parsed (parse-scratch-table-name tbl-name)]
-        ;; It's a test scratch table — check age
         (let [age-secs (- now-secs (:epoch-seconds parsed))]
           (if (>= age-secs min-age-seconds)
-            ;; Old enough — drop it
             (try
               (driver/drop-table! drv db-id (keyword schema tbl-name))
               (swap! dropped conj tbl-name)
               (catch Exception e
                 (log/warn e "cleanup-all-test-tables! failed to drop" (keyword schema tbl-name))
                 (swap! errors conj {:table tbl-name :error (.getMessage e)})))
-            ;; Too young — skip
             (swap! skipped conj tbl-name)))
-        ;; Not a test scratch table — skip silently, count it
         (swap! non-match inc)))
     {:dropped            @dropped
      :skipped-young      @skipped

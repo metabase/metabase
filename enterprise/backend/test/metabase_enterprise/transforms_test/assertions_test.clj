@@ -285,7 +285,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest run-assertions-mixed-pass-fail-cap-test
-  (testing "mixed pass/fail— failing assertion gets lazy sample capped at 50"
+  (testing "mixed pass/fail — failing assertion gets lazy sample capped at 50"
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data

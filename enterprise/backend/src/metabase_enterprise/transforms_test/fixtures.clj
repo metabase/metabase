@@ -1,28 +1,5 @@
 (ns metabase-enterprise.transforms-test.fixtures
-  "Fixture-CSV parsing for transform test runs.
-
-  Entry point: [[parse-fixture]].
-
-  Callers supply a target schema (column names + base-types from real Table/Field
-  metadata) to parse CSVs against the real table's types.  When no schema is
-  given, types are inferred from the data (upload-style inference).
-
-  This namespace never touches the database; callers build the schema from
-  `:metadata/table` + field metadata and pass it in.
-
-  ## NULL vs empty-string rule
-
-  Any cell whose string value is blank (empty string or whitespace-only) is
-  returned as `nil` (SQL NULL).  Non-blank cells are parsed according to the
-  column type.  Zero (`0`) and `false` are not blank, and are preserved.
-
-  ## Case-sensitivity rule for header matching
-
-  Column names are matched **exactly** (byte-for-byte) against the `:name`
-  fields in `target-schema`.  No case-folding, no trimming, no normalization.
-  If the CSV header and the schema names differ only in case, a `::errors/header-mismatch`
-  error is thrown (the caller can inspect `:missing-columns` / `:extra-columns`
-  in ex-data to diagnose)."
+  "Fixture-CSV parsing for transform test runs."
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -235,7 +212,7 @@
   `:columns` are in CSV column order.  `:rows` are vectors of plain Clojure
   values, one per data row, in the same column order. Cell values are one of:
   String, Double, BigInteger, Boolean, LocalDate, LocalDateTime, OffsetDateTime,
-  or nil.
+  or nil. Blank cells — empty or whitespace-only — parse to nil (SQL NULL).
 
   Throws (all via `ex-info` with typed `:error-type` in ex-data):
   - `::header-mismatch`   — CSV header ≠ schema column names (case-sensitive,

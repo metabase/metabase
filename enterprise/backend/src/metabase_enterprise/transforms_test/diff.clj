@@ -78,9 +78,7 @@
     nil
 
     (string? v)
-    ;; Already a QP-produced ISO-8601 string; normalise to Z suffix.
-    ;; The QP always emits the Z suffix, so this is mostly a passthrough.
-    ;; Defensively parse and re-format to guarantee canonical form.
+    ;; QP strings already carry a Z suffix; parse + re-format anyway to guarantee canonical form.
     (let [odt (OffsetDateTime/parse ^String v DateTimeFormatter/ISO_OFFSET_DATE_TIME)]
       (.format (.atZoneSameInstant odt ZoneOffset/UTC)
                DateTimeFormatter/ISO_OFFSET_DATE_TIME))
@@ -357,20 +355,16 @@
                       {:error-type         ::errors/unknown-ignore-columns
                        :unknown-columns    (vec (sort unknown-ignores))
                        :available-columns  (vec (sort actual-names))})))
-    (let [;; Filter actual columns by ignore-columns
-          filtered-actual-cols (filterv (fn [c] (not (contains? ignore-cols (:name c))))
+    (let [filtered-actual-cols (filterv (fn [c] (not (contains? ignore-cols (:name c))))
                                         actual-cols)
           filtered-actual-names (mapv :name filtered-actual-cols)
           actual-base-types    (mapv :base_type filtered-actual-cols)
 
-          ;; Build name→value map for expected fixture rows
           exp-row-by-name  (fn [row]
-                             ;; Map from expected column names to values
                              (into {} (map (fn [col v] [(:name col) v])
                                            (:columns expected)
                                            row)))
 
-          ;; Expected column names (filtered)
           exp-col-names    (mapv :name (filterv (fn [c] (not (contains? ignore-cols (:name c))))
                                                 (:columns expected)))
 
@@ -389,15 +383,13 @@
          :row-counts      {:actual n-actual :expected n-expected}
          :truncated       0}
         ;; Columns align: canonicalize and compare rows
-        (let [;; Re-order expected rows to match actual column order
-              exp-rows-reordered
+        (let [exp-rows-reordered
               (mapv (fn [exp-row]
                       (let [row-map (exp-row-by-name exp-row)]
                         (mapv (fn [col-name] (get row-map col-name))
                               filtered-actual-names)))
                     (:rows expected))
 
-              ;; Canonicalize actual rows (filter ignored columns by position)
               actual-rows-filtered
               (let [keep-idxs (keep-indexed (fn [i c]
                                               (when (not (contains? ignore-cols (:name c)))
@@ -410,8 +402,6 @@
 
               {:keys [missing extra]} (multiset-diff actual-canonical expected-canonical)
 
-              ;; Attempt cell-level detail only when missing/extra counts match
-              ;; and the diff is small enough
               cell-mismatches
               (when (and (= (count missing) (count extra))
                          (pos? (count missing))

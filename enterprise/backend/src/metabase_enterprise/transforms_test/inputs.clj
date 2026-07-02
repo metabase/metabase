@@ -11,20 +11,7 @@
   ## Supported transform types
 
   Only `:query`-type transforms (native SQL and MBQL) are supported. Python
-  transforms and any other source type throw `::errors/unsupported-transform-type`.
-
-  ## Error taxonomy (`:error-type` keys in ex-data)
-
-  All errors are `ex-info` with a namespaced `:error-type` keyword.
-
-  | `:error-type`                        | Meaning |
-  |--------------------------------------|---------|
-  | `::errors/unsupported-transform-type`       | Transform source type is not `:query` (e.g. `:python`). |
-  | `::errors/cannot-determine-inputs`          | `table-dependencies` threw; extraction failed. |
-  | `::errors/table-not-found`                  | A `{:table id}` or `{:table-ref ...}` dep has no matching synced Table row. |
-  | `::errors/transform-dep-not-supported`      | A `{:transform id}` dep (output of another transform) is not supported in test runs. |
-  | `::errors/missing-fixtures`                 | One or more required tables have no fixture key in the provided set. |
-  | `::errors/unknown-fixture-keys`             | One or more fixture keys have no matching required table. |"
+  transforms and any other source type throw `::errors/unsupported-transform-type`."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

@@ -167,7 +167,7 @@
       (is (= :passed (:status report))))))
 
 (deftest genuinely-different-timestamp-mismatch-test
-  (testing "a genuinely different timestamp → mismatch showing raw + canonical values"
+  (testing "a genuinely different timestamp → mismatch reported (canonical values)"
     (let [actual-cols [(col "ts" :type/DateTime)]
           actual-rows [["2024-01-15T10:30:00Z"]]
           expected    (fixture [(schema-col "ts" :type/DateTime)]

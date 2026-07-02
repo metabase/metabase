@@ -243,7 +243,6 @@
     ;; Verify (both paths) — throws on any guard failure.
     (verify driver mapping (:query compiled))
     (log/debug "Resolved test transform" {:driver driver :parser-backend backend :native? native?})
-    ;; :compiled is qp.compile/compile's output, passed verbatim to driver/run-transform!.
     {:driver         driver
      :compiled       compiled
      :target         output-target

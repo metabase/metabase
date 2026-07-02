@@ -190,8 +190,7 @@
   `:leaf-deps` gathers two kinds of boundary table under one `{:table id}` shape:
   the sub-graph's own leaves, and the tables the card reads that no in-slice
   transform produces — production lookups and dimensions among them. The caller
-  must supply a fixture for each; a missing one is caught downstream by the
-  scratch-mapping guard, which fails closed and names the table it could not map.
+  must supply a fixture for each.
 
   Throws `ex-info` with `:error-type ::errors/sources-not-ancestors` when a selected
   source feeds none of the card's producing transforms — the same fail-closed

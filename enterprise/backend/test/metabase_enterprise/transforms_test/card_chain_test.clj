@@ -130,13 +130,6 @@
                    :type     :query
                    :query    {:source-table tbl-id :aggregation [[:count]]}}})
 
-;;; ---------------------------------------------------------------------------
-;;; Shared topology builder
-;;;
-;;; Creates the :model/Table + :model/Transform temp fixtures needed by both
-;;; native and MBQL tests. Calls `f` with `{:t1 t1 :tbl tbl :enriched-name}`.
-;;; ---------------------------------------------------------------------------
-
 (defmacro ^:private with-enrich-topology
   "Bind `t1-sym` and `tbl-sym` to the temp transform and table for the enrich
   topology. Creates two `:model/Field` rows (total, state) on the temp table

@@ -257,8 +257,7 @@
                     (let [row-cells  (concat
                                       (mapcat identity (get-in resp [:diff :missing-rows]))
                                       (mapcat identity (get-in resp [:diff :extra-rows])))
-                          cm-values  (mapcat (fn [m] [(:expected-raw m) (:actual-raw m)
-                                                      (:expected-canonical m) (:actual-canonical m)])
+                          cm-values  (mapcat (fn [m] [(:expected-canonical m) (:actual-canonical m)])
                                              (get-in resp [:diff :cell-mismatches]))
                           all-strs   (map str (concat row-cells cm-values))]
                       (is (some #(or (.contains ^String % "TX") (.contains ^String % "99"))

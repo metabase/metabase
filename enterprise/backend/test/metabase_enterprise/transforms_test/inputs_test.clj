@@ -234,9 +234,7 @@
       (is (= #{99} (-> e ex-data :unknown-keys))))))
 
 (deftest match-fixtures-both-missing-and-unknown-throws-test
-  (testing "When both missing and unknown keys occur, both errors are reported"
-    ;; We throw whichever is checked first; either missing-fixtures or unknown-keys.
-    ;; The contract: at least one of these two errors fires; both have typed ex-data.
+  (testing "when both missing and unknown keys occur, one of the two typed errors fires"
     (let [tables [{:id 10 :schema "public" :name "orders" :columns []}]
           ;; Missing: 10 (no fixture for orders)
           ;; Unknown: 99 (no required table with id 99)

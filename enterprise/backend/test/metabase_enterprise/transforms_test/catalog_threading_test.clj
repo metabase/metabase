@@ -10,7 +10,6 @@
 
   And that for drivers without a db-slot (postgres, h2) those fields remain nil / 2-segment."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-test.execute :as execute]
    [metabase-enterprise.transforms-test.scratch :as scratch]
@@ -120,19 +119,8 @@
                              :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
                              :db     "my_catalog"}]
           (execute/read-back-output 1 :mysql output-target)))
-      (let [sql (get-in @captured [:native :query])]
-        (is (some? sql) "a query should have been submitted")
-        ;; 3-segment: catalog.schema.table — all three components present
-        (is (str/includes? sql "my_catalog")
-            (str "SQL must contain catalog; got: " sql))
-        (is (str/includes? sql "myschema")
-            (str "SQL must contain schema; got: " sql))
-        (is (str/includes? sql "mb_transform_temp_table_test_abc123_aabbccdd_out")
-            (str "SQL must contain table; got: " sql))
-        ;; Exactly 3 backtick-quoted or double-quoted segments — verify count
-        ;; MySQL uses backticks; we check that catalog.schema.table all appear together
-        (is (re-find #"my_catalog" sql)
-            "3-segment: catalog segment present")))))
+      (is (= "SELECT * FROM `my_catalog`.`myschema`.`mb_transform_temp_table_test_abc123_aabbccdd_out`"
+             (get-in @captured [:native :query]))))))
 
 (deftest read-back-sql-is-2-segment-for-non-db-slot-driver-test
   (testing "read-back SQL is schema.table (2-segment) for postgres"
@@ -146,15 +134,8 @@
                              :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
                              :db     nil}]
           (execute/read-back-output 2 :postgres output-target)))
-      (let [sql (get-in @captured [:native :query])]
-        (is (some? sql))
-        (is (str/includes? sql "public")
-            (str "SQL must contain schema; got: " sql))
-        (is (str/includes? sql "mb_transform_temp_table_test_abc123_aabbccdd_out")
-            (str "SQL must contain table; got: " sql))
-        ;; Must not contain a spurious third segment (nil catalog should not inject anything)
-        (is (not (str/includes? sql "nil"))
-            "nil catalog must not appear as a literal string in SQL")))))
+      (is (= "SELECT * FROM \"public\".\"mb_transform_temp_table_test_abc123_aabbccdd_out\""
+             (get-in @captured [:native :query]))))))
 
 (deftest read-back-sql-no-schema-no-db-test
   (testing "read-back SQL is bare table when schema and db are both nil"
@@ -167,9 +148,8 @@
         (execute/read-back-output 2 :postgres {:schema nil
                                                :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
                                                :db     nil}))
-      (let [sql (get-in @captured [:native :query])]
-        (is (some? sql))
-        (is (str/includes? sql "mb_transform_temp_table_test_abc123_aabbccdd_out"))))))
+      (is (= "SELECT * FROM \"mb_transform_temp_table_test_abc123_aabbccdd_out\""
+             (get-in @captured [:native :query]))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; 4. Seed mapping values carry :db slot
