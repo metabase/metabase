@@ -73,6 +73,7 @@
      reconcile-dimensions-and-mappings
      reconcile-existing-dimensions
      remove-dimensions
+     set-default-dimension
      update-dimension
      resolve-dimension-to-field-id]
     [lib-metric.dimension.jvm

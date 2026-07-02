@@ -312,3 +312,51 @@
                (mt/user-http-request :rasta :post 403
                                      (str "metric/" (:id metric) "/dimension/remove")
                                      {:dimension_ids [fake-dimension-id]})))))))
+
+(deftest default-dimension-absent-by-default-test
+  (testing "a freshly seeded metric has no default dimension"
+    (with-seeded-metric [metric]
+      (let [added (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))]
+        (is (seq added))
+        (is (every? (comp false? :default) added)
+            "no dimension is default until one is set")))))
+
+(deftest set-default-dimension-test
+  (testing "POST /api/metric/:id/dimension/set-default keeps exactly one dimension as the default"
+    (with-seeded-metric [metric]
+      (let [added    (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))
+            a        (:id (first added))
+            b        (:id (second added))
+            defaults (fn [resp] (into #{} (comp (filter :default) (map :id)) resp))]
+        (is (= #{a} (defaults (mt/user-http-request :crowberto :post 200
+                                                    (str "metric/" (:id metric) "/dimension/set-default")
+                                                    {:dimension_id a})))
+            "A becomes the sole default")
+        (is (= #{b} (defaults (mt/user-http-request :crowberto :post 200
+                                                    (str "metric/" (:id metric) "/dimension/set-default")
+                                                    {:dimension_id b})))
+            "setting B clears A — still exactly one default")
+        (is (= #{b} (defaults (:added (mt/user-http-request :crowberto :get 200
+                                                            (str "metric/" (:id metric) "/dimension")))))
+            "the default is persisted")))))
+
+(deftest set-default-dimension-not-found-test
+  (testing "set-default returns 404 for an unknown dimension"
+    (with-seeded-metric [metric]
+      (is (mt/user-http-request :crowberto :post 404
+                                (str "metric/" (:id metric) "/dimension/set-default")
+                                {:dimension_id fake-dimension-id})))))
+
+(deftest update-dimension-preserves-other-mappings-test
+  (testing "updating one dimension leaves every dimension mapping intact"
+    (with-seeded-metric [metric]
+      (let [before   (:dimension_mappings (t2/select-one :model/Card :id (:id metric)))
+            price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")]
+        (mt/user-http-request :crowberto :post 200
+                              (str "metric/" (:id metric) "/dimension/" price-id)
+                              {:display_name "Cost"})
+        (let [after (:dimension_mappings (t2/select-one :model/Card :id (:id metric)))]
+          (is (= (count before) (count after)) "no mappings dropped")
+          (is (every? some? after) "no nil mappings")
+          (is (= (set (map :dimension-id before)) (set (map :dimension-id after)))
+              "every dimension is still mapped"))))))

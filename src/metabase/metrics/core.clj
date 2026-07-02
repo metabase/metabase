@@ -261,3 +261,20 @@
     (save-dimensions! entity dimensions dimension-mappings)
     (some-> (u/seek #(= dimension-id (:id %)) dimensions)
             metrics.dimension/->api-dimension)))
+
+(defn set-default-dimension!
+  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default. It is
+   legal for an entity to have no default (e.g. right after seeding, or once the default is removed);
+   this endpoint always leaves exactly one. Returns the updated `:added` list."
+  [metadata-type id dimension-id]
+  (let [entity             (dimension-entity metadata-type id)
+        persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
+        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
+        current            (or (u/seek #(= dimension-id (:id %)) persisted-dims)
+                               (throw (ex-info (tru "Dimension not found.") {:status-code 404})))
+        _                  (when (= :status/orphaned (:status current))
+                             (throw (ex-info (tru "Cannot set an orphaned dimension as the default.")
+                                             {:status-code 400})))
+        dimensions         (lib-metric/set-default-dimension persisted-dims dimension-id)]
+    (save-dimensions! entity dimensions persisted-mappings)
+    (added-dimensions dimensions persisted-mappings)))

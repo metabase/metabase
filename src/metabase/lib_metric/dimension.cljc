@@ -243,15 +243,26 @@
   [persisted-dims persisted-mappings id {:keys [source-pair] :as updates}]
   (let [dims-by-id         (-> (m/index-by :id persisted-dims)
                                (update id update-dimension* updates))
-        mappings-by-dim-id (cond-> (m/index-by :dimension-id persisted-dims)
+        mappings-by-dim-id (cond-> (m/index-by :dimension-id persisted-mappings)
                              source-pair (update id update-dimension-mapping source-pair))]
     {:dimensions         (perf/mapv (comp dims-by-id :id)
                                     persisted-dims)
      :dimension-mappings (perf/mapv (comp mappings-by-dim-id :dimension-id)
                                     persisted-mappings)}))
 
+(defn set-default-dimension
+  "Mark the dimension with `id` as the sole default, clearing `:default` from every other dimension,
+   so at most one dimension is ever the default. `id` is assumed to exist (the caller validates).
+   Returns the updated dimensions vector."
+  [persisted-dims id]
+  (perf/mapv (fn [dim]
+               (if (= id (:id dim))
+                 (assoc dim :default true)
+                 (dissoc dim :default)))
+             persisted-dims))
+
 (def ^:private persisted-dimension-keys
-  [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group])
+  [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group :default])
 
 (defn- dimensions-set [dims]
   (into #{} (map #(perf/select-keys % persisted-dimension-keys)) dims))

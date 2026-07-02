@@ -33,7 +33,8 @@
            :display_name   (or (:display-name dim) (:name dim))
            :description    (:description dim)
            :effective_type (some-> (:effective-type dim) u/qualified-name)
-           :semantic_type  (some-> (:semantic-type dim) u/qualified-name)}
+           :semantic_type  (some-> (:semantic-type dim) u/qualified-name)
+           :default        (boolean (:default dim))}
     (:status dim)  (assoc :status (:status dim))
     (:group dim)   (assoc :group (->api-group (:group dim)))
     (:sources dim) (assoc :sources (mapv ->api-source (:sources dim)))))
