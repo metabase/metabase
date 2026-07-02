@@ -159,6 +159,18 @@ export const explorationApi = Api.injectEndpoints({
           listTag("revision"),
         ]),
     }),
+    setPageStarred: builder.mutation<
+      void,
+      { pageId: number; explorationId: ExplorationId; starred: boolean }
+    >({
+      query: ({ pageId, starred }) => ({
+        method: "PUT",
+        url: `/api/exploration/page/${pageId}/starred`,
+        body: { starred },
+      }),
+      invalidatesTags: (_, error, { explorationId }) =>
+        invalidateTags(error, [idTag("exploration", explorationId)]),
+    }),
   }),
 });
 
@@ -174,4 +186,5 @@ export const {
   useGetExplorationQueryResultQuery,
   useCreateExplorationDocumentMutation,
   useAppendChartToDocumentMutation,
+  useSetPageStarredMutation,
 } = explorationApi;

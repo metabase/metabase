@@ -14,8 +14,8 @@
   iterate on prompt engineering."
   (:require
    [clojure.string :as str]
-   [metabase.explorations.groups :as explorations.groups]
-   [metabase.explorations.models.exploration-thread-group :as thread-group]
+   [metabase.explorations.blocks :as explorations.blocks]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -147,7 +147,7 @@
   [tm card mp dim-by-id]
   (let [dataset-query        (:dataset_query card)
         card-dims            (u/index-by :id (:dimensions card))
-        enriched-thread-dims (update-vals dim-by-id #(thread-group/enrich-with-card-group % card-dims))
+        enriched-thread-dims (update-vals dim-by-id #(block/enrich-with-card-group % card-dims))
         appl                 (applicability enriched-thread-dims tm mp dataset-query)
         default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
     {:metric-id                         (:card_id tm)
@@ -163,25 +163,25 @@
      :aggregation                       (aggregation-summary mp dataset-query)
      :result-column-name                (metrics/aggregation-column-name (:database_id card) dataset-query)}))
 
-(defn- group-context
-  "Per-group entry for [[metric-and-dim-context]]'s `:groups` list. Hydrates this group's
+(defn- block-context
+  "Per-block entry for [[metric-and-dim-context]]'s `:blocks` list. Hydrates this block's
   metrics + dims (against the shared `cards` / `mp-by-db` lookups so a Card chosen in more
-  than one group is hydrated only once), snapshots per-(metric, dim) applicability, and
-  builds the per-dim `:applicable-to` lists — all scoped to this group, so the planners
-  only ever cross metrics with dimensions that co-occur in the same group.
+  than one block is hydrated only once), snapshots per-(metric, dim) applicability, and
+  builds the per-dim `:applicable-to` lists — all scoped to this block, so the planners
+  only ever cross metrics with dimensions that co-occur in the same block.
 
-  `group` is an `ExplorationThreadGroup` row: `{:id :metrics [...] :dimensions [...]}`,
+  `block` is an `ExplorationBlock` row: `{:id :metrics [...] :dimensions [...]}`,
   where `:metrics` entries carry `{:card_id :dimension_mappings}` and `:dimensions` entries
   carry the dim snapshot."
-  [group cards mp-by-db]
-  (let [group-metrics (:metrics group)
-        group-dims    (:dimensions group)
-        dim-by-id     (u/index-by :dimension_id group-dims)
+  [block cards mp-by-db]
+  (let [block-metrics (:metrics block)
+        block-dims    (:dimensions block)
+        dim-by-id     (u/index-by :dimension_id block-dims)
         metrics       (into []
                             (keep (fn [tm]
                                     (when-let [card (get cards (:card_id tm))]
                                       (metric-context tm card (mp-by-db (:database_id card)) dim-by-id))))
-                            group-metrics)
+                            block-metrics)
         ;; Build per-dim applicable-to lists by inverting applicability.
         applicable-to (reduce (fn [acc m]
                                 (reduce (fn [acc2 dim-id]
@@ -191,16 +191,17 @@
                               {}
                               metrics)
         ;; Take the per-dim enriched dim from the first metric whose applicability
-        ;; resolves it — that copy carries both `:group` and `:fingerprint`. Dims that
-        ;; resolve on no metric in this group are dropped: nothing can be charted from
-        ;; them here, so surfacing them in the prompt would just be noise.
+        ;; resolves it — that copy carries both `:group` (the dim's source label) and
+        ;; `:fingerprint`. Dims that resolve on no metric in this block are dropped:
+        ;; nothing can be charted from them here, so surfacing them in the prompt would
+        ;; just be noise.
         enriched-by-id (into {}
                              (keep (fn [dim-id]
                                      (when-let [d (some #(get-in % [:applicability dim-id :dim]) metrics)]
                                        [dim-id d])))
                              (keys dim-by-id))
         dimensions    (vec
-                       (for [td group-dims
+                       (for [td block-dims
                              :let [dim-id   (:dimension_id td)
                                    dim      (get enriched-by-id dim-id)
                                    [k _]    (qp.mbql/default-bucket-for-dim dim)
@@ -220,24 +221,24 @@
                           :numeric-min    (get-in dim [:fingerprint :type :type/Number :min])
                           :numeric-max    (get-in dim [:fingerprint :type :type/Number :max])
                           :applicable-to  (vec (get applicable-to dim-id []))}))]
-    {:group-id      (:id group)
-     :name          (explorations.groups/group-display-name
-                     group (update-vals cards :name))
+    {:block-id      (:id block)
+     :name          (explorations.blocks/block-display-name
+                     block (update-vals cards :name))
      :metrics       metrics
      :dimensions    dimensions
      :applicability (u/index-by :metric-id :applicability metrics)}))
 
 (defn metric-and-dim-context
-  "Hydrate the metric Cards once across all `groups`, then snapshot per-group,
+  "Hydrate the metric Cards once across all `blocks`, then snapshot per-block,
   per-(metric, dim) applicability and the lookup tables the orchestrator needs at
-  materialization time. Each group is one Research-plan area; the planners cross a group's
-  metrics only with that same group's dimensions.
+  materialization time. Each block is one Research-plan area; the planners cross a block's
+  metrics only with that same block's dimensions.
 
-  `groups` is the thread's `ExplorationThreadGroup` rows
+  `blocks` is the thread's `ExplorationBlock` rows
   (`{:id :metrics [...] :dimensions [...]}`). Returns
 
-    {:groups [{:group-id      <id>
-               :name          <group name>
+    {:blocks [{:block-id      <id>
+               :name          <block name>
                :metrics       [{:metric-id ... :card ... :mp ... :segments [...] ...} ...]
                :dimensions    [{:dimension-id ... :dim ... :applicable-to [metric-id ...]} ...]
                :applicability {metric-id {dimension-id {:target :dim}}}}
@@ -245,16 +246,16 @@
 
   The underlying Card is hydrated with the columns the variant builders need
   (`:id :name :description :database_id :dataset_query :card_schema :dimensions`), once per
-  Card even when it appears in several groups."
-  [groups]
-  (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) groups))
+  Card even when it appears in several blocks."
+  [blocks]
+  (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) blocks))
         cards    (when (seq card-ids)
                    (t2/select-pk->fn identity
                                      [:model/Card :id :name :description :database_id
                                       :dataset_query :card_schema :dimensions]
                                      :id [:in card-ids]))
         mp-by-db (memoize (fn [db-id] (lib-be/application-database-metadata-provider db-id)))]
-    {:groups (mapv #(group-context % cards mp-by-db) groups)}))
+    {:blocks (mapv #(block-context % cards mp-by-db) blocks)}))
 
 (defn build-row-context
   "Resolve everything the variant multimethods need to finalize a single
@@ -264,19 +265,23 @@
   can't be loaded.
 
   Looks up the metric Card, derives the metadata provider, finds the dim's
-  target via the row's group's metric `:dimension_mappings`, resolves any
+  target via the row's block's metric `:dimension_mappings`, resolves any
   selected segment, and — for `per-value-time-series` rows that carry
   `:params.temporal_dimension_id` — also resolves the override temporal
   axis. The metric selection + dim snapshot are read from the row's
-  `ExplorationThreadGroup` (the group the planner stamped on the row), not from
+  `ExplorationBlock`, reached via the row's `ExplorationPage`, not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
-  [{:keys [card_id dimension_id segment_id params group_id]}]
+  [{:keys [card_id dimension_id segment_id params page_id]}]
   (let [card       (t2/select-one :model/Card :id card_id)
-        group      (when group_id (t2/select-one :model/ExplorationThreadGroup :id group_id))
-        metric     (some #(when (= card_id (:card_id %)) %) (:metrics group))
-        dim-by-id  (u/index-by :dimension_id (:dimensions group))
+        block      (when page_id
+                     (t2/select-one :model/ExplorationBlock
+                                    {:join  [[:exploration_page :p]
+                                             [:= :p.exploration_block_id :exploration_block.id]]
+                                     :where [:= :p.id page_id]}))
+        metric     (some #(when (= card_id (:card_id %)) %) (:metrics block))
+        dim-by-id  (u/index-by :dimension_id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]
-    (when (and card group metric thread-dim)
+    (when (and card block metric thread-dim)
       (let [mp           (lib-be/application-database-metadata-provider (:database_id card))
             mappings     (:dimension_mappings metric)
             target       (qp.mbql/find-dimension-target dimension_id mappings)
@@ -299,12 +304,12 @@
          :temporal-target t-target
          :temporal-dim    t-thread-dim}))))
 
-(defn- group-prompt-block
-  "Render one group's METRICS + DIMENSIONS markdown for `plan.selmer`. Each group is a
-  self-contained block: the LLM may only cross this group's metrics with this group's
-  dimensions, and must echo `group_id` on every emitted item."
-  [{:keys [group-id name metrics dimensions]}]
-  {:group_id      group-id
+(defn- block-prompt-vars
+  "Render one block's METRICS + DIMENSIONS markdown for `plan.selmer`. Each block is
+  self-contained: the LLM may only cross this block's metrics with this block's
+  dimensions, and must echo `block_id` on every emitted item."
+  [{:keys [block-id name metrics dimensions]}]
+  {:block_id      block-id
    :name          name
    :metric_count  (count metrics)
    :dimension_count (count dimensions)
@@ -324,10 +329,10 @@
 
 (defn prompt-vars
   "Build the Selmer context map for `plan.selmer`. `metric-dim-ctx` is the
-  output of [[metric-and-dim-context]] — one block per Research-plan group;
+  output of [[metric-and-dim-context]] — one entry per Research-plan block;
   `thread-prompt` is passed through verbatim."
   [{:keys [metric-dim-ctx thread-prompt]}]
-  (let [groups (:groups metric-dim-ctx)]
+  (let [blocks (:blocks metric-dim-ctx)]
     {:thread_prompt (when-not (str/blank? thread-prompt) thread-prompt)
-     :group_count   (count groups)
-     :groups        (mapv group-prompt-block groups)}))
+     :block_count   (count blocks)
+     :blocks        (mapv block-prompt-vars blocks)}))

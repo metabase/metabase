@@ -12,29 +12,56 @@ import {
 } from "__support__/ui";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
+  createBlock,
   createExploration,
   createExplorationDocument,
+  createPage,
   createQuery,
 } from "metabase/explorations/test-utils";
+import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import * as Urls from "metabase/urls";
 import type {
+  ExplorationBlockNode,
   ExplorationDocument,
   ExplorationQuery,
-  ExplorationQueryGroup,
   ExplorationThread,
 } from "metabase-types/api";
 
 import { ExplorationSidebar } from "./ExplorationSidebar";
-import { getExplorationSidebarTree } from "./utils";
+import {
+  getExplorationSidebarTabsInfo,
+  getExplorationSidebarTree,
+} from "./utils";
+
+function getSidebarTestContext(
+  exploration: ReturnType<typeof createExploration>,
+) {
+  const path = Urls.exploration(exploration.id);
+  const explorationSidebarTabsInfo = getExplorationSidebarTabsInfo(exploration);
+  const selectedSidebarTab: ExplorationSidebarTab = "all";
+  const getSelectedSidebarTabUrl = (tab: ExplorationSidebarTab) =>
+    `${path}?tab=${tab}`;
+  const treeItemFilter =
+    explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
+
+  return {
+    path,
+    explorationSidebarTabsInfo,
+    selectedSidebarTab,
+    getSelectedSidebarTabUrl,
+    treeItemFilter,
+    getTree: () => getExplorationSidebarTree(exploration, treeItemFilter),
+  };
+}
 
 type TestSelectedEntityId =
-  | { type: "group"; id: string }
+  | { type: "page"; id: string }
   | { type: "document"; id: number }
   | null;
 
 interface SetupOpts {
   queries: ExplorationQuery[];
-  groups?: ExplorationQueryGroup[];
+  blocks?: ExplorationBlockNode[];
   documents?: ExplorationDocument[];
   thread?: Partial<ExplorationThread>;
   selectedQueryId?: number | null;
@@ -45,7 +72,7 @@ interface SetupOpts {
 
 function setup({
   queries,
-  groups,
+  blocks,
   documents,
   thread,
   selectedQueryId = null,
@@ -66,31 +93,31 @@ function setup({
 
   const exploration = createExploration({
     queries,
-    groups,
+    blocks,
     documents,
     prompt,
     thread,
   });
   exploration.can_write = canWrite;
 
-  const allGroups = exploration.threads?.flatMap((t) => t.groups ?? []) ?? [];
-  const findGroupForQuery = (queryId: number) =>
-    allGroups.find(
-      (g) => g.parent_group_id != null && g.query_ids.includes(queryId),
-    );
+  const allPages = (exploration.threads ?? []).flatMap((t) =>
+    (t.blocks ?? []).flatMap((block) => block.pages),
+  );
+  const findPageForQuery = (queryId: number) =>
+    allPages.find((page) => page.query_ids.includes(queryId));
 
   let resolvedEntityId: TestSelectedEntityId;
   if (selectedEntityId !== undefined) {
     resolvedEntityId = selectedEntityId;
   } else if (selectedQueryId != null) {
-    const owningGroup = findGroupForQuery(selectedQueryId);
-    resolvedEntityId = owningGroup
-      ? { type: "group" as const, id: owningGroup.id }
+    const owningPage = findPageForQuery(selectedQueryId);
+    resolvedEntityId = owningPage
+      ? { type: "page" as const, id: String(owningPage.id) }
       : null;
   } else if (queries.length > 0) {
-    const firstLeaf = findGroupForQuery(queries[0].id);
-    resolvedEntityId = firstLeaf
-      ? { type: "group" as const, id: firstLeaf.id }
+    const firstPage = findPageForQuery(queries[0].id);
+    resolvedEntityId = firstPage
+      ? { type: "page" as const, id: String(firstPage.id) }
       : null;
   } else {
     resolvedEntityId = null;
@@ -101,18 +128,27 @@ function setup({
   ) =>
     `${Urls.exploration(exploration.id)}/${entityId.type}/${encodeURIComponent(String(entityId.id))}`;
 
+  const explorationPath = Urls.exploration(exploration.id);
+  const {
+    explorationSidebarTabsInfo,
+    selectedSidebarTab,
+    getSelectedSidebarTabUrl,
+    getTree,
+  } = getSidebarTestContext(exploration);
+
   const sidebar = (
     <ExplorationSidebar
       exploration={exploration}
-      tree={getExplorationSidebarTree(exploration)}
+      explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+      selectedSidebarTab={selectedSidebarTab}
+      getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
+      tree={getTree()}
       selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       isOpen
     />
   );
-
-  const explorationPath = Urls.exploration(exploration.id);
 
   renderWithProviders(
     <Route path={explorationPath} component={() => sidebar} />,
@@ -176,40 +212,42 @@ describe("ExplorationSidebar", () => {
       data: { rows: [], cols: [] },
     });
 
-    const HEADING = "metric:revenue";
-    const LEAF = "leaf:revenue";
-    const makeGroups = () => [
-      {
-        id: HEADING,
-        parent_group_id: null,
-        position: 0,
-        type: "auto" as const,
-        display_type: "sidebar" as const,
+    const REVENUE_BLOCK_ID = 100;
+    const REVENUE_PAGE_ID = 101;
+    const makeBlocks = () => [
+      createBlock({
+        id: REVENUE_BLOCK_ID,
         name: "Revenue",
-        query_ids: [],
-      },
-      {
-        id: LEAF,
-        parent_group_id: HEADING,
         position: 0,
-        type: "auto" as const,
-        display_type: "singleton" as const,
-        name: "Revenue by plan",
-        query_ids: [1],
-      },
+        pages: [
+          createPage({
+            id: REVENUE_PAGE_ID,
+            name: "Revenue by plan",
+            position: 0,
+            query_ids: [1],
+          }),
+        ],
+      }),
     ];
 
     const exploration = createExploration({
-      groups: makeGroups(),
+      blocks: makeBlocks(),
       queries: [
         createQuery({ id: 1, name: "Revenue by plan", status: "pending" }),
       ],
     });
-    // A later poll: same group/leaf ids, but the query settled — a deep-different
+    const {
+      explorationSidebarTabsInfo,
+      selectedSidebarTab,
+      getSelectedSidebarTabUrl,
+      treeItemFilter,
+      getTree,
+    } = getSidebarTestContext(exploration);
+    // A later poll: same block/page ids, but the query settled — a deep-different
     // tree, so `useTree`'s data-change effect runs.
     const reloadedTree = getExplorationSidebarTree(
       createExploration({
-        groups: makeGroups(),
+        blocks: makeBlocks(),
         queries: [
           createQuery({
             id: 1,
@@ -219,6 +257,7 @@ describe("ExplorationSidebar", () => {
           }),
         ],
       }),
+      treeItemFilter,
     );
 
     const path = Urls.exploration(exploration.id);
@@ -227,8 +266,11 @@ describe("ExplorationSidebar", () => {
     ) => (
       <ExplorationSidebar
         exploration={exploration}
+        explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+        selectedSidebarTab={selectedSidebarTab}
+        getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
         tree={tree}
-        selectedEntityId={{ type: "group", id: LEAF }}
+        selectedEntityId={{ type: "page", id: String(REVENUE_PAGE_ID) }}
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
         isOpen
@@ -236,10 +278,7 @@ describe("ExplorationSidebar", () => {
     );
 
     const { rerender } = renderWithProviders(
-      <Route
-        path={path}
-        component={() => sidebarWith(getExplorationSidebarTree(exploration))}
-      />,
+      <Route path={path} component={() => sidebarWith(getTree())} />,
       { withRouter: true, initialRoute: path },
     );
 
@@ -259,49 +298,41 @@ describe("ExplorationSidebar", () => {
   });
 
   describe("auto-expand freeze after a manual toggle", () => {
-    const A_HEADING = "metric:a";
-    const B_HEADING = "metric:b";
-    const A_LEAF = "leaf:a";
-    const B_LEAF = "leaf:b";
+    const A_BLOCK_ID = 10;
+    const B_BLOCK_ID = 20;
+    const A_PAGE_ID = 1;
+    const B_PAGE_ID = 2;
+    const A_LEAF = String(A_PAGE_ID);
+    const B_LEAF = String(B_PAGE_ID);
 
-    function twoGroups() {
+    function twoBlocks() {
       return [
-        {
-          id: A_HEADING,
-          parent_group_id: null,
-          position: 0,
-          type: "auto" as const,
-          display_type: "sidebar" as const,
+        createBlock({
+          id: A_BLOCK_ID,
           name: "Group A",
-          query_ids: [],
-        },
-        {
-          id: A_LEAF,
-          parent_group_id: A_HEADING,
           position: 0,
-          type: "auto" as const,
-          display_type: "singleton" as const,
-          name: "A leaf",
-          query_ids: [1],
-        },
-        {
-          id: B_HEADING,
-          parent_group_id: null,
-          position: 1,
-          type: "auto" as const,
-          display_type: "sidebar" as const,
+          pages: [
+            createPage({
+              id: A_PAGE_ID,
+              name: "A leaf",
+              position: 0,
+              query_ids: [1],
+            }),
+          ],
+        }),
+        createBlock({
+          id: B_BLOCK_ID,
           name: "Group B",
-          query_ids: [],
-        },
-        {
-          id: B_LEAF,
-          parent_group_id: B_HEADING,
-          position: 0,
-          type: "auto" as const,
-          display_type: "singleton" as const,
-          name: "B leaf",
-          query_ids: [2],
-        },
+          position: 1,
+          pages: [
+            createPage({
+              id: B_PAGE_ID,
+              name: "B leaf",
+              position: 0,
+              query_ids: [2],
+            }),
+          ],
+        }),
       ];
     }
 
@@ -309,15 +340,24 @@ describe("ExplorationSidebar", () => {
       exploration: ReturnType<typeof createExploration>,
       initialSelectedId: string,
     ) {
-      const path = Urls.exploration(exploration.id);
+      const {
+        path,
+        explorationSidebarTabsInfo,
+        selectedSidebarTab,
+        getSelectedSidebarTabUrl,
+        getTree,
+      } = getSidebarTestContext(exploration);
       const sidebarWith = (
         tree: ReturnType<typeof getExplorationSidebarTree>,
         selectedId: string,
       ) => (
         <ExplorationSidebar
           exploration={exploration}
+          explorationSidebarTabsInfo={explorationSidebarTabsInfo}
+          selectedSidebarTab={selectedSidebarTab}
+          getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
           tree={tree}
-          selectedEntityId={{ type: "group", id: selectedId }}
+          selectedEntityId={{ type: "page", id: selectedId }}
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
           isOpen
@@ -326,12 +366,7 @@ describe("ExplorationSidebar", () => {
       const { rerender } = renderWithProviders(
         <Route
           path={path}
-          component={() =>
-            sidebarWith(
-              getExplorationSidebarTree(exploration),
-              initialSelectedId,
-            )
-          }
+          component={() => sidebarWith(getTree(), initialSelectedId)}
         />,
         { withRouter: true, initialRoute: path },
       );
@@ -349,23 +384,24 @@ describe("ExplorationSidebar", () => {
       };
     }
 
-    it("does not auto-expand a newly auto-selected group after the user collapsed one", async () => {
+    it("does not auto-expand a newly auto-selected page after the user collapsed one", async () => {
       fetchMock.get("express:/api/exploration/query/:id", {
         data: { rows: [], cols: [] },
       });
 
       const exploration = createExploration({
-        groups: twoGroups(),
+        blocks: twoBlocks(),
         queries: [
           createQuery({ id: 1, name: "A leaf", status: "done" }),
           createQuery({ id: 2, name: "B leaf", status: "pending" }),
         ],
       });
+      const { treeItemFilter } = getSidebarTestContext(exploration);
       // A later poll: B's query settles with high interestingness (deep-different
-      // tree), so the auto-selection moves to Group B's leaf.
+      // tree), so the auto-selection moves to Group B's page.
       const reloadedTree = getExplorationSidebarTree(
         createExploration({
-          groups: twoGroups(),
+          blocks: twoBlocks(),
           queries: [
             createQuery({ id: 1, name: "A leaf", status: "done" }),
             createQuery({
@@ -376,6 +412,7 @@ describe("ExplorationSidebar", () => {
             }),
           ],
         }),
+        treeItemFilter,
       );
 
       const { rerenderWith } = renderWithTree(exploration, A_LEAF);
@@ -405,7 +442,7 @@ describe("ExplorationSidebar", () => {
       });
 
       const exploration = createExploration({
-        groups: twoGroups(),
+        blocks: twoBlocks(),
         queries: [
           createQuery({ id: 1, name: "A leaf", status: "done" }),
           createQuery({ id: 2, name: "B leaf", status: "done" }),
@@ -437,25 +474,20 @@ describe("ExplorationSidebar", () => {
             finished_at: dayjs().subtract(2, "day").toISOString(),
           }),
         ],
-        groups: [
-          {
-            id: "metric:revenue",
-            parent_group_id: null,
-            position: 0,
-            type: "auto",
-            display_type: "sidebar",
+        blocks: [
+          createBlock({
+            id: 100,
             name: "Revenue",
-            query_ids: [],
-          },
-          {
-            id: "leaf:1",
-            parent_group_id: "metric:revenue",
             position: 0,
-            type: "auto",
-            display_type: "singleton",
-            name: "Revenue by plan",
-            query_ids: [1],
-          },
+            pages: [
+              createPage({
+                id: 1,
+                name: "Revenue by plan",
+                position: 0,
+                query_ids: [1],
+              }),
+            ],
+          }),
         ],
       });
 
@@ -467,35 +499,17 @@ describe("ExplorationSidebar", () => {
   });
 
   describe("heading status inherited from descendant queries", () => {
-    const HEADING = "metric:revenue";
-    const headingGroups = [
-      {
-        id: HEADING,
-        parent_group_id: null,
-        position: 0,
-        type: "auto" as const,
-        display_type: "sidebar" as const,
+    const HEADING_BLOCK_ID = 100;
+    const headingBlocks = [
+      createBlock({
+        id: HEADING_BLOCK_ID,
         name: "Revenue",
-        query_ids: [],
-      },
-      {
-        id: "leaf:a",
-        parent_group_id: HEADING,
         position: 0,
-        type: "auto" as const,
-        display_type: "singleton" as const,
-        name: "Leaf A",
-        query_ids: [1],
-      },
-      {
-        id: "leaf:b",
-        parent_group_id: HEADING,
-        position: 1,
-        type: "auto" as const,
-        display_type: "singleton" as const,
-        name: "Leaf B",
-        query_ids: [2],
-      },
+        pages: [
+          createPage({ id: 1, name: "Leaf A", position: 0, query_ids: [1] }),
+          createPage({ id: 2, name: "Leaf B", position: 1, query_ids: [2] }),
+        ],
+      }),
     ];
     const headingRow = () => screen.getByRole("group", { name: /Revenue/ });
 
@@ -505,8 +519,8 @@ describe("ExplorationSidebar", () => {
           createQuery({ id: 1, name: "Leaf A", status: "pending" }),
           createQuery({ id: 2, name: "Leaf B", status: "done" }),
         ],
-        groups: headingGroups,
-        selectedEntityId: { type: "group", id: "leaf:b" },
+        blocks: headingBlocks,
+        selectedEntityId: { type: "page", id: "2" },
       });
 
       expect(headingRow()).toHaveAttribute("aria-busy", "true");
@@ -523,8 +537,8 @@ describe("ExplorationSidebar", () => {
             error_message: "boom",
           }),
         ],
-        groups: headingGroups,
-        selectedEntityId: { type: "group", id: "leaf:a" },
+        blocks: headingBlocks,
+        selectedEntityId: { type: "page", id: "1" },
       });
 
       // The heading never surfaces an error icon, and a settled child isn't busy.
@@ -537,8 +551,8 @@ describe("ExplorationSidebar", () => {
           createQuery({ id: 1, name: "Leaf A", status: "done" }),
           createQuery({ id: 2, name: "Leaf B", status: "done" }),
         ],
-        groups: headingGroups,
-        selectedEntityId: { type: "group", id: "leaf:a" },
+        blocks: headingBlocks,
+        selectedEntityId: { type: "page", id: "1" },
       });
 
       const row = headingRow();
@@ -573,7 +587,7 @@ describe("ExplorationSidebar", () => {
 
     setup({
       queries: [],
-      groups: [],
+      blocks: [],
       documents: [aiSummaryDocument],
       thread: {
         ai_summary_document_id: aiSummaryDocument.id,
@@ -599,7 +613,7 @@ describe("ExplorationSidebar", () => {
 
     setup({
       queries: [],
-      groups: [],
+      blocks: [],
       documents: [aiSummaryDocument],
       thread: {
         ai_summary_document_id: aiSummaryDocument.id,
@@ -722,8 +736,8 @@ describe("ExplorationSidebar", () => {
     expect(getRow("Revenue by region")).toHaveAttribute(
       "href",
       getSelectedEntityIdUrl({
-        type: "group",
-        id: `auto:1:dim-${doneQuery.id}`,
+        type: "page",
+        id: String(doneQuery.id),
       }),
     );
   });
@@ -847,8 +861,8 @@ describe("ExplorationSidebar", () => {
     });
   });
 
-  describe("query groups", () => {
-    // Each metric heading + leaves block.
+  describe("query blocks", () => {
+    // Each metric block + pages.
     const planQueries: ExplorationQuery[] = [
       createQuery({
         id: 11,
@@ -874,76 +888,59 @@ describe("ExplorationSidebar", () => {
       }),
     ];
 
-    const PLAN_HEADING_ID = "metric:plan";
-    const REGION_HEADING_ID = "metric:region";
-    const planLeafAllId = `leaf:plan:${planQueries[0].id}`;
-    const planLeafUsId = `leaf:plan:${planQueries[1].id}`;
-    const regionLeafAllId = `leaf:region:${regionQueries[0].id}`;
-    const regionLeafEuId = `leaf:region:${regionQueries[1].id}`;
+    const PLAN_BLOCK_ID = 10;
+    const REGION_BLOCK_ID = 20;
+    const planLeafAllId = String(planQueries[0].id);
+    const planLeafUsId = String(planQueries[1].id);
+    const regionLeafAllId = String(regionQueries[0].id);
 
-    // Two top-level metric headings, each containing two singleton leaves.
-    const groups: ExplorationQueryGroup[] = [
-      {
-        id: PLAN_HEADING_ID,
-        parent_group_id: null,
-        position: 0,
-        type: "auto",
-        display_type: "sidebar",
+    // Two top-level metric blocks, each containing two single-query pages.
+    const blocks: ExplorationBlockNode[] = [
+      createBlock({
+        id: PLAN_BLOCK_ID,
         name: "Revenue by plan",
-        query_ids: [],
-      },
-      {
-        id: planLeafAllId,
-        parent_group_id: PLAN_HEADING_ID,
         position: 0,
-        type: "auto",
-        display_type: "singleton",
-        name: planQueries[0].name,
-        query_ids: [planQueries[0].id],
-      },
-      {
-        id: planLeafUsId,
-        parent_group_id: PLAN_HEADING_ID,
-        position: 1,
-        type: "auto",
-        display_type: "singleton",
-        name: planQueries[1].name,
-        query_ids: [planQueries[1].id],
-      },
-      {
-        id: REGION_HEADING_ID,
-        parent_group_id: null,
-        position: 1,
-        type: "auto",
-        display_type: "sidebar",
+        pages: [
+          createPage({
+            id: planQueries[0].id,
+            name: planQueries[0].name,
+            position: 0,
+            query_ids: [planQueries[0].id],
+          }),
+          createPage({
+            id: planQueries[1].id,
+            name: planQueries[1].name,
+            position: 1,
+            query_ids: [planQueries[1].id],
+          }),
+        ],
+      }),
+      createBlock({
+        id: REGION_BLOCK_ID,
         name: "Revenue by region",
-        query_ids: [],
-      },
-      {
-        id: regionLeafAllId,
-        parent_group_id: REGION_HEADING_ID,
-        position: 0,
-        type: "auto",
-        display_type: "singleton",
-        name: regionQueries[0].name,
-        query_ids: [regionQueries[0].id],
-      },
-      {
-        id: regionLeafEuId,
-        parent_group_id: REGION_HEADING_ID,
         position: 1,
-        type: "auto",
-        display_type: "singleton",
-        name: regionQueries[1].name,
-        query_ids: [regionQueries[1].id],
-      },
+        pages: [
+          createPage({
+            id: regionQueries[0].id,
+            name: regionQueries[0].name,
+            position: 0,
+            query_ids: [regionQueries[0].id],
+          }),
+          createPage({
+            id: regionQueries[1].id,
+            name: regionQueries[1].name,
+            position: 1,
+            query_ids: [regionQueries[1].id],
+          }),
+        ],
+      }),
     ];
 
-    it("renders one collapsible heading per metric and toggles its leaf rows when clicked", async () => {
+    it("renders one collapsible heading per metric and toggles its page rows when clicked", async () => {
       setup({
         queries: [...planQueries, ...regionQueries],
-        groups,
-        selectedEntityId: { type: "group", id: planLeafAllId },
+        blocks,
+        selectedEntityId: { type: "page", id: planLeafAllId },
       });
 
       const planHeading = screen.getByRole("group", {
@@ -955,20 +952,20 @@ describe("ExplorationSidebar", () => {
       expect(planHeading).toHaveAttribute("aria-expanded", "true");
       expect(regionHeading).toHaveAttribute("aria-expanded", "false");
 
-      // Plan leaves are in the DOM; region leaves aren't until that
+      // Plan pages are in the DOM; region pages aren't until that
       // heading is opened.
       expect(getRow("Revenue by plan (all)")).toBeInTheDocument();
       expect(
         screen.queryByText("Revenue by region (all)", { exact: false }),
       ).not.toBeInTheDocument();
 
-      // Click the region heading → expands and reveals its leaves.
+      // Click the region heading → expands and reveals its pages.
       await userEvent.click(regionHeading);
       expect(regionHeading).toHaveAttribute("aria-expanded", "true");
       expect(getRow("Revenue by region (all)")).toBeInTheDocument();
       expect(getRow("Revenue by region (EU)")).toBeInTheDocument();
 
-      // Toggle the plan heading off — its leaves disappear; the
+      // Toggle the plan heading off — its pages disappear; the
       // region heading stays expanded.
       await userEvent.click(planHeading);
       expect(planHeading).toHaveAttribute("aria-expanded", "false");
@@ -978,46 +975,41 @@ describe("ExplorationSidebar", () => {
       expect(regionHeading).toHaveAttribute("aria-expanded", "true");
     });
 
-    it("a heading wrapping a single leaf is collapsible — collapsing it removes the leaf from the DOM", async () => {
+    it("a heading wrapping a single page is collapsible — collapsing it removes the page from the DOM", async () => {
       const onlyQuery = createQuery({
         id: 99,
         name: "Solo dimension",
         status: "done",
       });
-      const HEADING_ID = "metric:solo";
-      const LEAF_ID = "leaf:solo";
+      const SOLO_BLOCK_ID = 30;
+      const SOLO_PAGE_ID = 300;
       setup({
         queries: [onlyQuery],
-        groups: [
-          {
-            id: HEADING_ID,
-            parent_group_id: null,
-            position: 0,
-            type: "auto",
-            display_type: "sidebar",
+        blocks: [
+          createBlock({
+            id: SOLO_BLOCK_ID,
             name: "Solo metric",
-            query_ids: [],
-          },
-          {
-            id: LEAF_ID,
-            parent_group_id: HEADING_ID,
             position: 0,
-            type: "auto",
-            display_type: "singleton",
-            name: onlyQuery.name,
-            query_ids: [onlyQuery.id],
-          },
+            pages: [
+              createPage({
+                id: SOLO_PAGE_ID,
+                name: onlyQuery.name,
+                position: 0,
+                query_ids: [onlyQuery.id],
+              }),
+            ],
+          }),
         ],
-        // Anchor selection on the leaf so the thread + metric
+        // Anchor selection on the page so the thread + metric
         // headings start auto-expanded.
-        selectedEntityId: { type: "group", id: LEAF_ID },
+        selectedEntityId: { type: "page", id: String(SOLO_PAGE_ID) },
       });
 
       const heading = screen.getByRole("group", { name: /Solo metric/ });
       expect(heading).toHaveAttribute("aria-expanded", "true");
       expect(getRow("Solo dimension")).toBeInTheDocument();
 
-      // Collapsing the heading removes the lone leaf from the DOM.
+      // Collapsing the heading removes the lone page from the DOM.
       await userEvent.click(heading);
       expect(heading).toHaveAttribute("aria-expanded", "false");
       expect(
@@ -1025,16 +1017,16 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("each leaf row's status icon reflects its own queries; the heading shows the rolled-up status", () => {
-      // One heading with three leaves: one running, one errored, one done.
-      // Each leaf shows its own status; the heading inherits the rolled-up
+    it("each page row's status icon reflects its own queries; the heading shows the rolled-up status", () => {
+      // One heading with three pages: one running, one errored, one done.
+      // Each page shows its own status; the heading inherits the rolled-up
       // status of all its descendant queries (running here, since one is still
       // loading).
-      const runningLeafQueries = [
+      const runningPageQueries = [
         createQuery({ id: 1001, name: "Pending leaf q1", status: "pending" }),
         createQuery({ id: 1002, name: "Pending leaf q2", status: "done" }),
       ];
-      const errorLeafQueries = [
+      const errorPageQueries = [
         createQuery({ id: 2001, name: "Error leaf q1", status: "done" }),
         createQuery({
           id: 2002,
@@ -1043,64 +1035,53 @@ describe("ExplorationSidebar", () => {
           error_message: "boom",
         }),
       ];
-      const doneLeafQueries = [
+      const donePageQueries = [
         createQuery({ id: 3001, name: "Done leaf q1", status: "done" }),
         createQuery({ id: 3002, name: "Done leaf q2", status: "done" }),
       ];
 
-      const HEADING_ID = "metric:status";
-      const RUNNING_LEAF_ID = "leaf:running";
+      const STATUS_BLOCK_ID = 40;
+      const RUNNING_PAGE_ID = 401;
       setup({
         queries: [
-          ...runningLeafQueries,
-          ...errorLeafQueries,
-          ...doneLeafQueries,
+          ...runningPageQueries,
+          ...errorPageQueries,
+          ...donePageQueries,
         ],
-        groups: [
-          {
-            id: HEADING_ID,
-            parent_group_id: null,
-            position: 0,
-            type: "auto",
-            display_type: "sidebar",
+        blocks: [
+          createBlock({
+            id: STATUS_BLOCK_ID,
             name: "Status metric",
-            query_ids: [],
-          },
-          {
-            id: RUNNING_LEAF_ID,
-            parent_group_id: HEADING_ID,
             position: 0,
-            type: "auto",
-            display_type: "page",
-            name: "Still running",
-            query_ids: runningLeafQueries.map((q) => q.id),
-          },
-          {
-            id: "leaf:error",
-            parent_group_id: HEADING_ID,
-            position: 1,
-            type: "auto",
-            display_type: "page",
-            name: "Has an error",
-            query_ids: errorLeafQueries.map((q) => q.id),
-          },
-          {
-            id: "leaf:done",
-            parent_group_id: HEADING_ID,
-            position: 2,
-            type: "auto",
-            display_type: "page",
-            name: "All settled",
-            query_ids: doneLeafQueries.map((q) => q.id),
-          },
+            pages: [
+              createPage({
+                id: RUNNING_PAGE_ID,
+                name: "Still running",
+                position: 0,
+                query_ids: runningPageQueries.map((q) => q.id),
+              }),
+              createPage({
+                id: 402,
+                name: "Has an error",
+                position: 1,
+                query_ids: errorPageQueries.map((q) => q.id),
+              }),
+              createPage({
+                id: 403,
+                name: "All settled",
+                position: 2,
+                query_ids: donePageQueries.map((q) => q.id),
+              }),
+            ],
+          }),
         ],
-        // Select the first leaf so the heading auto-expands and all
-        // three leaves are in the DOM.
-        selectedEntityId: { type: "group", id: RUNNING_LEAF_ID },
+        // Select the first page so the heading auto-expands and all
+        // three pages are in the DOM.
+        selectedEntityId: { type: "page", id: String(RUNNING_PAGE_ID) },
       });
 
-      // Leaf rows are labelled by the BE-provided group name; each row's status
-      // is derived from that group's own queries.
+      // Page rows are labelled by the BE-provided page name; each row's status
+      // is derived from that page's own queries.
       expect(getRow("Still running")).toHaveAttribute("aria-busy", "true");
       expect(
         within(getRow("Has an error")).getByLabelText("Failed to generate"),
@@ -1110,19 +1091,19 @@ describe("ExplorationSidebar", () => {
       ).toBeInTheDocument();
 
       // Heading inherits the rolled-up status: one descendant query is still
-      // loading, so it reads as busy (never the leaf "Ready" icon).
+      // loading, so it reads as busy (never the page "Ready" icon).
       const heading = screen.getByRole("group", { name: /Status metric/ });
       expect(heading).toHaveAttribute("aria-busy", "true");
       expect(within(heading).queryByLabelText("Ready")).not.toBeInTheDocument();
     });
 
-    it("auto-expands the heading that owns the selected leaf and leaves the other heading collapsed", () => {
+    it("auto-expands the heading that owns the selected page and leaves the other heading collapsed", () => {
       setup({
         queries: [...planQueries, ...regionQueries],
-        groups,
-        // Selecting a region leaf should bubble up the auto-expand to
+        blocks,
+        // Selecting a region page should bubble up the auto-expand to
         // the `Revenue by region` heading.
-        selectedEntityId: { type: "group", id: regionLeafAllId },
+        selectedEntityId: { type: "page", id: regionLeafAllId },
       });
 
       const planHeading = screen.getByRole("group", {
@@ -1140,44 +1121,39 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
     });
 
-    describe("display_type: page", () => {
+    describe("multi-query page", () => {
       const pageQueries: ExplorationQuery[] = [
         createQuery({ id: 31, name: "Revenue (US)", status: "done" }),
         createQuery({ id: 32, name: "Revenue (EU)", status: "done" }),
       ];
-      const PAGE_HEADING_ID = "metric:page";
-      const PAGE_LEAF_ID = "leaf:page";
-      const pageGroups: ExplorationQueryGroup[] = [
-        {
-          id: PAGE_HEADING_ID,
-          parent_group_id: null,
-          position: 0,
-          type: "auto",
-          display_type: "sidebar",
+      const PAGE_BLOCK_ID = 50;
+      const PAGE_LEAF_ID = 500;
+      const pageBlocks: ExplorationBlockNode[] = [
+        createBlock({
+          id: PAGE_BLOCK_ID,
           name: "Page metric",
-          query_ids: [],
-        },
-        {
-          id: PAGE_LEAF_ID,
-          parent_group_id: PAGE_HEADING_ID,
           position: 0,
-          type: "auto",
-          display_type: "page",
-          // The leaf row is labelled by the BE-provided group name; the
-          // constituent queries are fanned out behind the single row.
-          name: "Revenue across regions",
-          query_ids: pageQueries.map((q) => q.id),
-        },
+          pages: [
+            createPage({
+              id: PAGE_LEAF_ID,
+              // The page row is labelled by the BE-provided page name; the
+              // constituent queries are fanned out behind the single row.
+              name: "Revenue across regions",
+              position: 0,
+              query_ids: pageQueries.map((q) => q.id),
+            }),
+          ],
+        }),
       ];
 
-      it("renders a single `By <dimension>` leaf row that fans the queries out behind it without exposing them individually", () => {
+      it("renders a single `By <dimension>` page row that fans the queries out behind it without exposing them individually", () => {
         setup({
           queries: pageQueries,
-          groups: pageGroups,
-          selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
+          blocks: pageBlocks,
+          selectedEntityId: { type: "page", id: String(PAGE_LEAF_ID) },
         });
 
-        // One leaf row labelled by the group name.
+        // One page row labelled by the page name.
         expect(getRow("Revenue across regions")).toBeInTheDocument();
         // The other constituent query name is NOT exposed as its own row.
         const allRows = screen.getAllByRole("treeitem");
@@ -1186,28 +1162,28 @@ describe("ExplorationSidebar", () => {
             within(row).queryByText("Revenue (EU)", { exact: false }),
           ),
         ).toHaveLength(0);
-        // Exactly one treeitem (the single page-leaf) is rendered.
+        // Exactly one treeitem (the single page) is rendered.
         expect(allRows).toHaveLength(1);
       });
 
-      it("links the page leaf row to the selected group URL", () => {
+      it("links the page row to the selected page URL", () => {
         const { getSelectedEntityIdUrl } = setup({
           queries: pageQueries,
-          groups: pageGroups,
-          selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
+          blocks: pageBlocks,
+          selectedEntityId: { type: "page", id: String(PAGE_LEAF_ID) },
         });
 
         expect(getRow("Revenue across regions")).toHaveAttribute(
           "href",
-          getSelectedEntityIdUrl({ type: "group", id: PAGE_LEAF_ID }),
+          getSelectedEntityIdUrl({ type: "page", id: String(PAGE_LEAF_ID) }),
         );
       });
 
-      it("marks the page leaf row as selected when its group is the selected entity", () => {
+      it("marks the page row as selected when its page is the selected entity", () => {
         setup({
           queries: pageQueries,
-          groups: pageGroups,
-          selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
+          blocks: pageBlocks,
+          selectedEntityId: { type: "page", id: String(PAGE_LEAF_ID) },
         });
 
         expect(getRow("Revenue across regions")).toHaveAttribute(
@@ -1216,7 +1192,7 @@ describe("ExplorationSidebar", () => {
         );
       });
 
-      it("a mixed-status page leaf reports the worst-case status on its single row", () => {
+      it("a mixed-status page reports the worst-case status on its single row", () => {
         const mixedPageQueries = [
           createQuery({ id: 41, name: "OK query", status: "done" }),
           createQuery({
@@ -1226,30 +1202,25 @@ describe("ExplorationSidebar", () => {
             error_message: "kaboom",
           }),
         ];
-        const MIXED_LEAF_ID = "leaf:mixed-page";
+        const MIXED_PAGE_ID = 510;
         setup({
           queries: mixedPageQueries,
-          groups: [
-            {
-              id: PAGE_HEADING_ID,
-              parent_group_id: null,
-              position: 0,
-              type: "auto",
-              display_type: "sidebar",
+          blocks: [
+            createBlock({
+              id: PAGE_BLOCK_ID,
               name: "Mixed metric",
-              query_ids: [],
-            },
-            {
-              id: MIXED_LEAF_ID,
-              parent_group_id: PAGE_HEADING_ID,
               position: 0,
-              type: "auto",
-              display_type: "page",
-              name: "Mixed page",
-              query_ids: mixedPageQueries.map((q) => q.id),
-            },
+              pages: [
+                createPage({
+                  id: MIXED_PAGE_ID,
+                  name: "Mixed page",
+                  position: 0,
+                  query_ids: mixedPageQueries.map((q) => q.id),
+                }),
+              ],
+            }),
           ],
-          selectedEntityId: { type: "group", id: MIXED_LEAF_ID },
+          selectedEntityId: { type: "page", id: String(MIXED_PAGE_ID) },
         });
 
         // The error wins — the row's icon is the warning.
@@ -1260,17 +1231,17 @@ describe("ExplorationSidebar", () => {
     });
 
     describe("arrow-key navigation", () => {
-      it("Right moves selection from one leaf to the next within the same heading and keeps that heading expanded", () => {
+      it("Right moves selection from one page to the next within the same heading and keeps that heading expanded", () => {
         const { setSelectedEntityId } = setup({
           queries: [...planQueries, ...regionQueries],
-          groups,
-          selectedEntityId: { type: "group", id: planLeafAllId },
+          blocks,
+          selectedEntityId: { type: "page", id: planLeafAllId },
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
         expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "group",
+          type: "page",
           id: planLeafUsId,
         });
         // Region heading stayed closed; we never left the plan heading.
@@ -1280,18 +1251,18 @@ describe("ExplorationSidebar", () => {
         expect(regionHeading).toHaveAttribute("aria-expanded", "false");
       });
 
-      it("Right past the last leaf in a heading selects the first leaf of the next heading and collapses the source heading", () => {
+      it("Right past the last page in a heading selects the first page of the next heading and collapses the source heading", () => {
         const { setSelectedEntityId } = setup({
           queries: [...planQueries, ...regionQueries],
-          groups,
-          // Selection sits on the LAST leaf of the plan heading.
-          selectedEntityId: { type: "group", id: planLeafUsId },
+          blocks,
+          // Selection sits on the LAST page of the plan heading.
+          selectedEntityId: { type: "page", id: planLeafUsId },
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
         expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "group",
+          type: "page",
           id: regionLeafAllId,
         });
 
@@ -1307,17 +1278,17 @@ describe("ExplorationSidebar", () => {
         expect(planHeading).toHaveAttribute("aria-expanded", "false");
       });
 
-      it("Left past the first leaf in a heading selects the last leaf of the previous heading and collapses the source heading", () => {
+      it("Left past the first page in a heading selects the last page of the previous heading and collapses the source heading", () => {
         const { setSelectedEntityId } = setup({
           queries: [...planQueries, ...regionQueries],
-          groups,
-          selectedEntityId: { type: "group", id: regionLeafAllId },
+          blocks,
+          selectedEntityId: { type: "page", id: regionLeafAllId },
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
         expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "group",
+          type: "page",
           id: planLeafUsId,
         });
 
@@ -1327,46 +1298,41 @@ describe("ExplorationSidebar", () => {
         expect(regionHeading).toHaveAttribute("aria-expanded", "false");
       });
 
-      it("Right onto a page leaf in a different heading still dispatches a group selection and collapses the source heading", () => {
+      it("Right onto a multi-query page in a different heading still dispatches a page selection and collapses the source heading", () => {
         const pageQueriesNav = [
           createQuery({ id: 101, name: "Page q1", status: "done" }),
           createQuery({ id: 102, name: "Page q2", status: "done" }),
         ];
-        const PAGE_HEADING = "metric:page-after";
-        const PAGE_LEAF = "leaf:page-after";
+        const PAGE_BLOCK_ID = 60;
+        const PAGE_LEAF_ID = 600;
         const { setSelectedEntityId } = setup({
           queries: [...planQueries, ...pageQueriesNav],
-          groups: [
-            ...groups.slice(0, 3), // plan heading + its two singleton leaves
-            {
-              id: PAGE_HEADING,
-              parent_group_id: null,
-              position: 1,
-              type: "auto",
-              display_type: "sidebar",
+          blocks: [
+            blocks[0], // plan block + its two single-query pages
+            createBlock({
+              id: PAGE_BLOCK_ID,
               name: "Page after plan",
-              query_ids: [],
-            },
-            {
-              id: PAGE_LEAF,
-              parent_group_id: PAGE_HEADING,
-              position: 0,
-              type: "auto",
-              display_type: "page",
-              name: "Page leaf",
-              query_ids: pageQueriesNav.map((q) => q.id),
-            },
+              position: 1,
+              pages: [
+                createPage({
+                  id: PAGE_LEAF_ID,
+                  name: "Page leaf",
+                  position: 0,
+                  query_ids: pageQueriesNav.map((q) => q.id),
+                }),
+              ],
+            }),
           ],
-          // Selection on the last plan leaf — Right should bridge to
-          // the next heading's first (and only) leaf.
-          selectedEntityId: { type: "group", id: planLeafUsId },
+          // Selection on the last plan page — Right should bridge to
+          // the next heading's first (and only) page.
+          selectedEntityId: { type: "page", id: planLeafUsId },
         });
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
         expect(setSelectedEntityId).toHaveBeenLastCalledWith({
-          type: "group",
-          id: PAGE_LEAF,
+          type: "page",
+          id: String(PAGE_LEAF_ID),
         });
         const planHeading = screen.getByRole("group", {
           name: /Revenue by plan/,

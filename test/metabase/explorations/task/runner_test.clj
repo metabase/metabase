@@ -32,12 +32,17 @@
                                                      :position       0}
                                               prompt (assoc :prompt prompt)))))))
 
-(defn- thread-group!
-  "Create a minimal ExplorationThreadGroup for `thread-id` and return its id. Query rows
-  require a non-null group_id (FK to this table)."
-  [thread-id]
-  (t2/insert-returning-pk! :model/ExplorationThreadGroup
-                           {:exploration_thread_id thread-id}))
+(defn- thread-page!
+  "Create a minimal ExplorationBlock + ExplorationPage for `thread-id` and return the page id.
+  Query rows require a non-null page_id (FK to exploration_page)."
+  [thread-id card-id]
+  (let [block-id (t2/insert-returning-pk! :model/ExplorationBlock
+                                          {:exploration_thread_id thread-id})]
+    (t2/insert-returning-pk! :model/ExplorationPage
+                             {:exploration_block_id block-id
+                              :card_id              card-id
+                              :dimension_id         "d1"
+                              :query_type           "default"})))
 
 (defn- pending-query!
   [thread-id card-id mbql]
@@ -45,7 +50,7 @@
                                          {:exploration_thread_id thread-id
                                           :card_id               card-id
                                           :database_id           (mt/id)
-                                          :group_id              (thread-group! thread-id)
+                                          :page_id               (thread-page! thread-id card-id)
                                           :dimension_id          "d1"
                                           :dataset_query         mbql
                                           :status                "pending"
@@ -317,7 +322,7 @@
                   {:exploration_thread_id thread-id
                    :card_id               card-id
                    :database_id           (mt/id)
-                   :group_id              (thread-group! thread-id)
+                   :page_id               (thread-page! thread-id card-id)
                    :dimension_id          "d1"
                    :dataset_query         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))
                    :status                "done"

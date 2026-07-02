@@ -40,9 +40,9 @@
    [metabase.explorations.ai-summary.common :as common]
    [metabase.explorations.ai-summary.phase1 :as phase1]
    [metabase.explorations.ai-summary.phase2 :as phase2]
-   [metabase.explorations.groups :as groups]
+   [metabase.explorations.blocks :as blocks]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
-   [metabase.explorations.models.exploration-thread-group :as thread-group]
    [metabase.explorations.models.exploration-thread-timeline :as thread-timeline]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
@@ -100,8 +100,8 @@
   "Plain-text recap of metric / dimension / timeline names selected on the
   thread, used to remind the LLM what the user was looking at."
   [thread-id]
-  (let [metrics    (thread-group/selected-metric-names thread-id)
-        dimensions (thread-group/selected-dimension-names thread-id)
+  (let [metrics    (block/selected-metric-names thread-id)
+        dimensions (block/selected-dimension-names thread-id)
         timelines  (thread-timeline/selected-names thread-id)]
     (cond-> []
       (seq metrics)    (conj (str "Metrics:    " (str/join ", " metrics)))
@@ -285,11 +285,7 @@
            (let [eq-id (eqr/exploration-query-id-for-stored-result sr-id)
                  {:keys [card-id primary-eq]} (eqr/create-ephemeral-card-for-exploration-queries!
                                                [eq-id] document-id collection-id creator {})
-                 chart-href (groups/chart-page-url exploration-id
-                                                   (:group_id primary-eq)
-                                                   (:card_id primary-eq)
-                                                   (:dimension_id primary-eq)
-                                                   (:query_type primary-eq))]
+                 chart-href (blocks/page-url exploration-id (:page_id primary-eq))]
              (-> node
                  (assoc-in [:attrs :id] card-id)
                  (assoc-in [:attrs :chart_href] chart-href)))

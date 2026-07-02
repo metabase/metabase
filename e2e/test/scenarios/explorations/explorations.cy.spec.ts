@@ -437,10 +437,16 @@ describe("scenarios > explorations > detail page", () => {
         cy.get("body").type("{leftarrow}");
         readSelectedText().should("eq", initialText);
 
-        H.expectUnstructuredSnowplowEvent({
-          event: "exploration_visualization_changed",
-          triggered_from: "keyboard",
-        });
+        // ArrowRight onto the next page, ArrowLeft back onto the
+        // initial one — and `expectUnstructuredSnowplowEvent` asserts
+        // an exact count.
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "exploration_visualization_changed",
+            triggered_from: "keyboard",
+          },
+          2,
+        );
       });
     });
   });
@@ -493,7 +499,7 @@ describe("scenarios > explorations > detail page", () => {
 
           metricHeading().should("be.visible");
           for (const dim of pickedDimensions) {
-            cy.findByText(`by ${dim.display_name}`).should("be.visible");
+            cy.findByText(`By ${dim.display_name}`).should("be.visible");
           }
 
           // Collapse the metric heading: aria-expanded flips and
@@ -503,13 +509,13 @@ describe("scenarios > explorations > detail page", () => {
             .click()
             .should("have.attr", "aria-expanded", "false");
           for (const dim of pickedDimensions) {
-            cy.findByText(`by ${dim.display_name}`).should("not.exist");
+            cy.findByText(`By ${dim.display_name}`).should("not.exist");
           }
 
           // Re-expand: both leaves return.
           metricHeading().click().should("have.attr", "aria-expanded", "true");
           for (const dim of pickedDimensions) {
-            cy.findByText(`by ${dim.display_name}`).should("be.visible");
+            cy.findByText(`By ${dim.display_name}`).should("be.visible");
           }
         });
 
@@ -593,117 +599,32 @@ describe("scenarios > explorations > detail page", () => {
     });
   });
 
-  it("auto-creates Scratchpad + AI Summary documents under the Findings sidebar heading, with a Move to trash action in each doc's three-dots menu", () => {
+  it("auto-creates a Scratchpad document with a Move to trash action in its three-dots menu", () => {
     H.createExplorationViaApi({ name: "Documents fixture" }).then((id) => {
-      H.visitExploration(id);
-
-      // Expand the `Findings` heading so its child rows render
-      const findingsHeading = () =>
-        cy.findByRole("group", { name: "Findings" });
-      findingsHeading()
-        .should("have.attr", "aria-expanded")
-        .then((expanded) => {
-          if (expanded !== "true") {
-            findingsHeading().click();
-          }
-        });
-
-      cy.findByText("AI Summary").should("be.visible");
-      cy.findAllByText("Scratchpad").should("be.visible");
-
-      // Click each document, open the three-dots `More options`
-      // menu in its detail view, and assert `Move to trash` is
-      // available. The doc detail page lives at
-      // `/question/research/:id/document/:documentId`.
+      // The BE auto-creates a Scratchpad document synchronously on
+      // exploration creation. (The AI Summary document is created
+      // asynchronously once the summary task runs, so it is not
+      // asserted here — see the AI-summary completion test below.)
       cy.request("GET", `/api/exploration/${id}`).then(({ body }) => {
         const docs = (body.threads ?? []).flatMap(
           (t: { documents?: Array<{ id: number; name: string }> }) =>
             t.documents ?? [],
         ) as Array<{ id: number; name: string }>;
         const scratchpadDoc = docs.find((d) => d.name === "Scratchpad");
-        const autoDoc = docs.find((d) => d.name === "AI Summary");
         expect(scratchpadDoc, "BE created a Scratchpad document").to.exist;
-        expect(autoDoc, "BE created an AI Summary document").to.exist;
 
-        for (const doc of [scratchpadDoc!, autoDoc!]) {
-          cy.visit(`/question/research/${id}/document/${doc.id}`);
-          cy.findByRole("button", { name: "Save" }).should("not.exist");
-          cy.findByLabelText("More options").click();
-          // `metabase/documents/components/DocumentMenu.tsx` puts
-          // the trash action behind a `canWrite && onArchive` gate;
-          // an admin user always satisfies that.
-          cy.findByRole("menuitem", { name: /Move to trash/i }).should(
-            "be.visible",
-          );
-          // Dismiss the menu before moving on so the next iteration
-          // doesn't collide with a still-open menu.
-          cy.findByLabelText("More options").click();
-        }
-      });
-    });
-  });
-
-  it("adds a chart to the Scratchpad document via the Add to document button and lands on the document", () => {
-    createTimelineWithSentinelEvent("Releases", "star").then((timelineId) => {
-      H.createExplorationViaApi({
-        name: "Chart add fixture",
-        timelineIds: [timelineId],
-      }).then((id) => {
-        H.visitExploration(id);
-
-        cy.findByRole("treeitem", { name: /By Created At/i }).click();
-
-        cy.log("timeline should be visible in the viz");
-        cy.findAllByTestId("visualization-root")
-          .first()
-          .within(() => {
-            H.echartsIcon("star").should("be.visible");
-          });
-
-        cy.intercept("POST", "/api/exploration/thread/*/documents/*/append").as(
-          "appendChart",
-        );
-        cy.findByLabelText("Add to document").click();
-
-        // The detail page shows one entry per visible SeriesGroup —
-        // even on this no-segment fixture the BE planner usually
-        // emits more than one group per leaf (default + temporal /
-        // top-N variants), so the doc menu enters the chart-picker
-        // stage first. Pick the first listed chart, then `Scratchpad`.
-        cy.findByText("Pick a chart").should("be.visible");
-        cy.findAllByRole("menuitem").first().click();
-
-        cy.findByText("Add to").should("be.visible");
-        // Mantine renders the leftSection icon's `aria-label` ("document
-        // icon") into the menuitem's accessible name (it becomes
-        // "document icon Scratchpad"), so we match by regex on the doc name.
-        cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
-        cy.wait("@appendChart").then(({ request, response }) => {
-          expect(response?.statusCode).to.eq(200);
-          // The append endpoint always takes the array form. The
-          // picked SeriesGroup's `queryIds` is the full set of
-          // source queries (the BE then materialises one composite
-          // ephemeral card via `composite/combine`). Length is 1 for
-          // a single-query group, N for a multi-series cartesian or
-          // heat-map — we only guard that the FE sends the array
-          // shape and not the legacy singular `exploration_query_id`.
-          const ids = request.body.exploration_query_ids as number[];
-          expect(ids).to.be.an("array");
-          expect(ids.length).to.be.at.least(1);
-        });
-
-        // Toast renders with a link whose text is the doc name.
-        cy.findByText("Added to").should("be.visible");
-        cy.findByRole("link", { name: "Scratchpad" }).click();
-
-        // Detail page renders with exactly one composite-ephemeral
-        // card embed (not N per-query embeds).
-        cy.url().should("include", `/question/research/${id}/document/`);
-        cy.findAllByTestId("document-card-embed").should("have.length", 1);
+        // Open the doc detail view and assert `Move to trash` is
+        // available. The doc detail page lives at
+        // `/question/research/:id/document/:documentId`.
+        cy.visit(`/question/research/${id}/document/${scratchpadDoc!.id}`);
         cy.findByRole("button", { name: "Save" }).should("not.exist");
-
-        cy.log("timeline should be visible in the document");
-        H.echartsIcon("star").should("be.visible");
+        // `metabase/documents/components/DocumentMenu.tsx` puts the trash
+        // action behind a `canWrite && onArchive` gate; an admin always
+        // satisfies that.
+        cy.findByLabelText("More options").click();
+        cy.findByRole("menuitem", { name: /Move to trash/i }).should(
+          "be.visible",
+        );
       });
     });
   });
@@ -775,15 +696,16 @@ describe("scenarios > explorations > detail page", () => {
 
       H.visitExploration(id);
 
-      // Expand the `Findings` sidebar heading so the AI Summary
-      // doc row is in the DOM. (It starts collapsed; the heading
-      // is named after the user-doc, which shares the literal
-      // string — only the `role="group"` heading has aria-expanded.)
-      cy.findByRole("group", { name: "Findings" })
+      // Expand the thread heading so the AI Summary doc row (a child
+      // of the thread node — see `getExplorationSidebarTree`) is in the
+      // DOM. A nameless first thread renders as "Initial investigation".
+      const threadHeading = () =>
+        cy.findByRole("group", { name: "Initial investigation" });
+      threadHeading()
         .should("have.attr", "aria-expanded")
         .then((expanded) => {
           if (expanded !== "true") {
-            cy.findByRole("group", { name: "Findings" }).click();
+            threadHeading().click();
           }
         });
 
@@ -861,88 +783,6 @@ describe("scenarios > explorations > detail page", () => {
         });
       });
     });
-  });
-
-  it("on a stacked-chart page (group with multiple queries) the Add to document flow first prompts to pick a chart, then a document", () => {
-    H.createSegment({
-      name: "Recent orders",
-      description: "Orders from the last year",
-      table_id: ORDERS_ID,
-      definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        filter: [
-          "time-interval",
-          ["field", ORDERS.CREATED_AT, null],
-          -365,
-          "day",
-        ],
-      },
-    });
-
-    H.createExplorationViaApi({ name: "Stacked-chart add fixture" }).then(
-      (id) => {
-        H.visitExploration(id);
-
-        cy.findAllByLabelText("Ready", { timeout: 30000 })
-          .first()
-          .should("be.visible");
-
-        cy.intercept("POST", "/api/exploration/thread/*/documents/*/append").as(
-          "appendChart",
-        );
-
-        // Open the group-level doc menu — its first stage is the
-        // chart picker (`Pick a chart` label). Clicking a chart
-        // transitions the menu to the document picker (`Add to`
-        // label).
-        cy.findByLabelText("Add to document").click();
-        cy.findByText("Pick a chart").should("be.visible");
-        // The `Back` item is the chevron at the top of stage 2 —
-        // assert it doesn't render until we pick a chart.
-        cy.findByRole("menuitem", { name: /Back/i }).should("not.exist");
-
-        // Charts are listed as menu items named after the query
-        // (e.g. the base "By Created At" and the segmented
-        // "Recent orders" or similar). Each picker entry corresponds
-        // to one *SeriesGroup* — multi-series cartesian / heat-map
-        // groups collapse to a single entry whose `queryIds` is the
-        // group's full set. Mantine menu items aren't given individual
-        // `data-testid`s, so we use the menu's role+position.
-        cy.findAllByRole("menuitem").first().click();
-
-        // Stage 2: documents picker. The `Back` chevron now
-        // appears and the doc list is visible.
-        cy.findByText("Add to").should("be.visible");
-        cy.findByRole("menuitem", { name: /Back/i }).should("be.visible");
-        // Mantine renders the leftSection icon's `aria-label` ("document
-        // icon") into the menuitem's accessible name (it becomes
-        // "document icon Scratchpad"), so we match by regex on the doc name.
-        cy.findByRole("menuitem", { name: /Scratchpad/ }).click();
-        cy.wait("@appendChart").then(({ request, response }) => {
-          expect(response?.statusCode).to.eq(200);
-          // The picked entry is a multi-query group (baseline + the
-          // segmented variant created above), so the contract is the
-          // full id list — verifies the FE composes the SeriesGroup
-          // into one composite materialisation request rather than
-          // falling back to per-query embeds.
-          const ids = request.body.exploration_query_ids as number[];
-          expect(ids).to.be.an("array");
-          expect(ids.length).to.be.greaterThan(1);
-        });
-
-        // Same toast → navigate to doc → chart embed visible.
-        cy.findByText("Added to").should("be.visible");
-        cy.findByRole("link", { name: "Scratchpad" }).click();
-        cy.url().should("include", `/question/research/${id}/document/`);
-        // The N source snapshots are combined server-side into ONE
-        // ephemeral card (composite path); the doc must render exactly
-        // one cardEmbed — not N separate embeds, which would be the
-        // pre-composite per-query behaviour.
-        cy.findAllByTestId("document-card-embed").should("have.length", 1);
-        cy.findByRole("button", { name: "Save" }).should("not.exist");
-      },
-    );
   });
 });
 

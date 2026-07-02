@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createGroup, createQuery } from "metabase/explorations/test-utils";
+import { createPage, createQuery } from "metabase/explorations/test-utils";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   Comment,
@@ -59,6 +59,7 @@ jest.mock("metabase/comments/components/Comments", () => ({
 
 const mockDatasetsByQueryId = new Map<number, Dataset | undefined>();
 const mockErrorsByQueryId = new Map<number, unknown>();
+const mockMutationTrigger = () => jest.fn(() => ({ unwrap: jest.fn() }));
 jest.mock("metabase/api/exploration", () => ({
   __esModule: true,
   explorationApi: {
@@ -74,6 +75,7 @@ jest.mock("metabase/api/exploration", () => ({
       },
     },
   },
+  useSetPageStarredMutation: () => [mockMutationTrigger()],
 }));
 
 function makeTimeseriesDataset(): Dataset {
@@ -125,9 +127,8 @@ function makeStateMapDataset(): Dataset {
   });
 }
 
-const group = createGroup({
-  id: "auto:1:dim-page",
-  display_type: "page",
+const page = createPage({
+  id: 1,
   name: "Revenue across regions",
   query_ids: [101, 102],
 });
@@ -174,7 +175,7 @@ function setup({
       component={() => (
         <ExplorationGroupVisualization
           explorationId={1}
-          group={{ ...group, query_ids: queries.map((q) => q.id) }}
+          page={{ ...page, query_ids: queries.map((q) => q.id) }}
           queries={queries}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
@@ -267,7 +268,9 @@ describe("ExplorationGroupVisualization", () => {
       ],
     });
 
-    expect(screen.getAllByText("Q1").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Revenue across regions").length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
@@ -289,7 +292,7 @@ describe("ExplorationGroupVisualization", () => {
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
-  it("shows the first query's name in the header", () => {
+  it("shows the group name in the header", () => {
     const queries = [
       createQuery({ id: 101, name: "Revenue (US)", status: "done" }),
       createQuery({ id: 102, name: "Revenue (EU)", status: "done" }),
@@ -300,7 +303,7 @@ describe("ExplorationGroupVisualization", () => {
     ]);
     setup({ queries, datasets });
 
-    expect(screen.getByText("Revenue (US)")).toBeInTheDocument();
+    expect(screen.getByText("Revenue across regions")).toBeInTheDocument();
   });
 
   it("shows the timeline dropdown when the group has timeseries charts", () => {

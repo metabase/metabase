@@ -11,11 +11,11 @@
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.explorations.ai-summary :as ai-summary]
+   [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
-   [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration :as expl.model]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
-   [metabase.explorations.models.exploration-thread-group :as thread-group]
    [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -98,35 +98,35 @@
       (str group-dn " → " dn)
       dn)))
 
-(defn- groups-by-thread-id
-  "The persisted Research-plan groups (`ExplorationThreadGroup`) for `thread-ids`, in authoring
-   order, grouped by `:exploration_thread_id`."
+(defn- blocks-by-thread-id
+  "The persisted blocks (`ExplorationBlock`) for `thread-ids`, in authoring order, grouped by
+   `:exploration_thread_id`."
   [thread-ids]
   (when (seq thread-ids)
     (group-by :exploration_thread_id
-              (t2/select :model/ExplorationThreadGroup
+              (t2/select :model/ExplorationBlock
                          :exploration_thread_id [:in thread-ids]
                          {:order-by [[:position :asc] [:id :asc]]}))))
 
-(defn- enrich-group-dimensions
-  "Attach each group dimension's `:group` (source) label from `card-dim-by-id` so the read tree
+(defn- enrich-block-dimensions
+  "Attach each block dimension's `:group` (source) label from `card-dim-by-id` so the read tree
   can qualify same-named dimension headings by their source."
-  [groups card-dim-by-id]
-  (mapv (fn [group]
-          (update group :dimensions
+  [blocks card-dim-by-id]
+  (mapv (fn [block]
+          (update block :dimensions
                   (fn [dims]
-                    (mapv #(thread-group/enrich-with-card-group % card-dim-by-id) dims))))
-        groups))
+                    (mapv #(block/enrich-with-card-group % card-dim-by-id) dims))))
+        blocks))
 
 (defn- attach-query-dimension-labels
   "Attach `:dimension_name` to each query on `thread`. Dimension snapshots come from the
-  thread's `groups` (deduped by id); each is enriched with `:group` looked up from
+  thread's `blocks` (deduped by id); each is enriched with `:group` looked up from
   `card-dim-by-id` (the metric Cards' snapshotted `:dimensions`, the only place that group
   metadata lives), then `exploration-query-dim-label` is applied with ambiguity scoped to the
   thread's dimensions."
-  [thread groups card-dim-by-id]
-  (let [thread-dims   (vals (u/index-by :dimension_id (mapcat :dimensions groups)))
-        enriched-dims (mapv #(thread-group/enrich-with-card-group % card-dim-by-id)
+  [thread blocks card-dim-by-id]
+  (let [thread-dims   (vals (u/index-by :dimension_id (mapcat :dimensions blocks)))
+        enriched-dims (mapv #(block/enrich-with-card-group % card-dim-by-id)
                             thread-dims)
         dim-by-id     (u/index-by :dimension_id enriched-dims)
         name-counts   (frequencies (keep :display_name enriched-dims))]
@@ -142,32 +142,40 @@
                                         (exploration-query-dim-label dim ambiguous?))))))))))
 
 (defn- attach-thread-read-data
-  "Compute the read-side `:groups` tree and per-query `:dimension_name` labels for `thread` from
-  its pre-fetched `groups` and the shared metric-Card lookup maps (`card-name-by-id` for leaf and
-  heading names, `card-dim-by-id` for dimension source metadata)."
-  [thread groups card-name-by-id card-dim-by-id]
-  (let [enriched-groups (enrich-group-dimensions groups card-dim-by-id)
-        ;; Label queries first so group-tree can name metric-anchored leaves "By <dimension>".
-        labeled         (attach-query-dimension-labels thread enriched-groups card-dim-by-id)]
-    (assoc labeled :groups (explorations.groups/group-tree
-                            enriched-groups (:queries labeled) card-name-by-id))))
+  "Compute the read-side nested `:blocks` (each with its `:pages`) and per-query
+  `:dimension_name` labels for `thread` from its pre-fetched `blocks`, `pages`, and the shared
+  metric-Card lookup maps (`card-name-by-id` for page/heading names, `card-dim-by-id` for
+  dimension source metadata)."
+  [thread blocks pages card-name-by-id card-dim-by-id]
+  (let [enriched-blocks (enrich-block-dimensions blocks card-dim-by-id)
+        ;; Label queries first so blocks-tree can name metric-anchored pages "By <dimension>".
+        labeled         (attach-query-dimension-labels thread enriched-blocks card-dim-by-id)]
+    (assoc labeled :blocks (explorations.blocks/blocks-tree
+                            enriched-blocks pages card-name-by-id (:queries labeled)))))
 
 (defn- attach-threads-read-data
-  "Batch [[attach-thread-read-data]] across `threads`: select every thread's groups and the
-  metric Cards they reference in two queries total (not two per thread, which N+1s), then
-  enrich each thread in memory."
+  "Batch [[attach-thread-read-data]] across `threads`: select every thread's blocks, their
+  pages, and the metric Cards they reference in a fixed number of queries (not per thread,
+  which N+1s), then enrich each thread in memory."
   [threads]
-  (let [groups-by-thread (groups-by-thread-id (map :id threads))
-        all-groups       (mapcat val groups-by-thread)
-        card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-groups))
+  (let [blocks-by-thread (blocks-by-thread-id (map :id threads))
+        all-blocks       (mapcat val blocks-by-thread)
+        block-ids        (map :id all-blocks)
+        pages-by-block   (when (seq block-ids)
+                           (group-by :exploration_block_id
+                                     (t2/select :model/ExplorationPage
+                                                :exploration_block_id [:in block-ids])))
+        card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-blocks))
         cards            (when (seq card-ids)
                            (t2/select [:model/Card :id :name :dimensions] :id [:in card-ids]))
         card-name-by-id  (into {} (map (juxt :id :name)) cards)
         card-dim-by-id   (into {}
                                (mapcat (fn [c] (map (juxt :id identity) (:dimensions c))))
                                cards)]
-    (mapv #(attach-thread-read-data % (get groups-by-thread (:id %) [])
-                                    card-name-by-id card-dim-by-id)
+    (mapv (fn [thread]
+            (let [blocks (get blocks-by-thread (:id thread) [])
+                  pages  (mapcat #(get pages-by-block (:id %) []) blocks)]
+              (attach-thread-read-data thread blocks pages card-name-by-id card-dim-by-id)))
           threads)))
 
 (defn- hydrate-exploration [exploration]
@@ -196,16 +204,16 @@
                  (assoc row :exploration_thread_id thread-id :position i))
                rows))
 
-(defn- insert-thread-groups!
-  "Persist the FE's Research-plan groups verbatim — one `ExplorationThreadGroup` row per
-   group, in payload order. Each group keeps its own `:metrics`/`:dimensions` selection;
-   the planners cross metrics with dimensions only within a group. No dedup across groups:
-   a metric or dimension appearing in two groups is stored on both."
-  [thread-id groups]
-  (when (seq groups)
-    (t2/insert! :model/ExplorationThreadGroup
+(defn- insert-blocks!
+  "Persist the FE's Research-plan blocks verbatim — one `ExplorationBlock` row per
+   block, in payload order. Each block keeps its own `:metrics`/`:dimensions` selection;
+   the planners cross metrics with dimensions only within a block. No dedup across blocks:
+   a metric or dimension appearing in two blocks is stored on both."
+  [thread-id blocks]
+  (when (seq blocks)
+    (t2/insert! :model/ExplorationBlock
                 (positional-rows thread-id
-                                 (map #(select-keys % [:type :metrics :dimensions]) groups)))))
+                                 (map #(select-keys % [:type :metrics :dimensions]) blocks)))))
 
 (defn- insert-thread-timelines! [thread-id timeline-ids]
   (when (seq timeline-ids)
@@ -252,12 +260,12 @@
    [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type  {:optional true} [:maybe :string]]])
 
-(def ^:private GroupSelection
+(def ^:private BlockSelection
   "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
    or a dimension area (the dimension's group + referencing metrics). Persisted verbatim as one
-   `ExplorationThreadGroup` row; the planners cross this group's metrics with this group's
-   dimensions only. The sidebar heading is computed read-side (see `group_name` in
-   `ExplorationQueryGroup`), not supplied here."
+   `ExplorationBlock` row; the planners cross this block's metrics with this block's
+   dimensions only. The sidebar heading is computed read-side (the `:name` of an
+   `ExplorationBlockNode`), not supplied here."
   [:map
    ;; Whether the block is anchored on its metric or its dimension. The read side
    ;; uses this to build the sidebar heading + sub-item names.
@@ -287,7 +295,6 @@
    [:error_message                    {:optional true} [:maybe :string]]
    [:started_at                       {:optional true} [:maybe :any]]
    [:finished_at                      {:optional true} [:maybe :any]]
-   [:user_interestingness             {:optional true} [:maybe [:enum 0 1 2]]]
    [:entity_id                        {:optional true} [:maybe :string]]
    [:interestingness_score            {:optional true} [:maybe number?]]
    [:contextual_interestingness_score {:optional true} [:maybe number?]]
@@ -296,32 +303,31 @@
                                                                  [:timeline_id           ms/PositiveInt]
                                                                  [:interestingness_score {:optional true} [:maybe number?]]]]]]])
 
-(mr/def ::ExplorationQueryGroup
-  "Schema for an auto-derived group bundling related queries on a single thread.
-   `:query_ids` references queries that exist on the same thread. `:parent_group_id`
-   references another group's `:id` within the same `:groups` list (nil = top
-   level). Type is just `auto` for now but will allow for user-defined groups at some
-   point down the road.
-
-   `:display_type` tells the FE how to render the group:
-     - `\"singleton\"` — exactly one query; sidebar shows it as a single row
-     - `\"page\"`      — multiple queries to render together on one page when opened
-     - `\"sidebar\"`   — group expands/collapses inline as a dropdown in the sidebar
-
-   The current heuristic emits a two-level tree: one `\"sidebar\"` group per metric
-   (top level, `:parent_group_id = nil`, `:query_ids = []` — its queries live on the
-   linked children below) and the existing `(card, dim)` `\"singleton\"`/`\"page\"`
-   leaves as children pointing at their metric via `:parent_group_id`."
+(mr/def ::ExplorationPageNode
+  "A page within a block: the bundle of queries for one (card, dimension, query_type) under the
+   page's stable id. `:query_ids` reference queries on the same thread, sorted by interestingness.
+   `:position` is the page's 0-indexed slot among its block's pages. `:name` is the page's short,
+   heading-relative label (e.g. `By Category over time`); `:long_name` is the full
+   self-describing name (e.g. `Number of Orders by Category over time`) for use without the block
+   heading for context."
   [:map
-   [:id              :string]
-   [:parent_group_id [:maybe :string]]
-   [:position        ms/IntGreaterThanOrEqualToZero]
-   [:type            [:enum "auto"]]
-   [:display_type    [:enum "page" "singleton" "sidebar"]]
-   [:name            [:maybe :string]]
-   ;; Presentation heading for a `"sidebar"` group node ("By <dimension>" or the metric name).
-   [:group_name      {:optional true} [:maybe :string]]
-   [:query_ids       [:sequential ms/PositiveInt]]])
+   [:id        ms/PositiveInt]
+   [:name      [:maybe :string]]
+   [:long_name [:maybe :string]]
+   [:position  ms/IntGreaterThanOrEqualToZero]
+   [:query_ids [:sequential ms/PositiveInt]]
+   [:starred   :boolean]])
+
+(mr/def ::ExplorationBlockNode
+  "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is
+   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or
+   `By <dimension>`). `:position` is the block's 0-indexed authoring slot."
+  [:map
+   [:id       ms/PositiveInt]
+   [:type     [:enum "metric" "dimension"]]
+   [:name     [:maybe :string]]
+   [:position ms/IntGreaterThanOrEqualToZero]
+   [:pages    [:sequential ::ExplorationPageNode]]])
 
 (mr/def ::ExplorationDocument
   "Schema for a document attached to an exploration thread."
@@ -346,7 +352,7 @@
    [:completed_at               {:optional true} [:maybe :any]]
    [:ai_summary_document_id     {:optional true} [:maybe ms/PositiveInt]]
    [:queries                    {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
-   [:groups                     {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]
+   [:blocks                     {:optional true} [:maybe [:sequential ::ExplorationBlockNode]]]
    [:documents                  {:optional true} [:maybe [:sequential ::ExplorationDocument]]]
    [:timelines                  {:optional true}
     [:maybe [:sequential
@@ -426,15 +432,15 @@
 (def ^:private CreateExploration
   "Body schema for `POST /api/exploration`.
 
-   The FE sends one entry per Research-plan group (`:groups` — each a metric/dimension
+   The FE sends one entry per Research-plan block (`:blocks` — each a metric/dimension
    area), each persisted verbatim. `:timeline_ids` is thread-scoped (timelines aren't part of
-   any metric×dimension cross-product) and lives at the top level, not inside a group."
+   any metric×dimension cross-product) and lives at the top level, not inside a block."
   [:map
    [:name          expl.model/ExplorationName]
    [:description   {:optional true} [:maybe :string]]
    [:prompt        {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:groups       {:optional true} [:maybe [:sequential GroupSelection]]]
+   [:blocks        {:optional true} [:maybe [:sequential BlockSelection]]]
    [:timeline_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (def ^:private UpdateExploration
@@ -491,11 +497,11 @@
   to materialize, and inserts the `exploration_query` rows. This endpoint returns immediately
   with an empty queries list; clients should poll `GET /:id/queries` until rows appear.
 
-  Accepts the per-area `:groups` payload (one entry per Research-plan group), persisted
+  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted
   verbatim, plus a thread-scoped `:timeline_ids`."
   [_route-params
    _query-params
-   {:keys [name description prompt collection_id groups timeline_ids]} :- CreateExploration]
+   {:keys [name description prompt collection_id blocks timeline_ids]} :- CreateExploration]
   (api/create-check :model/Exploration {:collection_id collection_id})
   (t2/with-transaction [_]
     (let [exploration (first (t2/insert-returning-instances! :model/Exploration
@@ -510,7 +516,7 @@
                                                               :position       0}))
           tid         (:id thread)]
       (insert-thread-default-documents! tid coll-id)
-      (insert-thread-groups! tid groups)
+      (insert-blocks! tid blocks)
       (insert-thread-timelines! tid timeline_ids)
       ;; Setting `started_at` is the signal to the background planning worker that this
       ;; thread is ready to plan + execute. The worker's claim predicate matches threads
@@ -671,18 +677,13 @@
    :exploration_query.name :exploration_query.position
    :exploration_query.status :exploration_query.error_message
    :exploration_query.started_at :exploration_query.finished_at
-   :exploration_query.user_interestingness
    :exploration_query.entity_id
    [:exploration_query_result.interestingness_score            :interestingness_score]
    [:exploration_query_result.contextual_interestingness_score :contextual_interestingness_score]])
 
-(defn- query-summary
-  "Fetch a single `::ExplorationQuerySummary` row by `exploration_query.id`."
-  [query-id]
-  (t2/select-one (into [:model/ExplorationQuery] query-summary-columns)
-                 {:left-join [:exploration_query_result
-                              [:= :exploration_query_result.exploration_query_id :exploration_query.id]]
-                  :where     [:= :exploration_query.id query-id]}))
+(defn- get-exploration-page-or-404
+  [page-id]
+  (api/check-404 (t2/select-one :model/ExplorationPage :id page-id)))
 
 (def ^:private document-summary-columns
   [:id :name :exploration_thread_id :creator_id :content_type :created_at :updated_at :archived])
@@ -867,11 +868,7 @@
              {:display                display
               :visualization-settings visualization_settings})
             exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
-            chart-href (explorations.groups/chart-page-url
-                        exp-id (:group_id primary-eq)
-                        (:card_id primary-eq)
-                        (:dimension_id primary-eq)
-                        (:query_type primary-eq))
+            chart-href (explorations.blocks/page-url exp-id (:page_id primary-eq))
             new-body (-> (:document doc)
                          (append-chart-nodes card-id stored-result-id chart-href)
                          documents/add-ids-to-nodes)]
@@ -947,22 +944,15 @@
       {:status 409
        :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
 
-(api.macros/defendpoint :put "/query/:id/interesting" :- ::ExplorationQuerySummary
-  "Set the owner's interestingness rating on an exploration query.
-  `user_interestingness` is `0` (not interesting), `1` (hmm), or `2` (interesting)."
+(api.macros/defendpoint :put "/page/:id/starred" :- :nil
+  "Set whether an exploration page is starred."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_interestingness]} :- [:map [:user_interestingness [:enum 0 1 2]]]]
-  (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))
-  (t2/update! :model/ExplorationQuery id {:user_interestingness user_interestingness})
-  (query-summary id))
-
-(api.macros/defendpoint :delete "/query/:id/interesting" :- ::ExplorationQuerySummary
-  "Clear the owner's interestingness rating on an exploration query."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/write-check (api/check-404 (t2/select-one :model/ExplorationQuery :id id)))
-  (t2/update! :model/ExplorationQuery id {:user_interestingness nil})
-  (query-summary id))
+   {:keys [starred]} :- [:map [:starred :boolean]]]
+  (let [page (get-exploration-page-or-404 id)]
+    (api/write-check page)
+    (t2/update! :model/ExplorationPage id {:starred starred}))
+  nil)
 
 ;;; ----------------------------------------- routes -----------------------------------------
 

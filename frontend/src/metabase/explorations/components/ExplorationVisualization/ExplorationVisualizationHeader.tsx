@@ -7,15 +7,12 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/redux";
 import { useRouter } from "metabase/router";
 import { Group, Indicator, Text } from "metabase/ui";
-import type {
-  ExplorationId,
-  ExplorationQueryGroupId,
-} from "metabase-types/api";
+import type { ExplorationId, ExplorationPageNodeId } from "metabase-types/api";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
   explorationId?: ExplorationId;
-  groupId?: ExplorationQueryGroupId;
+  pageId?: ExplorationPageNodeId;
   isCommentsSidebarOpen?: boolean;
   showCommentsButton?: boolean;
 }
@@ -23,23 +20,24 @@ interface ExplorationVisualizationHeaderProps {
 export function ExplorationVisualizationHeader({
   name,
   explorationId,
-  groupId,
+  pageId,
   isCommentsSidebarOpen,
   showCommentsButton,
 }: ExplorationVisualizationHeaderProps) {
   const dispatch = useDispatch();
   const { location } = useRouter();
   const nextCommentsUrl = getNextCommentsUrl(location);
-  const unresolvedCommentsCount = useUnresolvedCommentsCount({
-    target:
-      explorationId != null
-        ? {
-            target_id: explorationId,
-            target_type: "exploration",
-          }
-        : undefined,
-    childTargetId: groupId,
-  });
+  const { unresolvedCommentsCount, allCommentsCount } =
+    useUnresolvedCommentsCount({
+      target:
+        explorationId != null
+          ? {
+              target_id: explorationId,
+              target_type: "exploration",
+            }
+          : undefined,
+      childTargetId: pageId,
+    });
 
   const ShowCommentsButton = showCommentsButton ? (
     <ToolbarButton
@@ -64,8 +62,16 @@ export function ExplorationVisualizationHeader({
         {name}
       </Text>
       <Group align="center" gap="sm">
-        {unresolvedCommentsCount > 0 ? (
-          <Indicator label={unresolvedCommentsCount} size={16} color="danger">
+        {unresolvedCommentsCount > 0 || allCommentsCount > 0 ? (
+          <Indicator
+            label={
+              unresolvedCommentsCount > 0
+                ? unresolvedCommentsCount
+                : allCommentsCount
+            }
+            size={16}
+            color={unresolvedCommentsCount > 0 ? "danger" : "core-info"}
+          >
             {ShowCommentsButton}
           </Indicator>
         ) : (

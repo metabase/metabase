@@ -44,6 +44,7 @@
 
 .commentTimelineBadge {
   background-color: var(--mb-color-background-secondary);
+
   &:hover {
     background-color: var(--mb-color-background-tertiary);
   }

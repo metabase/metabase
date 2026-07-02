@@ -439,12 +439,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: user_interestingness
-                  type: int
-                  remarks: Owner's interestingness rating; null = unrated, 0 = not interesting, 1 = hmm, 2 = interesting
-                  constraints:
-                    nullable: true
-              - column:
                   name: entity_id
                   type: char(21)
                   remarks: NanoID for serdes
@@ -1337,26 +1331,26 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v63.expthreadgroup
+      id: v63.expblocktable
       author: johnswanson
-      comment: Create exploration_thread_group table
+      comment: Create exploration_block table
       changes:
         - createTable:
-            tableName: exploration_thread_group
+            tableName: exploration_block
             remarks: One Research-plan block selected on a thread — a set of metrics crossed with a set of dimensions. Immutable after create.
             columns:
               - column:
                   name: id
                   type: int
                   autoIncrement: true
-                  remarks: Primary key — surfaced to the FE as the group id
+                  remarks: Primary key — surfaced to the FE as the block id
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: exploration_thread_id
                   type: int
-                  remarks: The thread this group belongs to
+                  remarks: The thread this block belongs to
                   constraints:
                     nullable: false
               - column:
@@ -1372,6 +1366,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: type
+                  type: ${text.type}
+                  remarks: Block anchor — "metric" or "dimension"
+                  constraints:
+                    nullable: true
+              - column:
                   name: position
                   type: int
                   defaultValueNumeric: 0
@@ -1382,106 +1382,209 @@ databaseChangeLog:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: When the group was created
+                  remarks: When the block was created
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: When the group was last updated
+                  remarks: When the block was last updated
                   constraints:
                     nullable: false
 
   - changeSet:
-      id: v63.etgthreadidx
+      id: v63.expblockthreadidx
       author: nvoxland
-      comment: Index on exploration_thread_group.exploration_thread_id
+      comment: Index on exploration_block.exploration_thread_id
       changes:
         - createIndex:
-            tableName: exploration_thread_group
-            indexName: idx_exploration_thread_group_thread_id
+            tableName: exploration_block
+            indexName: idx_exploration_block_thread_id
             columns:
               - column:
                   name: exploration_thread_id
 
   - changeSet:
-      id: v63.expthreadgroupfk
+      id: v63.expblockthreadfk
       author: johnswanson
-      comment: FK exploration_thread_group.exploration_thread_id -> exploration_thread.id
+      comment: FK exploration_block.exploration_thread_id -> exploration_thread.id
       changes:
         - addForeignKeyConstraint:
-            baseTableName: exploration_thread_group
+            baseTableName: exploration_block
             baseColumnNames: exploration_thread_id
             referencedTableName: exploration_thread
             referencedColumnNames: id
-            constraintName: fk_exploration_thread_group_thread_id
+            constraintName: fk_exploration_block_thread_id
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.expqgroupcol
+      id: v63.exppagetable
       author: johnswanson
-      comment: Add exploration_query.group_id
+      comment: Create exploration_page table — the persisted (block, card, dimension, query_type) page. Surrogate id is the page's identity; the (block, card, dim, query_type) columns are its mutable grouping/reconciliation key. Queries are reconciled to a page on (re)run so its id (and any comments/stars hanging off it) survives.
+      changes:
+        - createTable:
+            tableName: exploration_page
+            remarks: A page within a block — the queries for one (card, dimension, query_type), bundled under a stable id so comments/stars can anchor to it across reruns.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key — the page's stable identity, surfaced to the FE
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: exploration_block_id
+                  type: int
+                  remarks: The block this page belongs to. Mutable parent — a future re-grouping can move a page between blocks without changing its id.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: Metric Card — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dimension_id
+                  type: ${text.type}
+                  remarks: Virtual dimension ID — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_type
+                  type: varchar(32)
+                  defaultValue: default
+                  remarks: Generator variant — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: First-seen authoring order of the page within its block
+                  constraints:
+                    nullable: false
+              - column:
+                  name: starred
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True if the page is starred
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the page was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the page was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v63.exppageblockidx
+      author: johnswanson
+      comment: Index on exploration_page.exploration_block_id (load a block's pages for reconciliation)
+      changes:
+        - createIndex:
+            tableName: exploration_page
+            indexName: idx_exploration_page_block_id
+            columns:
+              - column:
+                  name: exploration_block_id
+
+  - changeSet:
+      id: v63.exppageblockfk
+      author: johnswanson
+      comment: FK exploration_page.exploration_block_id -> exploration_block.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_page
+            baseColumnNames: exploration_block_id
+            referencedTableName: exploration_block
+            referencedColumnNames: id
+            constraintName: fk_exploration_page_block_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.exppagecardidx
+      author: johnswanson
+      comment: Index on exploration_page.card_id
+      changes:
+        - createIndex:
+            tableName: exploration_page
+            indexName: idx_exploration_page_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v63.exppagecardfk
+      author: johnswanson
+      comment: FK exploration_page.card_id -> report_card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_page
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_exploration_page_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.expqpagecol
+      author: johnswanson
+      comment: Add exploration_query.page_id (NOT NULL) — the page each query is reconciled under. The reconciler stamps it on every query, so it's required from the start.
       changes:
         - addColumn:
             tableName: exploration_query
             columns:
               - column:
-                  name: group_id
+                  name: page_id
                   type: int
-                  remarks: The exploration_thread_group this query was planned under
+                  remarks: The exploration_page this query belongs to
                   constraints:
-                    nullable: true
+                    nullable: false
 
   - changeSet:
-      id: v63.expqgroupidx
+      id: v63.expqpageidx
       author: johnswanson
-      comment: Index exploration_query.group_id for read-side grouping
+      comment: Index exploration_query.page_id for read-side grouping
       changes:
         - createIndex:
             tableName: exploration_query
-            indexName: idx_exploration_query_group_id
+            indexName: idx_exploration_query_page_id
             columns:
               - column:
-                  name: group_id
+                  name: page_id
 
   - changeSet:
-      id: v63.expqgroupfk
+      id: v63.expqpagefk
       author: johnswanson
-      comment: FK exploration_query.group_id -> exploration_thread_group.id
+      comment: FK exploration_query.page_id -> exploration_page.id
       changes:
         - addForeignKeyConstraint:
             baseTableName: exploration_query
-            baseColumnNames: group_id
-            referencedTableName: exploration_thread_group
+            baseColumnNames: page_id
+            referencedTableName: exploration_page
             referencedColumnNames: id
-            constraintName: fk_exploration_query_group_id
+            constraintName: fk_exploration_query_page_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v63.expqgroupnotnull
-      author: johnswanson
-      comment: Make exploration_query.group_id NOT NULL
-      changes:
-        - addNotNullConstraint:
-            tableName: exploration_query
-            columnName: group_id
-            columnDataType: int
-
-  - changeSet:
-      id: v63.expgrouptype
-      author: denisberezin
-      comment: Add exploration_thread_group.type
-      changes:
-        - addColumn:
-            tableName: exploration_thread_group
-            columns:
-              - column:
-                  name: type
-                  type: ${text.type}
-                  remarks: Block anchor — "metric" or "dimension"
-                  constraints:
-                    nullable: true
 
   - changeSet:
       id: v63.storedresultdataaccesstoken

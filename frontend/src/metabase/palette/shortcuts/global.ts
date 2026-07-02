@@ -26,7 +26,7 @@ export const globalShortcuts = {
       return t`Create a research`;
     },
     get keywords() {
-      return t`add research, new exploration, add exploration, research mode`;
+      return t`add research, add exploration, research mode`;
     },
     shortcut: ["c r"],
     shortcutGroup: "global" as const,

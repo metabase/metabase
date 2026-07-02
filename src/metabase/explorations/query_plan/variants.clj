@@ -258,6 +258,29 @@
     (query-name variant ctx)))
 
 ;; ---------------------------------------------------------------------------
+;; variant-qualifier — read-side. The short, param-free label that sets one
+;; variant's *page* apart from the plain breakdown.
+;; ---------------------------------------------------------------------------
+
+(defmulti variant-qualifier
+  "Localized qualifier distinguishing a variant's page from the plain `default` breakdown — e.g.
+  \"over time\", \"(Day of week)\" — or `nil` for `default` (no qualifier). Page names are
+  generated from parts (`<metric> by <dimension> <qualifier>`), so this is the only
+  variant-specific piece the read side needs. Deliberately param-free: per-query specifics
+  (segment, top-N k, individual filter values) belong on a chart, not on the page umbrella that
+  bundles them."
+  {:arglists '([query-type])}
+  identity)
+
+(defmethod variant-qualifier :default               [_] nil)
+(defmethod variant-qualifier "temporal-pattern-day"  [_] (tru "(Day of week)"))
+(defmethod variant-qualifier "temporal-pattern-hour" [_] (tru "(Hour of day)"))
+(defmethod variant-qualifier "time-facet"            [_] (tru "over time"))
+(defmethod variant-qualifier "per-value-time-series" [_] (tru "over time"))
+(defmethod variant-qualifier "top-n-other"           [_] (tru "(Top values + Other)"))
+(defmethod variant-qualifier "filtered-subset"       [_] (tru "(Filtered)"))
+
+;; ---------------------------------------------------------------------------
 ;; dataset-query — runner-side. MBQL the QP will run.
 ;; ---------------------------------------------------------------------------
 

@@ -8,7 +8,7 @@
    [metabase.config.core :as config]
    [metabase.documents.core :as documents]
    [metabase.explorations.api :as explorations.api]
-   [metabase.explorations.groups :as explorations.groups]
+   [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
@@ -101,17 +101,17 @@
   [x]
   (walk/postwalk (fn [v] (if (seq? v) (vec v) v)) x))
 
-(defn- ->groups-body
-  "Adapt a test body that uses top-level `:metrics`/`:dimensions` into the `:groups` payload
-  the API now requires, wrapping them in a single group. Bodies that already carry `:groups`
+(defn- ->blocks-body
+  "Adapt a test body that uses top-level `:metrics`/`:dimensions` into the `:blocks` payload
+  the API now requires, wrapping them in a single block. Bodies that already carry `:blocks`
   pass through. Lets the existing create-test suite express a metric×dimension selection
-  without group boilerplate; `:timeline_ids` stays thread-scoped at the top level."
-  [{:keys [metrics dimensions groups] :as body}]
-  (if groups
+  without block boilerplate; `:timeline_ids` stays thread-scoped at the top level."
+  [{:keys [metrics dimensions blocks] :as body}]
+  (if blocks
     body
     (-> body
         (dissoc :metrics :dimensions)
-        (assoc :groups [{:type "metric" :metrics metrics :dimensions dimensions}]))))
+        (assoc :blocks [{:type "metric" :metrics metrics :dimensions dimensions}]))))
 
 (defn- create-exploration!
   "POST a new exploration as `user`, then synchronously run the query planner for
@@ -120,7 +120,7 @@
   runner's per-row execution step). Returns the re-hydrated exploration so callers
   see materialized :queries with dataset_query populated."
   [user body]
-  (let [resp (mt/user-http-request user :post 200 "exploration" (->groups-body body))]
+  (let [resp (mt/user-http-request user :post 200 "exploration" (->blocks-body body))]
     (doseq [thread (:threads resp)]
       (query-plan/generate-query-plan! (:id thread)))
     (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
@@ -273,7 +273,7 @@
         (is (= 1 (count (:threads resp))))
         (is (= "break down by region" (:prompt thread)))
         (is (some? (:started_at thread)))
-        (is (= 1 (t2/count :model/ExplorationThreadGroup :exploration_thread_id (:id thread))))
+        (is (= 1 (t2/count :model/ExplorationBlock :exploration_thread_id (:id thread))))
         (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id (:id thread))))
         (is (= 1 (count (:queries thread))))
         (is (= "d1" (:dimension_id q)))
@@ -306,8 +306,8 @@
         (is (= "Releases" (-> timelines first :timeline :name))
             "nested :timeline is hydrated for the picker")))))
 
-(deftest exploration-group-naming-by-type-test
-  (testing "GET builds sidebar names from the group :type"
+(deftest exploration-block-naming-by-type-test
+  (testing "GET builds block headings + page names from the block :type"
     (mt/with-temp [:model/User u {:email "group-naming@example.com"}
                    :model/Card revenue (assoc (valid-metric-card (:id u)) :name "Revenue")
                    :model/Card signups (assoc (valid-metric-card (:id u)) :name "Signups")]
@@ -318,7 +318,7 @@
                         :card_id card-id}])
             dims    [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
             body    {:name   "Naming"
-                     :groups [;; metric-anchored: one metric crossed with a dimension
+                     :blocks [;; metric-anchored: one metric crossed with a dimension
                               {:type       "metric"
                                :metrics    [{:card_id (:id revenue)
                                              :dimension_mappings (mapping (:id revenue))}]
@@ -331,21 +331,21 @@
                                              :dimension_mappings (mapping (:id signups))}]
                                :dimensions dims}]}
             resp    (create-exploration! u body)
-            groups  (-> resp :threads first :groups)
-            sidebar (filterv #(= "sidebar" (:display_type %)) groups)
-            metric-heading    (first sidebar)
-            dimension-heading (second sidebar)
-            leaves-of (fn [heading]
-                        (->> groups
-                             (filter #(= (:id heading) (:parent_group_id %)))
-                             (map :name)
-                             set))]
-        (testing "metric-anchored group: heading is the metric, sub-items are By <dimension>"
-          (is (= "Revenue" (:group_name metric-heading)))
-          (is (= #{"By Price"} (leaves-of metric-heading))))
-        (testing "dimension-anchored group: heading is By <dimension>, sub-items are the metrics"
-          (is (= "By Price" (:group_name dimension-heading)))
-          (is (= #{"Revenue" "Signups"} (leaves-of dimension-heading))))))))
+            blocks  (-> resp :threads first :blocks)
+            metric-block    (first (filter #(= "metric" (:type %)) blocks))
+            dimension-block (first (filter #(= "dimension" (:type %)) blocks))
+            page-names (fn [block] (set (map :name (:pages block))))
+            long-names (fn [block] (set (map :long_name (:pages block))))]
+        (testing "metric-anchored block: heading is the metric, pages are By <dimension>"
+          (is (= "Revenue" (:name metric-block)))
+          (is (= #{"By Price"} (page-names metric-block)))
+          (testing "long_name is self-describing (carries the metric the heading drops)"
+            (is (= #{"Revenue by Price"} (long-names metric-block)))))
+        (testing "dimension-anchored block: heading is By <dimension>, pages are the metrics"
+          (is (= "By Price" (:name dimension-block)))
+          (is (= #{"Revenue" "Signups"} (page-names dimension-block)))
+          (testing "long_name is self-describing (carries the dimension the heading drops)"
+            (is (= #{"Revenue by Price" "Signups by Price"} (long-names dimension-block)))))))))
 
 (deftest exploration-dimension-group-heading-disambiguation-test
   (testing "GET qualifies same-named dimension-anchored group headings by their source"
@@ -370,36 +370,36 @@
                                           :dimension_mappings (mapping dim-id field-id)}]
                             :dimensions [{:dimension_id dim-id :display_name "Created At"}]})
                 headings (fn [body]
-                           (->> (create-exploration! u body) :threads first :groups
-                                (filter #(= "sidebar" (:display_type %)))
-                                (map :group_name)
+                           (->> (create-exploration! u body) :threads first :blocks
+                                (filter #(= "dimension" (:type %)))
+                                (map :name)
                                 set))]
-            (testing "two dimension groups sharing a base name → headings qualified by source"
+            (testing "two dimension blocks sharing a base name → headings qualified by source"
               (is (= #{"By Users - Created At" "By Orders - Created At"}
                      (headings {:name   "ambig-headings"
-                                :groups [(dim-grp users-created 1)
+                                :blocks [(dim-grp users-created 1)
                                          (dim-grp orders-created 2)]}))))
             (testing "a single dimension group keeps the plain heading even with a known source"
               (is (= #{"By Created At"}
                      (headings {:name   "single-heading"
-                                :groups [(dim-grp users-created 1)]}))))))))))
+                                :blocks [(dim-grp users-created 1)]}))))))))))
 
-(deftest exploration-create-persists-groups-verbatim-test
-  (testing "POST / persists each :groups entry as its own ExplorationThreadGroup row — no dedup across groups"
+(deftest exploration-create-persists-blocks-verbatim-test
+  (testing "POST / persists each :blocks entry as its own ExplorationBlock row — no dedup across blocks"
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:creator_id (:id u)}]
       (let [mapping [{:dimension_id "d1"
                       :table_id (mt/id :venues)
                       :target ["field" {} (mt/id :venues :price)]}]
-            ;; Two groups sharing the same metric: a metric block (metric + d1) and a
+            ;; Two blocks sharing the same metric: a metric block (metric + d1) and a
             ;; dimension block (the same metric, with d2). Timelines are thread-scoped,
-            ;; sent once at the top level. Each group is stored verbatim — the shared
-            ;; metric is NOT deduped across groups.
-            body {:name         "Grouped create"
-                  :prompt       "via groups"
+            ;; sent once at the top level. Each block is stored verbatim — the shared
+            ;; metric is NOT deduped across blocks.
+            body {:name         "Blocked create"
+                  :prompt       "via blocks"
                   :timeline_ids [(:id tl)]
-                  :groups       [{:type       "metric"
+                  :blocks       [{:type       "metric"
                                   :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                                   :dimensions [{:dimension_id "d1" :display_name "Price"
                                                 :effective_type "type/Number"}]}
@@ -409,15 +409,15 @@
                                                 :effective_type "type/Text"}]}]}
             resp   (mt/user-http-request u :post 200 "exploration" body)
             tid    (-> resp :threads first :id)
-            groups (t2/select :model/ExplorationThreadGroup
+            blocks (t2/select :model/ExplorationBlock
                               :exploration_thread_id tid {:order-by [[:position :asc]]})]
-        (is (= "Grouped create" (:name resp)))
-        (is (= 2 (count groups)) "one row per group, no dedup")
-        (is (= ["metric" "dimension"] (map :type groups)) "anchor type stored in payload order")
-        (is (= [0 1] (map :position groups)))
-        (testing "each group keeps its own metrics + dimensions selection"
-          (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) groups)))
-          (is (= ["d1" "d2"] (map #(-> % :dimensions first :dimension_id) groups))))
+        (is (= "Blocked create" (:name resp)))
+        (is (= 2 (count blocks)) "one row per block, no dedup")
+        (is (= ["metric" "dimension"] (map :type blocks)) "anchor type stored in payload order")
+        (is (= [0 1] (map :position blocks)))
+        (testing "each block keeps its own metrics + dimensions selection"
+          (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) blocks)))
+          (is (= ["d1" "d2"] (map #(-> % :dimensions first :dimension_id) blocks))))
         (testing "timelines are thread-scoped, stored once"
           (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid))))))))
 
@@ -671,13 +671,23 @@
             body    {:name       "facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id "cat" :display_name "Category"}]}
-            queries (-> (create-exploration! u body)
-                        :threads first :queries)
-            facet   (first (filter #(= "time-facet" (:query_type %)) queries))]
+            thread  (-> (create-exploration! u body) :threads first)
+            queries (:queries thread)
+            facet   (first (filter #(= "time-facet" (:query_type %)) queries))
+            pages   (->> thread :blocks (mapcat :pages))
+            by-long (into {} (map (juxt :long_name identity)) pages)]
         (is (= #{"default" "time-facet"} (query-types queries)))
         (is (= "line" (:display facet))
             "time-facet variant explicitly sets :display \"line\"")
-        (is (= "Sales by Category over time" (:name facet)))))))
+        (is (= "Sales by Category over time" (:name facet)))
+        (testing "the default and time-facet variants become two pages, named from parts"
+          (is (= #{"Sales by Category" "Sales by Category over time"}
+                 (set (map :long_name pages)))
+              "long_name: full <metric> by <dimension> <variant>")
+          (is (= "By Category" (:name (by-long "Sales by Category")))
+              "short name of the default page drops the metric (it's the block heading)")
+          (is (= "By Category over time" (:name (by-long "Sales by Category over time")))
+              "short name carries the variant qualifier"))))))
 
 (deftest exploration-create-time-facet-skipped-without-default-breakout-test
   (testing "POST / categorical dim but metric has no default temporal breakout → no time-facet"
@@ -760,8 +770,8 @@
                (set (map :query_type (get by-seg true)))))
         (is (every? #(= (:id s) (:segment_id %)) (get by-seg true)))))))
 
-(deftest exploration-create-variants-share-one-sidebar-leaf-test
-  (testing "All variants for a (card, dim) collapse into a single 'page' leaf in auto-groups"
+(deftest exploration-create-variants-grouped-into-pages-test
+  (testing "variants for a (card, dim) are materialized and partitioned across the block's pages"
     (mt/with-temp [:model/User u {:email "groups-collapse@example.com"}
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
@@ -775,12 +785,14 @@
             resp    (create-exploration! u body)
             thread  (first (:threads resp))
             queries (:queries thread)
-            leaves  (filter #(= "page" (:display_type %)) (:groups thread))
-            page    (first leaves)]
-        (is (= 3 (count queries)))
-        (is (= 1 (count leaves)) "all 3 variants collapse into one page leaf")
-        (is (= 3 (count (:query_ids page))))
-        (is (= (set (map :id queries)) (set (:query_ids page))))))))
+            blocks  (:blocks thread)
+            pages   (mapcat :pages blocks)]
+        (is (pos? (count queries)))
+        (is (= 1 (count blocks)) "one block for the single (metric, dim) selection")
+        (is (= (set (map :id queries)) (set (mapcat :query_ids pages)))
+            "every query belongs to a page; pages cover exactly the thread's queries")
+        (is (= (count queries) (reduce + (map (comp count :query_ids) pages)))
+            "no query is double-counted across pages")))))
 
 (deftest exploration-create-without-selections-test
   (testing "POST / works without metrics/dimensions/timelines (drafty exploration)"
@@ -825,13 +837,13 @@
           (is (nil? (:completed_at rerun)) "completion gate cleared")
           (is (empty? (:queries rerun)) "previously generated queries are wiped")
           (testing "selections are preserved"
-            ;; Selections live in the thread's ExplorationThreadGroup rows, which restart does
+            ;; Selections live in the thread's ExplorationBlock rows, which restart does
             ;; NOT delete (only the materialized queries are wiped, so the query-derived
-            ;; :groups tree in the response is empty until the planner re-runs below).
-            (let [groups (t2/select :model/ExplorationThreadGroup :exploration_thread_id orig-tid)]
-              (is (= 1 (count groups)) "the Research-plan group survives the restart")
-              (is (= 1 (count (:metrics (first groups)))) "its metric selection is preserved")
-              (is (= ["d1"] (mapv :dimension_id (:dimensions (first groups))))
+            ;; :blocks tree in the response has empty pages until the planner re-runs below).
+            (let [blocks (t2/select :model/ExplorationBlock :exploration_thread_id orig-tid)]
+              (is (= 1 (count blocks)) "the Research-plan block survives the restart")
+              (is (= 1 (count (:metrics (first blocks)))) "its metric selection is preserved")
+              (is (= ["d1"] (mapv :dimension_id (:dimensions (first blocks))))
                   "its dimension selection is preserved"))
             (is (= 1 (count (:timelines rerun)))))
           (testing "the planner regenerates queries for the same thread"
@@ -1118,7 +1130,7 @@
           (is (= 0.83 (:contextual_interestingness_score s))))))))
 
 (deftest exploration-get-includes-interestingness-on-queries-test
-  (testing "GET /:id hydrates user_interestingness and both interestingness scores on each nested query"
+  (testing "GET /:id hydrates both interestingness scores on each nested query"
     (mt/with-temp [:model/User u {:email "get-score@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (create-exploration! u
@@ -1131,14 +1143,12 @@
             fetch-query (fn []
                           (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
                               :threads first :queries first))]
-        (testing "fresh query: scores nil (no result row), user_interestingness nil"
+        (testing "fresh query: scores nil (no result row)"
           (let [q (fetch-query)]
             (is (contains? q :interestingness_score))
             (is (nil? (:interestingness_score q)))
             (is (contains? q :contextual_interestingness_score))
-            (is (nil? (:contextual_interestingness_score q)))
-            (is (contains? q :user_interestingness))
-            (is (nil? (:user_interestingness q)))))
+            (is (nil? (:contextual_interestingness_score q)))))
         (testing "after a result row is inserted, both scores surface via hydration"
           (let [sr-id (first (t2/insert-returning-pks! :model/StoredResult
                                                        {:result_data (byte-array [0])}))]
@@ -1149,11 +1159,7 @@
                          :contextual_interestingness_score 0.83}))
           (let [q (fetch-query)]
             (is (= 0.42 (:interestingness_score q)))
-            (is (= 0.83 (:contextual_interestingness_score q)))))
-        (testing "user_interestingness on the query column round-trips through GET /:id"
-          (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)
-                                {:user_interestingness 1})
-          (is (= 1 (:user_interestingness (fetch-query)))))))))
+            (is (= 0.83 (:contextual_interestingness_score q)))))))))
 
 (deftest exploration-list-queries-permissions-test
   (testing "GET /:id/queries enforces the same read-check as the parent exploration"
@@ -1353,79 +1359,47 @@
           (is (= [src-sr-id] (mapv :stored_result_id use-rows))
               "exactly one stored_result_use row, pointing at the source snapshot"))))))
 
-(deftest exploration-user-interestingness-roundtrip-test
-  (testing "PUT /query/:id/interesting sets the rating; DELETE clears it; both reflected in /:id/queries"
-    (mt/with-temp [:model/User u {:email "mark@example.com"}
+(deftest exploration-page-starred-roundtrip-test
+  (testing "PUT /page/:id/starred sets the flag both ways; reflected in GET /:id"
+    (mt/with-temp [:model/User u {:email "page-mark@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (create-exploration! u
-                                      {:name "mark"
+                                      {:name "page-mark"
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
-            eid  (:id resp)
-            qid  (-> resp :threads first :queries first :id)
-            put! (fn [level]
-                   (mt/user-http-request u :put 200 (format "exploration/query/%d/interesting" qid)
-                                         {:user_interestingness level}))
-            list-one (fn []
-                       (first (mt/user-http-request u :get 200 (format "exploration/%d/queries" eid))))]
-        (testing "fresh query has nil rating"
-          (is (nil? (:user_interestingness (list-one)))))
-        (testing "PUT writes each of the three levels and the response reflects it"
-          (doseq [level [0 1 2]]
-            (let [marked (put! level)]
-              (is (= level (:user_interestingness marked)))
-              (is (= qid   (:id marked)))
-              (is (= level (:user_interestingness (list-one)))
-                  (format "summary list reflects level %d" level)))))
-        (testing "PUT overwrites a prior rating (no idempotency carve-out)"
-          (put! 2)
-          (put! 0)
-          (is (= 0 (:user_interestingness (list-one)))))
-        (testing "DELETE clears user_interestingness"
-          (let [cleared (mt/user-http-request u :delete 200 (format "exploration/query/%d/interesting" qid))]
-            (is (nil? (:user_interestingness cleared)))
-            (is (nil? (:user_interestingness (list-one))))))))))
+            eid     (:id resp)
+            page-id (-> resp :threads first :blocks first :pages first :id)
+            fetch-page (fn []
+                         (-> (mt/user-http-request u :get 200 (format "exploration/%d" eid))
+                             :threads first :blocks first :pages first))]
+        (testing "fresh page defaults to not starred"
+          (is (false? (:starred (fetch-page)))))
+        (testing "PUT :starred true stars the page"
+          (mt/user-http-request u :put 204 (format "exploration/page/%d/starred" page-id) {:starred true})
+          (is (true? (:starred (fetch-page)))))
+        (testing "PUT :starred false unstars the page"
+          (mt/user-http-request u :put 204 (format "exploration/page/%d/starred" page-id) {:starred false})
+          (is (false? (:starred (fetch-page)))))))))
 
-(deftest exploration-user-interestingness-rejects-bad-levels-test
-  (testing "PUT /query/:id/interesting rejects values outside {0,1,2}"
-    (mt/with-temp [:model/User u {:email "mark-bad@example.com"}
-                   :model/Card metric (valid-metric-card (:id u))]
-      (let [resp (create-exploration! u
-                                      {:name "bad"
-                                       :metrics [{:card_id (:id metric)
-                                                  :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
-                                       :dimensions [{:dimension_id "d1"}]})
-            qid  (-> resp :threads first :queries first :id)]
-        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
-                              {:user_interestingness 3})
-        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
-                              {:user_interestingness -1})
-        (mt/user-http-request u :put 400 (format "exploration/query/%d/interesting" qid)
-                              {})))))
-
-(deftest exploration-user-interestingness-permissions-test
-  (testing "PUT/DELETE /query/:id/interesting enforce write-check — non-owner gets 403"
-    (mt/with-temp [:model/User owner {:email "mp-owner@example.com"}
-                   :model/User other {:email "mp-other@example.com"}
+(deftest exploration-page-starred-permissions-test
+  (testing "PUT /page/:id/starred enforces write-check — non-owner gets 403"
+    (mt/with-temp [:model/User owner {:email "page-mp-owner@example.com"}
+                   :model/User other {:email "page-mp-other@example.com"}
                    :model/Card metric (valid-metric-card (:id owner))]
       (let [resp (create-exploration! owner
-                                      {:name "mark-private"
+                                      {:name "page-mark-private"
                                        :collection_id (:id (collection/user->personal-collection (:id owner)))
                                        :metrics [{:card_id (:id metric)
                                                   :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                        :dimensions [{:dimension_id "d1"}]})
-            qid  (-> resp :threads first :queries first :id)]
-        (mt/user-http-request other :put 403 (format "exploration/query/%d/interesting" qid)
-                              {:user_interestingness 2})
-        (mt/user-http-request other :delete 403 (format "exploration/query/%d/interesting" qid))))))
+            page-id (-> resp :threads first :blocks first :pages first :id)]
+        (mt/user-http-request other :put 403 (format "exploration/page/%d/starred" page-id) {:starred true})))))
 
-(deftest exploration-user-interestingness-404-test
-  (testing "PUT/DELETE on a nonexistent query id returns 404"
-    (mt/with-temp [:model/User u {:email "mark-404@example.com"}]
-      (mt/user-http-request u :put 404 "exploration/query/9999999/interesting"
-                            {:user_interestingness 1})
-      (mt/user-http-request u :delete 404 "exploration/query/9999999/interesting"))))
+(deftest exploration-page-starred-404-test
+  (testing "PUT on a nonexistent page id returns 404"
+    (mt/with-temp [:model/User u {:email "page-mark-404@example.com"}]
+      (mt/user-http-request u :put 404 "exploration/page/9999999/starred" {:starred true}))))
 
 (deftest exploration-create-auto-creates-scratchpad-document-test
   (testing "POST / auto-creates a 'Scratchpad' document owned by the new exploration's thread, alongside the AI Summary placeholder"
@@ -1526,13 +1500,10 @@
         (mt/user-http-request other :get 403 url)
         (mt/user-http-request other :post 403 url {})))))
 
-(deftest ^:parallel append-chart-page-url-test
-  (testing "chart-page-url builds a research deep link with the (group, card, dim) leaf id percent-encoded"
-    (is (= "/question/research/7/group/auto%3A9%3A42%3Aorders.created_at%3Adefault"
-           (explorations.groups/chart-page-url 7 9 42 "orders.created_at" "default")))
-    (testing "the encoded segment decodes back to the FE-routed leaf id"
-      (is (= "auto:9:42:orders.created_at:default"
-             (explorations.groups/leaf-id 9 42 "orders.created_at" "default"))))))
+(deftest ^:parallel page-url-test
+  (testing "page-url builds a research deep link to a page by id"
+    (is (= "/question/research/7/page/42"
+           (explorations.blocks/page-url 7 42)))))
 
 (deftest ^:parallel append-chart-nodes-test
   (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"
@@ -1540,7 +1511,7 @@
                   {:type "doc" :content []}
                   77
                   99
-                  "/question/research/7/group/auto%3A42%3Ad1")
+                  "/question/research/7/page/42")
           embed  (first (:content result))]
       (is (= "doc" (:type result)))
       (is (= 1 (count (:content result))))
@@ -1549,7 +1520,7 @@
                          :attrs {:id 77
                                  :name nil
                                  :stored_result_id 99
-                                 :chart_href "/question/research/7/group/auto%3A42%3Ad1"}}]}
+                                 :chart_href "/question/research/7/page/42"}}]}
              embed))))
   (testing "tolerates a missing/non-doc root by starting from an empty doc"
     (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x")]
@@ -1577,7 +1548,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name         "cascade"
                                         :timeline_ids [(:id tl)]
-                                        :groups       [{:name       "Group"
+                                        :blocks       [{:name       "Group"
                                                         :metrics    [{:card_id (:id metric)
                                                                       :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                                         :dimensions [{:dimension_id "d1"}]}]})
@@ -1585,7 +1556,7 @@
             tid  (-> resp :threads first :id)]
         (t2/delete! :model/Exploration :id eid)
         (is (zero? (t2/count :model/ExplorationThread :exploration_id eid)))
-        (is (zero? (t2/count :model/ExplorationThreadGroup :exploration_thread_id tid)))
+        (is (zero? (t2/count :model/ExplorationBlock :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))
 
@@ -1614,129 +1585,107 @@
           (is (false? (t2/exists? :model/Exploration :id eid2))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                    group-tree (pure fn)                                                     |
+;;; |                                    blocks-tree (pure fn)                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest group-tree-emits-group-and-leaf-levels-test
-  (testing "Each persisted group produces a top-level 'sidebar' group; each (card_id, dimension_id) within it produces a leaf child"
-    (let [groups (explorations.groups/group-tree
-                  [{:id 1 :metrics [{:card_id 10}]} {:id 2 :metrics [{:card_id 20}]}]
-                  [{:id 1 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"      :interestingness_score 0.5}
-                   {:id 2 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)" :interestingness_score 0.7}
-                   {:id 3 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)" :interestingness_score 0.3}
-                   {:id 4 :group_id 1 :card_id 10 :dimension_id "d2" :segment_id nil :name "Rev by D2"      :interestingness_score 0.4}
-                   {:id 5 :group_id 2 :card_id 20 :dimension_id "d1" :segment_id nil :name "Cnt by D1"      :interestingness_score 0.9}]
-                  {10 "Revenue block" 20 "Count block"})
-          by-id  (into {} (map (juxt :id identity)) groups)]
-      (is (= 5 (count groups)) "2 group nodes + 3 leaf (card, dim) nodes")
-      (is (= #{"1" "2" "auto:1:10:d1" "auto:1:10:d2" "auto:2:20:d1"}
-             (set (map :id groups))))
-      (testing "group nodes are 'sidebar' with empty :query_ids and nil parent"
-        (is (= "sidebar" (:display_type (get by-id "1"))))
-        (is (= "sidebar" (:display_type (get by-id "2"))))
-        (is (every? #(= [] (:query_ids %)) [(get by-id "1") (get by-id "2")]))
-        (is (every? #(nil? (:parent_group_id %)) [(get by-id "1") (get by-id "2")])))
-      (testing "group node :name mirrors the computed :group_name heading"
-        (is (= "Revenue block" (:name (get by-id "1"))))
-        (is (= "Revenue block" (:group_name (get by-id "1"))))
-        (is (= "Count block"   (:name (get by-id "2"))))
-        (is (= "Count block"   (:group_name (get by-id "2")))))
-      (testing "leaves point at their group via :parent_group_id"
-        (is (= "1" (:parent_group_id (get by-id "auto:1:10:d1"))))
-        (is (= "1" (:parent_group_id (get by-id "auto:1:10:d2"))))
-        (is (= "2" (:parent_group_id (get by-id "auto:2:20:d1")))))
-      (testing "leaf :display_type is 'page' for multi-query leaves, 'singleton' for solo"
-        (is (= "page"      (:display_type (get by-id "auto:1:10:d1"))) "3 queries (base + 2 segments)")
-        (is (= "singleton" (:display_type (get by-id "auto:1:10:d2"))) "1 query")
-        (is (= "singleton" (:display_type (get by-id "auto:2:20:d1"))) "1 query"))
-      (testing "leaf members enumerated in input order"
-        (is (= [1 2 3] (:query_ids (get by-id "auto:1:10:d1"))))
-        (is (= [4]     (:query_ids (get by-id "auto:1:10:d2"))))
-        (is (= [5]     (:query_ids (get by-id "auto:2:20:d1")))))
-      (testing "every group is type=auto"
-        (is (every? #(= "auto" (:type %)) groups))))))
+(defn- pages-of [block] (:pages block))
+(defn- page-by-id [tree] (into {} (mapcat (fn [b] (map (juxt :id identity) (pages-of b)))) tree))
 
-(deftest group-tree-depth-first-positions-test
-  (testing "Output order is depth-first (group, its leaves sorted by score, next group); :position reifies the index"
-    (let [groups (explorations.groups/group-tree
-                  [{:id 10} {:id 20}]
-                  [{:id 1 :group_id 10 :card_id 1 :dimension_id "d1" :segment_id nil :name "Rev by D1" :interestingness_score 0.9}
-                   {:id 2 :group_id 10 :card_id 1 :dimension_id "d2" :segment_id nil :name "Rev by D2" :interestingness_score 0.4}
-                   {:id 3 :group_id 20 :card_id 2 :dimension_id "d1" :segment_id nil :name "Cnt by D1" :interestingness_score 0.8}]
-                  {})]
-      (is (= ["10" "auto:10:1:d1" "auto:10:1:d2" "20" "auto:20:2:d1"]
-             (mapv :id groups))
-          "groups in authoring order; each immediately followed by its leaves, sorted by score within")
-      (is (= [0 1 2 3 4] (mapv :position groups))
-          ":position matches the position in the returned vector"))))
+(deftest blocks-tree-emits-blocks-and-pages-test
+  (testing "Each block becomes a node; each of its pages bundles that page's queries by page_id"
+    (let [blocks  [{:id 1 :metrics [{:card_id 10}]} {:id 2 :metrics [{:card_id 20}]}]
+          pages   [{:id 100 :exploration_block_id 1 :card_id 10 :dimension_id "d1" :query_type "default"}
+                   {:id 101 :exploration_block_id 1 :card_id 10 :dimension_id "d2" :query_type "default"}
+                   {:id 200 :exploration_block_id 2 :card_id 20 :dimension_id "d1" :query_type "default"}]
+          queries [{:id 1 :page_id 100 :segment_id nil :name "Rev by D1"      :interestingness_score 0.5}
+                   {:id 2 :page_id 100 :segment_id 100 :name "Rev by D1 (S1)" :interestingness_score 0.7}
+                   {:id 3 :page_id 100 :segment_id 101 :name "Rev by D1 (S2)" :interestingness_score 0.3}
+                   {:id 4 :page_id 101 :segment_id nil :name "Rev by D2"      :interestingness_score 0.4}
+                   {:id 5 :page_id 200 :segment_id nil :name "Cnt by D1"      :interestingness_score 0.9}]
+          tree    (explorations.blocks/blocks-tree blocks pages {10 "Revenue block" 20 "Count block"} queries)
+          by-id   (into {} (map (juxt :id identity)) tree)
+          p->     (page-by-id tree)]
+      (is (= [1 2] (mapv :id tree)) "one node per block, in authoring order")
+      (is (= [0 1] (mapv :position tree)) ":position reifies block order")
+      (testing "block headings come from the metric card name; all metric-anchored here"
+        (is (= "Revenue block" (:name (by-id 1))))
+        (is (= "Count block"   (:name (by-id 2))))
+        (is (every? #(= "metric" (:type %)) tree)))
+      (testing "pages nest under their block (score-sorted)"
+        (is (= [100 101] (mapv :id (:pages (by-id 1)))) "page 100 (max 0.7) before page 101 (0.4)")
+        (is (= [200]     (mapv :id (:pages (by-id 2))))))
+      (testing "page :query_ids bundle that page's queries in input order"
+        (is (= [1 2 3] (:query_ids (p-> 100))))
+        (is (= [4]     (:query_ids (p-> 101))))
+        (is (= [5]     (:query_ids (p-> 200)))))
+      (testing "page :position reifies score order within the block"
+        (is (= [0 1] (mapv :position (:pages (by-id 1)))))))))
 
-(deftest group-tree-display-type-test
-  (testing ":display_type reflects how the group should render"
-    (testing "single query → 'sidebar' group node + 'singleton' leaf"
-      (let [groups (explorations.groups/group-tree
-                    [{:id 5}]
-                    [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "solo"}]
-                    {})]
-        (is (= ["sidebar" "singleton"] (mapv :display_type groups)))))
-    (testing "multiple queries sharing (card, dim) → 'sidebar' group node + 'page' leaf"
-      (let [groups (explorations.groups/group-tree
-                    [{:id 5}]
-                    [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "base"}
-                     {:id 2 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 100 :name "seg"}]
-                    {})]
-        (is (= ["sidebar" "page"] (mapv :display_type groups)))))))
+(deftest blocks-tree-positions-test
+  (testing "blocks in authoring order; pages within a block score-sorted; positions reified"
+    (let [blocks  [{:id 10} {:id 20}]
+          pages   [{:id 1 :exploration_block_id 10 :card_id 1 :dimension_id "d1" :query_type "default"}
+                   {:id 2 :exploration_block_id 10 :card_id 1 :dimension_id "d2" :query_type "default"}
+                   {:id 3 :exploration_block_id 20 :card_id 2 :dimension_id "d1" :query_type "default"}]
+          queries [{:id 1 :page_id 1 :segment_id nil :name "Rev by D1" :interestingness_score 0.9}
+                   {:id 2 :page_id 2 :segment_id nil :name "Rev by D2" :interestingness_score 0.4}
+                   {:id 3 :page_id 3 :segment_id nil :name "Cnt by D1" :interestingness_score 0.8}]
+          tree    (explorations.blocks/blocks-tree blocks pages {} queries)]
+      (is (= [10 20] (mapv :id tree)))
+      (is (= [0 1]   (mapv :position tree)))
+      (is (= [[1 2] [3]] (mapv (fn [b] (mapv :id (:pages b))) tree))
+          "block 10 pages [1 (0.9) then 2 (0.4)]; block 20 page [3]"))))
 
-(deftest group-tree-leaf-name-from-unsegmented-base-test
-  (testing "Leaf :name is taken from the unsegmented (segment_id=nil) base query; the group node :name is the computed heading"
-    (let [groups (explorations.groups/group-tree
-                  [{:id 5 :metrics [{:card_id 10}]}]
-                  [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)"}
-                   {:id 2 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"}
-                   {:id 3 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)"}]
-                  {10 "Revenue"})
-          [grp leaf] groups]
-      (is (= 2 (count groups)))
-      (is (= "Revenue"   (:name grp)) "group node name is the computed metric heading")
-      (is (= "Rev by D1" (:name leaf))
-          "even when base isn't first in the input, its name wins for the leaf"))))
+(deftest blocks-tree-page-name-generated-from-parts-test
+  (testing "page names are generated from the metric + dimension (+ variant), independent of the query :name"
+    (let [blocks  [{:id 5 :metrics [{:card_id 10}]}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
+          queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Price" :name "some stored query name"}]
+          [block] (explorations.blocks/blocks-tree blocks pages {10 "Revenue"} queries)
+          [page]  (:pages block)]
+      (is (= "Revenue" (:name block)))
+      (is (= "By Price" (:name page))
+          "short name drops the metric, which the block heading already shows")
+      (is (= "Revenue by Price" (:long_name page))
+          "long name is self-describing — metric + dimension"))))
 
-(deftest group-tree-leaf-sort-prefers-contextual-test
-  (testing "Leaf sort uses contextual_interestingness_score when present, else interestingness_score"
-    (let [groups (explorations.groups/group-tree
-                  [{:id 5}]
-                  [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "High heuristic low contextual"
+(deftest blocks-tree-page-sort-prefers-contextual-test
+  (testing "page sort uses contextual_interestingness_score when present, else interestingness_score"
+    (let [blocks  [{:id 5}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}
+                   {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id "d2" :query_type "default"}]
+          queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "D1"
                     :interestingness_score 0.95 :contextual_interestingness_score 0.2}
-                   {:id 2 :group_id 5 :card_id 10 :dimension_id "d2" :segment_id nil :name "Low heuristic high contextual"
+                   {:id 2 :page_id 2 :segment_id nil :dimension_name "D2"
                     :interestingness_score 0.1 :contextual_interestingness_score 0.85}]
-                  {})
-          leaves (->> groups
-                      (filter #(= "5" (:parent_group_id %)))
-                      (mapv :name))]
-      (is (= ["Low heuristic high contextual" "High heuristic low contextual"] leaves)
-          "effective 0.85 (contextual) sorts above 0.2 (contextual), not 0.95 (heuristic ignored)"))))
+          [block] (explorations.blocks/blocks-tree blocks pages {} queries)]
+      (is (= [2 1] (mapv :id (:pages block)))
+          "page 2 (effective 0.85 contextual) sorts above page 1 (0.2), not by 0.95 heuristic"))))
 
-(deftest group-tree-leaf-sort-order-test
-  (testing "Leaves within a group sort by max interestingness desc; nil-score leaves sort last"
-    (let [groups (explorations.groups/group-tree
-                  [{:id 5}]
-                  [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "mid"  :interestingness_score 0.4}
-                   {:id 2 :group_id 5 :card_id 10 :dimension_id "d2" :segment_id nil :name "high" :interestingness_score 0.9}
-                   {:id 3 :group_id 5 :card_id 10 :dimension_id "d3" :segment_id nil :name "none" :interestingness_score nil}]
-                  {})
-          leaf-names (->> groups (filter #(= "5" (:parent_group_id %))) (mapv :name))]
-      (is (= ["high" "mid" "none"] leaf-names))
-      (is (= (vec (range (count groups))) (mapv :position groups))
-          ":position reifies the depth-first sort order on the wire"))))
+(deftest blocks-tree-page-sort-order-test
+  (testing "pages within a block sort by max interestingness desc; nil-score pages last"
+    (let [blocks  [{:id 5}]
+          pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}
+                   {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id "d2" :query_type "default"}
+                   {:id 3 :exploration_block_id 5 :card_id 10 :dimension_id "d3" :query_type "default"}]
+          queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "D1" :interestingness_score 0.4}
+                   {:id 2 :page_id 2 :segment_id nil :dimension_name "D2" :interestingness_score 0.9}
+                   {:id 3 :page_id 3 :segment_id nil :dimension_name "D3" :interestingness_score nil}]
+          [block] (explorations.blocks/blocks-tree blocks pages {} queries)]
+      (is (= [2 1 3] (mapv :id (:pages block))) "high (0.9), mid (0.4), then nil-score last")
+      (is (= [0 1 2] (mapv :position (:pages block))) ":position reifies the sorted order"))))
 
-(deftest group-tree-empty-input-test
-  (testing "No groups returns an empty vector (no nil)"
-    (is (= [] (explorations.groups/group-tree [] [] {})))
-    (is (= [] (explorations.groups/group-tree [] [{:id 1 :group_id 1 :card_id 1 :dimension_id "d"}] {}))))
-  (testing "a group with no materialized queries still emits its node"
-    (is (= ["7"] (mapv :id (explorations.groups/group-tree [{:id 7}] [] {}))))))
+(deftest blocks-tree-empty-input-test
+  (testing "No blocks returns an empty vector (no nil)"
+    (is (= [] (explorations.blocks/blocks-tree [] [] {} [])))
+    (is (= [] (explorations.blocks/blocks-tree [] [] {} [{:id 1 :page_id 1}]))))
+  (testing "a block with no pages still emits its node with empty :pages"
+    (let [[block] (explorations.blocks/blocks-tree [{:id 7}] [] {} [])]
+      (is (= 7 (:id block)))
+      (is (= [] (:pages block))))))
 
-(deftest exploration-get-includes-groups-test
-  (testing "GET /:id attaches :groups to each thread, with one metric-level wrapper and (card, dim) leaves underneath"
+(deftest exploration-get-includes-blocks-and-pages-test
+  (testing "GET /:id attaches nested :blocks → :pages to each thread"
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment _seg-a {:name "alpha"
@@ -1755,62 +1704,49 @@
             resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
             thread    (-> resp :threads first)
             queries   (:queries thread)
-            groups    (:groups thread)
-            group-id      (str (t2/select-one-pk :model/ExplorationThreadGroup
-                                                 :exploration_thread_id (:id thread)))
-            group-nodes   (filter #(= "sidebar" (:display_type %)) groups)
-            leaf-nodes    (filter #(not= "sidebar" (:display_type %)) groups)]
+            blocks    (:blocks thread)
+            block-id  (t2/select-one-pk :model/ExplorationBlock
+                                        :exploration_thread_id (:id thread))
+            pages     (mapcat :pages blocks)]
         (is (= 9 (count queries))
             "category (default+top-n-other) × 3 + price (default) × 3 = 9 queries")
-        (is (= 3 (count groups)) "1 group node + 2 (card, dim) leaves")
-        (testing "group node"
-          (is (= 1 (count group-nodes)) "one group — one top-level node")
-          (let [[g] group-nodes]
-            (is (= "Revenue" (:group_name g))
-                "metric-anchored heading is the metric name")
-            (is (nil? (:parent_group_id g)))
-            (is (= [] (:query_ids g)) "group nodes carry no direct queries — queries live on leaves")
-            (is (= group-id (:id g)) "node id is the persisted group PK as a string")))
-        (testing "leaves point at the group node"
-          (is (every? #(= group-id (:parent_group_id %)) leaf-nodes)))
-        (testing "every group is type=auto with a string id"
-          (is (every? #(= "auto" (:type %)) groups))
-          (is (every? #(string? (:id %)) groups)))
-        (testing "positions are 0..N-1 in depth-first order"
-          (is (= (vec (range (count groups))) (mapv :position groups))))
-        (testing "leaf :display_type matches the size of :query_ids"
-          (is (every? #(contains? #{"singleton" "page"} (:display_type %)) leaf-nodes))
-          (doseq [g leaf-nodes]
-            (let [expected (if (= 1 (count (:query_ids g))) "singleton" "page")]
-              (is (= expected (:display_type g))
-                  (str "leaf " (:id g) " has " (count (:query_ids g)) " queries → " expected)))))
-        (testing "every query appears in exactly one leaf group's :query_ids"
-          (let [all-member-ids (mapcat :query_ids leaf-nodes)
-                query-ids      (map :id queries)]
-            (is (= (count queries) (count all-member-ids))
-                "members across leaves equal the total query count")
-            (is (= (set query-ids) (set all-member-ids))
-                "every query id is a member of some leaf")))
-        (testing "leaf members on the same thread share the same (card, dim)"
+        (testing "one metric-anchored block"
+          (is (= 1 (count blocks)))
+          (let [[b] blocks]
+            (is (= "Revenue" (:name b)) "metric-anchored heading is the metric name")
+            (is (= "metric" (:type b)))
+            (is (= block-id (:id b)) "block node id is the persisted block PK")
+            (is (= 0 (:position b)))))
+        (testing "pages partition the queries by (card, dim, query_type)"
+          ;; category → default + top-n-other = 2 pages; price → default = 1 page
+          (is (= 3 (count pages)))
+          (let [all-member-ids (mapcat :query_ids pages)]
+            (is (= (count queries) (count all-member-ids)) "no query double-counted")
+            (is (= (set (map :id queries)) (set all-member-ids)) "every query on some page")))
+        (testing "each page bundles a single (card, dim) partition"
           (let [qid->q (into {} (map (juxt :id identity)) queries)]
-            (doseq [g leaf-nodes]
-              (let [members  (map qid->q (:query_ids g))
+            (doseq [p pages]
+              (let [members  (map qid->q (:query_ids p))
                     pair-set (set (map (juxt :card_id :dimension_id) members))]
                 (is (= 1 (count pair-set))
-                    (str "leaf " (:id g) " bundles a single (card, dim) partition"))))))
-        (testing "metric-anchored leaves are named 'By <dimension>'"
-          (is (= #{"By Category" "By Price"}
-                 (set (map :name leaf-nodes)))))))))
+                    (str "page " (:id p) " bundles a single (card, dim) partition"))))))
+        (testing "pages are named 'By <dimension> <variant>', the variant qualifier distinguishing same-dimension pages"
+          (is (= #{"By Category" "By Category (Top values + Other)" "By Price"}
+                 (set (map :name pages))))
+          (is (= 2 (count (filter #(str/includes? (:name %) "Category") pages)))
+              "category's default and top-n-other are distinct, separately-named pages"))
+        (testing "page :position is 0..N-1 within the block"
+          (is (= (vec (range (count pages))) (sort (map :position pages)))))))))
 
-(deftest exploration-get-multiple-groups-test
-  (testing "Threads with multiple groups emit one 'sidebar' node per group, each parenting its own leaves"
+(deftest exploration-get-multiple-blocks-test
+  (testing "Threads with multiple blocks emit one node per block, each with its own pages"
     (mt/with-temp [:model/User u {:email "multi-groups@example.com"}
                    :model/Card m1 (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Card m2 (assoc (venues-metric-card (:id u)) :name "Order count")]
       (let [dims [{:dimension_id "category" :display_name "Category"}
                   {:dimension_id "price"    :display_name "Price"}]
             body {:name "multi"
-                  :groups [{:type       "metric"
+                  :blocks [{:type       "metric"
                             :metrics    [{:card_id (:id m1) :dimension_mappings (venues-dimension-mappings)}]
                             :dimensions dims}
                            {:type       "metric"
@@ -1819,34 +1755,26 @@
             {eid :id} (create-exploration! u body)
             resp       (mt/user-http-request u :get 200 (format "exploration/%d" eid))
             thread     (-> resp :threads first)
-            groups     (:groups thread)
-            by-display (group-by :display_type groups)
-            group-ids  (set (map :id (get by-display "sidebar")))
-            non-sidebar (concat (get by-display "singleton") (get by-display "page"))]
-        ;; Per group: category dim gets default + top-n-other (> 20 distinct) → "page";
-        ;; price dim gets only default (4 distinct) → "singleton". Two groups → 2 of each.
-        (is (= 2 (count (get by-display "singleton"))) "price dim → one singleton leaf per group = 2")
-        (is (= 2 (count (get by-display "page")))      "category dim → one page leaf per group = 2")
-        (is (= 2 (count (get by-display "sidebar")))   "two groups → two top-level nodes")
-        (is (= #{"Revenue" "Order count"}
-               (set (map :group_name (get by-display "sidebar"))))
+            blocks     (:blocks thread)]
+        (is (= 2 (count blocks)) "two blocks → two top-level nodes")
+        (is (= #{"Revenue" "Order count"} (set (map :name blocks)))
             "metric-anchored headings are the metric names")
-        (is (every? #(string? (:id %)) (get by-display "sidebar")))
-        (testing "leaves are partitioned across the two group nodes"
-          (let [leaves-by-parent (group-by :parent_group_id non-sidebar)]
-            (is (= group-ids (set (keys leaves-by-parent)))
-                "every leaf's parent is a known group node id")
-            (is (every? #(= 2 (count %)) (vals leaves-by-parent))
-                "each group parents its own 2 (card, dim) leaves")))))))
+        (is (every? #(= "metric" (:type %)) blocks))
+        (is (every? #(int? (:id %)) blocks) "block node ids are the persisted block PKs")
+        (testing "each block has its own pages (category default+top-n-other + price default = 3)"
+          (is (every? #(= 3 (count (:pages %))) blocks)))
+        (testing "no query is shared across blocks/pages"
+          (let [all (mapcat (fn [b] (mapcat :query_ids (:pages b))) blocks)]
+            (is (= (count all) (count (distinct all))))))))))
 
-(deftest exploration-get-empty-thread-has-empty-groups-test
-  (testing "A thread with no queries gets :groups => []"
+(deftest exploration-get-empty-thread-has-empty-blocks-test
+  (testing "A thread with no queries gets :blocks => []"
     (mt/with-temp [:model/User u {:email "no-groups@example.com"}]
       (let [{eid :id} (mt/user-http-request u :post 200 "exploration" {:name "no-groups"})
             resp      (mt/user-http-request u :get 200 (format "exploration/%d" eid))
             thread    (-> resp :threads first)]
         (is (= [] (:queries thread)))
-        (is (= [] (:groups thread)))))))
+        (is (= [] (:blocks thread)))))))
 
 (deftest exploration-hydrates-timeline-events-and-per-query-scores-test
   (testing "GET /:id hydrates :timelines with the underlying Timeline + :events, and :queries with :timeline_interestingness"
@@ -2119,18 +2047,23 @@
                                                            {:exploration_id (:id exploration)
                                                             :position       0
                                                             :started_at     (t/offset-date-time)}))
-        group-id    (t2/insert-returning-pk! :model/ExplorationThreadGroup
+        group-id    (t2/insert-returning-pk! :model/ExplorationBlock
                                              {:exploration_thread_id (:id thread)})
         eq-ids      (vec (for [i (range n)]
-                           (:id (first (t2/insert-returning-instances! :model/ExplorationQuery
-                                                                       {:exploration_thread_id (:id thread)
-                                                                        :card_id               (:id card)
-                                                                        :database_id           (:database_id card)
-                                                                        :group_id              group-id
-                                                                        :dimension_id          (str "d" i)
-                                                                        :dataset_query         (:dataset_query card)
-                                                                        :status                "pending"
-                                                                        :position              i})))))]
+                           (let [page-id (t2/insert-returning-pk! :model/ExplorationPage
+                                                                  {:exploration_block_id group-id
+                                                                   :card_id              (:id card)
+                                                                   :dimension_id         (str "d" i)
+                                                                   :query_type           "default"})]
+                             (:id (first (t2/insert-returning-instances! :model/ExplorationQuery
+                                                                         {:exploration_thread_id (:id thread)
+                                                                          :card_id               (:id card)
+                                                                          :database_id           (:database_id card)
+                                                                          :page_id               page-id
+                                                                          :dimension_id          (str "d" i)
+                                                                          :dataset_query         (:dataset_query card)
+                                                                          :status                "pending"
+                                                                          :position              i}))))))]
     {:thread-id (:id thread) :eq-ids eq-ids}))
 
 (deftest thread-cancel-sets-timestamps-and-flips-pending-test
@@ -2184,10 +2117,12 @@
                      :model/ExplorationThread thread {:exploration_id (:id exploration)
                                                       :position       0
                                                       :started_at     (t/offset-date-time)}
-                     :model/ExplorationThreadGroup group {:exploration_thread_id (:id thread)}
+                     :model/ExplorationBlock group {:exploration_thread_id (:id thread)}
+                     :model/ExplorationPage page {:exploration_block_id (:id group) :card_id (:id card)
+                                                  :dimension_id "d1" :query_type "default"}
                      :model/ExplorationQuery _q {:exploration_thread_id (:id thread)
                                                  :card_id               (:id card)
-                                                 :group_id              (:id group)
+                                                 :page_id               (:id page)
                                                  :dimension_id          "d1"
                                                  :dataset_query         (:dataset_query card)
                                                  :status                "pending"

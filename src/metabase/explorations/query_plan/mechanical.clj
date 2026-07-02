@@ -129,8 +129,8 @@
   any temporal-pattern variants and `time-facet` when applicable. Each
   non-time-facet item is fanned out across the metric's
   available segments — one copy per `[nil + segments]` — matching the
-  pre-LLM behavior. All items share the same `(metric_id, dimension_id)`
-  so the auto-groups sidebar collapses them under one leaf.
+  pre-LLM behavior. All items share the same `(metric_id, dimension_id)`,
+  so items of one query_type reconcile onto the same page.
 
   No `:rationale` is emitted: every mechanical item's rationale is a direct
   consequence of its (variant, dim-type) pair — a per-item explanation adds
@@ -154,28 +154,28 @@
                  (concat base patterns facet top-n-other)))))
 
 (defn- run-plan!
-  "Walk each group's metric × dim matrix and emit plan items per `items-for-pair`,
-  stamping every item with its group's id. Metrics are only crossed with dimensions
-  that co-occur in the same group (the group-scoped `:applicability` enforces this).
+  "Walk each block's metric × dim matrix and emit plan items per `items-for-pair`,
+  stamping every item with its block's id. Metrics are only crossed with dimensions
+  that co-occur in the same block (the block-scoped `:applicability` enforces this).
   Wrapped by `MechanicalPlanner` below — only consults `:metric-dim-ctx`; the thread
   prompt is ignored because the strategy is purely structural."
   [{:keys [metric-dim-ctx]}]
-  (let [{:keys [groups]} metric-dim-ctx
+  (let [{:keys [blocks]} metric-dim-ctx
         items (vec
-               (for [group           groups
-                     metric          (:metrics group)
+               (for [block           blocks
+                     metric          (:metrics block)
                      [_ {:keys [dim]}] (:applicability metric)
                      item            (items-for-pair metric dim)]
-                 (assoc item :group_id (:group-id group))))]
+                 (assoc item :block_id (:block-id block))))]
     (if (empty? items)
       {:outcome    :skip-not-applicable
        :transcript {:reason   "no applicable (metric, dimension) pairs"
-                    :n-groups (count groups)}}
+                    :n-blocks (count blocks)}}
       {:outcome    :ok
        :plan       items
        :transcript {:strategy  "mechanical"
                     :n-items   (count items)
-                    :n-groups  (count groups)}})))
+                    :n-blocks  (count blocks)}})))
 
 (defrecord MechanicalPlanner []
   planner/QueryPlanner

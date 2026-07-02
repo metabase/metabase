@@ -49,13 +49,13 @@
 ;;;
 
 (defn- exploration-comment-url
-  "Build URL for an exploration comment using child_target_id (group ID) and context (JSON map with timeline etc.)."
+  "Build URL for an exploration comment using child_target_id (page ID) and context (JSON map with timeline etc.)."
   [exploration-id comment]
   (let [base    (channel.urls/exploration-path exploration-id)
         child   (:child_target_id comment)
         context (:context comment)]
     (if child
-      (let [path      (str base "/group/" (codec/url-encode (str child)))
+      (let [path      (str base "/page/" (codec/url-encode (str child)))
             params    (cond-> {:comments "true"}
                         (:timeline_id context) (assoc :timeline (:timeline_id context)))
             query-str (->> params

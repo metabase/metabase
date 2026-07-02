@@ -4,10 +4,7 @@ import { useMemo } from "react";
 import { getStore } from "__support__/entities-store";
 import { TestWrapper } from "__support__/ui";
 import { Api } from "metabase/api";
-import {
-  createGroup,
-  createQuery,
-} from "metabase/explorations/test-utils";
+import { createPage, createQuery } from "metabase/explorations/test-utils";
 import { mainReducers } from "metabase/reducers-main"; // eslint-disable-line boundaries/element-types
 import { createMockState } from "metabase/redux/store/mocks";
 import { Stack, Text } from "metabase/ui";
@@ -599,10 +596,9 @@ function buildScenario(configs: QueryConfig[]) {
     } as Dataset);
   }
 
-  const group = createGroup({
-    id: "page-group-1",
+  const page = createPage({
+    id: 1,
     name: "Test Group",
-    display_type: "page",
     query_ids: queries.map((q) => q.id),
   });
 
@@ -617,7 +613,7 @@ function buildScenario(configs: QueryConfig[]) {
     }),
   ];
 
-  return { queries, group, handlers };
+  return { queries, page, handlers };
 }
 
 // ---------------------------------------------------------------------------
@@ -633,7 +629,7 @@ function ScenarioStory({
   description: string;
   configs: QueryConfig[];
 }) {
-  const { queries, group, handlers } = buildScenario(configs);
+  const { queries, page, handlers } = buildScenario(configs);
 
   return {
     render: () => (
@@ -649,7 +645,7 @@ function ScenarioStory({
           </div>
           <ExplorationGroupVisualization
             explorationId={1}
-            group={group}
+            page={page}
             queries={queries}
             availableTimelines={[]}
             selectedTimelineId={null}

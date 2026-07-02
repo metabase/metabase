@@ -220,3 +220,17 @@
   (testing "no-op for empty/error results"
     (is (= {:data {:rows []}}
            (variants/pin-other-last "top-n-other" {:data {:rows []}})))))
+
+(deftest variant-qualifier-test
+  (testing "each variant has a short page qualifier; default has none, unknowns fall through to nil"
+    (is (= {"default"               nil
+            "temporal-pattern-day"  "(Day of week)"
+            "temporal-pattern-hour" "(Hour of day)"
+            "time-facet"            "over time"
+            "per-value-time-series" "over time"
+            "top-n-other"           "(Top values + Other)"
+            "filtered-subset"       "(Filtered)"
+            "some-future-variant"   nil}
+           (into {} (map (juxt identity variants/variant-qualifier))
+                 ["default" "temporal-pattern-day" "temporal-pattern-hour" "time-facet"
+                  "per-value-time-series" "top-n-other" "filtered-subset" "some-future-variant"])))))

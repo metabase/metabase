@@ -26,13 +26,18 @@ import {
   PotentiallyInterestingMarker,
 } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import {
   ActionIcon,
   Box,
+  Center,
   Ellipsified,
   Icon,
   type IconProps,
   Menu,
+  Stack,
+  Tabs,
+  Text,
 } from "metabase/ui";
 import type {
   Exploration,
@@ -48,6 +53,7 @@ import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
 import {
+  type ExplorationSidebarTabsInfo,
   type ExplorationTreeHeading,
   type ExplorationTreeItem,
   type ExplorationTreeNode,
@@ -56,6 +62,9 @@ import {
 
 interface ExplorationSidebarProps {
   exploration: Exploration;
+  explorationSidebarTabsInfo: ExplorationSidebarTabsInfo;
+  selectedSidebarTab: ExplorationSidebarTab;
+  getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNode>[];
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
@@ -65,6 +74,9 @@ interface ExplorationSidebarProps {
 
 export function ExplorationSidebar({
   exploration,
+  explorationSidebarTabsInfo,
+  selectedSidebarTab,
+  getSelectedSidebarTabUrl,
   tree,
   selectedEntityId,
   setSelectedEntityId,
@@ -86,7 +98,7 @@ export function ExplorationSidebar({
 
   const handlePrefetch = useCallback(
     (item: ITreeNodeItem<ExplorationTreeNode>) => {
-      if (item.data?.type !== "group") {
+      if (item.data?.type !== "page") {
         return;
       }
       const queries = item.data.queries;
@@ -124,17 +136,17 @@ export function ExplorationSidebar({
       );
       if (nextItem != null && nextItem.id !== selectedEntityId.id) {
         if (
-          nextItem.data?.type !== "group" &&
+          nextItem.data?.type !== "page" &&
           nextItem.data?.type !== "document"
         ) {
           return;
         }
-        if (nextItem.data.type === "group") {
-          setSelectedEntityId({ type: "group", id: nextItem.data.group_id });
+        if (nextItem.data.type === "page") {
+          setSelectedEntityId({ type: "page", id: nextItem.data.page_id });
         } else if (nextItem.data.type === "document") {
           setSelectedEntityId({ type: "document", id: nextItem.data.id });
         }
-        if (nextItem.data.type === "group") {
+        if (nextItem.data.type === "page") {
           trackExplorationVisualizationChanged(exploration.id, "keyboard");
         } else if (nextItem.data.isAiSummary) {
           trackExplorationAISummaryOpened(exploration.id);
@@ -204,18 +216,44 @@ export function ExplorationSidebar({
     return null;
   }
 
+  const emptyTreeMessage =
+    explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
+
   return (
-    <Box
-      h="100%"
-      w="20%"
-      miw="20.5rem"
-      flex="none"
-      mr="2rem"
-      data-testid="exploration-page-sidebar"
-      className={S.tree}
-    >
-      <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
-    </Box>
+    <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
+      <Tabs
+        pl="0.5rem"
+        pr="1rem"
+        classNames={{ tab: S.tab }}
+        value={selectedSidebarTab}
+      >
+        <Tabs.List>
+          {Object.values(explorationSidebarTabsInfo).map(({ value, label }) => (
+            <Tabs.Tab
+              key={value}
+              value={value}
+              renderRoot={(props) => (
+                <ForwardRefLink
+                  {...props}
+                  to={getSelectedSidebarTabUrl(value)}
+                />
+              )}
+            >
+              {label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
+      {tree.length > 0 ? (
+        <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
+          <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
+        </Box>
+      ) : (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text fz="lg">{emptyTreeMessage}</Text>
+        </Center>
+      )}
+    </Stack>
   );
 }
 
@@ -394,7 +432,7 @@ function isExplorationTreeItemProps(
   props: ExplorationTreeNodeProps,
 ): props is ExplorationTreeItemProps {
   return (
-    props.item.data?.type === "document" || props.item.data?.type === "group"
+    props.item.data?.type === "document" || props.item.data?.type === "page"
   );
 }
 
@@ -420,7 +458,7 @@ function ExplorationTreeItem({
 
   const handleClick = useCallback(() => {
     if (!isSelected) {
-      if (item.data?.type === "group") {
+      if (item.data?.type === "page") {
         trackExplorationVisualizationChanged(explorationId, "click");
       } else if (item.data?.isAiSummary) {
         trackExplorationAISummaryOpened(explorationId);
@@ -433,8 +471,8 @@ function ExplorationTreeItem({
   }
 
   const entityId: SelectedEntityId =
-    item.data.type === "group"
-      ? { type: "group", id: item.data.group_id }
+    item.data.type === "page"
+      ? { type: "page", id: item.data.page_id }
       : { type: "document", id: item.data.id };
 
   const iconProps: IconProps = {
@@ -442,12 +480,12 @@ function ExplorationTreeItem({
     name: typeof item.icon === "string" ? item.icon : item.icon.name,
   };
 
-  const groupData = item.data.type === "group" ? item.data : null;
-  const isError = groupData?.status === "error";
+  const pageData = item.data.type === "page" ? item.data : null;
+  const isError = pageData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
   const isInteresting =
     !isError &&
-    (groupData?.interestingness_score ?? 0) >=
+    (pageData?.interestingness_score ?? 0) >=
       QUERY_INTERESTINGNESS_SCORE_THRESHOLD;
 
   return (

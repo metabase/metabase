@@ -143,7 +143,8 @@
     ;; 62+
     :model/Exploration
     :model/ExplorationThread
-    :model/ExplorationThreadGroup
+    :model/ExplorationBlock
+    :model/ExplorationPage
     :model/ExplorationThreadTimeline
     :model/ExplorationQuery
     :model/ExplorationBookmark]
