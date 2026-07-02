@@ -82,30 +82,61 @@ export function waitForDashcardsToLoad({ count }: { count?: number } = {}) {
     .findAllByTestId("loading-indicator")
     .should("not.exist");
   waitForGridLayoutStable();
+  waitForFilterWidgetsStable();
 }
 
 /**
  * Wait until the grid stops reflowing. react-grid-layout repositions cards when
  * switching between edit and view mode (the "resizing and detaching elements"
  * the old fixed sleeps compensated for), which can move a chart out from under a
- * coordinate-based click. There's no "layout done" event, so poll the first
- * card's box until it is unchanged across consecutive retries. No-op when there
- * are no cards to reflow (empty or text-only dashboards).
+ * coordinate-based click. No-op when there are no cards to reflow (empty or
+ * text-only dashboards).
  */
 function waitForGridLayoutStable() {
+  waitForLayoutStable(
+    "dashcard-container",
+    () => getDashboardCards(),
+    "dashcard",
+  );
+}
+
+/**
+ * Wait until the filter widgets stop re-rendering. The parameter panel re-mounts
+ * when leaving edit mode, so interacting with a widget too soon after a save can
+ * hit a detaching element and drop the click. No-op when the dashboard has no
+ * filter widgets.
+ */
+export function waitForFilterWidgetsStable() {
+  waitForLayoutStable(
+    "parameter-widget",
+    () => cy.findAllByTestId("parameter-widget"),
+    "filter widget",
+  );
+}
+
+/**
+ * Poll the first matching element's box until it is unchanged across consecutive
+ * retries, i.e. layout has settled. There's no "layout done" event to await, and
+ * this is a no-op when nothing matches so it never hangs on absent elements.
+ */
+function waitForLayoutStable(
+  testId: string,
+  getElements: () => Cypress.Chainable<JQuery<HTMLElement>>,
+  label: string,
+) {
   cy.get("body").then(($body) => {
-    if (!$body.find('[data-testid="dashcard-container"]').length) {
+    if (!$body.find(`[data-testid="${testId}"]`).length) {
       return;
     }
     let previous: string | null = null;
-    getDashboardCards()
+    getElements()
       .first()
-      .should(($card) => {
-        const { top, left, width, height } = $card[0].getBoundingClientRect();
+      .should(($el) => {
+        const { top, left, width, height } = $el[0].getBoundingClientRect();
         const current = [top, left, width, height].map(Math.round).join(",");
         const settled = current === previous;
         previous = current;
-        expect(settled, `dashcard layout settled (${current})`).to.be.true;
+        expect(settled, `${label} layout settled (${current})`).to.be.true;
       });
   });
 }
