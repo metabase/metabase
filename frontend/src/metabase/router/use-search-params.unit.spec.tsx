@@ -19,6 +19,7 @@ function SearchParamsProbe() {
       <button onClick={() => setSearchParams({ brand: ["nike", "reebok"] })}>
         set-array
       </button>
+      <button onClick={() => setSearchParams()}>clear</button>
       <button
         onClick={() =>
           setSearchParams((prev) => {
@@ -91,5 +92,14 @@ describe("useSearchParams", () => {
     await click("update");
 
     expect(screen.getByTestId("x")).toHaveTextContent("3");
+  });
+
+  it("clears the query when called without an argument", async () => {
+    const { history } = setup("/foo?x=1");
+
+    await click("clear");
+
+    expect(screen.getByTestId("x")).toBeEmptyDOMElement();
+    expect(history?.getCurrentLocation().search).toBe("");
   });
 });
