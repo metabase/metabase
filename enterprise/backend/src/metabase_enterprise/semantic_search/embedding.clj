@@ -370,6 +370,10 @@
 
 ;;;; In-process (plugin) provider
 
+(def ^:private ^Class floats-class
+  ;; `float[].class` isn't directly expressible in Clojure; resolve once, matching the sibling namespaces.
+  (Class/forName "[F"))
+
 (defn- resolve-in-process-embed-fn
   "Resolve the embed fn from `metabase-enterprise.embedder.core`, throwing a setup-guidance error when absent.
   The embedder ships separately as a plugin jar (metabase-embedder-plugin.jar) so the DJL/ONNX Runtime stack
@@ -400,7 +404,7 @@
   (when-let [embedding (and vector-dimensions (first embeddings))]
     ;; Tolerate any counted representation rather than hard-casting to float[]: a mismatched plugin
     ;; should hit the clear dimension error below, not an opaque ClassCastException here.
-    (let [actual (if (instance? (Class/forName "[F") embedding)
+    (let [actual (if (instance? floats-class embedding)
                    (alength ^floats embedding)
                    (count embedding))]
       (when (not= vector-dimensions actual)
