@@ -34,6 +34,12 @@ const swcJestTransform = [
   },
 ];
 
+// The advanced-compiled release CLJS bundle (1.9MB) evaluates ~3x faster per
+// test file than the dev build (15.6MB), cutting suite CPU by ~18%. Every test
+// file re-evaluates it, so this compounds. Opt in via JEST_CLJS=release (CI);
+// the default stays cljs_dev so local watch workflows keep working.
+const cljsDir = process.env.JEST_CLJS === "release" ? "cljs_release" : "cljs_dev";
+
 const baseConfig = {
   transform: {
     "^.+\\.[jt]sx?$": swcJestTransform,
@@ -46,7 +52,7 @@ const baseConfig = {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
+    [`^cljs/(.*)$`]: `<rootDir>/target/${cljsDir}/$1`,
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":
@@ -86,6 +92,7 @@ const baseConfig = {
     `<rootDir>/node_modules/(?:\\.bun/(?!(${esmPackages.join("|")})@)|(?!\\.bun)(?!(${esmPackages.join("|")})/))`,
     // CLJS files are already compiled CJS — skip transform entirely
     "<rootDir>/target/cljs_dev/",
+    "<rootDir>/target/cljs_release/",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
@@ -101,7 +108,9 @@ const baseConfig = {
     "<rootDir>/enterprise/frontend/src",
   ],
   modulePathIgnorePatterns: [
-    "<rootDir>/target/cljs_release/.*",
+    // ignore whichever CLJS build is NOT selected, so stale copies of the
+    // other build can't be resolved by accident
+    `<rootDir>/target/${cljsDir === "cljs_release" ? "cljs_dev" : "cljs_release"}/.*`,
     "<rootDir>/target/classes/.*",
     "<rootDir>/resources/frontend_client",
     "<rootDir>/.*/__mocks__",

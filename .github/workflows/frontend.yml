@@ -97,19 +97,24 @@ jobs:
       SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
+      # Point jest at the advanced-compiled CLJS build: it evaluates ~3x faster
+      # per test file than the dev build, cutting suite CPU by ~18%.
+      JEST_CLJS: release
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Compile release CLJS
+        run: bun run build-release:cljs
       - name: Resolve current job id
         # Resolve JOB_ID before the long test step so the ci-conductor reporter
         # below can link failures to this exact job. Best-effort.
         uses: ./.github/actions/resolve-job-id
       - name: Run frontend unit tests
         id: fe-tests
-        run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        run: bun run test-unit-keep-cljs --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
