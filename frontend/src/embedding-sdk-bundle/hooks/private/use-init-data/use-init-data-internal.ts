@@ -31,6 +31,7 @@ import {
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { getBasename, setBasename } from "metabase/utils/basename";
 import registerVisualizations from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler: OnBeforeRequestHandler = async (
@@ -122,8 +123,8 @@ export const useInitDataInternal = ({
   const sdkPackageVersion = getSdkPackageVersion();
 
   // We have to initialize the API fields before other possible API calls
-  if (api.basename !== authConfig.metabaseInstanceUrl) {
-    api.basename = authConfig.metabaseInstanceUrl;
+  if (getBasename() !== authConfig.metabaseInstanceUrl) {
+    setBasename(authConfig.metabaseInstanceUrl);
   }
 
   setSdkRequestClientHeadersOnce({
