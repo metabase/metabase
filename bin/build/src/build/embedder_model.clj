@@ -24,8 +24,11 @@
   "1110a243fdf4706b3f48f1d95db1a4f5529b4d41")
 
 (def ^:private model-files
-  "Repo path → expected sha256. The qint8 export is byte-identical for arm64/avx512, so one file
-  covers all non-AVX2 targets."
+  "Repo path → expected sha256.
+  Two ONNX flavors are bundled, matching `bundled-model-arch`'s two-bucket selection: qint8 for
+  arm64 hosts, quint8 for every x86 host (including AVX512 — the repo's qint8 avx512 exports are
+  byte-identical to the arm64 file, so revisit the bucketing only if avx512-specific INT8 wins a
+  benchmark)."
   {"onnx/model_qint8_arm64.onnx"  "4278337fd0ff3c68bfb6291042cad8ab363e1d9fbc43dcb499fe91c871902474"
    "onnx/model_quint8_avx2.onnx"  "b941bf19f1f1283680f449fa6a7336bb5600bdcd5f84d10ddc5cd72218a0fd21"
    "tokenizer.json"               "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037"

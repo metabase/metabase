@@ -18,12 +18,22 @@
   ;; `float[].class` isn't directly expressible in Clojure; resolve once.
   (Class/forName "[F"))
 
+(defn- getenv
+  "Thin wrapper over `System/getenv` so tests can redef the config surface."
+  [k]
+  (System/getenv k))
+
 (defn- bundled-model-arch
   "The INT8 ONNX exports are ISA-flavored; pick the bundle matching the host CPU."
   []
   (case (System/getProperty "os.arch")
     ("aarch64" "arm64") "arm64"
     "avx2"))
+
+(defn- bundled-model-resource
+  "Classpath URL of the per-arch model bundle, nil when this build carries no bundled model."
+  [resource-path]
+  (io/resource resource-path))
 
 (defn- model-source
   "Where to load the model from, in priority order:
@@ -44,18 +54,18 @@
   custom model."
   []
   (let [resource-path        (str "metabase-embedder/all-MiniLM-L6-v2-int8-" (bundled-model-arch) ".zip")
-        override-token-types (not= "false" (System/getenv "MB_EMBEDDER_INCLUDE_TOKEN_TYPES"))]
+        override-token-types (not= "false" (getenv "MB_EMBEDDER_INCLUDE_TOKEN_TYPES"))]
     (cond
-      (some-> (System/getenv "MB_EMBEDDER_MODEL_PATH") not-empty)
-      {:type :path :path (System/getenv "MB_EMBEDDER_MODEL_PATH") :include-token-types? override-token-types}
+      (some-> (getenv "MB_EMBEDDER_MODEL_PATH") not-empty)
+      {:type :path :path (getenv "MB_EMBEDDER_MODEL_PATH") :include-token-types? override-token-types}
 
-      (some-> (System/getenv "MB_EMBEDDER_MODEL_URL") not-empty)
-      {:type :url :url (System/getenv "MB_EMBEDDER_MODEL_URL") :include-token-types? override-token-types}
+      (some-> (getenv "MB_EMBEDDER_MODEL_URL") not-empty)
+      {:type :url :url (getenv "MB_EMBEDDER_MODEL_URL") :include-token-types? override-token-types}
 
-      (io/resource resource-path)
+      (bundled-model-resource resource-path)
       {:type :url :url (str "jar:///" resource-path) :include-token-types? true}
 
-      (= "true" (System/getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD"))
+      (= "true" (getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD"))
       {:type :url
        :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"
        :include-token-types? false}
@@ -71,7 +81,7 @@
   Our bundles (and `MB_EMBEDDER_MODEL_PATH` dirs prepared like them) always call it `model.onnx`;
   `MB_EMBEDDER_MODEL_NAME` overrides for custom models that name theirs differently."
   []
-  (or (not-empty (System/getenv "MB_EMBEDDER_MODEL_NAME")) "model"))
+  (or (not-empty (getenv "MB_EMBEDDER_MODEL_NAME")) "model"))
 
 (defn- build-model ^ZooModel []
   (let [source   (model-source)

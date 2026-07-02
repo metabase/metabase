@@ -15,6 +15,7 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.classloader.core :as classloader]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
@@ -107,23 +108,50 @@
                               (semantic.settings/ee-embedding-provider! "hand-crank")))))
     (testing "index table name uses the abbreviated provider name"
       (is (= "index_inproc_all_MiniLM_L6_v2_384" (semantic.index/model-table-name embedding-model))))
-    (testing "a setup-guidance error is thrown when the embedder plugin is absent"
-      (if (io/resource "metabase_enterprise/embedder/core.clj")
+    (testing "when the embedder plugin is absent"
+      ;; Check for source and AOT-compiled forms of the module so the gate doesn't depend on how the
+      ;; plugin ships; plain CI has neither and exercises the error branch.
+      (if (or (io/resource "metabase_enterprise/embedder/core.clj")
+              (io/resource "metabase_enterprise/embedder/core__init.class"))
         (testing "embedder module on classpath (:embedder alias); nothing to assert"
           (is true))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"requires the Metabase embedder plugin"
-                              (embedding/get-embeddings-batch embedding-model ["hello"])))))
+        (testing "a setup-guidance error is thrown"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"requires the Metabase embedder plugin"
+                                (embedding/get-embeddings-batch embedding-model ["hello"])))
+          (testing "including for the missing-var (plugin/server version mismatch) shape"
+            ;; Simulate "namespace loads but the expected var is missing": stub the require to a no-op
+            ;; so ns-resolve against the (empty) namespace returns nil.
+            (create-ns 'metabase-enterprise.embedder.core)
+            (mt/with-dynamic-fn-redefs [classloader/require (constantly nil)]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"does not define embed-texts"
+                                    (embedding/get-embeddings-batch embedding-model ["hello"]))))))))
     (testing "with the embed fn stubbed in"
       (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
                                   (constantly (fn [texts] (mapv (fn [_] (float-array 384)) texts)))]
         (testing "matching dimensions pass through"
           (is (= 384 (alength ^floats (embedding/get-embedding embedding-model "hello")))))
+        (testing "vectors in a non-float-array representation still get the dimension error, not a cast error"
+          (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
+                                      (constantly (fn [texts] (mapv (fn [_] (vec (repeat 384 0.0))) texts)))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=384"
+                                  (embedding/get-embedding (assoc embedding-model :vector-dimensions 1024)
+                                                           "hello")))))
         (testing "a dimension mismatch produces an actionable error"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=384"
                                 (embedding/get-embedding (assoc embedding-model :vector-dimensions 1024)
-                                                         "hello"))))))))
+                                                         "hello"))))
+        (testing "pull-model warms up by embedding a probe through the same path"
+          (let [calls (atom [])]
+            (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
+                                        (constantly (fn [texts]
+                                                      (swap! calls conj texts)
+                                                      (mapv (fn [_] (float-array 384)) texts)))]
+              (embedding/pull-model embedding-model)
+              (is (= [["warm-up probe"]] @calls)))))))))
 
 (deftest test-token-counting
   (testing "count-tokens returns reasonable counts for text"

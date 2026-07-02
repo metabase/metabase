@@ -397,8 +397,12 @@
   Misconfiguration would otherwise poison the pgvector index at its declared width.
   Callers that don't declare `:vector-dimensions` (e.g. the `embeddings.client` facade) are not checked."
   [{:keys [vector-dimensions]} embeddings]
-  (when-let [^floats embedding (and vector-dimensions (first embeddings))]
-    (let [actual (alength embedding)]
+  (when-let [embedding (and vector-dimensions (first embeddings))]
+    ;; Tolerate any counted representation rather than hard-casting to float[]: a mismatched plugin
+    ;; should hit the clear dimension error below, not an opaque ClassCastException here.
+    (let [actual (if (instance? (Class/forName "[F") embedding)
+                   (alength ^floats embedding)
+                   (count embedding))]
       (when (not= vector-dimensions actual)
         (throw (ex-info (format (str "In-process embedder produces %d-dimensional vectors but "
                                      "ee-embedding-model-dimensions is %d. "

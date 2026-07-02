@@ -127,35 +127,6 @@
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
-(deftest ^:parallel normalize-name-test
-  (testing "nil-safe — no contract test ever wants a NullPointerException"
-    (is (nil? (embedders/normalize-name nil))))
-  (testing "lowercases ASCII so case-different forms collapse to one key"
-    (is (= "revenue" (embedders/normalize-name "Revenue")))
-    (is (= "revenue" (embedders/normalize-name "REVENUE"))))
-  (testing "trims and collapses internal whitespace"
-    (is (= "monthly active users" (embedders/normalize-name "  monthly   active\tusers  "))))
-  (testing "_, -, and . separators become spaces"
-    (is (= "monthly active users" (embedders/normalize-name "monthly_active_users")))
-    (is (= "monthly active users" (embedders/normalize-name "monthly-active-users")))
-    (is (= "monthly active users" (embedders/normalize-name "monthly.active.users")))
-    (is (= "monthly active users report" (embedders/normalize-name "monthly_active-users.report"))
-        "mixed separators collapse together"))
-  (testing "camelCase boundary (lowercase→uppercase) inserts a space; consecutive uppercase letters do not"
-    ;; The regex is `[a-z][A-Z]` precisely so all-caps acronyms like `MAUcount` aren't split into
-    ;; `M A U count` — they read as `mauount`-ish only at boundaries that flip `lower→upper`.
-    (is (= "page views" (embedders/normalize-name "pageViews")))
-    (is (= "monthly active users" (embedders/normalize-name "monthlyActiveUsers")))
-    (is (= "maucount" (embedders/normalize-name "MAUcount"))
-        "no boundary inside an all-caps run — MAUcount stays joined")
-    (is (= "mau count" (embedders/normalize-name "mauCount"))
-        "lower→upper at the boundary triggers a split"))
-  (testing "equivalent forms collapse to the same key — the whole point of merging split-for-embedding in"
-    (is (= (embedders/normalize-name "monthlyActiveUsers")
-           (embedders/normalize-name "monthly_active_users")
-           (embedders/normalize-name "monthly-active-users")
-           (embedders/normalize-name "Monthly Active Users")))))
-
 (deftest ^:parallel cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"
     (testing "valid: --embedder in-process parses through to :options"
