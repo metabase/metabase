@@ -1,6 +1,7 @@
 (ns metabase.lib-be.models.transforms-test
   (:require
    [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
    [metabase.lib-be.core :as lib-be]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -82,3 +83,39 @@
                                               "widget-type"  "category/="
                                               "default"      nil}}
                           "query" "<<NATIVE QUERY>>"}})))))
+
+(deftest ^:parallel preserve-template-tag-order-test
+  (testing "Should preserve parameter order when deserializing MBQL from JSON (#5136, QUE2-607)"
+    (let [json ((:in lib-be/transform-query)
+                {:lib/type :mbql/query
+                 :stages   [{:lib/type :mbql.stage/native
+                             :template-tags
+                             (into
+                              (ordered-map/ordered-map)
+                              (map (fn [i]
+                                     (let [param-name (format "parameter_%d" i)]
+                                       [param-name
+                                        {:widget-type  :category
+                                         :id           (format "00000000-0000-0000-0000-00000000000%d" i)
+                                         :name         param-name
+                                         :display-name (format "Parameter %d" i)
+                                         :type         :dimension
+                                         :dimension    [:field {} 1]
+                                         :default      nil}])))
+                              (range 10))
+                             :native   "<<NATIVE QUERY>>"}]
+                 :database 2})
+          query ((:out lib-be/transform-query) json)]
+      (is (instance? flatland.ordered.map.OrderedMap
+                     (get-in query [:stages 0 :template-tags])))
+      (is (= ["parameter_0"
+              "parameter_1"
+              "parameter_2"
+              "parameter_3"
+              "parameter_4"
+              "parameter_5"
+              "parameter_6"
+              "parameter_7"
+              "parameter_8"
+              "parameter_9"]
+             (keys (get-in query [:stages 0 :template-tags])))))))

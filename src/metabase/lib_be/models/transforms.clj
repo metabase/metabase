@@ -8,9 +8,10 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some empty?]]))
+   [metabase.util.performance :refer [empty? some]]))
 
 (set! *warn-on-reflection* true)
 
@@ -79,7 +80,9 @@
        (log/errorf e "Error normalizing query %s" (pr-str query))
        {}))))
 
-(defn- transform-query-in [query]
+(defn- transform-query-in
+  "Transform MBQL `query` for going in to the app DB (i.e., serialize to JSON)."
+  [query]
   (when-not (map? query)
     (throw (ex-info (format "Query must be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query))
                     {:query query, :status-code 400})))
@@ -88,10 +91,22 @@
       lib/prepare-for-serialization
       mi/json-in))
 
-(defn- transform-query-out [s]
+(defn- parse-query-json [s]
+  (letfn [(decode [s]
+            (try
+              (json/decode-with-ordered-maps-no-keywordization s)
+              (catch Throwable e
+                (log/error e "Error parsing JSON")
+                s)))]
+    (cond-> s
+      (string? s) decode)))
+
+(defn- transform-query-out
+  "Transform MBQL `query` for coming out of the app DB (i.e., deserialize from JSON)."
+  [s]
   (when (some? s)
     (try
-      (let [query (mi/json-out-without-keywordization s)]
+      (let [query (parse-query-json s)]
         (assert (map? query)
                 (format "Expected deserialized query to be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query)))
         (normalize-query query))

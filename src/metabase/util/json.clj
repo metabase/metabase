@@ -6,9 +6,14 @@
    [cheshire.factory]
    [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [jsonista.core :as jsonista])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)
+   (com.fasterxml.jackson.core JsonGenerator JsonParser JsonToken)
+   (com.fasterxml.jackson.databind DeserializationContext JsonDeserializer ObjectMapper)
+   (com.fasterxml.jackson.databind.module SimpleModule)
    (java.io InputStream Reader)))
 
 (set! *warn-on-reflection* true)
@@ -124,3 +129,26 @@
       (some-> ctype (str/starts-with? "application/json")) (update res :body decode-with-encoding ctype)
       (string? (:body res))                                res
       :else                                                (update res :body slurp))))
+
+(defn- ordered-map-deserializer [key-fn]
+  (proxy [JsonDeserializer] []
+    (deserialize [^JsonParser p ^DeserializationContext _context]
+      (loop [m (ordered-map/ordered-map)]
+        (if (= (.nextToken p) JsonToken/END_OBJECT)
+          m
+          (let [k (key-fn (.getCurrentName p))]
+            (.nextToken p)
+            (recur (assoc m k (.readValueAs p Object)))))))))
+
+(def ^:private ^ObjectMapper ordered-map-no-keywordization-json-mapper
+  "Create a JSONista mapper that reads maps as `ordered-map`s for use with [[jsonista.core/read-value]]. It is
+  somewhat more performant to create this once and reuse it rather than recreate it every time you read JSON the same
+  way."
+  (jsonista/object-mapper
+   {:modules [(doto (SimpleModule. "ordered-map-deserializer")
+                (.addDeserializer java.util.Map (ordered-map-deserializer identity)))]}))
+
+(defn decode-with-ordered-maps-no-keywordization
+  "Decode `source` while reading maps as `ordered-map`s (i.e., preserving order) without keywordizing keys."
+  [source]
+  (jsonista/read-value source ordered-map-no-keywordization-json-mapper))
