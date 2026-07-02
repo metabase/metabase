@@ -1,4 +1,5 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -28,6 +29,8 @@ export function setup({
       setupEnterpriseOnlyPlugin(plugin);
     });
   }
+
+  setupUserMetabotPermissionsEndpoint();
 
   renderWithProviders(<UserProfileApp />, { storeInitialState: state });
 }
