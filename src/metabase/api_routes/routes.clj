@@ -44,6 +44,7 @@
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
    [metabase.oauth-server.api.admin]
+   [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
@@ -101,6 +102,7 @@
          metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
          metabase.oauth-server.api.admin/keep-me
+         metabase.osi.ai-context.api/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -211,6 +213,7 @@
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/oauth"                (+auth 'metabase.oauth-server.api.admin)
+   "/osi"                  {"/ai-context" (+auth 'metabase.osi.ai-context.api)}
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)

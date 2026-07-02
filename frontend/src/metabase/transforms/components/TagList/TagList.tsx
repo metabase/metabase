@@ -14,7 +14,7 @@ export function TagList({ tagIds, tags }: TagListProps) {
   return (
     <Group gap="sm">
       {getTagList(tagIds, tagById).map((tag) => (
-        <Pill key={tag.id} c="text-primary" bg="background-tertiary">
+        <Pill key={tag.id} c="text-primary" bg="background_page-tertiary">
           {tag.name}
         </Pill>
       ))}

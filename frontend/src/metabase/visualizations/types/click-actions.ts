@@ -173,7 +173,6 @@ export type ClickActionPopoverProps = {
   onClick: (action: RegularClickAction) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
-  onResize: (...args: unknown[]) => void;
   onClose: () => void;
 };
 

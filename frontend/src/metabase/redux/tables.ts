@@ -1,6 +1,6 @@
 import { fieldApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { updateMetadata } from "metabase/redux/metadata-typed";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { TableSchema } from "metabase/schema";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
@@ -79,7 +79,7 @@ export const fetchTableMetadataAndForeignKeys =
     await dispatch(fetchTableMetadata({ id }, options));
 
     const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
-    await Promise.all([
+    await Promise.allSettled([
       ...getTableForeignKeyTableIds(table).map((tableId) =>
         dispatch(fetchTableMetadata({ id: tableId }, options)),
       ),

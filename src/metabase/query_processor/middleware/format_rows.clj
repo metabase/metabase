@@ -98,11 +98,12 @@
 
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as ISO-8601 strings w/ timezone offset."
-  [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as _query} rff]
+  [{{:keys [format-rows? csv-include-bom?] :or {format-rows? true, csv-include-bom? true}} :middleware, :as _query} rff]
   (fn format-rows-rff* [metadata]
-    ;; always assoc `:format-rows?` into the metadata so that
-    ;; the `qp.si/streaming-results-writer` implmementations can apply/not-apply formatting based on the key's value
-    (let [metadata (assoc metadata :format-rows? format-rows?)]
+    ;; always assoc these into the metadata so that the `qp.si/streaming-results-writer` implementations can adjust
+    ;; their output based on the values: `:format-rows?` toggles value formatting, and `:csv-include-bom?` toggles the
+    ;; leading UTF-8 BOM emitted by the CSV writer.
+    (let [metadata (assoc metadata :format-rows? format-rows?, :csv-include-bom? csv-include-bom?)]
       (if format-rows?
         (format-rows-xform (rff metadata) metadata)
         (rff metadata)))))

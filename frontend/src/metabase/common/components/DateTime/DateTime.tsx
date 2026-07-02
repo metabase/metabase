@@ -1,9 +1,8 @@
 import { type HTMLAttributes, forwardRef } from "react";
 
-import type { OptionsType } from "metabase/utils/formatting/types";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
-import type { DatetimeUnit } from "metabase-types/api";
+import type { ColumnSettings, DatetimeUnit } from "metabase-types/api";
 
 type DateTimeProps = HTMLAttributes<HTMLSpanElement> & {
   value: string | Date | number;
@@ -13,7 +12,7 @@ type DateTimeProps = HTMLAttributes<HTMLSpanElement> & {
 export const getFormattedTime = (
   value: string | Date | number,
   unit?: DatetimeUnit,
-  options: Pick<OptionsType, "local"> = {},
+  options: Pick<ColumnSettings, "local"> = {},
 ) => {
   const settingsOptions = MetabaseSettings.formattingOptions();
   return formatDateTimeWithUnit(value, unit ?? "default", {

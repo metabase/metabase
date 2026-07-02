@@ -4,9 +4,9 @@
   font-weight: 700;
   height: 32px;
   min-width: 120px;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   color: var(--mb-color-text-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   padding-left: var(--mantine-spacing-sm);
   padding-right: var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-sm);
@@ -24,14 +24,14 @@
 
   &:hover {
     border-color: var(--mb-color-core-brand);
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
 
     .Prefix,
     .parameterIcon,
     .widgetStatus,
     .widgetStatus button {
       transition: all 0.2s ease-in-out;
-      color: var(--mb-color-text-hover);
+      color: var(--mb-color-text-brand-hover);
     }
   }
 }
@@ -104,7 +104,7 @@
 
 .TriggerContainer {
   padding: 0.6875rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.25rem;
   cursor: pointer;
 

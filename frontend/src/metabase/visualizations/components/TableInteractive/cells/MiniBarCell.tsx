@@ -18,7 +18,7 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
-const resolveMax = (min: number, max: number, number_style: string) => {
+const resolveMax = (min: number, max: number, number_style?: string) => {
   // For pure percent columns with values within [0, 1] use 1 as top range of minibar
   if (number_style === "percent" && min >= 0 && max <= 1) {
     return 1;
@@ -97,6 +97,7 @@ export const MiniBarCell = <TValue,>({
 
   return (
     <BaseCell
+      data-testid="mini-bar-cell"
       className={S.root}
       backgroundColor={backgroundColor}
       align={align}

@@ -50,7 +50,7 @@ export function PythonTransformTopBar({
   return (
     <Flex
       align="flex-start"
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >

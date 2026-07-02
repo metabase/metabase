@@ -1,10 +1,13 @@
-// Changed files come from dorny/paths-filter's `all_changed_files` output
+// I/O entrypoint: gather inputs (env vars, the cruise graph, the test-file
+// lists) and hand them to createTestPlan, which does the computing.
 
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 
 import { elements, rules } from "../../frontend/lint/module-boundaries.mjs";
 
-import { TEST_SUITES, createTestPlan } from "./affected-tests";
+import { type FileDependency, parseCruiseModules } from "./affected-modules";
+import { createTestPlan } from "./affected-tests";
 
 const UNIT_GLOBS = [
   "frontend/src/**/*.unit.spec.js",
@@ -42,26 +45,52 @@ function listFiles(globs: string[]): string[] {
     .filter(Boolean);
 }
 
-const changedFiles = (process.env.CHANGED_FILES ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+// dorny outputs comma-separated lists; CHANGED_FILES is `all_changed_files`.
+const csvToList = (csv: string | undefined) =>
+  (csv ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+// Reads the dependency-cruiser graph (DEP_GRAPH_JSON). Null falls back to the
+// rules graph, so a missing or unparseable file never breaks the plan.
+function readFileDependencies(): FileDependency[] | null {
+  const path = process.env.DEP_GRAPH_JSON;
+  if (path && existsSync(path)) {
+    try {
+      const { modules } = JSON.parse(readFileSync(path, "utf8"));
+      process.stderr.write(`Using usage graph from ${path}.\n`);
+      return parseCruiseModules(modules);
+    } catch (error) {
+      process.stderr.write(
+        `Failed to read ${path}; falling back to rules graph: ${error}\n`,
+      );
+    }
+  } else {
+    process.stderr.write(
+      "No DEP_GRAPH_JSON found; falling back to rules graph.\n",
+    );
+  }
+  return null;
+}
 
 const testPlan = createTestPlan({
   elements,
   rules,
-  testSuites: TEST_SUITES,
-  changedFiles,
+  changedFiles: csvToList(process.env.CHANGED_FILES),
+  fileDependencies: readFileDependencies(),
   testFilesBySuite: {
     unit: listFiles(UNIT_GLOBS),
     loki: listFiles(STORY_GLOBS),
     e2e: listFiles(E2E_GLOBS),
   },
-  infraTouchedBySuite: {
-    unit: process.env.UNIT_INFRA_TOUCHED === "true",
-    loki: process.env.LOKI_INFRA_TOUCHED === "true",
-    e2e: false,
-  },
+  unitInfraTouched: process.env.UNIT_INFRA_TOUCHED === "true",
+  lokiInfraTouched: process.env.LOKI_INFRA_TOUCHED === "true",
+  sharedSourcesTouched: process.env.SHARED_SOURCES_TOUCHED === "true",
+  feFilesChanged: csvToList(process.env.FE_CHANGED_FILES).length,
+  beFilesChanged: csvToList(process.env.BE_CHANGED_FILES).length,
+  feFilesTotal: listFiles(["frontend", "enterprise/frontend"]).length,
+  beFilesTotal: listFiles(["src", "enterprise/backend"]).length,
 });
 
 process.stdout.write(JSON.stringify(testPlan) + "\n");

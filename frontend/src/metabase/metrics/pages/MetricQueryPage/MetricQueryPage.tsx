@@ -5,13 +5,13 @@ import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
+import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
 import type {
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
@@ -103,9 +103,9 @@ function MetricQueryPageBody({
   };
 
   const handleSave = async () => {
-    const questionWithMetadata = question.setResultsMetadata({
-      columns: resultMetadata,
-    });
+    const questionWithMetadata = question.setResultsMetadata(
+      resultMetadata ? { columns: resultMetadata } : null,
+    );
     const { display, settings } = Lib.defaultDisplay(
       questionWithMetadata.query(),
     );

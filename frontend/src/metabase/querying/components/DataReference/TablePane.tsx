@@ -24,7 +24,11 @@ import {
   NodeListTitleText,
 } from "./NodeList";
 import { TableInfoLoader } from "./TableInfoLoader";
-import type { DataReferencePaneProps, DataReferenceTableItem } from "./types";
+import type {
+  DataReferencePaneProps,
+  DataReferenceTableItem,
+  UniqueFieldId,
+} from "./types";
 
 export function TablePane({
   id,
@@ -71,7 +75,7 @@ export function TablePane({
                       id:
                         typeof field.id === "number"
                           ? field.id
-                          : field.getUniqueId(),
+                          : (field.getUniqueId() as UniqueFieldId),
                     });
                   }}
                 />

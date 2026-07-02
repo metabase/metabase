@@ -234,11 +234,11 @@
                           (lib/append-stage)
                           (lib/aggregate (lib/count))))))
 
-(deftest ^:parallel can-save-test
+(deftest ^:parallel can-save?-test
   (mu/disable-enforcement
     #_{:clj-kondo/ignore [:equals-true]}
     (are [can-save? card-type query]
-         (= can-save? (lib.query/can-save query card-type))
+         (= can-save? (lib.query/can-save? query card-type))
       true  :question (lib.tu/venues-query)
       false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")

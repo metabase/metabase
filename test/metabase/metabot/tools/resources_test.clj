@@ -78,28 +78,32 @@
    to the dispatch should mean adding one row here. Args are positional and string-typed
    the way the dispatch passes them to the handler."
   [;; ----- Top-level navigation -----
-   ["metabase://databases"                                 :databases-list             []]
+   ["metabase://databases"                                 :databases-list             [nil]]
+   ["metabase://databases?page=2"                          :databases-list             [{:page "2"}]]
    ["metabase://collections"                               :collections-list           [nil]]
    ["metabase://collections?tree=true"                     :collections-list           [{:tree "true"}]]
    ["metabase://collections?tree=true&foo=bar"             :collections-list           [{:tree "true" :foo "bar"}]]
+   ["metabase://collections?page=2"                        :collections-list           [{:page "2"}]]
    ["metabase://user/recent-items"                         :user-recents               []]
    ;; ----- Database drill-down -----
    ["metabase://database/1"                                :database                   ["1"]]
-   ["metabase://database/1/tables"                         :database-tables            ["1"]]
-   ["metabase://database/1/models"                         :database-models            ["1"]]
-   ["metabase://database/1/schemas"                        :database-schemas           ["1"]]
-   ["metabase://database/1/schemas/PUBLIC/tables"          :database-schema-tables     ["1" "PUBLIC"]]
-   ["metabase://database/1/schemas/lower_case/tables"      :database-schema-tables     ["1" "lower_case"]]
+   ["metabase://database/1/tables"                         :database-tables            ["1" nil]]
+   ["metabase://database/1/tables?page=2"                  :database-tables            ["1" {:page "2"}]]
+   ["metabase://database/1/models"                         :database-models            ["1" nil]]
+   ["metabase://database/1/schemas"                        :database-schemas           ["1" nil]]
+   ["metabase://database/1/schemas/PUBLIC/tables"          :database-schema-tables     ["1" "PUBLIC" nil]]
+   ["metabase://database/1/schemas/lower_case/tables"      :database-schema-tables     ["1" "lower_case" nil]]
    ;; ----- Collection drill-down -----
    ["metabase://collection/2"                              :collection                 ["2"]]
-   ["metabase://collection/2/items"                        :collection-items           ["2"]]
-   ["metabase://collection/2/subcollections"               :collection-subcollections  ["2"]]
+   ["metabase://collection/2/items"                        :collection-items           ["2" nil]]
+   ["metabase://collection/2/items?page=3"                 :collection-items           ["2" {:page "3"}]]
+   ["metabase://collection/2/subcollections"               :collection-subcollections  ["2" nil]]
    ;; ----- Table -----
    ["metabase://table/3"                                   :table                      ["3"]]
    ["metabase://table/3/fields"                            :table-fields               ["3"]]
    ["metabase://table/3/fields/42"                         :table-field                ["3" "42"]]
    ["metabase://table/3/fields/c75/17"                     :table-field                ["3" "c75/17"]]
-   ["metabase://table/3/derived"                           :table-derived              ["3"]]
+   ["metabase://table/3/derived"                           :table-derived              ["3" nil]]
    ;; ----- Model (a card type) -----
    ["metabase://model/4"                                   :card                       ["model" "4"]]
    ["metabase://model/4/fields"                            :card-fields                ["model" "4"]]
@@ -115,13 +119,17 @@
    ["metabase://metric/6"                                  :metric                     ["6"]]
    ["metabase://metric/6/dimensions"                       :metric-dimensions          ["6"]]
    ["metabase://metric/6/dimensions/dim-1"                 :metric-dimension           ["6" "dim-1"]]
+   ;; ----- Measure / Segment -----
+   ["metabase://measure/9"                                 :measure                    ["9"]]
+   ["metabase://segment/10"                                :segment                    ["10"]]
    ;; ----- Transform -----
    ["metabase://transform/7"                               :transform                  ["7"]]
    ["metabase://transform/7/sources"                       :transform-sources          ["7"]]
    ["metabase://transform/7/target"                        :transform-target           ["7"]]
    ;; ----- Dashboard -----
    ["metabase://dashboard/8"                               :dashboard                  ["8"]]
-   ["metabase://dashboard/8/items"                         :dashboard-items            ["8"]]])
+   ["metabase://dashboard/8/items"                         :dashboard-items            ["8" nil]]
+   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]])
 
 (deftest dispatch-routing-test
   (testing "every supported URI pattern routes to the expected handler with the expected args"
@@ -149,6 +157,8 @@
                     read-resource/fetch-metric                     (spy :metric)
                     read-resource/fetch-metric-dimensions          (spy :metric-dimensions)
                     read-resource/fetch-metric-dimension           (spy :metric-dimension)
+                    read-resource/fetch-measure                    (spy :measure)
+                    read-resource/fetch-segment                    (spy :segment)
                     read-resource/fetch-transform                  (spy :transform)
                     read-resource/fetch-transform-sources          (spy :transform-sources)
                     read-resource/fetch-transform-target           (spy :transform-target)
@@ -565,6 +575,83 @@
                                   {:uris [(str "metabase://question/" q-from-model-id "/sources")]})]
             (is (str/includes? output (str "uri=\"metabase://model/" model-id "\"")))))))))
 
+(defn- measure-definition
+  "An MBQL5 measure definition: the sum of `field-id` over `table-id`."
+  [table-id field-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
+                   (lib/sum (lib.metadata/field mp field-id)))))
+
+(defn- segment-definition
+  "An MBQL5 segment definition: a filter of `field-id` > `value` on `table-id`."
+  [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
+(deftest read-measure-resource-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Measure {measure-id :id}
+                       {:name       "Order Revenue"
+                        :description "sum of order totals"
+                        :table_id   orders
+                        :creator_id (mt/user->id :crowberto)
+                        :definition (measure-definition orders total)}]
+          (testing "metabase://measure/{id} returns the measure with parent-table context + portable entity id"
+            (let [result     (read-resource/read-resource {:uris [(str "metabase://measure/" measure-id)]})
+                  structured (get-in result [:resources 0 :content :structured-output])
+                  output     (:output result)]
+              (is (=? {:type                   :measure
+                       :name                   "Order Revenue"
+                       :database_id            (mt/id)
+                       :base_table_id          orders
+                       :portable-entity-id     string?
+                       :base_table_portable_fk vector?}
+                      structured))
+              (testing "rendered XML carries the measure name and a portable entity id"
+                (is (str/includes? output "Order Revenue"))
+                (is (str/includes? output "portable_entity_id=")))))
+          (testing "returns an error for an unknown measure"
+            (is (=? {:resources [{:error string?}]}
+                    (read-resource/read-resource {:uris ["metabase://measure/99999"]}))))
+          (testing "errors when the user can't read the parent table"
+            (with-redefs [mi/can-read? (constantly false)]
+              (is (error? (read-resource/read-resource {:uris [(str "metabase://measure/" measure-id)]}))))))))))
+
+(deftest read-segment-resource-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Segment {segment-id :id}
+                       {:name       "Big Orders"
+                        :description "totals over 100"
+                        :table_id   orders
+                        :definition (segment-definition orders total 100)}]
+          (testing "metabase://segment/{id} returns the segment with parent-table context + portable entity id"
+            (let [result     (read-resource/read-resource {:uris [(str "metabase://segment/" segment-id)]})
+                  structured (get-in result [:resources 0 :content :structured-output])
+                  output     (:output result)]
+              (is (=? {:type                   :segment
+                       :name                   "Big Orders"
+                       :database_id            (mt/id)
+                       :base_table_id          orders
+                       :portable-entity-id     string?
+                       :base_table_portable_fk vector?}
+                      structured))
+              (testing "rendered XML carries the segment name and a portable entity id"
+                (is (str/includes? output "Big Orders"))
+                (is (str/includes? output "portable_entity_id=")))))
+          (testing "returns an error for an unknown segment"
+            (is (=? {:resources [{:error string?}]}
+                    (read-resource/read-resource {:uris ["metabase://segment/99999"]}))))
+          (testing "errors when the user can't read the parent table"
+            (with-redefs [mi/can-read? (constantly false)]
+              (is (error? (read-resource/read-resource {:uris [(str "metabase://segment/" segment-id)]}))))))))))
+
 (deftest read-dashboard-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
@@ -582,11 +669,13 @@
         (is (str/includes? output "<list type=\"recent-items\""))))))
 
 (deftest read-list-shape-test
-  (testing "list responses always carry total/showing/truncated attrs in the rendered XML"
+  (testing "list responses carry total/page/pages/showing/truncated attrs in the rendered XML"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
         (is (str/includes? output "<list type=\"databases\""))
         (is (str/includes? output "total="))
+        (is (str/includes? output "page="))
+        (is (str/includes? output "pages="))
         (is (str/includes? output "showing="))
         (is (str/includes? output "truncated="))))))
 
@@ -749,3 +838,112 @@
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
                     structured))))))))
+
+;; ===== Pagination =====
+
+(deftest paginate-list-test
+  (testing "page 1 returns first 25 items"
+    (let [items (mapv (fn [i] {:id i}) (range 1 51))
+          result (#'read-resource/paginate-list items nil)]
+      (is (= 1 (:page result)))
+      (is (= 2 (:pages result)))
+      (is (= 50 (:total result)))
+      (is (= 25 (count (:items result))))
+      (is (= 1 (-> result :items first :id)))
+      (is (= 25 (-> result :items last :id)))))
+  (testing "page 2 returns second 25 items"
+    (let [items (mapv (fn [i] {:id i}) (range 1 51))
+          result (#'read-resource/paginate-list items "2")]
+      (is (= 2 (:page result)))
+      (is (= 26 (-> result :items first :id)))
+      (is (= 50 (-> result :items last :id)))))
+  (testing "out-of-range page throws instead of clamping"
+    (let [items (mapv (fn [i] {:id i}) (range 1 11))]
+      (is (thrown-with-msg? Exception #"Invalid page 999\. This list has 1 page\."
+                            (#'read-resource/paginate-list items "999")))
+      (is (thrown-with-msg? Exception #"Invalid page 0\. This list has 1 page\."
+                            (#'read-resource/paginate-list items "0")))
+      (is (thrown-with-msg? Exception #"Invalid page -3\. This list has 1 page\."
+                            (#'read-resource/paginate-list items "-3")))))
+  (testing "list shorter than one page"
+    (let [items (mapv (fn [i] {:id i}) (range 1 6))
+          result (#'read-resource/paginate-list items nil)]
+      (is (= 1 (:page result)))
+      (is (= 1 (:pages result)))
+      (is (= 5 (:total result)))))
+  (testing "empty list"
+    (let [result (#'read-resource/paginate-list [] nil)]
+      (is (= 1 (:page result)))
+      (is (= 1 (:pages result)))
+      (is (= 0 (:total result))))))
+
+(deftest pagination-database-tables-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (doseq [i (range 1 31)]
+        (t2/insert! :model/Table {:name   (format "TABLE-%03d" i)
+                                  :db_id  db-id
+                                  :active true}))
+      (testing "page 1 returns first 25 tables, with page/pages metadata"
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables")]})
+              so     (get-in result [:resources 0 :content :structured-output])]
+          (is (= 1 (:page so)))
+          (is (= 2 (:pages so)))
+          (is (= 30 (:total so)))
+          (is (= 25 (count (:items so))))))
+      (testing "page 2 returns remaining 5 tables"
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables?page=2")]})
+              so     (get-in result [:resources 0 :content :structured-output])]
+          (is (= 2 (:page so)))
+          (is (= 5 (count (:items so))))))
+      (testing "out-of-range page surfaces as a resource error, not an uncaught exception"
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables?page=999")]})]
+          (is (=? {:resources [{:error string?}]} result)))))))
+
+(deftest pagination-xml-output-test
+  (testing "truncated list XML includes page/pages attrs and a truncation note with next-page URI hint"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (doseq [i (range 1 31)]
+          (t2/insert! :model/Table {:name   (format "TBL-%03d" i)
+                                    :db_id  db-id
+                                    :active true}))
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://database/" db-id "/tables")]})]
+          (is (str/includes? output "page=\"1\""))
+          (is (str/includes? output "pages=\"2\""))
+          (is (str/includes? output "truncated=\"true\""))
+          (is (str/includes? output "?page=2") "truncation note should hint at next page URI"))))))
+
+;; ===== Collection tree ordering =====
+
+(deftest collections-tree-ordering-test
+  (testing "tree mode sorts by path name, not by raw location string (which would mis-order multi-digit IDs)"
+    (mt/with-current-user (mt/user->id :crowberto)
+      ;; Create roots whose IDs will cause lexicographic location-sort to diverge from
+      ;; alphabetical path-sort: a root with a high numeric ID gets a child whose
+      ;; location (/10/) would sort before the child of a lower-ID root (/2/).
+      ;; After the fix, children are sorted by their human-readable path.
+      (mt/with-temp
+        [:model/Collection {z-root :id} {:name "Z-Root" :location "/"}
+         :model/Collection {a-root :id} {:name "A-Root" :location "/"}
+         :model/Collection _ {:name "Z-Child" :location (str "/" z-root "/")}
+         :model/Collection _ {:name "A-Child" :location (str "/" a-root "/")}]
+        (let [result   (read-resource/read-resource {:uris ["metabase://collections?tree=true"]})
+              so       (get-in result [:resources 0 :content :structured-output])
+              paths    (mapv :path (:items so))]
+          (testing "A-Root and its child appear before Z-Root and its child"
+            (let [first-a (first (keep-indexed (fn [i p] (when (str/starts-with? p "A-Root") i)) paths))
+                  first-z (first (keep-indexed (fn [i p] (when (str/starts-with? p "Z-Root") i)) paths))]
+              (is (some? first-a))
+              (is (some? first-z))
+              (is (< first-a first-z) "A-Root subtree must come before Z-Root subtree")))
+          (testing "A-Root/A-Child appears immediately after A-Root"
+            (let [a-root-idx  (first (keep-indexed (fn [i p] (when (= "A-Root" p) i)) paths))
+                  a-child-idx (first (keep-indexed (fn [i p] (when (= "A-Root/A-Child" p) i)) paths))]
+              (is (some? a-root-idx))
+              (is (some? a-child-idx))
+              (is (= (inc a-root-idx) a-child-idx) "child should immediately follow its parent"))))))))
