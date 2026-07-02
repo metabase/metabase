@@ -16,7 +16,7 @@ function LocationProbe() {
   );
 }
 
-describe("useLocation", () => {
+describe("router/useLocation", () => {
   it("exposes the current location in v7 shape", () => {
     renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
       withRouter: true,

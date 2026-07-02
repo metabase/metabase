@@ -4,7 +4,7 @@ import { act, renderWithProviders, waitFor } from "__support__/ui";
 
 import { Navigate } from "./Navigate";
 
-describe("Navigate", () => {
+describe("router/Navigate", () => {
   it("pushes to the destination on mount, keeping the previous entry", async () => {
     const Host = () => <Navigate to="/dest" />;
     const { history } = renderWithProviders(

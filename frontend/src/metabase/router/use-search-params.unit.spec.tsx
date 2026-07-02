@@ -47,7 +47,7 @@ function setup(initialRoute: string) {
 const click = (name: string) =>
   userEvent.click(screen.getByRole("button", { name }));
 
-describe("useSearchParams", () => {
+describe("router/useSearchParams", () => {
   it("reads the current query string as a URLSearchParams", () => {
     setup("/foo?x=1");
 

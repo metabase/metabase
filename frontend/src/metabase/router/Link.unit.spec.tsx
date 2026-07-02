@@ -4,7 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 
 import { Link } from "./Link";
 
-describe("router Link", () => {
+describe("router/Link", () => {
   it("re-exports the to-based Link", () => {
     const Host = () => <Link to="/foo">go</Link>;
     renderWithProviders(<Route path="*" component={Host} />, {

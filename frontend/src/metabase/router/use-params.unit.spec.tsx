@@ -14,7 +14,7 @@ function ParamsProbe() {
   );
 }
 
-describe("useParams", () => {
+describe("router/useParams", () => {
   it("returns the params matched by the v3 route", () => {
     renderWithProviders(
       <Route

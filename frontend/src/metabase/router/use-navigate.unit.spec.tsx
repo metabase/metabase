@@ -37,7 +37,7 @@ function setup(initialRoute = "/") {
 const click = (name: string) =>
   userEvent.click(screen.getByRole("button", { name }));
 
-describe("useNavigate", () => {
+describe("router/useNavigate", () => {
   it("pushes a string destination", async () => {
     const { history } = setup();
     await click("push");

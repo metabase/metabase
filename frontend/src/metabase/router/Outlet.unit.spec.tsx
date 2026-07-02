@@ -11,7 +11,7 @@ function ParentPage() {
   );
 }
 
-describe("Outlet", () => {
+describe("router/Outlet", () => {
   it("renders the matched child exposed by withOutlet", () => {
     const RoutedParent = withOutlet(ParentPage);
 
