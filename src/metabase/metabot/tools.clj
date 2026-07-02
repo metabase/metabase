@@ -18,6 +18,7 @@
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.metabot.tools.metadata :as tools.metadata]
+   [metabase.metabot.tools.metric-math :as tools.metric-math]
    [metabase.metabot.tools.navigation :as tools.navigation]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.search :as tools.search]
@@ -74,6 +75,8 @@
   todo-read-tool]
  [tools.navigation
   navigate-user-tool]
+ [tools.metric-math
+  compute-metric-math-tool]
  [tools.snippets
   list-snippets-tool
   get-snippet-details-tool]

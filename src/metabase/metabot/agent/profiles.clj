@@ -179,6 +179,7 @@
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/compute-metric-math-tool
                     #'tools/navigate-user-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool]})
@@ -191,6 +192,7 @@
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/compute-metric-math-tool
                     #'tools/navigate-user-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool]})

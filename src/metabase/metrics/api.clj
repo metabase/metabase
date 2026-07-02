@@ -7,6 +7,7 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.definition :as metrics.definition]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -105,17 +106,6 @@
 
 ;;; ------------------------------------------------- Expression Helpers --------------------------------------------------
 
-(defn- collect-expression-uuids
-  "Collect all :lib/uuid values from leaf nodes in an expression tree."
-  [expr]
-  (mapv lib-metric/expression-leaf-uuid (lib-metric/expression-leaves expr)))
-
-(defn- collect-expression-leaves
-  "Collect [type id] pairs from leaf nodes in an expression tree."
-  [expr]
-  (mapv (juxt lib-metric/expression-leaf-type lib-metric/expression-leaf-id)
-        (lib-metric/expression-leaves expr)))
-
 (mr/def ::Definition
   "Schema for the definition object within a dataset request.
    Uses expression-based contract for metric math support."
@@ -126,18 +116,18 @@
     [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]]
    [:fn {:error/message "Expression must contain at least one metric or measure"}
     (fn [{:keys [expression]}]
-      (seq (collect-expression-leaves expression)))]
+      (seq (metrics.definition/collect-expression-leaves expression)))]
    [:fn {:error/message "All :lib/uuid values in expression must be unique"}
     (fn [{:keys [expression]}]
-      (let [uuids (collect-expression-uuids expression)]
+      (let [uuids (metrics.definition/collect-expression-uuids expression)]
         (= (count uuids) (count (set uuids)))))]
    [:fn {:error/message "Filter :lib/uuid values must reference UUIDs from expression"}
     (fn [{:keys [expression filters]}]
-      (let [expr-uuids (set (collect-expression-uuids expression))]
+      (let [expr-uuids (set (metrics.definition/collect-expression-uuids expression))]
         (every? #(contains? expr-uuids (:lib/uuid %)) (or filters []))))]
    [:fn {:error/message "Projection :lib/uuid values must reference UUIDs from expression"}
     (fn [{:keys [expression projections]}]
-      (let [expr-uuids (set (collect-expression-uuids expression))]
+      (let [expr-uuids (set (metrics.definition/collect-expression-uuids expression))]
         (every? #(contains? expr-uuids (:lib/uuid %)) (or projections []))))]])
 
 (mr/def ::DatasetRequest
@@ -160,32 +150,6 @@
                 [:cols [:sequential :any]]
                 [:rows [:sequential :any]]]]
    [:row_count ms/IntGreaterThanOrEqualToZero]])
-
-(defn- check-expression-permissions
-  "Collect all metric/measure leaves from the expression and verify query permissions for each."
-  [expression]
-  (doseq [[source-type source-id] (collect-expression-leaves expression)]
-    (case source-type
-      :metric  (api/query-check (t2/select-one :model/Card :id source-id :type "metric"))
-      :measure (api/query-check (t2/select-one :model/Measure :id source-id)))))
-
-(defn- from-api-definition
-  "Create a MetricDefinition from API definition parameters.
-
-   The definition map is passed through directly as the internal MetricDefinition,
-   since the API format and internal format now match.
-
-   Permission checks are performed on all referenced entities in the expression."
-  [provider definition]
-  (let [{:keys [expression filters projections]} definition]
-    ;; Permission check all expression leaves
-    (check-expression-permissions expression)
-    ;; Build MetricDefinition — format matches directly
-    {:lib/type          :metric/definition
-     :expression        expression
-     :filters           (or filters [])
-     :projections       (or projections [])
-     :metadata-provider provider}))
 
 (defn- with-metric-exec-info
   "Attach `:executed-by`/`:context` to a metric-plan MBQL query so that
@@ -231,7 +195,7 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
+  (let [definition (metrics.definition/from-api-definition (lib-metric/metadata-provider) definition)
         plan       (lib-metric/->query-plan definition {:limit 10000})]
     (if (= :leaf (:plan/type plan))
       (qp.streaming/streaming-response [rff :api]
@@ -257,7 +221,7 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
+  (let [definition (metrics.definition/from-api-definition (lib-metric/metadata-provider) definition)
         plan       (lib-metric/->query-plan definition {:limit 100 :values-only true})
         result     (qp/process-query (qp/userland-query (with-metric-exec-info (:plan/mbql plan))))
         col        (first (get-in result [:data :cols]))

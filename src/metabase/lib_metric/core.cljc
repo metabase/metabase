@@ -78,6 +78,7 @@
     [lib-metric.projection
      add-projection-positions
      default-breakout-dimensions
+     project-breakout-by-field-id
      projectable-dimensions])
    :cljs
    (do

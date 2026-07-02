@@ -167,11 +167,14 @@
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
           ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
-                       (tool-names (profiles/get-profile :nlq)))]
-      ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback embedding))
+                       (tool-names (profiles/get-profile :nlq)))
+          ;; the in-app NLQ pair (:nlq / :nlq-fallback) also carries compute_metric_math (a metrics-viewer
+          ;; visualization builder) that the embedding_next surface intentionally does not.
+          embedding+ (conj embedding "compute_metric_math")]
+      ;; the fallback profile is embedding_next's discovery surface (general `search`) plus metric math
+      (is (= fallback embedding+))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
+      (is (= curated (-> embedding+ (disj "search") (conj "retrieve_library_entities"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "navigate_user is excluded without the capability"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]

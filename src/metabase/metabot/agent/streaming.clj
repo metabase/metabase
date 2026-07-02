@@ -21,6 +21,7 @@
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
+(def metric-viz-type "AI-SDK data type for metric-math visualizations." "metric_viz")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -134,6 +135,18 @@
   [value]
   {:type :data
    :data-type static-viz-type
+   :version 1
+   :data value})
+
+(defn metric-viz-part
+  "Create a METRIC_VIZ data part for streaming a metric-math visualization.
+  `value` is a map with a validated metric `:definition` (`:expression`/`:filters`/`:projections`,
+  the same shape POST /api/metric/dataset accepts), plus display hints (`:display`, `:title`,
+  and optionally `:breakout`). The frontend renders it by posting the definition to
+  /api/metric/dataset and drawing the result via the metrics-viewer visualization."
+  [value]
+  {:type :data
+   :data-type metric-viz-type
    :version 1
    :data value})
 

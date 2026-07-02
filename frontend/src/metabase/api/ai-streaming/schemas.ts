@@ -3,6 +3,7 @@ import * as Yup from "yup";
 import type {
   CardDisplayType,
   DatasetQuery,
+  JsMetricDefinition,
   MetabotCodeEdit,
   MetabotTodoItem,
   SuggestedTransform,
@@ -23,6 +24,7 @@ export const knownDataPartTypes = [
   "generated_entity",
   "adhoc_viz",
   "static_viz",
+  "metric_viz",
 ];
 
 export type AdhocVizValue = {
@@ -34,6 +36,19 @@ export type AdhocVizValue = {
 
 export type StaticVizValue = {
   entity_id: number;
+};
+
+export type MetricVizValue = {
+  // A validated metric definition, ready to POST to /api/metric/dataset. `expression` is kept opaque
+  // (`unknown[]`) rather than the full `JsExpressionRef` tuple union: this value is only forwarded to
+  // the dataset endpoint, and embedding that union in the ts-pattern-matched `KnownDataPart` union
+  // pushes TS's type-instantiation budget over the edge (surfacing as a spurious TS2589 elsewhere).
+  definition: Omit<JsMetricDefinition, "expression"> & {
+    expression: unknown[];
+  };
+  display?: CardDisplayType;
+  title: string;
+  breakout?: { field_id: number; temporal_unit?: string };
 };
 
 export type GeneratedQuery = {
@@ -59,7 +74,8 @@ export type KnownDataPart =
   | { type: "code_edit"; version: 1; value: MetabotCodeEdit }
   | { type: "generated_entity"; version: 1; value: GeneratedEntity }
   | { type: "adhoc_viz"; version: 1; value: AdhocVizValue }
-  | { type: "static_viz"; version: 1; value: StaticVizValue };
+  | { type: "static_viz"; version: 1; value: StaticVizValue }
+  | { type: "metric_viz"; version: 1; value: MetricVizValue };
 
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),

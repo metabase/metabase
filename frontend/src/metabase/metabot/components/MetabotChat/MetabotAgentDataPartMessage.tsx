@@ -18,6 +18,7 @@ import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
+import { MetabotMetricViz } from "./MetabotMetricViz";
 
 type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
@@ -83,6 +84,12 @@ export const AgentDataPartMessage = ({
     .with({ part: { type: "static_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
+    .with({ part: { type: "metric_viz" } }, ({ part }) => (
+      <Stack gap="md">
+        {debug && <DataPartJsonCard type={part.type} value={part.value} />}
+        <MetabotMetricViz value={part.value} />
+      </Stack>
+    ))
     .exhaustive((msg: unknown) => {
       console.warn("AgentDataPartMessage received an unexpected value:", msg);
       return null;

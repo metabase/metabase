@@ -458,6 +458,7 @@ export const sendAgentRequest = createAsyncThunk<
                 { type: "generated_entity" },
                 { type: "adhoc_viz" },
                 { type: "static_viz" },
+                { type: "metric_viz" },
                 (part) => {
                   pushDataPart({ type: "data_part", part });
                 },

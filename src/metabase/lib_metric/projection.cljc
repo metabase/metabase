@@ -7,6 +7,7 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -365,3 +366,93 @@
               []
               (filterv #(dimension-has-field-id? breakout-field-ids %)
                        (projectable-dimensions definition)))))))))
+
+;;; -------------------------------------------------- Cross-leaf Breakout --------------------------------------------------
+
+(defn- leaf-dimensions
+  [metadata-provider leaf]
+  (let [leaf-type (lib-metric.definition/expression-leaf-type leaf)
+        leaf-id   (lib-metric.definition/expression-leaf-id leaf)]
+    (case leaf-type
+      :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider leaf-id)
+      :measure (lib-metric.dimension/dimensions-for-measure metadata-provider leaf-id))))
+
+(defn- leaf-entity-name
+  "Human-readable name for a leaf's metric/measure (falls back to \"metric 42\" if unnamed)."
+  [metadata-provider leaf]
+  (let [leaf-type (lib-metric.definition/expression-leaf-type leaf)
+        leaf-id   (lib-metric.definition/expression-leaf-id leaf)
+        mtype     (case leaf-type :metric :metadata/metric :measure :metadata/measure)]
+    (or (:name (first (lib.metadata.protocols/metadatas metadata-provider {:lib/type mtype :id #{leaf-id}})))
+        (str (name leaf-type) " " leaf-id))))
+
+(defn- dimension-tables
+  "Distinct table display-names the dimensions belong to (via each dimension's :group)."
+  [dimensions]
+  (distinct (keep (comp :display-name :group) dimensions)))
+
+(defn- unresolved-breakout-message
+  "Build an actionable error for a breakout `field-id` that isn't a dimension of every leaf.
+  `resolved` is `[{:leaf :dim}]` per leaf (`:dim` nil when unmatched); `example-dim` is any matched
+  dimension, used to name the field and the table it lives on."
+  [metadata-provider field-id example-dim missing]
+  (let [field-desc (if example-dim
+                     (i18n/tru "field {0} (\"{1}\" from table \"{2}\")"
+                               field-id
+                               (:display-name example-dim)
+                               (perf/get-in example-dim [:group :display-name]))
+                     (i18n/tru "field {0}" field-id))
+        offenders  (for [{:keys [leaf dims]} missing]
+                     (i18n/tru "\"{0}\" (its dimensions come from: {1})"
+                               (leaf-entity-name metadata-provider leaf)
+                               (or (perf/not-empty (apply str (interpose ", " (dimension-tables dims))))
+                                   (i18n/tru "no synced dimensions"))))]
+    (str (i18n/tru "Can''t break out by {0}: it isn''t a dimension of {1}."
+                   field-desc
+                   (apply str (interpose "; " offenders)))
+         " "
+         (i18n/tru (str "Every metric in a metric-math formula must have the breakout field among its "
+                        "own dimensions, so all metrics must share that field''s table (e.g. a conformed "
+                        "dimension). Note: a column with the same name on a different table is a different "
+                        "field with a different id — either pick a dimension common to all metrics, or drop "
+                        "the breakout for a scalar result.")))))
+
+(mu/defn project-breakout-by-field-id :- ::lib-metric.schema/metric-definition
+  "Add a breakout on the dimension backed by `field-id` to EVERY leaf of `definition`'s expression.
+
+  `field-id` is the stable cross-leaf key used to match \"the same logical breakout\" across the
+  metrics/measures in a metric-math expression (mirrors the frontend's field-id matching in
+  `dimension-picker.ts`). For each leaf, this finds that leaf's own dimension whose `:sources`
+  reference `field-id`, optionally applies `temporal-unit`, and appends a typed-projection for it.
+
+  Throws a 400 `ex-info` if any leaf has no dimension for `field-id`. The message names the field and
+  its table plus every metric that lacks it and the tables it does cover, so the caller can relay why
+  the (usually cross-table) breakout was rejected."
+  ([definition field-id]
+   (project-breakout-by-field-id definition field-id nil))
+  ([definition    :- ::lib-metric.schema/metric-definition
+    field-id      :- ::lib.schema.id/field
+    temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]]
+   (let [{:keys [expression metadata-provider]} definition
+         field-ids #{field-id}
+         resolved  (perf/mapv (fn [leaf]
+                                (let [dims (leaf-dimensions metadata-provider leaf)]
+                                  {:leaf leaf
+                                   :dims dims
+                                   :dim  (perf/some (fn [d] (when (dimension-has-field-id? field-ids d) d)) dims)}))
+                              (lib-metric.definition/expression-leaves expression))
+         missing   (remove :dim resolved)]
+     (when (seq missing)
+       (throw (ex-info (unresolved-breakout-message metadata-provider field-id (perf/some :dim resolved) missing)
+                       {:status-code 400
+                        :field-id    field-id
+                        :missing     (perf/mapv (fn [{:keys [leaf]}]
+                                                  {:type (lib-metric.definition/expression-leaf-type leaf)
+                                                   :id   (lib-metric.definition/expression-leaf-id leaf)})
+                                                missing)})))
+     (reduce (fn [def* {:keys [leaf dim]}]
+               (let [dim-ref (cond-> (lib-metric.dimension/reference dim)
+                               temporal-unit (with-temporal-bucket temporal-unit))]
+                 (project-for-source def* dim-ref leaf)))
+             definition
+             resolved))))
