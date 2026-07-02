@@ -1,21 +1,5 @@
-// The shared quarantine gate: given the tests that failed in a run, decide
-// whether the job should pass by checking each failure against ci-conductor's
-// quarantine list (a pass iff every failure is quarantined). One engine for all
-// three suites — backend, frontend, e2e — fed each suite's failures by its own
-// entrypoint (BE/FE from JUnit, e2e from the Cypress `after:spec` recording).
-//
-// THE IDENTITY AGREEMENT: a failure matches a quarantine entry on the exact
-// {file_path, test_path, test_name} tuple. ci-conductor's quarantine list is
-// populated by the SAME reports each suite POSTs (see `transport.ts`), so the
-// gate must derive a test's identity the same way the report did — which is why
-// the gate is fed per-suite from each suite's own normalizer, never by a second,
-// divergent path. Backend/frontend both report and gate from one JUnit parse;
-// e2e both reports and gates from one Cypress title array. Same source on both
-// sides → exact match, no drift.
-//
-// DRY RUN: while `dryRun` is set the gate computes and prints a verdict but never
-// fails the job (`enforced` stays false). It runs observationally — surfaced only
-// through its logs — and is enforced by flipping `QUARANTINE_DRY_RUN=false`.
+// Shared quarantine gate for all three suites: given a run's failed tests, pass
+// iff every failure is on ci-conductor's quarantine list.
 
 import type { NormalizedTest } from "./contract.ts";
 import { log } from "./util.ts";
