@@ -84,7 +84,11 @@
     (testing "an entry without :path or :url fails loudly instead of being silently ignored"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"must have a :path or :url key"
-                            (source-with {"MB_EMBEDDER_MODEL_SOURCES" "{\"my-model\" {:paht \"/models/x\"}}"} true))))
+                            (source-with {"MB_EMBEDDER_MODEL_SOURCES" "{\"my-model\" {:paht \"/models/x\"}}"} true)))
+      (testing "including a present-but-nil entry"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"must have a :path or :url key"
+                              (source-with {"MB_EMBEDDER_MODEL_SOURCES" "{\"my-model\" nil}"} true)))))
     (testing "the bundled resource is the default, always with token types"
       (is (=? {:type :url :url #"jar:///metabase-embedder/my-model-.*\.zip" :include-token-types? true}
               (source-with {} true))))

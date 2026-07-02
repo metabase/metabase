@@ -7,8 +7,9 @@
 ;; The library entity index shares the global embedding configuration (`ee-embedding-*`) by default.
 ;; These settings override individual keys so it can run a different provider/model than semantic
 ;; search — e.g. the in-process embedder serves any number of models per JVM, keyed by model name.
-;; Leave unset to inherit the global value. Overrides apply per key, so a model whose vector width
-;; differs from the inherited global dimensions needs the dimensions override set alongside it.
+;; Leave unset to inherit the global value. Model and dimensions must be overridden together
+;; (enforced at use): pairing either with the global value for the other would mismatch the model
+;; and its vector width.
 
 (defsetting ee-library-embedding-provider
   (deferred-tru "Embedding provider for the library entity index; leave empty to use ee-embedding-provider.")
@@ -25,8 +26,7 @@
 (defsetting ee-library-embedding-model
   (deferred-tru
    (str "Embedding model for the library entity index; leave empty to use ee-embedding-model. "
-        "Set ee-library-embedding-model-dimensions alongside it unless the model''s vector width matches "
-        "the inherited global value."))
+        "Always set ee-library-embedding-model-dimensions alongside it."))
   :encryption :no
   :visibility :settings-manager
   :default nil

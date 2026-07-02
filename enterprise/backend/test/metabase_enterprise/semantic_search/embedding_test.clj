@@ -129,12 +129,16 @@
                                     #"does not define embed-texts"
                                     (embedding/get-embeddings-batch embedding-model ["hello"]))))))))
     (testing "a FileNotFoundException for a namespace other than the plugin's own is not masked as plugin-absent"
+      ;; Mirror classloader/require's real shape: an ExceptionInfo wrapping the FileNotFoundException, so the
+      ;; cause-chain walk is what's exercised.
       (mt/with-dynamic-fn-redefs [classloader/require
                                   (fn [& _]
-                                    (throw (java.io.FileNotFoundException.
-                                            "Could not locate some_dep__init.class or some_dep.clj on classpath.")))]
-        (is (thrown-with-msg? java.io.FileNotFoundException
-                              #"some_dep"
+                                    (throw (ex-info "Failed to require metabase-enterprise.embedder.core"
+                                                    {}
+                                                    (java.io.FileNotFoundException.
+                                                     "Could not locate some_dep__init.class or some_dep.clj on classpath."))))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Failed to require"
                               (embedding/get-embeddings-batch embedding-model ["hello"])))))
     (testing "a blank model name errors before touching the plugin"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo

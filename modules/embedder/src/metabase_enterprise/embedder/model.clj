@@ -76,11 +76,13 @@
   Override entries default to the bundle convention; set `:include-token-types? false` for a two-input
   custom model."
   [model-name]
-  (let [resource-path (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
-        override      (get (model-source-overrides) model-name)]
+  (let [resource-path   (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
+        ;; `find`, not `get`: a present-but-nil entry must be treated as malformed, not as absent.
+        [_ override
+         :as entry]     (find (model-source-overrides) model-name)]
     ;; A malformed entry must fail loudly here: falling through to the bundled/zoo branches would either
     ;; claim no entry exists or silently load a different model than the one the entry meant to select.
-    (when (and override (not (or (:path override) (:url override))))
+    (when (and entry (not (or (:path override) (:url override))))
       (throw (ex-info (format "MB_EMBEDDER_MODEL_SOURCES entry for %s must have a :path or :url key."
                               (pr-str model-name))
                       {:model-name model-name :entry override})))

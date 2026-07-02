@@ -65,16 +65,16 @@
   "The embedding model for the library entity index: the global embedding settings, with any
   ee-library-embedding-* overrides applied so this index can run a different provider/model than
   semantic search.
-  Overriding the model requires overriding the dimensions too — silently inheriting another model's
-  vector width would poison the index and fail every reconcile."
+  Model and dimensions must be overridden together — pairing either with the global value for the
+  other would mismatch the model and its vector width, poisoning the index and failing every reconcile."
   []
   (let [model      (retrieval.settings/ee-library-embedding-model)
         dimensions (retrieval.settings/ee-library-embedding-model-dimensions)]
-    (when (and model (nil? dimensions))
-      (throw (ex-info (str "ee-library-embedding-model is overridden but ee-library-embedding-model-dimensions "
-                           "is not. Set MB_EE_LIBRARY_EMBEDDING_MODEL_DIMENSIONS to the overriding model's "
-                           "vector width; inheriting the global model's width would poison the index.")
-                      {:model model})))
+    (when (not= (some? model) (some? dimensions))
+      (throw (ex-info (str "ee-library-embedding-model and ee-library-embedding-model-dimensions must be "
+                           "overridden together (or both left unset): pairing one with the global value for "
+                           "the other would mismatch the model and its vector width, poisoning the index.")
+                      {:model model :dimensions dimensions})))
     (merge (embedding/get-configured-model)
            (u/remove-nils {:provider          (retrieval.settings/ee-library-embedding-provider)
                            :model-name        model

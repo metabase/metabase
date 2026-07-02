@@ -393,9 +393,12 @@
       ;; classloader/require wraps the FileNotFoundException in an ExceptionInfo, so check the cause chain —
       ;; but only a miss for the embedder namespace itself means the plugin is absent. A FileNotFoundException
       ;; for anything else means the plugin loaded but one of its own requires doesn't resolve against this
-      ;; core (a plugin/server version mismatch), which install guidance would mask.
+      ;; core (a plugin/server version mismatch), which install guidance would mask. Match the exact resource
+      ;; names RT/load emits so `core`-prefixed sibling namespaces can't false-positive.
       (if (some #(and (instance? java.io.FileNotFoundException %)
-                      (str/includes? (str (ex-message %)) "metabase_enterprise/embedder/core"))
+                      (let [msg (str (ex-message %))]
+                        (or (str/includes? msg "metabase_enterprise/embedder/core__init.class")
+                            (str/includes? msg "metabase_enterprise/embedder/core.clj"))))
                 (u/full-exception-chain e))
         (throw (ex-info (str "The 'in-process' embedding provider requires the Metabase embedder plugin. "
                              "Place metabase-embedder-plugin.jar in your plugins directory "
