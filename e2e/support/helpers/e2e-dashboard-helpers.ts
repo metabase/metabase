@@ -164,7 +164,15 @@ export function showDashcardVisualizationSettings(index = 0) {
 
 export function editDashboard() {
   cy.findByLabelText("Edit dashboard").click();
-  cy.findByText("You're editing this dashboard.");
+  // The click can be dropped while the header is still re-rendering (e.g. right
+  // after a save). The Edit button only exists in view mode, so if it's still
+  // present the click didn't take — re-click it. This can't double-toggle.
+  cy.get("body").then(($body) => {
+    if ($body.find('[aria-label="Edit dashboard"]').length > 0) {
+      cy.findByLabelText("Edit dashboard").click();
+    }
+  });
+  cy.findByTestId("edit-bar").should("be.visible");
 }
 
 export function saveDashboard({
