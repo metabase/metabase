@@ -265,6 +265,7 @@
     "@types/leaflet.heat": "^0.2.1",
     "@types/lodash.debounce": "^4.0.9",
     "@types/lodash.orderby": "^4.6.9",
+    "@types/micromatch": "^4.0.10",
     "@types/mustache": "^4.1.2",
     "@types/postcss-import": "^14.0.3",
     "@types/postcss-url": "^10.0.4",
