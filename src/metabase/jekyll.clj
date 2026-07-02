@@ -1,19 +1,19 @@
 (ns metabase.jekyll
-  "Phase 0 spike: Jekyll-mode boot cuts, gated on `MB_JEKYLL_CUT=B`.
+  "Jekyll mode: a stripped child-instance boot that holds nothing precious — no
+  scheduler, no sample/audit DB, no notification seeding. Precious state lives in
+  git; the box authors transforms, previews them, and reloads from its branch on
+  boot. Every cut is gated on [[jekyll?]] and is a no-op when off.
 
-  Read from the environment (not the app-db-backed `instance-workspace` setting)
-  because the scheduler cut fires at `metabase.core.core/init!*` before app-db
-  settings are reliably readable. ponytail: throwaway spike flag; fold into the
-  real `workspace-mode?` predicate once the cut is promoted past spike."
+  Gated on the `MB_JEKYLL_MODE` env var rather than the `workspace-mode?` /
+  `instance-workspace` child signal: that signal is populated from the config.yml
+  `:workspace` section at `metabase.core.core/init!*` *after* the scheduler cut,
+  so it is not readable at the earliest cut point. An env flag is the only
+  boot-safe primitive (env resolves before app-db and before config-from-file)."
   (:require
    [clojure.string :as str]
    [environ.core :as env]))
 
 (defn jekyll?
-  "True when Jekyll mode is active (`MB_JEKYLL_CUT=B`).
-
-  Option B (skip scheduler init) is the resolved Phase 0 cut. Option A
-  (RAMJobStore) was rejected: `quartz.properties` hardcodes JDBC-store-only keys
-  that RAMJobStore reflectively refuses, so it cannot boot config-only."
+  "True when Jekyll mode is active (`MB_JEKYLL_MODE=true`)."
   []
-  (= "b" (some-> (env/env :mb-jekyll-cut) str/lower-case)))
+  (= "true" (some-> (env/env :mb-jekyll-mode) str/lower-case)))
