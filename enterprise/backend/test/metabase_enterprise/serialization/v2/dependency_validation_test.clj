@@ -178,3 +178,32 @@
             (let [extracted (into [] (extract/extract (assoc opts :continue-on-error true)))]
               (is (some #(= "Collection" (-> % :serdes/meta last :model)) extracted)
                   "the target collection is still exported under continue-on-error"))))))))
+
+(deftest dependency-validation-missing-segment-ref-test
+  (testing "Export aborts when a card references a Segment that no longer exists (GHY-4010; Segment is a data-model)"
+    ;; Segments/Measures are data-model references, existence-checked like tables/fields. This covers the reference
+    ;; types the old lib-walker-only dependency derivation missed.
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
+                         :model/Database   {db-id :id}      {:engine :postgres}
+                         :model/Table      {table-id :id}   {:db_id db-id :name "T"}
+                         :model/Segment    {segment-id :id} {:table_id table-id :name "Seg" :definition {}}
+                         :model/Collection {coll-id :id}    {:name "Target Collection"}
+                         :model/Card        _               {:name          "Segment Card"
+                                                             :collection_id coll-id
+                                                             :database_id   db-id
+                                                             :table_id      table-id
+                                                             :query_type    :query
+                                                             :dataset_query {:database db-id
+                                                                             :type     :query
+                                                                             :query    {:source-table table-id
+                                                                                        :filter       [:segment segment-id]}}}]
+        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
+          (testing "with the segment present, the export succeeds"
+            (is (seq (into [] (extract/extract opts)))))
+          (t2/delete! :model/Segment segment-id)
+          (testing "after the segment is deleted, the export aborts"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (extract-aborts! opts)
+              (is (some #(re-find #"Segment .* is missing from the source database" %) (map :message (messages)))
+                  "the warning reports the unsatisfied Segment reference"))))))))

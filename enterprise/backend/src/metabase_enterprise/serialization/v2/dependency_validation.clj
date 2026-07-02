@@ -53,16 +53,11 @@
                     (map #(assoc % :via via))
                     (serdes/serialization-dependencies model entity))}))
 
-(defn- merge-deps
-  ([] {:visited #{} :deps #{}})
-  ([acc] acc)
-  ([a b] {:visited (into (:visited a) (:visited b))
-          :deps    (into (:deps a)    (:deps b))}))
-
 (defn- collect-dependencies
   "Take the model/ids and return {:visited :deps}.
 
-  Entities are streamed in batches, not held in memory."
+  Entities are streamed in batches, not held in memory; the accumulator uses transient sets since an export can walk a
+  lot of entities."
   [by-model coll-set opts]
   (let [content-models (set serdes.models/content)]
     (transduce
@@ -73,7 +68,12 @@
                 (serdes/extract-query model (merge opts {:collection-set coll-set
                                                          :where          [:in :id batch]}))))
       (map entity-deps))
-     merge-deps
+     (fn
+       ([] {:visited (transient #{}) :deps (transient #{})})
+       ([acc] {:visited (persistent! (:visited acc)) :deps (persistent! (:deps acc))})
+       ([acc {:keys [visited deps]}]
+        {:visited (reduce conj! (:visited acc) visited)
+         :deps    (reduce conj! (:deps acc) deps)}))
      by-model)))
 
 (defn- existing-ids
@@ -85,30 +85,28 @@
 
 (defn- unsatisfied-dependencies
   "Given collected `deps`, the `visited` set, and `analytics-cards`, returns the deps that won't be satisfied in the
-   archive: `:content` references to exported models that aren't in `visited`, and `:data` references (database, table,
-   field) whose row is missing from the appdb. Content references to models that aren't themselves exported as content
-   are ignored — they can't dangle."
+   archive, each tagged with a `:reason`. Each dep is classified by its model: content models must be in `visited` (or
+   be an analytics card, which resolves on import); data-model references must exist in the source appdb."
   [deps visited analytics-cards]
-  (let [{content-deps :content data-deps :data} (group-by :kind deps)
-        content-models (set serdes.models/content)
-        existing       (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))]
+  (let [content-models (set serdes.models/content)
+        {content-deps true data-deps false} (group-by #(contains? content-models (:model %)) deps)
+        existing (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))]
     (concat
-     (remove (fn [{:keys [model id]}]
-               (or (not (contains? content-models model))
-                   (contains? visited [model id])
-                   (and (= model "Card") (contains? analytics-cards id))))
-             content-deps)
-     (remove (fn [{:keys [model id]}]
-               (contains? (get existing model) id))
-             data-deps))))
+     (for [{:keys [model id] :as dep} content-deps
+           :when (not (or (contains? visited [model id])
+                          (and (= model "Card") (contains? analytics-cards id))))]
+       (assoc dep :reason :not-in-export))
+     (for [{:keys [model id] :as dep} data-deps
+           :when (not (contains? (get existing model) id))]
+       (assoc dep :reason :missing-in-appdb)))))
 
-(defn- unsatisfied-label [{:keys [kind model id via]}]
+(defn- unsatisfied-label [{:keys [model id via reason]}]
   (format "%s references %s %s which %s"
           (entity-label {:model (keyword "model" (first via)) :id (second via)})
           model id
-          (case kind
-            :content "is not included in the export"
-            :data    "is missing from the source database")))
+          (case reason
+            :not-in-export    "is not included in the export"
+            :missing-in-appdb "is missing from the source database")))
 
 (defn validate-dependencies!
   "Validates that every entity to be extracted has all of its references satisfied. Logs a warning per unsatisfied

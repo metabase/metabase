@@ -1457,15 +1457,21 @@
     (concat
      ;; content deps: derived from descendants so the two can't drift
      (for [[[model id] _] (serdes/descendants "Card" (:id card) nil)]
-       {:kind :content :model model :id id})
-     ;; data-model deps: omitted by descendants (import creates tables/fields on the fly), but at export
-     ;; time a missing row can't be turned into a portable reference, so we existence-check them
+       {:model model :id id})
+     ;; data-model deps: omitted by descendants (import creates tables/fields on the fly), but at export time a missing
+     ;; row can't be turned into a portable reference, so they're existence-checked. All references living in the query
+     ;; are covered here; refs embedded in parameter_mappings / visualization_settings / result_metadata are not yet
+     ;; (see the serialization/deserialization dep-walker unification).
      (when-let [db-id (:database_id card)]
-       [{:kind :data :model "Database" :id db-id}])
+       [{:model "Database" :id db-id}])
      (for [table-id (some-> query lib/all-source-table-ids)]
-       {:kind :data :model "Table" :id table-id})
+       {:model "Table" :id table-id})
      (for [field-id field-ids]
-       {:kind :data :model "Field" :id field-id}))))
+       {:model "Field" :id field-id})
+     (for [segment-id (some-> query lib/all-segment-ids)]
+       {:model "Segment" :id segment-id})
+     (for [measure-id (some-> query lib/all-measure-ids)]
+       {:model "Measure" :id measure-id}))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

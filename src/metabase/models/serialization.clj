@@ -661,12 +661,10 @@
 
   `entity` is a raw appdb (Toucan) instance, not a serialized map.
 
-  Returns a seq of dependency maps, each `{:kind :content|:data, :model \"ModelName\", :id id}`:
-  - `:content` deps (Card, Dashboard, NativeQuerySnippet, …) are satisfied only if they are themselves part of the
-    export. A referenced content entity that exists in the appdb but lives outside the requested set would become a
-    dangling reference on import.
-  - `:data` deps (Database, Table, Field) are satisfied if the row exists in the source appdb. A missing data-model row
-    can't be turned into a portable reference and silently corrupts the archive.
+  Returns a seq of dependency maps `{:model \"ModelName\", :id id}`. The caller classifies each by its model — content
+  models (Card, Dashboard, NativeQuerySnippet, …) are satisfied only if they are themselves part of the export, while
+  data-model references (Database, Table, Field, Segment, Measure) are satisfied if the row exists in the source appdb.
+  Either kind of missing reference would become a dangling reference or a malformed portable id in the archive.
 
   Dispatched on model-name. Default returns `nil`, so only models with references need to implement this."
   {:arglists '([model-name entity])}

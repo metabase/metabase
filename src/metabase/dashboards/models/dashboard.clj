@@ -495,7 +495,7 @@
   ;; these are actually exported as content. A dashboard's data-model references (field refs in parameter mappings)
   ;; are carried by the cards it references, which are validated in their own right.
   (for [[[model id] _] (serdes/descendants "Dashboard" (:id dashboard) nil)]
-    {:kind :content :model model :id id}))
+    {:model model :id id}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
