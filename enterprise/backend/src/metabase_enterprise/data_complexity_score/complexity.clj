@@ -184,17 +184,17 @@
             (collections/descendant-ids root)))))
 
 (defn- verified-card-id-set
-  "Set of Card ids whose most-recent moderation review is `verified`. Called only when
-   `metabot-scope` requests curated-only filtering — avoids a `moderation_review` join on the
-   universe Card select by pushing the check into a small auxiliary lookup."
+  "Set of Card ids whose most-recent moderation review is `verified`."
   []
+  ;; Called only when `metabot-scope` requests curated-only filtering — avoids a `moderation_review`
+  ;; join on the universe Card select by pushing the check into a small auxiliary lookup.
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
                     :moderated_item_type "card"
                     :most_recent         true
                     :status              "verified"))
 
 (defn- official-collection-id-set
-  "Set of collection ids with `official` authority level — their Cards count as curated."
+  "Set of collection ids with `official` authority level."
   []
   (t2/select-fn-set :id :model/Collection :authority_level "official"))
 
@@ -219,24 +219,21 @@
     []))
 
 (defn- enumerate-catalogs
-  "One-pass enumeration of all three scoring catalogs. Returns
-   `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
-   across catalogs — a Card or Table that appears in more than one catalog is one map in memory,
-   not three.
+  "One-pass enumeration of all three scoring catalogs.
+   Returns `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
+   across catalogs — a Card or Table that appears in more than one catalog is one map in memory, not three.
 
-   An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3×
-   per scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]],
-   each a `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset
-   once and derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6
-   DB round-trips + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
-
-   `metabot-scope` is `{:curated-only? <bool> :collection-id <nil|Long>}` describing how the
-   internal Metabot narrows its retrieval further — it only adds filters, never widens.
-   `:curated-only?` mirrors Metabot search's `use_verified_content` filter: Cards must be
-   verified, in an official collection, or in the Library tree; Tables must satisfy
-   [[curation/curated?]]. The caller owns the scope decision (Metabot row lookup); this
-   namespace does not read settings, premium-feature gates, or Metabot rows directly."
+   `metabot-scope` is `{:curated-only? <bool> :collection-id <nil|Long>}` describing how the internal
+   Metabot narrows its retrieval further — it only adds filters, never widens.
+   `:curated-only?` mirrors Metabot search's `use_verified_content` filter (see [[curation/curated?]]).
+   The caller owns the scope decision (Metabot row lookup); this namespace does not read settings,
+   premium-feature gates, or Metabot rows directly."
   [{:keys [curated-only? collection-id]}]
+  ;; An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3× per
+  ;; scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]], each a
+  ;; `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset once and
+  ;; derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6 DB round-trips
+  ;; + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
   (let [library-cids      (library-collection-ids)
         metabot-cids      (metabot-collection-scope-ids collection-id)
         verified-ids      (when curated-only? (verified-card-id-set))
