@@ -68,7 +68,9 @@ runs:
     - name: Build dependency graph
       shell: bash
       run: |
-        bun install --frozen-lockfile || true
+        # Quiet on success; surface output only if install fails.
+        bun install --frozen-lockfile > /tmp/bun-install.log 2>&1 \
+          || { echo "bun install issues (continuing):"; tail -20 /tmp/bun-install.log; }
         bunx depcruise frontend/src enterprise/frontend/src \
           --config .dependency-cruiser.cjs \
           --output-type json > dependency-graph.json || true
@@ -99,7 +101,7 @@ runs:
       shell: bash
       run: |
         p=test-plan.json
-        row() { # name, to_run, total
+        row() { # name, selected, total
           if [ "$2" -eq "$3" ]; then echo "| $1 | all ($3) | $3 |"; else echo "| $1 | $2 | $3 |"; fi
         }
         {
