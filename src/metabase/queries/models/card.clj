@@ -1376,8 +1376,6 @@
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
           :cache_ttl
-          ;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
           :legacy_query
           ;; always derivable from dataset_query by populate-query-fields; nil when not derivable
@@ -1406,19 +1404,23 @@
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export-with-context export-result-metadata :import import-result-metadata}}
+    :result_metadata        {:export-with-context export-result-metadata :import import-result-metadata}
+    ;; curated metric v2 dimensions & their column mappings; nil for non-metric cards, which elides the keys
+    :dimensions             {:export metrics/export-dimensions :import metrics/import-dimensions}
+    :dimension_mappings     {:export metrics/export-dimension-mappings :import metrics/import-dimension-mappings}}
    :defaults {:archived            false
               :archived_directly   false
               :collection_preview  true
               :enable_embedding    false}})
 
 (defmethod serdes/dependencies "Card"
-  [{:keys [collection_id database_id dataset_query parameters parameter_mappings
+  [{:keys [collection_id database_id dataset_query dimension_mappings parameters parameter_mappings
            result_metadata source_card_id visualization_settings
            dashboard_id document_id]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
+    (metrics/dimension-mappings-deps dimension_mappings)
     (serdes/parameters-deps parameters)
     (when database_id [[{:model "Database" :id database_id}]])
     ;; Note: `table_id` is intentionally not a dependency — the Database (above) is, and a missing Table is

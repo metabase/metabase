@@ -28,7 +28,12 @@
   normalize-target-ref
   normalize-dimension-mapping
   transform-dimensions
-  transform-dimension-mappings])
+  transform-dimension-mappings
+  export-dimensions
+  import-dimensions
+  export-dimension-mappings
+  import-dimension-mappings
+  dimension-mappings-deps])
 
 ;;; ------------------------------------------------- Query Utilities -------------------------------------------------
 
