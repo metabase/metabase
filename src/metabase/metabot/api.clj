@@ -56,6 +56,29 @@
   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
+(defn- check-parent-message!
+  "Throws a 409 unless `parent-message-id` matches the conversation's leaf."
+  [conversation-id parent-message-id]
+  (let [leaf    (metabot.persistence/leaf-external-id conversation-id)
+        reject! (fn [reason]
+                  (log/warn "Rejecting agent-streaming request: parent_message_id mismatch"
+                            {:conversation-id   conversation-id
+                             :parent-message-id parent-message-id
+                             :leaf-external-id  leaf
+                             :reason            reason})
+                  (throw (ex-info (tru "This conversation has changed. Reload to see the latest messages.")
+                                  {:status-code 409})))]
+    (cond
+      (= parent-message-id leaf) nil
+      (nil? parent-message-id)   (reject! :parent-message-missing)
+      :else
+      (let [row (t2/select-one :model/MetabotMessage :external_id parent-message-id :deleted_at nil)]
+        (cond
+          (nil? row)                                    (reject! :parent-message-not-found)
+          (not= (:conversation_id row) conversation-id) (reject! :parent-message-different-conversation)
+          (not= (:role row) :assistant)                 (reject! :parent-message-not-agent-role)
+          :else                                         (reject! :parent-message-stale))))))
+
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -186,7 +209,7 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug parent_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -197,6 +220,7 @@
         hostname   (analytics.core/extract-hostname (:origin request-info))
         pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
+    (check-parent-message! conversation_id parent_message_id)
     (let [{:keys [assistant-msg-id assistant-external-id]}
           (metabot.persistence/start-turn! conversation_id profile-id message
                                            :hostname hostname
@@ -250,6 +274,7 @@
             [:message ms/NonBlankString]
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
+            [:parent_message_id {:optional true} [:maybe ms/UUIDString]]
             [:history [:maybe ::metabot.schema/messages]]
             [:state [:map
                      [:queries {:optional true} [:map-of :string :any]]

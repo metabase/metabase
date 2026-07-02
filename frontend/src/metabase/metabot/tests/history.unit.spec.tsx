@@ -49,6 +49,77 @@ describe("metabot > history", () => {
     ]);
   });
 
+  it("should omit parent_message_id for the very first message of a new conversation", async () => {
+    setup();
+
+    const agentSpy = mockAgentEndpoint({ events: [] });
+    await enterChatMessage("Who is your favorite?");
+    const reqBody = await lastReqBody(agentSpy);
+    expect(reqBody?.parent_message_id).toBeUndefined();
+  });
+
+  it("should send parent_message_id matching the previous turn's external id", async () => {
+    setup();
+
+    const first = mockAgentEndpoint({
+      events: whoIsYourFavoriteResponse,
+      waitForResponse: true,
+    });
+    await enterChatMessage("Who is your favorite?");
+    first.sendResponse();
+    expect(
+      await screen.findByText("You, but don't tell anyone."),
+    ).toBeInTheDocument();
+
+    const second = mockAgentEndpoint({
+      events: [
+        { type: "start", messageId: "msg_second_turn" },
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "Sure." },
+        { type: "text-end", id: "t1" },
+        { type: "finish", finishReason: "stop" },
+      ],
+      waitForResponse: true,
+    });
+    await enterChatMessage("Are you sure?");
+    second.sendResponse();
+    expect(await screen.findByText("Sure.")).toBeInTheDocument();
+
+    const agentSpy = mockAgentEndpoint({ events: [] });
+    await enterChatMessage("Hi again!");
+    const reqBody = await lastReqBody(agentSpy);
+    expect(reqBody?.parent_message_id).toBe("msg_second_turn");
+  });
+
+  it("should send the aborted turn's message id as parent_message_id on the next message", async () => {
+    setup();
+
+    const [pause] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "start", messageId: "msg_aborted_turn" };
+          yield { type: "text-start", id: "t1" };
+          yield { type: "text-delta", id: "t1", delta: "Let me think" };
+          await pause.promise;
+        })(),
+      ),
+    });
+    await enterChatMessage("Who is your favorite?");
+    await userEvent.click(await stopResponseButton());
+    pause.resolve();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-stop-response"),
+      ).not.toBeInTheDocument();
+    });
+
+    const agentSpy = mockAgentEndpoint({ events: [] });
+    await enterChatMessage("Nevermind, hi!");
+    const reqBody = await lastReqBody(agentSpy);
+    expect(reqBody?.parent_message_id).toBe("msg_aborted_turn");
+  });
+
   it("should not clear history when metabot is hidden or opened", async () => {
     const { store } = setup();
     const agentSpy = mockAgentEndpoint({

@@ -120,6 +120,16 @@ export const getLastMessage = createSelector(getMessages, (messages) =>
   _.last(messages),
 );
 
+export const getLastAgentMessageExternalId = createSelector(
+  getMessages,
+  (messages) => {
+    const lastAgentMessage = messages.findLast((m) => m.role === "agent");
+    return lastAgentMessage && "externalId" in lastAgentMessage
+      ? lastAgentMessage.externalId
+      : undefined;
+  },
+);
+
 const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
   messages.reduce<MetabotChatMessage[][]>((turns, m) => {
     if (m.role === "user" || turns.length === 0) {
@@ -241,8 +251,10 @@ export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotRequestState,
   getProfile,
-  (history, state, profile) => ({
+  getLastAgentMessageExternalId,
+  (history, state, profile, parentMessageId) => ({
     state,
+    parent_message_id: parentMessageId,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,

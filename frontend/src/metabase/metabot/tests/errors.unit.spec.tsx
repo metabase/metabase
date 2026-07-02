@@ -59,6 +59,19 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
 
+  it("should show a conversation-out-of-sync message for a stale parent_message_id (409)", async () => {
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, 409);
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", METABOT_ERR_MSG.outOfSync],
+    ]);
+    expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
   it("should keep the prompt for locked requests so it can be retried", async () => {
     setup();
     fetchMock.post(`path:/api/metabot/agent-streaming`, {

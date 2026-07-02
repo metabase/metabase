@@ -116,6 +116,10 @@ const handleResponseError = (
         display: { type: "message" as const, message },
       }),
     )
+    .with({ status: 409 }, () => ({
+      error: { type: "conversation_out_of_sync" },
+      display: { type: "message" as const, message: METABOT_ERR_MSG.outOfSync },
+    }))
     .with(
       { status: P.number, data: { message: P.string } },
       ({ data: { message } }) => ({
