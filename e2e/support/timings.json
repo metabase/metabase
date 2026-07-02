@@ -133,11 +133,11 @@
       "duration": 2657
     },
     {
-      "spec": "../test/scenarios/admin/tools/help.cy.spec.ts",
+      "spec": "../test/scenarios/admin/help.cy.spec.ts",
       "duration": 13587
     },
     {
-      "spec": "../test/scenarios/admin/tools/tools.cy.spec.ts",
+      "spec": "../test/scenarios/monitor/tools/tools.cy.spec.ts",
       "duration": 47954
     },
     {
