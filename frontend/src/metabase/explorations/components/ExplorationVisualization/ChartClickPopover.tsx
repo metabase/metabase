@@ -28,6 +28,8 @@ import S from "./ChartClickPopover.module.css";
 export interface ChartClickTarget {
   value: RowValue;
   label: string;
+  // Display name of the dimension the value belongs to (e.g. "State"), for the comment pill.
+  columnName?: string;
   x: number;
   y: number;
 }
@@ -90,9 +92,11 @@ export function ChartClickPopover({
       child_target_id: pageId,
       parent_comment_id: null,
       content,
+      // Capture the clicked element in the comment context (same pattern as timelines) so the
+      // thread can render a pill showing which segment the comment is about.
       context: {
         segment_value: toScalar(target.value),
-        segment_label: target.label,
+        segment_column: target.columnName ?? null,
       },
     });
     if (error) {

@@ -500,6 +500,34 @@ export function getClickedSegmentValue(clicked: {
   return undefined;
 }
 
+/**
+ * Locate the chart data point for a segment value so it can be highlighted (via the chart's
+ * `hovered` mechanism). Searches each series' breakout column(s) for a cell matching `value` and
+ * returns `{ index, datumIndex }` — the series index and the original row index the chart's
+ * `handleHoverStates` expects. Returns `undefined` when nothing matches (e.g. the value was a
+ * series rather than an x-axis bar). String comparison keeps number/string values from the
+ * comment context matching the dataset cells.
+ */
+export function getSegmentHover(
+  series: SingleSeries[],
+  value: RowValue,
+): { index: number; datumIndex: number } | undefined {
+  const target = String(value);
+  for (let index = 0; index < series.length; index++) {
+    const { rows, cols } = series[index].data;
+    const breakoutIndexes = cols
+      .map((col, i) => (col.source === "breakout" ? i : -1))
+      .filter((i) => i >= 0);
+    const searchIndexes = breakoutIndexes.length > 0 ? breakoutIndexes : [0];
+    for (let datumIndex = 0; datumIndex < rows.length; datumIndex++) {
+      if (searchIndexes.some((i) => String(rows[datumIndex][i]) === target)) {
+        return { index, datumIndex };
+      }
+    }
+  }
+  return undefined;
+}
+
 export function getMostInterestingTimelineId(
   queries: ExplorationQuery[],
   availableTimelineIds: ReadonlySet<TimelineId>,
