@@ -12,8 +12,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { FormProvider } from "metabase/forms";
 import { Modal } from "metabase/ui";
+import { getObjectKeys } from "metabase/utils/objects";
 import type {
   IndexField,
+  IndexKind,
   RequestableIndexes,
   Table,
   TableIndexEntry,
@@ -44,10 +46,8 @@ export function IndexEditorModal({
   const isEditing = request != null;
   const tableId = transform.table?.id;
   const requestableIndexes = transform.requestable_indexes;
-  const kinds = transform.requestable_indexes
-    ? Object.keys(transform.requestable_indexes)
-    : [];
-  const [kind, setKind] = useState<string>(
+  const kinds = requestableIndexes ? getObjectKeys(requestableIndexes) : [];
+  const [kind, setKind] = useState<IndexKind>(
     request?.structured.kind ? request?.structured.kind : kinds[0],
   );
 
@@ -122,15 +122,10 @@ export function IndexEditorModal({
 }
 
 function getFields(
-  kind: string,
+  kind: IndexKind,
   requestableIndexes: RequestableIndexes | null | undefined,
-): IndexField[] | never[] {
-  if (!requestableIndexes) {
-    return [];
-  }
-  const fields =
-    kind in requestableIndexes ? requestableIndexes[kind].fields : [];
-  return fields;
+): IndexField[] {
+  return requestableIndexes?.[kind]?.fields ?? [];
 }
 
 function getColumnOptions(table: Table | undefined): ColumnOption[] {

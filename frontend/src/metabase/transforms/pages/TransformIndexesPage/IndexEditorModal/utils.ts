@@ -4,6 +4,7 @@ import * as Errors from "metabase/utils/errors";
 import type {
   IndexColumn,
   IndexField,
+  IndexKind,
   StructuredIndex,
 } from "metabase-types/api";
 
@@ -70,7 +71,7 @@ export function buildValidationSchema(fields: IndexField[]) {
 }
 
 export function toStructured(
-  kind: string,
+  kind: IndexKind,
   fields: IndexField[],
   values: IndexFormValues,
 ): StructuredIndex {

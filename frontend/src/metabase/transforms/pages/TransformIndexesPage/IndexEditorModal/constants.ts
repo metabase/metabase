@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
-export function getKindDescription(kind: string): string {
+import type { IndexKind } from "metabase-types/api";
+
+export function getKindDescription(kind: IndexKind): string {
   switch (kind) {
     case "btree":
       return t`The data structure used to organize the index. B-tree works well for most lookups, sorting, and range queries.`;

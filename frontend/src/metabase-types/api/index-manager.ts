@@ -83,6 +83,8 @@ export type StructuredIndex =
   | OrderByIndex
   | SkipIndex;
 
+export type IndexKind = StructuredIndex["kind"];
+
 export const TABLE_INDEX_REQUEST_STATUSES = [
   "create-pending",
   "update-pending",
@@ -169,4 +171,4 @@ export type IndexMethod = {
   fields: IndexField[];
 };
 
-export type RequestableIndexes = Record<string, IndexMethod>;
+export type RequestableIndexes = Partial<Record<IndexKind, IndexMethod>>;

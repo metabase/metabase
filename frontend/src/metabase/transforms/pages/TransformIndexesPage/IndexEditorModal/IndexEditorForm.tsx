@@ -2,20 +2,20 @@ import { t } from "ttag";
 
 import { Form, FormErrorMessage, FormSubmitButton } from "metabase/forms";
 import { Box, Button, Group, Select, Stack } from "metabase/ui";
-import type { IndexField } from "metabase-types/api";
+import type { IndexField, IndexKind } from "metabase-types/api";
 
 import { IndexFieldInput } from "./IndexFieldInput";
 import { getKindDescription } from "./constants";
 import type { ColumnOption } from "./types";
 
 type IndexEditorFormProps = {
-  kind: string;
-  kinds: string[];
+  kind: IndexKind;
+  kinds: IndexKind[];
   fields: IndexField[];
   columnOptions: ColumnOption[];
   isEditing: boolean;
   submitLabel: string;
-  onKindChange: (kind: string) => void;
+  onKindChange: (kind: IndexKind) => void;
   onClose: () => void;
 };
 
