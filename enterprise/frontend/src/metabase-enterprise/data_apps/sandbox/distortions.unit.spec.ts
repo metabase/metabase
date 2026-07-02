@@ -15,6 +15,32 @@ const fakeWindow = () =>
   }) as unknown as Window & typeof globalThis;
 
 describe("makeDistortionCallback", () => {
+  it("allows style elements for bundled CSS injection", () => {
+    const win = fakeWindow();
+    const callback = makeDistortionCallback("sales", win, []);
+    const createElement = callback(
+      Document.prototype.createElement,
+    ) as typeof Document.prototype.createElement;
+
+    expect(() => createElement.call(document, "style")).not.toThrow();
+  });
+
+  it("keeps the shared dangerous-tag blocklist for non-style elements", () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const win = fakeWindow();
+    const callback = makeDistortionCallback("sales", win, []);
+    const createElement = callback(
+      Document.prototype.createElement,
+    ) as typeof Document.prototype.createElement;
+
+    expect(() => createElement.call(document, "script")).toThrow(
+      "[data-app sales] blocked createElement: script",
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
   it("routes window.fetch to the allowlisted wrapper when allowed_hosts is set", async () => {
     const win = fakeWindow();
     const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));

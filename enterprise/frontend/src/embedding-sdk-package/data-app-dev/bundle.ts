@@ -18,6 +18,9 @@ export const DATA_APP_ENTRY = "src/index.tsx";
  */
 export const DATA_APP_GLOBAL_NAMES = {
   react: "React",
+  reactDom: "__react_dom__",
+  reactDomClient: "__react_dom_client__",
+  reactDomServer: "__react_dom_server__",
   reactJsxRuntime: "__react_jsx_runtime__",
   reactJsxDevRuntime: "__react_jsx_dev_runtime__",
   sdk: "__metabase_sdk__",
@@ -30,6 +33,9 @@ export const DATA_APP_FACTORY_GLOBAL = DATA_APP_GLOBAL_NAMES.factory;
 /** Each externalized import mapped to the global the sandbox endows it as. */
 export const DATA_APP_GLOBALS: Record<string, string> = {
   react: DATA_APP_GLOBAL_NAMES.react,
+  "react-dom": DATA_APP_GLOBAL_NAMES.reactDom,
+  "react-dom/client": DATA_APP_GLOBAL_NAMES.reactDomClient,
+  "react-dom/server": DATA_APP_GLOBAL_NAMES.reactDomServer,
   "react/jsx-runtime": DATA_APP_GLOBAL_NAMES.reactJsxRuntime,
   "react/jsx-dev-runtime": DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime,
   "@metabase/embedding-sdk-react": DATA_APP_GLOBAL_NAMES.sdk,
