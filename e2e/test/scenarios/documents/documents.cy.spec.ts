@@ -1856,9 +1856,9 @@ describe("documents", () => {
         .and("contain.text", "Document saved");
       // dismiss after asserting so toasts don't stack into later lookups
       H.undoToast().icon("close").click({ force: true });
-      cy.findByTestId("toast-undo").should("not.exist");
 
       cy.log("Make another change");
+      cy.findByTestId("toast-undo").should("not.exist");
       H.documentContent().click();
       H.addToDocument("More changes");
       H.documentSaveButton().click();
@@ -1866,9 +1866,9 @@ describe("documents", () => {
         "be.visible",
       );
       H.undoToast().icon("close").click({ force: true });
-      cy.findByTestId("toast-undo").should("not.exist");
 
       cy.log("Open revision history");
+      cy.findByTestId("toast-undo").should("not.exist");
       cy.findByLabelText("More options").click();
       H.popover().findByText("History").click();
 
