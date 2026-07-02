@@ -203,7 +203,12 @@
                                                                "sql-querying-only.selmer"
                                                                (metabot.settings/metabot-sql-system-prompt)
                                                                ;; default: internal.selmer and any other templates
-                                                               (metabot.settings/metabot-chat-system-prompt)))}]
+                                                               (metabot.settings/metabot-chat-system-prompt)))
+                                  ;; Per-user instructions, cached separately from the shared prefix
+                                  ;; (see `system-user-cache-breakpoint-sentinel`). Auto-scopes to the
+                                  ;; current user via the user-local setting getter.
+                                  :user_custom_instructions (not-empty
+                                                             (metabot.settings/metabot-user-custom-instructions))}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do

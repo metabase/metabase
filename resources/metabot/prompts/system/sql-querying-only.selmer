@@ -362,6 +362,14 @@ The target database uses the **{{sql_dialect}}** SQL dialect.{% if sql_dialect_l
 {% endif %}
 
 <<<METABOT_CACHE_BREAKPOINT>>>
+{% if user_custom_instructions %}
+
+# Your Personal Instructions
+
+{{ user_custom_instructions|safe }}
+{% endif %}
+
+<<<METABOT_USER_CACHE_BREAKPOINT>>>
 
 # Important Context
 

@@ -1,14 +1,38 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupPropertiesEndpoints,
+  setupUpdateSettingEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockUser,
+  createMockUserMetabotPermissions,
+} from "metabase-types/api/mocks";
 
 import type { UserProfileFormProps } from "./UserProfileForm";
 import UserProfileForm from "./UserProfileForm";
 
-const setup = (props: UserProfileFormProps) => {
-  const state = createMockState();
+const setup = (
+  props: UserProfileFormProps,
+  { hasMetabotAccess = true }: { hasMetabotAccess?: boolean } = {},
+) => {
+  const state = createMockState({
+    settings: mockSettings(createMockSettings()),
+  });
+
+  setupPropertiesEndpoints(createMockSettings());
+  setupUpdateSettingEndpoint();
+  setupUserMetabotPermissionsEndpoint(
+    createMockUserMetabotPermissions({
+      metabot: hasMetabotAccess ? "yes" : "no",
+    }),
+  );
 
   renderWithProviders(<UserProfileForm {...props} />, {
     storeInitialState: state,
@@ -28,6 +52,38 @@ describe("UserProfileForm", () => {
     await userEvent.click(screen.getByText("Update"));
 
     expect(await screen.findByText("Success")).toBeInTheDocument();
+  });
+
+  it("should show the Metabot instructions field when the user has Metabot access", async () => {
+    setup(getProps(), { hasMetabotAccess: true });
+
+    expect(await screen.findByText("Metabot instructions")).toBeInTheDocument();
+  });
+
+  it("should not show the Metabot instructions field when the user lacks Metabot access", async () => {
+    setup(getProps(), { hasMetabotAccess: false });
+
+    await waitFor(() =>
+      expect(fetchMock.callHistory.calls().length).toBeGreaterThan(0),
+    );
+
+    expect(screen.queryByText("Metabot instructions")).not.toBeInTheDocument();
+  });
+
+  it("should save the Metabot instructions field on change", async () => {
+    setup(getProps());
+
+    const textarea = await screen.findByPlaceholderText(
+      "E.g. I usually ask about sales and marketing data, not engineering metrics.",
+    );
+    await userEvent.type(textarea, "Focus on marketing data.");
+
+    await waitFor(() => {
+      const calls = fetchMock.callHistory.calls(
+        "path:/api/setting/metabot-user-custom-instructions",
+      );
+      expect(calls.length).toBeGreaterThan(0);
+    });
   });
 });
 

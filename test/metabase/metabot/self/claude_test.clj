@@ -385,6 +385,32 @@
                   {:type "text"
                    :text "Dynamic suffix content."}]
                  (:system body)))))
+      (testing "both sentinels split into cached prefix + separately-cached per-user block + uncached suffix"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :system (str "Shared prefix.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"
+                                  "# Your Personal Instructions\n\nUser stuff.\n\n"
+                                  "<<<METABOT_USER_CACHE_BREAKPOINT>>>\n\nDynamic suffix.")})]
+          (is (= [{:type          "text"
+                   :text          "Shared prefix."
+                   :cache_control {:type "ephemeral"}}
+                  {:type          "text"
+                   :text          "# Your Personal Instructions\n\nUser stuff."
+                   :cache_control {:type "ephemeral"}}
+                  {:type "text"
+                   :text "Dynamic suffix."}]
+                 (:system body)))))
+      (testing "blank per-user block collapses back to prefix + suffix (no empty cached block)"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :system (str "Shared prefix.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"
+                                  "<<<METABOT_USER_CACHE_BREAKPOINT>>>\n\nDynamic suffix.")})]
+          (is (= [{:type          "text"
+                   :text          "Shared prefix."
+                   :cache_control {:type "ephemeral"}}
+                  {:type "text"
+                   :text "Dynamic suffix."}]
+                 (:system body)))))
       (testing "no :system key when system is not provided"
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))

@@ -84,6 +84,16 @@
   :feature    :ai-controls
   :doc        false)
 
+(defsetting metabot-user-custom-instructions
+  (deferred-tru "Custom instructions for Metabot set by the current user, in addition to any instance-level custom instructions.")
+  :type       :string
+  :default    ""
+  :user-local :only
+  :visibility :authenticated
+  :encryption :no
+  :export?    false
+  :doc        false)
+
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
   :type       :boolean

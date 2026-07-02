@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
 import { ColorSchemeSelect } from "metabase/common/components/ColorScheme";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
+import { useUserSetting } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -13,7 +14,8 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Text } from "metabase/ui";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks/use-user-metabot-permissions";
+import { Box, Stack, Text, Textarea } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { LocaleData, User } from "metabase-types/api";
 
@@ -69,6 +71,7 @@ const UserProfileForm = ({
   return (
     <Box>
       <ColorSchemeSwitcher />
+      <MetabotCustomInstructions />
       <FormProvider
         initialValues={initialValues}
         validationSchema={schema}
@@ -145,6 +148,37 @@ const ColorSchemeSwitcher = () => {
 
       <ColorSchemeSelect />
     </Box>
+  );
+};
+
+const MetabotCustomInstructions = () => {
+  const { hasMetabotAccess } = useUserMetabotPermissions();
+  const [savedInstructions, setSavedInstructions] = useUserSetting(
+    "metabot-user-custom-instructions",
+  );
+  const [value, setValue] = useState(savedInstructions ?? "");
+
+  if (!hasMetabotAccess) {
+    return null;
+  }
+
+  return (
+    <Stack gap="xs" mb="md">
+      <Text fw="bold">{t`Metabot instructions`}</Text>
+      <Text c="text-secondary" size="sm">
+        {t`Tell Metabot what you're usually working on, so it can tailor its answers to you.`}
+      </Text>
+      <Textarea
+        value={value}
+        onChange={(event) => {
+          const newValue = event.target.value;
+          setValue(newValue);
+          setSavedInstructions(newValue === "" ? null : newValue);
+        }}
+        minRows={3}
+        placeholder={t`E.g. I usually ask about sales and marketing data, not engineering metrics.`}
+      />
+    </Stack>
   );
 };
 

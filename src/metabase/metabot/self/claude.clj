@@ -252,28 +252,46 @@
   by other provider adapters."
   "<<<METABOT_CACHE_BREAKPOINT>>>")
 
+(def ^:private system-user-cache-breakpoint-sentinel
+  "Second breakpoint, always after `system-cache-breakpoint-sentinel`. The text
+  between the two is the current user's per-user block: cached on its own so a
+  distinct user doesn't force a fresh cache write of the shared prefix. Anthropic
+  allows up to 4 cache_control breakpoints; this brings a request's total to 3."
+  "<<<METABOT_USER_CACHE_BREAKPOINT>>>")
+
 (defn- system->cached-content-blocks
   "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
+  The model sees the concatenation; the split is purely a wire-protocol device for
+  caching. Handles three template shapes:
 
-  If `system` contains the cache breakpoint sentinel, split it into two content
-  blocks: a cached static prefix and an uncached dynamic suffix. The model sees
-  the concatenation; the split is purely a wire-protocol device for caching.
-
-  If the sentinel is absent, fall back to a single cached content block covering
-  the whole prompt."
+  - No sentinels: a single cached content block covering the whole prompt.
+  - Only the first sentinel: a cached static prefix and an uncached dynamic suffix.
+  - Both sentinels: a cached shared prefix, a separately-cached per-user block, and
+    an uncached dynamic suffix. When the per-user block is blank it's dropped,
+    collapsing back to the two-block shape (avoids sending an empty cached block,
+    and keeps the shared-prefix cache key identical across users with no
+    instructions)."
   [system]
-  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
-    (if (neg? idx)
+  (let [idx1 (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
+    (if (neg? idx1)
       [{:type          "text"
         :text          system
         :cache_control {:type "ephemeral"}}]
-      (let [prefix (str/trimr (subs system 0 idx))
-            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
-        [{:type          "text"
-          :text          prefix
-          :cache_control {:type "ephemeral"}}
-         {:type "text"
-          :text suffix}]))))
+      (let [prefix     (str/trimr (subs system 0 idx1))
+            prefix-blk {:type "text" :text prefix :cache_control {:type "ephemeral"}}
+            rest*      (subs system (+ idx1 (count system-cache-breakpoint-sentinel)))
+            idx2       (.indexOf ^String rest* ^String system-user-cache-breakpoint-sentinel)]
+        (if (neg? idx2)
+          [prefix-blk
+           {:type "text" :text (str/triml rest*)}]
+          (let [user-block (str/trim (subs rest* 0 idx2))
+                suffix     (str/triml (subs rest* (+ idx2 (count system-user-cache-breakpoint-sentinel))))
+                suffix-blk {:type "text" :text suffix}]
+            (if (str/blank? user-block)
+              [prefix-blk suffix-blk]
+              [prefix-blk
+               {:type "text" :text user-block :cache_control {:type "ephemeral"}}
+               suffix-blk])))))))
 
 (defn- anthropic-error-msg
   "Canonical, status-specific Anthropic error message."

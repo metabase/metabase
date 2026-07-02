@@ -683,6 +683,7 @@ export type UserSettings = {
     useExistingUserSession?: boolean;
   } | null;
   "color-scheme"?: string;
+  "metabot-user-custom-instructions"?: string | null;
 };
 
 /**
