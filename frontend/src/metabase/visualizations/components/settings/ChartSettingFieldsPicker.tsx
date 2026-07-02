@@ -124,7 +124,7 @@ export const ChartSettingFieldsPicker = ({
                 showColumnSettingForIndicies?.includes(fieldIndex)
               }
               key={id}
-              value={field || undefined}
+              value={field}
               options={calculateOptions(field)}
               onChange={(updatedField: Field) => {
                 const fieldsCopy = [...fields];
@@ -145,7 +145,7 @@ export const ChartSettingFieldsPicker = ({
                         ...fields.slice(0, fieldIndex),
                         ...fields.slice(fieldIndex + 1),
                       ])
-                  : undefined
+                  : null
               }
               showDragHandle={fields.length > 1}
               dragHandleRef={dragHandleRef}
