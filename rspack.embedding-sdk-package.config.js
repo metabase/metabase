@@ -13,6 +13,9 @@ const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
 const {
+  DATA_APP_DEV_CONFIG_VIRTUAL_ID,
+} = require("./frontend/build/embedding-sdk/constants/data-app-virtual-modules");
+const {
   SDK_PACKAGE_BANNER,
 } = require("./frontend/build/embedding-sdk/constants/banner");
 const {
@@ -40,7 +43,6 @@ const baseConfig = {
   entry: {
     main: "./index.ts",
     "data-app": "./data-app.ts",
-    "data-app-dev": "./data-app-dev.ts",
   },
 
   output: {
@@ -109,7 +111,6 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
-    "data-app-dev.esm": "./data-app-dev.ts",
   },
 
   output: {
@@ -127,4 +128,32 @@ const esmConfig = {
   },
 };
 
-module.exports = [baseConfig, esmConfig];
+// The data-app dev entry is its own ESM build. It keeps the consumer's React/SDK
+// and the dev plugin's virtual config external (so the bundle runs against the
+// consumer's single React/SDK instance), with those extra externals scoped HERE
+// so they can't affect the SDK (`main` / `data-app`) builds above.
+const dataAppDevEntryConfig = {
+  ...esmConfig,
+
+  entry: {
+    "data-app-dev-entry": "./data-app-dev-entry.tsx",
+  },
+
+  externals: [
+    ...Object.keys(EXTERNAL_DEPENDENCIES),
+    "react/jsx-dev-runtime",
+    "@metabase/embedding-sdk-react",
+    "@metabase/embedding-sdk-react/data-app",
+    DATA_APP_DEV_CONFIG_VIRTUAL_ID,
+  ],
+
+  // Leave `import.meta` untouched so the consumer's Vite (not rspack) resolves it
+  // at serve time — `import.meta.env.DATA_APP_MB_*` for auth and `import.meta.hot`
+  // for the soft reload. Without this, rspack evaluates them to `undefined`.
+  module: {
+    ...baseConfig.module,
+    parser: { javascript: { importMeta: false } },
+  },
+};
+
+module.exports = [baseConfig, esmConfig, dataAppDevEntryConfig];
