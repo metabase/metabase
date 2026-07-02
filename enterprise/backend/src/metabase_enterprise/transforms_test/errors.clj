@@ -7,11 +7,14 @@
   "The full set of `:error-type` keywords the test-run pipeline can throw.
   Not every error-type has a dedicated HTTP mapping."
   #{;; Fixture-CSV parsing.
-    ::header-mismatch             ; CSV header does not match the target table's columns (exact match).
+    ::header-mismatch             ; CSV header does not match the target table's columns (exact match), or contains duplicates.
     ::unparseable-cell           ; A CSV cell cannot be parsed as its column's type.
+    ::ragged-row                 ; A CSV data row has more or fewer cells than the header.
     ;; Diff options.
     ::unknown-ignore-columns     ; `:ignore-columns` names a column not present in the actual result.
     ::unsupported-option         ; An unrecognised diff option was supplied.
+    ;; Diff canonicalization.
+    ::cannot-canonicalize        ; A cell value could not be canonicalized for comparison.
     ;; Input resolution.
     ::missing-fixtures           ; A required input table has no fixture key in the provided set.
     ::unknown-fixture-keys       ; A provided fixture key matches no required table.

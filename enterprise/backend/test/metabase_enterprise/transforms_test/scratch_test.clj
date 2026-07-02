@@ -72,13 +72,8 @@
     (let [nonce "x1y2z3w4"]
       (is (scratch/test-table-name? (scratch/scratch-table-name nonce "in_5")))
       (is (scratch/test-table-name? (scratch/scratch-table-name nonce "out")))
-      ;; String input
       (is (scratch/test-table-name? (str transforms-base.u/transform-temp-table-prefix
-                                         "_test_tgfsdq_deadbeef_in_123")))
-      ;; Keyword input
-      (is (scratch/test-table-name? (keyword "public"
-                                             (str transforms-base.u/transform-temp-table-prefix
-                                                  "_test_tgfsdq_deadbeef_in_123")))))))
+                                         "_test_tgfsdq_deadbeef_in_123"))))))
 
 (deftest test-table-name-negative-test
   (testing "test-table-name? is false for non-test names"
@@ -93,7 +88,11 @@
     (is (not (scratch/test-table-name? "public.orders")))
     ;; Empty/nil
     (is (not (scratch/test-table-name? "")))
-    (is (not (scratch/test-table-name? nil)))))
+    (is (not (scratch/test-table-name? nil)))
+    ;; Strings only — a valid name inside a keyword is not accepted
+    (is (not (scratch/test-table-name? (keyword "public"
+                                                (str transforms-base.u/transform-temp-table-prefix
+                                                     "_test_tgfsdq_deadbeef_in_123")))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Naming: nonce uniqueness
@@ -346,7 +345,7 @@
     (testing "scratch-output-target returns a spec with the right shape"
       (let [nonce    (scratch/new-nonce)
             schema   "public"
-            target   (scratch/scratch-output-target schema nonce)]
+            target   (scratch/scratch-output-target schema nonce "out" nil)]
         (is (= "public" (:schema target)))
         (is (scratch/test-table-name? (:table target))
             "output target name should pass test-table-name?")

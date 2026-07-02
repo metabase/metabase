@@ -245,11 +245,15 @@
   []
   (str "the " (name *connection-type*) " connection"))
 
-(defn assert-connection-type!
-  "Assert that `*connection-type*` is currently `expected` (one of [[connection-types]])."
+(defn ensure-connection-type!
+  "Throw unless `*connection-type*` is currently `expected` (one of
+  [[connection-types]]). Always on — survives builds compiled with
+  `*assert*` disabled."
   [expected]
-  (assert (= *connection-type* expected)
-          (str "Expected " expected " connection context, got " *connection-type*)))
+  (when (not= *connection-type* expected)
+    (throw (ex-info (str "Expected " expected " connection context, got " *connection-type*)
+                    {:expected expected
+                     :actual   *connection-type*}))))
 
 (defn connection-pool-type
   "Returns the effective pool key for the given database. Return value matches malli schema

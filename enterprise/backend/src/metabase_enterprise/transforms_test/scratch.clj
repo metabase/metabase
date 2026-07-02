@@ -89,45 +89,33 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn parse-scratch-table-name
-  "Parse a scratch table name string (or keyword) back to a map.
-
-  Accepts:
-  - A plain string table name.
-  - A schema-qualified keyword (e.g. `:public/mb_transform_temp_table_test_...`),
-    from which the name component is extracted.
+  "Parse a scratch table name string back to a map.
 
   Returns `{:epoch-seconds <long> :nonce <string> :suffix <string>}` when the
-  name matches the test scratch pattern, or `nil` otherwise.
+  name matches the test scratch pattern, or `nil` otherwise (including any
+  non-string input).
 
   The `:epoch-seconds` value is decoded from the base-36 component and can be
   compared directly to `(quot (System/currentTimeMillis) 1000)` for age-gating."
   [table-name]
-  (let [;; Extract the bare name from a keyword (schema-qualified or plain)
-        bare (cond
-               (nil? table-name)    nil
-               (keyword? table-name) (name table-name)
-               (string? table-name) table-name
-               :else                nil)]
-    (when (and (string? bare) (str/starts-with? bare test-table-prefix))
-      ;; Remaining after prefix: <epoch36>_<nonce>_<suffix>
-      (let [rest-str (subs bare (count test-table-prefix))
-            parts    (str/split rest-str #"_" 3)]
-        (when (= 3 (count parts))
-          (let [[epoch36 nonce suffix] parts]
-            (when (and (seq epoch36) (seq nonce) (seq suffix))
-              (try
-                {:epoch-seconds (Long/parseLong epoch36 36)
-                 :nonce         nonce
-                 :suffix        suffix}
-                (catch NumberFormatException _
-                  nil)))))))))
+  (when (and (string? table-name) (str/starts-with? ^String table-name test-table-prefix))
+    ;; Remaining after prefix: <epoch36>_<nonce>_<suffix>
+    (let [rest-str (subs ^String table-name (count test-table-prefix))
+          parts    (str/split rest-str #"_" 3)]
+      (when (= 3 (count parts))
+        (let [[epoch36 nonce suffix] parts]
+          (when (and (seq epoch36) (seq nonce) (seq suffix))
+            (try
+              {:epoch-seconds (Long/parseLong epoch36 36)
+               :nonce         nonce
+               :suffix        suffix}
+              (catch NumberFormatException _
+                nil))))))))
 
 (defn test-table-name?
-  "Return true when `table-name` is a test scratch table name.
-
-  Accepts strings and keywords (including schema-qualified keywords like
-  `:public/mb_transform_temp_table_test_...`). Returns false for nil and
-  non-string/keyword values. Never consults the database — purely name-based."
+  "Return true when `table-name` is a test scratch table name string.
+  False for any non-string value. Never consults the database — purely
+  name-based."
   [table-name]
   (some? (parse-scratch-table-name table-name)))
 
@@ -149,14 +137,10 @@
               into DDL, read-back SQL, and `build-transform-details :output-db`.
 
   Returns `{:schema <string> :table <string> :db <string-or-nil>}`."
-  ([^String schema ^String nonce]
-   (scratch-output-target schema nonce "out" nil))
-  ([^String schema ^String nonce ^String suffix]
-   (scratch-output-target schema nonce suffix nil))
-  ([^String schema ^String nonce ^String suffix catalog]
-   {:schema schema
-    :table  (scratch-table-name nonce suffix)
-    :db     catalog}))
+  [^String schema ^String nonce ^String suffix catalog]
+  {:schema schema
+   :table  (scratch-table-name nonce suffix)
+   :db     catalog})
 
 (defn spec->sql-ref
   "Driver-quoted SQL table reference for a scratch spec `{:schema :table :db}`.
@@ -211,7 +195,7 @@
         catalog (driver.sql/db-slot-value drv db)
         created (atom [])
         mapping (atom {})]
-    (driver.conn/assert-connection-type! :transform)
+    (driver.conn/ensure-connection-type! :transform)
     (try
       ;; Create the target schema if absent — some warehouses (e.g. BigQuery) don't
       ;; auto-create it, so a never-run transform's target schema may not exist yet.
@@ -276,7 +260,7 @@
                  (catch Exception e
                    (log/warn e "Failed to drop scratch table during cleanup!"
                              (keyword schema table-name)))))]
-    (driver.conn/assert-connection-type! :transform)
+    (driver.conn/ensure-connection-type! :transform)
     (doseq [{:keys [schema table]} (vals mapping)]
       (drop schema table))
     (when output-spec
@@ -314,29 +298,22 @@
   Returns `{:dropped [...] :skipped-young [...] :non-matching-count <int>
   :drop-errors [{:table :error} ...]}`."
   [db-id db ^String schema {:keys [min-age-seconds] :or {min-age-seconds 3600}}]
-  (let [drv         (keyword (:engine db))
-        now-secs    (quot (System/currentTimeMillis) 1000)
-        table-names (list-tables-in-schema db-id schema)
-        dropped     (atom [])
-        skipped     (atom [])
-        non-match   (atom 0)
-        errors      (atom [])]
-    (doseq [tbl-name table-names]
-      (if-let [parsed (parse-scratch-table-name tbl-name)]
-        (let [age-secs (- now-secs (:epoch-seconds parsed))]
-          (if (>= age-secs min-age-seconds)
-            (try
-              (driver/drop-table! drv db-id (keyword schema tbl-name))
-              (swap! dropped conj tbl-name)
-              (catch Exception e
-                (log/warn e "cleanup-all-test-tables! failed to drop" (keyword schema tbl-name))
-                (swap! errors conj {:table tbl-name :error (.getMessage e)})))
-            (swap! skipped conj tbl-name)))
-        (swap! non-match inc)))
-    {:dropped            @dropped
-     :skipped-young      @skipped
-     :non-matching-count @non-match
-     :drop-errors        @errors}))
+  (let [drv      (keyword (:engine db))
+        now-secs (quot (System/currentTimeMillis) 1000)]
+    (reduce
+     (fn [report tbl-name]
+       (if-let [parsed (parse-scratch-table-name tbl-name)]
+         (if (>= (- now-secs (:epoch-seconds parsed)) min-age-seconds)
+           (try
+             (driver/drop-table! drv db-id (keyword schema tbl-name))
+             (update report :dropped conj tbl-name)
+             (catch Exception e
+               (log/warn e "cleanup-all-test-tables! failed to drop" (keyword schema tbl-name))
+               (update report :drop-errors conj {:table tbl-name :error (.getMessage e)})))
+           (update report :skipped-young conj tbl-name))
+         (update report :non-matching-count inc)))
+     {:dropped [] :skipped-young [] :non-matching-count 0 :drop-errors []}
+     (list-tables-in-schema db-id schema))))
 
 (defn sweep-old-test-tables!
   "Reap old test scratch tables in `schema`, best-effort. Never throws; returns nil."

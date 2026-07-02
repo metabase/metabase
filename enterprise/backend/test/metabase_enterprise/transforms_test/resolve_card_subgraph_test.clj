@@ -1,5 +1,5 @@
-(ns metabase-enterprise.transforms-test.card-necessary-fixtures-test
-  "Pure unit tests for [[card->necessary-fixtures]].
+(ns metabase-enterprise.transforms-test.resolve-card-subgraph-test
+  "Pure unit tests for [[resolve-card-subgraph]].
 
   Synthetic transforms and cards are used throughout — no database required, no
   real SQL preprocessing. `transforms-base.i/table-dependencies` is rebound via
@@ -60,13 +60,13 @@
    ::tables       table-ids})
 
 (defn- run-fixture!
-  "Exercise `card->necessary-fixtures` for `card` + `source-ids` over
+  "Exercise `resolve-card-subgraph` for `card` + `source-ids` over
   `all-transforms`, with `table-dependencies` and `card->tables` both rebound."
   [card source-ids all-transforms]
   (let [deps-fn (stub-deps-lookup all-transforms)]
     (with-redefs [transforms-base.i/table-dependencies deps-fn
                   card-refs/card->tables               ::tables]
-      (subgraph/card->necessary-fixtures card source-ids all-transforms))))
+      (subgraph/resolve-card-subgraph card source-ids all-transforms))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; S and T transforms used by most tests

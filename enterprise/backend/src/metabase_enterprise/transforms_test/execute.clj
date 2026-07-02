@@ -65,14 +65,18 @@
 
 (defn read-back-output
   "Read all rows from the scratch output table via a QP native SELECT *.
-  Returns the full QP result map (status :completed + :data {:cols ... :rows ...}).
-  Throws on QP error.
+  Returns the full QP result map (status :completed + :data {:cols ... :rows ...});
+  temporal cells are java.time objects, not formatted strings. Throws on QP error.
 
   `drv` is the driver keyword; `output-target` is a `{:schema :table :db}` spec
   as returned by `scratch-output-target`."
   [db-id drv output-target]
   (let [sql    (str "SELECT * FROM " (scratch/spec->sql-ref drv output-target))
-        result (qp/process-query (native-query db-id sql))]
+        ;; format-rows renders temporals as report-timezone-shifted strings, which
+        ;; would spuriously mismatch the fixtures' UTC-canonicalized wall times on
+        ;; any non-UTC instance. Raw java.time objects canonicalize TZ-safely.
+        result (qp/process-query (assoc (native-query db-id sql)
+                                        :middleware {:format-rows? false}))]
     (when (not= :completed (:status result))
       (throw (ex-info
               (str "Failed to read back scratch output table " (pr-str (:table output-target))

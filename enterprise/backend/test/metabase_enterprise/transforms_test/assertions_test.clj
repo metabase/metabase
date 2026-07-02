@@ -181,6 +181,15 @@
     (is (= :passed (assertions/overall-status :passed [{:status :warn}])))))
 
 ;;; ===========================================================================
+;;; run-assertions! empty-input contract (pure)
+;;; ===========================================================================
+
+(deftest run-assertions-empty-returns-vector-test
+  (testing "no assertions → [] (not nil), touching neither the parser nor the DB"
+    (is (= [] (assertions/run-assertions! 1 :postgres :sqlglot {} "SELECT 1" [])))
+    (is (= [] (assertions/run-assertions! 1 :postgres :sqlglot {} "SELECT 1" nil)))))
+
+;;; ===========================================================================
 ;;; DB-gated postgres tests — run-assertions! against a live Postgres scratch table
 ;;; ===========================================================================
 
@@ -362,8 +371,7 @@
                        (assertions/run-assertions!
                         db-id drv backend mapping output-sql
                         [{:name "bad_column_ref" :sql bad-sql                                   :severity :error}
-                         {:name "good_assertion" :sql "SELECT * FROM test_output WHERE id <= 0" :severity :error}]
-                        {:strategy :batched}))]
+                         {:name "good_assertion" :sql "SELECT * FROM test_output WHERE id <= 0" :severity :error}]))]
          (testing "returns two results (fallback attributed both)"
            (is (= 2 (count results))))
          (testing "the batched failure fell back to per-assertion execution"
@@ -383,11 +391,11 @@
              (is (= :passed (:status good))))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; strategy equivalence: :batched and :per-assertion yield same verdicts
+;;; fallback equivalence: the per-assertion fallback yields the batched verdicts
 ;;; ---------------------------------------------------------------------------
 
-(deftest run-assertions-strategy-equivalence-test
-  (testing ":batched and :per-assertion strategies yield identical verdicts"
+(deftest run-assertions-fallback-equivalence-test
+  (testing "the per-assertion fallback path yields verdicts identical to the batched path"
     (let [mixed-csv      (str orders-csv-header "\n"
                               "1,1,1,90,10,100,,2024-01-01T00:00:00Z,1\n"
                               "2,2,2,45,5,-50,,2024-01-02T00:00:00Z,1\n"
@@ -399,12 +407,13 @@
        mixed-csv
        (fn [{:keys [db-id drv mapping output-sql backend]}]
          (let [batched-results    (assertions/run-assertions!
-                                   db-id drv backend mapping output-sql assertion-defs
-                                   {:strategy :batched})
-               per-assert-results (assertions/run-assertions!
-                                   db-id drv backend mapping output-sql assertion-defs
-                                   {:strategy :per-assertion})]
-           (testing ":batched and :per-assertion return same number of results"
+                                   db-id drv backend mapping output-sql assertion-defs)
+               ;; Drive the private fallback directly — it is otherwise reachable
+               ;; only through a combined-query failure.
+               prepared           (#'assertions/prepare drv backend mapping assertion-defs)
+               per-assert-raw     (#'assertions/run-per-assertion! db-id output-sql prepared)
+               per-assert-results (#'assertions/interpret prepared per-assert-raw)]
+           (testing "both paths return same number of results"
              (is (= (count batched-results) (count per-assert-results))))
            (testing "status verdicts are identical for each assertion"
              (doseq [[b p] (map vector batched-results per-assert-results)]

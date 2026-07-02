@@ -1,9 +1,10 @@
 (ns metabase-enterprise.transforms-test.diff-test
   "Tests for the diff engine. All tests are pure/driver-free — no Postgres, no app DB.
 
-  QP actual-rows contain temporals as ISO-8601 Z strings:
-    :type/Date      → \"2024-03-15T00:00:00Z\"
-    :type/DateTime  → \"2024-01-15T10:30:00Z\"
+  Actual-rows temporals are java.time objects in production (the read-back runs
+  with format-rows disabled); ISO-8601 strings are also accepted, leniently:
+    :type/Date      → \"2024-03-15T00:00:00Z\" or \"2024-03-15\"
+    :type/DateTime  → \"2024-01-15T10:30:00Z\" or \"2024-01-15T10:30:00\"
     :type/DateTimeWithLocalTZ → \"2024-03-15T12:00:00Z\"
 
   parse-fixture produces Java time objects for expected rows:
@@ -181,6 +182,40 @@
               (seq (:extra-rows report))
               (seq (:cell-mismatches report)))))))
 
+(deftest offset-less-temporal-strings-lenient-parse-test
+  (testing "an offset-less date string parses as UTC wall time"
+    (let [actual-cols [(col "d" :type/Date)]
+          actual-rows [["2024-03-15"]]
+          expected    (fixture [(schema-col "d" :type/Date)]
+                               [[(LocalDate/of 2024 3 15)]])
+          report      (diff/diff actual-cols actual-rows expected {})]
+      (is (= :passed (:status report)))))
+  (testing "an offset-less datetime string parses as UTC wall time"
+    (let [actual-cols [(col "dt" :type/DateTime)]
+          actual-rows [["2024-01-15T10:30:00"]]
+          expected    (fixture [(schema-col "dt" :type/DateTime)]
+                               [[(LocalDateTime/of 2024 1 15 10 30 0)]])
+          report      (diff/diff actual-cols actual-rows expected {})]
+      (is (= :passed (:status report))))))
+
+(deftest unparseable-cell-typed-error-test
+  (testing "an unparseable temporal value throws ::cannot-canonicalize, not a raw parse exception"
+    (let [actual-cols [(col "d" :type/Date)]
+          actual-rows [["not-a-date"]]
+          expected    (fixture [(schema-col "d" :type/Date)]
+                               [[(LocalDate/of 2024 3 15)]])
+          e           (is (thrown? clojure.lang.ExceptionInfo
+                                   (diff/diff actual-cols actual-rows expected {})))]
+      (is (= ::errors/cannot-canonicalize (-> e ex-data :error-type)))))
+  (testing "an unconvertible numeric value throws ::cannot-canonicalize"
+    (let [actual-cols [(col "n" :type/Integer)]
+          actual-rows [["forty-two"]]
+          expected    (fixture [(schema-col "n" :type/Integer)]
+                               [[(BigInteger/valueOf 42)]])
+          e           (is (thrown? clojure.lang.ExceptionInfo
+                                   (diff/diff actual-cols actual-rows expected {})))]
+      (is (= ::errors/cannot-canonicalize (-> e ex-data :error-type))))))
+
 (deftest null-temporal-passes-test
   (testing "NULL temporal on both sides → equal"
     (let [actual-cols [(col "d" :type/Date)]
@@ -232,6 +267,39 @@
                                             (diff/diff actual-cols actual-rows expected
                                                        {:float-tolerance 0.01})))]
       (is (= ::errors/unsupported-option (-> e ex-data :error-type))))))
+
+(deftest bigint-precision-above-2-53-test
+  (testing "a clojure.lang.BigInt above 2^53 compares exactly (no double round-trip)"
+    ;; 2^53 + 1 is the first integer a double cannot represent.
+    (let [huge        (inc' (long (Math/pow 2 53)))
+          actual-cols [(col "n" :type/Integer)]
+          actual-rows [[(bigint huge)]]
+          expected    (fixture [(schema-col "n" :type/Integer)]
+                               [[(biginteger huge)]])
+          report      (diff/diff actual-cols actual-rows expected {})]
+      (is (= :passed (:status report))))
+    ;; ...and genuinely different huge values still mismatch.
+    (let [huge        (inc' (long (Math/pow 2 53)))
+          actual-cols [(col "n" :type/Integer)]
+          actual-rows [[(bigint huge)]]
+          expected    (fixture [(schema-col "n" :type/Integer)]
+                               [[(biginteger (inc' huge))]])
+          report      (diff/diff actual-cols actual-rows expected {})]
+      (is (= :failed (:status report))))))
+
+(deftest truncated-counts-capped-cell-mismatches-test
+  (testing ":truncated includes cell-mismatch entries beyond the cap, per its contract"
+    ;; One missing/extra row pair whose rows differ in (mismatch-cap + 1) cells:
+    ;; the pair produces cap+1 cell mismatches, one of which is capped away.
+    (let [n           (inc diff/mismatch-cap)
+          actual-cols (mapv #(col (str "c" %) :type/Integer) (range n))
+          actual-rows [(vec (repeat n 1))]
+          expected    (fixture (mapv #(schema-col (str "c" %) :type/Integer) (range n))
+                               [(vec (repeat n 2))])
+          report      (diff/diff actual-cols actual-rows expected {})]
+      (is (= :failed (:status report)))
+      (is (= diff/mismatch-cap (count (:cell-mismatches report))))
+      (is (= 1 (:truncated report))))))
 
 (deftest decimal-scale-bigdecimal-multiset-test
   (testing "true BigDecimal values with different scales (e.g. Postgres numeric columns)

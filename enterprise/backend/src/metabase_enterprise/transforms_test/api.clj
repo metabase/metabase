@@ -10,7 +10,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.premium-features.core :as premium-features]
    [metabase.transforms.core :as transforms.core]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -22,13 +21,10 @@
   nil)
 
 (defn- check-test-run-allowed!
-  "Throw a 402 unless the run is allowed: the instance must have the `:dependencies`
-  capability, and every transform the run exercises must have its per-type feature
-  enabled and not be locked. `slice-transforms-thunk` returns those transforms."
+  "Throw a 402 unless every transform the run exercises has its per-type feature
+  enabled and is not locked. `slice-transforms-thunk` returns those transforms.
+  The instance-level `:dependencies` gate is the route's, not this fn's."
   [slice-transforms-thunk]
-  (api/check (premium-features/has-feature? :dependencies)
-             [402 {:message    (deferred-tru "Transform test runs require the Dependency Tracking feature.")
-                   :error-code "metabase_transforms_test_run_unavailable"}])
   (doseq [transform (slice-transforms-thunk)]
     (transforms.core/check-feature-enabled! transform)
     (api/check (not (transforms.core/transform-locked? transform))
@@ -44,7 +40,7 @@
 (defn- card-slice-transforms
   "The transforms exercised by a card-target run — the sub-graph slice."
   [card source-ids all-transforms]
-  (let [{:keys [slice]} (subgraph/card->necessary-fixtures card source-ids all-transforms)]
+  (let [{:keys [slice]} (subgraph/resolve-card-subgraph card source-ids all-transforms)]
     (keep (u/index-by :id all-transforms) slice)))
 
 (defn- test-run-response

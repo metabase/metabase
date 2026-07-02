@@ -107,8 +107,18 @@
 
 (defn- parse-row
   "Parse one data row (vector of strings) using per-column parsers.
-  `row-index` is 0-based (does not count the header row)."
+  `row-index` is 0-based (does not count the header row).
+  Throws `::errors/ragged-row` when the row's cell count differs from the header's."
   [parsers column-names row-index row]
+  ;; mapv stops at the shortest collection — a ragged row would silently
+  ;; truncate or nil-pad without this guard.
+  (when (not= (count row) (count parsers))
+    (throw (ex-info (str "CSV row " row-index " has " (count row) " cell(s);"
+                         " the header has " (count parsers) " column(s).")
+                    {:error-type          ::errors/ragged-row
+                     :row-index           row-index
+                     :expected-cell-count (count parsers)
+                     :actual-cell-count   (count row)})))
   (mapv (fn [parser col-name cell]
           (parse-cell parser row-index col-name cell))
         parsers
@@ -163,7 +173,11 @@
   Throws (all via `ex-info` with typed `:error-type` in ex-data):
   - `::header-mismatch`   — CSV header ≠ schema column names (case-sensitive,
                             exact match; ex-data includes `:missing-columns` and
-                            `:extra-columns`).
+                            `:extra-columns`), or the header contains duplicate
+                            names (ex-data includes `:duplicate-columns`).
+  - `::ragged-row`        — a data row's cell count ≠ the header's column count;
+                            ex-data includes `:row-index` (0-based),
+                            `:expected-cell-count`, and `:actual-cell-count`.
   - `::unparseable-cell`  — a cell value could not be parsed as the column type;
                             ex-data includes `:row-index` (0-based), `:column-name`,
                             and `:raw-value`."
@@ -179,7 +193,17 @@
         schema-names (set (map :name target-schema))
         csv-names    (set header)
         missing      (set/difference schema-names csv-names)
-        extra        (set/difference csv-names schema-names)]
+        extra        (set/difference csv-names schema-names)
+        dupes        (->> (frequencies header)
+                          (keep (fn [[n cnt]] (when (> cnt 1) n)))
+                          sort)]
+    ;; Duplicates hide from the set comparison and misalign row values downstream.
+    (when (seq dupes)
+      (throw (ex-info (str "CSV header contains duplicate column names: "
+                           (str/join ", " dupes) ".")
+                      {:error-type        ::errors/header-mismatch
+                       :duplicate-columns (vec dupes)
+                       :csv-header        (vec header)})))
     (when (or (seq missing) (seq extra))
       (header-mismatch-error missing extra header (map :name target-schema)))
     ;; Re-order the schema to match the CSV column order.

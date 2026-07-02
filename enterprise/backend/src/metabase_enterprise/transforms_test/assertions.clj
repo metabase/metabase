@@ -139,8 +139,8 @@
       nil)))
 
 (defn- build-count-sql
-  "Build the SQL that counts failing rows for one assertion (used by
-  `:per-assertion` strategy)."
+  "Build the SQL that counts failing rows for one assertion (used by the
+  per-assertion fallback)."
   [output-sql clean-sql]
   (str "WITH test_output AS (" output-sql ")\n"
        "SELECT COUNT(*) FROM (" clean-sql ") __a"))
@@ -179,18 +179,23 @@
         runnable))
 
 ;;; ---------------------------------------------------------------------------
-;;; Execution strategy
+;;; Execution
 ;;; ---------------------------------------------------------------------------
 
-(defmulti ^:private run-strategy
-  "Run the prepared (non-error) assertions; return raw result maps
-  `{:name :failing-count :sample}`. Dispatches on strategy
-  (`:batched` or `:per-assertion`)."
-  {:arglists '([strategy db-id drv mapping output-sql prepared opts])}
-  (fn [strategy & _] strategy))
+(defn- run-per-assertion!
+  "Run each prepared (non-error) assertion as its own query; return raw result
+  maps `{:name :failing-count :sample}`. The fallback path when the combined
+  query fails — one round-trip per assertion, but failures attribute to the
+  culprit."
+  [db-id output-sql prepared]
+  (let [runnable (remove :error prepared)]
+    (mapv #(run-one-assertion! db-id output-sql %) runnable)))
 
-(defmethod run-strategy :batched
-  [_ db-id _drv _mapping output-sql prepared opts]
+(defn- run-batched!
+  "Run the prepared (non-error) assertions as one combined query; return raw
+  result maps `{:name :failing-count :sample}`. Falls back to
+  [[run-per-assertion!]] when the combined query fails."
+  [db-id output-sql prepared]
   (let [runnable (remove :error prepared)]
     (if (empty? runnable)
       []
@@ -198,20 +203,14 @@
         (try
           (let [counts-map  (execute-counts! db-id sql)
                 failing     (failing-assertions runnable counts-map)
-                samples-map (when (and (:samples? opts true) (seq failing))
-                              (into {}
-                                    (map (fn [pa] [(:name pa) (fetch-sample! db-id output-sql pa)]))
-                                    failing))]
-            (raw-results-from-counts runnable counts-map (or samples-map {})))
+                samples-map (into {}
+                                  (map (fn [pa] [(:name pa) (fetch-sample! db-id output-sql pa)]))
+                                  failing)]
+            (raw-results-from-counts runnable counts-map samples-map))
           (catch Throwable e
             ;; Batched query failed — fall back to attribute the culprit.
-            (log/warn e "Batched assertion query failed; falling back to :per-assertion strategy")
-            (run-strategy :per-assertion db-id _drv _mapping output-sql prepared opts)))))))
-
-(defmethod run-strategy :per-assertion
-  [_ db-id _drv _mapping output-sql prepared _opts]
-  (let [runnable (remove :error prepared)]
-    (mapv #(run-one-assertion! db-id output-sql %) runnable)))
+            (log/warn e "Batched assertion query failed; falling back to per-assertion execution")
+            (run-per-assertion! db-id output-sql prepared)))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Interpret
@@ -226,7 +225,8 @@
   For executed assertions:
   - count = 0  → `:passed` regardless of severity.
   - count > 0, severity `:warn` → `:warn` (does not fail the overall run).
-  - count > 0, severity `:error` (default) → `:failed`."
+  - count > 0, severity `:error` (default) → `:failed`.
+  - a QP error running the assertion → `:failed` regardless of severity."
   [pa raw-result]
   (cond
     ;; Terminal: rewrite/verify failed in prepare stage.
@@ -258,22 +258,21 @@
        :error_message     error})))
 
 (defn- interpret
-  "PreparedAssertions + raw strategy results → assertion-result maps.
+  "PreparedAssertions + raw execution results → assertion-result maps.
 
   `prepared`    — vector of all PreparedAssertions from `prepare` (includes `:error` entries).
-  `raw-results` — vector of raw result maps from `run-strategy` (runnable-only, same order
-                  as `(remove :error prepared)`).
+  `raw-results` — vector of raw result maps (runnable-only, in the same order
+                  as `(remove :error prepared)`); paired positionally.
 
   Returns a vector of assertion-result maps in input-assertion order."
   [prepared raw-results]
-  (let [;; Index raw results by name for lookup (runnable only, in order).
-        runnable-results (zipmap (map :name (remove :error prepared))
-                                 raw-results)]
-    (mapv (fn [pa]
-            (if (:error pa)
-              (interpret-one pa nil)
-              (interpret-one pa (get runnable-results (:name pa)))))
-          prepared)))
+  (first
+   (reduce (fn [[acc raws] pa]
+             (if (:error pa)
+               [(conj acc (interpret-one pa nil)) raws]
+               [(conj acc (interpret-one pa (first raws))) (rest raws)]))
+           [[] raw-results]
+           prepared)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Overall-status helper
@@ -306,19 +305,16 @@
                    a `SELECT *` over the target's scratch table, or the compiled
                    card SQL. Must reference only scratch tables.
   - `assertions` — seq of `{:name <str> :sql <str> :severity :error|:warn}`.
-  - `opts`       — optional: `:strategy` `:batched` (default) or `:per-assertion`;
-                   `:samples?` fetch failing-row samples (default true).
 
   Returns one result map per assertion:
   `[{:name :status :failing_row_count :sample_rows :columns} ...]`
+  Empty `assertions` → `[]`.
 
   Never throws; per-assertion failures are captured as result entries. All-pass
   runs as one combined query."
-  ([db-id drv backend mapping output-sql assertions]
-   (run-assertions! db-id drv backend mapping output-sql assertions {}))
-  ([db-id drv backend mapping output-sql assertions opts]
-   (when (seq assertions)
-     (let [strategy (get opts :strategy :batched)
-           prepared (prepare drv backend mapping assertions)
-           raw      (run-strategy strategy db-id drv mapping output-sql prepared opts)]
-       (interpret prepared raw)))))
+  [db-id drv backend mapping output-sql assertions]
+  (if (empty? assertions)
+    []
+    (let [prepared (prepare drv backend mapping assertions)
+          raw      (run-batched! db-id output-sql prepared)]
+      (interpret prepared raw))))

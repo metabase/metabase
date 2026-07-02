@@ -52,28 +52,49 @@
   [driver ^String name-str]
   (first (sql.qp/format-honeysql driver (keyword name-str))))
 
+(defn- bare-key-specs
+  "`{real-table-name → real-spec}` for the table names whose unqualified reference
+  resolves unambiguously: a name mapped once resolves to its single entry; a name
+  mapped in several schemas resolves to the one entry in the driver's default
+  schema (nil schema counts as default), iff exactly one such entry exists —
+  mirroring warehouse search-path resolution. Names with no entry here get no bare
+  replacement key, so an unqualified ref survives the rewrite and fails closed in
+  [[verify]]."
+  [driver mapping]
+  (let [default-schema (sql.normalize/default-schema driver)]
+    (into {}
+          (keep (fn [[table-name specs]]
+                  (let [candidates (if (= 1 (count specs))
+                                     specs
+                                     (filter #(= default-schema (or (:schema %) default-schema))
+                                             specs))]
+                    (when (= 1 (count candidates))
+                      [table-name (first candidates)]))))
+          (group-by :table (keys mapping)))))
+
 (defn- mapping->replacements
   "Build a `sql-tools/replace-names` `:tables` replacements map from the scratch
   `mapping` (`{real-spec → scratch-spec}`, each spec `{:schema :table}`).
 
-  For each real table we register two keys, both pointing at the scratch target:
-  a bare `{:table <name>}` key (matches unqualified `FROM orders`) and a
-  schema-qualified `{:schema :table}` key (matches `FROM public.orders` and
-  quoted `\"public\".\"orders\"`).
+  For each real table we register a schema-qualified `{:schema :table}` key
+  (matches `FROM public.orders` and quoted `\"public\".\"orders\"`), plus a bare
+  `{:table <name>}` key (matches unqualified `FROM orders`) when the name resolves
+  unambiguously per [[bare-key-specs]].
 
   Scratch-target `:schema`/`:table` values are driver-quoted via [[quote-identifier]]."
   [driver mapping]
-  {:tables
-   (reduce-kv
-    (fn [acc {real-schema :schema real-table :table} scratch-spec]
-      (let [target {:schema (quote-identifier driver (:schema scratch-spec))
-                    :table  (quote-identifier driver (:table scratch-spec))}]
-        ;; Register both bare and qualified forms; an unused key is a no-op on the
-        ;; sqlglot backend.
-        (cond-> (assoc acc {:table real-table} target)
-          real-schema (assoc {:schema real-schema :table real-table} target))))
-    {}
-    mapping)})
+  (let [bare-spec (bare-key-specs driver mapping)]
+    {:tables
+     (reduce-kv
+      (fn [acc {real-schema :schema real-table :table :as real-spec} scratch-spec]
+        (let [target {:schema (quote-identifier driver (:schema scratch-spec))
+                      :table  (quote-identifier driver (:table scratch-spec))}]
+          ;; An unused key is a no-op on the sqlglot backend.
+          (cond-> acc
+            (= real-spec (bare-spec real-table)) (assoc {:table real-table} target)
+            real-schema (assoc {:schema real-schema :table real-table} target))))
+      {}
+      mapping)}))
 
 (defn rewrite-native-sql
   "Rewrite `sql`, redirecting the input-table references in `mapping`

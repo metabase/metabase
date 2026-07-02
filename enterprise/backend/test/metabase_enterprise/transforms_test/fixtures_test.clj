@@ -203,6 +203,54 @@
       (is (= #{"right_col"} (set (:missing-columns (ex-data ex)))))
       (is (= #{"wrong_col"} (set (:extra-columns   (ex-data ex))))))))
 
+(deftest duplicate-header-names-test
+  (testing "duplicate CSV header names → typed error naming the duplicates"
+    ;; A duplicated name passes a set-based check while its row values misalign
+    ;; against the real table columns.
+    (let [csv    (write-csv-file! "id,id\n1,2\n")
+          schema [{:name "id" :base-type :type/Integer :nullable? false}]
+          ex     (try (fixtures/parse-fixture csv schema)
+                      nil
+                      (catch Exception e e))]
+      (is (some? ex) "should have thrown")
+      (is (= :metabase-enterprise.transforms-test.errors/header-mismatch
+             (:error-type (ex-data ex))))
+      (is (= ["id"] (:duplicate-columns (ex-data ex)))))))
+
+;; ---------------------------------------------------------------------------
+;; Ragged row errors
+;; ---------------------------------------------------------------------------
+
+(deftest ragged-row-short-test
+  (testing "a data row with fewer cells than the header → typed error with row index"
+    (let [csv    (write-csv-file! "id,count\n1,100\n2\n")
+          schema [{:name "id"    :base-type :type/Integer :nullable? false}
+                  {:name "count" :base-type :type/Integer :nullable? true}]
+          ex     (try (fixtures/parse-fixture csv schema)
+                      nil
+                      (catch Exception e e))]
+      (is (some? ex) "should have thrown")
+      (is (= :metabase-enterprise.transforms-test.errors/ragged-row
+             (:error-type (ex-data ex))))
+      (is (= 1 (:row-index (ex-data ex))))
+      (is (= 2 (:expected-cell-count (ex-data ex))))
+      (is (= 1 (:actual-cell-count (ex-data ex)))))))
+
+(deftest ragged-row-long-test
+  (testing "a data row with more cells than the header → typed error with row index"
+    (let [csv    (write-csv-file! "id,count\n1,100,999\n")
+          schema [{:name "id"    :base-type :type/Integer :nullable? false}
+                  {:name "count" :base-type :type/Integer :nullable? true}]
+          ex     (try (fixtures/parse-fixture csv schema)
+                      nil
+                      (catch Exception e e))]
+      (is (some? ex) "should have thrown")
+      (is (= :metabase-enterprise.transforms-test.errors/ragged-row
+             (:error-type (ex-data ex))))
+      (is (= 0 (:row-index (ex-data ex))))
+      (is (= 2 (:expected-cell-count (ex-data ex))))
+      (is (= 3 (:actual-cell-count (ex-data ex)))))))
+
 ;; ---------------------------------------------------------------------------
 ;; Unparseable cell errors
 ;; ---------------------------------------------------------------------------

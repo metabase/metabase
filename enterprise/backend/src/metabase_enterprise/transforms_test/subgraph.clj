@@ -18,7 +18,7 @@
   Two entry points:
 
   - [[resolve-subgraph]] — transform target: seed-ids = `#{target-id}`.
-  - [[card->necessary-fixtures]] — card target: seed-ids = producing-transform ids
+  - [[resolve-card-subgraph]] — card target: seed-ids = producing-transform ids
     of the physical tables the card reads; the card's raw-table refs become
     immediate fixtures independent of the selected sources."
   (:require
@@ -169,7 +169,7 @@
                              #(transforms-base.i/table-dependencies (id->transform %))
                              producer-of)})))
 
-(defn card->necessary-fixtures
+(defn resolve-card-subgraph
   "Resolve the executable sub-graph for a card-target test run — the card analogue
   of [[resolve-subgraph]].
 

@@ -70,6 +70,28 @@
   [[ctx-binding] & body]
   `(do-with-t1-t2-chain (fn [~ctx-binding] ~@body)))
 
+(defn- do-with-single-native-transform [sql f]
+  (mt/with-premium-features #{:dependencies}
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Transform t
+                         {:source {:type :query :query (lib/native-query mp sql)}
+                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+            (f {:t         t
+                :db-id     (mt/id)
+                :schema    "public"
+                :orders-id (mt/id :orders)
+                :people-id (mt/id :people)})))))))
+
+(defmacro ^:private with-single-native-transform
+  "Run `body` inside the standard single-transform scaffolding: `:dependencies`
+  premium feature, `:postgres` driver, `test-data` dataset, one temp native-SQL
+  transform (from `sql`) targeting a random public table. `ctx-binding`
+  destructures the context map `{:t :db-id :schema :orders-id :people-id}`."
+  [[ctx-binding sql] & body]
+  `(do-with-single-native-transform ~sql (fn [~ctx-binding] ~@body)))
+
 ;;; ===========================================================================
 ;;; Passed: full native chain (source t1 → target t2)
 ;;; ===========================================================================
@@ -133,6 +155,29 @@
                    cell-mismatches))))
         (testing "scratch cleaned up even on a failed diff"
           (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))
+
+;;; ===========================================================================
+;;; Temporal output columns under a non-UTC report timezone (C-2)
+;;; ===========================================================================
+
+(deftest date-output-column-non-utc-report-timezone-test
+  (testing "a :type/Date output column diffs cleanly under a non-UTC report timezone"
+    ;; format-rows would render dates as report-TZ offset strings whose
+    ;; instant-normalization shifts the wall date off the fixture's midnight-UTC
+    ;; form; the read-back disables it, so rows canonicalize TZ-independently.
+    (with-single-native-transform [{:keys [t people-id]} "SELECT name, birth_date FROM people"]
+      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+        (let [result (chain/run-chain-test!
+                      (:id t) #{}
+                      {people-id tu/people-rows}
+                      (str "name,birth_date\n"
+                           "Alice,1990-01-01\n"
+                           "Bob,1985-01-01\n"
+                           "Carol,1978-01-01\n")
+                      {}
+                      (t2/select :model/Transform))]
+          (is (= :passed (:status result))
+              (str "diff: " (pr-str (:diff result)))))))))
 
 ;;; ===========================================================================
 ;;; HTTP endpoints: GET subgraph-inputs + POST subgraph
@@ -714,6 +759,31 @@
     (is (thrown? clojure.lang.ExceptionInfo
                  (api-util/parse-assertions (json/encode [{:name "a" :sql "SELECT 1" :severity "critical"}]))))))
 
+(deftest parse-input-table-ids-non-file-part-test
+  (testing "a plain form field for input-<id> → 400, not a nil tempfile that NPEs downstream"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (api-util/parse-input-table-ids {"input-42" "not a file upload"} #{})))]
+      (is (= 400 (:status-code (ex-data e))))
+      (is (= "input-42" (:part-name (ex-data e))))))
+  (testing "a file-upload map parses to {table-id File}"
+    (let [f (java.io.File/createTempFile "input-part-" ".csv")]
+      (try
+        (is (= {42 f} (api-util/parse-input-table-ids {"input-42" {:tempfile f}} #{})))
+        (finally (.delete f))))))
+
+(deftest parse-assertions-duplicate-names-test
+  (testing "duplicate assertion names → 400 (counts and results are keyed by name)"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (api-util/parse-assertions
+                          (json/encode [{:name "a" :sql "SELECT 1"}
+                                        {:name "b" :sql "SELECT 2"}
+                                        {:name "a" :sql "SELECT 3"}]))))
+          data (ex-data e)]
+      (is (= 400 (:status-code data)))
+      (is (= :metabase-enterprise.transforms-test.errors/assertions-parse-error
+             (:error-type data)))
+      (is (= ["a"] (:duplicate-names data))))))
+
 (deftest parse-assertions-malformed-json-test
   (testing "non-JSON string → 400"
     (is (thrown? clojure.lang.ExceptionInfo
@@ -806,34 +876,23 @@
 
 (deftest subgraph-single-node-ignore-columns-test
   (testing "run-chain-test! with sources=#{} and ignore_columns → :passed despite ts mismatch"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [db-id          (mt/id)
-                schema         "public"
-                mp             (mt/metadata-provider)
-                orders-id      (mt/id :orders)
-                before-scratch (tu/count-test-scratch-tables db-id schema)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query
-                                             mp
-                                             (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
-                                                  " FROM orders GROUP BY user_id ORDER BY user_id"))}
-                            :target {:schema schema :type "table" :name (mt/random-name)}}]
-              ;; orders-rows has 4 rows: user_ids 1,1,2,3 → COUNT(*) yields 3 groups.
-              (let [result (chain/run-chain-test!
-                            (:id t) #{}
-                            {orders-id tu/orders-rows}
-                            ;; ts placeholder doesn't match NOW(), but :ignore-columns excludes it.
-                            "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"
-                            {:ignore-columns #{"ts"}}
-                            (t2/select :model/Transform))]
-                (testing "status is passed with ts ignored"
-                  (is (= :passed (:status result))
-                      (str "Expected :passed; diff: " (pr-str (:diff result)))))
-                (testing "scratch tables cleaned up"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))))))
+    (with-single-native-transform [{:keys [t db-id schema orders-id]}
+                                   (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
+                                        " FROM orders GROUP BY user_id ORDER BY user_id")]
+      ;; orders-rows has 4 rows: user_ids 1,1,2,3 → COUNT(*) yields 3 groups.
+      (let [before-scratch (tu/count-test-scratch-tables db-id schema)
+            result (chain/run-chain-test!
+                    (:id t) #{}
+                    {orders-id tu/orders-rows}
+                    ;; ts placeholder doesn't match NOW(), but :ignore-columns excludes it.
+                    "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"
+                    {:ignore-columns #{"ts"}}
+                    (t2/select :model/Transform))]
+        (testing "status is passed with ts ignored"
+          (is (= :passed (:status result))
+              (str "Expected :passed; diff: " (pr-str (:diff result)))))
+        (testing "scratch tables cleaned up"
+          (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; seed! creates a missing target schema (single-node)
@@ -884,38 +943,26 @@
   ;; and that the `finally` cleanup still drops the scratch tables created before
   ;; the failure.
   (testing "single-node run-chain-test! with a pg_sleep transform → throws on timeout"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [db-id          (mt/id)
-                schema         "public"
-                mp             (mt/metadata-provider)
-                orders-id      (mt/id :orders)
-                before-runs    (t2/count :model/TransformRun)
-                before-scratch (tu/count-test-scratch-tables db-id schema)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query
-                                             mp
-                                             ;; sleep must comfortably exceed the 1 s timeout
-                                             ;; (setQueryTimeout is whole-second granularity, so
-                                             ;; 1000 ms is the smallest enforceable value); if the
-                                             ;; timeout were a no-op the query would *succeed*
-                                             ;; after 3 s and no exception would be thrown at all.
-                                             "SELECT total FROM orders WHERE pg_sleep(3) IS NOT NULL")}
-                            :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)cancel|timeout"
-                                    (chain/run-chain-test!
-                                     (:id t) #{}
-                                     {orders-id (str tu/orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
-                                     "total\n100.00\n"
-                                     {:timeout-ms 1000}
-                                     (t2/select :model/Transform)))
-                  "Expected a statement-cancellation exception from the pg_sleep timeout")
-              (is (= before-scratch (tu/count-test-scratch-tables db-id schema))
-                  "scratch tables must be dropped even when the node times out")
-              (is (= before-runs (t2/count :model/TransformRun))
-                  "No TransformRun row after timeout"))))))))
+    ;; sleep must comfortably exceed the 1 s timeout (setQueryTimeout is
+    ;; whole-second granularity, so 1000 ms is the smallest enforceable value);
+    ;; if the timeout were a no-op the query would *succeed* after 3 s and no
+    ;; exception would be thrown at all.
+    (with-single-native-transform [{:keys [t db-id schema orders-id]}
+                                   "SELECT total FROM orders WHERE pg_sleep(3) IS NOT NULL"]
+      (let [before-runs    (t2/count :model/TransformRun)
+            before-scratch (tu/count-test-scratch-tables db-id schema)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)cancel|timeout"
+                              (chain/run-chain-test!
+                               (:id t) #{}
+                               {orders-id (str tu/orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
+                               "total\n100.00\n"
+                               {:timeout-ms 1000}
+                               (t2/select :model/Transform)))
+            "Expected a statement-cancellation exception from the pg_sleep timeout")
+        (is (= before-scratch (tu/count-test-scratch-tables db-id schema))
+            "scratch tables must be dropped even when the node times out")
+        (is (= before-runs (t2/count :model/TransformRun))
+            "No TransformRun row after timeout")))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; read-back-output uses quoted identifiers
@@ -951,139 +998,98 @@
 
 (deftest subgraph-single-node-endpoint-ignore-columns-test
   (testing "POST /subgraph with sources=[] and ignore_columns → 200 passed"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp        (mt/metadata-provider)
-                orders-id (mt/id :orders)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query
-                                             mp
-                                             (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
-                                                  " FROM orders GROUP BY user_id ORDER BY user_id"))}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files
-                [orders-f   tu/orders-rows
-                 ;; orders-rows has user_ids 1,1,2,3 → 3 groups; ts ignored.
-                 expected-f "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 200 (tu/subgraph-test-run-url (:id t))
-                            tu/multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [])
-                             "options"                "{\"ignore_columns\":[\"ts\"]}"})]
-                  (testing "status is passed"
-                    (is (= "passed" (:status resp))
-                        (str "Expected passed with ts ignored; diff: " (pr-str (:diff resp))))))))))))))
+    (with-single-native-transform [{:keys [t orders-id]}
+                                   (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
+                                        " FROM orders GROUP BY user_id ORDER BY user_id")]
+      (with-temp-csv-files
+        [orders-f   tu/orders-rows
+         ;; orders-rows has user_ids 1,1,2,3 → 3 groups; ts ignored.
+         expected-f "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"]
+        (let [resp (mt/user-http-request
+                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     "expected"               expected-f
+                     "sources"                (json/encode [])
+                     "options"                "{\"ignore_columns\":[\"ts\"]}"})]
+          (testing "status is passed"
+            (is (= "passed" (:status resp))
+                (str "Expected passed with ts ignored; diff: " (pr-str (:diff resp))))))))))
 
 (deftest subgraph-single-node-endpoint-cannot-test-run-422-test
   (testing "POST /subgraph with table-qualified-column SQL → 422 ::cannot-test-run"
     ;; SELECT orders.id FROM orders leaves the `orders.` qualifier dangling after
     ;; FROM-only rewrite, triggering guard 3 → ::cannot-test-run (422).
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp        (mt/metadata-provider)
-                orders-id (mt/id :orders)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query mp "SELECT orders.id FROM orders")}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files
-                [orders-f   tu/orders-rows
-                 expected-f "id\n1\n"]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 422 (tu/subgraph-test-run-url (:id t))
-                            tu/multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [])})]
-                  (testing "status is error"
-                    (is (= "error" (:status resp))))
-                  (testing "error type is cannot-test-run"
-                    (is (= (pr-str :metabase-enterprise.transforms-test.errors/cannot-test-run)
-                           (get-in resp [:error :type])))))))))))))
+    (with-single-native-transform [{:keys [t orders-id]} "SELECT orders.id FROM orders"]
+      (with-temp-csv-files
+        [orders-f   tu/orders-rows
+         expected-f "id\n1\n"]
+        (let [resp (mt/user-http-request
+                    :crowberto :post 422 (tu/subgraph-test-run-url (:id t))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     "expected"               expected-f
+                     "sources"                (json/encode [])})]
+          (testing "status is error"
+            (is (= "error" (:status resp))))
+          (testing "error type is cannot-test-run"
+            (is (= (pr-str :metabase-enterprise.transforms-test.errors/cannot-test-run)
+                   (get-in resp [:error :type])))))))))
 
 (deftest subgraph-endpoint-header-mismatch-400-test
   (testing "POST /subgraph with wrong CSV headers → 400 + error envelope (::errors/header-mismatch)"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp        (mt/metadata-provider)
-                orders-id (mt/id :orders)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query
-                                             mp "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id")}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files
-                [orders-f   "wrong_col_a,wrong_col_b\n1,2\n"
-                 expected-f "user_id,order_count\n1,1\n"]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
-                            tu/multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [])})]
-                  (testing "response status is error"
-                    (is (= "error" (:status resp))
-                        "header-mismatch must return error envelope, not 500"))
-                  (testing "error type indicates header mismatch"
-                    (is (= (pr-str :metabase-enterprise.transforms-test.errors/header-mismatch)
-                           (get-in resp [:error :type])))))))))))))
+    (with-single-native-transform [{:keys [t orders-id]}
+                                   "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id"]
+      (with-temp-csv-files
+        [orders-f   "wrong_col_a,wrong_col_b\n1,2\n"
+         expected-f "user_id,order_count\n1,1\n"]
+        (let [resp (mt/user-http-request
+                    :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     "expected"               expected-f
+                     "sources"                (json/encode [])})]
+          (testing "response status is error"
+            (is (= "error" (:status resp))
+                "header-mismatch must return error envelope, not 500"))
+          (testing "error type indicates header mismatch"
+            (is (= (pr-str :metabase-enterprise.transforms-test.errors/header-mismatch)
+                   (get-in resp [:error :type])))))))))
 
 (deftest subgraph-endpoint-unknown-ignore-columns-400-test
   (testing "POST /subgraph with nonexistent ignore_columns → 400 + error envelope"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp        (mt/metadata-provider)
-                orders-id (mt/id :orders)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query
-                                             mp "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id")}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files
-                [orders-f   tu/orders-rows
-                 expected-f "user_id,order_count\n1,2\n2,1\n3,1\n4,1\n"]
-                (let [resp (mt/user-http-request
-                            :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
-                            tu/multipart-content-type
-                            {(str "input-" orders-id) orders-f
-                             "expected"               expected-f
-                             "sources"                (json/encode [])
-                             "options"                "{\"ignore_columns\":[\"nonexistent_col\"]}"})]
-                  (testing "response status is error"
-                    (is (= "error" (:status resp))
-                        "unknown-ignore-columns must return error envelope, not 500"))
-                  (testing "error type indicates unknown ignore columns"
-                    (is (= (pr-str :metabase-enterprise.transforms-test.errors/unknown-ignore-columns)
-                           (get-in resp [:error :type])))))))))))))
+    (with-single-native-transform [{:keys [t orders-id]}
+                                   "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id"]
+      (with-temp-csv-files
+        [orders-f   tu/orders-rows
+         expected-f "user_id,order_count\n1,2\n2,1\n3,1\n4,1\n"]
+        (let [resp (mt/user-http-request
+                    :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+                    tu/multipart-content-type
+                    {(str "input-" orders-id) orders-f
+                     "expected"               expected-f
+                     "sources"                (json/encode [])
+                     "options"                "{\"ignore_columns\":[\"nonexistent_col\"]}"})]
+          (testing "response status is error"
+            (is (= "error" (:status resp))
+                "unknown-ignore-columns must return error envelope, not 500"))
+          (testing "error type indicates unknown ignore columns"
+            (is (= (pr-str :metabase-enterprise.transforms-test.errors/unknown-ignore-columns)
+                   (get-in resp [:error :type])))))))))
 
 (deftest subgraph-endpoint-malformed-options-json-400-test
   (testing "POST /subgraph with malformed options JSON → 400"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp        (mt/metadata-provider)
-                orders-id (mt/id :orders)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query mp "SELECT user_id FROM orders")}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (with-temp-csv-files
-                [orders-f   tu/orders-rows
-                 expected-f "user_id\n1\n"]
-                (mt/user-http-request
-                 :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
-                 tu/multipart-content-type
-                 {(str "input-" orders-id) orders-f
-                  "expected"               expected-f
-                  "sources"                (json/encode [])
-                  "options"                "not-json!"})))))))))
+    (with-single-native-transform [{:keys [t orders-id]} "SELECT user_id FROM orders"]
+      (with-temp-csv-files
+        [orders-f   tu/orders-rows
+         expected-f "user_id\n1\n"]
+        (mt/user-http-request
+         :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+         tu/multipart-content-type
+         {(str "input-" orders-id) orders-f
+          "expected"               expected-f
+          "sources"                (json/encode [])
+          "options"                "not-json!"})))))
 
 (deftest subgraph-transform-target-permissions-403-test
   (testing "POST /subgraph for a transform target enforces read-check → 403 for non-admin"
@@ -1116,26 +1122,19 @@
 
 (deftest subgraph-inputs-cannot-determine-inputs-422-test
   (testing "GET /subgraph-inputs — cannot-determine-inputs error → 422"
-    (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
-        (mt/dataset test-data
-          (let [mp (mt/metadata-provider)]
-            (mt/with-temp [:model/Transform t
-                           {:source {:type :query
-                                     :query (lib/native-query mp "SELECT user_id FROM orders")}
-                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
-              (mt/with-dynamic-fn-redefs
-                [test-run.core/subgraph-input-tables
-                 (fn [& _]
-                   (throw (ex-info "Cannot determine inputs for this transform."
-                                   {:error-type :metabase-enterprise.transforms-test.errors/cannot-determine-inputs})))]
-                (let [resp (mt/user-http-request
-                            :crowberto :get 422 (tu/subgraph-inputs-url (:id t)))]
-                  (testing "status is error"
-                    (is (= "error" (:status resp))))
-                  (testing "error type is cannot-determine-inputs"
-                    (is (string? (get-in resp [:error :type])))
-                    (is (str/includes? (get-in resp [:error :type]) "cannot-determine-inputs"))))))))))))
+    (with-single-native-transform [{:keys [t]} "SELECT user_id FROM orders"]
+      (mt/with-dynamic-fn-redefs
+        [test-run.core/subgraph-input-tables
+         (fn [& _]
+           (throw (ex-info "Cannot determine inputs for this transform."
+                           {:error-type :metabase-enterprise.transforms-test.errors/cannot-determine-inputs})))]
+        (let [resp (mt/user-http-request
+                    :crowberto :get 422 (tu/subgraph-inputs-url (:id t)))]
+          (testing "status is error"
+            (is (= "error" (:status resp))))
+          (testing "error type is cannot-determine-inputs"
+            (is (string? (get-in resp [:error :type])))
+            (is (str/includes? (get-in resp [:error :type]) "cannot-determine-inputs"))))))))
 
 (deftest subgraph-inputs-permissions-403-test
   (testing "GET /subgraph-inputs — user without read access → 403"

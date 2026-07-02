@@ -30,7 +30,7 @@
   (:import
    (java.math BigDecimal BigInteger)
    (java.time Instant LocalDate LocalDateTime OffsetDateTime ZoneOffset)
-   (java.time.format DateTimeFormatter)))
+   (java.time.format DateTimeFormatter DateTimeParseException)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,18 +47,14 @@
 ;; Temporal types that get midnight-UTC treatment
 ;; ---------------------------------------------------------------------------
 
-(def ^:private date-like-types
-  "Base types the QP returns as a midnight-UTC string and the fixture parser produces as a LocalDate."
-  #{:type/Date})
-
-(def ^:private datetime-like-types
-  "Base types the QP returns as a Z-suffixed ISO-8601 string and the fixture parser produces as a LocalDateTime."
-  #{:type/DateTime})
-
-(def ^:private tz-aware-types
-  "Base types treated as tz-aware datetimes. Both DateTimeWithTZ and DateTimeWithLocalTZ are
-  equivalent after the Postgres timestamptz round-trip (the QP always returns DateTimeWithLocalTZ)."
-  #{:type/DateTimeWithTZ :type/DateTimeWithLocalTZ})
+(def ^:private temporal-types
+  "Base types canonicalized via [[temporal->utc-string]]."
+  #{:type/Date                ; LocalDate on both sides
+    :type/DateTime            ; LocalDateTime wall time, treated as UTC
+    ;; DateTimeWithTZ and DateTimeWithLocalTZ are equivalent after the Postgres
+    ;; timestamptz round-trip (the QP always returns DateTimeWithLocalTZ).
+    :type/DateTimeWithTZ
+    :type/DateTimeWithLocalTZ})
 
 (def ^:private numeric-types
   "Numeric base types."
@@ -68,20 +64,40 @@
 ;; Canonicalization helpers
 ;; ---------------------------------------------------------------------------
 
+(defn- parse-temporal-string
+  "Parse an ISO-8601 temporal string to an OffsetDateTime, leniently: an explicit
+  offset is kept; an offset-less datetime or bare date is wall time, taken as UTC.
+  Returns nil when the string parses as none of the three."
+  ^OffsetDateTime [^String s]
+  (or (try (OffsetDateTime/parse s DateTimeFormatter/ISO_OFFSET_DATE_TIME)
+           (catch DateTimeParseException _ nil))
+      (try (.atOffset (LocalDateTime/parse s DateTimeFormatter/ISO_LOCAL_DATE_TIME) ZoneOffset/UTC)
+           (catch DateTimeParseException _ nil))
+      (try (-> (LocalDate/parse s DateTimeFormatter/ISO_LOCAL_DATE)
+               (.atStartOfDay)
+               (.atOffset ZoneOffset/UTC))
+           (catch DateTimeParseException _ nil))))
+
 (defn- temporal->utc-string
-  "Convert any temporal value or ISO-8601 Z string to a canonical UTC string.
-  All dates are expanded to midnight-UTC (\"YYYY-MM-DDTHH:MM:SSZ\").
-  Returns nil for nil input."
+  "Convert a temporal value — a java.time object or an ISO-8601 string — to a
+  canonical UTC string. All dates are expanded to midnight-UTC
+  (\"YYYY-MM-DDTHH:MM:SSZ\"). Returns nil for nil input; throws
+  `::errors/cannot-canonicalize` for anything unparseable."
   [v]
   (cond
     (nil? v)
     nil
 
     (string? v)
-    ;; QP strings already carry a Z suffix; parse + re-format anyway to guarantee canonical form.
-    (let [odt (OffsetDateTime/parse ^String v DateTimeFormatter/ISO_OFFSET_DATE_TIME)]
-      (.format (.atZoneSameInstant odt ZoneOffset/UTC)
-               DateTimeFormatter/ISO_OFFSET_DATE_TIME))
+    ;; Read-back rows arrive as java.time objects (format-rows is disabled), so
+    ;; strings are the exception, not the QP contract; parse leniently.
+    (if-let [odt (parse-temporal-string v)]
+      (.format (.withOffsetSameInstant odt ZoneOffset/UTC)
+               DateTimeFormatter/ISO_OFFSET_DATE_TIME)
+      (throw (ex-info (str "Cannot canonicalize temporal value: " (pr-str v))
+                      {:error-type ::errors/cannot-canonicalize
+                       :value      v
+                       :type       (type v)})))
 
     (instance? LocalDate v)
     ;; LocalDate → midnight UTC. atStartOfDay(UTC) yields OffsetDateTime which
@@ -104,7 +120,9 @@
 
     :else
     (throw (ex-info (str "Cannot canonicalize temporal value: " (pr-str v))
-                    {:value v :type (type v)}))))
+                    {:error-type ::errors/cannot-canonicalize
+                     :value      v
+                     :type       (type v)}))))
 
 (defn- numeric->bigdecimal
   "Convert a numeric value to BigDecimal for scale-independent comparison.
@@ -114,6 +132,8 @@
     (nil? v)         nil
     (instance? BigDecimal v) v
     (instance? BigInteger v) (BigDecimal. ^BigInteger v)
+    ;; Must precede the Number fallback — .doubleValue loses precision above 2^53.
+    (instance? clojure.lang.BigInt v) (.toBigDecimal ^clojure.lang.BigInt v)
     (instance? Double v)     (BigDecimal/valueOf ^double v)
     (instance? Float v)      (BigDecimal/valueOf (double v))
     (instance? Long v)       (BigDecimal/valueOf ^long v)
@@ -121,7 +141,9 @@
     (instance? Number v)     (BigDecimal/valueOf (.doubleValue ^Number v))
     :else
     (throw (ex-info (str "Cannot convert to BigDecimal: " (pr-str v))
-                    {:value v :type (type v)}))))
+                    {:error-type ::errors/cannot-canonicalize
+                     :value      v
+                     :type       (type v)}))))
 
 (defn- canonicalize-cell
   "Canonicalize a cell value given the column `base-type`.
@@ -147,13 +169,7 @@
     (nil? v)
     nil
 
-    (contains? date-like-types base-type)
-    (temporal->utc-string v)
-
-    (contains? datetime-like-types base-type)
-    (temporal->utc-string v)
-
-    (contains? tz-aware-types base-type)
+    (contains? temporal-types base-type)
     (temporal->utc-string v)
 
     (contains? numeric-types base-type)
@@ -309,7 +325,8 @@
 
   Arguments:
   - `actual-cols`   — QP `[:data :cols]` vector; each entry has at least `:name` and `:base_type`.
-  - `actual-rows`   — QP row vectors; temporals as ISO-8601 Z strings.
+  - `actual-rows`   — QP row vectors; temporals as java.time objects (the read-back
+                      runs with format-rows disabled) or ISO-8601 strings.
   - `expected`      — `parse-fixture` output: `{:columns [...] :rows [...]}`.
   - `opts`          — options map:
     - `:ignore-columns` — `#{\"col-name\" ...}` columns excluded from both sides
@@ -419,7 +436,8 @@
               cells-capped    (vec (take mismatch-cap (or cell-mismatches [])))
 
               truncated       (+ (- (count missing) (count missing-capped))
-                                 (- (count extra) (count extra-capped)))
+                                 (- (count extra) (count extra-capped))
+                                 (- (count (or cell-mismatches [])) (count cells-capped)))
 
               passed? (and (empty? missing) (empty? extra))]
           {:status          (if passed? :passed :failed)

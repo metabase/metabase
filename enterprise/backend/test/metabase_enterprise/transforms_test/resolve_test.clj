@@ -189,6 +189,32 @@
       (is (re-find #"FROM \"public\"\.\"scratch_orders\"" rw))
       (is (not (re-find #"customers" rw))))))
 
+;;; ===========================================================================
+;;; Ambiguous bare table names (C-4): same table name in two schemas
+;;; ===========================================================================
+
+(deftest ambiguous-bare-table-name-fails-closed-test
+  (testing "same-named tables in two non-default schemas: an unqualified ref must not
+            silently redirect to an arbitrary scratch table — it fails closed"
+    (let [mapping {{:schema "sales" :table "orders"}   {:schema "public" :table "scratch_sales_orders"}
+                   {:schema "archive" :table "orders"} {:schema "public" :table "scratch_archive_orders"}}]
+      (is (cannot-test-run? #(rewrite+verify "SELECT * FROM orders" mapping)))
+      ;; schema-qualified refs still rewrite to their own targets
+      (is (re-find #"scratch_sales_orders"
+                   (rewrite "SELECT * FROM sales.orders" mapping)))
+      (is (re-find #"scratch_archive_orders"
+                   (rewrite "SELECT * FROM archive.orders" mapping))))))
+
+(deftest ambiguous-bare-table-name-default-schema-resolves-test
+  (testing "when exactly one of the same-named tables is in the driver default schema,
+            an unqualified ref resolves there (mirrors warehouse search-path resolution)"
+    (let [mapping {{:schema "public" :table "orders"}  {:schema "public" :table "scratch_public_orders"}
+                   {:schema "archive" :table "orders"} {:schema "public" :table "scratch_archive_orders"}}
+          rw      (rewrite "SELECT * FROM orders" mapping)]
+      (is (re-find #"scratch_public_orders" rw))
+      (is (not (re-find #"scratch_archive_orders" rw)))
+      (is (string? (resolve/verify :postgres mapping rw))))))
+
 (deftest case-15-table-only-key-matches-loosely-on-sqlglot-test
   (testing "case 15: a bare table key matches a schema-qualified ref on sqlglot (loose match)"
     ;; On macaw this would throw \"Unknown rename\"; on sqlglot the bare {:table orders}

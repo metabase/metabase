@@ -95,15 +95,14 @@
   `mapping`, writing its output to the `out-spec` scratch table.
 
   Returns the resolved artifact (with `:parser-backend`)."
-  [{:keys [transform mapping out-spec db db-id drv input-tables timeout-ms]}]
+  [{:keys [transform mapping out-spec db db-id drv input-tables]}]
   (let [artifact  (resolve/resolve-test-transform transform mapping out-spec
                                                   {:db db :input-tables input-tables})
         all-names (conj (mapv :table (vals mapping)) (:table out-spec))]
     (execute/assert-all-test-tables! all-names)
-    (binding [driver.settings/*query-timeout-ms* timeout-ms]
-      (driver/run-transform! drv
-                             (execute/build-transform-details (:compiled artifact) out-spec db-id db drv)
-                             {:overwrite? true}))
+    (driver/run-transform! drv
+                           (execute/build-transform-details (:compiled artifact) out-spec db-id db drv)
+                           {:overwrite? true})
     artifact))
 
 (defn- run-slice!
@@ -118,7 +117,7 @@
   mid-slice. Caller is responsible for wrapping in
   `driver.conn/with-transform-connection` and for dropping everything in those
   atoms."
-  [{:keys [order leaf-deps db db-id drv schema fixtures-by-table-id id->transform timeout-ms
+  [{:keys [order leaf-deps db db-id drv schema fixtures-by-table-id id->transform
            mapping* outputs*]}]
   (let [leaves      (leaf-table-infos leaf-deps)
         _           (inputs/match-fixtures leaves (set (keys fixtures-by-table-id)))
@@ -144,8 +143,7 @@
                                     :db           db
                                     :db-id        db-id
                                     :drv          drv
-                                    :input-tables leaves
-                                    :timeout-ms   timeout-ms})]
+                                    :input-tables leaves})]
            (-> acc
                (assoc-in [:outputs node-id] out-spec)
                (assoc :parser-backend (:parser-backend artifact))
@@ -204,7 +202,10 @@
   Throws `::errors/execution-failed` on a non-completed status."
   [db-id card-id drv card-sql]
   (log/debug "Running card query under scratch override" {:db-id db-id :drv drv})
-  (let [result (qp/process-query (execute/native-query db-id card-sql))]
+  ;; Report-TZ-shifted temporal strings would spuriously mismatch the fixtures;
+  ;; keep rows as java.time objects.
+  (let [result (qp/process-query (assoc (execute/native-query db-id card-sql)
+                                        :middleware {:format-rows? false}))]
     (when (not= :completed (:status result))
       (throw (ex-info
               (str "Card query failed during test run: QP returned "
@@ -240,45 +241,48 @@
         mapping*       (atom {})
         outputs*       (atom {})]
     (driver.conn/with-transform-connection
-      (try
-        (let [{:keys [mapping outputs parser-backend]}
-              (run-slice! {:order                order
-                           :leaf-deps            leaf-deps
-                           :db                   db
-                           :db-id                db-id
-                           :drv                  drv
-                           :schema               schema
-                           :fixtures-by-table-id fixtures-by-table-id
-                           :id->transform        id->transform
-                           :timeout-ms           timeout-ms
-                           :mapping*             mapping*
-                           :outputs*             outputs*})
-              {:keys [qp-result output-sql extra]}
-              (produce-actual {:mapping mapping :outputs outputs :db-id db-id :drv drv})
-              actual-cols (get-in qp-result [:data :cols])
-              actual-rows (get-in qp-result [:data :rows])
-              report      (when expected-csv-file
-                            (let [expected (fixtures/parse-fixture expected-csv-file
-                                                                   (execute/actual->schema actual-cols))]
-                              (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
-              ;; Run assertions while the scratch tables still exist: after
-              ;; produce-actual, before cleanup.
-              backend     (sql-tools/parser-backend)
-              assertion-results (assertions/run-assertions! db-id drv backend mapping output-sql assertion-defs)
-              overall     (assertions/overall-status (or (:status report) :passed)
-                                                     (or assertion-results []))]
-          (merge {:status         overall
-                  :diff           report
-                  :assertions     assertion-results
-                  :parser-backend parser-backend
-                  :order          order}
-                 extra))
-        (finally
-          ;; Drop node output scratch tables (one per slice node)...
-          (doseq [out-spec (vals @outputs*)]
-            (scratch/cleanup! db-id db {} out-spec))
-          ;; ...then the leaf input scratch tables.
-          (scratch/cleanup! db-id db @mapping* nil))))))
+      ;; One statement-level timeout for everything the run executes: the node
+      ;; transforms, the read-back / card query, and the assertion queries.
+      (binding [driver.settings/*query-timeout-ms* timeout-ms]
+        (try
+          (let [{:keys [mapping outputs parser-backend]}
+                (run-slice! {:order                order
+                             :leaf-deps            leaf-deps
+                             :db                   db
+                             :db-id                db-id
+                             :drv                  drv
+                             :schema               schema
+                             :fixtures-by-table-id fixtures-by-table-id
+                             :id->transform        id->transform
+                             :mapping*             mapping*
+                             :outputs*             outputs*})
+                {:keys [qp-result output-sql extra]}
+                (produce-actual {:mapping mapping :outputs outputs :db-id db-id :drv drv})
+                actual-cols (get-in qp-result [:data :cols])
+                actual-rows (get-in qp-result [:data :rows])
+                report      (when expected-csv-file
+                              (let [expected (fixtures/parse-fixture expected-csv-file
+                                                                     (execute/actual->schema actual-cols))]
+                                (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
+                ;; Run assertions while the scratch tables still exist: after
+                ;; produce-actual, before cleanup.
+                backend     (sql-tools/parser-backend)
+                assertion-results (assertions/run-assertions! db-id drv backend mapping output-sql assertion-defs)
+                overall     (assertions/overall-status (or (:status report) :passed)
+                                                       assertion-results)]
+            (merge {:status         overall
+                    :diff           report
+                    ;; nil, not [], when no assertions ran — the wire serializes null.
+                    :assertions     (not-empty assertion-results)
+                    :parser-backend parser-backend
+                    :order          order}
+                   extra))
+          (finally
+            ;; Drop node output scratch tables (one per slice node)...
+            (doseq [out-spec (vals @outputs*)]
+              (scratch/cleanup! db-id db {} out-spec))
+            ;; ...then the leaf input scratch tables.
+            (scratch/cleanup! db-id db @mapping* nil)))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry points
@@ -301,7 +305,7 @@
 
   Each is `{:id :schema :name :columns [...]}`."
   [card source-ids all-transforms]
-  (-> (subgraph/card->necessary-fixtures card source-ids all-transforms)
+  (-> (subgraph/resolve-card-subgraph card source-ids all-transforms)
       :leaf-deps
       leaf-table-infos))
 
@@ -412,7 +416,7 @@
                                        " dataset_query.")
                                   {:error-type ::errors/missing-database-id :card-id card-id})))
         id->transform (u/index-by :id all-transforms)
-        resolution    (subgraph/card->necessary-fixtures card source-ids all-transforms)]
+        resolution    (subgraph/resolve-card-subgraph card source-ids all-transforms)]
     (run-test!
      {:resolution           resolution
       :id->transform        id->transform

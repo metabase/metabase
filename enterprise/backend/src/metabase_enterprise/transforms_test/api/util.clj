@@ -22,9 +22,12 @@
   {;; Fixture errors — 400: caller supplied wrong CSV content.
    ::errors/header-mismatch             400
    ::errors/unparseable-cell            400
+   ::errors/ragged-row                  400
    ;; Diff errors — 400: caller supplied bad options.
    ::errors/unknown-ignore-columns      400
    ::errors/unsupported-option          400
+   ;; Canonicalization — 422: a fixture or output value we cannot compare.
+   ::errors/cannot-canonicalize         422
    ;; Input resolution errors — 400 or 422.
    ::errors/missing-fixtures            400
    ::errors/unknown-fixture-keys        400
@@ -97,12 +100,18 @@
          ;; input-<positive-int> pattern.
          (re-matches #"input-(\d+)" k)
          (let [[_ id-str] (re-matches #"input-(\d+)" k)
-               table-id   (parse-long id-str)]
-           (if (and table-id (pos? table-id))
-             (assoc acc table-id (:tempfile v))
+               table-id   (parse-long id-str)
+               tempfile   (when (map? v) (:tempfile v))]
+           (when-not (and table-id (pos? table-id))
              (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
                              {:status-code 400
-                              :part-name   k}))))
+                              :part-name   k})))
+           ;; A plain form field has no :tempfile; letting nil through NPEs at CSV-read time.
+           (when (nil? tempfile)
+             (throw (ex-info (tru "Multipart part ''{0}'' must be a file upload." k)
+                             {:status-code 400
+                              :part-name   k})))
+           (assoc acc table-id tempfile))
 
          ;; Anything else is unknown.
          :else
@@ -139,7 +148,8 @@
   `[{:name <string> :sql <string> :severity :error|:warn} ...]`
 
   Missing part → `[]`. Throws 400 on malformed JSON, missing required fields
-  (name, sql), or unknown severity."
+  (name, sql), unknown severity, or duplicate names (counts and results are
+  keyed by name downstream)."
   [assertions-part]
   (if (nil? assertions-part)
     []
@@ -150,29 +160,40 @@
         (throw (ex-info (tru "''assertions'' must be a JSON array.")
                         {:status-code 400
                          :error-type  ::errors/assertions-parse-error})))
-      (mapv (fn [entry]
-              (let [n   (get entry "name")
-                    s   (get entry "sql")
-                    sev (get entry "severity" "error")]
-                (when (or (nil? n) (not (string? n)) (str/blank? n))
-                  (throw (ex-info (tru "Each assertion must have a non-empty ''name'' string.")
-                                  {:status-code 400
-                                   :error-type  ::errors/assertions-parse-error
-                                   :entry       entry})))
-                (when (or (nil? s) (not (string? s)) (str/blank? s))
-                  (throw (ex-info (tru "Each assertion must have a non-empty ''sql'' string.")
-                                  {:status-code 400
-                                   :error-type  ::errors/assertions-parse-error
-                                   :entry       entry})))
-                (when-not (#{"error" "warn"} sev)
-                  (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
-                                  {:status-code 400
-                                   :error-type  ::errors/assertions-parse-error
-                                   :severity    sev})))
-                {:name     n
-                 :sql      s
-                 :severity (keyword sev)}))
-            data))))
+      (let [parsed (mapv (fn [entry]
+                           (let [n   (get entry "name")
+                                 s   (get entry "sql")
+                                 sev (get entry "severity" "error")]
+                             (when (or (nil? n) (not (string? n)) (str/blank? n))
+                               (throw (ex-info (tru "Each assertion must have a non-empty ''name'' string.")
+                                               {:status-code 400
+                                                :error-type  ::errors/assertions-parse-error
+                                                :entry       entry})))
+                             (when (or (nil? s) (not (string? s)) (str/blank? s))
+                               (throw (ex-info (tru "Each assertion must have a non-empty ''sql'' string.")
+                                               {:status-code 400
+                                                :error-type  ::errors/assertions-parse-error
+                                                :entry       entry})))
+                             (when-not (#{"error" "warn"} sev)
+                               (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
+                                               {:status-code 400
+                                                :error-type  ::errors/assertions-parse-error
+                                                :severity    sev})))
+                             {:name     n
+                              :sql      s
+                              :severity (keyword sev)}))
+                         data)
+            dupes  (->> (map :name parsed)
+                        frequencies
+                        (keep (fn [[n cnt]] (when (> cnt 1) n)))
+                        sort)]
+        (when (seq dupes)
+          (throw (ex-info (tru "Duplicate assertion name(s): {0}. Assertion names must be unique."
+                               (str/join ", " dupes))
+                          {:status-code     400
+                           :error-type      ::errors/assertions-parse-error
+                           :duplicate-names (vec dupes)})))
+        parsed))))
 
 (defn run-record->response
   "Convert a successful run-record (from `run-chain-test!` / `run-card-chain-test!`)

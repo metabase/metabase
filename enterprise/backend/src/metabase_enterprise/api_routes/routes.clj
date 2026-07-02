@@ -134,8 +134,9 @@
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
-   ;; Gated in the endpoint, not at the route, so no premium-handler here.
-   "/transform-test"               metabase-enterprise.transforms-test.api/routes
+   ;; :dependencies is deliberate, not a typo: transform test runs ship with
+   ;; Dependency Tracking, not their own flag. Revisit if :transforms-advanced materializes.
+   "/transform-test"               (premium-handler metabase-enterprise.transforms-test.api/routes :dependencies)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
