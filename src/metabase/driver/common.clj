@@ -168,7 +168,9 @@
 
 (def index-unique-field
   "Descriptor for the btree unique toggle."
-  {:name "unique" :display-name (deferred-tru "Enforce uniqueness across rows for indexed columns.") :type :boolean})
+  {:name "unique" :display-name (deferred-tru "Unique")
+   :description (deferred-tru "Enforce uniqueness across rows for indexed columns.")
+   :type :boolean})
 
 (def index-granularity-field
   "Descriptor for a ClickHouse skip-index granularity."

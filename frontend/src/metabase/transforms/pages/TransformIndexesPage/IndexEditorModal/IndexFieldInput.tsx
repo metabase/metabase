@@ -28,14 +28,18 @@ export function IndexFieldInput({
   const description = field.description;
 
   return match(field.type)
-    .with("boolean", () => (
-      <FormSwitch
-        name={field.name}
-        label={label}
-        description={description}
-        disabled={disabled}
-      />
-    ))
+    .with("boolean", () => {
+      // Per design, the unique switch renders its description as the inline label
+      const isUniqueField = field.name === "unique";
+      return (
+        <FormSwitch
+          name={field.name}
+          label={isUniqueField ? (description ?? label) : label}
+          description={isUniqueField ? undefined : description}
+          disabled={disabled}
+        />
+      );
+    })
     .with("select", () => (
       <FormSelect
         name={field.name}

@@ -65,7 +65,8 @@ export const createMockRequestableIndexes = (): RequestableIndexes => ({
       INDEX_NAME_FIELD,
       {
         name: "unique",
-        "display-name": "Enforce uniqueness across rows for indexed columns.",
+        "display-name": "Unique",
+        description: "Enforce uniqueness across rows for indexed columns.",
         type: "boolean",
       },
       {
