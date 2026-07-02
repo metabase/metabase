@@ -112,9 +112,11 @@ export function useEntitySearch({
       .slice(0, USER_SEARCH_LIMIT);
   }, [usersResponse, query]);
 
+  // While the query is settling, don't surface the previous query's results. The current consumer
+  // renders a loading state instead, but this keeps menuItems/searchResults honest for any consumer.
   const searchResults = useMemo(
-    () => searchResponse?.data ?? [],
-    [searchResponse],
+    () => (isDebouncing ? [] : (searchResponse?.data ?? [])),
+    [isDebouncing, searchResponse],
   );
 
   const menuItems = useMemo(() => {
