@@ -22,6 +22,7 @@ interface TimelineEventChipProps {
   centerY: number;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
+  onDeselectTimelineEvents?: () => void;
 }
 
 export const TimelineEventChip = ({
@@ -29,6 +30,7 @@ export const TimelineEventChip = ({
   centerY,
   onOpenTimelines,
   onSelectTimelineEvents,
+  onDeselectTimelineEvents,
 }: TimelineEventChipProps) => {
   const { group, x, iconName, count, isSelected } = eventsGroup;
   const { events } = group;
@@ -43,6 +45,15 @@ export const TimelineEventChip = ({
   const handleSelect = () => {
     onOpenTimelines?.(isSingleEvent ? undefined : events.map((e) => e.id));
     onSelectTimelineEvents?.(events);
+  };
+
+  const handleChipClick = () => {
+    if (isSelected) {
+      onDeselectTimelineEvents?.();
+      onOpenTimelines?.();
+    } else {
+      handleSelect();
+    }
   };
 
   const showSeeAll = hasMoreThanMax && canSelect;
@@ -63,7 +74,7 @@ export const TimelineEventChip = ({
           data-testid="timeline-event-chip"
           data-selected={isSelected}
           aria-label={getChipLabel(eventsGroup)}
-          onClick={canSelect ? handleSelect : undefined}
+          onClick={canSelect ? handleChipClick : undefined}
         >
           {count > 1 ? (
             <span className={S.count}>{count}</span>
@@ -72,7 +83,7 @@ export const TimelineEventChip = ({
           )}
         </UnstyledButton>
       </HoverCard.Target>
-      <HoverCard.Dropdown p={0} bdrs="lg">
+      <HoverCard.Dropdown p={0} bdrs="0.75rem">
         <div data-testid="timeline-event-popover">
           {isSingleEvent ? (
             <div className={S.singleEvent}>

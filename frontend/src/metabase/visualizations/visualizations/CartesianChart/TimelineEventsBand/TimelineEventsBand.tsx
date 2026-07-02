@@ -22,6 +22,7 @@ interface TimelineEventsBandProps {
   selectedTimelineEventIds?: TimelineEventId[];
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
+  onDeselectTimelineEvents?: () => void;
 }
 
 export const TimelineEventsBand = ({
@@ -33,6 +34,7 @@ export const TimelineEventsBand = ({
   selectedTimelineEventIds,
   onOpenTimelines,
   onSelectTimelineEvents,
+  onDeselectTimelineEvents,
 }: TimelineEventsBandProps) => {
   // ECharts settles its layout asynchronously, so positions read from
   // `convertToPixel` can be stale right after an option/size change. Recompute
@@ -108,6 +110,7 @@ export const TimelineEventsBand = ({
           centerY={centerY}
           onOpenTimelines={onOpenTimelines}
           onSelectTimelineEvents={onSelectTimelineEvents}
+          onDeselectTimelineEvents={onDeselectTimelineEvents}
         />
       ))}
     </div>

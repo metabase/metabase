@@ -3,7 +3,7 @@ import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { TimelineEvent } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
-import { TIMELINE_ICON_TO_ICON_NAME } from "./utils";
+import { TIMELINE_ICON_TO_SMALL_ICON_MAP } from "./utils";
 
 interface TimelineEventRowProps {
   event: TimelineEvent;
@@ -17,7 +17,7 @@ export const TimelineEventRow = ({
   <Flex gap="sm" align="flex-start">
     {showIcon && (
       <Icon
-        name={TIMELINE_ICON_TO_ICON_NAME[event.icon]}
+        name={TIMELINE_ICON_TO_SMALL_ICON_MAP[event.icon]}
         c="icon-disabled"
         mt="0.125rem"
         size={12}

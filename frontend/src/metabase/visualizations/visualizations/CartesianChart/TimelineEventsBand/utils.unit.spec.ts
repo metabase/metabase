@@ -21,13 +21,22 @@ const createChartInstance = (
 
 describe("TimelineEventsBand utils", () => {
   describe("getTimelineEventGroupIconName", () => {
-    it("uses the event's icon for a single event", () => {
+    it("maps the event's icon to its 12px display glyph", () => {
       expect(
         getTimelineEventGroupIconName({
           date: "2025-01-01T00:00:00Z",
           events: [createMockTimelineEvent({ icon: "cloud" })],
         }),
-      ).toBe("cloud");
+      ).toBe("cloud_12");
+    });
+
+    it("falls back to the standard glyph when there is no 12px variant", () => {
+      expect(
+        getTimelineEventGroupIconName({
+          date: "2025-01-01T00:00:00Z",
+          events: [createMockTimelineEvent({ icon: "star" })],
+        }),
+      ).toBe("star");
     });
   });
 

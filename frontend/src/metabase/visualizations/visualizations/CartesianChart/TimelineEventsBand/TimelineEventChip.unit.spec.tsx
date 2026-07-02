@@ -60,6 +60,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   const onOpenTimelines = jest.fn();
   const onSelectTimelineEvents = jest.fn();
+  const onDeselectTimelineEvents = jest.fn();
 
   renderWithProviders(
     <TimelineEventChip
@@ -69,10 +70,13 @@ const setup = ({
       onSelectTimelineEvents={
         withCallbacks ? onSelectTimelineEvents : undefined
       }
+      onDeselectTimelineEvents={
+        withCallbacks ? onDeselectTimelineEvents : undefined
+      }
     />,
   );
 
-  return { onOpenTimelines, onSelectTimelineEvents };
+  return { onOpenTimelines, onSelectTimelineEvents, onDeselectTimelineEvents };
 };
 
 describe("TimelineEventChip", () => {
@@ -130,6 +134,21 @@ describe("TimelineEventChip", () => {
     expect(onSelectTimelineEvents).toHaveBeenCalledWith(
       singleGroup.group.events,
     );
+  });
+
+  it("deselects the events when an already-selected chip is clicked", async () => {
+    const {
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
+      onOpenTimelines,
+    } = setup({ eventsGroup: { ...singleGroup, isSelected: true } });
+
+    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+
+    expect(onDeselectTimelineEvents).toHaveBeenCalled();
+    expect(onSelectTimelineEvents).not.toHaveBeenCalled();
+    // clears any sidebar focus so the full list returns
+    expect(onOpenTimelines).toHaveBeenCalledWith();
   });
 
   it("focuses the sidebar on the group and selects its events when a grouped chip is clicked", async () => {

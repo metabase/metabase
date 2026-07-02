@@ -40,7 +40,7 @@ const deprecatedColors = {
   focus: baseColors.blue[70],
   "icon-brand": baseColors.brand[40],
   "icon-primary": baseColors.orionAlphaInverse[80],
-  "icon-disabled": baseColors.orionAlphaInverse[30],
+  "icon-disabled": baseColors.orionAlphaInverse[40],
   "icon-secondary": baseColors.orionAlphaInverse[50],
   "illustration-brand-secondary": baseColors.brand[80],
   "illustration-brand-tertiary": baseColors.brand[90],

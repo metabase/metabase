@@ -58,6 +58,8 @@ import bar_component from "./bar.svg?component";
 import bar_source from "./bar.svg?source";
 import bell_component from "./bell.svg?component";
 import bell_source from "./bell.svg?source";
+import bell_12_component from "./bell_12.svg?component";
+import bell_12_source from "./bell_12.svg?source";
 import birthday_component from "./birthday.svg?component";
 import birthday_source from "./birthday.svg?source";
 import bolt_component from "./bolt.svg?component";
@@ -116,6 +118,8 @@ import close_component from "./close.svg?component";
 import close_source from "./close.svg?source";
 import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
+import cloud_12_component from "./cloud_12.svg?component";
+import cloud_12_source from "./cloud_12.svg?source";
 import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
 import code_block_component from "./code_block.svg?component";
@@ -354,6 +358,10 @@ import network_component from "./network.svg?component";
 import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
+import note_component from "./note.svg?component";
+import note_source from "./note.svg?source";
+import note_12_component from "./note_12.svg?component";
+import note_12_source from "./note_12.svg?source";
 import notebook_component from "./notebook.svg?component";
 import notebook_source from "./notebook.svg?source";
 import number_component from "./number.svg?component";
@@ -703,6 +711,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: bell_component,
       source: bell_source,
     },
+    bell_12: {
+      component: bell_12_component,
+      source: bell_12_source,
+    },
     birthday: {
       component: birthday_component,
       source: birthday_source,
@@ -818,6 +830,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     cloud: {
       component: cloud_component,
       source: cloud_source,
+    },
+    cloud_12: {
+      component: cloud_12_component,
+      source: cloud_12_source,
     },
     cloud_filled: {
       component: cloud_filled_component,
@@ -1278,6 +1294,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     new_folder: {
       component: new_folder_component,
       source: new_folder_source,
+    },
+    note: {
+      component: note_component,
+      source: note_source,
+    },
+    note_12: {
+      component: note_12_component,
+      source: note_12_source,
     },
     notebook: {
       component: notebook_component,

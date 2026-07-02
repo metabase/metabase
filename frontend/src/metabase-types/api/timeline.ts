@@ -12,7 +12,7 @@ export type TimelineEventSource = "question" | "collections" | "api";
 
 export type TimelineIcon =
   | "info"
-  | "sticky_note"
+  | "note"
   | "event"
   | "star"
   | "cake"

@@ -10,17 +10,17 @@ import type {
   TimelineIcon,
 } from "metabase-types/api";
 
-export const TIMELINE_ICON_TO_ICON_NAME = {
+export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
   info: "info",
-  sticky_note: "sticky_note",
+  note: "note_12",
   event: "event",
   star: "star",
   cake: "cake",
   mail: "mail_at",
   mail_at: "mail_at",
   warning: "warning",
-  bell: "bell",
-  cloud: "cloud",
+  bell: "bell_12",
+  cloud: "cloud_12",
 } satisfies Record<TimelineIcon, IconName>;
 
 export interface PositionedTimelineEventGroup {
@@ -33,7 +33,7 @@ export interface PositionedTimelineEventGroup {
 
 export const getTimelineEventGroupIconName = (
   group: TimelineEventGroup,
-): IconName => TIMELINE_ICON_TO_ICON_NAME[group.events[0]?.icon];
+): IconName => TIMELINE_ICON_TO_SMALL_ICON_MAP[group.events[0]?.icon];
 
 interface PositioningInput {
   timelineEventsModel: TimelineEventsModel;

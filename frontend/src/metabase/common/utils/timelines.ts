@@ -23,7 +23,7 @@ export const getTimelineIcons = (): {
   return (
     [
       { label: t`Info`, value: "info" },
-      { label: t`Note`, value: "sticky_note" },
+      { label: t`Note`, value: "note" },
       { label: t`Event`, value: "event" },
       { label: t`Star`, value: "star" },
       { label: t`Cake`, value: "cake" },

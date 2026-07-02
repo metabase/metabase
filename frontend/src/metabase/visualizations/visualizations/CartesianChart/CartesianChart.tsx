@@ -59,6 +59,7 @@ function CartesianChartInner(props: VisualizationProps) {
     titleMenuItems,
     onOpenTimelines,
     onSelectTimelineEvents,
+    onDeselectTimelineEvents,
     selectedTimelineEventIds,
   } = props;
 
@@ -227,6 +228,7 @@ function CartesianChartInner(props: VisualizationProps) {
             selectedTimelineEventIds={selectedTimelineEventIds}
             onOpenTimelines={onOpenTimelines}
             onSelectTimelineEvents={onSelectTimelineEvents}
+            onDeselectTimelineEvents={onDeselectTimelineEvents}
           />
         </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>
