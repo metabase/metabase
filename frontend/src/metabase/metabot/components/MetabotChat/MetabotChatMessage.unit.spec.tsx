@@ -1,10 +1,15 @@
+import { assocIn } from "icepick";
+
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { thumbsDown, thumbsUp } from "metabase/metabot/tests/utils";
+import { createMockState } from "metabase/redux/store/mocks";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import { AgentMessage, Messages } from "./MetabotChatMessage";
 
@@ -168,5 +173,50 @@ describe("AgentMessage", () => {
       expect(debugCard).toHaveTextContent(/stream_error/);
       expect(debugCard).toHaveTextContent(/boom/);
     });
+  });
+});
+
+describe("UserMessage chart mentions", () => {
+  it("renders a pasted chart mention as an icon chip using conversation state", async () => {
+    const datasetQuery = createMockStructuredDatasetQuery();
+    const metabotState = assocIn(
+      getMetabotInitialState(),
+      ["conversations", "omnibot", "state"],
+      {
+        charts: {
+          "chart-1": {
+            queries: [datasetQuery],
+            visualization_settings: { chart_type: "bar" },
+          },
+        },
+      },
+    );
+
+    renderWithProviders(
+      <Messages
+        messages={[
+          {
+            id: "u1",
+            role: "user",
+            type: "text",
+            message:
+              "[Revenue by Product Category](metabase://chart/chart-1) test",
+          },
+        ]}
+        agentId="omnibot"
+        isDoingScience={false}
+        debug={false}
+      />,
+      {
+        storeInitialState: createMockState({
+          metabot: metabotState,
+          currentUser: createMockUser(),
+        }),
+      },
+    );
+
+    const chip = await screen.findByTestId("markdown-chart-link");
+    expect(chip).toHaveTextContent("Revenue by Product Category");
+    expect(within(chip).getByRole("img", { name: /icon/ })).toBeInTheDocument();
   });
 });

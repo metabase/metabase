@@ -5,6 +5,8 @@ import _ from "underscore";
 import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
+  CardDisplayType,
+  DatasetQuery,
   MetabotCodeEdit,
   MetabotSuggestedTransform,
   SuggestedTransform,
@@ -69,6 +71,33 @@ export const metabot = createSlice({
       state.savedChartCardIds[action.payload.entityId] = action.payload.cardId;
     },
     // CONVERSATION REDUCERS
+    insertPastedChart: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          chartId: string;
+          queryId: string;
+          query: DatasetQuery;
+          display?: CardDisplayType;
+        }>,
+      ) => {
+        const { chartId, queryId, query, display } = action.payload;
+        const prevState = convo.state ?? {};
+        convo.state = {
+          ...prevState,
+          queries: { ...(prevState.queries ?? {}), [queryId]: query },
+          charts: {
+            ...(prevState.charts ?? {}),
+            [chartId]: {
+              chart_id: chartId,
+              query_id: queryId,
+              queries: [query],
+              visualization_settings: { chart_type: display },
+            },
+          },
+        };
+      },
+    ),
     addDeveloperMessage: convoReducer(
       (convo, action: ConvoPayloadAction<{ message: string }>) => {
         convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;

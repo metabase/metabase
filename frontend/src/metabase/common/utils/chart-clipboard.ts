@@ -10,7 +10,11 @@ import { deserializeCardFromUrl, serializeCardForUrl } from "./card";
 
 export const CHART_CLIPBOARD_TYPE = "metabase/chart";
 
-const ADHOC_QUESTION_HASH_REGEX = /\/question#([A-Za-z0-9_=-]+)/;
+const ADHOC_QUESTION_HASH_REGEX = /\/question(?:\?[^#]*)?#([A-Za-z0-9_=-]+)/;
+const CHART_ID_PARAM = "mb_chart_id";
+const QUERY_ID_PARAM = "mb_query_id";
+const CHART_ID_REGEX = new RegExp(`[?&]${CHART_ID_PARAM}=([^&#]+)`);
+const QUERY_ID_REGEX = new RegExp(`[?&]${QUERY_ID_PARAM}=([^&#]+)`);
 
 export type ChartClipboardPayload = {
   type: typeof CHART_CLIPBOARD_TYPE;
@@ -20,6 +24,8 @@ export type ChartClipboardPayload = {
   display: CardDisplayType;
   dataset_query: DatasetQuery;
   visualization_settings: VisualizationSettings;
+  chart_id?: string;
+  query_id?: string;
 };
 
 export function serializeChartClipboard(
@@ -34,7 +40,15 @@ export function serializeChartClipboard(
     visualization_settings: payload.visualization_settings,
   };
   const hash = serializeCardForUrl(card, { includeDisplayIsLocked: true });
-  return `${siteUrl.replace(/\/$/, "")}/question#${hash}`;
+  const params = new URLSearchParams();
+  if (payload.chart_id) {
+    params.set(CHART_ID_PARAM, payload.chart_id);
+  }
+  if (payload.query_id) {
+    params.set(QUERY_ID_PARAM, payload.query_id);
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return `${siteUrl.replace(/\/$/, "")}/question${query}#${hash}`;
 }
 
 export function parseChartClipboard(
@@ -44,6 +58,8 @@ export function parseChartClipboard(
   if (!hash) {
     return null;
   }
+  const chartIdMatch = text?.match(CHART_ID_REGEX)?.[1];
+  const queryIdMatch = text?.match(QUERY_ID_REGEX)?.[1];
   try {
     const card = deserializeCardFromUrl(hash);
     if (
@@ -61,6 +77,8 @@ export function parseChartClipboard(
       display: card.display,
       dataset_query: card.dataset_query,
       visualization_settings: card.visualization_settings ?? {},
+      chart_id: chartIdMatch ? decodeURIComponent(chartIdMatch) : undefined,
+      query_id: queryIdMatch ? decodeURIComponent(queryIdMatch) : undefined,
     };
   } catch {
     return null;

@@ -1,9 +1,11 @@
 import { assocIn } from "icepick";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
+import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import {
   enterChatMessage,
@@ -51,6 +53,39 @@ describe("MetabotAsk", () => {
     ).toBeInTheDocument();
     expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
     expect(screen.queryByText(greetingTitle)).not.toBeInTheDocument();
+  });
+
+  it("injects a chart pasted into the greeting into the ask conversation state", async () => {
+    const { store } = setup({ ui: <MetabotAsk /> });
+
+    expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
+
+    const datasetQuery = createMockStructuredDatasetQuery();
+    const chartText = serializeChartClipboard(
+      {
+        name: "Revenue by Category",
+        display: "bar",
+        dataset_query: datasetQuery,
+        visualization_settings: {},
+        chart_id: "chart-1",
+        query_id: "query-1",
+      },
+      "https://metabase.example",
+    );
+
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", {
+      value: {
+        getData: (type: string) => (type === "text/plain" ? chartText : ""),
+      },
+    });
+    screen.getByRole("textbox").dispatchEvent(event);
+
+    await waitFor(() => {
+      const askState = store.getState().metabot.conversations.ask?.state;
+      expect(askState?.charts?.["chart-1"]).toBeDefined();
+      expect(askState?.queries?.["query-1"]).toEqual(datasetQuery);
+    });
   });
 
   it("shows the AI provider setup notice in the greeting when not configured", async () => {

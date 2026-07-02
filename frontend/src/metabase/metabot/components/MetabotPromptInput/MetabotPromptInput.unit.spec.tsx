@@ -155,6 +155,8 @@ describe("MetabotPromptInput", () => {
         display: "bar",
         dataset_query: datasetQuery,
         visualization_settings: {},
+        chart_id: "chart-1",
+        query_id: "query-1",
       },
       "https://metabase.example",
     );
@@ -169,18 +171,22 @@ describe("MetabotPromptInput", () => {
       getEditor().dispatchEvent(event);
     };
 
-    it("inserts an ad-hoc chart mention without saving a card", async () => {
+    it("inserts a chart mention referencing the chart id without saving a card", async () => {
       fetchMock.post("path:/api/card", createMockCard({ id: 42 }));
       const onChange = jest.fn();
-      setup({ onChange });
+      const onPasteChart = jest.fn();
+      setup({ onChange, onPasteChart });
 
       pasteIntoEditor(chartText);
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(
-          expect.stringContaining("metabase://adhoc/"),
+          expect.stringContaining("metabase://chart/chart-1"),
         );
       });
+      expect(onPasteChart).toHaveBeenCalledWith(
+        expect.objectContaining({ chart_id: "chart-1", query_id: "query-1" }),
+      );
       expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
     });
 
@@ -196,7 +202,7 @@ describe("MetabotPromptInput", () => {
       });
       expect(fetchMock.callHistory.called("path:/api/card")).toBe(false);
       const lastValue = onChange.mock.calls.at(-1)?.[0];
-      expect(lastValue).not.toContain("metabase://adhoc/");
+      expect(lastValue).not.toContain("metabase://chart/");
     });
   });
 });

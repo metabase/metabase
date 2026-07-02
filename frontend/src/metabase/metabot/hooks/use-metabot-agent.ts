@@ -1,6 +1,7 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
+import type { ChartClipboardPayload } from "metabase/common/utils/chart-clipboard";
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
 
@@ -20,6 +21,7 @@ import {
   getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
+  insertPastedChart as insertPastedChartAction,
   resetConversation as resetConversationAction,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
@@ -143,6 +145,24 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     dispatch(resetConversationAction({ agentId }));
   }, [agentId, dispatch]);
 
+  const onPasteChart = useCallback(
+    (payload: ChartClipboardPayload) => {
+      if (!payload.chart_id || !payload.query_id) {
+        return;
+      }
+      dispatch(
+        insertPastedChartAction({
+          agentId,
+          chartId: payload.chart_id,
+          queryId: payload.query_id,
+          query: payload.dataset_query,
+          display: payload.display,
+        }),
+      );
+    },
+    [dispatch, agentId],
+  );
+
   return {
     prompt,
     setPrompt,
@@ -154,6 +174,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     submitInput,
     retryMessage,
     cancelRequest,
+    onPasteChart,
     metabotId: useSelector(getMetabotId),
     messages: useSelector((state) => getMessages(state, agentId)),
     isDoingScience: useSelector((state) => getIsProcessing(state, agentId)),
