@@ -161,9 +161,14 @@ const MetabotCustomInstructions = () => {
   );
   const [value, setValue] = useState(savedInstructions ?? "");
   const hasSyncedInitialValue = useRef(savedInstructions != null);
+  const hasEdited = useRef(false);
 
   useEffect(() => {
-    if (!hasSyncedInitialValue.current && savedInstructions != null) {
+    if (
+      !hasSyncedInitialValue.current &&
+      !hasEdited.current &&
+      savedInstructions != null
+    ) {
       hasSyncedInitialValue.current = true;
       setValue(savedInstructions);
     }
@@ -183,6 +188,7 @@ const MetabotCustomInstructions = () => {
         value={value}
         maxLength={MAX_CUSTOM_INSTRUCTIONS_LENGTH}
         onChange={(event) => {
+          hasEdited.current = true;
           const newValue = event.target.value;
           setValue(newValue);
           setSavedInstructions(newValue === "" ? null : newValue);

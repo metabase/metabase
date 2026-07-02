@@ -30,14 +30,16 @@
 
 ;; Mirrors the literal sentinels in `metabase.metabot.self.claude` and the `.selmer` templates
 ;; (kept as literals here, not a shared require, since the templates themselves already hardcode
-;; the same strings). Stripped from free-text user input so a pasted sentinel can't be mistaken
-;; for the real cache-breakpoint marker when `claude.clj` splits the rendered prompt.
+;; the same strings). Free-text user input containing either one is dropped entirely rather than
+;; stripped, so a pasted sentinel can't be mistaken for the real cache-breakpoint marker when
+;; `claude.clj` splits the rendered prompt — detect-and-reject is simpler and more robust than a
+;; stripping pass, which an adversarial input could reconstruct a sentinel around.
 (def ^:private cache-breakpoint-sentinels
   ["<<<METABOT_CACHE_BREAKPOINT>>>" "<<<METABOT_USER_CACHE_BREAKPOINT>>>"])
 
-(defn- strip-cache-sentinels
+(defn- contains-cache-sentinel?
   [s]
-  (reduce #(str/replace %1 %2 "") s cache-breakpoint-sentinels))
+  (boolean (some #(str/includes? s %) cache-breakpoint-sentinels)))
 
 ;;; Template Loading
 
@@ -218,12 +220,12 @@
                                                                (metabot.settings/metabot-chat-system-prompt)))
                                   ;; Per-user instructions, cached separately from the shared prefix
                                   ;; (see `system-user-cache-breakpoint-sentinel`). Auto-scopes to the
-                                  ;; current user via the user-local setting getter. Sentinels are
-                                  ;; stripped so a pasted one can't be mistaken for the real
-                                  ;; cache-breakpoint marker downstream.
-                                  :user_custom_instructions (some-> (metabot.settings/metabot-user-custom-instructions)
-                                                                    strip-cache-sentinels
-                                                                    not-empty)}]
+                                  ;; current user via the user-local setting getter. A value containing
+                                  ;; either sentinel is dropped entirely rather than sanitized, so it
+                                  ;; can't be mistaken for the real cache-breakpoint marker downstream.
+                                  :user_custom_instructions (let [instructions (not-empty (metabot.settings/metabot-user-custom-instructions))]
+                                                              (when (and instructions (not (contains-cache-sentinel? instructions)))
+                                                                instructions))}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do
