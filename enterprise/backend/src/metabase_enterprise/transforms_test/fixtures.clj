@@ -20,7 +20,7 @@
 
   Column names are matched **exactly** (byte-for-byte) against the `:name`
   fields in `target-schema`.  No case-folding, no trimming, no normalization.
-  If the CSV header and the schema names differ only in case, a `::header-mismatch`
+  If the CSV header and the schema names differ only in case, a `::errors/header-mismatch`
   error is thrown (the caller can inspect `:missing-columns` / `:extra-columns`
   in ex-data to diagnose)."
   (:require
@@ -28,6 +28,7 @@
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase.upload.core :as upload])
   (:import
    (java.io File InputStreamReader Reader StringReader)))
@@ -100,14 +101,14 @@
                  (str "Missing columns: " (str/join ", " (sort missing-columns)) ". "))
                (when (seq extra-columns)
                  (str "Extra columns: " (str/join ", " (sort extra-columns)) ".")))
-          {:error-type      ::header-mismatch
+          {:error-type      ::errors/header-mismatch
            :missing-columns (vec missing-columns)
            :extra-columns   (vec extra-columns)
            :csv-header      (vec csv-header)
            :schema-names    (vec schema-names)})))
 
 (defn- unparseable-cell-error
-  "Throws an ex-info with `::unparseable-cell` type.
+  "Throws an ex-info with `::errors/unparseable-cell` type.
 
   `row-index`   — 0-based index into the data rows (not counting the header).
   `column-name` — name of the column whose value failed to parse.
@@ -117,7 +118,7 @@
           (str "Could not parse value " (pr-str raw-value)
                " in column " (pr-str column-name)
                " at row " row-index ".")
-          {:error-type  ::unparseable-cell
+          {:error-type  ::errors/unparseable-cell
            :row-index   row-index
            :column-name column-name
            :raw-value   raw-value}

@@ -2,6 +2,7 @@
   "Tests for strict input resolution: required-input-tables and match-fixtures."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.inputs :as inputs]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -139,7 +140,7 @@
     (let [xf (make-python-transform)
           e  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported"
                                    (inputs/required-input-tables xf)))]
-      (is (= ::inputs/unsupported-transform-type (-> e ex-data :error-type))))))
+      (is (= ::errors/unsupported-transform-type (-> e ex-data :error-type))))))
 
 (deftest required-input-tables-extraction-failure-throws-test
   (testing "Any dependency-extraction failure throws a typed error (never returns silent #{})"
@@ -153,7 +154,7 @@
                                    :query    {:source-table "card__99999"}}}}
               e  (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/required-input-tables xf)))]
-          (is (= ::inputs/cannot-determine-inputs (-> e ex-data :error-type)))
+          (is (= ::errors/cannot-determine-inputs (-> e ex-data :error-type)))
           ;; Must carry the cause
           (is (some? (ex-cause e))))))))
 
@@ -164,7 +165,7 @@
     (let [bogus-id 9999999
           e        (is (thrown? clojure.lang.ExceptionInfo
                                 (inputs/resolve-table-dep {:table bogus-id})))]
-      (is (= ::inputs/table-not-found (-> e ex-data :error-type)))
+      (is (= ::errors/table-not-found (-> e ex-data :error-type)))
       (is (= bogus-id (-> e ex-data :table-id))))))
 
 (deftest required-input-tables-table-ref-not-found-throws-test
@@ -172,14 +173,14 @@
     (let [bad-ref {:database_id 173 :schema "public" :table "nonexistent_xyz"}
           e (is (thrown? clojure.lang.ExceptionInfo
                          (inputs/resolve-table-dep {:table-ref bad-ref})))]
-      (is (= ::inputs/table-not-found (-> e ex-data :error-type)))
+      (is (= ::errors/table-not-found (-> e ex-data :error-type)))
       (is (= bad-ref (-> e ex-data :table-ref))))))
 
 (deftest required-input-tables-transform-dep-throws-test
   (testing "A {:transform id} dep (dep on another transform's output) throws a typed error"
     (let [e (is (thrown? clojure.lang.ExceptionInfo
                          (inputs/resolve-table-dep {:transform 42})))]
-      (is (= ::inputs/transform-dep-not-supported (-> e ex-data :error-type))))))
+      (is (= ::errors/transform-dep-not-supported (-> e ex-data :error-type))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; match-fixtures — happy path
@@ -214,7 +215,7 @@
           keys   #{10}
           e      (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/match-fixtures tables keys)))]
-      (is (= ::inputs/missing-fixtures (-> e ex-data :error-type)))
+      (is (= ::errors/missing-fixtures (-> e ex-data :error-type)))
       ;; Missing tables should be described by id and schema.name for the caller
       (let [missing (-> e ex-data :missing-tables)]
         (is (= 1 (count missing)))
@@ -229,7 +230,7 @@
           keys   #{10 99}
           e      (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/match-fixtures tables keys)))]
-      (is (= ::inputs/unknown-fixture-keys (-> e ex-data :error-type)))
+      (is (= ::errors/unknown-fixture-keys (-> e ex-data :error-type)))
       (is (= #{99} (-> e ex-data :unknown-keys))))))
 
 (deftest match-fixtures-both-missing-and-unknown-throws-test
@@ -242,7 +243,7 @@
           keys   #{99}
           e      (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/match-fixtures tables keys)))]
-      (is (#{::inputs/missing-fixtures ::inputs/unknown-fixture-keys}
+      (is (#{::errors/missing-fixtures ::errors/unknown-fixture-keys}
            (-> e ex-data :error-type))))))
 
 ;;; ---------------------------------------------------------------------------
@@ -256,7 +257,7 @@
           keys   #{}
           e      (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/match-fixtures tables keys)))]
-      (is (= ::inputs/missing-fixtures (-> e ex-data :error-type)))
+      (is (= ::errors/missing-fixtures (-> e ex-data :error-type)))
       (let [missing (-> e ex-data :missing-tables)
             ids     (set (map :id missing))]
         (is (= #{1 2} ids))

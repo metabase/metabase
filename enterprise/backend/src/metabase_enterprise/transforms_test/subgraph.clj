@@ -24,6 +24,7 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.transforms-test.card-refs :as card-refs]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
    [metabase.util :as u]))
@@ -69,7 +70,7 @@
         (let [ready (sort (for [[n d] remaining :when (empty? d)] n))]
           (when (empty? ready)
             (throw (ex-info "Cycle detected in transform sub-graph"
-                            {:error-type ::cycle :remaining (vec (keys remaining))})))
+                            {:error-type ::errors/cycle :remaining (vec (keys remaining))})))
           (recur (into order ready)
                  (reduce (fn [m r]
                            (-> (dissoc m r)
@@ -147,7 +148,7 @@
        :order     [transform-ids]        ; topological run order
        :leaf-deps #{raw-dep-maps}}       ; boundary inputs needing fixtures
 
-  Throws `ex-info` with `:error-type ::sources-not-ancestors` when any selected
+  Throws `ex-info` with `:error-type ::errors/sources-not-ancestors` when any selected
   source does not feed the target (fail closed — no degenerate slice)."
   [target-id source-ids all-transforms]
   (let [{deps :dependencies} (ordering/transform-ordering [target-id] all-transforms)
@@ -157,7 +158,7 @@
               (str "Selected source transform(s) do not feed the target transform: "
                    (pr-str (vec (sort bad-sources)))
                    ". Every source must be an upstream dependency of the target.")
-              {:error-type  ::sources-not-ancestors
+              {:error-type  ::errors/sources-not-ancestors
                :bad-sources bad-sources
                :target-id   target-id})))
     (let [id->transform (u/index-by :id all-transforms)
@@ -192,7 +193,7 @@
   must supply a fixture for each; a missing one is caught downstream by the
   scratch-mapping guard, which fails closed and names the table it could not map.
 
-  Throws `ex-info` with `:error-type ::sources-not-ancestors` when a selected
+  Throws `ex-info` with `:error-type ::errors/sources-not-ancestors` when a selected
   source feeds none of the card's producing transforms — the same fail-closed
   contract as [[resolve-subgraph]]."
   [card source-ids all-transforms]
@@ -214,7 +215,7 @@
                    (pr-str (vec (sort bad-sources)))
                    ". Every source must be an upstream dependency of a transform that"
                    " produces a table the card reads.")
-              {:error-type  ::sources-not-ancestors
+              {:error-type  ::errors/sources-not-ancestors
                :bad-sources bad-sources
                :card-id     (:id card)})))
     ;; fixtures = card's raw boundary tables + slice's leaf deps.

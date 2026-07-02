@@ -17,6 +17,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-test.card-refs :as card-refs]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.subgraph :as subgraph]
    [metabase.transforms-base.interface :as transforms-base.i]))
 
@@ -179,9 +180,9 @@
       (try
         (run-fixture! card #{99} [s t u])
         (catch clojure.lang.ExceptionInfo e
-          (is (= ::subgraph/sources-not-ancestors
+          (is (= ::errors/sources-not-ancestors
                  (:error-type (ex-data e)))
-              "error-type is ::sources-not-ancestors"))))))
+              "error-type is ::errors/sources-not-ancestors"))))))
 
 (deftest select-mid-graph-source-test
   (testing "selecting mid-graph source (T for card reading T's output) cuts at T"

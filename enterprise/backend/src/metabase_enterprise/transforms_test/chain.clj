@@ -14,18 +14,18 @@
   ## v1 scope
 
   - **Single database.** All slice nodes must share the target's source database;
-    a cross-DB slice fails closed (`::cross-database-subgraph`).
+    a cross-DB slice fails closed (`::errors/cross-database-subgraph`).
   - **Materialized leaves only.** A leaf that is another transform's *unmaterialized*
     output (a never-run sibling) has no synced Table to derive a fixture schema
     from; `inputs/resolve-table-dep` fails closed on it
-    (`::transform-dep-not-supported`).
+    (`::errors/transform-dep-not-supported`).
   - **MBQL nodes reading upstream outputs** are not supported and fail at
-    `resolve` time with `::cannot-test-run`.
+    `resolve` time with `::errors/cannot-test-run`.
   - **Card target / MBQL card:** the card's source tables must be synced;
     `id->override` keys by table id — an unsynced output has no id to key on.
   - **Card target / native card:** a table-qualified column ref (`orders.amount`)
     whose table was rewritten may produce a dangling qualifier, rejected at verify
-    time with `::cannot-test-run`.
+    time with `::errors/cannot-test-run`.
 
   Errors are typed `ex-info` carrying `:error-type`."
   (:require
@@ -33,6 +33,7 @@
    [metabase-enterprise.transforms-test.assertions :as assertions]
    [metabase-enterprise.transforms-test.card-refs :as card-refs]
    [metabase-enterprise.transforms-test.diff :as diff]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.execute :as execute]
    [metabase-enterprise.transforms-test.fixtures :as fixtures]
    [metabase-enterprise.transforms-test.inputs :as inputs]
@@ -89,7 +90,7 @@
               (str "Chained test runs require all transforms in the sub-graph to use the"
                    " same database. The target uses database " db-id
                    " but these nodes do not: " (pr-str offenders) ".")
-              {:error-type ::cross-database-subgraph
+              {:error-type ::errors/cross-database-subgraph
                :db-id      db-id
                :offenders  offenders})))))
 
@@ -199,7 +200,7 @@
 
   Native cards are rewritten; MBQL cards are compiled with scratch-qualified SQL.
 
-  Throws `::cannot-test-run` if any non-scratch table reference survives."
+  Throws `::errors/cannot-test-run` if any non-scratch table reference survives."
   [card db-id drv mapping input-tables]
   (let [backend   (sql-tools/parser-backend)
         dataset-q (:dataset_query card)
@@ -284,12 +285,12 @@
         id->transform  (u/index-by :id all-transforms)
         target         (or (id->transform target-id)
                            (throw (ex-info (str "Target transform " target-id " not found.")
-                                           {:error-type ::target-not-found :target-id target-id})))
+                                           {:error-type ::errors/target-not-found :target-id target-id})))
         {:keys [slice order leaf-deps]} (subgraph/resolve-subgraph target-id source-ids all-transforms)
         db-id          (node-db-id target)
         _              (when-not db-id
                          (throw (ex-info "Cannot determine database id from target transform source query."
-                                         {:error-type ::missing-database-id :target-id target-id})))
+                                         {:error-type ::errors/missing-database-id :target-id target-id})))
         _              (assert-single-database! slice id->transform db-id)
         schema         (or (-> target :target :schema) "public")
         db             (t2/select-one :model/Database :id db-id)
@@ -374,7 +375,7 @@
 
   Native card limitation: table-qualified column refs (`orders.amount`) whose table
   was rewritten may produce dangling qualifiers. `resolve/verify` catches them and
-  throws `::cannot-test-run` with the offending token.
+  throws `::errors/cannot-test-run` with the offending token.
 
   On error, throws a typed `ex-info` (`:error-type` in ex-data). Cleanup runs in
   `finally` on every path."
@@ -388,7 +389,7 @@
                          (throw (ex-info
                                  (str "Cannot determine database id from card " card-id
                                       " dataset_query.")
-                                 {:error-type ::missing-database-id :card-id card-id})))
+                                 {:error-type ::errors/missing-database-id :card-id card-id})))
         all-transforms (t2/select :model/Transform)
         id->transform  (u/index-by :id all-transforms)
         {:keys [slice order leaf-deps]} (subgraph/card->necessary-fixtures card source-ids all-transforms)
@@ -429,7 +430,7 @@
                                    (throw (ex-info
                                            (str "Card query failed during test run: QP returned "
                                                 (pr-str (:status r)))
-                                           {:error-type ::execution-failed
+                                           {:error-type ::errors/execution-failed
                                             :qp-status  (:status r)
                                             :card-id    card-id})))
                                  r))

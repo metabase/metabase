@@ -343,7 +343,7 @@
                     (reset! thrown e)))
                 (testing "throws ::cannot-test-run"
                   (is (some? @thrown))
-                  (is (= :metabase-enterprise.transforms-test.resolve/cannot-test-run
+                  (is (= :metabase-enterprise.transforms-test.errors/cannot-test-run
                          (:error-type (ex-data @thrown)))
                       (str "Expected ::cannot-test-run; got: " (pr-str (ex-data @thrown)))))))))))))
 

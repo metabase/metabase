@@ -4,6 +4,7 @@
 
   These functions assume they run inside `driver.conn/with-transform-connection`."
   (:require
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
@@ -14,7 +15,7 @@
 
 (defn assert-all-test-tables!
   "Assert that every table name in `names-to-check` satisfies
-  `scratch/test-table-name?`; throws `::pre-execution-guard-failed` on any failure.
+  `scratch/test-table-name?`; throws `::errors/pre-execution-guard-failed` on any failure.
   Guards a CTAS against ever targeting a name that isn't a test-scratch table."
   [names-to-check]
   (let [bad (remove scratch/test-table-name? names-to-check)]
@@ -24,7 +25,7 @@
                    " the test-scratch prefix and will NOT be used as DDL targets:\n"
                    (pr-str (vec bad))
                    "\nThis is an internal invariant violation — file a bug.")
-              {:error-type ::pre-execution-guard-failed
+              {:error-type ::errors/pre-execution-guard-failed
                :bad-names  (vec bad)})))))
 
 (defn build-transform-details
@@ -83,7 +84,7 @@
       (throw (ex-info
               (str "Failed to read back scratch output table " (pr-str table) ": QP returned "
                    (pr-str (:status result)))
-              {:error-type   ::execution-failed
+              {:error-type   ::errors/execution-failed
                :qp-status    (:status result)
                :output-table table})))
     result))

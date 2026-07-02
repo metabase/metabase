@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.transforms-test.diff :as diff]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.resolve :as resolve]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
@@ -155,7 +156,7 @@
     (when (not= :completed (:status result))
       (throw (ex-info
               (str "Combined assertion query failed: QP returned " (pr-str (:status result)))
-              {:error-type ::assertion-execution-failed
+              {:error-type ::errors/assertion-execution-failed
                :qp-status  (:status result)})))
     ;; Result rows: [assertion-name failing-count]
     (into {}
@@ -338,7 +339,7 @@
   `{:schema :table :db}` spec for the caller to clean up. Not yet implemented."
   [_db-id _db _drv _qp-result _schema _nonce]
   (throw (ex-info "materialize-card-result! is not yet implemented (escape path only)"
-                  {:error-type ::materialize-not-implemented})))
+                  {:error-type ::errors/materialize-not-implemented})))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Overall-status helper

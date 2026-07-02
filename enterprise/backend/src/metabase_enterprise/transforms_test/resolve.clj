@@ -12,9 +12,10 @@
   `verify` guards over the final SQL; see [[verify]].
 
   Any guard failure, or any compile/rewrite failure, becomes a single typed error:
-  `ex-info` with `:error-type ::cannot-test-run` (plus `:guard` and the offending
+  `ex-info` with `:error-type ::errors/cannot-test-run` (plus `:guard` and the offending
   tokens/refs)."
   (:require
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
@@ -34,11 +35,11 @@
 (defn- cannot-test-run!
   "Throw the single typed \"can't be test-run\" error.
 
-  `:error-type` is `::cannot-test-run`; `extra` carries guard-specific detail
+  `:error-type` is `::errors/cannot-test-run`; `extra` carries guard-specific detail
   (`:guard`, offending tokens/refs). `cause` is the wrapped backend exception, if any."
   ([msg extra] (cannot-test-run! msg extra nil))
   ([msg extra cause]
-   (throw (ex-info msg (assoc extra :error-type ::cannot-test-run) cause))))
+   (throw (ex-info msg (assoc extra :error-type ::errors/cannot-test-run) cause))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Native path: build replacements + rewrite
@@ -78,7 +79,7 @@
   "Rewrite `sql`, redirecting the input-table references in `mapping`
   (`{real-spec → scratch-spec}`) to their scratch targets. `backend` is the pinned
   parser backend, used only for error reporting; backend-specific parse exceptions
-  are wrapped as `::cannot-test-run`."
+  are wrapped as `::errors/cannot-test-run`."
   [driver sql mapping backend]
   (ws.remap/rewrite-table-refs
    driver sql (mapping->replacements driver mapping)
@@ -157,7 +158,7 @@
 
 (defn verify
   "Run the reference-safety guards against `final-sql`. Returns `final-sql` on
-  success; throws the typed `::cannot-test-run` error (naming the guard + offending
+  success; throws the typed `::errors/cannot-test-run` error (naming the guard + offending
   refs/token) on any failure.
 
   - `driver`       — driver keyword (for default-schema + parsing).
@@ -211,15 +212,15 @@
    :parser-backend <kw>}          ; backend pinned for this run
   ```
 
-  Throws the typed `::cannot-test-run` error on any compile/rewrite/verify
-  failure, and an `::unsupported-transform-type` error for non-`:query`
+  Throws the typed `::errors/cannot-test-run` error on any compile/rewrite/verify
+  failure, and an `::errors/unsupported-transform-type` error for non-`:query`
   (e.g. Python) transforms."
   [transform mapping output-target {:keys [db input-tables]}]
   (when-not (transforms-base.u/query-transform? transform)
     (throw (ex-info
             (str "This transform can't be test-run: only :query transforms"
                  " (native SQL and MBQL) are supported.")
-            {:error-type  ::unsupported-transform-type
+            {:error-type  ::errors/unsupported-transform-type
              :source-type (-> transform :source :type keyword)})))
   (let [driver  (source-driver db)
         ;; Pin + record the parser backend at resolve time.

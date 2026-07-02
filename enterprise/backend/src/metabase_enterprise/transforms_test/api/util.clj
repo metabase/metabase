@@ -3,54 +3,52 @@
   response shaping, the error→HTTP-status mapping, and the response schemas."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]))
 
 (def test-run-error-http-status
-  "Maps `:error-type` keywords from the test-run pipeline to HTTP status codes.
+  "Maps `:error-type` keywords (see [[metabase-enterprise.transforms-test.errors]])
+  to HTTP status codes.
 
   400 — caller error (bad input): the caller can fix by changing the request.
   422 — unprocessable: the transform or its environment prevents a test run;
         the caller may need to change the transform definition.
   500 — internal error: unexpected failure; the caller cannot fix this.
 
-  Any unrecognised `:error-type` is re-thrown (→ 500 from the framework). A
-  statement timeout throws an untyped exception (no `:error-type`), so it is not
-  in this map and currently surfaces as a generic 500."
+  Not every declared error-type needs an entry: an unmapped `:error-type` (e.g.
+  `::errors/materialize-not-implemented`), an unrecognised one, or an untyped
+  exception (a statement timeout) all surface as a generic 500."
   {;; Fixture errors — 400: caller supplied wrong CSV content.
-   :metabase-enterprise.transforms-test.fixtures/header-mismatch        400
-   :metabase-enterprise.transforms-test.fixtures/unparseable-cell        400
+   ::errors/header-mismatch             400
+   ::errors/unparseable-cell            400
    ;; Diff errors — 400: caller supplied bad options.
-   :metabase-enterprise.transforms-test.diff/unknown-ignore-columns      400
-   :metabase-enterprise.transforms-test.diff/unsupported-option          400
+   ::errors/unknown-ignore-columns      400
+   ::errors/unsupported-option          400
    ;; Input resolution errors — 400 or 422.
-   :metabase-enterprise.transforms-test.inputs/missing-fixtures          400
-   :metabase-enterprise.transforms-test.inputs/unknown-fixture-keys      400
-   :metabase-enterprise.transforms-test.inputs/unsupported-transform-type 422
-   :metabase-enterprise.transforms-test.inputs/cannot-determine-inputs   422
-   :metabase-enterprise.transforms-test.inputs/table-not-found           422
-   :metabase-enterprise.transforms-test.inputs/transform-dep-not-supported 422
+   ::errors/missing-fixtures            400
+   ::errors/unknown-fixture-keys        400
+   ::errors/unsupported-transform-type  422
+   ::errors/cannot-determine-inputs     422
+   ::errors/table-not-found             422
+   ::errors/transform-dep-not-supported 422
    ;; Resolve errors — 422.
-   :metabase-enterprise.transforms-test.resolve/cannot-test-run          422
-   :metabase-enterprise.transforms-test.resolve/unsupported-transform-type 422
+   ::errors/cannot-test-run             422
    ;; Execution errors — 500.
-   :metabase-enterprise.transforms-test.scratch/seed-failed              500
-   :metabase-enterprise.transforms-test.execute/pre-execution-guard-failed 500
-   :metabase-enterprise.transforms-test.execute/execution-failed         500
+   ::errors/seed-failed                 500
+   ::errors/pre-execution-guard-failed  500
+   ::errors/execution-failed            500
    ;; Chained (sub-graph) test-run errors.
-   :metabase-enterprise.transforms-test.subgraph/sources-not-ancestors   400
-   :metabase-enterprise.transforms-test.subgraph/cycle                   422
-   :metabase-enterprise.transforms-test.chain/cross-database-subgraph    422
-   :metabase-enterprise.transforms-test.chain/target-not-found           422
-   :metabase-enterprise.transforms-test.chain/missing-database-id        422
-   ;; Assertion-specific errors.
-   ;; ::assertion-rewrite-failed and ::assertion-execution-failed are per-assertion
-   ;; internal states captured in the response body, not HTTP-level errors; they are
-   ;; mapped here only for the case where one is thrown at the run level.
-   :metabase-enterprise.transforms-test.assertions/assertion-execution-failed  500
-   :metabase-enterprise.transforms-test.assertions/assertion-rewrite-failed    422
+   ::errors/sources-not-ancestors       400
+   ::errors/cycle                       422
+   ::errors/cross-database-subgraph     422
+   ::errors/target-not-found            422
+   ::errors/missing-database-id         422
+   ;; Assertion errors. assertion-execution-failed is a per-assertion internal
+   ;; state in the response body; mapped only for the run-level throw case.
+   ::errors/assertion-execution-failed  500
    ;; assertions-parse-error fires at request-parse time (malformed JSON / missing fields).
-   :metabase-enterprise.transforms-test.api.util/assertions-parse-error             400})
+   ::errors/assertions-parse-error      400})
 
 (defn parse-input-table-ids
   "Extract input fixture files from the multipart params.
@@ -129,12 +127,12 @@
                  (catch Exception _
                    (throw (ex-info (tru "Malformed ''assertions'' part: not valid JSON.")
                                    {:status-code 400
-                                    :error-type  ::assertions-parse-error
+                                    :error-type  ::errors/assertions-parse-error
                                     :raw-text    text}))))]
       (when-not (sequential? data)
         (throw (ex-info (tru "''assertions'' must be a JSON array.")
                         {:status-code 400
-                         :error-type  ::assertions-parse-error})))
+                         :error-type  ::errors/assertions-parse-error})))
       (mapv (fn [entry]
               (let [n   (get entry "name")
                     s   (get entry "sql")
@@ -142,17 +140,17 @@
                 (when (or (nil? n) (not (string? n)) (str/blank? n))
                   (throw (ex-info (tru "Each assertion must have a non-empty ''name'' string.")
                                   {:status-code 400
-                                   :error-type  ::assertions-parse-error
+                                   :error-type  ::errors/assertions-parse-error
                                    :entry       entry})))
                 (when (or (nil? s) (not (string? s)) (str/blank? s))
                   (throw (ex-info (tru "Each assertion must have a non-empty ''sql'' string.")
                                   {:status-code 400
-                                   :error-type  ::assertions-parse-error
+                                   :error-type  ::errors/assertions-parse-error
                                    :entry       entry})))
                 (when-not (#{"error" "warn"} sev)
                   (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
                                   {:status-code 400
-                                   :error-type  ::assertions-parse-error
+                                   :error-type  ::errors/assertions-parse-error
                                    :severity    sev})))
                 {:name     n
                  :sql      s

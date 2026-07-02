@@ -7,6 +7,7 @@
   with `mt/dataset test-data`."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.resolve :as resolve]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -49,7 +50,7 @@
      false
      (catch clojure.lang.ExceptionInfo e
        (let [{:keys [error-type guard]} (ex-data e)]
-         (and (= ::resolve/cannot-test-run error-type)
+         (and (= ::errors/cannot-test-run error-type)
               (or (nil? expected-guard) (= expected-guard guard))))))))
 
 ;;; ===========================================================================
@@ -406,7 +407,7 @@
         (resolve/resolve-test-transform transform {} {:schema "public" :table "out"} {:db {:engine "postgres"}})
         (is false "should have thrown")
         (catch clojure.lang.ExceptionInfo e
-          (is (= ::resolve/unsupported-transform-type (:error-type (ex-data e)))))))))
+          (is (= ::errors/unsupported-transform-type (:error-type (ex-data e)))))))))
 
 ;;; ===========================================================================
 ;;; Guard 1 must not reject zero-input transforms

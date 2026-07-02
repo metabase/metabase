@@ -30,6 +30,7 @@
   Callers supply `db-id` and the `:model/Database` row obtained within that context."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
@@ -230,7 +231,7 @@
                           (keyword tbl-schema tbl-name))))))
         (throw (ex-info
                 (str "Failed to seed scratch tables: " (.getMessage e))
-                {:error-type ::seed-failed
+                {:error-type ::errors/seed-failed
                  :created    @created}
                 e))))))
 

@@ -194,7 +194,7 @@
                       nil
                       (catch Exception e e))]
       (is (some? ex) "should have thrown")
-      (is (= :metabase-enterprise.transforms-test.fixtures/header-mismatch
+      (is (= :metabase-enterprise.transforms-test.errors/header-mismatch
              (:error-type (ex-data ex))))
       (is (= #{"score"} (set (:missing-columns (ex-data ex))))))))
 
@@ -207,7 +207,7 @@
                       nil
                       (catch Exception e e))]
       (is (some? ex) "should have thrown")
-      (is (= :metabase-enterprise.transforms-test.fixtures/header-mismatch
+      (is (= :metabase-enterprise.transforms-test.errors/header-mismatch
              (:error-type (ex-data ex))))
       (is (= #{"unexpected_col"} (set (:extra-columns (ex-data ex))))))))
 
@@ -220,7 +220,7 @@
                       nil
                       (catch Exception e e))]
       (is (some? ex) "should have thrown — 'Name' ≠ 'name'")
-      (is (= :metabase-enterprise.transforms-test.fixtures/header-mismatch
+      (is (= :metabase-enterprise.transforms-test.errors/header-mismatch
              (:error-type (ex-data ex))))
       ;; 'Name' is extra; 'name' is missing
       (is (= #{"Name"} (set (:extra-columns  (ex-data ex)))))
@@ -251,7 +251,7 @@
                       nil
                       (catch Exception e e))]
       (is (some? ex) "should have thrown")
-      (is (= :metabase-enterprise.transforms-test.fixtures/unparseable-cell
+      (is (= :metabase-enterprise.transforms-test.errors/unparseable-cell
              (:error-type (ex-data ex))))
       (is (= 1 (:row-index (ex-data ex))) "0-based row index (not counting header)")
       (is (= "count" (:column-name (ex-data ex))))
@@ -275,7 +275,7 @@
           ex     (try (fixtures/parse-fixture csv schema)
                       nil
                       (catch Exception e e))]
-      (is (= :metabase-enterprise.transforms-test.fixtures/unparseable-cell
+      (is (= :metabase-enterprise.transforms-test.errors/unparseable-cell
              (:error-type (ex-data ex))))
       (is (= "created_at" (:column-name (ex-data ex))))
       (is (= "2024-13-01" (:raw-value (ex-data ex)))))))

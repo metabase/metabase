@@ -16,7 +16,7 @@
   ## `:ignore-columns`
 
   Column names matched against `actual-cols` `:name` fields (exact byte-for-byte).
-  Unknown names → throws `ExceptionInfo {:error-type ::unknown-ignore-columns}`.
+  Unknown names → throws `ExceptionInfo {:error-type ::errors/unknown-ignore-columns}`.
   Ignored columns are excluded from both sides before comparison.
 
   ## Column alignment
@@ -25,7 +25,8 @@
   Missing/extra columns → `:column-issues` in the report; row comparison is skipped.
   Column order is irrelevant; both sides are re-ordered to match `actual-cols` order."
   (:require
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [metabase-enterprise.transforms-test.errors :as errors])
   (:import
    (java.math BigDecimal BigInteger)
    (java.time Instant LocalDate LocalDateTime OffsetDateTime ZoneOffset)
@@ -315,8 +316,8 @@
   - `opts`          — options map:
     - `:ignore-columns` — `#{\"col-name\" ...}` columns excluded from both sides
                           before comparison (matched exactly against `actual-cols`
-                          names; an unknown name throws `::unknown-ignore-columns`).
-    - `:float-tolerance` — unsupported; supplying it throws `::unsupported-option`.
+                          names; an unknown name throws `::errors/unknown-ignore-columns`).
+    - `:float-tolerance` — unsupported; supplying it throws `::errors/unsupported-option`.
                            Float comparison is exact — use `:ignore-columns` for
                            noisy columns.
 
@@ -343,7 +344,7 @@
   [actual-cols actual-rows expected opts]
   (when (contains? opts :float-tolerance)
     (throw (ex-info ":float-tolerance is not supported; float comparison is exact. Use :ignore-columns for noisy columns."
-                    {:error-type ::unsupported-option
+                    {:error-type ::errors/unsupported-option
                      :option     :float-tolerance})))
   (let [ignore-cols    (set (:ignore-columns opts))
         ;; Validate ignore-columns: every name must appear in actual-cols
@@ -353,7 +354,7 @@
     (when (seq unknown-ignores)
       (throw (ex-info (str "Unknown ignore-column name(s): " (str/join ", " (sort unknown-ignores))
                            ". Valid columns are: " (str/join ", " (sort actual-names)))
-                      {:error-type         ::unknown-ignore-columns
+                      {:error-type         ::errors/unknown-ignore-columns
                        :unknown-columns    (vec (sort unknown-ignores))
                        :available-columns  (vec (sort actual-names))})))
     (let [;; Filter actual columns by ignore-columns

@@ -1232,11 +1232,11 @@
                   (testing "status is error"
                     (is (= "error" (:status resp))))
                   (testing "error type is cannot-test-run"
-                    (is (= (pr-str :metabase-enterprise.transforms-test.resolve/cannot-test-run)
+                    (is (= (pr-str :metabase-enterprise.transforms-test.errors/cannot-test-run)
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-header-mismatch-400-test
-  (testing "POST /subgraph with wrong CSV headers → 400 + error envelope (::fixtures/header-mismatch)"
+  (testing "POST /subgraph with wrong CSV headers → 400 + error envelope (::errors/header-mismatch)"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -1260,7 +1260,7 @@
                     (is (= "error" (:status resp))
                         "header-mismatch must return error envelope, not 500"))
                   (testing "error type indicates header mismatch"
-                    (is (= (pr-str :metabase-enterprise.transforms-test.fixtures/header-mismatch)
+                    (is (= (pr-str :metabase-enterprise.transforms-test.errors/header-mismatch)
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-unknown-ignore-columns-400-test
@@ -1289,7 +1289,7 @@
                     (is (= "error" (:status resp))
                         "unknown-ignore-columns must return error envelope, not 500"))
                   (testing "error type indicates unknown ignore columns"
-                    (is (= (pr-str :metabase-enterprise.transforms-test.diff/unknown-ignore-columns)
+                    (is (= (pr-str :metabase-enterprise.transforms-test.errors/unknown-ignore-columns)
                            (get-in resp [:error :type])))))))))))))
 
 (deftest subgraph-endpoint-malformed-options-json-400-test
@@ -1357,7 +1357,7 @@
                 [test-run.core/subgraph-input-tables
                  (fn [& _]
                    (throw (ex-info "Cannot determine inputs for this transform."
-                                   {:error-type :metabase-enterprise.transforms-test.inputs/cannot-determine-inputs})))]
+                                   {:error-type :metabase-enterprise.transforms-test.errors/cannot-determine-inputs})))]
                 (let [resp (mt/user-http-request
                             :crowberto :get 422 (subgraph-inputs-url (:id t)))]
                   (testing "status is error"

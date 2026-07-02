@@ -11,7 +11,7 @@
   ## Supported transform types
 
   Only `:query`-type transforms (native SQL and MBQL) are supported. Python
-  transforms and any other source type throw `::unsupported-transform-type`.
+  transforms and any other source type throw `::errors/unsupported-transform-type`.
 
   ## Error taxonomy (`:error-type` keys in ex-data)
 
@@ -19,15 +19,16 @@
 
   | `:error-type`                        | Meaning |
   |--------------------------------------|---------|
-  | `::unsupported-transform-type`       | Transform source type is not `:query` (e.g. `:python`). |
-  | `::cannot-determine-inputs`          | `table-dependencies` threw; extraction failed. |
-  | `::table-not-found`                  | A `{:table id}` or `{:table-ref ...}` dep has no matching synced Table row. |
-  | `::transform-dep-not-supported`      | A `{:transform id}` dep (output of another transform) is not supported in test runs. |
-  | `::missing-fixtures`                 | One or more required tables have no fixture key in the provided set. |
-  | `::unknown-fixture-keys`             | One or more fixture keys have no matching required table. |"
+  | `::errors/unsupported-transform-type`       | Transform source type is not `:query` (e.g. `:python`). |
+  | `::errors/cannot-determine-inputs`          | `table-dependencies` threw; extraction failed. |
+  | `::errors/table-not-found`                  | A `{:table id}` or `{:table-ref ...}` dep has no matching synced Table row. |
+  | `::errors/transform-dep-not-supported`      | A `{:transform id}` dep (output of another transform) is not supported in test runs. |
+  | `::errors/missing-fixtures`                 | One or more required tables have no fixture key in the provided set. |
+  | `::errors/unknown-fixture-keys`             | One or more fixture keys have no matching required table. |"
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase.transforms-base.interface :as transforms-base.i]
    [toucan2.core :as t2]))
 
@@ -73,7 +74,7 @@
   Accepted dep shapes (from `transforms-base.i/table-dependencies`):
   - `{:table <id>}`               — look up by app-DB Table id.
   - `{:table-ref {:database_id :schema :table}}` — look up by (db-id, schema, name).
-  - `{:transform <id>}`           — throws `::transform-dep-not-supported`
+  - `{:transform <id>}`           — throws `::errors/transform-dep-not-supported`
     (the target table of another transform does not yet exist as a synced Table).
 
   Throws `ex-info` with typed `:error-type` on any resolution failure."
@@ -85,7 +86,7 @@
                  " — test runs do not support transforms that depend on another"
                  " transform's output table (the target table has not yet been"
                  " materialised into the app DB).")
-            {:error-type   ::transform-dep-not-supported
+            {:error-type   ::errors/transform-dep-not-supported
              :transform-id dep-transform}))
 
     dep-table
@@ -95,7 +96,7 @@
         (throw (ex-info
                 (str "Cannot resolve table dependency: no synced Table with id "
                      dep-table " found in the app DB. Has this table been synced?")
-                {:error-type ::table-not-found
+                {:error-type ::errors/table-not-found
                  :table-id   dep-table}))))
 
     table-ref
@@ -113,7 +114,7 @@
                      " schema=" (pr-str schema)
                      " table=" (pr-str table)
                      ". Has this table been synced?")
-                {:error-type ::table-not-found
+                {:error-type ::errors/table-not-found
                  :table-ref  table-ref}))))
 
     :else
@@ -121,7 +122,7 @@
             (str "Unrecognised dependency spec shape: " (pr-str {:table dep-table
                                                                  :transform dep-transform
                                                                  :table-ref table-ref}))
-            {:error-type ::cannot-determine-inputs}))))
+            {:error-type ::errors/cannot-determine-inputs}))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public API
@@ -144,10 +145,10 @@
   ```
 
   Throws `ex-info` with typed `:error-type` in ex-data on any failure:
-  - `::unsupported-transform-type` — source type is not `:query` (e.g. `:python`).
-  - `::cannot-determine-inputs`   — dependency extraction threw.
-  - `::table-not-found`           — a dep spec resolved to no synced Table.
-  - `::transform-dep-not-supported` — a dep on another transform's output."
+  - `::errors/unsupported-transform-type` — source type is not `:query` (e.g. `:python`).
+  - `::errors/cannot-determine-inputs`   — dependency extraction threw.
+  - `::errors/table-not-found`           — a dep spec resolved to no synced Table.
+  - `::errors/transform-dep-not-supported` — a dep on another transform's output."
   [transform]
   (let [stype (source-type transform)]
     (when (not= :query stype)
@@ -155,7 +156,7 @@
               (str "Transform source type " (pr-str stype)
                    " is not supported in test runs."
                    " Only :query transforms (native SQL and MBQL) are supported.")
-              {:error-type      ::unsupported-transform-type
+              {:error-type      ::errors/unsupported-transform-type
                :source-type     stype}))))
   ;; Extract deps strictly: any exception from table-dependencies is wrapped.
   ;; Source-card MBQL transforms ({:source-table "card__N"}) are resolved
@@ -167,7 +168,7 @@
                      (throw (ex-info
                              (str "Cannot determine input tables for this transform."
                                   " Dependency extraction failed: " (.getMessage e))
-                             {:error-type ::cannot-determine-inputs}
+                             {:error-type ::errors/cannot-determine-inputs}
                              e))))]
     ;; Resolve each dep spec to a full table-info. resolve-table-dep throws on failure.
     (mapv resolve-table-dep raw-deps)))
@@ -192,9 +193,9 @@
   ```
 
   Throws `ex-info` with typed `:error-type`:
-  - `::missing-fixtures`     — one or more required tables have no fixture.
+  - `::errors/missing-fixtures`     — one or more required tables have no fixture.
                                `:missing-tables` in ex-data lists id/schema/name.
-  - `::unknown-fixture-keys` — one or more fixture keys have no matching required table.
+  - `::errors/unknown-fixture-keys` — one or more fixture keys have no matching required table.
                                `:unknown-keys` in ex-data is the set of unknown ids."
   [required-tables provided-fixture-keys]
   (let [required-ids  (set (map :id required-tables))
@@ -209,13 +210,13 @@
                                      :let [t (id->tbl id)]]
                                  (str (:schema t) "." (:name t)
                                       " (id=" id ")"))))
-                {:error-type     ::missing-fixtures
+                {:error-type     ::errors/missing-fixtures
                  :missing-tables (mapv id->tbl (sort missing-ids))}))))
     (when (seq unknown-keys)
       (throw (ex-info
               (str "Unknown fixture key(s) (no matching required input table): "
                    (str/join ", " (sort unknown-keys)))
-              {:error-type   ::unknown-fixture-keys
+              {:error-type   ::errors/unknown-fixture-keys
                :unknown-keys unknown-keys})))
     ;; Happy path: all required tables covered, no unknown keys.
     (mapv (fn [tbl]

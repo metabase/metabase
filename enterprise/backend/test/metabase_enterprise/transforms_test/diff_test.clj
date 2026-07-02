@@ -18,6 +18,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-test.diff :as diff]
+   [metabase-enterprise.transforms-test.errors :as errors]
    [metabase.util.json :as json])
   (:import
    (java.math BigInteger)
@@ -241,7 +242,7 @@
           e           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"float-tolerance is not supported"
                                             (diff/diff actual-cols actual-rows expected
                                                        {:float-tolerance 0.01})))]
-      (is (= ::diff/unsupported-option (-> e ex-data :error-type))))))
+      (is (= ::errors/unsupported-option (-> e ex-data :error-type))))))
 
 (deftest decimal-scale-bigdecimal-multiset-test
   (testing "true BigDecimal values with different scales (e.g. Postgres numeric columns)
