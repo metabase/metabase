@@ -193,29 +193,28 @@
       (draw-md-basic-item! cs x baseline item))))
 
 (defn- draw-md-line!
-  "Draw one wrapped markdown line within the box `[x, x+content-w]`.
-
-  When `rtl?`, the line is laid out flush-right within that box. The `items` (words) are reordered to their
-  left-to-right *visual* order on the page via [[typeset/reorder-bidi-items]]."
-  [^PDPageContentStream cs x content-w rtl? baseline items]
+  "Draw one wrapped markdown line within the box `[x, x+content-w]`, flushed per `align`
+  (`:left` / `:center` / `:right`). The `items` (words) are reordered to their left-to-right *visual* order on the
+  page via [[typeset/reorder-bidi-items]]."
+  [^PDPageContentStream cs x content-w align baseline items]
   (reduce #(draw-md-item! cs %1 baseline %2)
-          ;; Starting `x` depends on `rtl?`: flush left for LTR, or inset from left to make the line flush right.
-          (if rtl?
-            (+ x
-               (max 0.0 (- content-w
-                           (typeset/md-line-width items))))
-            x)
+          ;; Starting `x` is the box left plus the slack (box width minus line width) apportioned by `align`.
+          (let [slack (max 0.0 (- content-w (typeset/md-line-width items)))]
+            (+ x (case align
+                   :right  slack
+                   :center (* 0.5 slack)
+                   0.0)))
           (typeset/reorder-bidi-items items)))
 
 (defn- draw-item-lines!
   "Draw already-wrapped `lines` (each a vector of measured items) top-down from `top-y`, laying each out within
-  `[content-x, content-x+content-w]` and stopping before `bottom`. `rtl?` right-aligns. On the first line, `marker`
-  (if non-nil) is drawn at `marker-x` in `marker-font`.
+  `[content-x, content-x+content-w]` and stopping before `bottom`. `align` (`:left`/`:center`/`:right`) flushes each
+  line. On the first line, `marker` (if non-nil) is drawn at `marker-x` in `marker-font`.
 
   Note that `y` decreases downwards in PDFs; reversed from the convention on the web.
 
   Returns the y just below the last line actually drawn. Shared by [[draw-block!]] and [[draw-text-block!]]."
-  [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt rtl? marker marker-x marker-font]
+  [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt align marker marker-x marker-font]
   (let [lh (* base-pt common/line-height-factor)]
     (when marker
       (draw-line! cs marker-font base-pt marker-x (- top-y base-pt) marker))
@@ -227,7 +226,7 @@
                     adv      (+ lh extra)
                     y'       (- y adv)]
                 (when (>= y' bottom)
-                  (draw-md-line! cs content-x content-w rtl? baseline line))
+                  (draw-md-line! cs content-x content-w align baseline line))
                 y'))
             top-y
             lines)))
@@ -252,7 +251,7 @@
                                   (mapv #(assoc % :color color) line))))
                       (typeset/words->lines (typeset/runs->words runs) font-pt false max-w))
           y     (draw-item-lines! cs lines x max-w top-y (- top-y max-h)
-                                  font-pt (font/base-rtl? text) nil x nil)]
+                                  font-pt (if (font/base-rtl? text) :right :left) nil x nil)]
       (- top-y y))))
 
 (defn- draw-code-block!
@@ -330,7 +329,7 @@
 (defn- draw-paragraph-block!
   [^PDPageContentStream cs
    {:keys [indent kind level marker runs] :as _block}
-   x top-y cell-w bottom scale]
+   x top-y cell-w bottom scale align-override]
   (let [heading?    (= :heading kind)
         base-pt     (* scale (if heading?
                                (typeset/heading-pt level)
@@ -343,40 +342,52 @@
                       0.0)
         content-x   (+ indent-x marker-w)
         content-w   (- (+ x cell-w) content-x)
-        ;; right-align RTL paragraphs and headings; list items (those with a marker) stay
-        ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
-        rtl?        (and (nil? marker)
-                         (font/base-rtl? (apply str (map typeset/item-text runs))))
+        ;; List items (those with a marker) stay left-aligned for now -- a card-level alignment or proper RTL list
+        ;; (marker on the right) is a separate change. Otherwise the text card's `align-override` wins (see
+        ;; `text.align_horizontal`); with no override, right-align RTL paragraphs/headings and left-align the rest.
+        align       (if marker
+                      :left
+                      (or align-override
+                          (if (font/base-rtl? (apply str (map typeset/item-text runs))) :right :left)))
         lines       (typeset/words->lines (typeset/runs->words runs) base-pt heading? content-w)]
-    (draw-item-lines! cs lines content-x content-w top-y bottom base-pt rtl? marker indent-x marker-font)))
+    (draw-item-lines! cs lines content-x content-w top-y bottom base-pt align marker indent-x marker-font)))
 
 (defn- draw-block!
   "Draw one markdown block within `[x, top-y]` of `cell-w`, clipping at `bottom`.
 
   Returns the y below the block (top of the next)."
-  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale]
+  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale align-override]
   (case (:kind block)
     :hr         (draw-hr-block! cs x top-y cell-w scale)
     :image      (draw-image-block! doc cs block x top-y cell-w bottom scale)
     :code-block (draw-code-block! cs block x top-y cell-w bottom scale)
     ;; heading / paragraph / list-item
-    (draw-paragraph-block! cs block x top-y cell-w bottom scale)))
+    (draw-paragraph-block! cs block x top-y cell-w bottom scale align-override)))
 
 (defn- draw-markdown-in-cell!
-  "Render markdown `text` top-down within a cell rectangle.
+  "Render markdown `text` within a cell rectangle, honouring the text card's `text.align_horizontal` (`align-h`:
+  `:left`/`:center`/`:right`) and `text.align_vertical` (`align-v`: `:top`/`:middle`/`:bottom`).
 
   Shrinks the font (down to a floor, see [[typeset/fit-scale]]) so the content fits the cell height instead of clipping.
-  If it doesn't fit even at the limit of scaling down, we do clip the output."
-  [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h text]
-  (let [blocks (md/parse-markdown-blocks text)
-        scale  (typeset/fit-scale blocks cell-w cell-h)
-        bottom (- top-y cell-h)]
+  If it doesn't fit even at the limit of scaling down, we do clip the output (and vertical alignment collapses to top)."
+  [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h align-h align-v text]
+  (let [blocks  (md/parse-markdown-blocks text)
+        scale   (typeset/fit-scale blocks cell-w cell-h)
+        bottom  (- top-y cell-h)
+        ;; Vertical alignment: drop the start-y by the leftover space, apportioned by `align-v`. fit-scale keeps the
+        ;; laid-out height <= cell-h, so the slack is >= 0 (start-y stays at top when the content doesn't fit). `bottom`
+        ;; is unchanged (the true cell floor), so overflow still clips there.
+        slack   (max 0.0 (- cell-h (typeset/markdown-total-height blocks cell-w scale)))
+        start-y (- top-y (case align-v
+                           :bottom slack
+                           :middle (* 0.5 slack)
+                           0.0))]
     (reduce (fn [y block]
               (if (<= y (+ bottom 2.0))
                 y
-                (- (draw-block! doc cs block x y cell-w bottom scale)
+                (- (draw-block! doc cs block x y cell-w bottom scale align-h)
                    (* 4.0 scale))))
-            top-y blocks)))
+            start-y blocks)))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
@@ -414,6 +425,22 @@
       :visualization_settings
       :text))
 
+(defn- text-card-align-h
+  "A text card's explicit horizontal alignment keyword (`:left`/`:center`/`:right`) from its `text.align_horizontal`
+  setting, or `nil` when unset -- in which case the drawing keeps the base-direction default (LTR flush-left, RTL
+  flush-right) rather than forcing left, so existing RTL text cards aren't regressed."
+  [dashcard]
+  (when-let [raw (get-in dashcard [:visualization_settings :text.align_horizontal])]
+    (keyword raw)))
+
+(defn- text-card-align-v
+  "A text card's vertical alignment keyword (`:top`/`:middle`/`:bottom`) from its `text.align_vertical` setting.
+  Defaults to `:top`, matching the frontend's default."
+  [dashcard]
+  (if-let [raw (get-in dashcard [:visualization_settings :text.align_vertical])]
+    (keyword raw)
+    :top))
+
 (defn- dashcard->cell
   "Build a renderable cell from a dashcard, preserving its grid geometry.
 
@@ -443,7 +470,10 @@
       (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
 
       (notification.payload/virtual-card-of-type? dashcard "text")
-      (assoc geom :kind :text, :text (virtual-dashcard->text dashcard parameters))
+      (assoc geom :kind :text
+             :text    (virtual-dashcard->text dashcard parameters)
+             :align-h (text-card-align-h dashcard)
+             :align-v (text-card-align-v dashcard))
 
       ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
       ;; reuse the email conversion so they match, and so entity links are permission-checked.
@@ -677,9 +707,9 @@
         y (reduce (fn [y {:keys [name-lines value-lines height] :as _row}]
                     (let [bottom (- y height 1.0)]
                       (draw-item-lines! cs name-lines name-x name-w y bottom common/param-pt
-                                        (lines-rtl? name-lines) nil name-x nil)
+                                        (if (lines-rtl? name-lines) :right :left) nil name-x nil)
                       (draw-item-lines! cs value-lines value-x value-w y bottom common/param-pt
-                                        (lines-rtl? value-lines) nil value-x nil)
+                                        (if (lines-rtl? value-lines) :right :left) nil value-x nil)
                       (- y height)))
                   top-y
                   rows)]
@@ -718,7 +748,7 @@
     (draw-item-lines! cs lines x content-w top-y (- top-y
                                                     (typeset/lines-height lines common/param-pt)
                                                     1.0)
-                      common/param-pt (lines-rtl? lines) nil x nil)))
+                      common/param-pt (if (lines-rtl? lines) :right :left) nil x nil)))
 
 (defn- fill-rect!
   "Fill the box whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`, then reset to black.
@@ -1278,7 +1308,7 @@
                 :heading (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
                            #(draw-text-block! cs (font/face :bold) common/heading-card-pt nil x top-y cell-w % (:text cell)))
                 :text    (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
-                           #(draw-markdown-in-cell! doc cs x top-y cell-w % (:text cell)))
+                           #(draw-markdown-in-cell! doc cs x top-y cell-w % (:align-h cell) (:align-v cell) (:text cell)))
                 nil)
               (catch Throwable e
                 (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
