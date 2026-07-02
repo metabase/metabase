@@ -19,6 +19,24 @@ export function getIndexKey(index: TableIndexEntry, position: number): string {
   return `index-${getIndexName(index)}-${position}`;
 }
 
+export function isManagedIndex(index: TableIndexEntry): boolean {
+  return index.metabase_managed && index.request?.id !== undefined;
+}
+
+export function isPendingDeletion(index: TableIndexEntry): boolean {
+  return index.request?.status === "delete-pending";
+}
+
+export function isPendingStatus(
+  status: TableIndexRequestStatus | undefined,
+): boolean {
+  return (
+    status === "create-pending" ||
+    status === "update-pending" ||
+    status === "delete-pending"
+  );
+}
+
 export function formatStatus(
   status: TableIndexRequestStatus | undefined,
 ): string {

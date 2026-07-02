@@ -1,21 +1,28 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
   skipToken,
+  useDeleteTableIndexMutation,
   useGetTransformQuery,
   useListTableIndexesQuery,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
+import { useToast } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type { TransformId } from "metabase-types/api";
+import type { TableIndexEntry, Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
+import { IndexEditorModal } from "./IndexEditorModal/IndexEditorModal";
+import { IndexPageActions } from "./IndexPageActions";
 import { NoIndexes } from "./NoIndexes";
 import { TransformIndexTable } from "./TransformIndexTable";
 
@@ -48,21 +55,34 @@ export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
   return (
     <PageContainer data-testid="transforms-indexes-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <TransformIndexesContent transformId={transform.id} />
+      <TransformIndexesContent transform={transform} readOnly={readOnly} />
     </PageContainer>
   );
 }
 
 function TransformIndexesContent({
-  transformId,
+  transform,
+  readOnly = false,
 }: {
-  transformId: TransformId;
+  transform: Transform;
+  readOnly: boolean | undefined;
 }) {
   const {
     data: indexes = [],
     isLoading,
     error,
-  } = useListTableIndexesQuery({ "transform-id": transformId });
+  } = useListTableIndexesQuery({ "transform-id": transform.id });
+  const { deleteIndex, confirmationModal } = useDeleteIndex();
+  const targetTableExists = transform.table != null;
+  const hasRequestableIndexes =
+    Object.keys(transform.requestable_indexes ?? {}).length > 0;
+  const canCreate = targetTableExists && hasRequestableIndexes && !readOnly;
+  const [editorState, setEditorState] = useState<{
+    index?: TableIndexEntry;
+  } | null>(null);
+
+  const handleCreate = () => setEditorState({});
+  const handleEdit = (index: TableIndexEntry) => setEditorState({ index });
 
   if (isLoading || !isNullOrUndefined(error)) {
     return (
@@ -73,12 +93,70 @@ function TransformIndexesContent({
   }
 
   return (
-    <TitleSection label={t`Indexes`}>
-      {indexes.length === 0 ? (
-        <NoIndexes />
-      ) : (
-        <TransformIndexTable indexes={indexes} />
+    <>
+      <TitleSection
+        label={t`Indexes`}
+        actions={
+          <IndexPageActions
+            readOnly={readOnly}
+            targetTableExists={targetTableExists}
+            handleCreate={handleCreate}
+            canCreate={canCreate}
+          />
+        }
+      >
+        {indexes.length === 0 ? (
+          <NoIndexes />
+        ) : (
+          <TransformIndexTable
+            indexes={indexes}
+            readOnly={readOnly}
+            onEdit={handleEdit}
+            onDelete={deleteIndex}
+          />
+        )}
+      </TitleSection>
+      {editorState != null && (
+        <IndexEditorModal
+          transform={transform}
+          index={editorState.index}
+          onClose={() => setEditorState(null)}
+        />
       )}
-    </TitleSection>
+      {confirmationModal}
+    </>
   );
+}
+
+function useDeleteIndex() {
+  const [sendToast] = useToast();
+  const [deleteTableIndex] = useDeleteTableIndexMutation();
+  const { modalContent: confirmationModal, show: showConfirmation } =
+    useConfirmation();
+
+  function deleteIndex(index: TableIndexEntry) {
+    const requestId = index.request?.id;
+    if (requestId == null) {
+      return;
+    }
+    showConfirmation({
+      title: t`Delete this index?`,
+      message: t`This removes the index from the warehouse.`,
+      confirmButtonText: t`Delete`,
+      confirmButtonProps: { color: "danger" },
+      onConfirm: async () => {
+        try {
+          await deleteTableIndex(requestId).unwrap();
+          sendToast({ message: t`Index deleted` });
+        } catch (deleteError) {
+          sendToast({
+            message: getErrorMessage(deleteError, t`Failed to delete index`),
+            icon: "warning",
+          });
+        }
+      },
+    });
+  }
+
+  return { deleteIndex, confirmationModal };
 }

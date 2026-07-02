@@ -1456,7 +1456,9 @@
   [_driver _database]
   ;; spatial is niche, and InnoDB silently rewrites USING HASH into btree, so neither is offered.
   (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
-    {:btree    {:lifecycle :standalone :fields (conj name+cols driver.common/index-unique-field)}
+    {:btree    {:lifecycle :standalone :fields [driver.common/index-name-field
+                                                driver.common/index-unique-field
+                                                driver.common/index-columns-field]}
      :fulltext {:lifecycle :standalone :fields name+cols}}))
 
 (defn- mysql-index-column-sql

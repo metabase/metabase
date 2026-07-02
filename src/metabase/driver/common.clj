@@ -157,16 +157,20 @@
 
 (def index-name-field
   "Descriptor for the index name."
-  {:name "name" :display-name (deferred-tru "Index name") :type :string :required true})
+  {:name "name" :display-name (deferred-tru "Give your index a name") :type :string :required true})
 
 (def index-columns-field
   "Descriptor for the indexed columns."
   ;; :directions (per-column asc/desc) is off by default; only btree consumes it, so it opts in.
-  {:name "columns" :display-name (deferred-tru "Columns") :type :columns :required true})
+  {:name "columns" :display-name (deferred-tru "Columns")
+   :description (deferred-tru "The column(s) the index will be built on. Usually the ones you filter or join by.")
+   :type :columns :required true})
 
 (def index-unique-field
   "Descriptor for the btree unique toggle."
-  {:name "unique" :display-name (deferred-tru "Unique") :type :boolean})
+  {:name "unique" :display-name (deferred-tru "Unique")
+   :description (deferred-tru "Enforce uniqueness across rows for indexed columns.")
+   :type :boolean})
 
 (def index-granularity-field
   "Descriptor for a ClickHouse skip-index granularity."
