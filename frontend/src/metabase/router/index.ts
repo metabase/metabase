@@ -6,4 +6,5 @@ export * from "./use-params";
 export * from "./use-search-params";
 export * from "./Navigate";
 export * from "./Outlet";
+export * from "./Link";
 export * from "./types";
