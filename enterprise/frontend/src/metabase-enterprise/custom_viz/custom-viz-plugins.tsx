@@ -423,8 +423,7 @@ export async function loadCustomVizPlugin(
       isDev: Boolean(plugin.dev_bundle_url),
     });
 
-    // Check if any newer request didn't complete earlier and exit early if it did
-    if ((loadAppliedSeq.get(plugin.id) ?? 0) > loadSeq) {
+    if (!isLatest()) {
       return identifier;
     }
 
