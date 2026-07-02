@@ -36,7 +36,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [every? select-keys some empty? get-in mapv]]))
+   [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
@@ -482,25 +482,20 @@
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
   ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
+  ;;
+  ;; Template tags stay in their canonical ordered `[name tag]` pairs form when serialized (app DB, serdes
+  ;; export): the whole point of the pairs representation is that an associative map loses insertion order past the
+  ;; PersistentArrayMap threshold, which scrambled filter widgets for large native queries (#5136). Serializing back
+  ;; to a map would reintroduce that. Existing rows/exports in the legacy map form are accepted on read by
+  ;; [[metabase.lib.schema.template-tag/normalize-template-tags]].
   (let [keys-to-remove #{:lib/metadata :info :parameters :viz-settings}]
-    (-> (m/filter-keys (fn [k]
-                         (and (not (contains? keys-to-remove k))
-                              (or (simple-keyword? k)
-                                  ;; remove all random namespaced keys like
-                                  ;; `:metabase.query-permissions.impl/perms`. Keep `:lib` keys like `:lib/type`
-                                  (= (namespace k) "lib"))))
-                       query)
-        ;; Template tags live in memory as ordered `[name tag]` pairs (so widget order is stable past the
-        ;; array-map threshold, #5136), but the serialized form (app DB, serdes export) stays the legacy
-        ;; associative map so existing rows/exports keep their shape.
-        (m/update-existing :stages
-                           (fn [stages]
-                             (mapv (fn [stage]
-                                     (cond-> stage
-                                       (and (= (:lib/type stage) :mbql.stage/native)
-                                            (seq (:template-tags stage)))
-                                       (update :template-tags #(into {} %))))
-                                   stages))))))
+    (m/filter-keys (fn [k]
+                     (and (not (contains? keys-to-remove k))
+                          (or (simple-keyword? k)
+                              ;; remove all random namespaced keys like
+                              ;; `:metabase.query-permissions.impl/perms`. Keep `:lib` keys like `:lib/type`
+                              (= (namespace k) "lib"))))
+                   query)))
 
 (defn- encode-query-for-hashing [query]
   (let [keys-for-hashing #{:constraints

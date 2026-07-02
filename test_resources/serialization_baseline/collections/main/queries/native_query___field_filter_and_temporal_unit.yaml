@@ -17,8 +17,8 @@ dataset_query:
         AND {{date_filter}}
       GROUP BY {{created_at}}, PRODUCTS.CATEGORY
     template-tags:
-      category_filter:
-        dimension:
+    - - category_filter
+      - dimension:
         - field
         - {}
         - - Sample Database
@@ -30,8 +30,8 @@ dataset_query:
         name: category_filter
         type: dimension
         widget-type: string/=
-      created_at:
-        default: month
+    - - created_at
+      - default: month
         dimension:
         - field
         - {}
@@ -44,8 +44,8 @@ dataset_query:
         name: created_at
         sectionid: date
         type: temporal-unit
-      date_filter:
-        dimension:
+    - - date_filter
+      - dimension:
         - field
         - {}
         - - Sample Database
