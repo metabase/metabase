@@ -12,7 +12,7 @@
                        :child_target_id   "123"
                        :context           {:timeline_id 3}}]
       (is (= (str "/question/research/7/page/123"
-                  "?timeline=3&comments=true#comment-42")
+                  "?comments=true&timeline=3#comment-42")
              (comment/url exploration comment)))))
   (testing "context keys that are not deep-linked are omitted from the URL"
     (let [exploration (t2/instance :model/Exploration {:id 7})
@@ -20,7 +20,7 @@
                        :child_target_id   "group-1"
                        :context           {:timeline_id 3 :scroll_y 120}}]
       (is (= (str "/question/research/7/page/group-1"
-                  "?timeline=3&comments=true#comment-42")
+                  "?comments=true&timeline=3#comment-42")
              (comment/url exploration comment))))))
 
 (deftest comment-test

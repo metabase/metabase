@@ -15,6 +15,7 @@
   defining a record that implements `QueryPlanner`, exposing a singleton
   instance, and teaching `pick-planner!` to dispatch to it."
   (:require
+   [clojure.set :as set]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.query-plan.context :as qp.context]
@@ -75,7 +76,7 @@
   The `:name` is computed here but may be modified later for variants that fan out
   (and note that the mechanical planner doesn't choose any of these variants)."
   [metric-by-key item]
-  (let [metric    (get metric-by-key [(:group_id item) (:metric_id item)])
+  (let [metric    (get metric-by-key [(:block_id item) (:metric_id item)])
         appl      (get-in metric [:applicability (:dimension_id item)])
         dim       (:dim appl)
         dim-label (or (:display_name dim) (:dimension_id dim))
@@ -104,11 +105,16 @@
 (defn- page-key
   "The `[block-id card-id dimension-id query-type]` a query row reconciles to."
   [row]
-  [(:group_id row) (:card_id row) (:dimension_id row) (:query_type row)])
+  [(:block_id row) (:card_id row) (:dimension_id row) (:query_type row)])
 
 (defn- find-or-create-page!
   "Return the id of the `ExplorationPage` for `k` (a [[page-key]]), creating it at
-  `position` if it doesn't exist yet. An existing page keeps its id and position."
+  `position` if it doesn't exist yet. An existing page keeps its id and position.
+
+  Select-then-insert with no unique index backing it (`dimension_id` is a text column, which
+  MySQL can't uniquely index), so it relies on the runner's CAS claim on
+  `exploration_thread.query_plan_started_at` — at most one planner reconciles a thread's
+  pages at a time."
   [[block-id card-id dim-id query-type] position]
   (or (t2/select-one-pk :model/ExplorationPage
                         :exploration_block_id block-id
@@ -123,39 +129,63 @@
                                 :position             position})))
 
 (defn- reconcile-pages!
-  "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order sets the
-  `position` of newly-created pages); returns a `key -> page-id` map."
+  "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
+  page's block sets the `position` of newly-created pages); returns a `key -> page-id` map."
   [rows]
   (into {}
-        (for [[pos k] (map-indexed vector (distinct (map page-key rows)))]
-          [k (find-or-create-page! k pos)])))
+        (mapcat (fn [[_block-id ks]]
+                  (map-indexed (fn [pos k] [k (find-or-create-page! k pos)]) ks)))
+        (group-by first (distinct (map page-key rows)))))
 
 (defn- pages-with-comments
-  "Subset of `page-ids` that an exploration comment still anchors to. A comment stores its
-  page's id (as a string) in `child_target_id`, so a page is \"commented\" when some
-  `\"exploration\"`-targeted comment's `child_target_id` equals `(str page-id)`. This is the
-  retention safety-net: such a page must survive a rerun that drops its selection so the
-  comment keeps resolving."
+  "Subset of `page-ids` that a live (not soft-deleted) exploration comment still anchors to.
+  A comment stores its page's id (as a string) in `child_target_id`, so a page is
+  \"commented\" when some `\"exploration\"`-targeted comment's `child_target_id` equals
+  `(str page-id)`. This is a retention safety-net: such a page must survive a rerun that
+  drops its selection so the comment keeps resolving."
   [page-ids]
   (if (seq page-ids)
     (let [by-str (into {} (map (juxt str identity)) page-ids)]
       (->> (t2/select-fn-set :child_target_id :model/Comment
                              :target_type     "exploration"
-                             :child_target_id [:in (keys by-str)])
+                             :child_target_id [:in (keys by-str)]
+                             :deleted_at      nil)
            (into #{} (keep by-str))))
     #{}))
 
+(defn- starred-pages
+  "Subset of `page-ids` that are starred. A star, like a comment, anchors user intent to the
+  page, so a starred page survives a rerun that drops its selection."
+  [page-ids]
+  (if (seq page-ids)
+    ;; `(set ...)` since t2 set selectors return nil, not #{}, when nothing matches
+    (set (t2/select-pks-set :model/ExplorationPage :id [:in page-ids] :starred true))
+    #{}))
+
+(defn- pages-with-queries
+  "Subset of `page-ids` that some `ExplorationQuery` row still points at. The `page_id` FK
+  cascades on delete, so GC'ing such a page would silently delete its queries; retaining
+  them keeps [[gc-orphan-pages!]] safe even if it ever runs without queries having been
+  wiped first."
+  [page-ids]
+  (if (seq page-ids)
+    (set (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in page-ids]))
+    #{}))
+
 (defn- gc-orphan-pages!
-  "Delete pages of `thread-id`'s blocks that ended up with no queries — e.g. a selection the
-  user removed before a rerun — except pages a comment still anchors to, which are retained
-  (out of the active selection but reachable from the comment). `used-page-ids` are the pages
-  the current plan kept."
+  "Delete pages of `thread-id`'s blocks whose selection the current plan dropped — e.g. one
+  the user removed before a rerun. `used-page-ids` are the pages the current plan kept. An
+  orphan survives when a live comment anchors to it or it is starred (out of the active
+  selection but still user-valued), or when a query still points at it (deleting would
+  cascade to the query)."
   [thread-id used-page-ids]
   (let [block-ids (t2/select-pks-vec :model/ExplorationBlock :exploration_thread_id thread-id)
         orphans   (when (seq block-ids)
                     (->> (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in block-ids])
                          (remove (set used-page-ids))))
-        retained  (pages-with-comments orphans)
+        retained  (set/union (pages-with-comments orphans)
+                             (starred-pages orphans)
+                             (pages-with-queries orphans))
         deletable (remove retained orphans)]
     (when (seq deletable)
       (t2/delete! :model/ExplorationPage :id [:in deletable]))))
@@ -167,7 +197,7 @@
   [thread-id metric-by-key plan]
   (let [rows      (vec
                    (for [item   plan
-                         :let   [metric (get metric-by-key [(:group_id item) (:metric_id item)])]
+                         :let   [metric (get metric-by-key [(:block_id item) (:metric_id item)])]
                          recipe (try
                                   (materialize-item metric-by-key item)
                                   (catch Throwable e
@@ -175,7 +205,7 @@
                                                (pr-str item))
                                     []))]
                      {:exploration_thread_id thread-id
-                      :group_id              (:group_id item)
+                      :block_id              (:block_id item)
                       :card_id               (:metric_id item)
                       :database_id           (:database_id (:card metric))
                       :segment_id            (:segment_id recipe)
@@ -186,16 +216,19 @@
                       :params                (:params recipe)
                       :status                "pending"}))
         key->page (reconcile-pages! rows)
-        ;; `:group_id` is only here to compute the page key; the queries reach their block
+        ;; `:block_id` is only here to compute the page key; the queries reach their block
         ;; through their page now, so it isn't persisted on the query row.
         rows*     (mapv #(-> %
                              (assoc :page_id (key->page (page-key %)))
-                             (dissoc :group_id))
+                             (dissoc :block_id))
                         rows)]
+    ;; GC only after a plan that actually materialized rows: zero rows means every item
+    ;; failed to materialize (or the plan was empty), and treating that as "every selection
+    ;; was removed" would destroy page-id stability for a later retry.
     (when (seq rows*)
       (t2/insert! :model/ExplorationQuery
-                  (map-indexed (fn [i r] (assoc r :position i)) rows*)))
-    (gc-orphan-pages! thread-id (vals key->page))
+                  (map-indexed (fn [i r] (assoc r :position i)) rows*))
+      (gc-orphan-pages! thread-id (vals key->page)))
     (count rows*)))
 
 ;; ---------------------------------------------------------------------------
@@ -279,23 +312,23 @@
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
   modulo the t2 selects for thread / metrics / dims."
   [thread-id]
-  (let [thread-groups  (t2/select :model/ExplorationBlock
+  (let [thread-blocks  (t2/select :model/ExplorationBlock
                                   :exploration_thread_id thread-id
                                   {:order-by [[:position :asc] [:id :asc]]})
-        metric-dim-ctx (qp.context/metric-and-dim-context thread-groups)
-        ;; [group-id metric-id] -> metric-context, so materialization resolves a plan
-        ;; item against the same group the planner emitted it under (a metric can live
-        ;; in several groups).
+        metric-dim-ctx (qp.context/metric-and-dim-context thread-blocks)
+        ;; [block-id metric-id] -> metric-context, so materialization resolves a plan
+        ;; item against the same block the planner emitted it under (a metric can live
+        ;; in several blocks).
         metric-by-key  (into {}
-                             (for [g (:groups metric-dim-ctx)
+                             (for [g (:blocks metric-dim-ctx)
                                    m (:metrics g)]
-                               [[(:group-id g) (:metric-id m)] m]))]
+                               [[(:block-id g) (:metric-id m)] m]))]
     {:thread-id      thread-id
      :thread-prompt  (thread-prompt-for thread-id)
      :metric-dim-ctx metric-dim-ctx
      :metric-by-key  metric-by-key
      :creator-id     (creator-id-for-thread thread-id)
-     :thread-groups  thread-groups}))
+     :thread-blocks  thread-blocks}))
 
 ;; ---------------------------------------------------------------------------
 ;; Public entry point — called from the worker
@@ -347,14 +380,14 @@
     `nil`                — uncaught throwable (logged, transcript best-effort)"
   [thread-id]
   (try
-    (let [{:keys [thread-groups] :as ctx} (build-planner-ctx thread-id)
+    (let [{:keys [thread-blocks] :as ctx} (build-planner-ctx thread-id)
           picked     (pick-planner!)
           skip?      (:skip picked)
           planner-id (when-not skip? (planner/planner-name picked))
           pre        (preamble thread-id planner-id)]
       (cond
-        (not-any? #(and (seq (:metrics %)) (seq (:dimensions %))) thread-groups)
-        (do (log/infof "Thread %d: no group has both a metric and a dimension; skipping query plan" thread-id)
+        (not-any? #(and (seq (:metrics %)) (seq (:dimensions %))) thread-blocks)
+        (do (log/infof "Thread %d: no block has both a metric and a dimension; skipping query plan" thread-id)
             (record-outcome! thread-id pre :skip-empty)
             :skip-empty)
 

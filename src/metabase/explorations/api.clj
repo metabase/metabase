@@ -205,15 +205,15 @@
                rows))
 
 (defn- insert-blocks!
-  "Persist the FE's Research-plan groups verbatim — one `ExplorationBlock` row per
-   group, in payload order. Each group keeps its own `:metrics`/`:dimensions` selection;
-   the planners cross metrics with dimensions only within a group. No dedup across groups:
-   a metric or dimension appearing in two groups is stored on both."
-  [thread-id groups]
-  (when (seq groups)
+  "Persist the FE's Research-plan blocks verbatim — one `ExplorationBlock` row per
+   block, in payload order. Each block keeps its own `:metrics`/`:dimensions` selection;
+   the planners cross metrics with dimensions only within a block. No dedup across blocks:
+   a metric or dimension appearing in two blocks is stored on both."
+  [thread-id blocks]
+  (when (seq blocks)
     (t2/insert! :model/ExplorationBlock
                 (positional-rows thread-id
-                                 (map #(select-keys % [:type :metrics :dimensions]) groups)))))
+                                 (map #(select-keys % [:type :metrics :dimensions]) blocks)))))
 
 (defn- insert-thread-timelines! [thread-id timeline-ids]
   (when (seq timeline-ids)
@@ -260,10 +260,10 @@
    [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type  {:optional true} [:maybe :string]]])
 
-(def ^:private GroupSelection
+(def ^:private BlockSelection
   "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
    or a dimension area (the dimension's group + referencing metrics). Persisted verbatim as one
-   `ExplorationBlock` row; the planners cross this group's metrics with this group's
+   `ExplorationBlock` row; the planners cross this block's metrics with this block's
    dimensions only. The sidebar heading is computed read-side (the `:name` of an
    `ExplorationBlockNode`), not supplied here."
   [:map
@@ -313,10 +313,10 @@
   [:map
    [:id        ms/PositiveInt]
    [:name      [:maybe :string]]
-   [:long_name   [:maybe :string]]
-   [:position    ms/IntGreaterThanOrEqualToZero]
-   [:query_ids   [:sequential ms/PositiveInt]]
-   [:starred     :boolean]])
+   [:long_name [:maybe :string]]
+   [:position  ms/IntGreaterThanOrEqualToZero]
+   [:query_ids [:sequential ms/PositiveInt]]
+   [:starred   :boolean]])
 
 (mr/def ::ExplorationBlockNode
   "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is
@@ -432,15 +432,15 @@
 (def ^:private CreateExploration
   "Body schema for `POST /api/exploration`.
 
-   The FE sends one entry per Research-plan group (`:groups` — each a metric/dimension
+   The FE sends one entry per Research-plan block (`:blocks` — each a metric/dimension
    area), each persisted verbatim. `:timeline_ids` is thread-scoped (timelines aren't part of
-   any metric×dimension cross-product) and lives at the top level, not inside a group."
+   any metric×dimension cross-product) and lives at the top level, not inside a block."
   [:map
    [:name          expl.model/ExplorationName]
    [:description   {:optional true} [:maybe :string]]
    [:prompt        {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:groups       {:optional true} [:maybe [:sequential GroupSelection]]]
+   [:blocks        {:optional true} [:maybe [:sequential BlockSelection]]]
    [:timeline_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (def ^:private UpdateExploration
@@ -497,11 +497,11 @@
   to materialize, and inserts the `exploration_query` rows. This endpoint returns immediately
   with an empty queries list; clients should poll `GET /:id/queries` until rows appear.
 
-  Accepts the per-area `:groups` payload (one entry per Research-plan group), persisted
+  Accepts the per-area `:blocks` payload (one entry per Research-plan block), persisted
   verbatim, plus a thread-scoped `:timeline_ids`."
   [_route-params
    _query-params
-   {:keys [name description prompt collection_id groups timeline_ids]} :- CreateExploration]
+   {:keys [name description prompt collection_id blocks timeline_ids]} :- CreateExploration]
   (api/create-check :model/Exploration {:collection_id collection_id})
   (t2/with-transaction [_]
     (let [exploration (first (t2/insert-returning-instances! :model/Exploration
@@ -516,7 +516,7 @@
                                                               :position       0}))
           tid         (:id thread)]
       (insert-thread-default-documents! tid coll-id)
-      (insert-blocks! tid groups)
+      (insert-blocks! tid blocks)
       (insert-thread-timelines! tid timeline_ids)
       ;; Setting `started_at` is the signal to the background planning worker that this
       ;; thread is ready to plan + execute. The worker's claim predicate matches threads

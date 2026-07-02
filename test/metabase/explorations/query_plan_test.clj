@@ -5,6 +5,7 @@
   `metabase.explorations.query-plan.mechanical-test`."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.llm :as qp.llm]
    [metabase.explorations.query-plan.mechanical :as qp.mech]
@@ -197,14 +198,28 @@
 
 (defn- comment-on-page!
   "Anchor an exploration comment on `page-id` (stored as a string in `child_target_id`, the way
-  the FE posts it). Returns the comment id."
-  [exploration-id page-id]
-  (t2/insert-returning-pk! :model/Comment
-                           {:target_type     "exploration"
-                            :target_id       exploration-id
-                            :child_target_id (str page-id)
-                            :creator_id      (mt/user->id :rasta)
-                            :content         {:type "doc"}}))
+  the FE posts it). Returns the comment id. Extra `opts` merge into the row (e.g. `:deleted_at`)."
+  ([exploration-id page-id]
+   (comment-on-page! exploration-id page-id {}))
+  ([exploration-id page-id opts]
+   (t2/insert-returning-pk! :model/Comment
+                            (merge {:target_type     "exploration"
+                                    :target_id       exploration-id
+                                    :child_target_id (str page-id)
+                                    :creator_id      (mt/user->id :rasta)
+                                    :content         {:type "doc"}}
+                                   opts))))
+
+(defn- orphan-page!
+  "Seed a page under `block-id` for a selection the planner won't regenerate. Extra `opts`
+  merge into the row (e.g. `:starred`)."
+  [block-id card-id dim-id & [opts]]
+  (t2/insert-returning-pk! :model/ExplorationPage
+                           (merge {:exploration_block_id block-id
+                                   :card_id              card-id
+                                   :dimension_id         dim-id
+                                   :query_type           "default"}
+                                  opts)))
 
 (deftest reconcile-retains-commented-orphan-page-test
   (testing "a rerun that drops a page's selection retains the page iff a comment anchors to it,
@@ -216,16 +231,8 @@
         (let [cid       (:id metric)
               g         (mk-block! (:id t) cid "d1" "Price" "type/Number")
               ;; two selections the planner won't regenerate: one with a comment, one without.
-              commented (t2/insert-returning-pk! :model/ExplorationPage
-                                                 {:exploration_block_id (:id g)
-                                                  :card_id              cid
-                                                  :dimension_id         "gone-but-commented"
-                                                  :query_type           "default"})
-              bare      (t2/insert-returning-pk! :model/ExplorationPage
-                                                 {:exploration_block_id (:id g)
-                                                  :card_id              cid
-                                                  :dimension_id         "gone-no-comment"
-                                                  :query_type           "default"})
+              commented (orphan-page! (:id g) cid "gone-but-commented")
+              bare      (orphan-page! (:id g) cid "gone-no-comment")
               cmt       (comment-on-page! (:id e) commented)]
           (is (= :ok (query-plan/generate-query-plan! (:id t))))
           (testing "the commented orphan page is retained so the comment still resolves"
@@ -235,3 +242,96 @@
                 "the comment still anchors to the surviving page"))
           (testing "the orphan page with no comment is GC'd as before"
             (is (nil? (t2/select-one-pk :model/ExplorationPage :id bare)))))))))
+
+(deftest reconcile-retains-starred-orphan-page-test
+  (testing "a rerun that drops a page's selection retains the page iff it is starred — a star,
+            like a comment, anchors user intent to the page"
+    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid     (:id metric)
+              g       (mk-block! (:id t) cid "d1" "Price" "type/Number")
+              starred (orphan-page! (:id g) cid "gone-but-starred" {:starred true})
+              bare    (orphan-page! (:id g) cid "gone-no-star")]
+          (is (= :ok (query-plan/generate-query-plan! (:id t))))
+          (testing "the starred orphan page survives, star intact"
+            (is (true? (t2/select-one-fn :starred :model/ExplorationPage :id starred))))
+          (testing "the unstarred orphan page is GC'd as before"
+            (is (nil? (t2/select-one-pk :model/ExplorationPage :id bare)))))))))
+
+(deftest reconcile-ignores-soft-deleted-comment-anchors-test
+  (testing "a page whose only anchor is a soft-deleted comment is GC'd — deleted comments don't count"
+    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid    (:id metric)
+              g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
+              orphan (orphan-page! (:id g) cid "gone-deleted-comment")]
+          (comment-on-page! (:id e) orphan {:deleted_at (t/offset-date-time)})
+          (is (= :ok (query-plan/generate-query-plan! (:id t))))
+          (is (nil? (t2/select-one-pk :model/ExplorationPage :id orphan))))))))
+
+(deftest empty-plan-skips-page-gc-test
+  (testing "a plan that materializes zero rows leaves existing pages alone — a wholesale
+            materialization failure must not destroy page-id stability for a later retry"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid    (:id metric)
+            g      (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            orphan (orphan-page! (:id g) cid "would-be-orphan")]
+        (is (zero? (#'query-plan/insert-plan-rows! (:id t) {} [])))
+        (is (some? (t2/select-one-pk :model/ExplorationPage :id orphan))
+            "no rows materialized → GC skipped → the page id survives")))))
+
+(deftest gc-retains-pages-that-still-have-queries-test
+  (testing "gc-orphan-pages! never deletes a page some query still points at — the page_id FK
+            cascades, so deleting it would silently delete the query"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid     (:id metric)
+            g       (mk-block! (:id t) cid "d1" "Price" "type/Number")
+            page-id (orphan-page! (:id g) cid "d1")
+            q-id    (t2/insert-returning-pk! :model/ExplorationQuery
+                                             {:exploration_thread_id (:id t)
+                                              :card_id               cid
+                                              :database_id           (mt/id)
+                                              :page_id               page-id
+                                              :dimension_id          "d1"
+                                              :dataset_query         (count-metric-query)
+                                              :status                "pending"
+                                              :position              0})]
+        ;; an empty used set marks every page orphan; the query must still protect its page
+        (#'query-plan/gc-orphan-pages! (:id t) [])
+        (is (some? (t2/select-one-pk :model/ExplorationPage :id page-id)))
+        (is (some? (t2/select-one-pk :model/ExplorationQuery :id q-id)))))))
+
+(deftest reconcile-positions-pages-per-block-test
+  (testing "newly-created pages are positioned by first-seen order within their block, not globally"
+    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid (:id metric)
+              a   (first (t2/insert-returning-instances!
+                          :model/ExplorationBlock
+                          {:exploration_thread_id (:id t)
+                           :metrics    [{:card_id cid
+                                         :dimension_mappings
+                                         [{:dimension_id "d1" :table_id (mt/id :venues)
+                                           :target ["field" {} (mt/id :venues :price)]}
+                                          {:dimension_id "d2" :table_id (mt/id :venues)
+                                           :target ["field" {} (mt/id :venues :name)]}]}]
+                           :dimensions [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}
+                                        {:dimension_id "d2" :display_name "Name" :effective_type "type/Text"}]
+                           :position   0}))
+              b   (mk-block! (:id t) cid "d1" "Price" "type/Number")]
+          (is (= :ok (query-plan/generate-query-plan! (:id t))))
+          (doseq [block [a b]]
+            (let [positions (t2/select-fn-vec :position :model/ExplorationPage
+                                              :exploration_block_id (:id block))]
+              (is (= (range (count positions)) (sort positions))
+                  (str "block " (:id block) " pages are numbered 0.." (dec (count positions)))))))))))

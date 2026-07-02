@@ -101,17 +101,17 @@
   [x]
   (walk/postwalk (fn [v] (if (seq? v) (vec v) v)) x))
 
-(defn- ->groups-body
-  "Adapt a test body that uses top-level `:metrics`/`:dimensions` into the `:groups` payload
-  the API now requires, wrapping them in a single group. Bodies that already carry `:groups`
+(defn- ->blocks-body
+  "Adapt a test body that uses top-level `:metrics`/`:dimensions` into the `:blocks` payload
+  the API now requires, wrapping them in a single block. Bodies that already carry `:blocks`
   pass through. Lets the existing create-test suite express a metric×dimension selection
-  without group boilerplate; `:timeline_ids` stays thread-scoped at the top level."
-  [{:keys [metrics dimensions groups] :as body}]
-  (if groups
+  without block boilerplate; `:timeline_ids` stays thread-scoped at the top level."
+  [{:keys [metrics dimensions blocks] :as body}]
+  (if blocks
     body
     (-> body
         (dissoc :metrics :dimensions)
-        (assoc :groups [{:type "metric" :metrics metrics :dimensions dimensions}]))))
+        (assoc :blocks [{:type "metric" :metrics metrics :dimensions dimensions}]))))
 
 (defn- create-exploration!
   "POST a new exploration as `user`, then synchronously run the query planner for
@@ -120,7 +120,7 @@
   runner's per-row execution step). Returns the re-hydrated exploration so callers
   see materialized :queries with dataset_query populated."
   [user body]
-  (let [resp (mt/user-http-request user :post 200 "exploration" (->groups-body body))]
+  (let [resp (mt/user-http-request user :post 200 "exploration" (->blocks-body body))]
     (doseq [thread (:threads resp)]
       (query-plan/generate-query-plan! (:id thread)))
     (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
@@ -318,7 +318,7 @@
                         :card_id card-id}])
             dims    [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
             body    {:name   "Naming"
-                     :groups [;; metric-anchored: one metric crossed with a dimension
+                     :blocks [;; metric-anchored: one metric crossed with a dimension
                               {:type       "metric"
                                :metrics    [{:card_id (:id revenue)
                                              :dimension_mappings (mapping (:id revenue))}]
@@ -374,32 +374,32 @@
                                 (filter #(= "dimension" (:type %)))
                                 (map :name)
                                 set))]
-            (testing "two dimension groups sharing a base name → headings qualified by source"
+            (testing "two dimension blocks sharing a base name → headings qualified by source"
               (is (= #{"By Users - Created At" "By Orders - Created At"}
                      (headings {:name   "ambig-headings"
-                                :groups [(dim-grp users-created 1)
+                                :blocks [(dim-grp users-created 1)
                                          (dim-grp orders-created 2)]}))))
             (testing "a single dimension group keeps the plain heading even with a known source"
               (is (= #{"By Created At"}
                      (headings {:name   "single-heading"
-                                :groups [(dim-grp users-created 1)]}))))))))))
+                                :blocks [(dim-grp users-created 1)]}))))))))))
 
-(deftest exploration-create-persists-groups-verbatim-test
-  (testing "POST / persists each :groups entry as its own ExplorationBlock row — no dedup across groups"
+(deftest exploration-create-persists-blocks-verbatim-test
+  (testing "POST / persists each :blocks entry as its own ExplorationBlock row — no dedup across blocks"
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:creator_id (:id u)}]
       (let [mapping [{:dimension_id "d1"
                       :table_id (mt/id :venues)
                       :target ["field" {} (mt/id :venues :price)]}]
-            ;; Two groups sharing the same metric: a metric block (metric + d1) and a
+            ;; Two blocks sharing the same metric: a metric block (metric + d1) and a
             ;; dimension block (the same metric, with d2). Timelines are thread-scoped,
-            ;; sent once at the top level. Each group is stored verbatim — the shared
-            ;; metric is NOT deduped across groups.
-            body {:name         "Grouped create"
-                  :prompt       "via groups"
+            ;; sent once at the top level. Each block is stored verbatim — the shared
+            ;; metric is NOT deduped across blocks.
+            body {:name         "Blocked create"
+                  :prompt       "via blocks"
                   :timeline_ids [(:id tl)]
-                  :groups       [{:type       "metric"
+                  :blocks       [{:type       "metric"
                                   :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                                   :dimensions [{:dimension_id "d1" :display_name "Price"
                                                 :effective_type "type/Number"}]}
@@ -409,15 +409,15 @@
                                                 :effective_type "type/Text"}]}]}
             resp   (mt/user-http-request u :post 200 "exploration" body)
             tid    (-> resp :threads first :id)
-            groups (t2/select :model/ExplorationBlock
+            blocks (t2/select :model/ExplorationBlock
                               :exploration_thread_id tid {:order-by [[:position :asc]]})]
-        (is (= "Grouped create" (:name resp)))
-        (is (= 2 (count groups)) "one row per group, no dedup")
-        (is (= ["metric" "dimension"] (map :type groups)) "anchor type stored in payload order")
-        (is (= [0 1] (map :position groups)))
-        (testing "each group keeps its own metrics + dimensions selection"
-          (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) groups)))
-          (is (= ["d1" "d2"] (map #(-> % :dimensions first :dimension_id) groups))))
+        (is (= "Blocked create" (:name resp)))
+        (is (= 2 (count blocks)) "one row per block, no dedup")
+        (is (= ["metric" "dimension"] (map :type blocks)) "anchor type stored in payload order")
+        (is (= [0 1] (map :position blocks)))
+        (testing "each block keeps its own metrics + dimensions selection"
+          (is (= [(:id metric) (:id metric)] (map #(-> % :metrics first :card_id) blocks)))
+          (is (= ["d1" "d2"] (map #(-> % :dimensions first :dimension_id) blocks))))
         (testing "timelines are thread-scoped, stored once"
           (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid))))))))
 
@@ -840,10 +840,10 @@
             ;; Selections live in the thread's ExplorationBlock rows, which restart does
             ;; NOT delete (only the materialized queries are wiped, so the query-derived
             ;; :blocks tree in the response has empty pages until the planner re-runs below).
-            (let [groups (t2/select :model/ExplorationBlock :exploration_thread_id orig-tid)]
-              (is (= 1 (count groups)) "the Research-plan block survives the restart")
-              (is (= 1 (count (:metrics (first groups)))) "its metric selection is preserved")
-              (is (= ["d1"] (mapv :dimension_id (:dimensions (first groups))))
+            (let [blocks (t2/select :model/ExplorationBlock :exploration_thread_id orig-tid)]
+              (is (= 1 (count blocks)) "the Research-plan block survives the restart")
+              (is (= 1 (count (:metrics (first blocks)))) "its metric selection is preserved")
+              (is (= ["d1"] (mapv :dimension_id (:dimensions (first blocks))))
                   "its dimension selection is preserved"))
             (is (= 1 (count (:timelines rerun)))))
           (testing "the planner regenerates queries for the same thread"
@@ -1548,7 +1548,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name         "cascade"
                                         :timeline_ids [(:id tl)]
-                                        :groups       [{:name       "Group"
+                                        :blocks       [{:name       "Group"
                                                         :metrics    [{:card_id (:id metric)
                                                                       :dimension_mappings [{:dimension_id "d1" :table_id 1 :target ["field" {} 1]}]}]
                                                         :dimensions [{:dimension_id "d1"}]}]})
@@ -1746,7 +1746,7 @@
       (let [dims [{:dimension_id "category" :display_name "Category"}
                   {:dimension_id "price"    :display_name "Price"}]
             body {:name "multi"
-                  :groups [{:type       "metric"
+                  :blocks [{:type       "metric"
                             :metrics    [{:card_id (:id m1) :dimension_mappings (venues-dimension-mappings)}]
                             :dimensions dims}
                            {:type       "metric"

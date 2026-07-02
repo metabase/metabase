@@ -1331,26 +1331,26 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v63.expthreadgroup
+      id: v63.expblocktable
       author: johnswanson
-      comment: Create exploration_thread_group table
+      comment: Create exploration_block table
       changes:
         - createTable:
-            tableName: exploration_thread_group
+            tableName: exploration_block
             remarks: One Research-plan block selected on a thread — a set of metrics crossed with a set of dimensions. Immutable after create.
             columns:
               - column:
                   name: id
                   type: int
                   autoIncrement: true
-                  remarks: Primary key — surfaced to the FE as the group id
+                  remarks: Primary key — surfaced to the FE as the block id
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: exploration_thread_id
                   type: int
-                  remarks: The thread this group belongs to
+                  remarks: The thread this block belongs to
                   constraints:
                     nullable: false
               - column:
@@ -1366,6 +1366,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: type
+                  type: ${text.type}
+                  remarks: Block anchor — "metric" or "dimension"
+                  constraints:
+                    nullable: true
+              - column:
                   name: position
                   type: int
                   defaultValueNumeric: 0
@@ -1376,163 +1382,41 @@ databaseChangeLog:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: When the group was created
+                  remarks: When the block was created
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: When the group was last updated
+                  remarks: When the block was last updated
                   constraints:
                     nullable: false
 
   - changeSet:
-      id: v63.etgthreadidx
+      id: v63.expblockthreadidx
       author: nvoxland
-      comment: Index on exploration_thread_group.exploration_thread_id
+      comment: Index on exploration_block.exploration_thread_id
       changes:
         - createIndex:
-            tableName: exploration_thread_group
-            indexName: idx_exploration_thread_group_thread_id
+            tableName: exploration_block
+            indexName: idx_exploration_block_thread_id
             columns:
               - column:
                   name: exploration_thread_id
 
   - changeSet:
-      id: v63.expthreadgroupfk
+      id: v63.expblockthreadfk
       author: johnswanson
-      comment: FK exploration_thread_group.exploration_thread_id -> exploration_thread.id
+      comment: FK exploration_block.exploration_thread_id -> exploration_thread.id
       changes:
         - addForeignKeyConstraint:
-            baseTableName: exploration_thread_group
+            baseTableName: exploration_block
             baseColumnNames: exploration_thread_id
             referencedTableName: exploration_thread
             referencedColumnNames: id
-            constraintName: fk_exploration_thread_group_thread_id
+            constraintName: fk_exploration_block_thread_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v63.expqgroupcol
-      author: johnswanson
-      comment: Add exploration_query.group_id
-      changes:
-        - addColumn:
-            tableName: exploration_query
-            columns:
-              - column:
-                  name: group_id
-                  type: int
-                  remarks: The exploration_thread_group this query was planned under
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.expqgroupidx
-      author: johnswanson
-      comment: Index exploration_query.group_id for read-side grouping
-      changes:
-        - createIndex:
-            tableName: exploration_query
-            indexName: idx_exploration_query_group_id
-            columns:
-              - column:
-                  name: group_id
-
-  - changeSet:
-      id: v63.expqgroupfk
-      author: johnswanson
-      comment: FK exploration_query.group_id -> exploration_thread_group.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_query
-            baseColumnNames: group_id
-            referencedTableName: exploration_thread_group
-            referencedColumnNames: id
-            constraintName: fk_exploration_query_group_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v63.expqgroupnotnull
-      author: johnswanson
-      comment: Make exploration_query.group_id NOT NULL
-      changes:
-        - addNotNullConstraint:
-            tableName: exploration_query
-            columnName: group_id
-            columnDataType: int
-
-  - changeSet:
-      id: v63.expgrouptype
-      author: denisberezin
-      comment: Add exploration_thread_group.type
-      changes:
-        - addColumn:
-            tableName: exploration_thread_group
-            columns:
-              - column:
-                  name: type
-                  type: ${text.type}
-                  remarks: Block anchor — "metric" or "dimension"
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.storedresultdataaccesstoken
-      author: johnswanson
-      comment: Add stored_result.data_access_token for per-lens cached-read gating
-      changes:
-        - addColumn:
-            tableName: stored_result
-            columns:
-              - column:
-                  name: data_access_token
-                  type: ${text.type}
-                  remarks: JSON-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.storedresultdataaccesstokenbf
-      author: johnswanson
-      comment: Backfill data_access_token to the empty-map EDN sentinel '{}' for pre-token stored_result rows so legacy snapshots stay viewable by anyone with sufficient data perms (the nil-token read gate is creator+admin-only).
-      changes:
-        - update:
-            tableName: stored_result
-            columns:
-              - column:
-                  name: data_access_token
-                  value: "{}"
-            where: data_access_token IS NULL
-      rollback:
-
-  - changeSet:
-      id: v63.guiswezd
-      author: kevinkelleher12
-      comment: Add context column to comment table for storing comment context metadata
-      changes:
-        - addColumn:
-            tableName: comment
-            columns:
-              - column:
-                  name: context
-                  type: ${text.type}
-                  remarks: Optional context metadata about the comment (e.g., active timeline for exploration comments)
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.renameexpthreadgrouptoblock
-      author: johnswanson
-      comment: Rename exploration_thread_group table to exploration_block (model ExplorationThreadGroup -> ExplorationBlock). Index/FK constraint names keep their original `exploration_thread_group` spellings; they still function after the rename.
-      changes:
-        - renameTable:
-            oldTableName: exploration_thread_group
-            newTableName: exploration_block
-      rollback:
-        - renameTable:
-            oldTableName: exploration_block
-            newTableName: exploration_thread_group
 
   - changeSet:
       id: v63.exppagetable
@@ -1653,7 +1537,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.expqpagecol
       author: johnswanson
-      comment: Add exploration_query.page_id (NOT NULL) — the page each query is reconciled under. The reconciler stamps it on every query, so it's required from the start. group_id stays as the block pointer until the read-side/URL rework drops it.
+      comment: Add exploration_query.page_id (NOT NULL) — the page each query is reconciled under. The reconciler stamps it on every query, so it's required from the start.
       changes:
         - addColumn:
             tableName: exploration_query
@@ -1691,50 +1575,45 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.expqdropgroupfk
+      id: v63.storedresultdataaccesstoken
       author: johnswanson
-      comment: Drop FK exploration_query.group_id -> exploration_block; queries reach their block via their page now
+      comment: Add stored_result.data_access_token for per-lens cached-read gating
       changes:
-        - dropForeignKeyConstraint:
-            baseTableName: exploration_query
-            constraintName: fk_exploration_query_group_id
-      rollback:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_query
-            baseColumnNames: group_id
-            referencedTableName: exploration_block
-            referencedColumnNames: id
-            constraintName: fk_exploration_query_group_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v63.expqdropgroupidx
-      author: johnswanson
-      comment: Drop index on exploration_query.group_id before dropping the column
-      changes:
-        - dropIndex:
-            tableName: exploration_query
-            indexName: idx_exploration_query_group_id
-      rollback:
-        - createIndex:
-            tableName: exploration_query
-            indexName: idx_exploration_query_group_id
-            columns:
-              - column:
-                  name: group_id
-
-  - changeSet:
-      id: v63.expqdropgroupcol
-      author: johnswanson
-      comment: Drop exploration_query.group_id (replaced by page_id)
-      changes:
-        - dropColumn:
-            tableName: exploration_query
-            columnName: group_id
-      rollback:
         - addColumn:
-            tableName: exploration_query
+            tableName: stored_result
             columns:
               - column:
-                  name: group_id
-                  type: int
+                  name: data_access_token
+                  type: ${text.type}
+                  remarks: JSON-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v63.storedresultdataaccesstokenbf
+      author: johnswanson
+      comment: Backfill data_access_token to the empty-map EDN sentinel '{}' for pre-token stored_result rows so legacy snapshots stay viewable by anyone with sufficient data perms (the nil-token read gate is creator+admin-only).
+      changes:
+        - update:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "{}"
+            where: data_access_token IS NULL
+      rollback:
+
+  - changeSet:
+      id: v63.guiswezd
+      author: kevinkelleher12
+      comment: Add context column to comment table for storing comment context metadata
+      changes:
+        - addColumn:
+            tableName: comment
+            columns:
+              - column:
+                  name: context
+                  type: ${text.type}
+                  remarks: Optional context metadata about the comment (e.g., active timeline for exploration comments)
+                  constraints:
+                    nullable: true
