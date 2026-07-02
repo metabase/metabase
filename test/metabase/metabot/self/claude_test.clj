@@ -364,6 +364,31 @@
                   {:type "text"
                    :text "Dynamic suffix content."}]
                  (:system body)))))
+      (testing "a blank suffix after the sentinel is dropped — Anthropic 400s on empty text blocks"
+        ;; e.g. explorations.selmer's only post-sentinel content is `{% if research_plan %}...`,
+        ;; which renders blank on the first prompt when no plan context is registered yet.
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"})]
+          (is (= [{:type          "text"
+                   :text          "Stable prefix content."
+                   :cache_control {:type "ephemeral"}}]
+                 (:system body)))))
+      (testing "a blank prefix before the sentinel is dropped too"
+        (let [body (capture-claude-request-body!
+                    {:input  input
+                     :system "<<<METABOT_CACHE_BREAKPOINT>>>\n\nDynamic suffix content."})]
+          (is (= [{:type "text"
+                   :text "Dynamic suffix content."}]
+                 (:system body)))))
+      (testing "no :system key when the rendered system prompt is entirely blank"
+        (doseq [system ["" "   " "\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\n"]]
+          (let [body (capture-claude-request-body! {:input input :system system})]
+            (is (not (contains? body :system))
+                (pr-str system)))
+          (let [body (capture-claude-request-body! {:input input :system system :cache? false})]
+            (is (not (contains? body :system))
+                (pr-str system)))))
       (testing "no :system key when system is not provided"
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))

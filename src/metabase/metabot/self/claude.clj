@@ -257,20 +257,28 @@
   the concatenation; the split is purely a wire-protocol device for caching.
 
   If the sentinel is absent, fall back to a single cached content block covering
-  the whole prompt."
+  the whole prompt.
+
+  Blank blocks are dropped — Anthropic rejects empty text content blocks with an
+  HTTP 400 (\"system: text content blocks must be non-empty\"), and a template
+  whose entire post-sentinel content is conditional (e.g. explorations.selmer's
+  `{% if research_plan %}`) legitimately renders a blank suffix. May return an
+  empty vector when the whole prompt is blank; callers must omit `:system`
+  entirely in that case."
   [system]
-  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
-    (if (neg? idx)
-      [{:type          "text"
-        :text          system
-        :cache_control {:type "ephemeral"}}]
-      (let [prefix (str/trimr (subs system 0 idx))
-            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
-        [{:type          "text"
-          :text          prefix
-          :cache_control {:type "ephemeral"}}
-         {:type "text"
-          :text suffix}]))))
+  (let [idx    (.indexOf ^String system ^String system-cache-breakpoint-sentinel)
+        blocks (if (neg? idx)
+                 [{:type          "text"
+                   :text          system
+                   :cache_control {:type "ephemeral"}}]
+                 (let [prefix (str/trimr (subs system 0 idx))
+                       suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
+                   [{:type          "text"
+                     :text          prefix
+                     :cache_control {:type "ephemeral"}}
+                    {:type "text"
+                     :text suffix}]))]
+    (filterv #(not (str/blank? (:text %))) blocks)))
 
 (defn- anthropic-error-msg
   "Canonical, status-specific Anthropic error message."
@@ -414,6 +422,12 @@
         all-tools (if (and all-tools (not schema) cache?)
                     (add-tools-cache-breakpoint all-tools)
                     all-tools)
+        ;; may be empty when the rendered prompt is blank — omit :system then
+        ;; (Anthropic 400s on empty text content blocks). With :cache? false the
+        ;; sentinel is still stripped; only the cache markers are dropped.
+        system-blocks (when system
+                        (cond->> (system->cached-content-blocks system)
+                          (not cache?) (mapv #(dissoc % :cache_control))))
         thinking  (normalize-thinking model model-caps thinking)
         ;; Anthropic forbids `tool_choice` forced tool use when extended thinking
         ;; is enabled. When both are requested we fall back to `auto` and rely
@@ -428,10 +442,8 @@
              :max_tokens    (or max-tokens 4096)
              :stream        true
              :messages      messages}
-      cache?            (assoc :cache_control {:type "ephemeral"})
-      system            (assoc :system (if cache?
-                                         (system->cached-content-blocks system)
-                                         [{:type "text" :text system}]))
+      cache?              (assoc :cache_control {:type "ephemeral"})
+      (seq system-blocks) (assoc :system system-blocks)
       all-tools         (assoc :tools all-tools)
       schema            (assoc :tool_choice schema-tool-choice
                                :tools [{:name         "structured_output"
