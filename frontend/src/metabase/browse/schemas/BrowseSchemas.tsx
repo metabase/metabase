@@ -81,9 +81,9 @@ const BrowseSchemasContainer = ({
                       key={schema.id}
                       title={schema.name}
                       icon="folder"
-                      to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
-                        schema.name,
-                      )}`}
+                      to={`/browse/databases/${encodeURIComponent(
+                        params.slug,
+                      )}/schema/${encodeURIComponent(schema.name)}`}
                     />
                   ))}
                 </BrowseGrid>

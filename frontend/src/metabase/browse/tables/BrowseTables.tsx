@@ -1,59 +1,23 @@
-import { useEffect } from "react";
-import { replace } from "react-router-redux";
-
 import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
-import { useDispatch } from "metabase/redux";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type { DatabaseId } from "metabase-types/api";
 
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 
 import { TableBrowser } from "./TableBrowser";
 
-const SchemaNameRedirect = ({
-  name,
+const BrowseTablesPage = ({
+  dbId,
   schemaName,
 }: {
-  name: string;
+  dbId: DatabaseId | string;
   schemaName: string;
 }) => {
-  const dispatch = useDispatch();
-  const { data, isLoading } = useListDatabasesQuery();
-  const database = findDatabaseByName(data?.data ?? [], name);
-
-  useEffect(() => {
-    if (database) {
-      dispatch(
-        replace(
-          Urls.browseSchema({ db_id: database.id, schema_name: schemaName }),
-        ),
-      );
-    }
-  }, [database, schemaName, dispatch]);
-
-  if (isLoading || database) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-
-  return <NotFound />;
-};
-
-export const BrowseTables = ({
-  params: { dbId, schemaName },
-}: {
-  params: {
-    dbId: string;
-    schemaName: string;
-  };
-}) => {
-  if (Urls.extractEntityId(dbId) == null) {
-    return <SchemaNameRedirect name={dbId} schemaName={schemaName} />;
-  }
-
   return (
     <Flex
       className={S.browseContainer}
@@ -70,4 +34,41 @@ export const BrowseTables = ({
       </Flex>
     </Flex>
   );
+};
+
+const BrowseTablesByDatabaseName = ({
+  name,
+  schemaName,
+}: {
+  name: string;
+  schemaName: string;
+}) => {
+  const { data, isLoading } = useListDatabasesQuery();
+  const database = findDatabaseByName(data?.data ?? [], name);
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (!database) {
+    return <NotFound />;
+  }
+
+  return <BrowseTablesPage dbId={database.id} schemaName={schemaName} />;
+};
+
+export const BrowseTables = ({
+  params: { dbId, schemaName },
+}: {
+  params: {
+    dbId: string;
+    schemaName: string;
+  };
+}) => {
+  if (Urls.extractEntityId(dbId) == null) {
+    // react-router already url-decodes route params, so `dbId` is the raw db name here.
+    return <BrowseTablesByDatabaseName name={dbId} schemaName={schemaName} />;
+  }
+
+  return <BrowseTablesPage dbId={dbId} schemaName={schemaName} />;
 };
