@@ -278,7 +278,7 @@
 
 (define-premium-feature ^{:added "0.63.0"} enable-library-retrieval?
   "Should we enable the Metabot library entity-retrieval tool (retrieve_library_entities)?
-  Independent of `:semantic-search`: this gates only the curated tool, not the general search engine."
+  Independent of `:semantic-search`: this gates only that tool, not the general semantic search engine."
   :library-retrieval)
 
 (define-premium-feature ^{:added "0.57.0"} table-data-editing?
