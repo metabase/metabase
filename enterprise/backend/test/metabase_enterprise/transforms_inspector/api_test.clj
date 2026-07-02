@@ -7,7 +7,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -93,6 +94,60 @@
               (is (some? (:errors (mt/user-http-request :lucky :post 400
                                                         (format "ee/transforms/%d/inspect/generic-summary/query" transform-id)
                                                         {})))))))))))
+
+;;; -------------------------------------------------- Preview (Jekyll) --------------------------------------------------
+
+(defn- native-source
+  "A transform :source with a native SQL query returning `n` single-column rows."
+  [n]
+  {:type  :query
+   :query {:database (mt/id)
+           :type     :native
+           :native   {:query (->> (range 1 (inc n))
+                                  (map #(format "SELECT %d AS x" %))
+                                  (interpose " UNION ALL ")
+                                  (apply str))}}})
+
+;; No `test-drivers`/`:transforms/table` wrapper: preview runs a read-only query,
+;; never materializes a target table, so it only needs a queryable driver (the
+;; default h2 test DB), not transform-materialization support.
+(deftest preview-native-sql-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "POST /api/ee/transforms/:id/preview runs a native-SQL source and row-limits it"
+      (mt/with-temp [:model/Transform {transform-id :id} {:source (native-source 5)}]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (testing "default limit returns all 5 rows"
+              (let [result (mt/user-http-request :lucky :post 202
+                                                 (format "ee/transforms/%d/preview" transform-id))]
+                (is (= "completed" (:status result)))
+                (is (= 5 (count (get-in result [:data :rows]))))))
+            (testing "explicit :limit caps the row count"
+              (let [result (mt/user-http-request :lucky :post 202
+                                                 (format "ee/transforms/%d/preview" transform-id)
+                                                 {:limit 2})]
+                (is (= 2 (count (get-in result [:data :rows]))))))))))))
+
+(deftest preview-no-side-effects-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "preview records no transform_run and no QueryExecution"
+      (mt/with-temp [:model/Transform {transform-id :id} {:source (native-source 3)}]
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (let [runs-before (t2/count :model/TransformRun)
+                  qe-before   (t2/count :model/QueryExecution)]
+              (mt/user-http-request :lucky :post 202
+                                    (format "ee/transforms/%d/preview" transform-id))
+              (is (= runs-before (t2/count :model/TransformRun))
+                  "no transform_run row created")
+              (is (= qe-before (t2/count :model/QueryExecution))
+                  "no QueryExecution row created"))))))))
+
+(deftest preview-not-found-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "POST /api/ee/transforms/:id/preview returns 404 for a non-existent transform"
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/user-http-request :lucky :post 404 "ee/transforms/999999/preview")))))
 
 ;;; -------------------------------------------------- Metrics --------------------------------------------------
 
