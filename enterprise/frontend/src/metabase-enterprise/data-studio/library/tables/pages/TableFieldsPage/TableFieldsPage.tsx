@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
-import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
+import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import {
   FieldEmptyState,
   FieldSection,
@@ -70,7 +70,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
       <Flex
         className={S.body}
         flex={1}
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
+        style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
           <TableSection
@@ -108,7 +108,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               pos="sticky"
               top={0}
               className={S.header}
-              bg="background-secondary"
+              bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
               <Button

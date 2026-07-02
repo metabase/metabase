@@ -62,7 +62,7 @@ export const ForcePushWarning = ({
     <Box
       mt="md"
       p="md"
-      bg="background-error-secondary"
+      bg="background_surface-error-subtle"
       style={{ borderRadius: "var(--mantine-radius-md)" }}
     >
       <Group gap="sm" align="flex-start" wrap="nowrap">

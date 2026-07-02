@@ -17,6 +17,8 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 ;; SQL
+(api-scope/defscope agent-sql-construct "agent:sql:construct"
+  (deferred-tru "Construct SQL queries"))
 (api-scope/defscope agent-sql-create "agent:sql:create"
   (deferred-tru "Create SQL queries"))
 (api-scope/defscope agent-sql-edit "agent:sql:edit"
@@ -39,6 +41,8 @@
   (deferred-tru "Create saved questions"))
 (api-scope/defscope agent-question-update "agent:question:update"
   (deferred-tru "Update saved questions"))
+(api-scope/defscope agent-question-execute "agent:question:execute"
+  (deferred-tru "Run saved questions"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"

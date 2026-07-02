@@ -2328,7 +2328,7 @@
           (is (= ["COUNT(*)"
                   "75"]
                  (cond-> response
-                   (string? response) str/split-lines))))))))
+                   (string? response) (-> u/strip-bom str/split-lines)))))))))
 
 (deftest csv-download-test-2
   (testing "with parameters"
@@ -2339,7 +2339,7 @@
           (is (= ["COUNT(*)"
                   "8"]
                  (cond-> response
-                   (string? response) str/split-lines))))))))
+                   (string? response) (-> u/strip-bom str/split-lines)))))))))
 
 (deftest json-download-test
   (testing "no parameters"
@@ -3860,7 +3860,7 @@
     (let [q             {:database (mt/id)
                          :type     :native
                          :native   {:query "SELECT 2000 AS number, '2024-03-26'::DATE AS date;"}}
-          output-helper {:csv  (fn [output] (->> output csv/read-csv))
+          output-helper {:csv  (fn [output] (->> output u/strip-bom csv/read-csv))
                          :json (fn [[row]] [(map name (keys row)) (vals row)])}]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query q
                                                 :display       :table

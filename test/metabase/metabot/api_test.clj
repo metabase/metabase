@@ -182,16 +182,21 @@
                     (mt/with-model-cleanup [:model/MetabotMessage
                                             [:model/MetabotConversation :created_at]]
                       (let [conversation-id (str (random-uuid))
-                            body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
-                                                       {:request-options {:as              :stream
-                                                                          :decompress-body false}}
-                                                       {:message         "Test closure"
-                                                        :context         {}
-                                                        :conversation_id conversation-id
-                                                        :history         []
-                                                        :state           {}})]
-                        (.read ^java.io.InputStream body) ;; start the handler
-                        (.close ^java.io.Closeable body)
+                            response (mt/user-real-request-full-response
+                                      :rasta :post 202 "metabot/agent-streaming"
+                                      {:request-options {:as              :stream
+                                                         :decompress-body false}}
+                                      {:message         "Test closure"
+                                       :context         {}
+                                       :conversation_id conversation-id
+                                       :history         []
+                                       :state           {}})]
+                        (.read ^java.io.InputStream (:body response)) ;; start the handler
+                        ;; Close the underlying client, not the body stream: closing the body would
+                        ;; make clj-http drain the (now chunked) response to completion, which looks
+                        ;; like a normal finish rather than a disconnect. Closing the client aborts
+                        ;; the connection, which is what the server's cancel loop detects.
+                        (.close ^java.io.Closeable (:http-client response))
                         (u/poll {:thunk       #(deref stored-parts)
                                  :done?       some?
                                  :interval-ms 10
@@ -229,25 +234,28 @@
                           (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    {:message         "go"
-                                     :context         {}
-                                     :conversation_id (str (random-uuid))
-                                     :history         []
-                                     :state           {}})
-              (u/poll {:thunk       #(deref stored-kwargs)
-                       :done?       some?
-                       :interval-ms 10
-                       :timeout-ms  3000})
-              (is (some? @stored-kwargs)
-                  "finalize-assistant-turn! is called from the finally even when setup threw")
-              (is (true? (:finished? @stored-kwargs))
-                  "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
-              (is (=? {:message #"(?i)agent setup exploded"
-                       :type    "clojure.lang.ExceptionInfo"
-                       :data    {:status 503 :provider :test}}
-                      (:error @stored-kwargs))
-                  "the throwable becomes a structured error payload"))))))))
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "go"
+                                                    :context         {}
+                                                    :conversation_id (str (random-uuid))
+                                                    :history         []
+                                                    :state           {}})]
+                (u/poll {:thunk       #(deref stored-kwargs)
+                         :done?       some?
+                         :interval-ms 10
+                         :timeout-ms  3000})
+                (is (some? @stored-kwargs)
+                    "finalize-assistant-turn! is called from the finally even when setup threw")
+                (is (true? (:finished? @stored-kwargs))
+                    "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
+                (is (=? {:message #"(?i)agent setup exploded"
+                         :type    "clojure.lang.ExceptionInfo"
+                         :data    {:status 503 :provider :test}}
+                        (:error @stored-kwargs))
+                    "the throwable becomes a structured error payload")
+                (testing "the failure is streamed to the client as an AI SDK error part (3:...) rather than a silent close"
+                  (is (some #(str/starts-with? % "3:") (str/split-lines response)))
+                  (is (re-find #"(?i)agent setup exploded" response)))))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
@@ -319,6 +327,25 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
 
+(deftest settings-get-groups-openai-models-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "openai/gpt-5-mini"
+                                     llm.settings/llm-openai-api-key       "sk-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "sk-valid"} credentials))
+                                                           {:models [{:id "gpt-5.5"      :display_name "gpt-5.5"}
+                                                                     {:id "gpt-5.5-pro"  :display_name "gpt-5.5-pro"}
+                                                                     {:id "gpt-5.4"      :display_name "gpt-5.4"}
+                                                                     {:id "gpt-5.4-mini" :display_name "gpt-5.4-mini"}
+                                                                     {:id "gpt-4.1-mini" :display_name "gpt-4.1-mini"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "gpt-4.1-mini" :display_name "gpt-4.1-mini" :group "GPT-4.1"}
+                       {:id "gpt-5.4"      :display_name "gpt-5.4"      :group "GPT-5.4"}
+                       {:id "gpt-5.4-mini" :display_name "gpt-5.4-mini" :group "GPT-5.4"}
+                       {:id "gpt-5.5"      :display_name "gpt-5.5"      :group "GPT-5.5"}
+                       {:id "gpt-5.5-pro"  :display_name "gpt-5.5-pro"  :group "GPT-5.5"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "openai"))))))
+
 (deftest settings-get-returns-metabase-models-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
@@ -339,7 +366,7 @@
 
 (deftest settings-put-updates-provider-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
-                                     llm.settings/llm-openai-api-key      "sk-valid"]
+                                     llm.settings/llm-openai-api-key       "sk-valid"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
                                                            ([provider]
                                                             (is (= "openai" provider))
@@ -352,12 +379,39 @@
                                                                        :display_name "GPT-4.1 mini"}]}))]
       (is (= {:value  "openai/gpt-4.1-mini"
               :models [{:id "gpt-4.1-mini"
-                        :display_name "GPT-4.1 mini"}]}
+                        :display_name "GPT-4.1 mini"
+                        :group "GPT-4.1"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "openai"
                                     :model    "gpt-4.1-mini"})))
       (is (= "openai/gpt-4.1-mini"
              (metabot.settings/llm-metabot-provider))))))
+
+(deftest settings-put-connect-openai-defaults-model-test
+  (testing "connecting openai with only an api-key switches to the default openai model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-openai-api-key       nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "openai" provider))
+                                                              {:models [{:id "gpt-5.4"
+                                                                         :display_name "gpt-5.4"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "openai" provider))
+                                                              (is (= {:api-key "sk-fresh"} credentials))
+                                                              {:models [{:id "gpt-5.4"
+                                                                         :display_name "gpt-5.4"}]}))]
+        (is (= {:value  "openai/gpt-5.4"
+                :models [{:id "gpt-5.4"
+                          :display_name "gpt-5.4"
+                          :group "GPT-5.4"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "openai"
+                                      :api-key  "sk-fresh"})))
+        (is (= "openai/gpt-5.4"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "sk-fresh"
+               (llm.settings/llm-openai-api-key)))))))
 
 (deftest settings-put-updates-metabase-provider-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]

@@ -1019,7 +1019,9 @@
         ;; Regular groups: compute based on All Users group
         (let [au-id    (t2/select-one-pk :model/PermissionsGroup
                                          :magic_group_type "all-internal-users")
-              au-perms (t2/select :model/DataPermissions :group_id au-id)
+              au-perms (t2/select :model/DataPermissions
+                                  {:select-distinct [:db_id :perm_type :perm_value]
+                                   :where [:= :group_id au-id]})
               au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
                                  (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
                                {}
@@ -1066,7 +1068,10 @@
                                     :from   [[(t2/table-name :model/DataPermissions)]]
                                     :where  [:and
                                              [:in :group_id group-ids]
-                                             [:in :perm_type ["perms/create-queries" "perms/download-results"]]]}))
+                                             [:in :perm_type ["perms/create-queries" "perms/download-results"]]
+                                             [:not-in :db_id {:select [:id]
+                                                              :from [(t2/table-name :model/Database)]
+                                                              :where [:= :is_audit true]}]]}))
           ;; Group by (group_id, perm_type) → set of values
           perms-by-grp (when all-perms
                          (reduce (fn [acc {:keys [group_id perm_type perm_value]}]
@@ -1136,8 +1141,14 @@
         db-level    (t2/select :model/DataPermissions
                                {:where [:and [:= :db_id db-id] [:= :table_id nil]
                                         [:in :group_id group-ids] [:in :perm_type qn]]})
+        ;; `schema-vals-idx` only needs the set of distinct perm-values per
+        ;; (group, perm-type, schema). Selecting DISTINCT on those four columns
+        ;; keeps the result bounded by groups × perm-types × schemas × values
+        ;; instead of growing with the table count, which can be millions of
+        ;; rows on databases with very many tables (see #76077).
         table-level (t2/select :model/DataPermissions
-                               {:where [:and [:= :db_id db-id] [:not= :table_id nil]
+                               {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                                :where [:and [:= :db_id db-id] [:not= :table_id nil]
                                         [:in :group_id group-ids] [:in :perm_type qn]]})]
     {:db-id            db-id
      :db-level-idx     (into {} (map (juxt (juxt :group_id :perm_type) identity)) db-level)

@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -51,9 +52,14 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_" (config/current-major-version) "_"
+             (tx/hash-dataset db-def) "_" database-name)
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
@@ -92,7 +98,7 @@
 (defmethod sql.tx/create-db-sql :snowflake
   [driver dbdef]
   (let [db (sql.tx/qualify-and-quote driver (qualified-db-name dbdef))]
-    (format "CREATE DATABASE IF NOT EXISTS %s;" db)))
+    (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
@@ -203,7 +209,7 @@
        (apply f stmt args)))))
 
 (defn- drop-old-datasets!
-  "Drop test datasets (databases) prefixed by `sha_` that are >2 days old."
+  "Drop test datasets (databases) prefixed by `sha_` that too old."
   []
   (when-let [old-datasets (not-empty (old-dataset-names))]
     (with-write-stmt!
@@ -272,7 +278,7 @@
 
 (defn- delete-old-test-data!
   "Delete old test data:
-   - Datasets (databases) prefixed by sha_ that are two days ago or older
+   - Datasets (databases) prefixed by sha_ that haven't been accessed in a while
    - Isolation schemas prefixed by mb__isolation_ that are more than 3 hours old
    - Isolation users prefixed by mb__isolation_ that are more than 3 hours old
    - Isolation roles prefixed by MB_ISOLATION_ROLE_ that are more than 3 hours old
@@ -333,6 +339,8 @@
 
 (defmethod tx/destroy-db! :snowflake
   [_driver dbdef]
+  (when (= "test-data" (:database-name dbdef))
+    (throw (Exception. "tried to delete test-data dataset.")))
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
@@ -380,19 +388,6 @@
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
     nil))
 
-(defn- dataset-tracked?!
-  [conn driver db-def]
-  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                       driver
-                                       conn
-                                       "SELECT true as tracked FROM metabase_test_tracking.PUBLIC.datasets WHERE hash = ? and name = ?"
-                                       [(tx/hash-dataset db-def) (qualified-db-name db-def)])
-              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-    (some-> rs
-            resultset-seq
-            first
-            :tracked)))
-
 (defn- database-exists?!
   [conn driver db-def]
   (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
@@ -403,6 +398,25 @@
               ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (some-> rs resultset-seq first)))
 
+(defn- dataset-rows-ok?! [conn {:keys [table-definitions] :as dataset}]
+  ;; sometimes for unknown reasons we get datasets double- or triple-inserted
+  ;; and we have not been able to determine why. if a dataset has too many rows,
+  ;; treat it as if it hasn't been loaded and force it to be reloaded.
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                       :snowflake conn
+                                       (format "SHOW TABLES IN DATABASE \"%s\""
+                                               (qualified-db-name dataset)) [])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
+    (let [table-names (set (map :table-name table-definitions))
+          db-tables (->> (resultset-seq rs)
+                         ;; there are some other tables of unknown source in there
+                         ;; like "g_inspector_ji_f9f65557_e249_4543_ab34_9e"
+                         (filter #(table-names (:name %))))
+          db-row-counts (zipmap (map :name db-tables) (map :rows db-tables))
+          dataset-row-counts (zipmap (map :table-name table-definitions)
+                                     (map (comp count :rows) table-definitions))]
+      (= db-row-counts dataset-row-counts))))
+
 (defmethod tx/dataset-already-loaded? :snowflake
   [driver db-def]
   ;; check and see if ANY tables are loaded for the current catalog
@@ -411,10 +425,8 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (setup-tracking-db! conn driver)
-     (and
-      (dataset-tracked?! conn driver db-def)
-      (database-exists?! conn driver db-def)))))
+     (and (database-exists?! conn driver db-def)
+          (dataset-rows-ok?! conn db-def)))))
 
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
@@ -423,6 +435,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
+     (setup-tracking-db! conn driver)
      (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                           driver
                                           conn

@@ -111,7 +111,7 @@ const EventForm = ({
               name="name"
               label={t`Event name`}
               placeholder={t`Product launch`}
-              autoFocus
+              data-autofocus
             />
             <Flex align="end" gap="md">
               <FormDateInput

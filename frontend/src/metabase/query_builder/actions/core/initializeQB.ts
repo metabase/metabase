@@ -15,17 +15,14 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import {
-  fetchDatabaseMetadata,
-  fetchTableMetadata,
-  updateMetadata,
-} from "metabase/redux/metadata";
+import { fetchDatabaseMetadata, updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase/redux/store";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
@@ -314,7 +311,7 @@ async function handleQBInit(
   const currentUser = getUser(getState());
 
   if (isTableRoute && slugEntityId != null) {
-    await dispatch(fetchTableMetadata(slugEntityId));
+    await dispatch(fetchTableMetadataAndForeignKeys({ id: slugEntityId }));
     if (isStale()) {
       return;
     }

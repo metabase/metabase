@@ -246,7 +246,7 @@ function DatasetFieldMetadataSidebarInner({
                         left: "0.75rem",
                         top: "0.5rem",
                         fontSize: "0.625rem",
-                        color: color("text-tertiary"),
+                        color: color("text-disabled"),
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",

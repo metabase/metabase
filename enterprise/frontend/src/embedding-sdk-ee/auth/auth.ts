@@ -28,8 +28,11 @@ import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { api } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import {
+  sessionTokenHeaders,
+  setApiKeyHeader,
+} from "metabase/embedding/lib/embedding-request-auth";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
@@ -37,7 +40,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -65,6 +68,15 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   // remove any stale tokens that might be there from a previous session
   samlTokenStorage.remove();
 
+  // Resolve the SSO session token (refreshing it when expired) and emit it as
+  // the X-Metabase-Session header. This runs on the refresh-handler slot, which
+  // is ordered after the static auth-header slot, so a freshly refreshed token
+  // applies to the very request that triggered the refresh.
+  const sessionTokenHandler = async () => {
+    const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
+    return session?.id ? sessionTokenHeaders(session.id) : undefined;
+  };
+
   // Check if we can use the auth pre-fetched by the bootstrap chunk
   const earlyAuthStatus = getAuthState()?.status;
   if (earlyAuthStatus && earlyAuthStatus !== "skipped") {
@@ -84,7 +96,6 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       authState.user &&
       authState.siteSettings
     ) {
-      api.sessionToken = authState.session.id;
       // Store the session token in Redux so getOrRefreshSession finds it
       // and doesn't trigger a redundant token refresh on the first API call.
       dispatch(
@@ -96,16 +107,10 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       dispatch(loadSettings(authState.siteSettings as Settings));
       MetabaseSettings.setAll(authState.siteSettings as Settings);
 
-      // Set up the refresh handler so API calls can renew the token later.
+      // The session handler emits the X-Metabase-Session header on every API
+      // call, renewing the token when it expires.
       PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
-        async () => {
-          const session = await dispatch(
-            getOrRefreshSession(authConfig),
-          ).unwrap();
-          if (session?.id) {
-            api.sessionToken = session.id;
-          }
-        };
+        sessionTokenHandler;
 
       return;
     }
@@ -126,23 +131,20 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 
   if (isValidApiKeyConfig) {
     // API key setup
-    api.apiKey = apiKey;
+    PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+      setApiKeyHeader(apiKey);
   } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
     // Use existing user session. Do nothing.
   } else if (isValidInstanceUrl) {
-    // SSO setup
+    // SSO setup. The session handler sets the X-Metabase-Session header on every
+    // request and refreshes the token when it expires; later API calls pick it
+    // up because the handler runs in the request pipeline. Call it once eagerly
+    // to verify the session is valid before the app renders.
     PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
-      async () => {
-        const session = await dispatch(
-          getOrRefreshSession(authConfig),
-        ).unwrap();
-        if (session?.id) {
-          api.sessionToken = session.id;
-        }
-      };
+      sessionTokenHandler;
     try {
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(authConfig)).unwrap();
+      await sessionTokenHandler();
     } catch (e) {
       // TODO (Oisin 2025-05-27): Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
       // but due to time constraints this is what we have to do to make sure tests pass.

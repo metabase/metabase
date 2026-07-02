@@ -2,8 +2,8 @@ import { useDraggable } from "@dnd-kit/core";
 import cx from "classnames";
 import { useEffect, useId, useRef } from "react";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Ellipsified } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 

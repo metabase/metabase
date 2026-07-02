@@ -10,7 +10,7 @@ const DatabaseInfoField = ({
 }: DatabaseInfoFieldProps): JSX.Element | null => {
   return placeholder ? (
     <Flex
-      bg="background-secondary"
+      bg="background_page-secondary"
       c="text-secondary"
       data-testid="app-banner"
       mb="sm"

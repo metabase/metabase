@@ -26,7 +26,7 @@
   text-decoration: none;
 
   &:hover {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 
   &.isDisabled {

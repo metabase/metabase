@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { getParentEntity } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { navigateBackToDashboard } from "metabase/redux/query-builder";
@@ -59,7 +59,7 @@ export function QueryBuilderBackButton({
         variant="outline"
         radius="xl"
         size="2.625rem"
-        color="border"
+        color="border-neutral"
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}

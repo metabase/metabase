@@ -197,7 +197,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="background-primary"
+      bg="background_page-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
@@ -213,7 +213,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
+          <Text size="sm" c={isNew ? "core-blue-saturated" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">
@@ -231,7 +231,7 @@ export const AgentSuggestionMessage = ({
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
               p="md"
-              bg="background-secondary"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
@@ -242,7 +242,7 @@ export const AgentSuggestionMessage = ({
           .with({ isLoading: true }, () => (
             <Flex
               p="md"
-              bg="background-secondary"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
@@ -262,7 +262,7 @@ export const AgentSuggestionMessage = ({
           align="center"
           justify="space-between"
           style={{
-            borderTop: opened ? `1px solid var(--mb-color-border)` : "",
+            borderTop: opened ? `1px solid var(--mb-color-border-neutral)` : "",
           }}
         >
           <Flex
@@ -278,7 +278,7 @@ export const AgentSuggestionMessage = ({
                 variant="subtle"
                 fw="normal"
                 fz="sm"
-                c={canApply && !readonly ? "success" : "text-tertiary"}
+                c={canApply && !readonly ? "success" : "text-disabled"}
                 disabled={!canApply || readonly}
                 onClick={handleApply}
               >

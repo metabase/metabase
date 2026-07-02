@@ -27,6 +27,7 @@
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -40,10 +41,6 @@
    [toucan2.core :as t2]))
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
-
-(def ^:private ^:const default-query-row-limit
-  "Default row cap when :limit is omitted from a table query request."
-  200)
 
 (def ^:private ^:const page-size
   "Rows returned per page when paginating the combined query endpoint via continuation tokens.
@@ -103,21 +100,30 @@
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
 (mr/def ::search-result-item
-  "A table or metric returned from search."
+  "A table, model, metric, saved question, dashboard, or collection returned from search.
+   The map is intentionally open: the underlying search enriches results with extra fields
+   (e.g. `:database_name`, `:portable_entity_id`, metric base-table info) that callers may
+   ignore. Only the keys agents commonly rely on are declared here."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum "table" "metric"]]
+   [:type [:enum "table" "metric" "model" "question" "dashboard" "collection"]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
    [:database_schema {:optional true} [:maybe :string]]
    [:verified {:optional true} [:maybe :boolean]]
+   [:official {:optional true} [:maybe :boolean]]
+   ;; Present on questions, dashboards, metrics, and models — the collection the entity lives in.
+   [:collection {:optional true} [:maybe :map]]
+   ;; Present on collection results — the parent location path (e.g. "/12/34/").
+   [:location {:optional true} [:maybe :string]]
    [:updated_at {:optional true} [:maybe :any]]
    [:created_at {:optional true} [:maybe :any]]])
 
 (mr/def ::search-response
-  "Search results containing tables and metrics matching the query."
+  "Search results containing tables, models, metrics, saved questions, dashboards, and
+   collections matching the query."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
@@ -150,14 +156,15 @@
     :else           v))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
-  "Search for tables and metrics.
+  "Search for tables, models, metrics, saved questions, dashboards, and collections.
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :title "Search Tables and Metrics"
-           :description (str "Search for tables and metrics in Metabase. "
+           :title "Search Metabase Content"
+           :description (str "Search for tables, models, metrics, saved questions, dashboards, and collections "
+                             "in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
@@ -175,7 +182,7 @@
   (let [results (metabot-search/search
                  {:term-queries     (or (coerce-query-list term-queries) [])
                   :semantic-queries (or (coerce-query-list semantic-queries) [])
-                  :entity-types     ["table" "metric"]
+                  :entity-types     ["table" "metric" "model" "question" "dashboard" "collection"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
@@ -300,6 +307,48 @@
     (cond-> {:query (-> query json/encode u/encode-base64)}
       prompt (assoc :prompt prompt))))
 
+;;; --------------------------------------------- Construct Native Query ---------------------------------------------
+
+(mr/def ::construct-native-query-request
+  "Request body for /v1/construct-native-query: a target database and a raw SQL string."
+  [:map {:closed true}
+   [:database_id {:tool/description "Numeric id of the database to run the SQL against."}
+    ms/PositiveInt]
+   [:sql {:tool/description "The raw SQL query text."}
+    ms/NonBlankString]])
+
+(api.macros/defendpoint :post "/v1/construct-native-query" :- ::construct-query-response
+  "Construct a native (raw SQL) query against a database.
+
+  Wraps `sql` into a serialized native query and returns it base64-encoded — the same
+  `{\"query\": <base64>}` shape as /v2/construct-query — so it can be saved as a question via
+  /v1/question (the MCP layer swaps the base64 for a `query_handle`).
+
+  This endpoint does NOT execute the SQL; to run native SQL ad hoc use /v1/execute-sql. The
+  MBQL execution endpoints (/v1/execute, /v2/query) reject native queries by design, so a
+  handle produced here is for saving, not for /v2/query execution."
+  {:scope metabot/agent-sql-construct
+   :tool  {:name "construct_native_query"
+           :description (str "Construct a native (raw SQL) query for the given database. Returns "
+                             "`{\"query_handle\": \"<uuid>\"}` to feed `create_question` and save it "
+                             "as a question. Use this ONLY for native SQL — for MBQL use "
+                             "`construct_query`. This does NOT run the SQL; to execute SQL ad hoc "
+                             "use `execute_sql`. Saving the resulting question requires native-query "
+                             "permission on the target database.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [_route-params
+   _query-params
+   {:keys [database_id sql]} :- ::construct-native-query-request]
+  ;; Construction does not run the query, but require the caller to at least be able to see the
+  ;; target database so a bogus/inaccessible database_id fails here rather than at save time.
+  (api/read-check :model/Database database_id)
+  ;; Emit MBQL 5 (via `lib/native-query` + `prepare-for-serialization`, same as `construct_query`)
+  (let [mp (lib-be/application-database-metadata-provider database_id)]
+    {:query (-> (lib/native-query mp sql)
+                lib/prepare-for-serialization
+                json/encode
+                u/encode-base64)}))
+
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
 (defn- generate-continuation-token
@@ -340,11 +389,11 @@
     decoded))
 
 (defn- clamp-total-limit
-  "Default a missing :limit and cap it at the combined endpoint's hard maximum.
-   This is the app-level total-row budget enforced across paginated responses; each page's QP-level
-   cap comes from `:page.items`, which `remaining-page-rows` clamps to respect this total."
+  "Cap `limit` at the combined endpoint's hard maximum.
+   A nil `limit` (no explicit limit in the query) defaults to the full 2000-row budget so that
+   omitting :limit doesn't silently collapse pagination to a single page."
   [limit]
-  (min (or limit default-query-row-limit) max-total-row-limit))
+  (min (or limit max-total-row-limit) max-total-row-limit))
 
 (defn- total-row-limit
   "The user's requested :limit read from a resolved lib query, defaulted and capped."
@@ -534,11 +583,16 @@
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
-                             "metadata. If more rows are available, the response includes a "
-                             "continuation_token — pass it back to get the next page.\n\n"
-                             "Provide one of: a `query_handle` returned by construct_query "
-                             "(preferred when you have one); a `{\"query\": <object>}` body "
-                             "(same shape as construct_query; see the `construct_notebook_query` "
+                             "metadata, paginating automatically up to 2,000 rows total.\n\n"
+                             "Results are returned in pages of 200 rows. When more pages remain "
+                             "within the 2,000-row budget, the response includes a "
+                             "continuation_token — pass it back to fetch the next page. A missing "
+                             "continuation_token means the budget is exhausted or the table has "
+                             "fewer rows than the page size. If the table is larger than 2,000 "
+                             "rows and you need more, add a filter or aggregation to narrow "
+                             "the result set.\n\n Provide one of: a `query_handle` returned "
+                             "by construct_query (preferred when you have one); a `{\"query\": <object>}` "
+                             "body (same shape as construct_query; see the `construct_notebook_query` "
                              "tool for the format reference); or a `{\"continuation_token\": "
                              "\"...\"}` from a previous response.")
            :annotations {:read-only? true}}}
@@ -696,7 +750,7 @@
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
                              "Examples: metabase://databases, metabase://database/{id}/tables, "
-                             "metabase://collection/{id}/items, metabase://card/{id}, "
+                             "metabase://collection/{id}/items, metabase://question/{id}, "
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
                              "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
   [_route-params
@@ -751,26 +805,37 @@
 (api.macros/defendpoint :post "/v1/question" :- ::create-question-response
   "Save a previously constructed query as a named question (card).
 
-  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,
-  or a base64-encoded MBQL string. MCP callers should always use the handle.
+  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query` (MBQL) or
+  `construct_native_query` (native SQL), or a base64-encoded query string. MCP callers should
+  always use the handle.
   Optionally specify display type, description, collection, and visualization settings.
   If `collection_id` is omitted the question is saved to the caller's personal collection.
-  The response `collection_path` is the saved location."
+  Pass an explicit `null` to save it to the root collection.
+  The response `collection_path` is the saved location.
+
+  Saving a native (raw SQL) query requires native-query permission on the target database."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
-                             "Pass the `query_handle` returned by `construct_query`. "
+                             "Pass the `query_handle` returned by `construct_query` (MBQL) or "
+                             "`construct_native_query` (native SQL). "
                              "Optionally set display type (table, bar, line, pie, etc.), "
                              "description, and target collection. "
-                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`.")}}
   [_route-params
    _query-params
-   {:keys [query display description collection_id visualization_settings]
-    question-name :name}
+   {:keys [query display description visualization_settings]
+    question-name :name
+    :as body}
    :- ::create-question-request]
   (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        collection_id (or collection_id (personal-collection-id))]
+        ;; `nil` means the root collection, so only default to the personal collection when the
+        ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
+        collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))]
     ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
     ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
     ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
@@ -832,13 +897,15 @@
   "Update a saved question (card). Patch semantics - only fields that you pass are changed.
 
   Set `collection_id` to move the card to a different collection. Set `archived: true` to archive.
-  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying query."
+  Pass `query` (a query_handle from construct_query or construct_native_query, or a base64 query
+  string) to replace the underlying query. Replacing it with a native (raw SQL) query requires
+  native-query permission on the target database."
   {:scope metabot/agent-question-update
    :tool  {:name "update_question"
            :description (str "Update a saved question (card). Patch semantics - only fields you pass are changed. "
                              "To move a card to a different collection, set collection_id. "
                              "To archive, set archived true. To replace the underlying query, pass query "
-                             "(a query_handle from construct_query).")}}
+                             "(a query_handle from construct_query or construct_native_query).")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
@@ -914,6 +981,47 @@
      :description     (:description updated)
      :archived        (boolean (:archived updated))}))
 
+;;; ------------------------------------------------ Execute Question -----------------------------------------------
+
+(defn- reject-parameterized-card!
+  "Agent execution does not yet supply parameter values, so refuse to run a card that declares
+   user-facing parameters or input template tags (field filters / variables). Snippet and
+   card-reference template tags don't count — those need no runtime input. Returns a 400 so the
+   limitation surfaces clearly rather than silently running the card with defaults."
+  [card]
+  (when (seq (qp.card/combined-parameters-and-template-tags card))
+    (throw (ex-info (str "This question takes parameters, which agent execution does not yet "
+                         "support. Run it in Metabase, or save a parameterless version.")
+                    {:status-code 400 :card-id (:id card)}))))
+
+(api.macros/defendpoint :post "/v1/question/:id/query"
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
+  "Run a saved question (card) and return its results.
+
+  Executes the query stored on the card under the caller's permissions and returns rows +
+  column metadata — the same response shape as /v1/execute.
+
+  Parameterized questions are NOT supported: if the card declares parameters or input
+  template tags (field filters / variables), this returns a 400. Run it in Metabase, or
+  save a parameterless version."
+  {:scope metabot/agent-question-execute
+   :tool  {:name "execute_question"
+           :description (str "Run a saved question by id and return its rows with column metadata, "
+                             "row count, and execution time. Use this to get the current results of "
+                             "an existing saved question. Does NOT support parameterized questions — "
+                             "if the question takes parameters or template-tag input, this returns an "
+                             "error.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body]
+  (let [card (api/check-404 (t2/select-one :model/Card id))]
+    (reject-parameterized-card! card)
+    (qp.card/process-query-for-card
+     card :api
+     :context    :question
+     :middleware {:process-viz-settings? false})))
+
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
 (mr/def ::create-dashboard-request
@@ -939,21 +1047,28 @@
   Pass `question_ids` to add existing saved questions as cards on the dashboard.
   Cards are automatically positioned on the grid based on their display type.
   If `collection_id` is omitted the dashboard is saved to the caller's personal collection.
+  Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
   {:scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
                              "Cards are auto-positioned on the dashboard grid. "
-                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`. "
                              "Returns the dashboard URL.")}}
   [_route-params
    _query-params
-   {:keys [description collection_id question_ids]
-    dashboard-name :name}
+   {:keys [description question_ids]
+    dashboard-name :name
+    :as body}
    :- ::create-dashboard-request]
-  (let [collection_id (or collection_id (personal-collection-id))]
+  ;; `nil` means the root collection, so only default to the personal collection when the
+  ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
+  (let [collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
                   (mapv #(api/read-check :model/Card %) question_ids))

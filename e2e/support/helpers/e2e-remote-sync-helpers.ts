@@ -291,6 +291,15 @@ export const createSharedTenantCollection = (name: string) => {
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
 
+/**
+ * The import/export confirmation modal stays open until the user closes it (GHY-3747). Dismiss it so a
+ * subsequent interaction isn't blocked by the modal overlay. Waits for the Close button since the modal
+ * renders from the same task poll that `waitForTask` observes.
+ */
+export const closeSyncResultModal = () => {
+  cy.findByTestId("sync-success-close-button", { timeout: 10000 }).click();
+};
+
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
@@ -305,6 +314,8 @@ export const waitForTask = (
     } else if (body?.status !== "successful") {
       return waitForTask({ taskName }, retries + 1);
     }
+    // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
+    return closeSyncResultModal();
   });
 };
 

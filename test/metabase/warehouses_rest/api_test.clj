@@ -684,6 +684,40 @@
                               {:details {:db "new"}}))
       (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
 
+(deftest reject-sample-database-edit-test
+  (testing "PUT /api/database/:id rejects any edit to the sample database with a sample-specific message"
+    (mt/with-temp [:model/Database {db-id :id} {:engine    ::test-driver
+                                                :is_sample true
+                                                :name      "Sample Database"}]
+      (is (re-find #"sample database cannot be edited"
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                         {:name "New Name"})))
+      (testing "the row is unchanged"
+        (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id))))
+      (testing "the guard is lifted when test endpoints are enabled (e2e tests edit the sample database)"
+        (mt/with-temp-env-var-value! [mb-enable-test-endpoints "true"]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:name "New Name"})
+          (is (= "New Name" (t2/select-one-fn :name :model/Database :id db-id))))))))
+
+(deftest database-modifiability-flags-test
+  (testing "GET /api/database/:id returns the is_sample and is_attached_dwh flags the admin UI uses to disable editing"
+    (testing "sample database"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver, :is_sample true}]
+        (let [db (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (true? (:is_sample db)))
+          (is (false? (:is_attached_dwh db))))))
+    (testing "attached DWH"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver, :is_attached_dwh true}]
+        (let [db (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (true? (:is_attached_dwh db)))
+          (is (false? (:is_sample db))))))
+    (testing "ordinary database is editable (both flags false)"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+        (let [db (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (false? (:is_sample db)))
+          (is (false? (:is_attached_dwh db))))))))
+
 (deftest update-database-provider-name-test
   (testing "PUT /api/database/:id"
     (testing "should be able to set and unset `provider_name`"
@@ -799,7 +833,8 @@
 
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
-    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                             (mt/normal-drivers-with-feature :actions :test/dynamic-dataset-loading))
       (let [;; 1. create a database and sync
             database-name      (u.random/random-name)
             empty-dbdef        {:database-name database-name}
@@ -3017,6 +3052,24 @@
                                                     :details {:host "localhost"}}]
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
                                 {:admin_details {:host "admin-host"}}))))))
+
+(deftest update-database-preserves-overlay-details-test
+  (testing "PUT /api/database/:id without write_data_details/admin_details/provider_name keys"
+    (testing "preserves nullable fields instead of nil-ing them out"
+      (mt/with-premium-features #{:writable-connection :workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
+                                                    :details            {:host "localhost"}
+                                                    :write_data_details {:host "write-host"}
+                                                    :admin_details      {:host "admin-host"}
+                                                    :provider_name      "AWS RDS"}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:name "Renamed DB"})
+            (is (=? {:name               "Renamed DB"
+                     :write_data_details {:host "write-host"}
+                     :admin_details      {:host "admin-host"}
+                     :provider_name      "AWS RDS"}
+                    (t2/select-one :model/Database :id db-id)))))))))
 
 (deftest put-validates-admin-details-connection-test
   (when config/ee-available?

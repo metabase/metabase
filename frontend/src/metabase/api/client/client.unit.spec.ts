@@ -1,5 +1,9 @@
 import fetchMock from "fetch-mock";
 
+import { setupBasename } from "__support__/basename";
+import { PLUGIN_API, reinitialize } from "metabase/plugins";
+import { setBasename } from "metabase/utils/basename";
+
 import { ApiClient } from "./client";
 
 describe("api", () => {
@@ -12,6 +16,8 @@ describe("api", () => {
 
     afterEach(() => {
       fetchMock.removeRoutes().clearHistory();
+      // Reset any plugin request handlers installed by a test.
+      reinitialize();
     });
 
     it("substitutes :tag URL placeholders from `params`", async () => {
@@ -145,16 +151,17 @@ describe("api", () => {
       // from the body field — not just from URL params.
       fetchMock.get("path:/api/embed/card/SOME_JWT/query", { rows: [] });
 
-      apiInstance.beforeRequestHandlers.push(async (config) => {
-        if (config.url === "/api/card/:cardId/query") {
-          return {
-            ...config,
-            method: "GET" as const,
-            url: "/api/embed/card/:token/query",
-          };
-        }
-        return config;
-      });
+      PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds =
+        async (config) => {
+          if (config.url === "/api/card/:cardId/query") {
+            return {
+              ...config,
+              method: "GET" as const,
+              url: "/api/embed/card/:token/query",
+            };
+          }
+          return config;
+        };
 
       await apiInstance.request({
         method: "POST",
@@ -171,19 +178,20 @@ describe("api", () => {
       expect(call?.options?.body).toBeFalsy();
     });
 
-    it("omits params with undefined values from the querystring", async () => {
+    it("omits params with null/undefined values from the querystring", async () => {
       fetchMock.get("path:/api/search", { items: [] });
 
       await apiInstance.request({
         method: "GET",
         url: "/api/search",
-        params: { q: "foo", limit: undefined, offset: 0 },
+        params: { q: "foo", limit: undefined, cursor: null, offset: 0 },
       });
 
       const call = fetchMock.callHistory.lastCall();
       expect(call?.url).toContain("q=foo");
       expect(call?.url).toContain("offset=0");
       expect(call?.url).not.toContain("limit");
+      expect(call?.url).not.toContain("cursor");
     });
   });
 
@@ -274,6 +282,8 @@ describe("api", () => {
   describe("status-code event emit", () => {
     let apiInstance: ApiClient;
 
+    setupBasename();
+
     beforeEach(() => {
       apiInstance = new ApiClient();
     });
@@ -298,7 +308,7 @@ describe("api", () => {
     });
 
     it("strips a subpath basename so listeners see the relative path", async () => {
-      apiInstance.basename = "/metabase";
+      setBasename("/metabase");
       fetchMock.get("path:/metabase/api/session", { status: 401 });
       const listener = jest.fn();
       apiInstance.on(401, listener);
@@ -311,7 +321,7 @@ describe("api", () => {
     });
 
     it("emits the relative path when basename is a full URL (SDK case)", async () => {
-      apiInstance.basename = "https://metabase.example.com";
+      setBasename("https://metabase.example.com");
       fetchMock.get("https://metabase.example.com/api/session", {
         status: 401,
       });
@@ -326,7 +336,7 @@ describe("api", () => {
     });
 
     it("strips the subpath when basename is a full URL with a subpath", async () => {
-      apiInstance.basename = "http://localhost/mb";
+      setBasename("http://localhost/mb");
       fetchMock.get("http://localhost/mb/api/session", { status: 401 });
       const listener = jest.fn();
       apiInstance.on(401, listener);

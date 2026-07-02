@@ -4,8 +4,8 @@ import * as Yup from "yup";
 
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useCreateDashboardMutation } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import { useInitialCollectionId } from "metabase/collections/hooks";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,

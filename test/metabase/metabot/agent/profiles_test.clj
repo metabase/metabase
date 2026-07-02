@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
@@ -59,11 +61,15 @@
     (testing "retrieves nlq profile"
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
+        ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
+        ;; In tests the library index can't answer, so :nlq is transparently served the general-search
+        ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
         (is (contains? (tool-names profile) "search"))
+        (is (not (contains? (tool-names profile) "retrieve_library_entities")))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
     (testing "retrieves slackbot profile"
       (let [profile (profiles/get-profile :slackbot)]
@@ -155,11 +161,17 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "embedding_next and nlq profiles have identical tool sets"
-    (let [tool-names  (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
-          embedding   (profiles/get-profile :embedding_next)
-          nlq         (profiles/get-profile :nlq)]
-      (is (= (tool-names nlq) (tool-names embedding)))))
+  (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
+    (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
+          embedding  (tool-names (profiles/get-profile :embedding_next))
+          fallback   (tool-names (profiles/get-profile :nlq-fallback))
+          ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
+          curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+                       (tool-names (profiles/get-profile :nlq)))]
+      ;; the fallback profile is embedding_next's discovery surface (general `search`)
+      (is (= fallback embedding))
+      ;; the curated profile is the same set with retrieve_library_entities in place of `search`
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "navigate_user is excluded without the capability"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
@@ -169,6 +181,26 @@
     (testing "navigate_user is included with the capability"
       (let [tools (profiles/get-tools-for-profile :embedding_next ["frontend:navigate_user_v1"])]
         (is (contains? tools "navigate_user"))))))
+
+(deftest nlq-data-discovery-fallback-test
+  (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (testing "entity retrieval AVAILABLE -> curated library tool, no general-search fallback"
+        (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+          (let [tools (profiles/get-tools-for-profile :nlq [])]
+            (is (contains? tools "retrieve_library_entities")
+                "the curated library tool is offered when the index can serve queries")
+            (is (not (contains? tools "search"))
+                "the general-search fallback is filtered out when the library is available")
+            (is (contains? tools "construct_notebook_query")))))
+      (testing "entity retrieval UNAVAILABLE -> general-search fallback, no curated library tool"
+        (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
+          (let [tools (profiles/get-tools-for-profile :nlq [])]
+            (is (not (contains? tools "retrieve_library_entities"))
+                "the curated library tool is gated out when the index can't serve queries")
+            (is (contains? tools "search")
+                "the general-search fallback keeps the agent from having zero discovery tools")
+            (is (contains? tools "construct_notebook_query"))))))))
 
 (deftest transform-feature-capabilities-test
   (let [orig-has-feature (mt/original-fn #'premium-features/has-feature?)
@@ -215,3 +247,29 @@
         (is (= #{}
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))))
+
+(deftest terminal-tools-test
+  (testing "the :sql profile marks its SQL write tools AND clarification terminal"
+    (is (= #{"create_sql_query" "edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"}
+           (:terminal-tools (profiles/get-profile :sql)))))
+  (testing "the document profile ends the turn on a constructed chart, not on schema collection"
+    (is (= #{"document_construct_model_chart" "document_construct_sql_chart"}
+           (:terminal-tools (profiles/get-profile :document-generate-content)))))
+  (testing "terminality is per-profile — profiles that share these tools don't inherit it"
+    (is (nil? (:terminal-tools (profiles/get-profile :internal))))
+    (is (nil? (:terminal-tools (profiles/get-profile :nlq))))))
+
+(deftest register-profile-validation-test
+  (let [base {:name            :scratch
+              :prompt-template "internal.selmer"
+              :max-iterations  10
+              :temperature     0.3
+              :tools           [#'tools/read-resource-tool]}]
+    (testing "rejects :always-on-skills that don't resolve to a registered skill"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unknown always-on skill"
+                            (#'profiles/register-profile!
+                             (assoc base :always-on-skills [:no-such-skill])))))
+    (testing "rejects :terminal-tools the profile does not expose"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"terminal tools it does not expose"
+                            (#'profiles/register-profile!
+                             (assoc base :terminal-tools #{"nonexistent_tool"})))))))
