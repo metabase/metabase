@@ -448,7 +448,7 @@ export async function loadCustomVizPlugin(
   } catch (error) {
     // Suppress the failure if a newer load has superseded this one
     const superseded =
-      (loadAppliedSeq.get(plugin.id) ?? 0) >= loadSeq ||
+      (loadAppliedSeq.get(plugin.id) ?? 0) > loadSeq ||
       (loadStartedSeq.get(plugin.id) ?? 0) > loadSeq;
     if (superseded) {
       return null;
