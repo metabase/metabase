@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
 import { canDownloadResults } from "metabase/common/utils/dataset";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -35,13 +34,12 @@ export const DashCardMenuItems = ({
   const dispatch = useDispatch();
 
   const {
+    dashcardMenu,
     onEditQuestion = (
       question: Question,
       mode: "query" | "view" | "notebook" = "notebook",
     ) => dispatch(editQuestion(question, mode)),
-  } = useSdkDashboardContext();
-
-  const { dashcardMenu } = useDashboardContext();
+  } = useDashboardContext();
   const dashcardMenuItems = dashcardMenu as
     | DashboardCardCustomMenuItem
     | undefined;
