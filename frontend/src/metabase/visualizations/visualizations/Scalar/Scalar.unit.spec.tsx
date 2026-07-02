@@ -141,8 +141,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("Field to show")).toBeInTheDocument();
 
     const getFieldSelect = async () =>
@@ -177,8 +177,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
 
     expect(
       screen.queryByTestId("chart-settings-widget-scalar.field"),

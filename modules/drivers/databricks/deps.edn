@@ -3,7 +3,7 @@
 
  :deps
  {at.yawk.lz4/lz4-java                {:mvn/version "1.10.4"} ; pin newer version because version included in JDBC driver has security warnings
-  com.databricks/databricks-jdbc-thin {:mvn/version "3.3.1"
+  com.databricks/databricks-jdbc-thin {:mvn/version "3.4.1"
                                        :exclusions  [org.apache.commons/commons-lang3  ;; dep in top-level deps.edn; exclusion fixes security warnings
                                                      org.slf4j/slf4j-jdk14]}           ;; conflicts with our log4j2 SLF4J provider
   ;; pin Bouncy Castle explicitly so the bundled driver JAR uses the patched version

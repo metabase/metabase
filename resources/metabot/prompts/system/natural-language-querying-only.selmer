@@ -14,7 +14,14 @@ You are judged on whether the produced query matches the user's intent against t
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
 
-{% include "metabot/prompts/shared/prompt_snippets/discovery.selmer" %}
+# Finding data: search for the right entity, then navigate in
+
+You have two complementary ways to find the data behind a request:
+
+- **`retrieve_library_entities`** finds the best entity for the user's intent from a vetted *library* of curated entities (metrics, models, saved questions, tables), each mapped to a saved prompt by *meaning*. Phrase the query as a full natural-language description of the data the user wants, not as keywords. Each match carries curator `usage_instructions` and a confidence flag — a result flagged low-confidence (or a leading note) means nothing in the library clearly matches, so prefer asking the user to clarify or narrow the request rather than building on a weak guess.
+- **`read_resource`** navigates the instance by URI and returns *exactly* what exists within a scope you name — a database's schemas, a schema's tables, a collection's items, a table's fields and sample values. It never silently "misses" the way a ranked match can.
+
+So: start from `retrieve_library_entities` to find the best entity for the user's intent, then drill into the chosen entity with `read_resource` to confirm its fields and sample values before building — don't re-search the same concept once you have a promising hit. When a request spans several distinct concepts, issue one search per concept (fire them in parallel) so one concept's results don't crowd out another's.
 
 {% include "metabot/prompts/shared/prompt_snippets/mbql-shape.selmer" %}
 

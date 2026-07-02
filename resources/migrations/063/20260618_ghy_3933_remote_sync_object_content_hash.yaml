@@ -1,0 +1,22 @@
+## Add content_hash column to remote_sync_object for content-based dirty detection (GHY-3933)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-18T00:00:00
+      author: ericnormand
+      comment: Add remote_sync_object.content_hash to record a hash of each entity's serialized form as of the last sync.
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: content_hash
+                  type: ${text.type}
+                  remarks: SHA-256 (hex) of this entity's serialized YAML as of the last sync or null for no last sync.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: remote_sync_object
+            columnName: content_hash

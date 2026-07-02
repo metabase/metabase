@@ -108,7 +108,7 @@ const elements = [
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
-  createElement({ type: "shared", name: "i18n" }),
+  createElement({ type: "shared", name: "content-translation" }),
   createElement({
     type: "shared",
     name: "metabase-shared",

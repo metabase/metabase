@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
 import {
@@ -42,12 +41,12 @@ import { formatValue } from "metabase/visualizations/lib/formatting";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
 import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {
-  ColumnSettings,
   ComputedVisualizationSettings,
   Extent,
   VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   NumericScale,
@@ -389,7 +388,7 @@ export const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   stackType: StackType,
-  formattingOptions?: OptionsType,
+  formattingOptions?: ColumnSettings,
 ): AxisFormatter => {
   const isNormalized = stackType === "normalized";
 
@@ -500,7 +499,7 @@ function getYAxisExtent(
 interface YAxisModelOptions {
   stackModels?: StackModel[];
   stackType?: StackType;
-  formattingOptions?: OptionsType;
+  formattingOptions?: ColumnSettings;
   gridSize?: VisualizationGridSize;
   showLabel?: boolean;
 }

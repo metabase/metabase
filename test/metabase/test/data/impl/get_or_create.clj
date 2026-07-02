@@ -449,7 +449,8 @@
       ;; for most DBs, but for cloud databases it makes things worse.
       (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
         #_{:clj-kondo/ignore [:discouraged-var]}
-        (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
+        (println "create-database! failed; destroying database"
+                 driver (pr-str database-name))
         (tx/destroy-db! driver database-definition))
       (throw e))))
 

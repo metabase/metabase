@@ -79,7 +79,7 @@
 
   &.isNotSelected {
     .ColumnTypeIcon {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     }
 
     &:hover {
@@ -97,7 +97,7 @@
       .BucketTriggerButton {
         visibility: visible;
         opacity: 1;
-        color: var(--mb-color-text-tertiary);
+        color: var(--mb-color-text-disabled);
 
         &:hover {
           color: var(--mb-color-text-secondary);
