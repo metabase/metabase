@@ -1,7 +1,10 @@
+import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { TableIndexEntry } from "metabase-types/api";
+
+import { isManagedIndex, isPendingDeletion } from "./utils";
 
 type IndexRowMenuProps = {
   index: TableIndexEntry;
@@ -10,25 +13,29 @@ type IndexRowMenuProps = {
 };
 
 export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
-  const isManaged = index.metabase_managed && index.request?.id !== undefined;
-  const isPendingDeletion = index.request?.status === "delete-pending";
-
-  if (!isManaged) {
+  if (!isManagedIndex(index)) {
     return null;
+  }
+
+  const isDisabled = isPendingDeletion(index);
+
+  function handleIconClick(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <ActionIcon aria-label={t`Index actions`}>
+        <ActionIcon aria-label={t`Index actions`} onClick={handleIconClick}>
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
         <Menu.Item
           leftSection={<Icon name="pencil" />}
           onClick={() => onEdit(index)}
-          disabled={isPendingDeletion}
+          disabled={isDisabled}
         >
           {t`Edit`}
         </Menu.Item>
@@ -36,7 +43,7 @@ export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
           c="danger"
           leftSection={<Icon name="trash" />}
           onClick={() => onDelete(index)}
-          disabled={isPendingDeletion}
+          disabled={isDisabled}
         >
           {t`Delete`}
         </Menu.Item>

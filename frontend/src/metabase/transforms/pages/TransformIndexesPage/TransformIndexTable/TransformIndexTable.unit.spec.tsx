@@ -174,6 +174,56 @@ describe("TransformIndexTable", () => {
     );
   });
 
+  it("opens the editor only when clicking an editable managed index row", async () => {
+    const managed = createMockTableIndexEntry({
+      name: "idx_managed",
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 5 }),
+    });
+    const unmanaged = createMockTableIndexEntry({
+      name: "idx_unmanaged",
+      metabase_managed: false,
+      request: undefined,
+    });
+    const removing = createMockTableIndexEntry({
+      name: "idx_removing",
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 6, status: "delete-pending" }),
+    });
+    const { onEdit } = setup({ indexes: [managed, unmanaged, removing] });
+
+    await userEvent.click(await screen.findByText("idx_unmanaged"));
+    await userEvent.click(screen.getByText("idx_removing"));
+    expect(onEdit).not.toHaveBeenCalled();
+
+    // opening the row menu must not bubble into a row click
+    const managedRow = screen.getByRole("row", { name: /idx_managed/ });
+    await userEvent.click(
+      within(managedRow).getByRole("button", { name: "Index actions" }),
+    );
+    expect(await screen.findByText("Edit")).toBeInTheDocument();
+    expect(onEdit).not.toHaveBeenCalled();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(screen.getByText("idx_managed"));
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "idx_managed" }),
+    );
+  });
+
+  it("does not open the editor when clicking a row in read-only mode", async () => {
+    const index = createMockTableIndexEntry({
+      name: "idx_readonly",
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 5 }),
+    });
+    const { onEdit } = setup({ indexes: [index], readOnly: true });
+
+    await userEvent.click(await screen.findByText("idx_readonly"));
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
   it("does not offer a menu for unmanaged indexes", async () => {
     setup({
       indexes: [

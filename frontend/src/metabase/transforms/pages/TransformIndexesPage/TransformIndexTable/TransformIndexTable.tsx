@@ -1,5 +1,5 @@
-import type { SortingState } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import type { Row, SortingState } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
@@ -11,7 +11,7 @@ import type { TableIndexEntry, UserId } from "metabase-types/api";
 
 import { getColumns } from "./columns";
 import type { IndexRow } from "./types";
-import { getIndexKey } from "./utils";
+import { getIndexKey, isManagedIndex, isPendingDeletion } from "./utils";
 
 type TransformIndexTableProps = {
   indexes: TableIndexEntry[];
@@ -65,6 +65,16 @@ export function TransformIndexTable({
     [systemTimezone, readOnly, onEdit, onDelete],
   );
 
+  const handleRowClick = useCallback(
+    (row: Row<IndexRow>) => {
+      const index = row.original;
+      if (!readOnly && isManagedIndex(index) && !isPendingDeletion(index)) {
+        onEdit(index);
+      }
+    },
+    [readOnly, onEdit],
+  );
+
   const treeTableInstance = useTreeTableInstance<IndexRow>({
     data: rows,
     columns,
@@ -80,6 +90,7 @@ export function TransformIndexTable({
       hierarchical={false}
       emptyState={<ListEmptyState label={t`No indexes yet`} />}
       ariaLabel={t`Transform indexes`}
+      onRowClick={handleRowClick}
     />
   );
 }
