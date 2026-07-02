@@ -26,6 +26,18 @@
      [2 "created" 2]
      [3 "created" 3]]]])
 
+;; Two key columns (order_id, region) for testing a composite merge key.
+(mt/defdataset merge-composite-test
+  "An event log keyed on (order_id, region), for testing a two-column merge key."
+  [["order_region_status"
+    [{:field-name "order_id" :base-type :type/Integer}
+     {:field-name "region" :base-type :type/Text}
+     {:field-name "status" :base-type :type/Text}
+     {:field-name "change_seq" :base-type :type/Integer}]
+    [[1 "us" "created" 1]
+     [1 "eu" "created" 2]
+     [2 "us" "created" 3]]]])
+
 (defn- test-drivers []
   (mt/normal-drivers-with-feature :transforms/table))
 
@@ -127,3 +139,71 @@
                 (is (= ["order_id"] (mapv :name unique-key)))
                 (is (= expected (:field-id (first unique-key)))
                     "field-id resolved to the target's order_id field")))))))))
+
+(deftest merge-composite-key-test
+  (testing "a merge transform can upsert on a two-column key"
+    (mt/test-drivers (test-drivers)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset merge-composite-test
+          (with-transform-cleanup! [target-table {:type     :table
+                                                  :name     "merge_composite"
+                                                  :schema   (t2/select-one-fn :schema :model/Table
+                                                                              (mt/id :order_region_status))
+                                                  :database (mt/id)}]
+            (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
+                  seq-field-id (t2/select-one-pk :model/Field :name "change_seq"
+                                                 :table_id (mt/id :order_region_status))
+                  source-query {:database (mt/id)
+                                :type     :native
+                                :native   {:query         (format "SELECT %s, %s, %s FROM {{t}} AS %s"
+                                                                  (q "order_id") (q "region") (q "status") (q "t"))
+                                           :template-tags {"t" {:id           "t"
+                                                                :name         "t"
+                                                                :display-name "T"
+                                                                :type         "table"
+                                                                :table-id     (mt/id :order_region_status)
+                                                                :required     true}}}}
+                  payload      {:name               "Composite Merge"
+                                :source_database_id (mt/id)
+                                :source             {:type                        "query"
+                                                     :query                       source-query
+                                                     :source-incremental-strategy {:type "checkpoint"
+                                                                                   :checkpoint-filter-field-id seq-field-id}}
+                                :target             (merge target-table
+                                                           {:type                        "table-incremental"
+                                                            :target-incremental-strategy {:type "merge"
+                                                                                          :unique-key [{:name "order_id"}
+                                                                                                       {:name "region"}]}})}
+                  insert!      (fn [rows]
+                                 (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
+                                                                      (mt/id :order_region_status))
+                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                       values       (str/join ", " (map (fn [[oid rg st sq]]
+                                                                          (format "(%d, '%s', '%s', %d)" oid rg st sq))
+                                                                        rows))
+                                       sql          (format "INSERT INTO %s (%s) VALUES %s"
+                                                            (sql.u/quote-name driver/*driver* :table schema tbl)
+                                                            (str/join "," (map q ["order_id" "region" "status" "change_seq"]))
+                                                            values)]
+                                   (driver/execute-raw-queries! driver/*driver* spec [[sql]])))
+                  read-target  (fn []
+                                 (let [sql  (format "SELECT %s, %s, %s FROM %s"
+                                                    (q "order_id") (q "region") (q "status")
+                                                    (sql.u/quote-name driver/*driver* :table
+                                                                      (:schema target-table) (:name target-table)))
+                                       rows (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+                                                :data :rows)]
+                                   (into {} (map (fn [[oid rg st]] [[(long oid) rg] st])) rows)))]
+              (mt/with-temp [:model/Transform transform payload]
+                (testing "first run builds the full target keyed on (order_id, region)"
+                  (transforms.execute/execute! transform {:run-method :manual})
+                  (transforms.tu/wait-for-table (:name target-table) 10000)
+                  (is (= {[1 "us"] "created", [1 "eu"] "created", [2 "us"] "created"}
+                         (read-target))))
+                (testing "new events upsert one composite key and insert another"
+                  (insert! [[1 "us" "shipped" 4] [3 "us" "created" 5]])
+                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                                               {:run-method :manual})
+                  (is (= {[1 "us"] "shipped", [1 "eu"] "created", [2 "us"] "created", [3 "us"] "created"}
+                         (read-target))
+                      "(1,us) updated, (3,us) inserted; (1,eu) and (2,us) untouched"))))))))))
