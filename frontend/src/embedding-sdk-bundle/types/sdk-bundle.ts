@@ -90,7 +90,9 @@ type ReduxStoreExports = {
 };
 
 type ReduxStoreUtilityFunctionExports = {
-  createMetabaseQuery: CreateMetabaseQuery;
+  createMetabaseQuery: ReduxStoreUtilityFunction<
+    ReturnType<CreateMetabaseQuery>
+  >;
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
   >;

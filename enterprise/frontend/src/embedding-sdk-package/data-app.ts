@@ -25,6 +25,7 @@ export {
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
+  UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
 export type {

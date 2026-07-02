@@ -149,6 +149,12 @@ const isOrderableJavaScriptType = (
 const getCreateMetabaseQueryFromBundle = () =>
   getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createMetabaseQuery;
 
+export type UseMetabaseQueryObjectResult = {
+  query: DatasetQuery | null;
+  error: unknown;
+  isLoading: boolean;
+};
+
 export function filter<
   TDimension,
   TOperator extends ValueFilterOperatorForDimension<TDimension>,
@@ -275,6 +281,7 @@ const useMetabaseQueryImpl = <
   );
 
   const queryDataset = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryDataset;
+  const createQuery = getCreateMetabaseQueryFromBundle();
 
   const [data, setData] =
     useState<UseMetabaseQueryResult<TEntity, TQuery>["data"]>(null);
@@ -304,11 +311,11 @@ const useMetabaseQueryImpl = <
 
     try {
       if (isTableInput(currentQuery)) {
-        if (!queryDataset) {
+        if (!queryDataset || !createQuery) {
           return;
         }
 
-        const datasetQuery = createMetabaseQuery(currentQuery);
+        const datasetQuery = await createQuery(reduxStore)(currentQuery);
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
@@ -320,7 +327,7 @@ const useMetabaseQueryImpl = <
     } finally {
       setIsLoading(false);
     }
-  }, [queryDataset, reduxStore]);
+  }, [createQuery, queryDataset, reduxStore]);
 
   useEffect(() => {
     if (loginStatus?.status === "success") {
@@ -342,39 +349,108 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
   query: TableQuery<unknown>,
-): DatasetQuery | null {
+): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
+  const {
+    state: {
+      internalProps: { reduxStore },
+    },
+  } = useMetabaseProviderPropsStore();
+  const [queryState, setQueryState] = useState<
+    UseMetabaseQueryObjectResult & { queryKey: string | null }
+  >({
+    query: null,
+    error: null,
+    isLoading: true,
+    queryKey: null,
+  });
 
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
 
   queryRef.current = query;
 
-  return useMemo(
-    () => {
+  useEffect(() => {
+    let isActive = true;
+
+    async function createQueryObject() {
       const createQuery = getCreateMetabaseQueryFromBundle();
 
-      if (!createQuery) {
-        return null;
+      if (!reduxStore || !createQuery) {
+        setQueryState({
+          query: null,
+          error: null,
+          isLoading: true,
+          queryKey: null,
+        });
+        return;
       }
 
-      return createQuery(queryRef.current);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
-    [loadingState, queryKey],
-  );
+      try {
+        const result = await createQuery(reduxStore)(queryRef.current);
+
+        if (isActive) {
+          setQueryState({
+            query: result,
+            error: null,
+            isLoading: false,
+            queryKey,
+          });
+        }
+      } catch (err) {
+        if (isActive) {
+          setQueryState({
+            query: null,
+            error: err,
+            isLoading: false,
+            queryKey,
+          });
+        }
+      }
+    }
+
+    setQueryState({
+      query: null,
+      error: null,
+      isLoading: true,
+      queryKey,
+    });
+    createQueryObject();
+
+    return () => {
+      isActive = false;
+    };
+  }, [loadingState, queryKey, reduxStore]);
+
+  if (queryState.queryKey !== queryKey) {
+    return {
+      query: null,
+      error: null,
+      isLoading: true,
+    };
+  }
+
+  return {
+    query: queryState.query,
+    error: queryState.error,
+    isLoading: queryState.isLoading,
+  };
 }
 
 /** @notExported createMetabaseQuery */
-export function createMetabaseQuery(query: TableQuery<unknown>): DatasetQuery {
+export async function createMetabaseQuery(
+  query: TableQuery<unknown>,
+): Promise<DatasetQuery> {
   const createQuery = getCreateMetabaseQueryFromBundle();
+  const reduxStore =
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getSdkStore?.();
 
-  if (!createQuery) {
+  if (!createQuery || !reduxStore) {
     throw new Error(
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- Internal SDK developer error.
       "createMetabaseQuery requires the Metabase Embedding SDK bundle to be loaded.",
     );
   }
 
-  return createQuery(query);
+  return createQuery(reduxStore)(query);
 }
