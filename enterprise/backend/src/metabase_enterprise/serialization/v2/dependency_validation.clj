@@ -1,0 +1,134 @@
+(ns metabase-enterprise.serialization.v2.dependency-validation
+  "Export-time dependency validation for serialization.
+
+  Before an export is written, every entity that will be extracted is checked to make sure all of its references are
+  satisfiable in the resulting archive: content references (Cards, Dashboards, …) must themselves be part of the
+  export, and data-model references (Database, Table, Field) must exist in the source appdb. An unsatisfied reference
+  would otherwise become a dangling reference or a malformed portable id in the archive, breaking the import.
+
+  Historically this was the collection-id, Card-only \"escape analysis\"; it is now a general dependency-satisfaction
+  check driven by [[metabase.models.serialization/serialization-dependencies]]."
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defn- collection-label [coll-id]
+  (if coll-id
+    (let [collection (t2/hydrate (t2/select-one :model/Collection :id coll-id) :ancestors)
+          names      (->> (conj (:ancestors collection) collection)
+                          (map :name)
+                          (str/join " > "))]
+      (format "%d: %s" coll-id names))
+    "[no collection]"))
+
+(defn- entity-label [{:keys [model id]}]
+  (let [entity (t2/select-one [model :collection_id :name] :id id)]
+    (format "%s %d (%s from collection %s)" (name model) id (:name entity) (collection-label (:collection_id entity)))))
+
+(def ^:private query-batch-size
+  "Maximum number of ids per `:in` clause, to stay under database parameter limits."
+  1000)
+
+(defn- resize-batch
+  [[model batch]]
+  (for [batch (partition-all query-batch-size batch)]
+    [model batch]))
+
+(defn- entity-deps
+  "The dependency contribution of a single entity.
+
+  Returns a `{:visited :deps}`"
+  [entity]
+  (let [model (name (t2/model entity))
+        via   [model (:id entity)]]
+    {:visited #{via}
+     :deps    (into #{}
+                    (map #(assoc % :via via))
+                    (serdes/serialization-dependencies model entity))}))
+
+(defn- merge-deps
+  ([] {:visited #{} :deps #{}})
+  ([acc] acc)
+  ([a b] {:visited (into (:visited a) (:visited b))
+          :deps    (into (:deps a)    (:deps b))}))
+
+(defn- collect-dependencies
+  "Take the model/ids and return {:visited :deps}.
+
+  Entities are streamed in batches, not held in memory."
+  [by-model coll-set opts]
+  (let [content-models (set serdes.models/content)]
+    (transduce
+     (comp
+      (filter #(contains? content-models (key %)))
+      (mapcat resize-batch)
+      (mapcat (fn [[model batch]]
+                (serdes/extract-query model (merge opts {:collection-set coll-set
+                                                         :where          [:in :id batch]}))))
+      (map entity-deps))
+     merge-deps
+     by-model)))
+
+(defn- existing-ids
+  "The subset of `ids` that exist as rows of `model` (a model-name string), queried in bounded `:in` batches."
+  [model ids]
+  (into #{}
+        (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]}))
+        (partition-all query-batch-size (distinct ids))))
+
+(defn- unsatisfied-dependencies
+  "Given collected `deps`, the `visited` set, and `analytics-cards`, returns the deps that won't be satisfied in the
+   archive: `:content` references to exported models that aren't in `visited`, and `:data` references (database, table,
+   field) whose row is missing from the appdb. Content references to models that aren't themselves exported as content
+   are ignored — they can't dangle."
+  [deps visited analytics-cards]
+  (let [{content-deps :content data-deps :data} (group-by :kind deps)
+        content-models (set serdes.models/content)
+        existing       (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))]
+    (concat
+     (remove (fn [{:keys [model id]}]
+               (or (not (contains? content-models model))
+                   (contains? visited [model id])
+                   (and (= model "Card") (contains? analytics-cards id))))
+             content-deps)
+     (remove (fn [{:keys [model id]}]
+               (contains? (get existing model) id))
+             data-deps))))
+
+(defn- unsatisfied-label [{:keys [kind model id via]}]
+  (format "%s references %s %s which %s"
+          (entity-label {:model (keyword "model" (first via)) :id (second via)})
+          model id
+          (case kind
+            :content "is not included in the export"
+            :data    "is missing from the source database")))
+
+(defn validate-dependencies!
+  "Validates that every entity to be extracted has all of its references satisfied. Logs a warning per unsatisfied
+   reference and, unless `continue-on-error?`, throws to abort the export before any archive is produced.
+
+  Arguments:
+    - `by-model` is a map of `{model-name [ids ...]}`
+
+  Content references must be part of the export (or be analytics cards, which resolve on import); data-model
+  references must exist in the source appdb. A missing reference would otherwise become a dangling reference or a
+  malformed portable id in the archive, breaking the import."
+  [by-model coll-set analytics-cards opts]
+  (let [{:keys [visited deps]} (collect-dependencies by-model coll-set opts)
+        missing                (unsatisfied-dependencies deps visited analytics-cards)]
+    (when (seq missing)
+      (doseq [dep missing]
+        (log/warnf "Failed to export: %s" (unsatisfied-label dep)))
+      (when-not (:continue-on-error opts)
+        (throw (ex-info (format (str "Serialization failed: %d reference(s) could not be satisfied, which would "
+                                     "produce an incomplete export. See the warnings above for the affected "
+                                     "entities. Pass continue-on-error to export anyway, skipping them.")
+                                (count missing))
+                        {:status-code 400}))))))
