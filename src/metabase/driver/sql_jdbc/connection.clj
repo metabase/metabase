@@ -105,7 +105,7 @@
    "minPoolSize"                          0
    "initialPoolSize"                      0
    "maxPoolSize"                          (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
-   ;; [From docs] The number of milliseconds a client calling getConnection() will wait for a Connection to be
+   ;; [From dox] The number of milliseconds a client calling getConnection() will wait for a Connection to be
    ;; checked-in or acquired when the pool is exhausted. Zero means wait indefinitely. Setting any positive value will
    ;; cause the getConnection() call to time out and break with an SQLException after the specified number of
    ;; milliseconds.
