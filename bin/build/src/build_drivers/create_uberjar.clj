@@ -27,7 +27,9 @@
   (binding [deps.dir/*the-dir* (io/file u/project-root-directory)]
     (deps/calc-basis metabase-core-edn)))
 
-(defonce ^:private metabase-core-provided-libs
+(defonce ^{:doc "Libs (`group/artifact` symbols) the core Metabase uberjar already provides.
+  Runtime-loaded jar builds (drivers, the embedder plugin) subtract these to avoid shipping classes twice."}
+  metabase-core-provided-libs
   (set (keys (:libs metabase-core-basis))))
 
 (defn- driver-parents [driver edition]

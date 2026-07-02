@@ -860,6 +860,12 @@
   :build/verify-driver
   {:exec-fn verify-driver/verify-driver}
 
+  ;; Build the in-process embedder plugin jar (modules/embedder + DJL/ONNX deps + bundled model).
+  ;;
+  ;;    clojure -X:build:build/embedder-plugin
+  :build/embedder-plugin
+  {:exec-fn build-embedder-plugin/build-plugin!}
+
   ;; Build i18n artifacts.
   ;;
   ;;    clojure -X:build:build/i18n

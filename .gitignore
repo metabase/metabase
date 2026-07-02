@@ -75,6 +75,9 @@ cypress.env.json
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
+# embedder plugin build outputs: fetched model bundles + jar (see bin/build/src/build/embedder_model.clj)
+/modules/embedder/resources/metabase-embedder
+/modules/embedder/target
 /plugins
 /process.yml
 /reset-password-artifacts
