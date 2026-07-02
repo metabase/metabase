@@ -66,15 +66,48 @@ export function getDashboardCardMenu(index = 0) {
  * from cache), but the absence of loading indicators is a stable signal that the
  * grid has settled. Pass `count` to also assert the expected number of cards is
  * present, which guards against the check passing before the cards render.
+ *
+ * Anchors on the dashboard body being visible before checking for spinners so
+ * the absence check can't pass mid-render, before any cards have started
+ * loading. The body container renders even for empty dashboards (which show no
+ * grid), so this stays a no-op rather than hanging when there is no grid.
  */
 export function waitForDashcardsToLoad({ count }: { count?: number } = {}) {
   cy.log("Wait for all dashcards to finish loading");
   if (count != null) {
     getDashboardCards().should("have.length", count);
   }
-  cy.findByTestId("dashboard-grid")
+  cy.findByTestId("dashboard-parameters-and-cards")
+    .should("be.visible")
     .findAllByTestId("loading-indicator")
     .should("not.exist");
+  waitForGridLayoutStable();
+}
+
+/**
+ * Wait until the grid stops reflowing. react-grid-layout repositions cards when
+ * switching between edit and view mode (the "resizing and detaching elements"
+ * the old fixed sleeps compensated for), which can move a chart out from under a
+ * coordinate-based click. There's no "layout done" event, so poll the first
+ * card's box until it is unchanged across consecutive retries. No-op when there
+ * are no cards to reflow (empty or text-only dashboards).
+ */
+function waitForGridLayoutStable() {
+  cy.get("body").then(($body) => {
+    if (!$body.find('[data-testid="dashcard-container"]').length) {
+      return;
+    }
+    let previous: string | null = null;
+    getDashboardCards()
+      .first()
+      .should(($card) => {
+        const { top, left, width, height } = $card[0].getBoundingClientRect();
+        const current = [top, left, width, height].map(Math.round).join(",");
+        const settled = current === previous;
+        previous = current;
+        expect(settled, `dashcard layout settled (${current})`).to.be.true;
+      });
+  });
 }
 
 export function showDashboardCardActions(index = 0) {
@@ -104,9 +137,8 @@ export function editDashboard() {
 }
 
 export function saveDashboard({
-  waitMs = 1,
   awaitRequest = true,
-}: { waitMs?: number; awaitRequest?: boolean } = {}) {
+}: { awaitRequest?: boolean } = {}) {
   cy.intercept("PUT", "/api/dashboard/*").as(
     "saveDashboard-saveDashboardCards",
   );
@@ -123,7 +155,9 @@ export function saveDashboard({
   }
 
   cy.findByTestId("edit-bar").should("not.exist");
-  cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
+  // Settle on a deterministic signal (all dashcards loaded) instead of sleeping
+  // for a fixed time while the grid resizes and detaches elements.
+  waitForDashcardsToLoad();
 }
 
 export function checkFilterLabelAndValue(label: string, value: string) {
