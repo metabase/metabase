@@ -13942,6 +13942,38 @@
         },
         "required" : [ "type" ]
       },
+      "metabase.transforms.schema.merge-config" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "merge"
+          },
+          "unique-key" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.transforms.schema.merge-key-column"
+            }
+          }
+        },
+        "required" : [ "type", "unique-key" ]
+      },
+      "metabase.transforms.schema.merge-key-column" : {
+        "description" : "One column of a merge unique key. Carries a resolved `:field-id` when the target column is known,\n  degrading to a `:name` ref when the target table doesn't exist yet (mirrors `::source-table-entry`).",
+        "type" : "object",
+        "properties" : {
+          "field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }
+      },
       "metabase.transforms.schema.source-incremental-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
@@ -13999,6 +14031,8 @@
       "metabase.transforms.schema.target-incremental-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.append-config"
+        }, {
+          "$ref" : "#/components/schemas/metabase.transforms.schema.merge-config"
         } ]
       },
       "metabase.transforms.schema.transform-source" : {
@@ -44688,6 +44722,17 @@
         }, {
           "in" : "query",
           "name" : "unused-only",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "published-only",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
