@@ -34,6 +34,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log])
@@ -154,6 +155,18 @@
    {:schema schema
     :table  (scratch-table-name nonce suffix)
     :db     catalog}))
+
+(defn spec->sql-ref
+  "Driver-quoted SQL table reference for a scratch spec `{:schema :table :db}`.
+
+  Emits a 3-segment `catalog.schema.table` reference when `:db` is non-nil —
+  required where the catalog must appear in emitted SQL (BigQuery, SQL Server) —
+  else `schema.table`, else bare `table`.
+
+  The segments are identifiers, not values — they must be driver-quoted, never
+  passed as JDBC parameters."
+  ^String [drv {:keys [db schema table]}]
+  (apply sql.u/quote-name drv :table (remove nil? [db schema table])))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Seeding

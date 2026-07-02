@@ -6,7 +6,8 @@
   They verify that when a driver has a non-nil db-slot value, that value appears in:
     1. The scratch output-target `:db` slot.
     2. The `build-transform-details` `:output-db` field.
-    3. The SQL string emitted by `read-back-output`.
+    3. The SQL reference rendered by `scratch/spec->sql-ref` (and therefore in
+       `read-back-output`'s SELECT).
 
   And that for drivers without a db-slot (postgres, h2) those fields remain nil / 2-segment."
   (:require
@@ -113,7 +114,22 @@
             "output-db must remain nil for postgres")))))
 
 ;;; ---------------------------------------------------------------------------
-;;; 3. read-back SQL is 3-segment for db-slot drivers, 2-segment otherwise
+;;; 3. spec->sql-ref renders a scratch spec with driver quoting
+;;; ---------------------------------------------------------------------------
+
+(deftest spec->sql-ref-test
+  (testing "3-segment catalog.schema.table with driver quoting for a db-slot driver"
+    (is (= "`my_catalog`.`myschema`.`tbl`"
+           (scratch/spec->sql-ref :mysql {:db "my_catalog" :schema "myschema" :table "tbl"}))))
+  (testing "2-segment schema.table when :db is nil"
+    (is (= "\"public\".\"tbl\""
+           (scratch/spec->sql-ref :postgres {:db nil :schema "public" :table "tbl"}))))
+  (testing "bare table when schema and db are both nil"
+    (is (= "\"tbl\""
+           (scratch/spec->sql-ref :postgres {:db nil :schema nil :table "tbl"})))))
+
+;;; ---------------------------------------------------------------------------
+;;; 4. read-back SQL is 3-segment for db-slot drivers, 2-segment otherwise
 ;;; ---------------------------------------------------------------------------
 
 (deftest read-back-sql-is-3-segment-for-db-slot-driver-test
@@ -162,7 +178,7 @@
              (get-in @captured [:native :query]))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; 4. Seed mapping values carry :db slot
+;;; 5. Seed mapping values carry :db slot
 ;;; ---------------------------------------------------------------------------
 
 (deftest seed-scratch-spec-carries-db-slot-test

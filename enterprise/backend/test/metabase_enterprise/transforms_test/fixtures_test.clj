@@ -146,41 +146,6 @@
       (is (= false (get-in result [:rows 0 1]))))))
 
 ;; ---------------------------------------------------------------------------
-;; Inference fallback — no target schema
-;; ---------------------------------------------------------------------------
-
-(deftest parse-fixture-inference-fallback-test
-  (testing "Without schema, types are inferred from data"
-    (let [csv    (write-csv-file! "id,amount,active\n1,9.5,true\n2,3.14,false\n3,1.0,true\n")
-          result (fixtures/parse-fixture csv nil)]
-      ;; id: all integers → ::upload.types/int → :type/Integer
-      ;; amount: floats → ::upload.types/float → :type/Float
-      ;; active: booleans → ::upload.types/boolean → :type/Boolean
-      (is (= 3 (count (:columns result))))
-      (let [col-names (mapv :name (:columns result))]
-        (is (= ["id" "amount" "active"] col-names)))
-      ;; Types should be concrete metabase base-types
-      (let [col-types (mapv :base-type (:columns result))]
-        (is (= :type/Integer (nth col-types 0)))
-        (is (= :type/Float   (nth col-types 1)))
-        (is (= :type/Boolean (nth col-types 2))))
-      ;; Values should be parsed
-      (is (= (biginteger 1) (get-in result [:rows 0 0]))))))
-
-(deftest parse-fixture-inference-text-fallback-test
-  (testing "Mixed or unrecognized column data infers to text"
-    (let [csv    (write-csv-file! "notes\nhello world\n\"quoted, value\"\nfoo bar\n")
-          result (fixtures/parse-fixture csv nil)]
-      (is (= :type/Text (get-in result [:columns 0 :base-type])))
-      (is (= "hello world" (get-in result [:rows 0 0]))))))
-
-(deftest parse-fixture-inference-nullable-test
-  (testing "Inferred columns are nullable? true by default"
-    (let [csv    (write-csv-file! "id,name\n1,alpha\n2,\n")
-          result (fixtures/parse-fixture csv nil)]
-      (is (every? :nullable? (:columns result))))))
-
-;; ---------------------------------------------------------------------------
 ;; Header mismatch errors
 ;; ---------------------------------------------------------------------------
 
@@ -294,14 +259,6 @@
       (is (= 1 (count (:rows result))))
       (is (= (biginteger 1) (get-in result [:rows 0 0]))))))
 
-(deftest bom-in-inference-mode-test
-  (testing "UTF-8 BOM stripped even in inference mode"
-    (let [csv    (write-csv-bom-file! "id,name\n42,hello\n")
-          result (fixtures/parse-fixture csv nil)]
-      ;; First column name should be "id" without BOM prefix
-      (is (= "id"   (get-in result [:columns 0 :name])))
-      (is (= "name" (get-in result [:columns 1 :name]))))))
-
 ;; ---------------------------------------------------------------------------
 ;; Output shape: feeds insert-from-source!
 ;; ---------------------------------------------------------------------------
@@ -334,13 +291,13 @@
           schema [{:name "id"   :base-type :type/Integer :nullable? false}
                   {:name "name" :base-type :type/Text    :nullable? true}]
           result (fixtures/parse-fixture csv schema)]
-      (is (= [] (:rows result)))))
-  (testing "CSV with header but no data rows in inference mode"
-    (let [csv    (write-csv-file! "id,name\n")
-          result (fixtures/parse-fixture csv nil)]
-      ;; Inference with no rows: columns inferred as text
-      (is (= 2 (count (:columns result))))
       (is (= [] (:rows result))))))
+
+(deftest target-schema-required-test
+  (testing "parse-fixture requires a non-empty target schema"
+    (let [csv (write-csv-file! "id\n1\n")]
+      (is (thrown? AssertionError (fixtures/parse-fixture csv nil)))
+      (is (thrown? AssertionError (fixtures/parse-fixture csv []))))))
 
 (deftest column-order-preserved-test
   (testing "Row values are in the same order as :columns"

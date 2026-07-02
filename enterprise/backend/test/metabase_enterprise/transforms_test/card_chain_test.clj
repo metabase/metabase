@@ -132,7 +132,8 @@
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
                             {orders-id tu/orders-rows people-id tu/people-rows}
-                            tu/correct-expected-csv {})]
+                            tu/correct-expected-csv {}
+                            (t2/select :model/Transform))]
                 (testing "status is passed"
                   (is (= :passed (:status result))
                       (str "Expected passed; diff: " (pr-str (:diff result)))))
@@ -165,7 +166,8 @@
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
                             {orders-id tu/orders-rows people-id tu/people-rows}
-                            tu/wrong-expected-csv {})]
+                            tu/wrong-expected-csv {}
+                            (t2/select :model/Transform))]
                 (testing "status is failed"
                   (is (= :failed (:status result))))
                 (testing "diff reports the discrepancy"
@@ -194,7 +196,8 @@
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
                             {orders-id tu/orders-rows people-id tu/people-rows}
-                            wrong-rev-csv {:ignore-columns #{"revenue"}})]
+                            wrong-rev-csv {:ignore-columns #{"revenue"}}
+                            (t2/select :model/Transform))]
                 (testing "status is passed when revenue is ignored"
                   (is (= :passed (:status result))
                       (str "Expected passed; diff: " (pr-str (:diff result)))))))))))))
@@ -219,7 +222,8 @@
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
                             {orders-id tu/orders-rows people-id tu/people-rows}
-                            expected-csv {})]
+                            expected-csv {}
+                            (t2/select :model/Transform))]
                 (testing "status is passed"
                   (is (= :passed (:status result))
                       (str "Expected passed; diff: " (pr-str (:diff result)))))
@@ -247,7 +251,8 @@
                     result (chain/run-card-chain-test!
                             card #{(:id t1)}
                             {orders-id tu/orders-rows people-id tu/people-rows}
-                            wrong-csv {})]
+                            wrong-csv {}
+                            (t2/select :model/Transform))]
                 (testing "status is failed"
                   (is (= :failed (:status result))))
                 (testing "diff reports the discrepancy"
@@ -288,7 +293,8 @@
                   (chain/run-card-chain-test!
                    danger-card #{(:id t1)}
                    {orders-id tu/orders-rows people-id tu/people-rows}
-                   tu/correct-expected-csv {})
+                   tu/correct-expected-csv {}
+                   (t2/select :model/Transform))
                   (catch clojure.lang.ExceptionInfo e
                     (reset! thrown e)))
                 (testing "throws ::cannot-test-run"
@@ -319,7 +325,8 @@
                   (chain/run-card-chain-test!
                    card #{(:id t1)}
                    {orders-id tu/orders-rows people-id tu/people-rows}
-                   tu/correct-expected-csv {}))))
+                   tu/correct-expected-csv {}
+                   (t2/select :model/Transform)))))
             (is (pos? (count @captured))
                 "cleanup! should have been called at least once")
             (is (every? #{:transform} @captured)
@@ -367,7 +374,8 @@
                 (chain/run-card-chain-test!
                  card #{(:id t1)}
                  {orders-id tu/orders-rows people-id tu/people-rows}
-                 tu/correct-expected-csv {})
+                 tu/correct-expected-csv {}
+                 (t2/select :model/Transform))
                 ;; After the run, verify that enriched-name (t1's real output) is absent.
                 (let [result (qp.core/process-query
                               {:database db-id :type :native
@@ -419,7 +427,8 @@
                     result         (chain/run-card-chain-test!
                                     card #{(:id t1)}
                                     {orders-id tu/orders-rows people-id tu/people-rows}
-                                    metric-expected-csv {})]
+                                    metric-expected-csv {}
+                                    (t2/select :model/Transform))]
                 (testing "status is passed"
                   (is (= :passed (:status result))
                       (str "Expected passed; diff: " (pr-str (:diff result)))))
@@ -449,7 +458,8 @@
                     result         (chain/run-card-chain-test!
                                     card #{(:id t1)}
                                     {orders-id tu/orders-rows people-id tu/people-rows}
-                                    metric-wrong-csv {})]
+                                    metric-wrong-csv {}
+                                    (t2/select :model/Transform))]
                 (testing "status is failed"
                   (is (= :failed (:status result))))
                 (testing "diff reports the discrepancy"

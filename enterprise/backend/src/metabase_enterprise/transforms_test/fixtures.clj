@@ -13,20 +13,8 @@
 (set! *warn-on-reflection* true)
 
 ;; ---------------------------------------------------------------------------
-;; Upload-type ↔ base-type conversions
+;; Base-type → upload-type conversion
 ;; ---------------------------------------------------------------------------
-
-(def ^:private upload-type->base-type
-  "Maps upload column-type keywords to Metabase base-type keywords.
-  This is the inverse direction of `upload/base-type->upload-type`."
-  {:metabase.upload.types/int             :type/Integer
-   :metabase.upload.types/float           :type/Float
-   :metabase.upload.types/boolean         :type/Boolean
-   :metabase.upload.types/date            :type/Date
-   :metabase.upload.types/datetime        :type/DateTime
-   :metabase.upload.types/offset-datetime :type/DateTimeWithTZ
-   :metabase.upload.types/text            :type/Text
-   :metabase.upload.types/varchar-255     :type/Text})
 
 (defn- base-type->upload-type
   "Maps a Metabase base-type to the best matching upload column type.
@@ -147,47 +135,6 @@
                       rows))))
 
 ;; ---------------------------------------------------------------------------
-;; Inference path
-;; ---------------------------------------------------------------------------
-
-(defn- infer-columns
-  "Infer column base-types from `rows` (string vectors) using upload type
-  inference.  Returns a vector of `{:name :base-type :nullable?}` maps in CSV
-  column order.
-
-  All inferred columns are `nullable? true` (we cannot determine NOT NULL
-  constraints from data alone)."
-  [column-names rows]
-  (let [settings     (upload/get-settings)
-        ;; column-types-from-rows expects [existing-types rows] where existing-types
-        ;; are nil for new columns (no prior schema).
-        existing     (vec (repeat (count column-names) nil))
-        upload-types (upload/column-types-from-rows settings existing rows)]
-    (mapv (fn [col-name upload-type]
-            {:name      col-name
-             :base-type (get upload-type->base-type upload-type :type/Text)
-             :nullable? true})
-          column-names
-          upload-types)))
-
-(defn- parse-with-inference
-  "Parse `rows` (vectors of strings, no header) under inferred types.
-  Returns `{:columns [...] :rows [...]}` where columns carry inferred base-types."
-  [column-names rows]
-  (let [columns  (infer-columns column-names rows)
-        settings (upload/get-settings)
-        parsers  (mapv (fn [{:keys [base-type]}]
-                         (upload/upload-type->parser (base-type->upload-type base-type)
-                                                     settings))
-                       columns)
-        names    (mapv :name columns)
-        parsed   (vec (map-indexed (fn [idx row]
-                                     (parse-row parsers names idx row))
-                                   rows))]
-    {:columns columns
-     :rows    parsed}))
-
-;; ---------------------------------------------------------------------------
 ;; Public API
 ;; ---------------------------------------------------------------------------
 
@@ -198,8 +145,7 @@
   - `csv-file`      — `java.io.File` (e.g. a multipart upload temp file) OR a
                       CSV `String` (in-memory, used by in-process tests to avoid
                       disk I/O).
-  - `target-schema` — `nil` (infer from data) OR a sequence of column descriptors
-                      in any order:
+  - `target-schema` — a non-empty sequence of column descriptors in any order:
                       `[{:name <string> :base-type <kw> :nullable? <bool>} ...]`
                       These come from real `:metadata/table` + field metadata; the
                       caller is responsible for building this from the DB.
@@ -222,26 +168,23 @@
                             ex-data includes `:row-index` (0-based), `:column-name`,
                             and `:raw-value`."
   [csv-file target-schema]
-  (let [rows        (read-csv csv-file)
-        header      (first rows)
-        data-rows   (rest rows)]
-    (if (nil? target-schema)
-      ;; --- Inference path ---------------------------------------------------
-      (parse-with-inference (vec header) (vec data-rows))
-      ;; --- Schema-driven path -----------------------------------------------
-      ;; Header matching is case-sensitive and exact: driver/insert-from-source! passes
-      ;; column names verbatim to the database, and real table column names are
-      ;; case-preserving; folding here could silently map the wrong CSV column onto the
-      ;; wrong DB column.
-      (let [schema-names (set (map :name target-schema))
-            csv-names    (set header)
-            missing      (set/difference schema-names csv-names)
-            extra        (set/difference csv-names schema-names)]
-        (when (or (seq missing) (seq extra))
-          (header-mismatch-error missing extra header (map :name target-schema)))
-        ;; Re-order the schema to match the CSV column order.
-        (let [name->col      (into {} (map (juxt :name identity)) target-schema)
-              ordered-schema (mapv name->col header)
-              parsed-rows    (parse-with-schema ordered-schema (vec data-rows))]
-          {:columns ordered-schema
-           :rows    parsed-rows})))))
+  {:pre [(seq target-schema)]}
+  (let [rows      (read-csv csv-file)
+        header    (first rows)
+        data-rows (rest rows)
+        ;; Header matching is case-sensitive and exact: driver/insert-from-source! passes
+        ;; column names verbatim to the database, and real table column names are
+        ;; case-preserving; folding here could silently map the wrong CSV column onto the
+        ;; wrong DB column.
+        schema-names (set (map :name target-schema))
+        csv-names    (set header)
+        missing      (set/difference schema-names csv-names)
+        extra        (set/difference csv-names schema-names)]
+    (when (or (seq missing) (seq extra))
+      (header-mismatch-error missing extra header (map :name target-schema)))
+    ;; Re-order the schema to match the CSV column order.
+    (let [name->col      (into {} (map (juxt :name identity)) target-schema)
+          ordered-schema (mapv name->col header)
+          parsed-rows    (parse-with-schema ordered-schema (vec data-rows))]
+      {:columns ordered-schema
+       :rows    parsed-rows})))

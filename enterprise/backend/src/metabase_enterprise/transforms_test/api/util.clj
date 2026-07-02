@@ -16,9 +16,9 @@
         the caller may need to change the transform definition.
   500 — internal error: unexpected failure; the caller cannot fix this.
 
-  Not every declared error-type needs an entry: an unmapped `:error-type` (e.g.
-  `::errors/materialize-not-implemented`), an unrecognised one, or an untyped
-  exception (a statement timeout) all surface as a generic 500."
+  Not every declared error-type needs an entry: an unmapped or unrecognised
+  `:error-type`, or an untyped exception (a statement timeout), surfaces as a
+  generic 500."
   {;; Fixture errors — 400: caller supplied wrong CSV content.
    ::errors/header-mismatch             400
    ::errors/unparseable-cell            400
@@ -49,6 +49,35 @@
    ::errors/assertion-execution-failed  500
    ;; assertions-parse-error fires at request-parse time (malformed JSON / missing fields).
    ::errors/assertions-parse-error      400})
+
+(defn- part->json
+  "Slurp a multipart part (a ring multipart map, a `java.io.File`, or a string)
+  and decode it as JSON with `decode-fn`. On invalid JSON throws a 400 carrying
+  `error-msg`, the raw text, and `extra-ex-data`."
+  [part decode-fn error-msg extra-ex-data]
+  (let [raw  (if (map? part) (:tempfile part) part)
+        text (if (instance? java.io.File raw) (slurp raw) (str raw))]
+    (try
+      (decode-fn text)
+      (catch Exception _
+        (throw (ex-info error-msg
+                        (merge {:status-code 400 :raw-text text} extra-ex-data)))))))
+
+(defn parse-source-ids
+  "Parse the `sources` multipart part — a JSON array of selected source transform
+  ids — into a set of positive integers. Missing part → `#{}` (a target-only
+  selection — the degenerate case equivalent to a single-transform test run).
+  Throws 400 on malformed JSON or a non-positive-int element."
+  [sources-part]
+  (if (nil? sources-part)
+    #{}
+    (let [ids (part->json sources-part json/decode
+                          (tru "Malformed ''sources'' part: not valid JSON.") nil)]
+      (when-not (and (sequential? ids) (every? #(and (int? %) (pos? %)) ids))
+        (throw (ex-info (tru "''sources'' must be a JSON array of positive transform ids.")
+                        {:status-code 400
+                         :sources     ids})))
+      (set ids))))
 
 (defn parse-input-table-ids
   "Extract input fixture files from the multipart params.
@@ -93,14 +122,8 @@
   [options-part]
   (if (nil? options-part)
     {}
-    (let [raw  (if (map? options-part) (:tempfile options-part) options-part)
-          text (if (instance? java.io.File raw) (slurp raw) (str raw))
-          opts (try
-                 (json/decode text true)
-                 (catch Exception _
-                   (throw (ex-info (tru "Malformed ''options'' part: not valid JSON.")
-                                   {:status-code 400
-                                    :raw-text    text}))))]
+    (let [opts (part->json options-part json/decode+kw
+                           (tru "Malformed ''options'' part: not valid JSON.") nil)]
       (when-let [unknown (seq (remove #{:ignore_columns} (keys opts)))]
         (throw (ex-info (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
                         {:status-code 400
@@ -120,15 +143,9 @@
   [assertions-part]
   (if (nil? assertions-part)
     []
-    (let [raw  (if (map? assertions-part) (:tempfile assertions-part) assertions-part)
-          text (if (instance? java.io.File raw) (slurp raw) (str raw))
-          data (try
-                 (json/decode text)
-                 (catch Exception _
-                   (throw (ex-info (tru "Malformed ''assertions'' part: not valid JSON.")
-                                   {:status-code 400
-                                    :error-type  ::errors/assertions-parse-error
-                                    :raw-text    text}))))]
+    (let [data (part->json assertions-part json/decode
+                           (tru "Malformed ''assertions'' part: not valid JSON.")
+                           {:error-type ::errors/assertions-parse-error})]
       (when-not (sequential? data)
         (throw (ex-info (tru "''assertions'' must be a JSON array.")
                         {:status-code 400

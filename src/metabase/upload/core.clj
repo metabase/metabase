@@ -26,5 +26,4 @@
   get-settings
   upload-type->parser]
  [metabase.upload.types
-  base-type->upload-type
-  column-types-from-rows])
+  base-type->upload-type])

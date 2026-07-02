@@ -81,7 +81,8 @@
             result         (chain/run-chain-test!
                             (:id t2) #{(:id t1)}
                             {orders-id tu/orders-rows people-id tu/people-rows}
-                            tu/correct-expected-csv {})]
+                            tu/correct-expected-csv {}
+                            (t2/select :model/Transform))]
         (testing "status is passed"
           (is (= :passed (:status result))
               (str "Expected passed; diff: " (pr-str (:diff result)))))
@@ -107,7 +108,8 @@
             result         (chain/run-chain-test!
                             (:id t2) #{(:id t1)}
                             {orders-id tu/orders-rows people-id tu/people-rows}
-                            tu/wrong-expected-csv {})]
+                            tu/wrong-expected-csv {}
+                            (t2/select :model/Transform))]
         (testing "status is failed"
           (is (= :failed (:status result))))
         (testing "diff pins the CA mismatch: one missing row, one extra row, one cell mismatch"
@@ -482,7 +484,8 @@
                       expected-csv
                       {:assertions [{:name     "case_assertion"
                                      :sql      (assertion-sql target-name)
-                                     :severity severity}]})]
+                                     :severity severity}]}
+                      (t2/select :model/Transform))]
           (testing "overall status"
             (is (= overall (:status result))))
           (testing ":assertions is a single-entry vector"
@@ -520,7 +523,8 @@
                             {:assertions [{:name "result_nonneg_revenue"
                                            ;; test_output refers to the card's compiled SQL CTE
                                            :sql  "SELECT * FROM test_output WHERE revenue < 0"
-                                           :severity :error}]})]
+                                           :severity :error}]}
+                            (t2/select :model/Transform))]
                 (testing "overall status is :passed"
                   (is (= :passed (:status result))))
                 (testing "assertion status is :passed"
@@ -743,12 +747,55 @@
           (chain/run-chain-test!
            (:id t2) #{(:id t1)}
            {orders-id tu/orders-rows people-id tu/people-rows}
-           tu/correct-expected-csv {}))
+           tu/correct-expected-csv {}
+           (t2/select :model/Transform)))
         (is (pos? (count @captured))
             "cleanup! should have been called at least once")
         (is (every? #{:transform} @captured)
             (str "every cleanup! call must see *connection-type* = :transform; "
                  "got: " (pr-str @captured)))))))
+
+;;; ===========================================================================
+;;; Mid-slice failure: cleanup must cover partial state
+;;; ===========================================================================
+
+(deftest mid-slice-failure-cleans-up-scratch-test
+  ;; t2's execution fails after the leaves are seeded and t1 has run; the
+  ;; `finally` must still drop every scratch table created so far (leaves,
+  ;; t1's output, and t2's registered-but-failed output).
+  (testing "a node failing mid-slice leaves no scratch tables behind"
+    (mt/with-premium-features #{:dependencies}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id          (mt/id)
+                schema         "public"
+                mp             (mt/metadata-provider)
+                orders-id      (mt/id :orders)
+                people-id      (mt/id :people)
+                enriched-name  (mt/random-name)
+                before-scratch (tu/count-test-scratch-tables db-id schema)]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp tu/enrich-sql)}
+                            :target {:schema schema :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query
+                                     :query (lib/native-query
+                                             mp
+                                             ;; No such column in t1's output → t2's CTAS
+                                             ;; fails at the warehouse, mid-slice.
+                                             (str "SELECT no_such_column FROM " enriched-name))}
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (is (thrown? Exception
+                           (chain/run-chain-test!
+                            (:id t2) #{(:id t1)}
+                            {orders-id tu/orders-rows people-id tu/people-rows}
+                            nil
+                            {:assertions [{:name     "never_runs"
+                                           :sql      "SELECT * FROM test_output"
+                                           :severity :error}]}
+                            (t2/select :model/Transform))))
+              (testing "no scratch tables remain after the mid-slice failure"
+                (is (= before-scratch (tu/count-test-scratch-tables db-id schema)))))))))))
 
 ;;; ===========================================================================
 ;;; Single-node subgraph: source-ids=#{} (degenerate slice = {target})
@@ -783,7 +830,8 @@
                             {orders-id tu/orders-rows}
                             ;; ts placeholder doesn't match NOW(), but :ignore-columns excludes it.
                             "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"
-                            {:ignore-columns #{"ts"}})]
+                            {:ignore-columns #{"ts"}}
+                            (t2/select :model/Transform))]
                 (testing "status is passed with ts ignored"
                   (is (= :passed (:status result))
                       (str "Expected :passed; diff: " (pr-str (:diff result)))))
@@ -817,7 +865,8 @@
                 (let [result (chain/run-chain-test!
                               (:id t) #{}
                               {orders-id tu/orders-rows}
-                              "user_id,order_count\n1,2\n2,1\n3,1\n" {})]
+                              "user_id,order_count\n1,2\n2,1\n3,1\n" {}
+                              (t2/select :model/Transform))]
                   (is (= :passed (:status result))
                       (str "Expected :passed; got: " (pr-str result)))))
               (is (driver/schema-exists? :postgres db-id fresh-schema)
@@ -834,17 +883,19 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-single-node-timeout-test
-  ;; Verifies that a statement timeout kills the query and propagates an exception.
-  ;; In this case, the DROP may not have run, but `scratch/sweep-old-test-tables!`
-  ;; will clean up later.
+  ;; Verifies that a statement timeout kills the query and propagates an exception,
+  ;; and that the `finally` cleanup still drops the scratch tables created before
+  ;; the failure.
   (testing "single-node run-chain-test! with a pg_sleep transform → throws on timeout"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
-          (let [schema      "public"
-                mp          (mt/metadata-provider)
-                orders-id   (mt/id :orders)
-                before-runs (t2/count :model/TransformRun)]
+          (let [db-id          (mt/id)
+                schema         "public"
+                mp             (mt/metadata-provider)
+                orders-id      (mt/id :orders)
+                before-runs    (t2/count :model/TransformRun)
+                before-scratch (tu/count-test-scratch-tables db-id schema)]
             (mt/with-temp [:model/Transform t
                            {:source {:type :query
                                      :query (lib/native-query
@@ -861,8 +912,11 @@
                                      (:id t) #{}
                                      {orders-id (str tu/orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
                                      "total\n100.00\n"
-                                     {:timeout-ms 1000}))
+                                     {:timeout-ms 1000}
+                                     (t2/select :model/Transform)))
                   "Expected a statement-cancellation exception from the pg_sleep timeout")
+              (is (= before-scratch (tu/count-test-scratch-tables db-id schema))
+                  "scratch tables must be dropped even when the node times out")
               (is (= before-runs (t2/count :model/TransformRun))
                   "No TransformRun row after timeout"))))))))
 

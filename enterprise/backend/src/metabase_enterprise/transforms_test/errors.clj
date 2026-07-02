@@ -35,6 +35,5 @@
     ::missing-database-id        ; The target has no source database id.
     ;; Assertions.
     ::assertion-execution-failed ; The combined assertion query failed to execute.
-    ::materialize-not-implemented ; Card-result materialization is not yet implemented (escape path only).
     ;; Request parsing (HTTP layer).
     ::assertions-parse-error})   ; The `assertions` multipart part was malformed at parse time.

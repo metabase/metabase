@@ -37,62 +37,21 @@
   (str/trimr (str/replace sql #";\s*$" "")))
 
 ;;; ---------------------------------------------------------------------------
-;;; Output binding
-;;; ---------------------------------------------------------------------------
-
-(defn build-output-binding
-  "Return the `test_output` binding for `target-kind` (`:transform` or `:card`).
-
-  `:transform` → `opts` has `:scratch-spec` `{:schema :table :db}`.
-  `:card`      → `opts` has `:card-sql` (a SQL string) or `:scratch-spec`.
-
-  Returns `{:kind :cte :sql ...}` or `{:kind :table :spec ...}`."
-  [target-kind opts]
-  (case target-kind
-    :transform
-    (let [spec   (:scratch-spec opts)
-          schema (:schema spec)
-          table  (:table spec)]
-      {:kind :cte
-       :sql  (str "SELECT * FROM "
-                  (if schema
-                    (str "\"" schema "\".\"" table "\"")
-                    (str "\"" table "\"")))})
-
-    :card
-    (cond
-      (:card-sql opts)
-      {:kind :cte
-       :sql  (:card-sql opts)}
-
-      (:scratch-spec opts)
-      {:kind  :table
-       :spec  (:scratch-spec opts)}
-
-      :else
-      (throw (ex-info "build-output-binding for :card requires :card-sql or :scratch-spec"
-                      {:target-kind target-kind :opts opts})))))
-
-;;; ---------------------------------------------------------------------------
 ;;; Combined-SQL builder
 ;;; ---------------------------------------------------------------------------
 
 (defn build-combined-assertion-sql
   "Build the batched combined assertion statement (pure, no I/O).
 
-  For a `:cte` binding, wraps output with `WITH test_output AS (<sql>)` and
-  emits one `SELECT '<name>' AS __assertion, COUNT(*) AS __failing FROM (<sql>) __a`
+  Binds `output-sql` as `WITH test_output AS (<output-sql>)` and emits one
+  `SELECT '<name>' AS __assertion, COUNT(*) AS __failing FROM (<sql>) __a`
   per runnable assertion, joined with `UNION ALL`.
 
-  For a `:table` binding, `test_output` is already a scratch table in the
-  mapping, so no `WITH` clause is needed — the rewrite already resolved
-  `test_output` references.
-
-  `binding`  — `{:kind :cte :sql \"...\"}` or `{:kind :table}`.
-  `runnable` — seq of PreparedAssertions (no `:error` key).
+  `output-sql` — SQL whose result is bound as `test_output`.
+  `runnable`   — seq of PreparedAssertions (no `:error` key).
 
   Returns a SQL string."
-  [binding runnable]
+  [output-sql runnable]
   (let [union-parts (mapv (fn [{:keys [name rewritten-sql]}]
                             (let [clean (strip-trailing-semicolon rewritten-sql)]
                               (str "SELECT " (sql.u/quote-literal name)
@@ -100,12 +59,7 @@
                                    " FROM (" clean ") __a")))
                           runnable)
         union-sql   (str/join "\nUNION ALL\n" union-parts)]
-    (case (:kind binding)
-      :cte
-      (str "WITH test_output AS (" (:sql binding) ")\n" union-sql)
-
-      :table
-      union-sql)))
+    (str "WITH test_output AS (" output-sql ")\n" union-sql)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Prepare
@@ -166,19 +120,17 @@
 
 (defn- build-sample-sql
   "Build the SQL that fetches a capped sample of failing rows for one assertion."
-  [binding clean-sql]
-  (str (case (:kind binding)
-         :cte  (str "WITH test_output AS (" (:sql binding) ")\n")
-         :table "")
+  [output-sql clean-sql]
+  (str "WITH test_output AS (" output-sql ")\n"
        "SELECT * FROM (" clean-sql ") __sample LIMIT " sample-cap))
 
 (defn- fetch-sample!
   "Fetch a capped sample of failing rows for a single assertion.
   Returns `{:rows [[...] ...] :columns [<string> ...]}` or nil on QP error."
-  [db-id binding {:keys [rewritten-sql]}]
+  [db-id output-sql {:keys [rewritten-sql]}]
   (try
     (let [clean-sql  (strip-trailing-semicolon rewritten-sql)
-          sample-sql (build-sample-sql binding clean-sql)
+          sample-sql (build-sample-sql output-sql clean-sql)
           result     (qp/process-query {:database db-id
                                         :type     :native
                                         :native   {:query sample-sql}})]
@@ -192,19 +144,17 @@
 (defn- build-count-sql
   "Build the SQL that counts failing rows for one assertion (used by
   `:per-assertion` strategy)."
-  [binding clean-sql]
-  (str (case (:kind binding)
-         :cte  (str "WITH test_output AS (" (:sql binding) ")\n")
-         :table "")
+  [output-sql clean-sql]
+  (str "WITH test_output AS (" output-sql ")\n"
        "SELECT COUNT(*) FROM (" clean-sql ") __a"))
 
 (defn- run-one-assertion!
   "Run a single prepared assertion. Returns a raw result map
   `{:name :failing-count :sample?}`. Captures QP errors as an `:error` entry."
-  [db-id binding {:keys [name rewritten-sql] :as pa}]
+  [db-id output-sql {:keys [name rewritten-sql] :as pa}]
   (try
     (let [clean-sql  (strip-trailing-semicolon rewritten-sql)
-          count-sql  (build-count-sql binding clean-sql)
+          count-sql  (build-count-sql output-sql clean-sql)
           result     (qp/process-query {:database db-id
                                         :type     :native
                                         :native   {:query count-sql}})]
@@ -212,7 +162,7 @@
         (let [fail-count (long (or (ffirst (get-in result [:data :rows])) 0))]
           {:name name
            :failing-count fail-count
-           :sample (when (pos? fail-count) (fetch-sample! db-id binding pa))})
+           :sample (when (pos? fail-count) (fetch-sample! db-id output-sql pa))})
         {:name name :failing-count 0 :error (str "QP returned " (pr-str (:status result)))}))
     (catch Throwable e
       {:name name :failing-count 0 :error (ex-message e)})))
@@ -241,32 +191,32 @@
   "Run the prepared (non-error) assertions; return raw result maps
   `{:name :failing-count :sample}`. Dispatches on strategy
   (`:batched` or `:per-assertion`)."
-  {:arglists '([strategy db-id drv mapping binding prepared opts])}
+  {:arglists '([strategy db-id drv mapping output-sql prepared opts])}
   (fn [strategy & _] strategy))
 
 (defmethod run-strategy :batched
-  [_ db-id _drv _mapping binding prepared opts]
+  [_ db-id _drv _mapping output-sql prepared opts]
   (let [runnable (remove :error prepared)]
     (if (empty? runnable)
       []
-      (let [sql (build-combined-assertion-sql binding runnable)]
+      (let [sql (build-combined-assertion-sql output-sql runnable)]
         (try
           (let [counts-map  (execute-counts! db-id sql)
                 failing     (failing-assertions runnable counts-map)
                 samples-map (when (and (:samples? opts true) (seq failing))
                               (into {}
-                                    (map (fn [pa] [(:name pa) (fetch-sample! db-id binding pa)]))
+                                    (map (fn [pa] [(:name pa) (fetch-sample! db-id output-sql pa)]))
                                     failing))]
             (raw-results-from-counts runnable counts-map (or samples-map {})))
           (catch Throwable e
             ;; Batched query failed — fall back to attribute the culprit.
             (log/warn e "Batched assertion query failed; falling back to :per-assertion strategy")
-            (run-strategy :per-assertion db-id _drv _mapping binding prepared opts)))))))
+            (run-strategy :per-assertion db-id _drv _mapping output-sql prepared opts)))))))
 
 (defmethod run-strategy :per-assertion
-  [_ db-id _drv _mapping binding prepared _opts]
+  [_ db-id _drv _mapping output-sql prepared _opts]
   (let [runnable (remove :error prepared)]
-    (mapv #(run-one-assertion! db-id binding %) runnable)))
+    (mapv #(run-one-assertion! db-id output-sql %) runnable)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Interpret
@@ -331,17 +281,6 @@
           prepared)))
 
 ;;; ---------------------------------------------------------------------------
-;;; Materialize card result (escape path)
-;;; ---------------------------------------------------------------------------
-
-(defn materialize-card-result!
-  "Write a card's query result into a fresh scratch table; return its
-  `{:schema :table :db}` spec for the caller to clean up. Not yet implemented."
-  [_db-id _db _drv _qp-result _schema _nonce]
-  (throw (ex-info "materialize-card-result! is not yet implemented (escape path only)"
-                  {:error-type ::errors/materialize-not-implemented})))
-
-;;; ---------------------------------------------------------------------------
 ;;; Overall-status helper
 ;;; ---------------------------------------------------------------------------
 
@@ -364,25 +303,27 @@
 (defn run-assertions!
   "Evaluate assertions against the current scratch state.
 
-  - `db-id`          — database id.
-  - `drv`            — driver keyword.
-  - `backend`        — parser backend keyword.
-  - `mapping`        — the `{real-spec → scratch-spec}` map (leaves + node outputs).
-  - `output-binding` — from [[build-output-binding]].
-  - `assertions`     — seq of `{:name <str> :sql <str> :severity :error|:warn}`.
-  - `opts`           — optional: `:strategy` `:batched` (default) or `:per-assertion`;
-                       `:samples?` fetch failing-row samples (default true).
+  - `db-id`      — database id.
+  - `drv`        — driver keyword.
+  - `backend`    — parser backend keyword.
+  - `mapping`    — the `{real-spec → scratch-spec}` map (leaves + node outputs).
+  - `output-sql` — SQL whose result is bound as `test_output` for every assertion:
+                   a `SELECT *` over the target's scratch table, or the compiled
+                   card SQL. Must reference only scratch tables.
+  - `assertions` — seq of `{:name <str> :sql <str> :severity :error|:warn}`.
+  - `opts`       — optional: `:strategy` `:batched` (default) or `:per-assertion`;
+                   `:samples?` fetch failing-row samples (default true).
 
   Returns one result map per assertion:
   `[{:name :status :failing_row_count :sample_rows :columns} ...]`
 
   Never throws; per-assertion failures are captured as result entries. All-pass
   runs as one combined query."
-  ([db-id drv backend mapping output-binding assertions]
-   (run-assertions! db-id drv backend mapping output-binding assertions {}))
-  ([db-id drv backend mapping output-binding assertions opts]
+  ([db-id drv backend mapping output-sql assertions]
+   (run-assertions! db-id drv backend mapping output-sql assertions {}))
+  ([db-id drv backend mapping output-sql assertions opts]
    (when (seq assertions)
      (let [strategy (get opts :strategy :batched)
            prepared (prepare drv backend mapping assertions)
-           raw      (run-strategy strategy db-id drv mapping output-binding prepared opts)]
+           raw      (run-strategy strategy db-id drv mapping output-sql prepared opts)]
        (interpret prepared raw)))))

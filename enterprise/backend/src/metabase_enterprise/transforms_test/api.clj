@@ -14,35 +14,12 @@
    [metabase.transforms.core :as transforms.core]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def keep-me
   "Loaded for side effects (registers this ns's endpoints)."
   nil)
-
-(defn- parse-source-ids
-  "Parse the `sources` multipart part — a JSON array of selected source transform
-  ids — into a set of positive integers. Missing part → `#{}` (a target-only
-  selection — the degenerate case equivalent to a single-transform test run).
-  Throws 400 on malformed JSON or a non-positive-int element."
-  [sources-part]
-  (if (nil? sources-part)
-    #{}
-    (let [raw  (if (map? sources-part) (:tempfile sources-part) sources-part)
-          text (if (instance? java.io.File raw) (slurp raw) (str raw))
-          ids  (try
-                 (json/decode text)
-                 (catch Exception _
-                   (throw (ex-info (tru "Malformed ''sources'' part: not valid JSON.")
-                                   {:status-code 400
-                                    :raw-text    text}))))]
-      (when-not (and (sequential? ids) (every? #(and (int? %) (pos? %)) ids))
-        (throw (ex-info (tru "''sources'' must be a JSON array of positive transform ids.")
-                        {:status-code 400
-                         :sources     ids})))
-      (set ids))))
 
 (defn- check-test-run-allowed!
   "Throw a 402 unless the run is allowed: the instance must have the `:dependencies`
@@ -70,77 +47,58 @@
   (let [{:keys [slice]} (subgraph/card->necessary-fixtures card source-ids all-transforms)]
     (keep (u/index-by :id all-transforms) slice)))
 
-(defn- run-subgraph-test-run!
-  "Execute a sub-graph test run for target transform `target-id`, returning an HTTP
-  response map. Typed test-run errors become error responses; other exceptions
-  propagate."
-  [target-id multipart-params]
-  (let [expected-part   (get multipart-params "expected")
-        assertions-part (get multipart-params "assertions")
-        parsed-assertions (api-util/parse-assertions assertions-part)]
-    (when (and (nil? expected-part) (empty? parsed-assertions))
-      (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
-                      {:status-code 400})))
-    (let [expected-file  (when expected-part (:tempfile expected-part))
-          source-ids     (parse-source-ids (get multipart-params "sources"))
-          fixtures-by-id (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
-          opts           (assoc (api-util/parse-test-run-options (get multipart-params "options"))
-                                :assertions parsed-assertions)]
-      (try
-        (check-test-run-allowed! #(transform-slice-transforms target-id source-ids (t2/select :model/Transform)))
-        (let [record (test-run.core/run-chain-test! target-id source-ids fixtures-by-id expected-file opts)]
-          {:status 200
-           :body   (api-util/run-record->response record)})
-        (catch clojure.lang.ExceptionInfo e
-          (let [error-type  (:error-type (ex-data e))
-                http-status (get api-util/test-run-error-http-status error-type)]
-            (if http-status
-              {:status http-status
-               :body   (api-util/error->response e)}
-              (throw e))))))))
+(defn- test-run-response
+  "Call `thunk`; a typed test-run error (an ExceptionInfo whose `:error-type`
+  maps to an HTTP status) becomes an error-response map; anything else
+  propagates."
+  [thunk]
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      (let [http-status (get api-util/test-run-error-http-status (:error-type (ex-data e)))]
+        (if http-status
+          {:status http-status
+           :body   (api-util/error->response e)}
+          (throw e))))))
 
-(defn- run-card-subgraph-test-run!
-  "Execute a sub-graph test run for target Card `card`, returning an HTTP response
-  map. Typed test-run errors become error responses; other exceptions propagate."
-  [card multipart-params]
-  (let [expected-part   (get multipart-params "expected")
-        assertions-part (get multipart-params "assertions")
-        parsed-assertions (api-util/parse-assertions assertions-part)]
+(defn- run-test-run!
+  "Shared POST body for both target types. Parses the multipart contract, then
+  calls the target-specific holes with one `:model/Transform` snapshot shared
+  between the permission check and the run:
+
+  - `(slice-transforms source-ids all-transforms)` — the transforms the run exercises.
+  - `(run source-ids fixtures-by-id expected-file opts all-transforms)` — the run
+    itself, returning a run record.
+
+  Returns an HTTP response map; typed test-run errors become error responses,
+  other exceptions propagate."
+  [multipart-params {:keys [slice-transforms run]}]
+  (let [expected-part     (get multipart-params "expected")
+        parsed-assertions (api-util/parse-assertions (get multipart-params "assertions"))]
     (when (and (nil? expected-part) (empty? parsed-assertions))
       (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
                       {:status-code 400})))
     (let [expected-file  (when expected-part (:tempfile expected-part))
-          source-ids     (parse-source-ids (get multipart-params "sources"))
+          source-ids     (api-util/parse-source-ids (get multipart-params "sources"))
           fixtures-by-id (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
           opts           (assoc (api-util/parse-test-run-options (get multipart-params "options"))
                                 :assertions parsed-assertions)]
-      (try
-        (check-test-run-allowed! #(card-slice-transforms card source-ids (t2/select :model/Transform)))
-        (let [record (test-run.core/run-card-chain-test! card source-ids fixtures-by-id expected-file opts)]
-          {:status 200
-           :body   (api-util/run-record->response record)})
-        (catch clojure.lang.ExceptionInfo e
-          (let [error-type  (:error-type (ex-data e))
-                http-status (get api-util/test-run-error-http-status error-type)]
-            (if http-status
-              {:status http-status
-               :body   (api-util/error->response e)}
-              (throw e))))))))
+      (test-run-response
+       (fn []
+         (let [all-transforms (t2/select :model/Transform)]
+           (check-test-run-allowed! #(slice-transforms source-ids all-transforms))
+           {:status 200
+            :body   (api-util/run-record->response
+                     (run source-ids fixtures-by-id expected-file opts all-transforms))}))))))
 
 (defn- inputs-response
   "Shape `(tables-thunk)` (a thunk returning leaf table-infos) into the inputs
   response, mapping typed test-run errors to HTTP statuses."
   [tables-thunk]
-  (try
-    {:status 200
-     :body   (mapv api-util/input-table->response (tables-thunk))}
-    (catch clojure.lang.ExceptionInfo e
-      (let [error-type  (:error-type (ex-data e))
-            http-status (get api-util/test-run-error-http-status error-type)]
-        (if http-status
-          {:status http-status
-           :body   (api-util/error->response e)}
-          (throw e))))))
+  (test-run-response
+   (fn []
+     {:status 200
+      :body   (mapv api-util/input-table->response (tables-thunk))})))
 
 (api.macros/defendpoint :post "/:target-type/:id/subgraph" :- [:map
                                                                [:status pos-int?]
@@ -166,11 +124,23 @@
   (case target-type
     "transform"
     (do (api/read-check :model/Transform id)
-        (run-subgraph-test-run! id multipart-params))
+        (run-test-run!
+         multipart-params
+         {:slice-transforms (fn [source-ids all-transforms]
+                              (transform-slice-transforms id source-ids all-transforms))
+          :run              (fn [source-ids fixtures-by-id expected-file opts all-transforms]
+                              (test-run.core/run-chain-test!
+                               id source-ids fixtures-by-id expected-file opts all-transforms))}))
 
     "card"
     (let [card (api/read-check :model/Card id)]
-      (run-card-subgraph-test-run! card multipart-params))))
+      (run-test-run!
+       multipart-params
+       {:slice-transforms (fn [source-ids all-transforms]
+                            (card-slice-transforms card source-ids all-transforms))
+        :run              (fn [source-ids fixtures-by-id expected-file opts all-transforms]
+                            (test-run.core/run-card-chain-test!
+                             card source-ids fixtures-by-id expected-file opts all-transforms))}))))
 
 (api.macros/defendpoint :get "/:target-type/:id/subgraph-inputs" :- [:map
                                                                      [:status pos-int?]

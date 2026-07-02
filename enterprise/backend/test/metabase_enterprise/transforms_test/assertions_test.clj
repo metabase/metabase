@@ -18,15 +18,15 @@
 (set! *warn-on-reflection* true)
 
 ;;; ===========================================================================
-;;; build-combined-assertion-sql (:cte binding)
+;;; build-combined-assertion-sql
 ;;; ===========================================================================
 
-(deftest build-combined-assertion-sql-cte-test
-  (testing "CTE binding: wraps output with WITH test_output AS (...) + UNION ALL COUNT(*) subqueries"
-    (let [binding  {:kind :cte :sql "SELECT * FROM \"public\".\"mb_transform_temp_table_test_abc\""}
-          runnable [{:name "no_nulls"   :severity :error :rewritten-sql "SELECT * FROM test_output WHERE col IS NULL"}
-                    {:name "no_negatives" :severity :error :rewritten-sql "SELECT * FROM test_output WHERE revenue < 0"}]
-          sql      (assertions/build-combined-assertion-sql binding runnable)]
+(deftest build-combined-assertion-sql-test
+  (testing "wraps output-sql with WITH test_output AS (...) + UNION ALL COUNT(*) subqueries"
+    (let [output-sql "SELECT * FROM \"public\".\"mb_transform_temp_table_test_abc\""
+          runnable   [{:name "no_nulls"   :severity :error :rewritten-sql "SELECT * FROM test_output WHERE col IS NULL"}
+                      {:name "no_negatives" :severity :error :rewritten-sql "SELECT * FROM test_output WHERE revenue < 0"}]
+          sql        (assertions/build-combined-assertion-sql output-sql runnable)]
       (testing "starts with WITH test_output AS (...)"
         (is (str/starts-with? sql "WITH test_output AS (")))
       (testing "contains both assertion names as literals"
@@ -43,39 +43,21 @@
 
 (deftest build-combined-assertion-sql-single-assertion-test
   (testing "single assertion produces no UNION ALL"
-    (let [binding  {:kind :cte :sql "SELECT * FROM scratch_table"}
-          runnable [{:name "only_one" :severity :error :rewritten-sql "SELECT * FROM test_output WHERE x < 0"}]
-          sql      (assertions/build-combined-assertion-sql binding runnable)]
+    (let [sql (assertions/build-combined-assertion-sql
+               "SELECT * FROM scratch_table"
+               [{:name "only_one" :severity :error :rewritten-sql "SELECT * FROM test_output WHERE x < 0"}])]
       (is (not (str/includes? sql "UNION ALL")))
       (is (str/includes? sql "'only_one'")))))
 
 (deftest build-combined-assertion-sql-strips-trailing-semicolon-test
   (testing "trailing semicolons in user SQL are stripped before embedding"
-    (let [binding  {:kind :cte :sql "SELECT * FROM t"}
-          runnable [{:name "semi" :severity :error :rewritten-sql "SELECT * FROM test_output WHERE x = 1;"}]
-          sql      (assertions/build-combined-assertion-sql binding runnable)]
+    (let [sql (assertions/build-combined-assertion-sql
+               "SELECT * FROM t"
+               [{:name "semi" :severity :error :rewritten-sql "SELECT * FROM test_output WHERE x = 1;"}])]
       ;; A trailing semicolon inside a subquery would be a syntax error.
       (is (not (str/includes? sql "1;)")))
       ;; ...and the assertion SQL itself must survive the strip.
       (is (str/includes? sql "x = 1) __a")))))
-
-;;; ===========================================================================
-;;; build-combined-assertion-sql (:table binding)
-;;; ===========================================================================
-
-(deftest build-combined-assertion-sql-table-binding-test
-  (testing ":table binding: no WITH clause; test_output already resolved by mapping"
-    (let [binding  {:kind :table}
-          ;; For :table binding the rewrite already turned test_output into a scratch table.
-          runnable [{:name "check_a" :severity :error
-                     :rewritten-sql "SELECT * FROM \"public\".\"mb_transform_temp_table_test_xyz\" WHERE n < 0"}]
-          sql      (assertions/build-combined-assertion-sql binding runnable)]
-      (testing "no WITH clause"
-        (is (not (str/includes? sql "WITH "))))
-      (testing "still has COUNT(*) envelope"
-        (is (str/includes? sql "COUNT(*) AS __failing")))
-      (testing "still has assertion name"
-        (is (str/includes? sql "'check_a'"))))))
 
 ;;; ===========================================================================
 ;;; prepare fault isolation (unit-level, no DB)
@@ -199,31 +181,6 @@
     (is (= :passed (assertions/overall-status :passed [{:status :warn}])))))
 
 ;;; ===========================================================================
-;;; build-output-binding tests (pure)
-;;; ===========================================================================
-
-(deftest build-output-binding-transform-test
-  (testing ":transform target → :cte binding with SELECT * FROM scratch"
-    (let [spec    {:schema "public" :table "mb_transform_temp_table_test_abc" :db nil}
-          binding (assertions/build-output-binding :transform {:scratch-spec spec})]
-      (is (= :cte (:kind binding)))
-      (is (str/includes? (:sql binding) "mb_transform_temp_table_test_abc"))
-      (is (str/starts-with? (:sql binding) "SELECT * FROM")))))
-
-(deftest build-output-binding-card-sql-test
-  (testing ":card target with :card-sql → :cte binding"
-    (let [binding (assertions/build-output-binding :card {:card-sql "SELECT a, b FROM scratch_tbl"})]
-      (is (= :cte (:kind binding)))
-      (is (= "SELECT a, b FROM scratch_tbl" (:sql binding))))))
-
-(deftest build-output-binding-card-scratch-test
-  (testing ":card target with :scratch-spec → :table binding (escape path)"
-    (let [spec    {:schema "public" :table "mb_transform_temp_table_test_xyz"}
-          binding (assertions/build-output-binding :card {:scratch-spec spec})]
-      (is (= :table (:kind binding)))
-      (is (= spec (:spec binding))))))
-
-;;; ===========================================================================
 ;;; DB-gated postgres tests — run-assertions! against a live Postgres scratch table
 ;;; ===========================================================================
 
@@ -250,7 +207,7 @@
 
 (defn- do-with-seeded-orders!
   "Seed a scratch copy of the orders table from `fixture-csv` on :postgres inside
-  a transform connection; call `f` with `{:db-id :drv :mapping :binding :backend}`;
+  a transform connection; call `f` with `{:db-id :drv :mapping :output-sql :backend}`;
   clean up the scratch table in a finally."
   [fixture-csv f]
   (mt/with-premium-features #{}
@@ -266,15 +223,14 @@
                            :name    "orders"
                            :columns orders-columns}]
           (driver.conn/with-transform-connection
-            (let [mapping (scratch/seed! db-id db schema
-                                         [{:table-info orders-info
-                                           :fixture    (fixtures/parse-fixture fixture-csv orders-columns)}]
-                                         nonce)
-                  binding (assertions/build-output-binding
-                           :transform {:scratch-spec (-> mapping vals first)})
-                  backend (sql-tools/parser-backend)]
+            (let [mapping    (scratch/seed! db-id db schema
+                                            [{:table-info orders-info
+                                              :fixture    (fixtures/parse-fixture fixture-csv orders-columns)}]
+                                            nonce)
+                  output-sql (str "SELECT * FROM " (scratch/spec->sql-ref drv (-> mapping vals first)))
+                  backend    (sql-tools/parser-backend)]
               (try
-                (f {:db-id db-id :drv drv :mapping mapping :binding binding :backend backend})
+                (f {:db-id db-id :drv drv :mapping mapping :output-sql output-sql :backend backend})
                 (finally
                   (scratch/cleanup! db-id db mapping nil))))))))))
 
@@ -286,7 +242,7 @@
   (testing "all-pass → single combined query, all assertions :passed"
     (do-with-seeded-orders!
      two-positive-orders-csv
-     (fn [{:keys [db-id drv mapping binding backend]}]
+     (fn [{:keys [db-id drv mapping output-sql backend]}]
        (let [qp-calls (atom 0)
              qp-orig  (mt/original-fn #'qp/process-query)
              results  (mt/with-dynamic-fn-redefs [qp/process-query
@@ -294,7 +250,7 @@
                                                     (swap! qp-calls inc)
                                                     (apply qp-orig args))]
                         (assertions/run-assertions!
-                         db-id drv backend mapping binding
+                         db-id drv backend mapping output-sql
                          [{:name "no_neg_total"    :sql "SELECT * FROM test_output WHERE total < 0" :severity :error}
                           {:name "has_positive_id" :sql "SELECT * FROM test_output WHERE id <= 0"   :severity :error}]))]
          (testing "one combined QP round-trip for both assertions"
@@ -324,9 +280,9 @@
                           "\n")]
       (do-with-seeded-orders!
        neg-csv
-       (fn [{:keys [db-id drv mapping binding backend]}]
+       (fn [{:keys [db-id drv mapping output-sql backend]}]
          (let [results (assertions/run-assertions!
-                        db-id drv backend mapping binding
+                        db-id drv backend mapping output-sql
                         ;; assertion 0: every row fails (total < 0) → over the sample cap
                         ;; assertion 1: no rows fail (id > 0 is always true) → pass
                         [{:name "total_positive" :sql "SELECT * FROM test_output WHERE total < 0" :severity :error}
@@ -354,9 +310,9 @@
   (testing ":warn severity firing → per-entry :warn, overall does not flip to :failed"
     (do-with-seeded-orders!
      two-positive-orders-csv
-     (fn [{:keys [db-id drv mapping binding backend]}]
+     (fn [{:keys [db-id drv mapping output-sql backend]}]
        (let [results (assertions/run-assertions!
-                      db-id drv backend mapping binding
+                      db-id drv backend mapping output-sql
                       ;; Assertion always fires (all rows pass WHERE 1=1) but severity is :warn.
                       [{:name "warn_always_fires"
                         :sql  "SELECT * FROM test_output WHERE 1=1"
@@ -391,7 +347,7 @@
     ;; the good one still executes and contributes a count.
     (do-with-seeded-orders!
      two-positive-orders-csv
-     (fn [{:keys [db-id drv mapping binding backend]}]
+     (fn [{:keys [db-id drv mapping output-sql backend]}]
        (let [per-assertion-calls (atom 0)
              run-one-orig        (mt/original-fn #'assertions/run-one-assertion!)
              ;; The bad assertion references an existing table but a non-existent
@@ -404,7 +360,7 @@
                           (swap! per-assertion-calls inc)
                           (apply run-one-orig args))]
                        (assertions/run-assertions!
-                        db-id drv backend mapping binding
+                        db-id drv backend mapping output-sql
                         [{:name "bad_column_ref" :sql bad-sql                                   :severity :error}
                          {:name "good_assertion" :sql "SELECT * FROM test_output WHERE id <= 0" :severity :error}]
                         {:strategy :batched}))]
@@ -441,12 +397,12 @@
                           {:name "subtotal_nonneg" :sql "SELECT * FROM test_output WHERE subtotal < 0" :severity :warn}]]
       (do-with-seeded-orders!
        mixed-csv
-       (fn [{:keys [db-id drv mapping binding backend]}]
+       (fn [{:keys [db-id drv mapping output-sql backend]}]
          (let [batched-results    (assertions/run-assertions!
-                                   db-id drv backend mapping binding assertion-defs
+                                   db-id drv backend mapping output-sql assertion-defs
                                    {:strategy :batched})
                per-assert-results (assertions/run-assertions!
-                                   db-id drv backend mapping binding assertion-defs
+                                   db-id drv backend mapping output-sql assertion-defs
                                    {:strategy :per-assertion})]
            (testing ":batched and :per-assertion return same number of results"
              (is (= (count batched-results) (count per-assert-results))))

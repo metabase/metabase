@@ -7,7 +7,6 @@
    [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase.driver :as driver]
-   [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]))
 
@@ -57,36 +56,20 @@
   Returns the full QP result map (status :completed + :data {:cols ... :rows ...}).
   Throws on QP error.
 
-  `drv` is the driver keyword, used to produce properly quoted identifier names.
-  `output-target` must be a `{:schema :table :db}` spec as returned by
-  `scratch-output-target`. When `:db` is non-nil the SELECT uses a 3-segment
-  `catalog.schema.table` reference; otherwise it falls back to `schema.table` or
-  bare `table`. This is required for drivers where the catalog must appear in
-  emitted SQL (BigQuery, SQL Server).
-
-  Schema and table are identifiers, not values — they must be driver-quoted, not
-  passed as JDBC parameters."
+  `drv` is the driver keyword; `output-target` is a `{:schema :table :db}` spec
+  as returned by `scratch-output-target`."
   [db-id drv output-target]
-  (let [catalog (:db output-target)
-        schema  (:schema output-target)
-        table   (:table output-target)
-        sql     (cond
-                  (and catalog schema)
-                  (str "SELECT * FROM " (sql.u/quote-name drv :table catalog schema table))
-                  schema
-                  (str "SELECT * FROM " (sql.u/quote-name drv :table schema table))
-                  :else
-                  (str "SELECT * FROM " (sql.u/quote-name drv :table table)))
-        result  (qp/process-query {:database db-id
-                                   :type     :native
-                                   :native   {:query sql}})]
+  (let [sql    (str "SELECT * FROM " (scratch/spec->sql-ref drv output-target))
+        result (qp/process-query {:database db-id
+                                  :type     :native
+                                  :native   {:query sql}})]
     (when (not= :completed (:status result))
       (throw (ex-info
-              (str "Failed to read back scratch output table " (pr-str table) ": QP returned "
-                   (pr-str (:status result)))
+              (str "Failed to read back scratch output table " (pr-str (:table output-target))
+                   ": QP returned " (pr-str (:status result)))
               {:error-type   ::errors/execution-failed
                :qp-status    (:status result)
-               :output-table table})))
+               :output-table (:table output-target)})))
     result))
 
 (defn actual->schema

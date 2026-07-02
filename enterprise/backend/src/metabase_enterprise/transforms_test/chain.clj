@@ -34,6 +34,7 @@
    [metabase.query-processor.core :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -53,18 +54,12 @@
 ;;; Internal helpers
 ;;; ---------------------------------------------------------------------------
 
-(defn- node-db-id
-  "The source database id of a transform node (native and MBQL both carry it on
-  the source query)."
-  [transform]
-  (-> transform :source :query :database))
-
 (defn- assert-single-database!
   "Fail closed unless every node in `slice` shares `db-id`."
   [slice id->transform db-id]
   (let [offenders (into {}
                         (keep (fn [id]
-                                (let [node-db (node-db-id (id->transform id))]
+                                (let [node-db (transforms-base.u/transform-source-database (id->transform id))]
                                   (when (not= node-db db-id)
                                     [id node-db]))))
                         slice)]
@@ -89,18 +84,19 @@
   {:schema (-> transform :target :schema)
    :table  (-> transform :target :name)})
 
+(defn- scratch-schema
+  "Schema in which to create a run's scratch tables: the anchor transform's
+  target schema, else \"public\"."
+  [transform]
+  (or (-> transform :target :schema) "public"))
+
 (defn- run-node!
   "Resolve, guard, and execute a single transform node against the accumulated
-  `mapping`, writing its output to a fresh per-node scratch table.
+  `mapping`, writing its output to the `out-spec` scratch table.
 
-  Returns the resolved artifact (with `:target` = the node's `{:schema :table}`
-  scratch output spec and `:parser-backend`)."
-  [{:keys [transform mapping db db-id drv schema nonce input-tables timeout-ms]}]
-  (let [catalog   (driver.sql/db-slot-value drv db)
-        out-spec  (scratch/scratch-output-target schema nonce
-                                                 (str "out_" (:id transform))
-                                                 catalog)
-        artifact  (resolve/resolve-test-transform transform mapping out-spec
+  Returns the resolved artifact (with `:parser-backend`)."
+  [{:keys [transform mapping out-spec db db-id drv input-tables timeout-ms]}]
+  (let [artifact  (resolve/resolve-test-transform transform mapping out-spec
                                                   {:db db :input-tables input-tables})
         all-names (conj (mapv :table (vals mapping)) (:table out-spec))]
     (execute/assert-all-test-tables! all-names)
@@ -110,65 +106,62 @@
                              {:overwrite? true}))
     artifact))
 
-(defn- run-slice-inner!
+(defn- run-slice!
   "Run the shared slice: seed leaves, execute each node in topo order, accumulate
-  the mapping. Returns `{:mapping :db :db-id :drv :schema :outputs :nonce :leaves}`.
+  the mapping. Returns `{:mapping :outputs :parser-backend}` where `:mapping` is
+  the leaf mapping plus per-node output redirects and `:outputs` is
+  `{node-id out-spec}`.
 
-  Caller is responsible for wrapping in `driver.conn/with-transform-connection`
-  and for `finally` cleanup of the returned mapping and outputs."
-  [{:keys [order leaf-deps db-id db-from-id fixtures-by-table-id id->transform timeout-ms schema]}]
-  (let [schema    (or schema
-                      (some-> (first (keep #(-> (id->transform %) :target :schema) order))
-                              identity)
-                      "public")
-        db        (or db-from-id (t2/select-one :model/Database :id db-id))
-        drv       (keyword (:engine db))
-        leaves    (leaf-table-infos leaf-deps)
-        _         (inputs/match-fixtures leaves (set (keys fixtures-by-table-id)))
+  Every scratch table is registered in the caller-owned `mapping*` / `outputs*`
+  atoms as soon as it is created (leaves) or about to be created (node outputs),
+  so the caller's `finally` cleanup sees partial state when a node throws
+  mid-slice. Caller is responsible for wrapping in
+  `driver.conn/with-transform-connection` and for dropping everything in those
+  atoms."
+  [{:keys [order leaf-deps db db-id drv schema fixtures-by-table-id id->transform timeout-ms
+           mapping* outputs*]}]
+  (let [leaves      (leaf-table-infos leaf-deps)
+        _           (inputs/match-fixtures leaves (set (keys fixtures-by-table-id)))
         seed-inputs (mapv (fn [{:keys [id columns] :as table-info}]
                             {:table-info table-info
                              :fixture    (fixtures/parse-fixture
                                           (get fixtures-by-table-id id) columns)})
                           leaves)
-        nonce     (scratch/new-nonce)
-        mapping*  (atom {})
-        outputs*  (atom {})]
+        nonce       (scratch/new-nonce)
+        catalog     (driver.sql/db-slot-value drv db)]
     ;; Reap orphans left by prior runs that died before cleanup (JVM kill, timeout).
     (scratch/sweep-old-test-tables! db-id db schema)
     (reset! mapping* (scratch/seed! db-id db schema seed-inputs nonce))
-    (let [last-backend* (atom nil)]
-      (doseq [node-id order]
-        (let [node     (id->transform node-id)
-              artifact (run-node! {:transform    node
-                                   :mapping      @mapping*
-                                   :db           db
-                                   :db-id        db-id
-                                   :drv          drv
-                                   :schema       schema
-                                   :nonce        nonce
-                                   :input-tables leaves
-                                   :timeout-ms   timeout-ms})
-              out-spec (:target artifact)]
-          (swap! outputs* assoc node-id out-spec)
-          (reset! last-backend* (:parser-backend artifact))
-          ;; So downstream nodes redirect to this node's scratch output.
-          (swap! mapping* assoc (node-real-output-spec node) out-spec)))
-      {:mapping        @mapping*
-       :db             db
-       :db-id          db-id
-       :drv            drv
-       :schema         schema
-       :outputs        @outputs*
-       :nonce          nonce
-       :leaves         leaves
-       :parser-backend @last-backend*})))
+    (reduce
+     (fn [acc node-id]
+       (let [node     (id->transform node-id)
+             out-spec (scratch/scratch-output-target schema nonce (str "out_" (:id node)) catalog)]
+         ;; Register before the CTAS so a failed execution still gets cleaned up.
+         (swap! outputs* assoc node-id out-spec)
+         (let [artifact (run-node! {:transform    node
+                                    :mapping      (:mapping acc)
+                                    :out-spec     out-spec
+                                    :db           db
+                                    :db-id        db-id
+                                    :drv          drv
+                                    :input-tables leaves
+                                    :timeout-ms   timeout-ms})]
+           (-> acc
+               (assoc-in [:outputs node-id] out-spec)
+               (assoc :parser-backend (:parser-backend artifact))
+               ;; So downstream nodes redirect to this node's scratch output.
+               (update :mapping assoc (node-real-output-spec node) out-spec)))))
+     {:mapping @mapping* :outputs {} :parser-backend nil}
+     order)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Card execution helpers
 ;;; ---------------------------------------------------------------------------
 
 (defn- card-db-id
-  "Database id from a card's dataset_query."
+  "Database id from a card's dataset_query. A top-level read rather than
+  `lib/database-id`: `:database` is top-level in every MBQL version, and the
+  lib accessor schema-rejects legacy-shaped queries, which callers may pass."
   [card]
   (get-in card [:dataset_query :database]))
 
@@ -207,6 +200,89 @@
     ;; verify: every SQL ref must be a scratch table; no original table token survives.
     (resolve/verify drv mapping final-sql)
     final-sql))
+
+(defn- run-card-query!
+  "Execute the compiled card SQL via the QP; return the full QP result map.
+  Throws `::errors/execution-failed` on a non-completed status."
+  [db-id card-id drv card-sql]
+  (log/debug "Running card query under scratch override" {:db-id db-id :drv drv})
+  (let [result (qp/process-query {:database db-id
+                                  :type     :native
+                                  :native   {:query card-sql}})]
+    (when (not= :completed (:status result))
+      (throw (ex-info
+              (str "Card query failed during test run: QP returned "
+                   (pr-str (:status result)))
+              {:error-type ::errors/execution-failed
+               :qp-status  (:status result)
+               :card-id    card-id})))
+    result))
+
+;;; ---------------------------------------------------------------------------
+;;; Shared run frame
+;;; ---------------------------------------------------------------------------
+
+(defn- run-test!
+  "Shared frame for both target types: run the slice, produce the target's
+  actual rows, diff against the expected CSV, run assertions, and drop every
+  scratch table in a `finally` — including partial state from a mid-slice
+  failure (see [[run-slice!]]).
+
+  `produce-actual` is called with `{:mapping :outputs :db-id :drv}` after the
+  slice has run and must return
+  `{:qp-result <QP result map> :output-sql <test_output SQL> :extra <map>}`;
+  `:extra` is merged into the run record."
+  [{:keys [resolution id->transform db-id schema fixtures-by-table-id expected-csv-file opts]}
+   produce-actual]
+  (let [{:keys [slice order leaf-deps]} resolution
+        timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
+        ignore-cols    (get opts :ignore-columns #{})
+        assertion-defs (get opts :assertions [])
+        _              (assert-single-database! slice id->transform db-id)
+        db             (t2/select-one :model/Database :id db-id)
+        drv            (keyword (:engine db))
+        mapping*       (atom {})
+        outputs*       (atom {})]
+    (driver.conn/with-transform-connection
+      (try
+        (let [{:keys [mapping outputs parser-backend]}
+              (run-slice! {:order                order
+                           :leaf-deps            leaf-deps
+                           :db                   db
+                           :db-id                db-id
+                           :drv                  drv
+                           :schema               schema
+                           :fixtures-by-table-id fixtures-by-table-id
+                           :id->transform        id->transform
+                           :timeout-ms           timeout-ms
+                           :mapping*             mapping*
+                           :outputs*             outputs*})
+              {:keys [qp-result output-sql extra]}
+              (produce-actual {:mapping mapping :outputs outputs :db-id db-id :drv drv})
+              actual-cols (get-in qp-result [:data :cols])
+              actual-rows (get-in qp-result [:data :rows])
+              report      (when expected-csv-file
+                            (let [expected (fixtures/parse-fixture expected-csv-file
+                                                                   (execute/actual->schema actual-cols))]
+                              (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
+              ;; Run assertions while the scratch tables still exist: after
+              ;; produce-actual, before cleanup.
+              backend     (sql-tools/parser-backend)
+              assertion-results (assertions/run-assertions! db-id drv backend mapping output-sql assertion-defs)
+              overall     (assertions/overall-status (or (:status report) :passed)
+                                                     (or assertion-results []))]
+          (merge {:status         overall
+                  :diff           report
+                  :assertions     assertion-results
+                  :parser-backend parser-backend
+                  :order          order}
+                 extra))
+        (finally
+          ;; Drop node output scratch tables (one per slice node)...
+          (doseq [out-spec (vals @outputs*)]
+            (scratch/cleanup! db-id db {} out-spec))
+          ;; ...then the leaf input scratch tables.
+          (scratch/cleanup! db-id db @mapping* nil))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry points
@@ -247,6 +323,8 @@
                              the run status (requires `assertions` to be non-empty).
   - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]}`.
     - `:assertions` — seq of `{:name :sql :severity}` maps (default `[]`).
+  - `all-transforms`       — every `:model/Transform` row; one snapshot shared with
+                             the caller's permission checks and slice resolution.
 
   Returns a run-record map (JSON-serializable):
   ```
@@ -260,63 +338,28 @@
 
   On error, throws a typed `ex-info` (`:error-type` in ex-data). Scratch tables
   are dropped on every path, including errors."
-  [target-id source-ids fixtures-by-table-id expected-csv-file opts]
-  (let [timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
-        ignore-cols    (get opts :ignore-columns #{})
-        assertion-defs (get opts :assertions [])
-        all-transforms (t2/select :model/Transform)
-        id->transform  (u/index-by :id all-transforms)
-        target         (or (id->transform target-id)
-                           (throw (ex-info (str "Target transform " target-id " not found.")
-                                           {:error-type ::errors/target-not-found :target-id target-id})))
-        {:keys [slice order leaf-deps]} (subgraph/resolve-subgraph target-id source-ids all-transforms)
-        db-id          (node-db-id target)
-        _              (when-not db-id
-                         (throw (ex-info "Cannot determine database id from target transform source query."
-                                         {:error-type ::errors/missing-database-id :target-id target-id})))
-        _              (assert-single-database! slice id->transform db-id)
-        schema         (or (-> target :target :schema) "public")
-        db             (t2/select-one :model/Database :id db-id)
-        mapping*       (atom {})
-        outputs*       (atom {})]
-    (driver.conn/with-transform-connection
-      (try
-        (let [{:keys [mapping outputs drv parser-backend]}
-              (run-slice-inner! {:slice                slice
-                                 :order                order
-                                 :leaf-deps            leaf-deps
-                                 :db-id                db-id
-                                 :db-from-id           db
-                                 :fixtures-by-table-id fixtures-by-table-id
-                                 :id->transform        id->transform
-                                 :timeout-ms           timeout-ms
-                                 :schema               schema})]
-          (reset! mapping* mapping)
-          (reset! outputs* outputs)
-          (let [target-out  (get outputs target-id)
-                qp-result   (execute/read-back-output db-id drv target-out)
-                actual-cols (get-in qp-result [:data :cols])
-                actual-rows (get-in qp-result [:data :rows])
-                report      (when expected-csv-file
-                              (let [expected (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))]
-                                (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
-                ;; Run assertions after the target's scratch output exists:
-                ;; after run-slice-inner!, before cleanup.
-                backend     (sql-tools/parser-backend)
-                binding     (assertions/build-output-binding :transform {:scratch-spec target-out})
-                assertion-results (assertions/run-assertions! db-id drv backend mapping binding assertion-defs)
-                diff-status (or (:status report) :passed)
-                overall     (assertions/overall-status diff-status (or assertion-results []))]
-            {:status         overall
-             :diff           report
-             :assertions     assertion-results
-             :parser-backend parser-backend
-             :order          order
-             :output-table   (:table target-out)}))
-        (finally
-          (doseq [out-spec (vals @outputs*)]
-            (scratch/cleanup! db-id db {} out-spec))
-          (scratch/cleanup! db-id db @mapping* nil))))))
+  [target-id source-ids fixtures-by-table-id expected-csv-file opts all-transforms]
+  (let [id->transform (u/index-by :id all-transforms)
+        target        (or (id->transform target-id)
+                          (throw (ex-info (str "Target transform " target-id " not found.")
+                                          {:error-type ::errors/target-not-found :target-id target-id})))
+        resolution    (subgraph/resolve-subgraph target-id source-ids all-transforms)
+        db-id         (or (transforms-base.u/transform-source-database target)
+                          (throw (ex-info "Cannot determine database id from target transform source query."
+                                          {:error-type ::errors/missing-database-id :target-id target-id})))]
+    (run-test!
+     {:resolution           resolution
+      :id->transform        id->transform
+      :db-id                db-id
+      :schema               (scratch-schema target)
+      :fixtures-by-table-id fixtures-by-table-id
+      :expected-csv-file    expected-csv-file
+      :opts                 opts}
+     (fn [{:keys [outputs db-id drv]}]
+       (let [target-out (get outputs target-id)]
+         {:qp-result  (execute/read-back-output db-id drv target-out)
+          :output-sql (str "SELECT * FROM " (scratch/spec->sql-ref drv target-out))
+          :extra      {:output-table (:table target-out)}})))))
 
 (defn run-card-chain-test!
   "Execute a synchronous chained test run where the target is a Card (saved
@@ -336,14 +379,17 @@
                              When nil, only assertions determine the run status.
   - `opts`                 — `{:ignore-columns #{...} :timeout-ms <ms> :assertions [...]}`.
     - `:assertions` — seq of `{:name :sql :severity}` maps (default `[]`).
+  - `all-transforms`       — every `:model/Transform` row; one snapshot shared with
+                             the caller's permission checks and slice resolution.
 
   Returns a run-record map (JSON-serializable):
   ```
-  {:status     :passed | :failed
-   :diff       <diff-report> | nil
-   :assertions [<assertion-result> ...] | nil
-   :order      [<transform-id> ...]   ; topological run order of the transform slice
-   :card-id    <integer>}             ; the card's id (for debugging)
+  {:status         :passed | :failed
+   :diff           <diff-report> | nil
+   :assertions     [<assertion-result> ...] | nil
+   :parser-backend <keyword> | nil        ; nil when the slice has no transforms
+   :order          [<transform-id> ...]   ; topological run order of the transform slice
+   :card-id        <integer>}             ; the card's id (for debugging)
   ```
 
   Security: the card is executed via raw `qp/process-query` (no card-caching
@@ -360,80 +406,29 @@
 
   On error, throws a typed `ex-info` (`:error-type` in ex-data). Scratch tables
   are dropped on every path, including errors."
-  [card source-ids fixtures-by-table-id expected-csv-file opts]
-  (let [timeout-ms     (get opts :timeout-ms default-test-run-timeout-ms)
-        ignore-cols    (get opts :ignore-columns #{})
-        assertion-defs (get opts :assertions [])
-        card-id        (:id card)
-        db-id          (card-db-id card)
-        _              (when-not db-id
-                         (throw (ex-info
-                                 (str "Cannot determine database id from card " card-id
-                                      " dataset_query.")
-                                 {:error-type ::errors/missing-database-id :card-id card-id})))
-        all-transforms (t2/select :model/Transform)
-        id->transform  (u/index-by :id all-transforms)
-        {:keys [slice order leaf-deps]} (subgraph/card->necessary-fixtures card source-ids all-transforms)
-        _              (assert-single-database! slice id->transform db-id)
-        db             (t2/select-one :model/Database :id db-id)
-        drv            (keyword (:engine db))
-        schema         (or (some-> (first order) id->transform :target :schema) "public")
-        mapping*       (atom {})
-        outputs*       (atom {})]
-    (driver.conn/with-transform-connection
-      (try
-        (let [{:keys [mapping outputs]}
-              (run-slice-inner! {:slice                slice
-                                 :order                order
-                                 :leaf-deps            leaf-deps
-                                 :db-id                db-id
-                                 :db-from-id           db
-                                 :fixtures-by-table-id fixtures-by-table-id
-                                 :id->transform        id->transform
-                                 :timeout-ms           timeout-ms
-                                 :schema               schema})]
-          (reset! mapping* mapping)
-          (reset! outputs* outputs)
-          ;; Resolve the card's referenced tables for the override key set.
-          (let [input-tables (card-table-infos card)
-                ;; compile-card-sql produces the scratch-remapped SQL — reuse it for
-                ;; both card execution and the assertion CTE binding (avoiding a
-                ;; second compile call).
-                card-sql     (compile-card-sql card db-id drv mapping input-tables)
-                qp-result    (do
-                               (log/debug "Running card query under scratch override"
-                                          {:db-id db-id :drv drv})
-                               (let [r (qp/process-query {:database db-id
-                                                          :type     :native
-                                                          :native   {:query card-sql}})]
-                                 (when (not= :completed (:status r))
-                                   (throw (ex-info
-                                           (str "Card query failed during test run: QP returned "
-                                                (pr-str (:status r)))
-                                           {:error-type ::errors/execution-failed
-                                            :qp-status  (:status r)
-                                            :card-id    card-id})))
-                                 r))
-                actual-cols  (get-in qp-result [:data :cols])
-                actual-rows  (get-in qp-result [:data :rows])
-                report       (when expected-csv-file
-                               (let [expected (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))]
-                                 (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
-                ;; Run assertions using the compiled card SQL as the test_output CTE:
-                ;; after the card query, before cleanup.
-                backend      (sql-tools/parser-backend)
-                binding      (assertions/build-output-binding :card {:card-sql card-sql})
-                assertion-results (assertions/run-assertions! db-id drv backend mapping binding assertion-defs)
-                diff-status  (or (:status report) :passed)
-                overall      (assertions/overall-status diff-status (or assertion-results []))]
-            {:status     overall
-             :diff       report
-             :assertions assertion-results
-             :order      order
-             :card-id    card-id}))
-        (finally
-          ;; Drop node output scratch tables (one per slice node).
-          (doseq [out-spec (vals @outputs*)]
-            (scratch/cleanup! db-id db {} out-spec))
-          ;; Drop leaf input scratch tables.
-          (scratch/cleanup! db-id db @mapping* nil))))))
+  [card source-ids fixtures-by-table-id expected-csv-file opts all-transforms]
+  (let [card-id       (:id card)
+        db-id         (or (card-db-id card)
+                          (throw (ex-info
+                                  (str "Cannot determine database id from card " card-id
+                                       " dataset_query.")
+                                  {:error-type ::errors/missing-database-id :card-id card-id})))
+        id->transform (u/index-by :id all-transforms)
+        resolution    (subgraph/card->necessary-fixtures card source-ids all-transforms)]
+    (run-test!
+     {:resolution           resolution
+      :id->transform        id->transform
+      :db-id                db-id
+      :schema               (scratch-schema (some-> (first (:order resolution)) id->transform))
+      :fixtures-by-table-id fixtures-by-table-id
+      :expected-csv-file    expected-csv-file
+      :opts                 opts}
+     (fn [{:keys [mapping db-id drv]}]
+       (let [input-tables (card-table-infos card)
+             ;; compile-card-sql produces the scratch-remapped SQL — reuse it for
+             ;; both card execution and the assertion test_output binding
+             ;; (avoiding a second compile call).
+             card-sql     (compile-card-sql card db-id drv mapping input-tables)]
+         {:qp-result  (run-card-query! db-id card-id drv card-sql)
+          :output-sql card-sql
+          :extra      {:card-id card-id}})))))
