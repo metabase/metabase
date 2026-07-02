@@ -7,7 +7,6 @@ import { isNative } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { displayNameForColumn } from "metabase/utils/formatting";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,
@@ -47,6 +46,7 @@ import {
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DatasetData,
   Series,
@@ -342,7 +342,7 @@ export class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
-      const isNotImage = (columnSettings: OptionsType) =>
+      const isNotImage = (columnSettings: ColumnSettings) =>
         columnSettings["view_as"] !== "image";
 
       settings["text_wrapping"] = {

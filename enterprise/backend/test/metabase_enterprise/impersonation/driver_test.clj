@@ -808,7 +808,7 @@
                                         driver/*driver*
                                         (t2/select-one :model/Database (mt/id)))
                                        :tables
-                                       set)
+                                       (into #{}))
                       default-table-set (tables-set)
                       do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
                   (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection

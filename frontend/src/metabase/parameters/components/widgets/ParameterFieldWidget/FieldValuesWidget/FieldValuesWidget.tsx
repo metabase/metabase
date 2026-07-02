@@ -25,10 +25,10 @@ import {
   parseStringValue,
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
@@ -739,10 +739,9 @@ function RemappedValue({
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
       ? {
-          ...(entityIdentifier
-            ? { entityIdentifier }
-            : { dashboard_id: dashboardId }),
-          parameter_id: parameter.id,
+          dashId: dashboardId,
+          ...(entityIdentifier && { entityIdentifier }),
+          paramId: parameter.id,
           value,
         }
       : skipToken,
@@ -751,8 +750,9 @@ function RemappedValue({
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
     cardId != null && value != null && isRemapped
       ? {
-          ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
-          parameter_id: parameter.id,
+          cardId,
+          ...(entityIdentifier && { entityIdentifier }),
+          paramId: parameter.id,
           value,
         }
       : skipToken,

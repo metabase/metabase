@@ -90,22 +90,23 @@
 (defn publish-outbox-rows!
   "after-commit callback: publish each row inserted by [[insert-outbox-rows!]] to the backend, then
   delete the successfully-published rows in a single batched DELETE. Per-row try/catch — on failure
-  the row is left for [[recover-outbox!]] to republish (at-least-once)."
-  []
-  (when-let [state (mdb/transaction-state)]
-    (let [published-ids (reduce
-                         (fn [ids {:keys [id channel payload]}]
-                           (try
-                             (transport/publish-encoded! channel payload)
-                             (conj ids id)
-                             (catch Exception e
-                               (log/error e "Error publishing outbox row; recovery sweep will retry"
-                                          {:channel channel :outbox-id id})
-                               ids)))
-                         []
-                         (::rows @state))]
-      (when (seq published-ids)
-        (t2/delete! :queue_message_outbox :id [:in published-ids])))))
+  the row is left for [[recover-outbox!]] to republish (at-least-once). Takes the transaction's `state`
+  atom explicitly (captured when the callback was registered) because after-commit callbacks run after
+  the transaction bindings unwind, when the dynamic [[mdb/transaction-state]] is no longer bound."
+  [state]
+  (let [published-ids (reduce
+                       (fn [ids {:keys [id channel payload]}]
+                         (try
+                           (transport/publish-encoded! channel payload)
+                           (conj ids id)
+                           (catch Exception e
+                             (log/error e "Error publishing outbox row; recovery sweep will retry"
+                                        {:channel channel :outbox-id id})
+                             ids)))
+                       []
+                       (::rows @state))]
+    (when (seq published-ids)
+      (t2/delete! :queue_message_outbox :id [:in published-ids]))))
 
 (defn defer-transactional!
   "Routes `msgs` for `channel` through the transactional outbox. Accumulates them per channel in
@@ -120,8 +121,11 @@
                                        (update-in [::messages channel] (fnil into []) msgs)
                                        (assoc ::registered? true)))))]
     (when-not (::registered? old)
-      (mdb/before-commit! insert-outbox-rows!)
-      (mdb/after-commit! publish-outbox-rows!))))
+      ;; capture `state` in the after-commit closure — it runs after the transaction bindings unwind,
+      ;; when the dynamic transaction-state is no longer bound (the before-commit insert still runs while
+      ;; the transaction is open, so it reads the dynamic var directly).
+      (mdb/do-before-commit insert-outbox-rows!)
+      (mdb/do-after-commit #(publish-outbox-rows! state)))))
 
 (defn- bump-failed-row
   "Records one failed recovery publish into `acc`: bump the row's `publish_attempts` and schedule its

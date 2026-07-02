@@ -31,10 +31,13 @@
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
   [^OutputStream os                                              :- (ms/InstanceOfClass OutputStream)
-   {:keys [export-format format-rows? pivot?], :as _options}     :- [:map
-                                                                     [:export-format :keyword]
-                                                                     [:format-rows?  {:optional true} [:maybe :boolean]]
-                                                                     [:pivot?        {:optional true} [:maybe :boolean]]]
+   {:keys [export-format format-rows? pivot? csv-include-bom?]
+    :or   {csv-include-bom? true}
+    :as   _options}                                              :- [:map
+                                                                     [:export-format    :keyword]
+                                                                     [:format-rows?     {:optional true} [:maybe :boolean]]
+                                                                     [:pivot?           {:optional true} [:maybe :boolean]]
+                                                                     [:csv-include-bom? {:optional true} [:maybe :boolean]]]
    {{:keys [rows]} :data, database-id :database_id, :as results} :- [:map
                                                                      [:database_id ::lib.schema.id/database]]]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
@@ -51,6 +54,7 @@
                       (-> results
                           (assoc-in [:data :format-rows?] format-rows?)
                           (assoc-in [:data :pivot?] pivot?)
+                          (assoc-in [:data :csv-include-bom?] csv-include-bom?)
                           (assoc-in [:data :ordered-cols] ordered-cols))
                       viz-settings')
         (perf/reduce (fn [_ i row]
@@ -106,7 +110,7 @@
          [(when-let [temp-file (and (:include_csv card)
                                     (create-temp-file-or-throw! "csv"))]
             (with-open [os (io/output-stream temp-file)]
-              (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
+              (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results :csv-include-bom? true} result))
             (create-result-attachment-map "csv" filename-prefix temp-file))
           (when-let [temp-file (and (:include_xls card)
                                     (create-temp-file-or-throw! "xlsx"))]

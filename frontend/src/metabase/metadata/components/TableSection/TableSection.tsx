@@ -158,7 +158,7 @@ const TableSectionBase = ({
         pos="sticky"
         pt="lg"
         top={0}
-        bg="background-secondary"
+        bg="background_page-secondary"
       >
         {withName && (
           <NameDescriptionInput
@@ -174,7 +174,7 @@ const TableSectionBase = ({
                   component={Link}
                   to={Urls.queryBuilderTable(table.id, table.db_id)}
                   variant="subtle"
-                  color="text-tertiary"
+                  color="text-disabled"
                   size="sm"
                   mr="sm"
                   aria-label={t`Go to this table`}

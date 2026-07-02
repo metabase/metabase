@@ -89,10 +89,12 @@
       (testing "`describe-database` should return schemas with tables if the database supports schemas"
         (is (some? (->> (driver/describe-database driver/*driver* (mt/db))
                         :tables
+                        (into [])
                         (some :schema)))))
       (testing "`describe-database` should not return schemas with tables if the database doesn't support schemas"
         (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
                        :tables
+                       (into [])
                        (some :schema))))))))
 
 (defn- basic-db-definition [database-name]

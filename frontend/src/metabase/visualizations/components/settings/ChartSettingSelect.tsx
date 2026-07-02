@@ -27,6 +27,7 @@ type ChartSettingSelectProps = Pick<
   | "pl"
   | "pr"
   | "rightSection"
+  | "variant"
   | "w"
 > & {
   footer?: ReactNode;
@@ -63,6 +64,7 @@ export const ChartSettingSelect = ({
   rightSectionWidth,
   searchProp,
   value = null,
+  variant,
   w,
 }: ChartSettingSelectProps) => {
   const disabled =
@@ -114,7 +116,7 @@ export const ChartSettingSelect = ({
       searchable={!!searchProp}
       comboboxProps={{
         withinPortal: false,
-        floatingStrategy: "fixed",
+        floatingStrategy: "absolute",
       }}
       leftSection={resolvedLeftSection}
       leftSectionWidth={icon != null ? iconWidth : undefined}
@@ -130,6 +132,7 @@ export const ChartSettingSelect = ({
       defaultDropdownOpened={defaultDropdownOpened}
       pl={pl}
       pr={pr}
+      variant={variant}
       w={w}
     />
   );

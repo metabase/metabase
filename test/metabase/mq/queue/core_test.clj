@@ -9,7 +9,8 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.polling :as q.polling]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.mq.test-util :as mq.tu])
+   [metabase.mq.test-util :as mq.tu]
+   [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)
            (java.util.concurrent CountDownLatch CyclicBarrier TimeUnit)))
 
@@ -125,9 +126,8 @@
       ;; would route through the outbox table instead — see metabase.mq.queue.outbox-test).
       (q.registry/register-queue! :queue/test {:transactional :never})
       (mq.tu/listen! :queue/test (fn [msg] (swap! heard conj msg)))
-      (binding [app-db.conn/*after-commit*  (atom [])
-                app-db.conn/*transaction-state* (atom {})]
-        (testing "Inside a transaction, messages are accumulated, not published immediately"
+      (testing "Inside a transaction, messages are accumulated, not published immediately"
+        (t2/with-transaction [_conn]
           (mq/with-queue :queue/test [q]
             (mq/put q "msg1")
             (mq/put q "msg2"))
@@ -138,27 +138,24 @@
                    (get-in @app-db.conn/*transaction-state*
                            [::mq.publish/deferred-messages :queue/test]))))
           (testing "Listener has not been called yet"
-            (is (= [] @heard))))
-        (testing "After flush (simulating commit), all messages are delivered"
-          (mq.publish/flush-deferred-messages!)
-          (mq.tu/flush! test-mq)
-          (is (= ["msg1" "msg2" "msg3"] @heard)))))))
+            (is (= [] @heard)))))
+      (testing "After the transaction commits, all messages are delivered"
+        (mq.tu/flush! test-mq)
+        (is (= ["msg1" "msg2" "msg3"] @heard))))))
 
 (deftest transaction-rollback-discards-messages-test
-  (mq.tu/with-test-mq [test-mq]
-    (q.registry/register-queue! :queue/test {:transactional :never})
-    (mq.tu/listen! :queue/test (fn [_] nil))
-    (binding [app-db.conn/*after-commit*  (atom [])
-              app-db.conn/*transaction-state* (atom {})]
+  (let [heard (atom [])]
+    (mq.tu/with-test-mq [test-mq]
+      (q.registry/register-queue! :queue/test {:transactional :never})
+      (mq.tu/listen! :queue/test (fn [msg] (swap! heard conj msg)))
       (testing "Messages accumulated during a failed transaction are discarded"
         (is (thrown? Exception
-                     (mq/with-queue :queue/test [q]
-                       (mq/put q "should-be-discarded")
+                     (t2/with-transaction [_conn]
+                       (mq/with-queue :queue/test [q]
+                         (mq/put q "should-be-discarded"))
                        (throw (ex-info "boom" {})))))
-        (is (nil? (get-in @app-db.conn/*transaction-state*
-                          [::mq.publish/deferred-messages :queue/test]))
-            "No messages should be in transaction state after exception")
-        (mq.tu/flush! test-mq)))))
+        (mq.tu/flush! test-mq)
+        (is (= [] @heard) "no messages are delivered from a rolled-back transaction")))))
 
 (deftest outside-transaction-publishes-immediately-test
   (let [heard (atom [])]
@@ -179,8 +176,7 @@
       (q.registry/register-queue! :queue/test-b {:transactional :never})
       (mq.tu/listen! :queue/test-a (fn [msg] (swap! heard-a conj msg)))
       (mq.tu/listen! :queue/test-b (fn [msg] (swap! heard-b conj msg)))
-      (binding [app-db.conn/*after-commit*  (atom [])
-                app-db.conn/*transaction-state* (atom {})]
+      (t2/with-transaction [_conn]
         (mq/with-queue :queue/test-a [q]
           (mq/put q "a1")
           (mq/put q "a2"))
@@ -192,12 +188,11 @@
                          [::mq.publish/deferred-messages :queue/test-a])))
           (is (= ["b1"]
                  (get-in @app-db.conn/*transaction-state*
-                         [::mq.publish/deferred-messages :queue/test-b]))))
-        (testing "After flush, both queues receive their messages"
-          (mq.publish/flush-deferred-messages!)
-          (mq.tu/flush! test-mq)
-          (is (= ["a1" "a2"] @heard-a))
-          (is (= ["b1"] @heard-b)))))))
+                         [::mq.publish/deferred-messages :queue/test-b])))))
+      (testing "After the transaction commits, both queues receive their messages"
+        (mq.tu/flush! test-mq)
+        (is (= ["a1" "a2"] @heard-a))
+        (is (= ["b1"] @heard-b))))))
 
 (deftest buffering-combines-messages-test
   (let [heard (atom [])]

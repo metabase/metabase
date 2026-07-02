@@ -35,13 +35,13 @@ export const SearchInputContainer = styled.div<{
   ${({ isActive }) => {
     if (isActive) {
       return css`
-        background-color: var(--mb-color-background-tertiary);
+        background-color: var(--mb-color-background_page-tertiary);
       `;
     }
     return css`
-      background-color: var(--mb-color-background-primary);
+      background-color: var(--mb-color-background_page-primary);
       &:hover {
-        background-color: var(--mb-color-background-secondary);
+        background-color: var(--mb-color-background_page-secondary);
       }
     `;
   }}
@@ -143,7 +143,7 @@ export const CloseSearchButton = styled.button`
   justify-content: center;
   width: 3rem;
   height: 100%;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   cursor: pointer;
 
   &:hover {

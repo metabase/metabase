@@ -19,9 +19,12 @@
   agent-query-construct
   agent-query-execute
   agent-question-create
+  agent-question-execute
   agent-question-update
   agent-resource-read
   agent-search
+  agent-sql-construct
+  agent-sql-create
   agent-sql-execute]
  [metabase.metabot.search-models
   entity-type->search-model

@@ -54,6 +54,8 @@
   ;; Is worth considering when adding entries here, whether they shouldn't just be skipped in extraction.
   #{:cache_field_values_schedule
     :metadata_sync_schedule
+    ;; instance-specific build version, no longer serialized (GHY-4013). Legacy baseline fixtures still
+    ;; carry it, which exercises that such exports still import cleanly now that it's skipped.
     :metabase_version
     ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
     ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
@@ -133,9 +135,9 @@
 
 (def ^:private covered-by-dedicated-round-trip-test?
   "Models that have full export/import coverage in their own round-trip test and so don't need a
-  fixture in this shared baseline. CuratedSearchEntry is covered (in-memory + on-disk) by
-  metabase-enterprise.serialization.v2.curated-search-entry-test."
-  #{"CuratedSearchEntry"})
+  fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
+  metabase-enterprise.serialization.v2.osi-ai-context-test."
+  #{"OsiAiContext"})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."

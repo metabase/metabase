@@ -36,15 +36,17 @@
 
 (defn flush-deferred-messages!
   "Flushes all deferred messages accumulated during a transaction.
-   Called as an after-commit callback. Per-channel try/catch so one failure doesn't block others."
-  []
-  (when-let [state (mdb/transaction-state)]
-    (let [deferred (::deferred-messages @state)]
-      (doseq [[channel msgs] deferred]
-        (try
-          (publish! channel msgs)
-          (catch Exception e
-            (log/error e "Error flushing deferred messages" {:channel channel})))))))
+   Called as an after-commit callback. Per-channel try/catch so one failure doesn't block others.
+   Takes the transaction's `state` atom explicitly (captured when the callback was registered) because
+   after-commit callbacks run after the transaction bindings unwind, when the dynamic
+   [[mdb/transaction-state]] is no longer bound."
+  [state]
+  (let [deferred (::deferred-messages @state)]
+    (doseq [[channel msgs] deferred]
+      (try
+        (publish! channel msgs)
+        (catch Exception e
+          (log/error e "Error flushing deferred messages" {:channel channel}))))))
 
 (defn defer-in-transaction!
   "Accumulates msgs in *transaction-state* under [::deferred-messages channel].
@@ -57,7 +59,9 @@
                                            (update-in [::deferred-messages channel] (fnil into []) msgs)
                                            (assoc ::flush-registered? true)))))]
     (when-not (::flush-registered? old-state)
-      (mdb/after-commit! flush-deferred-messages!))))
+      ;; capture `state` — the after-commit callback runs after the transaction bindings unwind, when
+      ;; the dynamic transaction-state is no longer bound.
+      (mdb/do-after-commit #(flush-deferred-messages! state)))))
 
 (defn- publish-collected!
   "Routes the messages collected by [[run-with-buffer]] for `channel` according to the queue's

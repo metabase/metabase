@@ -1,7 +1,11 @@
 import Question from "metabase-lib/v1/Question";
 import Field from "metabase-lib/v1/metadata/Field";
 import type { Field as FieldAPI } from "metabase-types/api";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockField,
+  createMockNormalizedField,
+} from "metabase-types/api/mocks";
 
 import { canIndexField } from "./utils";
 
@@ -14,7 +18,10 @@ const createModelWithResultMetadata = (fields: FieldAPI[]) => {
 describe("Entities > model-indexes > utils", () => {
   describe("canIndexField", () => {
     it("should return true for string field in a model with single integer pk", () => {
-      const field = createMockField({ name: "foo", base_type: "type/Text" });
+      const field = createMockNormalizedField({
+        name: "foo",
+        base_type: "type/Text",
+      });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Text" }),
@@ -29,7 +36,10 @@ describe("Entities > model-indexes > utils", () => {
     });
 
     it("should return false for boolean field in a model with single integer pk", () => {
-      const field = createMockField({ name: "foo", base_type: "type/Boolean" });
+      const field = createMockNormalizedField({
+        name: "foo",
+        base_type: "type/Boolean",
+      });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Boolean" }),
@@ -44,7 +54,10 @@ describe("Entities > model-indexes > utils", () => {
     });
 
     it("should return false for string field in a model without any pk", () => {
-      const field = createMockField({ name: "foo", base_type: "type/Text" });
+      const field = createMockNormalizedField({
+        name: "foo",
+        base_type: "type/Text",
+      });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Text" }),
@@ -55,7 +68,10 @@ describe("Entities > model-indexes > utils", () => {
     });
 
     it("should return false for string field in a model with multiple pks", () => {
-      const field = createMockField({ name: "foo", base_type: "type/String" });
+      const field = createMockNormalizedField({
+        name: "foo",
+        base_type: "type/String",
+      });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Boolean" }),
@@ -75,7 +91,10 @@ describe("Entities > model-indexes > utils", () => {
     });
 
     it("should return false for string field in a model with multiple integer pks", () => {
-      const field = createMockField({ name: "foo", base_type: "type/String" });
+      const field = createMockNormalizedField({
+        name: "foo",
+        base_type: "type/String",
+      });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Boolean" }),
@@ -95,7 +114,10 @@ describe("Entities > model-indexes > utils", () => {
     });
 
     it("should return false for a model with a string pk", () => {
-      const field = createMockField({ name: "foo", base_type: "type/Boolean" });
+      const field = createMockNormalizedField({
+        name: "foo",
+        base_type: "type/Boolean",
+      });
 
       const model = createModelWithResultMetadata([
         createMockField({ name: "foo", base_type: "type/Boolean" }),

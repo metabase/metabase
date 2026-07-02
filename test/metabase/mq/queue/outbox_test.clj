@@ -210,11 +210,10 @@
         ;; Point the active backend at quartz with no scheduler so publish! throws; the per-row
         ;; try/catch in publish-outbox-rows! must then leave the row in place for recovery.
         (binding [q.backend/*backend*          q.quartz/backend
-                  task.impl/*quartz-scheduler* (atom nil)
-                  app-db.conn/*transaction-state*
-                  (atom {:metabase.mq.queue.outbox/rows
-                         [{:id id :channel :queue/outbox-require :payload pl}]})]
-          (outbox/publish-outbox-rows!))
+                  task.impl/*quartz-scheduler* (atom nil)]
+          (outbox/publish-outbox-rows!
+           (atom {:metabase.mq.queue.outbox/rows
+                  [{:id id :channel :queue/outbox-require :payload pl}]})))
         (is (t2/exists? :queue_message_outbox :id id)
             "publish failed, so the row is retained (not silently deleted)")))))
 
@@ -264,12 +263,11 @@
                                      (throw (ex-info "boom" {}))
                                      (do (swap! published conj payload)
                                          (real-publish channel payload))))]
-          (binding [app-db.conn/*transaction-state*
-                    (atom {:metabase.mq.queue.outbox/rows
-                           [{:id id1 :channel :queue/outbox-require :payload p1}
-                            {:id id2 :channel :queue/outbox-require :payload p2}
-                            {:id id3 :channel :queue/outbox-require :payload p3}]})]
-            (outbox/publish-outbox-rows!)))
+          (outbox/publish-outbox-rows!
+           (atom {:metabase.mq.queue.outbox/rows
+                  [{:id id1 :channel :queue/outbox-require :payload p1}
+                   {:id id2 :channel :queue/outbox-require :payload p2}
+                   {:id id3 :channel :queue/outbox-require :payload p3}]})))
         (is (not (t2/exists? :queue_message_outbox :id id1)) "published row deleted")
         (is (t2/exists? :queue_message_outbox :id id2) "failed row retained for recovery")
         (is (not (t2/exists? :queue_message_outbox :id id3)) "published row deleted")))))

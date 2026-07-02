@@ -15,7 +15,11 @@
    [metabase.channel.render.pdf :as pdf]
    [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.typeset :as typeset]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.channel.shared :as channel.shared]
+   [metabase.notification.payload.core :as notification.payload]
+   [metabase.notification.payload.temp-storage :as temp-storage]
+   [metabase.notification.settings :as notification.settings]
+   [metabase.test :as mt]
    [metabase.util.memoize :as memo])
   (:import
    (java.awt Color)
@@ -498,12 +502,12 @@
   {:font <face-id> :pt :x :y :text} with coordinates rounded to 0.1pt."
   [render!]
   (let [calls (atom [])]
-    (dynamic-redefs/with-dynamic-fn-redefs [pdf/draw-line! (fn [_cs face font-pt x y text]
-                                                             (swap! calls conj {:font (:id face)
-                                                                                :pt   (round1 font-pt)
-                                                                                :x    (round1 x)
-                                                                                :y    (round1 y)
-                                                                                :text text}))]
+    (mt/with-dynamic-fn-redefs [pdf/draw-line! (fn [_cs face font-pt x y text]
+                                                 (swap! calls conj {:font (:id face)
+                                                                    :pt   (round1 font-pt)
+                                                                    :x    (round1 x)
+                                                                    :y    (round1 y)
+                                                                    :text text}))]
       (render!))
     @calls))
 
@@ -728,3 +732,82 @@
               (let [baos (ByteArrayOutputStream.)]
                 (.save doc baos)
                 (is (pos? (count (.toByteArray baos))))))))))))
+
+(defn- ->disk-spilled-rows
+  "Reduce `rows` through the notification rff with a 1-cell budget so they immediately spill to disk, returning the
+  `StreamingTempFileStorage` handle a large subscription query produces (see
+  [[metabase.notification.payload.temp-storage]])."
+  [cols rows]
+  (let [budget (temp-storage/make-resident-budget {:per-card 1 :resident-cap 1 :floor 1})
+        rf     ((temp-storage/notification-rff {:budget budget}) {:cols cols})]
+    (get-in (rf (reduce rf (rf) rows)) [:data :rows])))
+
+(deftest ^:synchronized disk-spilled-rows-realized-test
+  (testing "a card whose large result spilled to disk is realized before rendering, instead of crashing on the handle"
+    ;; UXW-4614 regression: large subscription queries stream rows to a StreamingTempFileStorage; the PDF path must
+    ;; realize them (like the email/Slack/HTTP channels) so the renderer sees an ordinary `:rows` collection.
+    (let [cols    [{:name         "x"
+                    :display_name "X"
+                    :base_type    :type/Integer}]
+          rows    [[1] [2] [3]]
+          storage (->disk-spilled-rows cols rows)]
+      (is (temp-storage/streaming-temp-file? storage)
+          "sanity check: the helper produced a disk-backed handle")
+      (testing "the un-realized handle is exactly what used to blow up detect-pulse-chart-type"
+        (is (thrown? IllegalArgumentException
+                     (render.card/detect-pulse-chart-type {:display "table" :name "t"} nil
+                                                          {:cols cols :rows storage}))))
+      (testing "dashcard->cell realizes the rows into an ordinary vector"
+        (let [part     {:card     {:display "table"
+                                   :name    "t"}
+                        :dashcard nil
+                        :result   {:data {:cols cols
+                                          :rows storage}}}
+              dashcard {:card_id 1
+                        :row     0
+                        :col     0
+                        :size_x  6
+                        :size_y  4}]
+          (with-redefs [notification.payload/execute-dashboard-subscription-card (constantly part)]
+            (let [realized (get-in (#'pdf/dashcard->cell dashcard []) [:part :result :data :rows])]
+              (is (= rows realized))
+              (is (not (temp-storage/streaming-temp-file? realized))))))))))
+
+(deftest ^:parallel too-large-result-marked-test
+  (testing "maybe-realize-data-rows marks an oversized disk-spilled result :render/too-large? instead of loading it"
+    ;; UXW-4614: when the spill file exceeds the size cap, the rows must NOT be read into memory; the part is tagged
+    ;; with a localized :error and :render/too-large? so the renderer can show a message rather than crash or OOM.
+    (let [storage (->disk-spilled-rows [{:name "x"}] [[1] [2] [3]])
+          part    {:card   {:display "table"}
+                   :result {:data {:cols [{:name "x"}]
+                                   :rows storage}}}]
+      ;; force "too large": cap the loadable size at 1 byte so even this tiny spill is refused
+      (mt/with-dynamic-fn-redefs [notification.settings/notification-temp-file-size-max-bytes (constantly 1)]
+        (let [realized (channel.shared/maybe-realize-data-rows part)]
+          (is (true? (get-in realized [:result :render/too-large?])))
+          (is (string? (get-in realized [:result :error]))))))))
+
+(deftest ^:parallel too-large-card-render-test
+  (testing "a card whose result was too large to load shows its message, not the misleading no-results placeholder"
+    ;; UXW-4614: a :render/too-large? part carries no :data, so it would otherwise detect as :empty; render-card-cell!
+    ;; must take the too-large branch and surface the localized :error instead.
+    (let [part {:card {:display "table" :name "Big table"} :dashcard nil
+                :result {:error "Results too large to display. The query returned too much data to show in this notification."
+                         :render/too-large? true
+                         :max-size-human-readable "10.0 mb"}}
+          too-large-msg     (atom nil)
+          no-results-called (atom false)]
+      (mt/with-dynamic-fn-redefs [pdf/draw-too-large!  (fn [_cs _x _bt _cw _bh message]
+                                                         (reset! too-large-msg message))
+                                  pdf/draw-no-results! (fn [& _]
+                                                         (reset! no-results-called true))]
+        (with-open [doc (PDDocument.)]
+          (binding [font/*fonts* (#'font/load-fonts! doc)]
+            (let [page (PDPage. PDRectangle/A4)]
+              (.addPage doc page)
+              (with-open [cs (PDPageContentStream. doc page)]
+                (#'pdf/render-card-cell! doc cs nil part 36.0 760.0 480.0 360.0))))))
+      (testing "the too-large branch fired with the part's error message"
+        (is (= (get-in part [:result :error]) @too-large-msg)))
+      (testing "and the no-results placeholder was not used"
+        (is (false? @no-results-called))))))
