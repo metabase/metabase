@@ -1,11 +1,13 @@
 import { t } from "ttag";
 
-import type { IndexKind } from "metabase-types/api";
+export function getIndexTypeDescription(): string {
+  return t`The data structure used to organize the index. B-tree works well for most lookups, sorting, and range queries.`;
+}
 
-export function getKindDescription(kind: IndexKind): string {
+export function getKindDescription(kind: string): string | null {
   switch (kind) {
     case "btree":
-      return t`The data structure used to organize the index. B-tree works well for most lookups, sorting, and range queries.`;
+      return t`Default. Best for equality and range queries on sortable data; use it for most columns you filter, sort, or join by.`;
     case "gin":
       return t`For values with multiple components. Best for full-text search, JSONB, and arrays—when you're searching inside a value.`;
     case "gist":
@@ -13,6 +15,6 @@ export function getKindDescription(kind: IndexKind): string {
     case "brin":
       return t`Tiny and low-overhead. Best for large tables where values correlate with physical row order, like timestamps in an append-only log.`;
     default:
-      return t`The data structure used to organize the index.`;
+      return null;
   }
 }

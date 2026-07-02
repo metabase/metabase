@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { Form, FormErrorMessage, FormSubmitButton } from "metabase/forms";
-import { Box, Button, Group, Select, Stack } from "metabase/ui";
+import { Box, Button, Group, Select, Stack, Text } from "metabase/ui";
 import type { IndexField, IndexKind } from "metabase-types/api";
 
 import { IndexFieldInput } from "./IndexFieldInput";
-import { getKindDescription } from "./constants";
+import { getIndexTypeDescription, getKindDescription } from "./constants";
 import type { ColumnOption } from "./types";
 
 type IndexEditorFormProps = {
@@ -48,12 +48,25 @@ export function IndexEditorForm({
 
         <Select
           label={t`Index type`}
-          description={getKindDescription(kind)}
+          description={getIndexTypeDescription()}
           data={kinds}
           value={kind}
           onChange={(value) => value && onKindChange(value)}
           disabled={isEditing}
           allowDeselect={false}
+          renderOption={({ option }) => {
+            const description = getKindDescription(option.value);
+            return (
+              <Stack gap="xs" p="sm">
+                <Text fw="bold">{option.label}</Text>
+                {description && (
+                  <Text size="sm" c="text-secondary">
+                    {description}
+                  </Text>
+                )}
+              </Stack>
+            );
+          }}
         />
 
         {restFields.map((field) => renderField(field))}

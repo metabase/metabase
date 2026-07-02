@@ -50,6 +50,12 @@ describe("IndexEditorModal", () => {
   it("creates a btree index with directions and unique", async () => {
     setup();
 
+    expect(
+      await screen.findByText(
+        "The data structure used to organize the index. B-tree works well for most lookups, sorting, and range queries.",
+      ),
+    ).toBeInTheDocument();
+
     await userEvent.type(
       await screen.findByLabelText("Give your index a name"),
       "index 1",
@@ -85,7 +91,7 @@ describe("IndexEditorModal", () => {
     setup();
 
     await userEvent.click(await screen.findByLabelText("Index type"));
-    await userEvent.click(await screen.findByRole("option", { name: "gin" }));
+    await userEvent.click(await screen.findByRole("option", { name: /gin/ }));
 
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
 
