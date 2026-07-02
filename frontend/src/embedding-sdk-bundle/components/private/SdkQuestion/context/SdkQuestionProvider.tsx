@@ -292,20 +292,20 @@ export const SdkQuestionProvider = ({
     [updateQuestion],
   );
 
-  // `navigateToNewCard={null}` explicitly disables navigation (e.g. StaticQuestion
-  // / ad-hoc questions): the viz then won't wire `onChangeCardAndRun`, which would
-  // otherwise try to load a card by its (undefined) id → `/card/undefined`.
-  // `undefined` uses the SDK's internal navigation; a provided handler runs through
-  // the drill-through wrapper.
+  // How the user's `navigateToNewCard` prop maps to the context value:
+  //   - null      → navigation disabled (e.g. StaticQuestion / ad-hoc questions).
+  //                 Passed through as null; `Visualization` turns it into
+  //                 `undefined`, so the chart never wires `onChangeCardAndRun`
+  //                 (which would load a card by its undefined id → `/card/undefined`).
+  //   - undefined → the SDK's internal navigation (the default).
+  //   - a handler → run through the drill-through wrapper.
   let contextNavigateToNewCard: SdkQuestionContextType["navigateToNewCard"];
   if (userNavigateToNewCard === null) {
-    // Passed through as null; `Visualization` turns it into `undefined`, so the
-    // chart never wires `onChangeCardAndRun`.
     contextNavigateToNewCard = null;
-  } else if (userNavigateToNewCard !== undefined) {
-    contextNavigateToNewCard = navigateToNewCardWithDrillThrough;
-  } else {
+  } else if (userNavigateToNewCard === undefined) {
     contextNavigateToNewCard = navigateToNewCardWithSdkInternalNavigation;
+  } else {
+    contextNavigateToNewCard = navigateToNewCardWithDrillThrough;
   }
 
   const questionContext: SdkQuestionContextType = {
