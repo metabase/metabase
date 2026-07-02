@@ -104,10 +104,6 @@ const getComponents = ({
       );
     }
 
-    if (href?.startsWith("metabase://")) {
-      return <>{children}</>;
-    }
-
     if (href?.startsWith("/")) {
       return (
         <InternalLink onInternalLinkClick={onInternalLinkClick} href={href}>
