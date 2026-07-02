@@ -278,6 +278,8 @@ export const RemappingPicker = ({
             <FieldDataSelector
               // DataSelector is typed against metabase-lib entities; here we
               // feed it plain API entities, which carry the fields it reads.
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove these casts
+              // once DataSelector's entity props use structural interfaces.
               databases={[database] as unknown as MetadataDatabase[]}
               isInitiallyOpen={isChoosingInitialFkTarget}
               selectedDatabaseId={database.id}

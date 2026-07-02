@@ -62,6 +62,8 @@ export function PythonTransformTopBar({
             setDatabaseFn={handleDatabaseChange}
             // DataSelector is typed against metabase-lib entities; here we feed
             // it plain API databases, which carry the fields it actually reads.
+            // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast once
+            // DataSelector's entity props use structural interfaces.
             databases={(databases?.data ?? []) as unknown as MetadataDatabase[]}
             readOnly={!isEditMode}
             databaseIsDisabled={

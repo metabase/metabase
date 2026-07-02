@@ -114,6 +114,10 @@ export interface DataSelectorOwnProps {
   selectedCollectionId?: CollectionId;
 
   databaseQuery?: ListDatabasesRequest;
+  // TODO(dataselector-api-vs-metabase-lib-casts): these entity props are typed
+  // as metabase-lib classes, but some consumers pass plain metabase-types/api
+  // entities and cast. Replace with minimal structural interfaces (threaded
+  // through the pickers) so both representations type-check without casts.
   databases?: Database[];
   schemas?: Schema[];
   tables?: Table[];
