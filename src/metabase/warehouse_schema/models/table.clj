@@ -596,19 +596,19 @@
                    (into {} (for [fus-field-id (t2/select-fn-set :field_id :model/FieldUserSettings
                                                                  {:join  [[:metabase_field :f] [:= :f.id :field_id]]
                                                                   :where [:= :f.table_id id]})]
-                              {["FieldUserSettings" fus-field-id] {"Table" id}}))
+                              [["FieldUserSettings" fus-field-id] {"Table" id}]))
                    (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
-                              {["Field" field-id] {"Table" id}})))
+                              [["Field" field-id] {"Table" id}])))
         segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Segment" segment-id] {"Table" id}}))
+                            [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Measure" measure-id] {"Table" id}}))]
+                            [["Measure" measure-id] {"Table" id}]))]
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
