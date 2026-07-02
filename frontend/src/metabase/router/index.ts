@@ -1,2 +1,2 @@
-export * from "./useRouter";
+export * from "./use-router";
 export * from "./RouterProvider";
