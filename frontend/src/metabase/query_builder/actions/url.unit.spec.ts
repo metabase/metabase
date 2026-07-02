@@ -13,14 +13,18 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
+  ORDERS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
+
+import { getTableUrlForPristineQuestion } from "../utils";
 
 import { SET_CURRENT_STATE } from "./state";
 import { updateUrl } from "./url";
@@ -38,6 +42,14 @@ function buildSavedQuestion(card: Card): Question {
   });
   const metadata = getMetadata(createMockState({ entities }));
   return checkNotNull(metadata.question(card.id));
+}
+
+function buildPristineTableQuestion(): Question {
+  const entities = createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  });
+  const metadata = getMetadata(createMockState({ entities }));
+  return checkNotNull(metadata.table(ORDERS_ID)).newQuestion();
 }
 
 function getDispatchedNavigation(dispatch: jest.Mock) {
@@ -240,5 +252,58 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     expect(getDispatchedNavigation(dispatch)?.descriptor.state.objectId).toBe(
       "42",
     );
+  });
+
+  describe("table route preservation", () => {
+    it("keeps the canonical /table URL when on a /table/... route", async () => {
+      const question = buildPristineTableQuestion();
+      const expectedUrl = Urls.table({
+        id: ORDERS_ID,
+        name: question.metadata().table(ORDERS_ID)?.display_name,
+      });
+
+      window.history.replaceState({}, "", "/table/anything");
+
+      const { dispatch } = await setup({
+        question,
+        options: { queryBuilderMode: "view" },
+      });
+
+      const navigation = getDispatchedNavigation(dispatch);
+      expect(navigation?.descriptor.pathname).toBe(expectedUrl);
+      expect(navigation?.descriptor.pathname).toBe(
+        getTableUrlForPristineQuestion(question),
+      );
+    });
+
+    it("falls through to the card-state URL when off a /table/... route", async () => {
+      const question = buildPristineTableQuestion();
+
+      window.history.replaceState({}, "", "/question");
+
+      const { dispatch } = await setup({
+        question,
+        options: { queryBuilderMode: "view" },
+      });
+
+      const pathname = getDispatchedNavigation(dispatch)?.descriptor.pathname;
+      expect(pathname).toBe("/question");
+      expect(pathname).not.toMatch(/^\/table\//);
+    });
+
+    it("falls through to the card-state URL on a /table/... route when objectId is set", async () => {
+      const question = buildPristineTableQuestion();
+
+      window.history.replaceState({}, "", "/table/anything");
+
+      const { dispatch } = await setup({
+        question,
+        options: { queryBuilderMode: "view", objectId: "5" },
+      });
+
+      expect(
+        getDispatchedNavigation(dispatch)?.descriptor.pathname,
+      ).not.toMatch(/^\/table\//);
+    });
   });
 });
