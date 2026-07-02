@@ -1,5 +1,5 @@
-import type { SortingState } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import type { Row, SortingState } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
@@ -11,15 +11,23 @@ import type { TableIndexEntry, UserId } from "metabase-types/api";
 
 import { getColumns } from "./columns";
 import type { IndexRow } from "./types";
-import { getIndexKey } from "./utils";
+import { getIndexKey, isManagedIndex, isPendingDeletion } from "./utils";
 
 type TransformIndexTableProps = {
   indexes: TableIndexEntry[];
+  readOnly?: boolean;
+  onEdit: (index: TableIndexEntry) => void;
+  onDelete: (index: TableIndexEntry) => void;
 };
 
 const DEFAULT_SORTING: SortingState = [{ id: "name", desc: false }];
 
-export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
+export function TransformIndexTable({
+  indexes,
+  readOnly,
+  onEdit,
+  onDelete,
+}: TransformIndexTableProps) {
   const systemTimezone = useSetting("system-timezone");
   const { data: usersResponse } = useListUsersQuery();
   const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
@@ -48,7 +56,24 @@ export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
     [indexes, usersById],
   );
 
-  const columns = useMemo(() => getColumns(systemTimezone), [systemTimezone]);
+  const columns = useMemo(
+    () =>
+      getColumns({
+        systemTimezone,
+        actions: readOnly ? undefined : { onEdit, onDelete },
+      }),
+    [systemTimezone, readOnly, onEdit, onDelete],
+  );
+
+  const handleRowClick = useCallback(
+    (row: Row<IndexRow>) => {
+      const index = row.original;
+      if (!readOnly && isManagedIndex(index) && !isPendingDeletion(index)) {
+        onEdit(index);
+      }
+    },
+    [readOnly, onEdit],
+  );
 
   const treeTableInstance = useTreeTableInstance<IndexRow>({
     data: rows,
@@ -65,6 +90,7 @@ export function TransformIndexTable({ indexes }: TransformIndexTableProps) {
       hierarchical={false}
       emptyState={<ListEmptyState label={t`No indexes yet`} />}
       ariaLabel={t`Transform indexes`}
+      onRowClick={handleRowClick}
     />
   );
 }

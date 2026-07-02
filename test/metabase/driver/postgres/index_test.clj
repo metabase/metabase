@@ -23,7 +23,7 @@
       (is (= {:btree :standalone :gin :standalone :gist :standalone :brin :standalone}
              (update-vals methods :lifecycle)))
       (testing "only btree offers the unique toggle"
-        (is (= ["name" "columns" "unique"] (map :name (get-in methods [:btree :fields]))))
+        (is (= ["name" "unique" "columns"] (map :name (get-in methods [:btree :fields]))))
         (is (= ["name" "columns"] (map :name (get-in methods [:gin :fields]))))))))
 
 (deftest default-impls-test

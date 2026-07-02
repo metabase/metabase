@@ -1,6 +1,10 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupUsersEndpoints } from "__support__/server-mocks";
 import {
+  getIcon,
   mockGetBoundingClientRect,
+  queryIcon,
   renderWithProviders,
   screen,
   within,
@@ -17,13 +21,25 @@ import { TransformIndexTable } from "./TransformIndexTable";
 type SetupOpts = {
   indexes?: TableIndexEntry[];
   users?: UserListResult[];
+  readOnly?: boolean;
 };
 
-function setup({ indexes = [], users = [] }: SetupOpts = {}) {
+function setup({ indexes = [], users = [], readOnly = false }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   setupUsersEndpoints(users);
 
-  renderWithProviders(<TransformIndexTable indexes={indexes} />);
+  const onEdit = jest.fn();
+  const onDelete = jest.fn();
+  renderWithProviders(
+    <TransformIndexTable
+      indexes={indexes}
+      readOnly={readOnly}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />,
+  );
+
+  return { onEdit, onDelete };
 }
 
 describe("TransformIndexTable", () => {
@@ -111,6 +127,40 @@ describe("TransformIndexTable", () => {
     expect(screen.getByText("Removing")).toBeInTheDocument();
   });
 
+  it("shows an info tooltip for pending statuses", async () => {
+    setup({
+      indexes: [
+        createMockTableIndexEntry({
+          request: createMockTableIndexRequest({ status: "create-pending" }),
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    await userEvent.hover(getIcon("info_outline"));
+    expect(
+      await screen.findByText(
+        "Changes will be applied the next time the transform runs",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the pending info icon for terminal statuses", async () => {
+    setup({
+      indexes: [
+        createMockTableIndexEntry({
+          request: createMockTableIndexRequest({
+            status: "succeeded",
+            error_message: null,
+          }),
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Succeeded")).toBeInTheDocument();
+    expect(queryIcon("info_outline")).not.toBeInTheDocument();
+  });
+
   it("resolves the last modified by user name", async () => {
     setup({
       users: [createMockUserListResult({ id: 7, common_name: "Ed Winters" })],
@@ -134,5 +184,112 @@ describe("TransformIndexTable", () => {
     });
 
     expect(await screen.findByText("Never")).toBeInTheDocument();
+  });
+
+  it("offers edit and delete for a managed index with a request", async () => {
+    const index = createMockTableIndexEntry({
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 5 }),
+    });
+    const { onEdit, onDelete } = setup({ indexes: [index] });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Index actions" }),
+    );
+    await userEvent.click(await screen.findByText("Edit"));
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "btree" }),
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Index actions" }),
+    );
+    await userEvent.click(await screen.findByText("Delete"));
+    expect(onDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "btree" }),
+    );
+  });
+
+  it("opens the editor only when clicking an editable managed index row", async () => {
+    const managed = createMockTableIndexEntry({
+      name: "idx_managed",
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 5 }),
+    });
+    const unmanaged = createMockTableIndexEntry({
+      name: "idx_unmanaged",
+      metabase_managed: false,
+      request: undefined,
+    });
+    const removing = createMockTableIndexEntry({
+      name: "idx_removing",
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 6, status: "delete-pending" }),
+    });
+    const { onEdit } = setup({ indexes: [managed, unmanaged, removing] });
+
+    await userEvent.click(await screen.findByText("idx_unmanaged"));
+    await userEvent.click(screen.getByText("idx_removing"));
+    expect(onEdit).not.toHaveBeenCalled();
+
+    // opening the row menu must not bubble into a row click
+    const managedRow = screen.getByRole("row", { name: /idx_managed/ });
+    await userEvent.click(
+      within(managedRow).getByRole("button", { name: "Index actions" }),
+    );
+    expect(await screen.findByText("Edit")).toBeInTheDocument();
+    expect(onEdit).not.toHaveBeenCalled();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(screen.getByText("idx_managed"));
+    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "idx_managed" }),
+    );
+  });
+
+  it("does not open the editor when clicking a row in read-only mode", async () => {
+    const index = createMockTableIndexEntry({
+      name: "idx_readonly",
+      metabase_managed: true,
+      request: createMockTableIndexRequest({ id: 5 }),
+    });
+    const { onEdit } = setup({ indexes: [index], readOnly: true });
+
+    await userEvent.click(await screen.findByText("idx_readonly"));
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
+  it("does not offer a menu for unmanaged indexes", async () => {
+    setup({
+      indexes: [
+        createMockTableIndexEntry({
+          metabase_managed: false,
+          request: undefined,
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Unmanaged")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Index actions" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render the actions column when read-only", async () => {
+    setup({
+      readOnly: true,
+      indexes: [
+        createMockTableIndexEntry({
+          metabase_managed: true,
+          request: createMockTableIndexRequest({ id: 5 }),
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Managed")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Index actions" }),
+    ).not.toBeInTheDocument();
   });
 });

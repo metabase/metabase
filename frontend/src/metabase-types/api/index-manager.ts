@@ -83,6 +83,8 @@ export type StructuredIndex =
   | OrderByIndex
   | SkipIndex;
 
+export type IndexKind = StructuredIndex["kind"];
+
 export const TABLE_INDEX_REQUEST_STATUSES = [
   "create-pending",
   "update-pending",
@@ -139,3 +141,34 @@ export type UpdateTableIndexRequest = {
   id: TableIndexRequestId;
   structured: StructuredIndex;
 };
+
+export type IndexFieldType =
+  | "string"
+  | "boolean"
+  | "select"
+  | "integer"
+  | "columns";
+
+export type IndexFieldOption = {
+  name: string;
+  value: string;
+};
+
+export type IndexField = {
+  name: string;
+  "display-name": string;
+  description?: string;
+  type: IndexFieldType;
+  required?: boolean;
+  directions?: boolean;
+  options?: IndexFieldOption[];
+};
+
+export type IndexMethodLifecycle = "standalone" | "inline";
+
+export type IndexMethod = {
+  lifecycle: IndexMethodLifecycle;
+  fields: IndexField[];
+};
+
+export type RequestableIndexes = Partial<Record<IndexKind, IndexMethod>>;
