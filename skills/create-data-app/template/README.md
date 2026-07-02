@@ -1,46 +1,63 @@
 # data-app-template
 
-Starter template for building Metabase **data-apps** — single-bundle
-React apps that admins upload and embed inside Metabase via an isolated
-iframe.
+A Metabase **data app** — a single-bundle React app (built with the Embedding
+SDK) that Metabase renders inside an isolated, sandboxed iframe at
+`/data-app/<slug>`.
 
-## Quick start
+Data apps are delivered through **Git, not uploaded**: this directory lives at
+`data_apps/<slug>/` inside a repository connected to Metabase via remote sync.
+You commit the built bundle (`dist/index.js`), and on the next remote-sync
+import Metabase materializes the app and serves it. There is no upload step.
+
+## Develop
 
 ```bash
-gh repo create my-data-app --template metabase/data-app-template --private --clone
-cd my-data-app
 npm install                           # or yarn / pnpm / bun — no lockfile shipped
 cp .env.local.example .env.local      # set DATA_APP_MB_URL + DATA_APP_MB_API_KEY
 npm run dev                           # preview at http://localhost:5174
-npm run build                         # produces dist/index.js for upload
 ```
 
-To upload: Metabase → Admin → Data apps → **Add**, pick a short `name`
-(it appears in the `/data-app/<name>` URL), upload `dist/index.js`.
+`npm run dev` previews the app against a real Metabase **through the same
+Near-Membrane sandbox + CSP rules production uses**, so dev behaves like prod.
+Edit anything under `src/` — the preview soft-reloads.
 
 If the dev preview hits CORS, add `http://localhost:5174` under
 Admin → Embedding → Embedded analytics SDK → CORS.
+
+## Ship
+
+```bash
+npm run build                         # produces a single dist/index.js
+```
+
+Commit `dist/index.js` (the `path` declared in `data_app.yaml`) along with your
+source. The app appears at `/data-app/<slug>` after Metabase's next remote-sync
+import (manual "Pull changes", auto-import, or startup).
 
 ## What's in the box
 
 ```
 .
-├── package.json            ← @metabase/embedding-sdk-react + react/react-dom
-├── vite.config.ts          ← lib mode → IIFE; externalizes SDK + react
+├── data_app.yaml           ← manifest: name, slug, bundle path, allowed_hosts
+├── package.json            ← @metabase/embedding-sdk-react + react/react-dom + Vite toolchain
+├── vite.config.ts          ← one-liner: `export default dataAppConfig()`
 ├── tsconfig.json
-├── index.html              ← dev preview shell (do not edit — see note)
 ├── src/
-│   ├── index.tsx           ← PRODUCTION entry — factory returns { component, theme }
-│   ├── dev.tsx             ← DEV entry — wraps App with MetabaseProvider + authConfig
-│   ├── theme.ts            ← MetabaseTheme, shared by dev + prod entries
-│   ├── App.tsx             ← edit this; pure content, no MetabaseProvider wrap
-│   └── vite-env.d.ts       ← Vite env-var types
+│   ├── index.tsx           ← entry — default-exports a factory returning { component, providerProps }
+│   ├── App.tsx             ← edit this; pure content, no <MetabaseProvider> wrap
+│   └── theme.ts            ← the SDK theme, passed via providerProps
 ├── .env.local.example
 └── .gitignore
 ```
 
-`src/App.tsx` and anything you add under `src/` is shared between dev
-and prod. The two modes only diverge at the entry layer.
+The build, dev server, Near-Membrane sandbox, and bundle contract all live in
+the SDK behind `dataAppConfig()` — there's no `index.html` or separate dev entry
+to edit. Keep `<MetabaseProvider>` out of `App.tsx`: the production host and the
+dev preview each provide it in their own realm.
+
+The build output is a single self-contained `dist/index.js` — CSS and assets are
+inlined, and React + the SDK are externalized to the host's instances, so the
+bundle stays small.
 
 ## Calling external APIs (`allowed_hosts`)
 

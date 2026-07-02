@@ -48,19 +48,9 @@ export * from "./data-app.esm.js";
 writeToFile("data-app.cjs", dataApp_cjs);
 writeToFile("data-app.js", dataApp_js);
 
-// Data-app dev runtime imports
-const dataAppDev_cjs = `
-const DataAppDev = require("./data-app-dev.bundle");
-
-module.exports = DataAppDev;
-`.trim();
-
-const dataAppDev_js = `
-export * from "./data-app-dev.esm.js";
-`.trim();
-
-writeToFile("data-app-dev.cjs", dataAppDev_cjs);
-writeToFile("data-app-dev.js", dataAppDev_js);
+// The data-app dev preset (`data-app-dev.js`, ESM-only) and the dev entry
+// (`data-app-dev-entry.js`) are emitted directly by the rspack builds, so they
+// need no wrappers here.
 
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,
