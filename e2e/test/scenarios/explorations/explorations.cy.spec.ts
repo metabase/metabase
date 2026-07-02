@@ -437,10 +437,16 @@ describe("scenarios > explorations > detail page", () => {
         cy.get("body").type("{leftarrow}");
         readSelectedText().should("eq", initialText);
 
-        H.expectUnstructuredSnowplowEvent({
-          event: "exploration_visualization_changed",
-          triggered_from: "keyboard",
-        });
+        // ArrowRight onto the next page, ArrowLeft back onto the
+        // initial one — and `expectUnstructuredSnowplowEvent` asserts
+        // an exact count.
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "exploration_visualization_changed",
+            triggered_from: "keyboard",
+          },
+          2,
+        );
       });
     });
   });

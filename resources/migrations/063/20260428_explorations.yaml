@@ -1440,7 +1440,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: NanoID for serdes
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   name: exploration_block_id
@@ -1520,6 +1520,18 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_page_block_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v63.exppagecardidx
+      author: johnswanson
+      comment: Index on exploration_page.card_id
+      changes:
+        - createIndex:
+            tableName: exploration_page
+            indexName: idx_exploration_page_card_id
+            columns:
+              - column:
+                  name: card_id
 
   - changeSet:
       id: v63.exppagecardfk
