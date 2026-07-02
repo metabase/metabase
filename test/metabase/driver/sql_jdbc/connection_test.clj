@@ -995,7 +995,7 @@
   (boolean (some #(= classname (.getName (class %)))
                  (enumeration-seq (java.sql.DriverManager/getDrivers)))))
 
-(deftest ^:parallel register-driver-class!-test
+(deftest register-driver-class!-test
   (testing "loads the JDBC driver class so it self-registers with DriverManager"
     (is (= "org.h2.Driver" (.getName ^Class (#'sql-jdbc.conn/register-driver-class! "org.h2.Driver"))))
     (is (jdbc-driver-registered? "org.h2.Driver")))
