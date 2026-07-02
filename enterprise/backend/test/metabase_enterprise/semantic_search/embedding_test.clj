@@ -127,14 +127,18 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                     #"does not define embed-texts"
                                     (embedding/get-embeddings-batch embedding-model ["hello"]))))))))
+    (testing "a blank model name errors before touching the plugin"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"requires a model name"
+                            (embedding/get-embeddings-batch (dissoc embedding-model :model-name) ["hello"]))))
     (testing "with the embed fn stubbed in"
       (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
-                                  (constantly (fn [texts] (mapv (fn [_] (float-array 384)) texts)))]
+                                  (constantly (fn [_model-name texts] (mapv (fn [_] (float-array 384)) texts)))]
         (testing "matching dimensions pass through"
           (is (= 384 (alength ^floats (embedding/get-embedding embedding-model "hello")))))
         (testing "vectors in a non-float-array representation still get the dimension error, not a cast error"
           (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
-                                      (constantly (fn [texts] (mapv (fn [_] (vec (repeat 384 0.0))) texts)))]
+                                      (constantly (fn [_model-name texts] (mapv (fn [_] (vec (repeat 384 0.0))) texts)))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=384"
                                   (embedding/get-embedding (assoc embedding-model :vector-dimensions 1024)
@@ -144,14 +148,20 @@
                                 #"Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=384"
                                 (embedding/get-embedding (assoc embedding-model :vector-dimensions 1024)
                                                          "hello"))))
-        (testing "pull-model warms up by embedding a probe through the same path"
+        (testing "each call forwards its own model name, so consumers can run different models"
           (let [calls (atom [])]
             (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
-                                        (constantly (fn [texts]
-                                                      (swap! calls conj texts)
+                                        (constantly (fn [model-name texts]
+                                                      (swap! calls conj [model-name texts])
                                                       (mapv (fn [_] (float-array 384)) texts)))]
-              (embedding/pull-model embedding-model)
-              (is (= [["warm-up probe"]] @calls)))))))))
+              (embedding/get-embeddings-batch embedding-model ["a"])
+              (embedding/get-embeddings-batch (assoc embedding-model :model-name "another-model") ["b"])
+              (testing "pull-model warms up through the same path"
+                (embedding/pull-model embedding-model))
+              (is (= [["all-MiniLM-L6-v2" ["a"]]
+                      ["another-model" ["b"]]
+                      ["all-MiniLM-L6-v2" ["warm-up probe"]]]
+                     @calls)))))))))
 
 (deftest test-token-counting
   (testing "count-tokens returns reasonable counts for text"

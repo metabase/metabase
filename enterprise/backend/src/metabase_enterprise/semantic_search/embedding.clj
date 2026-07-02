@@ -418,9 +418,12 @@
   embeddings)
 
 (defmethod get-embeddings-batch "in-process"
-  [embedding-model texts & {:as _opts}]
+  [{:keys [model-name] :as embedding-model} texts & {:as _opts}]
+  (when (str/blank? model-name)
+    (throw (ex-info "The in-process embedding provider requires a model name; set ee-embedding-model."
+                    {:provider "in-process"})))
   (let [embed-fn   (resolve-in-process-embed-fn)
-        embeddings (embed-fn texts)]
+        embeddings (embed-fn model-name texts)]
     ;; No API usage to meter; count cl100k tokens as an approximation so the volume shows up on the same
     ;; dashboards as the HTTP providers.
     (analytics/inc! :metabase-search/semantic-embedding-tokens

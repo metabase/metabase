@@ -132,7 +132,7 @@
 
 (def ^:private in-process-descriptor
   "Model identity for `--embedder in-process`.
-  Mirrors `metabase-enterprise.embedder.core/model-descriptor`; kept as a literal so parsing the flag
+  Mirrors `metabase-enterprise.embedder.core/default-model-descriptor`; kept as a literal so parsing the flag
   doesn't need the plugin on the classpath — the provider dispatch resolves it (and errors usefully) only
   when embeddings are actually requested."
   {:provider         "in-process"
