@@ -5,7 +5,9 @@ import {
   useListRecentsQuery,
   useSearchQuery,
 } from "metabase/api";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
   MentionableUser,
   RecentItem,
@@ -61,6 +63,11 @@ export function useEntitySearch({
 }: UseEntitySearchOptions): UseEntitySearchResult {
   const buildSearchMenuItems = useBuildSearchMenuItems();
   const buildRecentsMenuItems = useBuildRecentsMenuItems();
+
+  // Debounce the server search so typing an @-mention fires one request when the query settles,
+  // not one per keystroke. Client-side recents/user filtering stays on the raw query for responsiveness.
+  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
+  const isDebouncing = query !== debouncedQuery;
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
       refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
@@ -79,7 +86,7 @@ export function useEntitySearch({
 
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
     {
-      q: query,
+      q: debouncedQuery,
       models: searchModels.filter(
         (model): model is SearchModel => model !== "user",
       ),
@@ -147,7 +154,9 @@ export function useEntitySearch({
 
   return {
     menuItems,
-    isLoading: shouldFetchRecents ? isRecentsLoading : isSearchLoading,
+    isLoading: shouldFetchRecents
+      ? isRecentsLoading
+      : isSearchLoading || isDebouncing,
     searchResults,
   };
 }
