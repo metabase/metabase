@@ -40,6 +40,9 @@
   (if (map? node)
     (-> node
         (m/update-existing :required stringify)
+        ;; malli's json-schema transform emits java.util.regex.Pattern objects for the
+        ;; `:pattern` keyword; convert to the regex source string so the schema is JSON-encodable.
+        (m/update-existing :pattern #(if (instance? java.util.regex.Pattern %) (str %) %))
         (collapse-branches :allOf)
         (collapse-branches :anyOf)
         (collapse-branches :oneOf)
@@ -77,7 +80,13 @@
                    ;; UUID-shaped string will match both branches, so just check the latter.
                    (update :definitions assoc
                            "metabase.lib.schema.template-tag.id"
-                           {"$ref" "#/definitions/metabase.lib.schema.common.non-blank-string"}))]
+                           {"$ref" "#/definitions/metabase.lib.schema.common.non-blank-string"}
+                           ;; In memory `:template-tags` is an ordered sequence of tag maps, but external
+                           ;; MBQL (serdes / REST) serializes it as the legacy associative map. Describe
+                           ;; the external (map) shape here.
+                           "metabase.lib.schema.template-tag.template-tags"
+                           {"type" "object"
+                            "additionalProperties" {"$ref" "#/definitions/metabase.lib.schema.template-tag.template-tag"}}))]
     (mp/postwalk update-schema-fields schema)))
 
 (defn write-schema
