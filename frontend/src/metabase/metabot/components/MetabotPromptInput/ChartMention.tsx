@@ -7,16 +7,17 @@ import {
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { decodeAdhocChartPayload } from "metabase/metabot/utils/adhoc-mention";
 import styles from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode.module.css";
+import type { CardDisplayType } from "metabase-types/api";
 
-export interface AdhocChartMentionAttributes {
-  payload?: string;
+export interface ChartMentionAttributes {
+  chartId?: string;
   label?: string;
+  display?: CardDisplayType;
 }
 
-export const AdhocChartMention = Node.create({
-  name: "adhocChartMention",
+export const ChartMention = Node.create({
+  name: "chartMention",
   group: "inline",
   inline: true,
   atom: true,
@@ -24,28 +25,33 @@ export const AdhocChartMention = Node.create({
 
   addAttributes() {
     return {
-      payload: {
+      chartId: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-payload"),
+        parseHTML: (element) => element.getAttribute("data-chart-id"),
       },
       label: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-label"),
       },
+      display: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-display"),
+      },
     };
   },
 
   parseHTML() {
-    return [{ tag: 'span[data-type="adhoc-chart-mention"]' }];
+    return [{ tag: 'span[data-type="chart-mention"]' }];
   },
 
   renderHTML({ node }) {
     return [
       "span",
       mergeAttributes({
-        "data-type": "adhoc-chart-mention",
-        "data-payload": node.attrs.payload,
+        "data-type": "chart-mention",
+        "data-chart-id": node.attrs.chartId,
         "data-label": node.attrs.label,
+        "data-display": node.attrs.display,
       }),
       node.attrs.label ?? "",
     ];
@@ -56,19 +62,17 @@ export const AdhocChartMention = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(AdhocChartMentionComponent);
+    return ReactNodeViewRenderer(ChartMentionComponent);
   },
 });
 
-function AdhocChartMentionComponent({ node }: NodeViewProps) {
+function ChartMentionComponent({ node }: NodeViewProps) {
   const getIcon = useGetIcon();
-  const { payload, label } = node.attrs as AdhocChartMentionAttributes;
-  const display =
-    (payload && decodeAdhocChartPayload(payload)?.display) || "table";
-  const iconData = getIcon({ model: "card", display });
+  const { label, display } = node.attrs as ChartMentionAttributes;
+  const iconData = getIcon({ model: "card", display: display || "table" });
 
   return (
-    <NodeViewWrapper as="span" data-type="adhoc-chart-mention">
+    <NodeViewWrapper as="span" data-type="chart-mention">
       <span className={styles.smartLink}>
         <span className={styles.smartLinkInner}>
           <EntityIcon {...iconData} className={styles.icon} />

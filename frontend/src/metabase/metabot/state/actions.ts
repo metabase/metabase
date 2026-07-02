@@ -9,7 +9,6 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { extractAdhocChartMentions } from "metabase/metabot/utils/adhoc-mention";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -74,6 +73,7 @@ export const {
   addSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   markChartSaved,
+  insertPastedChart,
 } = metabot.actions;
 
 type HandledResponseError = {
@@ -296,22 +296,6 @@ export const submitInput = createAsyncThunk<
         return { prompt, success: true };
       }
 
-      // Pasted ad-hoc chart mentions are pulled out of the message and sent as
-      // ad-hoc `user_is_viewing` context so the model can act on the chart
-      // without it being saved.
-      const { message: cleanedPrompt, items: adhocItems } =
-        extractAdhocChartMentions(prompt);
-      const contextWithAdhoc =
-        adhocItems.length > 0
-          ? {
-              ...data.context,
-              user_is_viewing: [
-                ...(data.context.user_is_viewing ?? []),
-                ...adhocItems,
-              ],
-            }
-          : data.context;
-
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(
@@ -322,13 +306,12 @@ export const submitInput = createAsyncThunk<
       const messageId = createMessageId();
       const userMessageId = retryMessageId ?? uuid();
       const assistantMessageId = uuid();
-      const promptWithDevMessage =
-        getDeveloperMessage(state, agentId) + cleanedPrompt;
+      const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
         addUserMessage({
           id: messageId,
           ..._.omit(data, ["context", "metabot_id"]),
-          message: cleanedPrompt,
+          message: prompt,
           agentId,
         }),
       );
@@ -336,7 +319,6 @@ export const submitInput = createAsyncThunk<
       const sendMessageRequestPromise = dispatch(
         sendAgentRequest({
           ...data,
-          context: contextWithAdhoc,
           message: promptWithDevMessage,
           agentId,
           conversation_id: convo.conversationId,

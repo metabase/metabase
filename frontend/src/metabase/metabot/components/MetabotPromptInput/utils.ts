@@ -7,7 +7,6 @@ import {
 } from "@tiptap/pm/model";
 import { match } from "ts-pattern";
 
-import { createAdhocMentionLink } from "metabase/metabot/utils/adhoc-mention";
 import { createMetabaseProtocolLink } from "metabase/metabot/utils/links";
 import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 
@@ -45,12 +44,12 @@ function serializeNode(node: JSONContent): string {
         name: label,
       });
     }
-    case "adhocChartMention": {
-      const { payload, label } = node.attrs || {};
-      if (!payload) {
+    case "chartMention": {
+      const { chartId, label } = node.attrs || {};
+      if (!chartId) {
         return label || "";
       }
-      return createAdhocMentionLink({ label: label ?? "chart", payload });
+      return `[${label ?? "chart"}](metabase://chart/${chartId})`;
     }
     case "hardBreak":
       return "\n";
@@ -81,10 +80,10 @@ export const parseClipboardTextAsParagraphs = (
   return Slice.maxOpen(fragment);
 };
 
-// Matches both entity mentions (`metabase://question/123`) and ad-hoc chart
-// mentions (`metabase://adhoc/<base64>`). Broadened from the shared
-// METABSE_PROTOCOL_MD_LINK (numeric-only id) so the non-numeric base64 id of an
-// ad-hoc chart is captured too.
+// Matches both entity mentions (`metabase://question/123`) and generated-chart
+// mentions (`metabase://chart/<uuid>`). Broadened from the shared
+// METABSE_PROTOCOL_MD_LINK (numeric-only id) so the non-numeric chart id is
+// captured too.
 const MENTION_REGEX = /\[([^\]]+)\]\(metabase:\/\/([^/]+)\/([^)]+)\)/g;
 
 export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
@@ -104,10 +103,10 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
         });
       }
 
-      if (mbProtocolModel === "adhoc") {
+      if (mbProtocolModel === "chart") {
         pContent.push({
-          type: "adhocChartMention",
-          attrs: { label, payload: id },
+          type: "chartMention",
+          attrs: { label, chartId: id },
         });
       } else {
         pContent.push({
