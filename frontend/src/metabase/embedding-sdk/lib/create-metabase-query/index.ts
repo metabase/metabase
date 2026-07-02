@@ -4,19 +4,20 @@ import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TestQuerySpec } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import type { TableQueryInput } from "./input-types";
 import { validateTableQueryInput } from "./validation";
 
-export type CreateMetabaseQuery = (
+export type ResolveDatasetQuery = (
   store: SdkStore,
 ) => (input: TableQueryInput) => Promise<DatasetQuery>;
 
-export const createMetabaseQuery: CreateMetabaseQuery =
+export const resolveDatasetQuery: ResolveDatasetQuery =
   (store) => async (input: TableQueryInput) => {
     if (!isTableInput(input)) {
       throw new Error(
-        "Table query object creation requires a source reference with id and databaseId.",
+        'Table query object creation requires a source reference like `{ type: "table", id }`.',
       );
     }
 
@@ -24,23 +25,24 @@ export const createMetabaseQuery: CreateMetabaseQuery =
 
     await store.dispatch(fetchTableMetadata({ id: input.source.id }));
 
-    return createQueryFromLoadedMetadata(
+    return resolveQueryFromLoadedMetadata(
       input,
       getMetadataUnfiltered(store.getState()),
     );
   };
 
-function createQueryFromLoadedMetadata(
+function resolveQueryFromLoadedMetadata(
   input: TableQueryInput,
   metadata: Lib.Metadata,
 ) {
   if (!isTableInput(input)) {
     throw new Error(
-      "Table query object creation requires a source reference with id and databaseId.",
+      'Table query object creation requires a source reference like `{ type: "table", id }`.',
     );
   }
 
-  const provider = Lib.metadataProvider(input.source.databaseId, metadata);
+  const databaseId = getTableDatabaseId(input.source.id, metadata);
+  const provider = Lib.metadataProvider(databaseId, metadata);
   const { enabled: _enabled, source, ...stage } = input;
 
   return Lib.toJsQuery(
@@ -48,4 +50,14 @@ function createQueryFromLoadedMetadata(
       stages: [{ ...stage, source: { type: "table", id: source.id } }],
     } satisfies TestQuerySpec),
   );
+}
+
+function getTableDatabaseId(tableId: number, metadata: Lib.Metadata) {
+  const table = metadata.tables?.[tableId];
+
+  if (isObject(table) && typeof table.db_id === "number") {
+    return table.db_id;
+  }
+
+  throw new Error(`Unable to find database for table ${tableId}.`);
 }

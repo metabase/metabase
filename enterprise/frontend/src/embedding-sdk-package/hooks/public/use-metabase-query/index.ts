@@ -1,7 +1,6 @@
 export {
   aggregations,
   breakout,
-  createMetabaseQuery,
   filter,
   useMetabaseQuery,
   useMetabaseQueryObject,

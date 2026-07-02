@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
-import { createMetabaseQuery as createMetabaseQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query";
+import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import type { DatasetQuery } from "metabase-types/api";
@@ -59,7 +59,6 @@ const TEST_SCHEMA = {
     orders: {
       type: "table",
       id: 1,
-      databaseId: 1,
       fields: {
         id: {
           type: "column",
@@ -110,7 +109,6 @@ const TEST_SCHEMA = {
     products: {
       type: "table",
       id: 2,
-      databaseId: 1,
       fields: {
         price: {
           type: "column",
@@ -322,7 +320,7 @@ function TypeFixtures() {
 
 void TypeFixtures;
 
-describe("createMetabaseQuery", () => {
+describe("resolveDatasetQuery", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetMetadataUnfiltered.mockReturnValue(TEST_METADATA as any);
@@ -350,18 +348,18 @@ describe("createMetabaseQuery", () => {
         sum: expect.any(Function),
       },
       breakout: expect.any(Function),
-      createMetabaseQuery: expect.any(Function),
       filter: expect.any(Function),
       useMetabaseQuery: expect.any(Function),
       useMetabaseQueryObject: expect.any(Function),
     });
     expect(DataApp).not.toHaveProperty("count");
     expect(DataApp).not.toHaveProperty("sum");
+    expect(DataApp).not.toHaveProperty("resolveDatasetQuery");
   });
 
   it("loads table metadata and passes the public source DSL through Lib.createTestQuery", async () => {
     const store = createMockStore();
-    const datasetQuery = await createMetabaseQueryInBundle(store)({
+    const datasetQuery = await resolveDatasetQueryInBundle(store)({
       source: TEST_SCHEMA.tables.orders,
       fields: [
         TEST_SCHEMA.tables.orders.fields.id,
@@ -417,7 +415,7 @@ describe("createMetabaseQuery", () => {
   });
 
   it("passes generated table Measures to Lib.createTestQuery measure aggregations", async () => {
-    const datasetQuery = await createMetabaseQueryInBundle(createMockStore())({
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: TEST_SCHEMA.tables.orders,
       aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
     });
@@ -427,9 +425,26 @@ describe("createMetabaseQuery", () => {
     ).toEqual([["measure", expect.anything(), 21]]);
   });
 
+  it("accepts id-only table source references", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: { type: "table", id: 1 },
+      fields: [TEST_SCHEMA.tables.orders.fields.id],
+    });
+
+    expect(datasetQuery).toMatchObject({
+      database: 1,
+      stages: [
+        {
+          "source-table": 1,
+          fields: [["field", expect.anything(), 100]],
+        },
+      ],
+    });
+  });
+
   it("rejects invalid limits with a clear error message", async () => {
     await expect(
-      createMetabaseQueryInBundle(createMockStore())({
+      resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.tables.orders,
         limit: 0,
       }),
@@ -438,7 +453,7 @@ describe("createMetabaseQuery", () => {
 
   it("rejects cross-table query clauses with clear error messages", async () => {
     await expect(
-      createMetabaseQueryInBundle(createMockStore())({
+      resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.tables.orders,
         fields: [TEST_SCHEMA.tables.products.fields.price],
       }),
@@ -447,7 +462,7 @@ describe("createMetabaseQuery", () => {
     );
 
     await expect(
-      createMetabaseQueryInBundle(createMockStore())({
+      resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.tables.orders,
         filters: [filter(TEST_SCHEMA.tables.products.fields.price, "=", 10)],
       }),
@@ -456,7 +471,7 @@ describe("createMetabaseQuery", () => {
     );
 
     await expect(
-      createMetabaseQueryInBundle(createMockStore())({
+      resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.tables.orders,
         aggregations: [sum(TEST_SCHEMA.tables.products.fields.price)],
       }),
@@ -465,7 +480,7 @@ describe("createMetabaseQuery", () => {
     );
 
     await expect(
-      createMetabaseQueryInBundle(createMockStore())({
+      resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.tables.orders,
         breakouts: [TEST_SCHEMA.tables.products.fields.price],
       }),
@@ -483,9 +498,9 @@ describe("useMetabaseQueryObject", () => {
 
   it("returns a loading state until async query creation resolves", async () => {
     const deferred = createDeferred<DatasetQuery>();
-    const createQuery = jest.fn(() => jest.fn(() => deferred.promise));
+    const resolveDatasetQuery = jest.fn(() => jest.fn(() => deferred.promise));
     (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      createMetabaseQuery: createQuery,
+      resolveDatasetQuery,
     };
 
     const { result } = renderHook(() => useMetabaseQueryObject(query));
@@ -509,9 +524,11 @@ describe("useMetabaseQueryObject", () => {
 
   it("returns query creation errors instead of swallowing them", async () => {
     const error = new Error("No column found");
-    const createQuery = jest.fn(() => jest.fn(() => Promise.reject(error)));
+    const resolveDatasetQuery = jest.fn(() =>
+      jest.fn(() => Promise.reject(error)),
+    );
     (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      createMetabaseQuery: createQuery,
+      resolveDatasetQuery,
     };
 
     const { result } = renderHook(() => useMetabaseQueryObject(query));
@@ -540,12 +557,12 @@ describe("useMetabaseQueryObject", () => {
       ...TEST_DATASET_QUERY,
       stages: [{ "source-table": 1, limit: 20 }],
     } as unknown as DatasetQuery;
-    const createQuery = jest.fn(
+    const resolveDatasetQuery = jest.fn(
       () => (input: typeof firstQuery | typeof secondQuery) =>
         input.limit === 10 ? firstDeferred.promise : secondDeferred.promise,
     );
     (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      createMetabaseQuery: createQuery,
+      resolveDatasetQuery,
     };
 
     const { result, rerender } = renderHook(
@@ -586,7 +603,7 @@ describe("useMetabaseQuery", () => {
       }),
     );
     (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
-      createMetabaseQuery: jest.fn(() => jest.fn(() => deferred.promise)),
+      resolveDatasetQuery: jest.fn(() => jest.fn(() => deferred.promise)),
       queryDataset: jest.fn(() => queryDataset),
     };
 

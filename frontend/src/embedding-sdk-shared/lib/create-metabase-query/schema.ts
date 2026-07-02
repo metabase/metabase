@@ -41,7 +41,6 @@ export type MeasureSchema<TTableId extends number = number> = {
 export type TableSchema = {
   type: "table";
   id: number;
-  databaseId: number;
   columns?: readonly SchemaColumn[];
   fields?: Record<string, FieldSchema>;
   segments?: Record<string, SegmentSchema>;

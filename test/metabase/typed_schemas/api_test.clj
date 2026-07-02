@@ -73,7 +73,6 @@
           :key          "orders"
           :id           10
           :name         "Orders"
-          :databaseId   1
           :databaseName "Boba"
           :tableName    "orders"
           :fields       {"createdAt" {:type          "column"
@@ -249,7 +248,6 @@
                                              :key          "orders"
                                              :id           10
                                              :name         "Orders"
-                                             :databaseId   1
                                              :databaseName "Boba"
                                              :tableName    "orders"
                                              :fields       {"paymentMethod" {:type         "column"
@@ -266,7 +264,6 @@
                                              :key        "franchises"
                                              :id         20
                                              :name       "Franchises"
-                                             :databaseId 1
                                              :fields     {"name" {:type        "column"
                                                                   :name        "name"
                                                                   :displayName "Name"

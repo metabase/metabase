@@ -13,7 +13,7 @@ Keep the semantic layer and presentation layer separate.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import table query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
-- Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, or table IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`.
+- Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, or bare table IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>`, generated `fields`, generated `segments`, generated `measures`, `filter(...)`, `breakout(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`.
 - Prefer semantically rich table queries over shallow table dumps. Use curated table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows.
@@ -177,6 +177,8 @@ Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the
 
 `useMetabaseQueryObject` supports generated table objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
 
+The examples below use `return null` for minimal loading and error handling. In a real app, render the app's existing loading or error UI there. Passing `card={{ query }}` is safe while `query` is `null`; do not pass the full `{ query, error, isLoading }` hook result as `card.query`.
+
 Hook typing:
 
 - `useMetabaseQuery<TableSchema>(...)` accepts a table generic and returns typed row data.
@@ -189,7 +191,7 @@ The basic prop contract is:
 
 When you need the set of SDK-supported question displays, do not copy a local list. In generated apps, search `node_modules/@metabase/embedding-sdk-react/dist/index.d.ts` for the exact declaration `declare const cardDisplayTypes: readonly [...]` and use that tuple as the source of truth. Do not read the whole declaration file into context.
 
-Always pass SDK-rendered ad hoc questions with a `card` object. Start with `card={{ query }}` when the user has not asked for a specific chart type and Metabase defaults can infer a reasonable display from the query. Use `card={{ query, visualization }}` when the user request or design calls for a specific chart type, such as a pie chart for a distribution, but does not ask for setting-level customization. Add `visualizationSettings` only when the user explicitly asks for a setting-level presentation change, such as hiding or renaming an axis label, showing value labels, stacking bars, adding a goal line, ordering table columns, showing pie totals/labels, or controlling series/slice order. Search `node_modules/@metabase/embedding-sdk-react/dist/index.d.ts` for `export declare type MetabaseCard`, the relevant `*VisualizationSettings` type, and any setting key you plan to use. Read the JSDoc comments attached to those declarations, then use the TypeScript declarations as the source of truth for legal `visualization` and `visualizationSettings` combinations. Build the query with `useMetabaseQueryObject`; do not call `createMetabaseQuery` directly, cast through `any`, or hardcode settings from memory.
+Always pass SDK-rendered ad hoc questions with a `card` object. Start with `card={{ query }}` when the user has not asked for a specific chart type and Metabase defaults can infer a reasonable display from the query. Use `card={{ query, visualization }}` when the user request or design calls for a specific chart type, such as a pie chart for a distribution, but does not ask for setting-level customization. Add `visualizationSettings` only when the user explicitly asks for a setting-level presentation change, such as hiding or renaming an axis label, showing value labels, stacking bars, adding a goal line, ordering table columns, showing pie totals/labels, or controlling series/slice order. Search `node_modules/@metabase/embedding-sdk-react/dist/index.d.ts` for `export declare type MetabaseCard`, the relevant `*VisualizationSettings` type, and any setting key you plan to use. Read the JSDoc comments attached to those declarations, then use the TypeScript declarations as the source of truth for legal `visualization` and `visualizationSettings` combinations. Build the query with `useMetabaseQueryObject`; do not call internal query resolution helpers, cast through `any`, or hardcode settings from memory.
 
 For lightweight descriptions of the exposed settings and when to use them, read [references/visualization-settings.md](references/visualization-settings.md). Treat that file as guidance only; the installed SDK declaration decides what is legal.
 
@@ -262,12 +264,12 @@ const { query, isLoading, error } = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
 });
 
-if (isLoading) {
-  return <LoadingSkeleton />;
+if (error) {
+  return null;
 }
 
-if (error) {
-  return <ErrorState error={error} />;
+if (isLoading || !query) {
+  return null;
 }
 
 return (
@@ -286,12 +288,12 @@ const { query, isLoading, error } = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
 });
 
-if (isLoading) {
-  return <LoadingSkeleton />;
+if (error) {
+  return null;
 }
 
-if (error) {
-  return <ErrorState error={error} />;
+if (isLoading || !query) {
+  return null;
 }
 
 const trendCard = {
@@ -319,12 +321,12 @@ const { query, isLoading, error } = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
 });
 
-if (isLoading) {
-  return <LoadingSkeleton />;
+if (error) {
+  return null;
 }
 
-if (error) {
-  return <ErrorState error={error} />;
+if (isLoading || !query) {
+  return null;
 }
 
 return <InteractiveQuestion card={{ query }} height="500px" />;
@@ -339,12 +341,12 @@ const { query, isLoading, error } = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { unit: "month" })],
 });
 
-if (isLoading) {
-  return <LoadingSkeleton />;
+if (error) {
+  return null;
 }
 
-if (error) {
-  return <ErrorState error={error} />;
+if (isLoading || !query) {
+  return null;
 }
 
 return <StaticQuestion card={{ query }} height="500px" />;

@@ -38,7 +38,7 @@
 (def ^:private schema-render-policy
   {:question         {:runtime [:kind :id :name :display :columns :parameters]
                       :comment [:entityId :description :verified]}
-   :table            {:runtime [:type :id :name :databaseId :fields :segments :measures]
+   :table            {:runtime [:type :id :name :fields :segments :measures]
                       :comment [:entityId :description :databaseName :schemaName :tableName]}
    :field            {:runtime [:type :name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
@@ -773,7 +773,6 @@
       :key          (generated-key (or display_name name) id)
       :id           id
       :name         (or display_name name)
-      :databaseId   database_id
       :databaseName database_name
       :tableName    name
       :fields       (keyed-map (map field-schema fields))}
