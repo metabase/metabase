@@ -8,6 +8,7 @@
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.request.core :as request]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -43,7 +44,7 @@
 
     - a string is length-capped as the `:instructions` it becomes, and
     - validation (and every read) only ever sees the object form."
-  (into [:map {:decode/api osi-ai-context/->ai-context}] (rest AiContext)))
+  (mu/with AiContext {:decode/api osi-ai-context/->ai-context}))
 
 (def ^:private Entry
   "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's
