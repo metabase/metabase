@@ -192,7 +192,7 @@ export const Tables = createEntity({
           const table = Tables.selectors[
             options.selectorName || "getObjectUnfiltered"
           ](getState(), { entityId: id });
-          await Promise.all([
+          await Promise.allSettled([
             ...getTableForeignKeyTableIds(table).map((id) =>
               dispatch(Tables.actions.fetchMetadataDeprecated({ id }, options)),
             ),
