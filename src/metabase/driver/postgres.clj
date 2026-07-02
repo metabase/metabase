@@ -60,8 +60,7 @@
 ;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
 ;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
 ;; `standard_conforming_strings = off` (#73721).
-(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
-(driver/register! :postgres-mbql5, :parent #{:postgres :sql-mbql5})
+(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -110,7 +109,7 @@
                  :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
-    (or (= driver :postgres) (= driver :postgres-mbql5))))
+    (= driver :postgres)))
 
 (defmethod driver/escape-entity-name-for-metadata :postgres [_driver entity-name]
   (when entity-name
@@ -317,9 +316,7 @@
 
 (defmethod driver/describe-database* :postgres
   [_driver database]
-  ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
-  ;; memory in a set like this
-  {:tables (into #{} (describe-syncable-tables database))})
+  {:tables (describe-syncable-tables database)})
 
 (defn- nullable-in
   "Build a HoneySQL clause that handles nil values in `xs` correctly.
@@ -493,15 +490,7 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
-(defmethod sql.qp/add-interval-honeysql-form :postgres-mbql5
-  [driver hsql-form amount unit]
-  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
-
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
-  [driver]
-  (h2x/current-datetime-honeysql-form driver))
-
-(defmethod sql.qp/current-datetime-honeysql-form :postgres-mbql5
   [driver]
   (h2x/current-datetime-honeysql-form driver))
 
@@ -610,7 +599,7 @@
   (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
         timestamptz? (or (sql.qp.u/field-with-tz? arg)
@@ -622,13 +611,8 @@
                                                   expr)]]
     (h2x/with-database-type-info expr "timestamp")))
 
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :convert-timezone]
-  [driver [_ _opts arg target-timezone source-timezone]]
-  ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
-   driver [:convert-timezone arg target-timezone source-timezone]))
-
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver [_ raw-value {base-type :base_type database-type :database_type}]]
+  [driver [_ {:keys [base-type database-type]} raw-value]]
   (when (some? raw-value)
     (condp #(isa? %2 %1) base-type
       :type/PostgresBitString (h2x/cast :varbit raw-value)
@@ -636,23 +620,12 @@
       :type/PostgresEnum (if (quoted? database-type)
                            (h2x/cast database-type raw-value)
                            (h2x/quoted-cast database-type raw-value))
-      ((get-method sql.qp/->honeysql [:sql-jdbc :value])
-       driver [:value raw-value {:base_type base-type :database_type database-type}]))))
-
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :value]
-  [driver [_ {:keys [base-type effective-type database-type]} raw-value]]
-  ((get-method sql.qp/->honeysql [:postgres :value])
-   driver [:value raw-value {:base_type      base-type
-                             :effective_type effective-type
-                             :database_type  database-type}]))
+      ((get-method sql.qp/->honeysql [:sql-mbql5 :value])
+       driver (sql.qp/mbql-clause-with-opts driver :value {:base_type base-type :database_type database-type} raw-value)))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
-  [driver [_ arg]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
-
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :median]
   [driver [_ _opts arg]]
-  ((get-method sql.qp/->honeysql [:postgres :median]) driver [:median arg]))
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
@@ -706,16 +679,12 @@
 (sql/register-fn! ::regex-match-first #'format-regex-match-first)
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
 
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :regex-match-first]
-  [driver [_ _opts arg pattern]]
-  ((get-method sql.qp/->honeysql [:postgres :regex-match-first]) driver [:regex-match-first arg pattern]))
-
 (defmethod sql.qp/->honeysql [:postgres :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   (let [position (sql.qp/->honeysql driver position)]
     [:case
      [:< position 1]
@@ -723,17 +692,9 @@
      :else
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :split-part]
-  [driver [_ _opts text divider position]]
-  ((get-method sql.qp/->honeysql [:postgres :split-part]) driver [:split-part text divider position]))
-
 (defmethod sql.qp/->honeysql [:postgres :text]
-  [driver [_ value]]
-  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :text]
   [driver [_ _opts value]]
-  ((get-method sql.qp/->honeysql [:postgres :text]) driver [:text value]))
+  (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
@@ -806,10 +767,10 @@
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name opts :as clause]]
+  [driver [_ opts id-or-name :as clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
         identifier    (parent-method driver clause)]
     (cond
       (= (:database-type stored-field) "money")
@@ -839,10 +800,6 @@
       :else
       identifier)))
 
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :field]
-  [driver [_ opts id-or-name]]
-  ((get-method sql.qp/->honeysql [:postgres :field]) driver [:field id-or-name opts]))
-
 ;; Postgres is not happy with JSON fields which are in group-bys or order-bys
 ;; being described twice instead of using the alias.
 ;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
@@ -850,29 +807,11 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
-  (let [stored-field-ids (map second breakout-fields)
-        stored-fields    (map #(when (integer? %)
-                                 (driver-api/field (driver-api/metadata-provider) %))
-                              stored-field-ids)
-        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
-                                  driver clause honeysql-form)
-        qualified        (parent-method query)
-        unqualified      (parent-method (update query
-                                                :breakout
-                                                #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
-    (if (some driver-api/json-field? stored-fields)
-      (merge qualified
-             (select-keys unqualified #{:group-by}))
-      qualified)))
-
-(defmethod sql.qp/apply-top-level-clause
-  [:postgres-mbql5 :breakout]
-  [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
   (let [stored-field-ids (map last breakout-fields)
         stored-fields    (map #(when (integer? %)
                                  (driver-api/field (driver-api/metadata-provider) %))
                               stored-field-ids)
-        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :breakout])
                                   driver clause honeysql-form)
         qualified        (parent-method query)
         unqualified      (parent-method (update query
@@ -895,33 +834,19 @@
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause 1)
-                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
-
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :desc]
-  [driver clause]
   (let [new-clause (if (order-by-is-json-field? clause 2)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql :desc]) driver [:desc ordered-clause opts])))
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :desc]) driver (sql.qp/mbql-clause-with-opts driver :desc opts ordered-clause))))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
-  (let [new-clause (if (order-by-is-json-field? clause 1)
-                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
-
-(defmethod sql.qp/->honeysql [:postgres-mbql5 :asc]
-  [driver clause]
   (let [new-clause (if (order-by-is-json-field? clause 2)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql :asc]) driver [:asc ordered-clause opts])))
+    ((get-method sql.qp/->honeysql [:sql-mbql5 :asc]) driver (sql.qp/mbql-clause-with-opts driver :asc opts ordered-clause))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -1647,13 +1572,12 @@
           (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
                        (format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
-                       ;; grant schema access (CREATE to create tables, USAGE to access them)
-                       ;; GRANT is idempotent in PostgreSQL
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                       ;; grant all privileges on future tables created in this schema (by admin)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
-                               quoted-schema quoted-user)
-                       ;; grant role membership to admin so DROP OWNED BY works during cleanup
+                       ;; Schema-level grant only (Postgres' two schema privileges):
+                       ;;   USAGE  - access the schema
+                       ;;   CREATE - create tables in it
+                       ;; Table DML comes from ownership (the user owns the tables it creates).
+                       (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                       ;; role membership to admin so DROP OWNED BY works during cleanup
                        (format "GRANT %s TO CURRENT_USER" quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try

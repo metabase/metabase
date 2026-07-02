@@ -98,6 +98,11 @@
                (let [text-measure (measure text)]
                  (cond
                    ;; Single text exceeds the limit - skip it with warning
+                   ;; TODO (Chris 2026-06-29) -- silently dropping an over-budget doc here is a poor default —
+                   ;; it vanishes from the index with only a warning. Make the over-budget policy a per-call
+                   ;; option (:truncate / :skip / :error, likely truncate-by-default eventually) and check what
+                   ;; the ai-service path does, which bypasses create-batches entirely.
+                   ;; https://linear.app/metabase/issue/BOT-1742
                    (> text-measure threshold)
                    (do
                      (log/warn

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   trackDataStudioTablePickerFiltersApplied,
   trackDataStudioTablePickerFiltersCleared,
-} from "metabase/data-studio/analytics";
+} from "metabase/common/data-studio/analytics";
 import {
   DataSourceInput,
   LayerInput,
@@ -16,10 +16,11 @@ import type { FilterState } from "../types";
 
 interface Props {
   filters: FilterState;
+  isLibraryEnabled: boolean;
   onSubmit: (filters: FilterState) => void;
 }
 
-export function FilterPopover({ filters, onSubmit }: Props) {
+export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
   const [form, setForm] = useState(filters);
 
   const handleReset = () => {
@@ -30,6 +31,7 @@ export function FilterPopover({ filters, onSubmit }: Props) {
       ownerEmail: null,
       ownerUserId: null,
       unusedOnly: null,
+      publishedOnly: null,
     });
   };
 
@@ -93,6 +95,16 @@ export function FilterPopover({ filters, onSubmit }: Props) {
             setForm((form) => ({ ...form, unusedOnly: e.target.checked }))
           }
         />
+
+        {isLibraryEnabled && (
+          <Checkbox
+            label={t`Published tables only`}
+            checked={form.publishedOnly === true}
+            onChange={(e) =>
+              setForm((form) => ({ ...form, publishedOnly: e.target.checked }))
+            }
+          />
+        )}
 
         <Group justify="space-between" wrap="nowrap">
           <Button flex={1} onClick={handleReset}>{t`Clear filters`}</Button>

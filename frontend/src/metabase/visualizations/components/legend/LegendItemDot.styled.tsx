@@ -6,7 +6,7 @@ export const OuterCircle = styled.div`
   top: 0;
   left: 0;
   border-radius: 50%;
-  background-color: var(--mb-color-border);
+  background-color: var(--mb-color-border-neutral);
   transition: all 0.2s;
 `;
 
@@ -17,10 +17,10 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
   border-radius: 50%;
   color-adjust: exact;
   background-color: ${(props) =>
-    props.isVisible ? props.color : "var(--mb-color-background-primary)"};
+    props.isVisible ? props.color : "var(--mb-color-background_page-primary)"};
   border: 2px solid
     ${(props) =>
-      props.isVisible ? props.color : "var(--mb-color-text-tertiary)"};
+      props.isVisible ? props.color : "var(--mb-color-text-disabled)"};
   transition: all 0.2s;
 `;
 

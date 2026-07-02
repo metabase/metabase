@@ -134,6 +134,7 @@
    {{:keys [was-pivot] :as query} :query
     format-rows                   :format_rows
     pivot-results                 :pivot_results
+    csv-include-bom               :csv_include_bom
     visualization-settings        :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
@@ -147,7 +148,8 @@
                                                               (cond-> x
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
-       [:pivot_results          {:default false} ms/BooleanValue]]]
+       [:pivot_results          {:default false} ms/BooleanValue]
+       [:csv_include_bom         {:default false} ms/BooleanValue]]]
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -158,6 +160,7 @@
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
+                                                                          :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom false)
                                                                           :process-viz-settings?  true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query

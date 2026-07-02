@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
   Collection,
   IconName,

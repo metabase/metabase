@@ -34,22 +34,48 @@
                                   {:type :tool-input :id "t1"}]))))
 
 (deftest should-continue-test
-  (let [max-iter 3]
+  (let [max-iter 3
+        no-term  #{}]
     (testing "continues when iteration < max and has tool calls"
-      (is (#'agent/should-continue? 0 max-iter [{:type :tool-input}]))
-      (is (#'agent/should-continue? 1 max-iter [{:type :tool-input}])))
+      (is (#'agent/should-continue? 0 max-iter no-term [{:type :tool-input}]))
+      (is (#'agent/should-continue? 1 max-iter no-term [{:type :tool-input}])))
     (testing "continues when text AND tool calls present (LLM thinking aloud)"
-      (is (#'agent/should-continue? 0 max-iter [{:type :tool-input}
-                                                {:type :text}]))
-      (is (#'agent/should-continue? 0 max-iter [{:type :text}
-                                                {:type :tool-input}])))
+      (is (#'agent/should-continue? 0 max-iter no-term [{:type :tool-input}
+                                                        {:type :text}]))
+      (is (#'agent/should-continue? 0 max-iter no-term [{:type :text}
+                                                        {:type :tool-input}])))
     (testing "stops at max iterations (1-based: iteration >= max means done)"
-      (is (not (#'agent/should-continue? 3 max-iter [{:type :tool-input}])))
-      (is (not (#'agent/should-continue? 4 max-iter [{:type :tool-input}]))))
+      (is (not (#'agent/should-continue? 3 max-iter no-term [{:type :tool-input}])))
+      (is (not (#'agent/should-continue? 4 max-iter no-term [{:type :tool-input}]))))
     (testing "stops when no tool calls (text-only is final answer)"
-      (is (not (#'agent/should-continue? 0 max-iter [{:type :text}])))
-      (is (not (#'agent/should-continue? 0 max-iter [{:type :usage}])))
-      (is (not (#'agent/should-continue? 0 max-iter []))))))
+      (is (not (#'agent/should-continue? 0 max-iter no-term [{:type :text}])))
+      (is (not (#'agent/should-continue? 0 max-iter no-term [{:type :usage}])))
+      (is (not (#'agent/should-continue? 0 max-iter no-term []))))))
+
+(deftest terminal-tool-call-test
+  (let [terminal #{"edit_sql_query" "create_sql_query" "replace_sql_query"}
+        success  [{:type :tool-input :id "a" :function "edit_sql_query"}
+                  {:type :tool-output :id "a" :result {:output "ok"
+                                                       :structured-output {:result-type :query
+                                                                           :query-id "q1"}}}]
+        failure  [{:type :tool-input :id "b" :function "edit_sql_query"}
+                  {:type :tool-output :id "b" :result {:output "validation error"
+                                                       :instructions "fix it"}}]
+        read     [{:type :tool-input :id "c" :function "read_resource"}
+                  {:type :tool-output :id "c" :result {:output "<fields/>"}}]]
+    (testing "a successful terminal-tool call ends the turn"
+      (is (#'agent/terminal-tool-call? terminal success))
+      (is (not (#'agent/should-continue? 0 20 terminal success))
+          "should-continue? is false right after a successful edit (the 10402 fix)"))
+    (testing "a FAILED terminal-tool call does not end the turn (model can self-correct)"
+      (is (not (#'agent/terminal-tool-call? terminal failure)))
+      (is (#'agent/should-continue? 0 20 terminal failure)))
+    (testing "a non-terminal tool (read_resource) does not end the turn"
+      (is (not (#'agent/terminal-tool-call? terminal read))))
+    (testing "terminality is per-profile: an empty terminal set never ends the turn"
+      (is (not (#'agent/terminal-tool-call? #{} success))))
+    (testing "finish-reason reports :terminal-tool"
+      (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin

@@ -9,7 +9,7 @@ export const SidebarRoot = styled.aside`
   flex-shrink: 0;
   overflow: hidden;
   width: 300px;
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const SidebarHeader = styled.div`
@@ -19,7 +19,7 @@ export const SidebarHeader = styled.div`
 
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 `;
 
 export const BackButton = styled.button`

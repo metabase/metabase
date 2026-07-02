@@ -100,7 +100,7 @@ export const EmptyVizState = ({
                 )
               } at the top right corner. ${primaryText}`}
             </Text>
-            <Text c="text-tertiary">{secondaryText}</Text>
+            <Text c="text-disabled">{secondaryText}</Text>
           </>
         )}
 

@@ -1,7 +1,6 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
-import { questionsReducer } from "./questions-reducer";
 import { tablesReducer } from "./tables-reducer";
 
 type SliceState = Record<string, unknown>;
@@ -77,7 +76,6 @@ function makeSliceReducer(
 }
 
 const customReducers: Partial<Record<string, SliceReducer>> = {
-  questions: questionsReducer as SliceReducer,
   tables: tablesReducer as SliceReducer,
 };
 

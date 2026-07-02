@@ -67,7 +67,7 @@ export function UpgradeModalInitial({
       </Flex>
 
       <Box
-        bg="background-secondary"
+        bg="background_page-secondary"
         p="lg"
         style={{ borderRadius: "var(--mantine-radius-md)" }}
       >

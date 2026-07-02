@@ -7,9 +7,8 @@ import type { CreateQueryActionParams } from "metabase/actions/types";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
@@ -60,7 +59,7 @@ function CreateActionForm({
             name="name"
             title={t`Name`}
             placeholder={t`My new fantastic action`}
-            autoFocus
+            data-autofocus
           />
           <FormTextArea
             name="description"
@@ -74,7 +73,11 @@ function CreateActionForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} disabled={!isValid} primary />
+            <FormSubmitButton
+              label={t`Create`}
+              disabled={!isValid}
+              variant="filled"
+            />
           </FormFooter>
         </Form>
       )}

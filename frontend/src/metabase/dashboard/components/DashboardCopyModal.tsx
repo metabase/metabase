@@ -6,7 +6,7 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCopyDashboardMutation } from "metabase/api";
-import { useInitialCollectionId } from "metabase/collections/hooks";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { useDispatch, useSelector } from "metabase/redux";

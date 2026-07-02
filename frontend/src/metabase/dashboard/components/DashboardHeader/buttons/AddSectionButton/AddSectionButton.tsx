@@ -45,7 +45,7 @@ export const AddSectionButton = () => {
           {layoutOptions.map((layout) => (
             <Menu.Item
               key={layout.id}
-              bg="icon-secondary"
+              bg="icon-disabled"
               onClick={() => onAddSection(layout)}
               aria-label={layout.label}
               p="14px"

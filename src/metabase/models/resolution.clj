@@ -80,6 +80,7 @@
     :model/OAuthClient                       metabase.oauth-server.models.oauth-client
     :model/OAuthClientEvent                  metabase.oauth-server.models.oauth-client-event
     :model/OAuthRefreshToken                 metabase.oauth-server.models.oauth-refresh-token
+    :model/OsiAiContext                      metabase.osi.models.osi-ai-context
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models
@@ -114,6 +115,7 @@
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
+    :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping

@@ -155,13 +155,39 @@ describe("command palette", () => {
     await userEvent.type(input, "metric");
 
     await screen.findByText("Loading...");
-    expect(getSelectedOption()?.textContent).toBe("New metric");
+    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
 
     await userEvent.keyboard("{ArrowDown}");
-    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+    expect(getSelectedOption()?.textContent).toBe("New metric");
 
     await screen.findByText("Metric search result");
-    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+    expect(getSelectedOption()?.textContent).toBe("New metric");
+  });
+
+  it("should rank the most relevant action first", async () => {
+    const getSelectedOption = () =>
+      screen
+        .getAllByRole("option")
+        .find((option) => option.getAttribute("aria-selected") === "true");
+
+    setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    // Every "New …" action matches "New" equally, so the default order wins and
+    // "New question" comes first.
+    await userEvent.type(input, "New");
+    await waitFor(() =>
+      expect(getSelectedOption()?.textContent).toBe("New question"),
+    );
+
+    // "New c" is a stronger match for "New collection", which should now win
+    // over the default order (metabase#76055).
+    await userEvent.type(input, " c");
+    await waitFor(() =>
+      expect(getSelectedOption()?.textContent).toBe("New collection"),
+    );
   });
 
   it("should initialize the search input from the search URL query (#71248)", async () => {

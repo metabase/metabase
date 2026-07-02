@@ -2,7 +2,7 @@ import type { KeyboardEvent } from "react";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import { getCollectionIcon } from "metabase/collections/utils";
+import { getCollectionIcon } from "metabase/common/collections/utils";
 import { CollectionDropTarget } from "metabase/common/components/dnd/CollectionDropTarget";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type {

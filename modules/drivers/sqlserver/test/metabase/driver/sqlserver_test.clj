@@ -132,6 +132,37 @@
                                                     :port               1433
                                                     :additional-options "trustServerCertificate=false"})))))
 
+(deftest ^:parallel reject-details-with-dangerous-additional-options-test
+  (mt/test-driver :sqlserver
+    (let [details (:details (mt/db))]
+      (testing "db details with potentially dangerous additional options are rejected"
+        (are [bad-option] (let [bad-opts-details (assoc details :additional-options bad-option)
+                                bad-host-details (update details :host str ";" bad-option)]
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-opts-details)))
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-host-details))))
+          "socketFactoryClass=bad.Factory"
+          "socketFactoryConstructorArg=bad"
+          "trustManagerClass=bad.TrustManager"
+          "trustManagerConstructorArg=/etc/passwd"
+          "accessTokenCallbackClass=bad.Callback"
+          "socketfactoryclass=bad.Factory"
+          "SOCKETFACTORYCLASS=bad.Factory"
+          "socketFactoryClass=bad.Factory;socketFactoryConstructorArg=bad"
+          "socketFactoryClass=bad.Factory;trustServerCertificate=false"
+          "trustServerCertificate=false;socketFactoryClass=bad.Factory"))
+      (testing "db details without potentially dangerous options are accepted"
+        (are [options] (let [details (assoc details :additional-options options)]
+                         (is (true? (driver/can-connect? :sqlserver details))))
+          nil
+          ""
+          " "
+          "trustServerCertificate=false"
+          "trustStore=/path/to/store;trustStorePassword=password;trustStoreType=pkcs12")))))
+
 (deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
@@ -183,34 +214,34 @@
 (deftest ^:parallel dont-add-top-clauses-for-top-level-test
   (mt/test-driver :sqlserver
     (testing (str "We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because "
-                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL"))
-    ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
-    ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
-    (let [preprocessed (-> (mt/mbql-query venues
-                             {:source-query {:source-table $$venues
-                                             :fields       [$name]
-                                             :order-by     [[:asc $id]]}
-                              :order-by     [[:asc $id]]})
-                           qp.preprocess/preprocess
-                           (lib/limit nil))]
-      (mt/with-metadata-provider (mt/id)
-        (is (= {:query  ["SELECT"
-                         "  \"__mb_source\".\"name\" AS \"name\""
-                         "FROM"
-                         "  ("
-                         "    SELECT"
-                         "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                         "    FROM"
-                         "      \"dbo\".\"venues\""
-                         "    ORDER BY"
-                         "      \"dbo\".\"venues\".\"id\" ASC"
-                         "  ) AS \"__mb_source\""
-                         "ORDER BY"
-                         "  \"__mb_source\".\"id\" ASC"]
-                :params nil}
-               (-> (driver/mbql->native :sqlserver preprocessed)
-                   (update :query (fn [sql]
-                                    (str/split-lines (driver/prettify-native-form :sqlserver sql)))))))))))
+                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL")
+      ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
+      ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
+      (let [preprocessed (-> (mt/mbql-query venues
+                               {:source-query {:source-table $$venues
+                                               :fields       [$name]
+                                               :order-by     [[:asc $id]]}
+                                :order-by     [[:asc $id]]})
+                             qp.preprocess/preprocess
+                             (lib/limit nil))]
+        (mt/with-metadata-provider (mt/id)
+          (is (= {:query  ["SELECT"
+                           "  \"__mb_source\".\"name\" AS \"name\""
+                           "FROM"
+                           "  ("
+                           "    SELECT"
+                           "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                           "    FROM"
+                           "      \"dbo\".\"venues\""
+                           "    ORDER BY"
+                           "      \"dbo\".\"venues\".\"id\" ASC"
+                           "  ) AS \"__mb_source\""
+                           "ORDER BY"
+                           "  \"__mb_source\".\"id\" ASC"]
+                  :params nil}
+                 (-> (driver/mbql->native :sqlserver preprocessed)
+                     (update :query (fn [sql]
+                                      (str/split-lines (driver/prettify-native-form :sqlserver sql))))))))))))
 
 (deftest ^:parallel max-results-should-actually-work-test
   (mt/test-driver :sqlserver

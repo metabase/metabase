@@ -1,12 +1,6 @@
 name: E2E Stress Test (flaky-test-fix PR)
 
-# Auto-runs the e2e stress test on every changed Cypress spec in a PR that carries the
-# `flaky-test-fix` label. The idea: when someone opens a PR claiming to de-flake an e2e
-# test, prove it by burning the changed spec(s) in many times before review.
-#
-# Mirrors loki-stress-test-flake-fix.yml: a detect job finds the changed specs, then a
-# matrix fans each one out into its own run of the reusable e2e-stress-test-flake-fix
-# workflow.
+# Auto-runs the e2e stress test on every changed Cypress spec in a PR
 
 on:
   pull_request:
@@ -22,15 +16,24 @@ concurrency:
 jobs:
   detect-changed-specs:
     name: Detect changed e2e specs
-    # Gate on the label so this only fires for flaky-test-fix PRs, regardless of which of
-    # the four event types delivered us here.
-    if: contains(github.event.pull_request.labels.*.name, 'flaky-test-fix')
+    # The PR must carry the `flaky-test-fix` label (covers opened/reopened/synchronize), AND
+    # when this is a `labeled` event we only proceed if the label *just added* is
+    # `flaky-test-fix` — otherwise adding any unrelated label to an already-labelled
+    # PR would needlessly re-burn the whole stress matrix.
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'flaky-test-fix') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'flaky-test-fix')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       # JSON array of spec paths, consumed by the matrix below.
       specs: ${{ steps.detect.outputs.specs }}
       should_run: ${{ steps.detect.outputs.should_run }}
+      # burn-50 / burn-100 labels bump the burn-in past 20
+      burn_in: >-
+        ${{ contains(github.event.pull_request.labels.*.name, 'burn-100') && '100'
+            || contains(github.event.pull_request.labels.*.name, 'burn-50') && '50'
+            || '20' }}
     steps:
       - name: Detect changed Cypress spec files
         id: detect
@@ -38,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
+        run: | # sh
           # List every file in the PR, drop deletions, then keep only regular e2e Cypress
           # specs: paths under e2e/ ending in .cy.spec.{js,ts,tsx}, excluding the
           # embedding-SDK component specs under e2e/test-component/ (those use a different
@@ -67,20 +70,25 @@ jobs:
           echo "specs=${SPECS_JSON}" >> "$GITHUB_OUTPUT"
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
+          echo "Note: you can use the burn-50 or burn-100 labels to increase the burn-in count from the default of 20." >> $GITHUB_STEP_SUMMARY
+
   stress-test:
     name: Stress test
     needs: detect-changed-specs
     if: needs.detect-changed-specs.outputs.should_run == 'true'
     strategy:
-      # Don't let one flaky spec cancel the burn-in of the others.
+      # Don't let one flaky spec (or one throttling regime) cancel the burn-in of the others.
       fail-fast: false
       matrix:
         spec: ${{ fromJson(needs.detect-changed-specs.outputs.specs) }}
+        # Burn each spec with and without throttle
+        enable_network_throttling: [true, false]
     uses: ./.github/workflows/e2e-stress-test-flake-fix.yml
     secrets: inherit
     with:
       spec: ${{ matrix.spec }}
-      burn_in: 20
+      burn_in: ${{ needs.detect-changed-specs.outputs.burn_in }}
       qa_db: true
       mb_edition: ee
       build_jar: true
+      enable_network_throttling: ${{ matrix.enable_network_throttling }}
