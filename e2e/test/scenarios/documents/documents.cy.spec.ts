@@ -1853,9 +1853,9 @@ describe("documents", () => {
       H.documentSaveButton().click();
       cy.findByTestId("toast-undo")
         .should("be.visible")
-        .and("contain.text", "Document saved")
-        .findByRole("img", { name: /close/ })
-        .click();
+        .and("contain.text", "Document saved");
+      // dismiss after asserting so toasts don't stack into later lookups
+      H.undoToast().icon("close").click({ force: true });
       cy.findByTestId("toast-undo").should("not.exist");
 
       cy.log("Make another change");
@@ -1865,9 +1865,7 @@ describe("documents", () => {
       cy.contains('[data-testid="toast-undo"]', "Document saved").should(
         "be.visible",
       );
-      cy.contains('[data-testid="toast-undo"]', "Document saved")
-        .findByRole("img", { name: /close/ })
-        .click();
+      H.undoToast().icon("close").click({ force: true });
       cy.findByTestId("toast-undo").should("not.exist");
 
       cy.log("Open revision history");
