@@ -21,13 +21,13 @@ Keep the semantic layer and presentation layer separate.
 - Dashboard-level filters should visibly affect every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI; do not show duplicate or no-op date controls.
 - Entity filters, where the stored value is an id/key and the UI shows a label, must use a single searchable combobox. Click/focus must open the option list immediately, before typing. Query options at runtime, search labels, and store the raw value. Never render entity filters as `<select>`; plain selects are only for short closed enums explicitly provided by the user.
 - Do not use native `<input type="date">` for data-app filter bars. Its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed. If the repo already has a date picker component or component library, use that. Otherwise install `react-datepicker` for custom date selection.
-- Date bars must include Custom last by default: duration presets, All time, then Custom. Omit Custom only when the user explicitly asks for fixed presets only or no date range control. Date pickers must receive `Date | null`, never `new Date("")` or another invalid date for incomplete ranges.
+- Date bars must include Custom last by default: duration presets, All time, then Custom. Omit Custom only when the user explicitly asks for fixed presets only or no date range control. Date pickers must receive `Date | null`, never `new Date("")` or another invalid date for incomplete ranges; type strict callback parameters explicitly, such as `onChange={(date: Date | null) => ...}`.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
 - Do not custom-render ambiguous business fields such as `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`. Do not add `%`, multiply by 100, color-code, or render stars unless semantic-layer units explicitly support it; use an SDK table/chart, omit the field, or ask for curation.
 - Visualization data must come from Metabase through `useMetabaseQuery`, `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`, or saved-question SDK components. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
 - When wrapping an SDK-rendered question in a card or section that already has its own title, pass `title={false}` to the SDK question component to avoid duplicate generated question titles.
-- `useMetabaseQueryObject(...)` returns a `DatasetQuery | null` to pass as `query={...}` to `InteractiveQuestion` or `StaticQuestion`. If TypeScript rejects SDK component props, treat that as a real bug and fix the prop shape instead of working around the error.
+- `useMetabaseQueryObject(...)` returns a query value to pass as `card={{ query }}` to `InteractiveQuestion` or `StaticQuestion`. If TypeScript rejects SDK component props, treat that as a real bug and fix the prop shape instead of working around the error.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. Use named returned properties, or render the query with an SDK chart via `useMetabaseQueryObject`.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess column names from business intuition or old mock data.
 - Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
@@ -68,7 +68,7 @@ Correlate those representation files with the user's request and offer concrete 
 Warn the user before exporting the whole instance. Including everything is noisy: it bloats context, makes agents more likely to pick irrelevant entities, and weakens the intended boundary between the curated semantic layer and the presentation layer.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
-`VITE_MB_URL` and `VITE_MB_API_KEY` (one file per repo, usually two levels up
+`DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
 from the app dir, not in the app dir). The command below `source`s that file so
 the shell substitutes the values straight into `curl` — you never read, extract,
 or handle the credentials yourself.
@@ -76,7 +76,7 @@ or handle the credentials yourself.
 > **Never ask the user to paste the API key into the chat, and never `cat` /
 > `echo` `.env.local`** — it's git-ignored and may hold other secrets, so its
 > contents must stay out of the conversation. `source` it so the shell uses the
-> values without exposing them. If `$VITE_MB_API_KEY` or `$VITE_MB_URL` is empty
+> values without exposing them. If `$DATA_APP_MB_API_KEY` or `$DATA_APP_MB_URL` is empty
 > or still set to the default `mb_replace_me` placeholder after sourcing, ask
 > the user to add real values themselves, then continue.
 
@@ -95,16 +95,16 @@ fi
 (
   source "$ROOT/.env.local" 2>/dev/null
   # Fail early (before curl) if either var is missing or placeholder-only.
-  if [ -z "$VITE_MB_URL" ] || [ "$VITE_MB_URL" = "mb_replace_me" ] ||
-     [ -z "$VITE_MB_API_KEY" ] || [ "$VITE_MB_API_KEY" = "mb_replace_me" ]; then
-    echo "Set real VITE_MB_URL / VITE_MB_API_KEY in repo-root .env.local" >&2
+  if [ -z "$DATA_APP_MB_URL" ] || [ "$DATA_APP_MB_URL" = "mb_replace_me" ] ||
+     [ -z "$DATA_APP_MB_API_KEY" ] || [ "$DATA_APP_MB_API_KEY" = "mb_replace_me" ]; then
+    echo "Set real DATA_APP_MB_URL / DATA_APP_MB_API_KEY in repo-root .env.local" >&2
     exit 1
   fi
   curl \
     -o src/metabase.data.ts \
-    -H "x-api-key: $VITE_MB_API_KEY" \
+    -H "x-api-key: $DATA_APP_MB_API_KEY" \
     -H "Accept: text/typescript" \
-    "$VITE_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true&questionCollections=g-jLnamuHKdezZMthJ-z7"
+    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true&questionCollections=g-jLnamuHKdezZMthJ-z7"
 )
 ```
 

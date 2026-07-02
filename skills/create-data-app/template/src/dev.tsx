@@ -1,6 +1,3 @@
-import * as React from "react";
-import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
-import * as ReactJsxRuntime from "react/jsx-runtime";
 import type { MetabaseAuthConfig } from "@metabase/embedding-sdk-react";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
@@ -9,7 +6,12 @@ import {
   createDataAppSandbox,
   installDevDiagnostics,
 } from "@metabase/embedding-sdk-react/data-app-dev";
-import { createRoot } from "react-dom/client";
+import * as React from "react";
+import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
+import * as ReactJsxRuntime from "react/jsx-runtime";
+import * as ReactDOM from "react-dom";
+import * as ReactDOMClient from "react-dom/client";
+import * as ReactDOMServer from "react-dom/server";
 
 import { sdkTheme } from "./theme";
 
@@ -24,7 +26,7 @@ installDevDiagnostics();
 
 const toolbarRoot = document.createElement("div");
 document.body.appendChild(toolbarRoot);
-createRoot(toolbarRoot).render(<DevToolbar />);
+ReactDOMClient.createRoot(toolbarRoot).render(<DevToolbar />);
 
 const root = document.getElementById("root");
 
@@ -32,7 +34,7 @@ if (!root) {
   throw new Error("#root not found");
 }
 
-const appRoot = createRoot(root);
+const appRoot = ReactDOMClient.createRoot(root);
 
 const sandbox = createDataAppSandbox({
   label: "dev",
@@ -40,6 +42,9 @@ const sandbox = createDataAppSandbox({
   allowedHosts: __DATA_APP_ALLOWED_HOSTS__,
   endowments: {
     React,
+    reactDom: ReactDOM,
+    reactDomClient: ReactDOMClient,
+    reactDomServer: ReactDOMServer,
     reactJsxRuntime: ReactJsxRuntime,
     reactJsxDevRuntime: ReactJsxDevRuntime,
     sdkExports,

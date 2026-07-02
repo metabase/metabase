@@ -8,6 +8,7 @@ import {
   DATA_APP_EXTERNALS,
   DATA_APP_FACTORY_GLOBAL,
   DATA_APP_GLOBALS,
+  getDataAppDefine,
 } from "./config/data-app-bundle";
 import {
   buildDevConnectSrcCsp,
@@ -32,6 +33,7 @@ export default defineConfig(({ command, mode }) => {
     envDir,
     // use DATA_APP_ prefixed variables only for dev mode
     envPrefix: command === "serve" ? "DATA_APP_" : [],
+    define: getDataAppDefine(mode),
     plugins: [react(), dataAppSandboxDevPlugin(allowedHosts)],
     build: {
       outDir: "dist",

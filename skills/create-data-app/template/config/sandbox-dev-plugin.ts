@@ -8,6 +8,7 @@ import {
   DATA_APP_EXTERNALS,
   DATA_APP_FACTORY_GLOBAL,
   DATA_APP_GLOBALS,
+  getDataAppDefine,
 } from "./data-app-bundle";
 
 /** Dev-only URL the harness fetches the freshly-built IIFE bundle from. */
@@ -44,6 +45,7 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
       mode,
       configFile: false,
       logLevel: "warn",
+      define: getDataAppDefine(mode),
       build: {
         write: false,
         minify: mode === "production",

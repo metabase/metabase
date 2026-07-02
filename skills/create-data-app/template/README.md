@@ -26,7 +26,7 @@ Admin → Embedding → Embedded analytics SDK → CORS.
 ```
 .
 ├── package.json            ← @metabase/embedding-sdk-react + react/react-dom
-├── vite.config.ts          ← lib mode → IIFE; externalizes SDK + react
+├── vite.config.ts          ← lib mode → IIFE; externalizes SDK + react/react-dom
 ├── tsconfig.json
 ├── index.html              ← dev preview shell (do not edit — see note)
 ├── src/

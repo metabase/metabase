@@ -13,6 +13,9 @@ export const DATA_APP_FACTORY_GLOBAL = "__dataAppFactory__";
 
 export const DATA_APP_EXTERNALS: string[] = [
   "react",
+  "react-dom",
+  "react-dom/client",
+  "react-dom/server",
   "react/jsx-runtime",
   // Only referenced by a development-mode build (jsxDEV); harmless in production.
   "react/jsx-dev-runtime",
@@ -22,8 +25,20 @@ export const DATA_APP_EXTERNALS: string[] = [
 
 export const DATA_APP_GLOBALS: Record<string, string> = {
   react: "React",
+  "react-dom": "__react_dom__",
+  "react-dom/client": "__react_dom_client__",
+  "react-dom/server": "__react_dom_server__",
   "react/jsx-runtime": "__react_jsx_runtime__",
   "react/jsx-dev-runtime": "__react_jsx_dev_runtime__",
   "@metabase/embedding-sdk-react": "__metabase_sdk__",
   "@metabase/embedding-sdk-react/data-app": "__metabase_data_app__",
 };
+
+// Libraries such as react-datepicker require a process.NODE_ENV define.
+export function getDataAppDefine(mode: string): Record<string, string> {
+  return {
+    "process.env.NODE_ENV": JSON.stringify(
+      mode === "production" ? "production" : "development",
+    ),
+  };
+}
