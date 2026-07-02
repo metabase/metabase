@@ -29,7 +29,7 @@ export function buildInitialValues(
   fields: IndexField[],
   structured?: StructuredIndex,
 ): IndexFormValues {
-  const source = structured as Record<string, unknown> | undefined;
+  const source: IndexFormValues | undefined = structured;
   return Object.fromEntries(
     fields.map((field) => [
       field.name,
