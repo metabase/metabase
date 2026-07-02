@@ -4,17 +4,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/components/DashboardSharingEmbeddingModal";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { useGetCurrentResource } from "metabase/embedding/embedding-iframe-sdk-setup/hooks";
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
-import type { Card, Dashboard, DashboardId } from "metabase-types/api";
-
-export type LegacyStaticEmbeddingModalProps = {
-  experience: SdkIframeEmbedSetupExperience;
-  dashboardId?: DashboardId | null;
-  questionId?: string | number | null;
-  parentInitialState: SdkIframeEmbedSetupModalInitialState;
-};
+import type { LegacyStaticEmbeddingModalProps } from "metabase/plugins";
+import type { Card, Dashboard } from "metabase-types/api";
 
 export type InternalProps = LegacyStaticEmbeddingModalProps & {
   onClose: () => void;
