@@ -131,15 +131,23 @@
     (testing "a FileNotFoundException for a namespace other than the plugin's own is not masked as plugin-absent"
       ;; Mirror classloader/require's real shape: an ExceptionInfo wrapping the FileNotFoundException, so the
       ;; cause-chain walk is what's exercised.
-      (mt/with-dynamic-fn-redefs [classloader/require
-                                  (fn [& _]
-                                    (throw (ex-info "Failed to require metabase-enterprise.embedder.core"
-                                                    {}
-                                                    (java.io.FileNotFoundException.
-                                                     "Could not locate some_dep__init.class or some_dep.clj on classpath."))))]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Failed to require"
-                              (embedding/get-embeddings-batch embedding-model ["hello"])))))
+      (letfn [(require-failing-on [resource]
+                (fn [& _]
+                  (throw (ex-info "Failed to require metabase-enterprise.embedder.core"
+                                  {}
+                                  (java.io.FileNotFoundException.
+                                   (format "Could not locate %s__init.class or %s.clj on classpath."
+                                           resource resource))))))]
+        (mt/with-dynamic-fn-redefs [classloader/require (require-failing-on "some_dep")]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"Failed to require"
+                                (embedding/get-embeddings-batch embedding-model ["hello"]))))
+        (testing "including a core-prefixed sibling namespace, which must not match the exact resource names"
+          (mt/with-dynamic-fn-redefs [classloader/require
+                                      (require-failing-on "metabase_enterprise/embedder/core_util")]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Failed to require"
+                                  (embedding/get-embeddings-batch embedding-model ["hello"])))))))
     (testing "a blank model name errors before touching the plugin"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"requires a model name"
