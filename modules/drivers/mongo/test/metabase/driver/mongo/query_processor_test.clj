@@ -657,6 +657,31 @@
                   [2 "Felipinho Asklepios" "2015-03-06T00:00:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
 
+(deftest ^:parallel join-alias-sanitized-in-let-variable-name-test
+  (mt/test-driver :mongo
+    (mt/dataset geographical-tips
+      (mt/with-metadata-provider (mt/id)
+        (testing (str "A join alias used in another join's condition is sanitized in the "
+                      "Mongo `$lookup` let variable name (#76722)")
+          (let [mp          (mt/metadata-provider)
+                tips        (lib.metadata/table mp (mt/id :tips))
+                tips-id     (lib.metadata/field mp (mt/id :tips :id))
+                first-alias "Has: Colon"
+                query       (-> (lib/query mp tips)
+                                (lib/join (-> (lib/join-clause
+                                               tips
+                                               [(lib/= tips-id (lib/with-join-alias tips-id first-alias))])
+                                              (lib/with-join-alias first-alias)))
+                                (lib/join (lib/join-clause
+                                           tips
+                                           [(lib/= (lib/with-join-alias tips-id first-alias)
+                                                   (lib/with-join-alias tips-id "Second"))])))
+                compiled    (mongo.qp/mbql->native query)
+                let-vars    (mapcat #(-> % (get "$lookup") :let keys)
+                                    (filter #(contains? % "$lookup") (:query compiled)))]
+            (is (seq let-vars))
+            (is (every? #(re-matches #"[A-Za-z0-9_]+" %) let-vars))))))))
+
 (deftest ^:parallel mongo-multiple-joins-test
   (testing "should be able to join multiple mongo collections"
     (mt/test-driver :mongo
