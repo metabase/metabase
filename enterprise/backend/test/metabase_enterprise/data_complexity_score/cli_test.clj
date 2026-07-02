@@ -144,6 +144,15 @@
     (is (= "maucount" (embedders/split-for-embedding "MAUcount")))
     (is (= "mau count" (embedders/split-for-embedding "mauCount")))))
 
+(deftest embedder-embeddings-conflict-test
+  (testing "--embeddings and --embedder together are rejected: the override would ignore the file"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"mutually exclusive"
+                          (#'cli/validate-options! {:source             "representation"
+                                                    :representation-dir representation-fixture-dir
+                                                    :embeddings         "precomputed.json"
+                                                    :embedder           "in-process"})))))
+
 (deftest ^:parallel cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"
     (testing "valid: --embedder in-process parses through to :options"

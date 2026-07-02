@@ -38,6 +38,7 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
+   [metabase.classloader.core :as classloader]
    ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
    ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
@@ -116,7 +117,11 @@
 
 (defn- validate-options!
   "Throws `ex-info` with `:cli-validation true` on user-facing misconfigurations."
-  [{:keys [source representation-dir embeddings]}]
+  [{:keys [source representation-dir embeddings embedder]}]
+  (when (and embeddings embedder)
+    (throw (ex-info (str "--embeddings and --embedder are mutually exclusive: an embedder override would "
+                         "silently ignore the explicit embeddings file.")
+                    {:cli-validation true})))
   (case source
     "appdb"
     (when (or representation-dir embeddings)
@@ -139,16 +144,37 @@
    :model-name       "all-MiniLM-L6-v2"
    :model-dimensions 384})
 
+(defn- assert-descriptor-in-sync!
+  "When the embedder module is loadable, fail loudly if [[in-process-descriptor]] drifted from its source
+  of truth. The module test suite also asserts this, but only runs under the :embedder alias; this check
+  runs wherever the flag is actually usable."
+  []
+  (when-let [actual (try
+                      (classloader/require 'metabase-enterprise.embedder.core)
+                      (some-> (ns-resolve 'metabase-enterprise.embedder.core 'default-model-descriptor) deref)
+                      (catch Exception _ nil))]
+    (when (not= actual in-process-descriptor)
+      (throw (ex-info (str "in-process-descriptor is out of sync with "
+                           "metabase-enterprise.embedder.core/default-model-descriptor; update the literal.")
+                      {:literal in-process-descriptor :actual actual})))))
+
 (defn- embedder-override
   "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
   default synonym embedder. `nil` when the flag wasn't passed.
 
   `in-process` goes through [[embedders/provider-embedder]] and thus the registered `in-process` provider
-  — exactly the production code path, including the guidance error when the embedder plugin jar is absent."
+  — exactly the production code path, including the guidance error when the embedder plugin jar is absent.
+  The descriptor passed to the provider also carries `:vector-dimensions` so the provider's dimension
+  guard protects CLI runs; the recorded `:embedding-model-meta` keeps the facade's `:model-dimensions`
+  shape."
   [embedder-name]
   (case embedder-name
-    "in-process" {:embedder             (embedders/provider-embedder in-process-descriptor)
-                  :embedding-model-meta in-process-descriptor}
+    "in-process" (do
+                   (assert-descriptor-in-sync!)
+                   {:embedder             (embedders/provider-embedder
+                                           (assoc in-process-descriptor
+                                                  :vector-dimensions (:model-dimensions in-process-descriptor)))
+                    :embedding-model-meta in-process-descriptor})
     nil))
 
 (defn- run-appdb-mode!
