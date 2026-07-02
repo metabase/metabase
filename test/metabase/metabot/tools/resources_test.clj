@@ -66,7 +66,16 @@
       (let [uri    (llm-shape/metabase-uri :database 1 "schemas" "weird/name" "tables")
             parsed (#'read-resource/parse-uri uri)]
         (is (= "metabase://database/1/schemas/weird%2Fname/tables" uri))
-        (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed)))))))
+        (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed))))))
+  (testing "an empty interior segment is preserved — schemaless (Mongo) tables use an empty
+           schema slot, and dropping it would collapse the 6-segment table path so it matches
+           no dispatch clause"
+    (is (= ["database" "mydb" "schema" "" "table" "events"]
+           (:segments (#'read-resource/parse-uri "metabase://database/mydb/schema//table/events"))))
+    (is (= ["database" "mydb" "schema" "" "table" "events" "field" "ts"]
+           (:segments (#'read-resource/parse-uri "metabase://database/mydb/schema//table/events/field/ts")))))
+  (testing "a trailing slash does not add an empty edge segment"
+    (is (= ["databases"] (:segments (#'read-resource/parse-uri "metabase://databases/"))))))
 
 (deftest read-resource-validation-test
   (testing "rejects too many URIs"
@@ -544,6 +553,19 @@
           (is (= 2 (count (distinct (:items so))))
               "the two items must be distinct tables, not the same MBR twice"))))))
 
+(deftest schemaless-table-reachable-by-path-test
+  (testing "a schemaless (nil-schema) table is reachable via the path-form URI with an empty
+           schema segment — parse-uri must keep the empty segment so the 6-segment table clause
+           matches and resolve-table (which treats empty schema as nil) finds it"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:name "MongoDB"}
+                     :model/Table _ {:db_id db-id :name "events" :schema nil :active true}]
+        (let [result (read-resource/read-resource
+                      {:uris ["metabase://database/MongoDB/schema//table/events"]})
+              mbr    (get-in result [:resources 0 :content :structured-output :entity])]
+          (is (some? mbr) "schemaless table must resolve, not 404 with 'Unsupported URI'")
+          (is (str/includes? (:output result) "events")))))))
+
 (deftest collections-tree-includes-personal-collection-test
   (testing "a readable personal collection appears in the tree list and total == count items"
     ;; Bug A regression: extract-readable for Collection must scope via
@@ -991,12 +1013,22 @@
 
 (deftest read-collection-detail-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Detail Coll" :location "/"}]
-      (testing "metabase://collection/{id} returns single-entity output with name + uri"
-        (let [{:keys [output]} (read-resource/read-resource
-                                {:uris [(str "metabase://collection/" coll-id)]})]
-          (is (str/includes? output "Detail Coll"))
-          (is (str/includes? output (str "uri=\"metabase://collection/" coll-id "\""))))))))
+    (mt/with-temp [:model/Collection {coll-id :id :as coll} {:name "Detail Coll" :location "/"}]
+      (testing "metabase://collection/{id} returns a single-entity MBR (not the old XML entity shape)"
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://collection/" coll-id)]})
+              {:keys [output]} result
+              mbr    (get-in result [:resources 0 :content :structured-output :entity])]
+          ;; The `uri="…"` attr lives on the <resource> wrapper, so a substring check on it only
+          ;; proves the envelope. Assert the BODY is MBR: serdes/meta model + entity_id, name.
+          (is (str/includes? output (str "uri=\"metabase://collection/" coll-id "\""))
+              "resource wrapper carries the navigation uri")
+          (is (= "Detail Coll" (:name mbr)))
+          (is (= (:entity_id coll) (:entity_id mbr))
+              "MBR body is keyed by entity_id (the serdes shape), not the numeric id")
+          (is (= {:model "Collection" :id (:entity_id coll)}
+                 (-> mbr :serdes/meta last (select-keys [:model :id])))
+              "MBR body carries the serdes identity path, confirming JSON MBR not XML"))))))
 
 (deftest read-collection-subcollections-test
   (mt/with-current-user (mt/user->id :crowberto)

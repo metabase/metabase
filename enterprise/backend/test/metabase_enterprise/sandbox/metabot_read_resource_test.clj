@@ -14,6 +14,7 @@
    [metabase.metabot.tools.shared.mbr :as mbr]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -26,8 +27,8 @@
 
 (deftest card-query-touches-sandboxed-table?-test
   (testing "true for a non-admin sandboxed user when the card queries the sandboxed table"
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (mt/with-temp [:model/Card sandboxed-card {:dataset_query (table-query :venues)}
                      :model/Card other-card     {:dataset_query (table-query :checkins)}]
@@ -41,8 +42,8 @@
         (is (false? (perms/card-query-touches-sandboxed-table? card))))))
   (testing "native query over the sandboxed db is flagged via the db-level fallback (all-source-table-ids sees no tables)"
     ;; F1: native SQL has no :source-table, so the predicate falls back to sandboxed-user-for-db?.
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (mt/with-temp [:model/Card native-card {:dataset_query {:database (mt/id)
                                                               :type     :native
@@ -51,8 +52,8 @@
             "native card over the sandboxed database is flagged — its raw SQL could read the sandboxed table"))))
   (testing "throws 403 (fails closed) when no current user is bound, rather than returning false"
     ;; F2: matches sandboxed-user-for-db? / sandboxed-user?. A lost binding must not silently disable redaction.
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (mt/with-temp [:model/Card card {:dataset_query (table-query :venues)}]
         (binding [api/*current-user-id*   nil
@@ -62,8 +63,8 @@
 
 (deftest read-resource-redacts-sandboxed-card-test
   (testing "a sandboxed user reading a card MBR does NOT get :dataset_query / :result_metadata"
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       ;; A model card retains :result_metadata through serdes (questions skip it), so we can assert
       ;; both sandbox-revealing keys are withheld.
@@ -109,8 +110,8 @@
 (deftest read-resource-card-viz-settings-no-leak-test
   (testing "a sandboxed user reading a Card MBR gets NO field-ref-bearing keys, and the rendered JSON
            string contains neither the sandboxed table name nor the hidden column name"
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (let [price-field-id (mt/id :venues :price)   ; PRICE is hidden by restricted-column-query
             table-name     (t2/select-one-fn :name :model/Table (mt/id :venues))
@@ -144,8 +145,8 @@
   (testing "a sandboxed user reading a Dashboard MBR gets its nested dashcards + parameters scrubbed;
            the rendered JSON leaks neither the sandboxed table nor the hidden column name.
            (Before the D2 fix Dashboard was entirely unredacted, so this FAILED.)"
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (let [price-field-id (mt/id :venues :price)
             table-name     (t2/select-one-fn :name :model/Table (mt/id :venues))
@@ -201,8 +202,8 @@
 (deftest read-resource-dashboard-sandbox-gate-fails-closed-test
   (testing "the Dashboard sandbox gate (sandboxed-user?) throws 403 when no current user is bound,
            rather than silently returning an unredacted dashboard (matches the Card F2 test)"
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (mt/with-temp [:model/Dashboard dash {}]
         (binding [api/*current-user-id* nil
@@ -215,8 +216,8 @@
            a sandboxed user listing a database's models gets each card's query/metadata withheld"
     ;; Realistic case: a sandboxed user browses database/{id}/models. The list goes through
     ;; extract-readable's batched hydrate + redact, a different code path than the single fetch-card.
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (mt/with-temp [:model/Card _ {:type            :model
                                     :name            "Venues Model"
@@ -225,7 +226,7 @@
                                     :result_metadata [{:name "NAME"}]}]
         (let [result (read-resource/read-resource {:uris [(str "metabase://database/" (mt/id) "/models")]})
               items  (get-in result [:resources 0 :content :structured-output :items])
-              model  (first (filter #(= "Venues Model" (:name %)) items))]
+              model  (u/seek #(= "Venues Model" (:name %)) items)]
           (is (some? model) "the model is listed (collection perms intact)")
           (is (not (contains? model :dataset_query))
               "dataset_query withheld in the list item too")
@@ -250,8 +251,8 @@
            a column-sandboxed user lacks that, so extract-as-user's read-check blocks the Field
            MBR before any field metadata is emitted. This is why Field MBR needs no extra sandbox
            filter (unlike Card, whose can-read? is collection-perm based and bypasses data perms)."
-    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]},
+                                            :query      (mt.tu/restricted-column-query (mt/id))}},
                       :attributes {:cat 50}}
       (let [db-name     (t2/select-one-fn :name :model/Database (mt/id))
             venues-name (t2/select-one-fn :name :model/Table (mt/id :venues))

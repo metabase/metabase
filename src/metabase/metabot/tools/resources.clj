@@ -67,18 +67,27 @@
    from `metabase-uri` back into the matched pattern.
 
    Returns:
-   - :segments     - vector of non-empty path segments (e.g. [\"database\" \"1\" \"tables\"])
-   - :query-params - {keyword string} map (e.g. {:tree \"true\"}), or nil if no query string"
+   - :segments     - vector of path segments (e.g. [\"database\" \"1\" \"tables\"])
+   - :query-params - {keyword string} map (e.g. {:tree \"true\"}), or nil if no query string
+
+   INTERIOR empty segments are preserved: a schemaless database yields the path-form
+   `database/{db}/schema//table/{t}`, whose empty `schema` slot must survive so the table
+   dispatch clause (6 segments) still matches. Only leading/trailing empties (from a stray
+   `/`) are trimmed."
   [uri]
   (when-not (str/starts-with? uri "metabase://")
     (throw (ex-info (str "Invalid URI scheme. Expected 'metabase://' but got: " uri)
                     {:uri uri})))
-  (let [stripped (subs uri 11)
+  (let [stripped  (subs uri 11)
         [path qs] (str/split stripped #"\?" 2)
-        segments  (->> (str/split path #"/")
-                       (remove str/blank?)
+        ;; Trim leading/trailing '/' so those don't produce empty edge segments, then split
+        ;; WITHOUT removing blanks so an interior empty (e.g. the schema slot of a schemaless
+        ;; table) is kept. `split … -1` retains trailing empties from the pre-trim path.
+        segments  (->> (str/replace path #"^/+|/+$" "")
+                       (#(str/split % #"/" -1))
                        (mapv codec/url-decode))]
-    (when (zero? (count segments))
+    (when (or (zero? (count segments))
+              (= segments [""]))
       (throw (ex-info (str "Invalid URI: " uri " — empty path")
                       {:uri uri})))
     {:segments     segments

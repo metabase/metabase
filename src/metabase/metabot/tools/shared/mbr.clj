@@ -24,6 +24,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.warehouses.models.database :as warehouses.database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -350,15 +351,14 @@
                     ;; them distinct. For entity_id models the path is a single
                     ;; segment, so this is identical to the old behavior.
                     (let [extract (fn []
-                                    (into {}
-                                          (map (fn [m] [(:serdes/meta m) m]))
-                                          (serdes/extract-all model (extract-opts model ids))))
+                                    (u/index-by :serdes/meta (serdes/extract-all model (extract-opts model ids))))
                           extracted-by-path (if (= model "Database")
                                               (binding [warehouses.database/*include-h2-in-extract?* true]
                                                 (extract))
                                               (extract))]
                       (into [] (keep (fn [inst]
-                                       (some->> (get extracted-by-path (serdes/generate-path model inst))
+                                       (some->> (serdes/generate-path model inst)
+                                                (get extracted-by-path)
                                                 (redact-sandboxed model inst))))
                             sliced)))]
      (if paged?
