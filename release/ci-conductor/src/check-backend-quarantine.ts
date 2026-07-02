@@ -1,15 +1,5 @@
 #!/usr/bin/env bun
 
-// Backend quarantine gate entrypoint. Runs as a post-test CI step on the backend
-// and driver paths: parse the JUnit hawk just wrote, then check the failures
-// against ci-conductor's quarantine list via the shared gate. Dry-run by default
-// — observational, never fails the job. Best-effort: gating must never break a run.
-//
-// Reads the SAME JUnit and resolves the SAME suite label as `report-backend.ts`,
-// so the gate checks against exactly the list those reports populate.
-//
-// Run directly with bun (no build step):  bun src/check-backend-quarantine.ts
-
 import { normalizeBackendJunit } from "./adapters/backend.ts";
 import {
   applyQuarantineGate,
@@ -34,5 +24,8 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
   // Last line of defense: the gate must never throw into the job.
-  console.error("[ci-conductor] backend quarantine gate failed (ignored)", error);
+  console.error(
+    "[ci-conductor] backend quarantine gate failed (ignored)",
+    error,
+  );
 });

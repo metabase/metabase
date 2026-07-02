@@ -1,20 +1,5 @@
 #!/usr/bin/env bun
 
-// Quarantine gate (DEV-2082) — e2e entrypoint. After an e2e job runs, compare the
-// tests that *ultimately failed* against ci-conductor's quarantine list and
-// decide whether the job should pass: pass iff every failure is quarantined.
-//
-// The shared gate engine (fetch + compare + verdict + logging) lives in the
-// ci-conductor module and is the same one the backend/frontend gates use; this
-// file only owns the e2e-specific source of failures. They come from the file
-// after:spec writes (`recordFailedTestsForQuarantine` in ci_conductor.ts) — both
-// that recording and ci-conductor's quarantine list derive {test_name,
-// test_path, file_path} from the same Cypress title array, so the match is exact.
-//
-// Runs in DRY-RUN by default: it prints a verdict but always exits 0, so it can
-// be observed in CI without affecting outcomes. Flip QUARANTINE_DRY_RUN=false to
-// enforce.
-
 import { readFileSync } from "node:fs";
 
 import { type FailedTest, applyQuarantineGate } from "./quarantine.ts";

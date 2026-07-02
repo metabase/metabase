@@ -37,11 +37,7 @@ runs:
       env:
         CI_CONDUCTOR_TEST_SUITE: ${{ inputs.test-suite }}
         ADAPTER: ${{ inputs.adapter }}
-        # Stay observational: the gate computes a verdict but never fails the job
-        # while this is "true". Flipping it to "false" (to actually enforce) is a
-        # deliberate, separate change — not something a caller should do casually.
         QUARANTINE_DRY_RUN: "true"
-      # Keep the path constrained to known entrypoints.
       run: |
         case "$ADAPTER" in
           backend|frontend|e2e) ;;

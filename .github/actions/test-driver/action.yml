@@ -62,10 +62,6 @@ runs:
         test-suite: ${{ inputs.junit-name }}
         adapter: backend
     - name: Quarantine gate (dry run)
-      # Reads the same pristine JUnit as the report step above, under the same
-      # junit-name suite label so it checks the right quarantine list. Dry-run +
-      # continue-on-error so it can never change the job outcome — Trunk
-      # Quarantine remains the sole arbiter. See DEV-2260.
       if: ${{ always() && steps.run-test.outcome != 'success' }}
       continue-on-error: true
       uses: ./.github/actions/quarantine-gate

@@ -214,11 +214,6 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
 
-      # Quarantine gate (DEV-2082). Compare this job's ultimate test failures
-      # (recorded by after:spec into ./target/quarantine-failures.jsonl) against
-      # ci-conductor's quarantine list: pass if every failure is quarantined,
-      # fail if any isn't. Dry-run + continue-on-error so it can never change the
-      # job outcome. See DEV-2260.
       - name: Quarantine gate (dry run)
         # always(), unlike backend/frontend: the run step is continue-on-error
         # (Trunk governs its outcome), so its result can't gate on real failures.
