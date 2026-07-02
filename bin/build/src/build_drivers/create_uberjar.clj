@@ -51,11 +51,14 @@
                [lib 'metabase-core]))
         metabase-core-provided-libs))
 
-(defn- remove-provided-libs [basis driver edition]
+(defn prune-provided-libs
+  "Remove `lib->provider`'s libs (and their classpath entries) from `basis`, announcing each INCLUDE/SKIP.
+  Shared by the driver builds and the embedder-plugin build."
+  [basis lib->provider]
   (let [provided-lib->provider (into {}
                                      (filter (fn [[lib]]
                                                (get-in basis [:libs lib])))
-                                     (provided-libs driver edition))]
+                                     lib->provider)]
     ;; log which libs we're including and excluding.
     (doseq [lib (sort (keys (:libs basis)))]
       (u/announce (if-let [provider (get provided-lib->provider lib)]
@@ -69,6 +72,9 @@
           (update :classpath-roots #(vec (remove provided-paths-set %)))
           (update :libs            #(into {} (remove (fn [[lib]] (provided-libs-set lib))) %))
           (update :classpath       #(into {} (remove (fn [[path]] (provided-paths-set path))) %))))))
+
+(defn- remove-provided-libs [basis driver edition]
+  (prune-provided-libs basis (provided-libs driver edition)))
 
 (defn- uberjar-basis [driver edition]
   (u/step "Determine which dependencies to include"

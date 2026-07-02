@@ -21,7 +21,6 @@
    [clojure.tools.build.tasks.uber] ;; workaround for (#50940), same as build-drivers.create-uberjar
    [clojure.tools.deps.alpha :as deps]
    [clojure.tools.deps.alpha.util.dir :as deps.dir]
-   [colorize.core :as colorize]
    [metabuild-common.core :as u]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]]))
 
@@ -42,23 +41,14 @@
 
 (defn- remove-core-provided-libs
   "Drop libs (and their classpath entries) that the core uberjar already provides.
-  Same filtering as the driver builds, without the parent-driver layer."
+  Same pruning as the driver builds, without the parent-driver layer."
   [basis]
-  (let [provided-libs-set  (into #{}
-                                 (filter #(get-in basis [:libs %]))
-                                 create-uberjar/metabase-core-provided-libs)
-        provided-paths-set (into #{} (mapcat #(get-in basis [:libs % :paths])) provided-libs-set)]
-    (doseq [lib (sort (keys (:libs basis)))]
-      (u/announce (if (provided-libs-set lib)
-                    "SKIP    %s (provided by metabase-core)"
-                    "INCLUDE %s")
-                  (colorize/yellow lib)))
-    (-> basis
-        (update :classpath-roots #(vec (remove provided-paths-set %)))
-        (update :libs            #(into {} (remove (fn [[lib]] (provided-libs-set lib))) %))
-        (update :classpath       #(into {} (remove (fn [[path]] (provided-paths-set path))) %))
-        ;; remove unneeded keys so the uber task doesn't try to re-resolve anything
-        (dissoc :deps :aliases :mvn/repos))))
+  (-> (create-uberjar/prune-provided-libs basis
+                                          (into {}
+                                                (map (fn [lib] [lib 'metabase-core]))
+                                                create-uberjar/metabase-core-provided-libs))
+      ;; remove unneeded keys so the uber task doesn't try to re-resolve anything
+      (dissoc :deps :aliases :mvn/repos)))
 
 (defn build-plugin!
   "Fetch the pinned model bundles, then write the plugin jar.
