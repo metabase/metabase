@@ -295,6 +295,59 @@
       (is (=? {:content #(not (str/blank? %))}
               (build-system-message* {} profile {}))))))
 
+;;; ──────────────────────────────────────────────────────────────────
+;;; viewing-context single-injection guarantee (metabase#76493)
+;;; ──────────────────────────────────────────────────────────────────
+
+(def ^:private viewing-ctx-marker "VIEWING-CONTEXT-MARKER-76493")
+
+(defn- marker-count
+  [s]
+  (count (re-seq (re-pattern viewing-ctx-marker) (or s ""))))
+
+(deftest ^:parallel viewing-context-sent-exactly-once-per-template-test
+  (testing "the formatted viewing context appears exactly once across system message + message history"
+    (mt/with-dynamic-fn-redefs [user-context/format-viewing-context (constantly viewing-ctx-marker)]
+      (doseq [template ["internal.selmer"
+                        "embedding-next.selmer"
+                        "sql-querying-only.selmer"
+                        "natural-language-querying-only.selmer"
+                        "natural-language-querying-fallback.selmer"
+                        "transform-codegen.selmer"
+                        "slackbot.selmer"
+                        "document-generate-content.selmer"]]
+        (testing template
+          (let [context          {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+                template-context (user-context/enrich-context-for-template context)
+                profile          {:prompt-template template
+                                  :model           "claude-sonnet-4-5-20250929"}
+                system-msg       (messages/build-system-message template-context profile {})
+                history          (messages/build-message-history
+                                  template-context
+                                  (memory/initialize [{:role :user :content "Hello"}] {}))
+                history-text     (str/join "\n" (keep :content history))]
+            (is (= 0 (marker-count (:content system-msg)))
+                "system prompt must not contain the viewing context")
+            (is (= 1 (marker-count history-text))
+                "message history must contain the viewing context exactly once")
+            (is (= 1 (marker-count (last-user-content history)))
+                "the single occurrence is in the last user message")))))))
+
+(deftest ^:parallel viewing-context-injected-once-per-followup-turn-test
+  (testing "on a multi-turn conversation the viewing context lands only in the most recent user message"
+    (mt/with-dynamic-fn-redefs [user-context/format-viewing-context (constantly viewing-ctx-marker)]
+      (let [template-context (user-context/enrich-context-for-template
+                              {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]})
+            history          (messages/build-message-history
+                              template-context
+                              (memory/initialize [{:role :user :content "First question"}
+                                                  {:role :assistant :content "First answer"}
+                                                  {:role :user :content "Follow-up"}]
+                                                 {}))
+            history-text     (str/join "\n" (keep :content history))]
+        (is (= 1 (marker-count history-text)))
+        (is (= 1 (marker-count (last-user-content history))))))))
+
 (deftest ^:parallel build-system-message-passes-capabilities-test
   (testing "capabilities from the raw API context reach the prompt builder via the enriched template context"
     (let [captured (atom nil)]

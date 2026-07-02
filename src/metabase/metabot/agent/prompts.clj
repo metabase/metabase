@@ -71,8 +71,11 @@
   - :sql-dialect - SQL dialect name
   - :sql-dialect-instructions - Dialect-specific guidance (markdown)
   - :tool-instructions - Vector of tool instruction maps
-  - :viewing-context - Formatted user viewing context
-  - :recent-views - Formatted recent views"
+  - :recent-views - Formatted recent views
+
+  The viewing context is deliberately NOT a system-prompt variable: it is injected into
+  the most recent user message instead (see [[inject-context]]), which keeps the system
+  prompt stable for prompt caching."
   [template context]
   (try
     (selmer/render template context)
@@ -163,8 +166,6 @@
                                      (get context :current-time))
             first-day-of-week    (or (get context :first_day_of_week)
                                      (get context :first-day-of-week "Sunday"))
-            viewing-context      (or (get context :viewing_context)
-                                     (get context :viewing-context))
             recent-views         (or (get context :recent_views)
                                      (get context :recent-views))
             perms                (or scope/*current-user-metabot-permissions*
@@ -187,7 +188,6 @@
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
-                                  :viewing_context          viewing-context
                                   :recent_views             recent-views
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?

@@ -146,3 +146,41 @@
       (is (some? content))
       (is (not (str/includes? content "Here is some information about the user:")))
       (is (not (str/includes? content "<user><name>Jane Doe</name></user>"))))))
+
+(deftest ^:parallel viewing-context-not-in-system-message-test
+  (testing "no system template renders the viewing context — it is injected into the last user message instead"
+    (doseq [template ["internal.selmer"
+                      "embedding-next.selmer"
+                      "sql-querying-only.selmer"
+                      "natural-language-querying-only.selmer"
+                      "natural-language-querying-fallback.selmer"
+                      "transform-codegen.selmer"
+                      "slackbot.selmer"
+                      "document-generate-content.selmer"]]
+      (testing template
+        (let [profile {:prompt-template template}
+              context {:current_time      "2024-01-15 14:30:00"
+                       :current_user_info "<user><name>Jane Doe</name></user>"
+                       :viewing_context   "VIEWING-CONTEXT-MARKER"}
+              content (prompts/build-system-message-content profile context {} [])]
+          (is (some? content))
+          (is (not (str/includes? content "VIEWING-CONTEXT-MARKER"))))))))
+
+(deftest ^:parallel inject-context-renders-viewing-context-once-test
+  (testing "inject-context prepends the viewing context exactly once"
+    (let [result (prompts/inject-context {:viewing_context "VIEWING-CONTEXT-MARKER"
+                                          :current_time    "2024-01-15 14:30:00"}
+                                         "Hello")]
+      (is (= 1 (count (re-seq #"VIEWING-CONTEXT-MARKER" result))))
+      (is (str/ends-with? result "Hello")))))
+
+(deftest ^:parallel inject-context-with-only-viewing-context-test
+  (testing "injection happens when viewing_context is the only populated key"
+    (let [result (prompts/inject-context {:viewing_context "VIEWING-CONTEXT-MARKER"} "Hello")]
+      (is (str/includes? result "VIEWING-CONTEXT-MARKER"))
+      (is (str/ends-with? result "Hello")))))
+
+(deftest ^:parallel inject-context-skips-blank-viewing-context-test
+  (testing "an empty viewing context (nothing being viewed) does not inject a blank <user_context> block"
+    (let [result (prompts/inject-context {:viewing_context ""} "Hello")]
+      (is (= "Hello" result)))))
