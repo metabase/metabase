@@ -402,6 +402,24 @@
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
 
+(defmulti embedding-supported?
+  "Whether `embedding-model`'s provider has enough configuration to actually compute embeddings right now
+  (a reachable service URL and/or credentials). Dispatches on provider, mirroring [[get-embedding]] and the
+  config each provider's impl resolves; a new provider — including a future in-process embedder — adds a
+  method. The `:default` is false, so an unrecognized provider gates callers off safely."
+  {:arglists '([embedding-model])} dispatch-provider)
+
+(defmethod embedding-supported? :default [_] false)
+
+(defmethod embedding-supported? "ai-service" [_]
+  (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
+               (not-empty (llm.settings/ai-service-base-url)))))
+
+(defmethod embedding-supported? "openai" [_]
+  (boolean (not-empty (semantic-settings/openai-api-key))))
+
+(defmethod embedding-supported? "ollama" [_] true)
+
 (defn- calc-token-metrics
   [texts]
   (let [counts  (map count-tokens texts)
