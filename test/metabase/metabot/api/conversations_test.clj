@@ -132,6 +132,45 @@
           (binding [api/*current-user-id* other-id]
             (is (nil? (check! (str (random-uuid)))))))))))
 
+(deftest check-parent-message-test
+  (testing "check-parent-message!"
+    (let [check! @#'metabot.api/check-parent-message!]
+      (testing "nil parent_message_id is allowed for a brand-new conversation"
+        (is (nil? (check! (str (random-uuid)) nil))))
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
+                     :model/MetabotMessage _leaf {:conversation_id convo-id
+                                                  :role            "assistant"
+                                                  :external_id     "leaf-ext"}]
+        (testing "nil parent_message_id is rejected once the conversation has a leaf message"
+          (is (thrown-with-msg? Exception #"changed"
+                                (check! convo-id nil))))
+        (testing "a parent_message_id matching the current leaf is allowed"
+          (is (nil? (check! convo-id "leaf-ext"))))
+        (testing "a parent_message_id that does not exist at all is rejected"
+          (is (thrown-with-msg? Exception #"changed"
+                                (check! convo-id (str (random-uuid))))))
+        (mt/with-temp [:model/MetabotMessage _earlier
+                       {:conversation_id convo-id
+                        :role            "assistant"
+                        :external_id     "earlier-ext"
+                        :created_at      (.minusSeconds (java.time.OffsetDateTime/now) 60)}]
+          (testing "a parent_message_id for an earlier (non-leaf) message in the same conversation is rejected"
+            (is (thrown-with-msg? Exception #"changed"
+                                  (check! convo-id "earlier-ext")))))
+        (mt/with-temp [:model/MetabotConversation {other-convo-id :id} {:user_id (mt/user->id :rasta)}
+                       :model/MetabotMessage _other {:conversation_id other-convo-id
+                                                     :role            "assistant"
+                                                     :external_id     "other-ext"}]
+          (testing "a parent_message_id belonging to a different conversation is rejected"
+            (is (thrown-with-msg? Exception #"changed"
+                                  (check! convo-id "other-ext")))))
+        (mt/with-temp [:model/MetabotMessage _user-msg {:conversation_id convo-id
+                                                        :role            "user"
+                                                        :external_id     "user-ext"}]
+          (testing "a parent_message_id pointing at a user message is rejected"
+            (is (thrown-with-msg? Exception #"changed"
+                                  (check! convo-id "user-ext")))))))))
+
 (deftest originator-not-overwritten-by-second-writer-test
   (testing "metabot_conversation.user_id is set once on insert and never overwritten"
     (let [owner-id (mt/user->id :rasta)

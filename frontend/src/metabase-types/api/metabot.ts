@@ -176,6 +176,7 @@ export type MetabotAgentRequest = {
   history: MetabotHistory;
   state: MetabotStateContext;
   conversation_id: string; // uuid
+  parent_message_id?: string;
   metabot_id?: string;
   profile_id?: string;
 };

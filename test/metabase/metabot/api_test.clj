@@ -865,6 +865,76 @@
                                              :metabot_id metabot.config/embedded-metabot-id
                                              :conversation_id (str (random-uuid))))))))))))
 
+(defn- streamed-message-id
+  "Parse a raw agent-streaming SSE response body and return the `start` event's messageId."
+  [response]
+  (->> (str/split-lines response)
+       (filter #(str/starts-with? % "data: "))
+       (remove #(= "data: [DONE]" %))
+       (map #(json/decode+kw (subs % 6)))
+       (u/seek #(= "start" (:type %)))
+       :messageId))
+
+(defn- with-mock-streaming-provider*
+  [thunk]
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [_]
+                                    (mut/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type :text :text "hi"}
+                                      {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
+                                       :model "test-model" :id "msg-1"}]))]
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (thunk))))))
+
+(deftest agent-streaming-rejects-stale-parent-message-id-test
+  (testing "agent-streaming accepts nil/matching parent_message_id, rejects one that no longer matches the leaf"
+    (with-mock-streaming-provider*
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    {:message         "first"
+                                                     :context         {}
+                                                     :conversation_id conversation-id
+                                                     :history         []
+                                                     :state           {}})
+              stale-id        (streamed-message-id first-response)]
+          (is (string? stale-id))
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                {:message            "second"
+                                 :context            {}
+                                 :conversation_id    conversation-id
+                                 :history            []
+                                 :state              {}
+                                 :parent_message_id  stale-id})
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                {:message            "third"
+                                 :context            {}
+                                 :conversation_id    conversation-id
+                                 :history            []
+                                 :state              {}
+                                 :parent_message_id  stale-id}))))))
+
+(deftest agent-streaming-rejects-missing-parent-message-id-for-existing-conversation-test
+  (testing "agent-streaming rejects an omitted parent_message_id once the conversation already has a leaf"
+    (with-mock-streaming-provider*
+      (fn []
+        (let [conversation-id (str (random-uuid))]
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                {:message         "first"
+                                 :context         {}
+                                 :conversation_id conversation-id
+                                 :history         []
+                                 :state           {}})
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                {:message         "second"
+                                 :context         {}
+                                 :conversation_id conversation-id
+                                 :history         []
+                                 :state           {}}))))))
+
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
     (is (= {"gpt-4" {:prompt 250 :completion 50}}
@@ -1167,15 +1237,16 @@
 (deftest streaming-request-ip-address-test
   (mt/with-model-cleanup [:model/MetabotMessage
                           [:model/MetabotConversation :created_at]]
-    (let [request-body (fn [conversation-id]
-                         {:metabot_id      metabot.config/embedded-metabot-id
-                          :profile_id      nil
-                          :message         "hi"
-                          :context         {}
-                          :history         []
-                          :conversation_id conversation-id
-                          :state           {}
-                          :debug           false})
+    (let [request-body (fn [conversation-id & [parent-message-id]]
+                         (cond-> {:metabot_id      metabot.config/embedded-metabot-id
+                                  :profile_id      nil
+                                  :message         "hi"
+                                  :context         {}
+                                  :history         []
+                                  :conversation_id conversation-id
+                                  :state           {}
+                                  :debug           false}
+                           parent-message-id (assoc :parent_message_id parent-message-id)))
           ip-for       (fn [conversation-id]
                          (:ip_address (t2/select-one :model/MetabotConversation :id conversation-id)))
           info-with-ip (fn [ip] {:origin nil :referer nil :user-agent nil :ip-address ip})]
@@ -1188,7 +1259,9 @@
                 (let [conversation-id (str (random-uuid))]
                   (api/streaming-request (request-body conversation-id) (info-with-ip "1.2.3.4"))
                   (is (= "1.2.3.4" (ip-for conversation-id)))
-                  (api/streaming-request (request-body conversation-id) (info-with-ip "5.6.7.8"))
+                  (api/streaming-request (request-body conversation-id
+                                                       (metabot.persistence/leaf-external-id conversation-id))
+                                         (info-with-ip "5.6.7.8"))
                   (is (= "1.2.3.4" (ip-for conversation-id)))))
               (testing "null IP on pre-feature rows is backfilled on next call"
                 (let [conversation-id (str (random-uuid))]
@@ -1204,15 +1277,16 @@
 (deftest streaming-request-embedding-fields-test
   (mt/with-model-cleanup [:model/MetabotMessage
                           [:model/MetabotConversation :created_at]]
-    (let [request-body (fn [conversation-id]
-                         {:metabot_id      metabot.config/embedded-metabot-id
-                          :profile_id      nil
-                          :message         "hi"
-                          :context         {}
-                          :history         []
-                          :conversation_id conversation-id
-                          :state           {}
-                          :debug           false})
+    (let [request-body (fn [conversation-id & [parent-message-id]]
+                         (cond-> {:metabot_id      metabot.config/embedded-metabot-id
+                                  :profile_id      nil
+                                  :message         "hi"
+                                  :context         {}
+                                  :history         []
+                                  :conversation_id conversation-id
+                                  :state           {}
+                                  :debug           false}
+                           parent-message-id (assoc :parent_message_id parent-message-id)))
           info-with    (fn [embed-referrer]
                          {:origin     embed-referrer
                           :referer    embed-referrer
@@ -1236,7 +1310,8 @@
                 (let [conversation-id (str (random-uuid))]
                   (api/streaming-request (request-body conversation-id)
                                          (info-with "https://host.example.com/page"))
-                  (api/streaming-request (request-body conversation-id)
+                  (api/streaming-request (request-body conversation-id
+                                                       (metabot.persistence/leaf-external-id conversation-id))
                                          (info-with "https://other.example.com/other"))
                   (let [convo (convo-for conversation-id)]
                     (is (= "host.example.com" (:embedding_hostname convo)))

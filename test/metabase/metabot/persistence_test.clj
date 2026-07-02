@@ -468,6 +468,73 @@
   (testing "conversation-detail returns nil when the conversation does not exist"
     (is (nil? (metabot-persistence/conversation-detail (str (random-uuid)))))))
 
+(deftest leaf-external-id-nil-for-conversation-with-no-messages-test
+  (testing "nil for a conversation with no messages yet"
+    (is (nil? (metabot-persistence/leaf-external-id (str (random-uuid)))))))
+
+(deftest leaf-external-id-returns-current-placeholder-after-start-turn-test
+  (testing "returns the assistant placeholder's external_id right after start-turn!"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-external-id]} (metabot-persistence/start-turn!
+                                                 conversation-id "internal"
+                                                 {:role "user" :content "hi"})]
+            (is (= assistant-external-id
+                   (metabot-persistence/leaf-external-id conversation-id)))))))))
+
+(deftest leaf-external-id-advances-to-latest-turn-test
+  (testing "advances to the second turn's external_id, not the first"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{a-pk :assistant-msg-id} (metabot-persistence/start-turn!
+                                          conversation-id "internal"
+                                          {:role "user" :content "A"})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id a-pk [{:type :text :text "reply-A"}]))
+          (let [{b-pk :assistant-msg-id b-ext :assistant-external-id}
+                (metabot-persistence/start-turn!
+                 conversation-id "internal" {:role "user" :content "B"})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id b-pk [{:type :text :text "reply-B"}])
+            (is (= b-ext (metabot-persistence/leaf-external-id conversation-id)))))))))
+
+(deftest leaf-external-id-unaffected-by-errored-finalize-test
+  (testing "still returns the row's external_id when the turn finalizes as errored"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [assistant-msg-id assistant-external-id]}
+                (metabot-persistence/start-turn!
+                 conversation-id "internal" {:role "user" :content "hi"})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id assistant-msg-id []
+             :error {:message "boom" :type "RuntimeException"})
+            (is (= assistant-external-id
+                   (metabot-persistence/leaf-external-id conversation-id)))))))))
+
+(deftest leaf-external-id-never-returns-a-user-row-even-when-the-trailing-assistant-reply-is-deleted-test
+  (testing "returns the earlier turn's assistant external_id, not the later turn's undeleted user row"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{a-pk :assistant-msg-id a-ext :assistant-external-id}
+                (metabot-persistence/start-turn!
+                 conversation-id "internal" {:role "user" :content "A"})]
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id a-pk [{:type :text :text "reply-A"}])
+            (let [{b-pk :assistant-msg-id} (metabot-persistence/start-turn!
+                                            conversation-id "internal"
+                                            {:role "user" :content "B"})]
+              (metabot-persistence/finalize-assistant-turn!
+               conversation-id b-pk [{:type :text :text "reply-B"}])
+              ;; soft-delete only turn B's assistant reply — its user row stays undeleted
+              ;; and is now the most-recent non-deleted row overall.
+              (t2/update! :model/MetabotMessage b-pk {:deleted_at (java.time.OffsetDateTime/now)})
+              (is (= a-ext (metabot-persistence/leaf-external-id conversation-id))
+                  "must not fall through to turn B's undeleted user row"))))))))
+
 (deftest message->chat-messages-annotates-agent-row-test
   (testing "empty :data on errored row emits a stub agent message so the FE can render the alert"
     (is (=? [{:id "ext-1" :role "agent" :type "text" :message ""

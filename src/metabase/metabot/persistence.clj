@@ -319,6 +319,21 @@
     ;; `message_id` FK is valid even before the UPDATE completes.
     (used-tables/record-used-tables! assistant-msg-id kept-parts)))
 
+(defn leaf-message
+  "The conversation's most recent, non-deleted assistant message, or nil.
+  Filters to :assistant so a deleted trailing reply doesn't fall back to a user row."
+  [conversation-id]
+  (t2/select-one :model/MetabotMessage
+                 {:where    [:and
+                             [:= :conversation_id conversation-id]
+                             [:= :deleted_at nil]
+                             [:= :role "assistant"]]
+                  :order-by [[:created_at :desc] [:id :desc]]}))
+
+(defn leaf-external-id
+  [conversation-id]
+  (:external_id (leaf-message conversation-id)))
+
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
