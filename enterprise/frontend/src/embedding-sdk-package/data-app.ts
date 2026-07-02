@@ -12,8 +12,6 @@ defineGlobalDependencies();
 
 export { DataAppRouter } from "./components/public/DataAppRouter";
 export { DataAppLink } from "./components/public/DataAppLink";
-// Write-only clipboard helper: the sandbox blocks the raw clipboard APIs, so
-// data apps use this endowed, host-side replacement instead. See `lib/public/copy`.
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export {
@@ -31,3 +29,7 @@ export type {
   ActionKindFromDataAppSchema,
   ActionParametersFromDataAppSchema,
 } from "./hooks/public/use-action";
+export type {
+  DataAppFactory,
+  DataAppMetabaseProviderProps,
+} from "metabase-enterprise/data_apps/sandbox";

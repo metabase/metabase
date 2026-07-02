@@ -26,7 +26,6 @@
     },
     "./data-app-dev": {
       "types": "./dist/data-app-dev.d.ts",
-      "require": "./dist/data-app-dev.cjs",
       "import": "./dist/data-app-dev.js"
     },
     "./package.json": "./package.json"
