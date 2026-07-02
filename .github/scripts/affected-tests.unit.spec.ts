@@ -33,6 +33,8 @@ const baseInput = {
   sharedSourcesTouched: false,
   feFilesChanged: 0,
   beFilesChanged: 0,
+  feFilesTotal: 0,
+  beFilesTotal: 0,
 };
 
 describe("createTestPlan", () => {

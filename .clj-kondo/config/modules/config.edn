@@ -180,6 +180,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -3513,7 +3514,6 @@
            app-db
            appearance
            collections
-           config
            events
            lib
            logger

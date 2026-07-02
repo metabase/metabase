@@ -1073,7 +1073,7 @@ describe("issue 35840", () => {
   function checkColumnMapping(path: string[]) {
     H.pickEntity({ path, select: true });
     H.modal().findByPlaceholderText("Pick a column…").click();
-    cy.findByRole("listbox").findAllByText("Category").eq(0).click();
+    H.selectDropdown().findAllByText("Category").eq(0).click();
     H.modal().within(() => {
       cy.findByDisplayValue("Category").should("be.visible");
       cy.findByDisplayValue("Category, Category").should("not.exist");

@@ -396,6 +396,12 @@
     (str/starts-with? id "openai.")    "OpenAI"
     :else                              nil))
 
+(defn- openai-model-group
+  "Group an OpenAI model by version family for the picker."
+  [{:keys [id]}]
+  (when-let [version (second (re-find #"^gpt-(\d+(?:\.\d+)?)" id))]
+    (str "GPT-" version)))
+
 (defn- openrouter-model-group
   [{:keys [display_name id]}]
   (or (some-> display_name
@@ -411,6 +417,7 @@
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
     "bedrock"    (assoc model :group (bedrock-model-group model))
+    "openai"     (assoc model :group (openai-model-group model))
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
@@ -428,7 +435,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "bedrock" "openrouter"} provider)
+    (if (contains? #{"anthropic" "bedrock" "openai" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys
