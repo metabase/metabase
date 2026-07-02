@@ -46,10 +46,10 @@ function serializeNode(node: JSONContent): string {
     }
     case "chartMention": {
       const { chartId, label } = node.attrs || {};
-      if (!chartId) {
+      if (!chartId || !label) {
         return label || "";
       }
-      return `[${label ?? "chart"}](metabase://chart/${chartId})`;
+      return `[${label}](metabase://chart/${chartId})`;
     }
     case "hardBreak":
       return "\n";
