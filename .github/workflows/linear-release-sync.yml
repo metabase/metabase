@@ -36,12 +36,15 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Build release code from master
+        run: git checkout master
       - name: Build the release scripts
         uses: ./.github/actions/prepare-release-scripts
 
       - name: Derive the in-flight MINOR version + scan baseline (via release/ helpers)
         id: ctx
         uses: actions/github-script@v9
+        continue-on-error: true
         env:
           REF_NAME: ${{ github.ref_name }}
           # master develops the next GA major. cut-release-branch.yml bumps this
@@ -100,6 +103,8 @@ jobs:
               console.error(err);
             }
 
+      - name: Restore branch (for subsequent steps)
+        run: git checkout ${{ github.ref_name }} # restore branch
       - name: Sync / update / complete the Linear release
         if: ${{ steps.ctx.outputs.release_version }}
         uses: linear/linear-release-action@v0
