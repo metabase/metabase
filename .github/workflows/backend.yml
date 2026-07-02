@@ -214,6 +214,15 @@ jobs:
           test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
           adapter: backend
 
+      - name: Quarantine gate (dry run)
+        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: backend
+          test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')

@@ -217,20 +217,16 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
 
-      # Quarantine gate (DEV-2082). Compare this job's ultimate test failures
-      # (recorded by after:spec into ./target/quarantine-failures.jsonl) against
-      # ci-conductor's quarantine list and decide whether the job should pass:
-      # pass if every failure is quarantined, fail if any isn't. This mirrors
-      # what Trunk's analytics-uploader does for us today. Runs in dry-run mode
-      # for now (QUARANTINE_DRY_RUN defaults to true) — it only prints the
-      # verdict and never fails the job. `continue-on-error` is belt-and-braces
-      # while it's observational; drop both it and the dry run to enforce.
       - name: Quarantine gate (dry run)
+        # always(), unlike backend/frontend: the run step is continue-on-error
+        # (Trunk governs its outcome), so its result can't gate on real failures.
         if: always()
         continue-on-error: true
-        timeout-minutes: 2
-        shell: bash
-        run: bun e2e/support/check-quarantine.ts
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: e2e
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7
