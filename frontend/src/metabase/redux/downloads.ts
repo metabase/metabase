@@ -580,7 +580,10 @@ export function getDatasetDownloadUrl(
   url: string,
   params?: URLSearchParams | string,
 ) {
-  url = url.replace(getBasename(), ""); // make url relative if it's not
+  const basename = getBasename();
+  if (basename && url.startsWith(basename)) {
+    url = url.slice(basename.length); // make url relative if it's not
+  }
   if (params) {
     url += `?${params.toString()}`;
   }
