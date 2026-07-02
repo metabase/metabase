@@ -10,6 +10,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
+   [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -127,6 +128,14 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                     #"does not define embed-texts"
                                     (embedding/get-embeddings-batch embedding-model ["hello"]))))))))
+    (testing "a FileNotFoundException for a namespace other than the plugin's own is not masked as plugin-absent"
+      (mt/with-dynamic-fn-redefs [classloader/require
+                                  (fn [& _]
+                                    (throw (java.io.FileNotFoundException.
+                                            "Could not locate some_dep__init.class or some_dep.clj on classpath.")))]
+        (is (thrown-with-msg? java.io.FileNotFoundException
+                              #"some_dep"
+                              (embedding/get-embeddings-batch embedding-model ["hello"])))))
     (testing "a blank model name errors before touching the plugin"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"requires a model name"
@@ -140,14 +149,22 @@
           (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
                                       (constantly (fn [_model-name texts] (mapv (fn [_] (vec (repeat 384 0.0))) texts)))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=384"
+                                  #"produces 384-dimensional vectors but this consumer is configured for 1024"
                                   (embedding/get-embedding (assoc embedding-model :vector-dimensions 1024)
                                                            "hello")))))
-        (testing "a dimension mismatch produces an actionable error"
+        (testing "a dimension mismatch produces an actionable error naming both consumers' settings"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                #"Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=384"
+                                #"MB_EE_LIBRARY_EMBEDDING_MODEL_DIMENSIONS"
                                 (embedding/get-embedding (assoc embedding-model :vector-dimensions 1024)
                                                          "hello"))))
+        (testing "token-tracking rows are written when requested, like the HTTP providers"
+          (let [recorded (atom [])]
+            (mt/with-dynamic-fn-redefs [semantic.models.token-tracking/record-tokens
+                                        (fn [model-name type token-count]
+                                          (swap! recorded conj [model-name type token-count]))]
+              (embedding/get-embeddings-batch embedding-model ["hello world"] {:record-tokens? true :type :query})
+              (embedding/get-embeddings-batch embedding-model ["hello world"])
+              (is (= [["all-MiniLM-L6-v2" :query 2]] @recorded)))))
         (testing "each call forwards its own model name, so consumers can run different models"
           (let [calls (atom [])]
             (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn

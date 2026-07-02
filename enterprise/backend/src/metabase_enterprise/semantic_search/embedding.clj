@@ -390,8 +390,13 @@
     ;; and only the shared dynamic classloader can see them.
     (classloader/require 'metabase-enterprise.embedder.core)
     (catch Exception e
-      ;; classloader/require wraps the FileNotFoundException in an ExceptionInfo, so check the cause chain.
-      (if (some #(instance? java.io.FileNotFoundException %) (u/full-exception-chain e))
+      ;; classloader/require wraps the FileNotFoundException in an ExceptionInfo, so check the cause chain —
+      ;; but only a miss for the embedder namespace itself means the plugin is absent. A FileNotFoundException
+      ;; for anything else means the plugin loaded but one of its own requires doesn't resolve against this
+      ;; core (a plugin/server version mismatch), which install guidance would mask.
+      (if (some #(and (instance? java.io.FileNotFoundException %)
+                      (str/includes? (str (ex-message %)) "metabase_enterprise/embedder/core"))
+                (u/full-exception-chain e))
         (throw (ex-info (str "The 'in-process' embedding provider requires the Metabase embedder plugin. "
                              "Place metabase-embedder-plugin.jar in your plugins directory "
                              "(MB_PLUGINS_DIR, default ./plugins) and restart Metabase.")
@@ -406,7 +411,7 @@
   "Guard against a configured dimension that doesn't match what the plugin model actually produces.
   Misconfiguration would otherwise poison the pgvector index at its declared width.
   Callers that don't declare `:vector-dimensions` (e.g. the `embeddings.client` facade) are not checked."
-  [{:keys [vector-dimensions]} embeddings]
+  [{:keys [model-name vector-dimensions]} embeddings]
   (when-let [embedding (and vector-dimensions (first embeddings))]
     ;; Tolerate any counted representation rather than hard-casting to float[]: a mismatched plugin
     ;; should hit the clear dimension error below, not an opaque ClassCastException here.
@@ -414,27 +419,35 @@
                    (alength ^floats embedding)
                    (count embedding))]
       (when (not= vector-dimensions actual)
-        (throw (ex-info (format (str "In-process embedder produces %d-dimensional vectors but "
-                                     "ee-embedding-model-dimensions is %d. "
-                                     "Set MB_EE_EMBEDDING_MODEL_DIMENSIONS=%d.")
-                                actual vector-dimensions actual)
-                        {:provider           "in-process"
-                         :actual-dimensions  actual
+        ;; Several consumers reach this with their own dimension settings, so don't prescribe one env var —
+        ;; naming the wrong one would have the operator break a working configuration.
+        (throw (ex-info (format (str "In-process embedder model %s produces %d-dimensional vectors but this "
+                                     "consumer is configured for %d. Set the dimensions setting of whichever "
+                                     "consumer made this request to %d — MB_EE_EMBEDDING_MODEL_DIMENSIONS for "
+                                     "semantic search, MB_EE_LIBRARY_EMBEDDING_MODEL_DIMENSIONS for the "
+                                     "library entity index.")
+                                model-name actual vector-dimensions actual)
+                        {:provider              "in-process"
+                         :model-name            model-name
+                         :actual-dimensions     actual
                          :configured-dimensions vector-dimensions})))))
   embeddings)
 
 (defmethod get-embeddings-batch "in-process"
-  [{:keys [model-name] :as embedding-model} texts & {:as _opts}]
+  [{:keys [model-name] :as embedding-model} texts & {:keys [record-tokens? type]}]
   (when (str/blank? model-name)
     (throw (ex-info "The in-process embedding provider requires a model name; set ee-embedding-model."
                     {:provider "in-process"})))
-  (let [embed-fn   (resolve-in-process-embed-fn)
-        embeddings (embed-fn model-name texts)]
-    ;; No API usage to meter; count cl100k tokens as an approximation so the volume shows up on the same
-    ;; dashboards as the HTTP providers.
+  (let [embed-fn    (resolve-in-process-embed-fn)
+        embeddings  (embed-fn model-name texts)
+        ;; No API usage to meter; count cl100k tokens as an approximation so the volume shows up on the
+        ;; same dashboards and token-tracking rows as the HTTP providers.
+        token-count (count-tokens-batch texts)]
     (analytics/inc! :metabase-search/semantic-embedding-tokens
-                    {:provider "in-process" :model (:model-name embedding-model)}
-                    (count-tokens-batch texts))
+                    {:provider "in-process" :model model-name}
+                    token-count)
+    (when record-tokens?
+      (semantic.models.token-tracking/record-tokens model-name type token-count))
     (check-in-process-dimensions embedding-model embeddings)))
 
 (defmethod get-embedding "in-process"

@@ -13,7 +13,9 @@
 (def ^:private valid-embedding-providers
   "The set of valid embedding provider names."
   ;; Values supplied via the env var bypass the :setter validation below; the use-time checks in
-  ;; `metabase-enterprise.semantic-search.embedding` are the real guard.
+  ;; `metabase-enterprise.semantic-search.embedding` are the real guard. For the same reason the setter
+  ;; deliberately does not probe that the in-process plugin jar is loadable: env-var configs would skip
+  ;; the probe anyway, and the resolve error at first use already carries the install guidance.
   #{"ai-service" "openai" "ollama" "in-process"})
 
 (defn validate-embedding-provider!
