@@ -41,15 +41,21 @@ export const getErrorMessage = (
   return fallback;
 };
 
-// The createUser endpoint rejects a duplicate email with a 400 carrying an
-// `errors.email` message. The text is localized, so match on shape, not wording.
-export const isEmailAlreadyInUse = (error: unknown): boolean => {
-  const e = error as {
-    status?: number;
-    data?: { errors?: { email?: unknown } };
-  };
-  return e?.status === 400 && typeof e?.data?.errors?.email === "string";
+type RequestError = {
+  status?: number;
+  data?: { errors?: Record<string, unknown> };
 };
+
+const isRequestError = (error: unknown): error is RequestError =>
+  typeof error === "object" && error !== null;
+
+// The createUser endpoint rejects a duplicate email with a 400 carrying a
+// field-level `errors.email` message. The text is localized, so match on shape,
+// not wording.
+export const isEmailAlreadyInUse = (error: unknown): boolean =>
+  isRequestError(error) &&
+  error.status === 400 &&
+  typeof error.data?.errors?.email === "string";
 
 function isEmpty(value: unknown): boolean {
   return value == null || value === "";
