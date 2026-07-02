@@ -433,8 +433,12 @@
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
-      (let [referenced?       (fn [{:keys [id]}] (t2/exists? :model/Card :table_id id))
-            survivor          (or (first (filter referenced? rows))
+      (let [referenced-ids    (into #{}
+                                    (map :table_id)
+                                    (t2/query {:select-distinct [:table_id]
+                                               :from            [(t2/table-name :model/Card)]
+                                               :where           [:in :table_id (map :id rows)]}))
+            survivor          (or (first (filter (comp referenced-ids :id) rows))
                                   (first (filter :active rows))
                                   (first rows))
             [c-name c-schema] (host-canonical-table (:name survivor))
