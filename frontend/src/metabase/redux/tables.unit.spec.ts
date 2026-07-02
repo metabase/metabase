@@ -5,6 +5,8 @@ import {
   setupTableQueryMetadataEndpoint,
   setupUnauthorizedFieldEndpoint,
 } from "__support__/server-mocks";
+import { Api } from "metabase/api";
+import { mainReducers } from "metabase/reducers-main";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
@@ -33,7 +35,11 @@ describe("fetchTableMetadataAndForeignKeys", () => {
     setupTableQueryMetadataEndpoint(TABLE_A);
     setupUnauthorizedFieldEndpoint(createMockField({ id: FK_TARGET_FIELD_ID }));
 
-    const store = getStore();
+    const store = getStore(
+      { ...mainReducers, [Api.reducerPath]: Api.reducer },
+      {},
+      [Api.middleware],
+    );
 
     // Check there's no permission error
     await expect(
