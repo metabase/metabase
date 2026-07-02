@@ -1,7 +1,9 @@
 (ns build.uberjar-test
   (:require
    [build.uberjar :as uberjar]
-   [clojure.test :refer [deftest is testing]]))
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]])
+  (:import (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -67,9 +69,9 @@
         ;; a later jar also contributes the service file (with its own H2 line + a new driver)
         (#'uberjar/jdbc-driver-services-merger
          {:existing existing
-          :in       (java.io.ByteArrayInputStream.
+          :in       (ByteArrayInputStream.
                      (.getBytes "org.sqlite.JDBC\norg.h2.Driver\norg.postgresql.Driver"))})
-        (let [lines (clojure.string/split-lines (slurp existing))]
+        (let [lines (str/split-lines (slurp existing))]
           (is (not (some #{"org.h2.Driver"} lines)) "org.h2.Driver is dropped")
           (is (contains? (set lines) "org.postgresql.Driver"))
           (is (contains? (set lines) "org.sqlite.JDBC"))
