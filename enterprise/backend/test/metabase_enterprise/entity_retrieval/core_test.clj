@@ -21,6 +21,30 @@
 
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
+(deftest configured-model-test
+  (mt/with-temporary-setting-values [ee-embedding-provider                  "ai-service"
+                                     ee-embedding-model                     "Snowflake/snowflake-arctic-embed-l-v2.0"
+                                     ee-embedding-model-dimensions          1024
+                                     ee-library-embedding-provider          nil
+                                     ee-library-embedding-model             nil
+                                     ee-library-embedding-model-dimensions  nil]
+    (testing "without overrides, the library index shares the global embedding model"
+      (is (= (semantic.embedding/get-configured-model)
+             (#'entity-retrieval.core/configured-model))))
+    (testing "ee-library-embedding-* overrides apply individually over the global settings"
+      (mt/with-temporary-setting-values [ee-library-embedding-provider         "in-process"
+                                         ee-library-embedding-model            "all-MiniLM-L6-v2"
+                                         ee-library-embedding-model-dimensions 384]
+        (is (= {:provider          "in-process"
+                :model-name        "all-MiniLM-L6-v2"
+                :vector-dimensions 384}
+               (#'entity-retrieval.core/configured-model))))
+      (mt/with-temporary-setting-values [ee-library-embedding-model "text-embedding-3-small"]
+        (is (= {:provider          "ai-service"
+                :model-name        "text-embedding-3-small"
+                :vector-dimensions 1024}
+               (#'entity-retrieval.core/configured-model)))))))
+
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'entity-retrieval.core/score)]
     (testing "weighted-scorer breakdown: similarity factor + doc_type bump + total_score"

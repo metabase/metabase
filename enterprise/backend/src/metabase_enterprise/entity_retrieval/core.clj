@@ -11,6 +11,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
+   [metabase-enterprise.entity-retrieval.settings :as retrieval.settings]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.analytics-interface.core :as analytics]
@@ -60,6 +61,18 @@
        (pgvector-configured?)
        (embedding/embedding-supported? (embedding/get-configured-model))))
 
+(defn- configured-model
+  "The embedding model for the library entity index: the global embedding settings, with any
+  ee-library-embedding-* overrides applied so this index can run a different provider/model than
+  semantic search."
+  []
+  (merge (embedding/get-configured-model)
+         (into {}
+               (filter (comp some? val))
+               {:provider          (retrieval.settings/ee-library-embedding-provider)
+                :model-name        (retrieval.settings/ee-library-embedding-model)
+                :vector-dimensions (retrieval.settings/ee-library-embedding-model-dimensions)})))
+
 (defn- index-ready?
   "Whether the library entity index can serve a query right now: its meta row matches the configured
   embedding model and schema version, and it holds at least one document.
@@ -72,7 +85,7 @@
   (boolean
    (try
      (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
-       (and (index-table/index-compatible? ds (embedding/get-configured-model))
+       (and (index-table/index-compatible? ds (configured-model))
             (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
      (catch Throwable _ false))))
 
@@ -159,7 +172,7 @@
   (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
         waited-ms (elapsed-ms scheduled)
         started   (u/start-timer)
-        diff      (reconcile/reconcile! ds embedding/get-configured-model)
+        diff      (reconcile/reconcile! ds configured-model)
         ran-ms    (elapsed-ms started)]
     (record-run! "full" diff ran-ms)
     {:index     (select-keys diff [:inserted :deleted :unchanged])
@@ -178,7 +191,7 @@
     (doseq [[entity-type entity-local-id :as entity-key] dirty]
       (try
         (let [started (u/start-timer)
-              diff    (reconcile/reconcile-entity! ds embedding/get-configured-model entity-type entity-local-id)]
+              diff    (reconcile/reconcile-entity! ds configured-model entity-type entity-local-id)]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
           (log/error e "library entity index: targeted reconcile failed; re-queuing"
@@ -267,7 +280,7 @@
     []
     (let [pgvector  (semantic.db.datasource/ensure-initialized-data-source!)
           limit     (or limit default-limit)
-          model     (embedding/get-configured-model)
+          model     (configured-model)
           embedding (embedding/get-embedding model user-search-prompt
                                              {:type :query :record-tokens? true})
           lit       (index-table/format-embedding embedding)
