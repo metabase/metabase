@@ -104,7 +104,7 @@
   (str/split schema #"\."))
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
-  [_driver [tag identifier-type components :as _identifier]]
+  [driver [tag _opts identifier-type components :as _identifier]]
   (let [components (if (or (and (= identifier-type :table)
                                 (>= (count components) 2))
                            (and (= identifier-type :field)
@@ -114,7 +114,7 @@
                      (let [first-split (split-catalog+schema (first components))]
                        (into first-split (rest components)))
                      components)]
-    (sql.qp/->honeysql :hive-like [tag identifier-type components])))
+    (sql.qp/->honeysql :hive-like (sql.qp/mbql-clause driver tag identifier-type components))))
 
 (defn- get-tables-sql
   [driver {:keys [catalog multi-level-schema]}]
@@ -502,8 +502,8 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]
