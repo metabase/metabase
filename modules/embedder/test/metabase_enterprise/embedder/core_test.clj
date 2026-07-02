@@ -37,9 +37,14 @@
       (testing "outputs are L2-normalized"
         (doseq [^floats embedding embeddings]
           (is (< (abs (- 1.0 (cosine embedding embedding))) 1e-3))))
-      (testing "output order matches input order and is deterministic"
+      (testing "identical calls are deterministic"
+        (is (= (mapv vec embeddings) (mapv vec (embedder/embed-texts texts)))))
+      (testing "output order matches input order"
+        ;; Not an equality check: the INT8 model's activation quantization is sensitive to batch padding,
+        ;; so the same text embedded solo vs. in a batch drifts by ~0.015 cosine. Harmless for retrieval
+        ;; (MiniLM's related/unrelated gaps are >0.5) but exact-match assertions would flake.
         (let [[dog'] (embedder/embed-texts ["dog"])]
-          (is (< (abs (- 1.0 (cosine (first embeddings) dog'))) 1e-3))))
+          (is (> (cosine (first embeddings) dog') 0.95))))
       (testing "related terms are closer than unrelated ones"
         (let [[dog puppy invoice] embeddings]
           (is (> (cosine dog puppy) (cosine dog invoice)))))

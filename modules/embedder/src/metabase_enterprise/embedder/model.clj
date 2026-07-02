@@ -28,27 +28,50 @@
 (defn- model-source
   "Where to load the model from, in priority order:
 
-  1. `MB_EMBEDDER_MODEL_PATH` — a local directory containing an extracted model (dev/testing escape hatch).
-  2. The per-arch INT8 bundle packed into this jar's resources at build time (the production path).
-  3. The DJL model-zoo URL, which downloads from HuggingFace into `~/.djl.ai/` — dev-only, and only
-     with `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can never silently reach the network."
+  1. `MB_EMBEDDER_MODEL_PATH` — a local directory containing an extracted model.
+  2. `MB_EMBEDDER_MODEL_URL` — any DJL-supported model URL (`file:`, `https:`, `s3:`, `djl://` zoo,
+     `jar:///` classpath).
+     With 1 and 2 the embedder runs a model other than the bundled one; pair them with matching
+     `MB_EE_EMBEDDING_MODEL` / `MB_EE_EMBEDDING_MODEL_DIMENSIONS` so the pgvector index is labeled (and
+     sized) for what is actually loaded.
+  3. The per-arch INT8 bundle packed into this jar's resources at build time (the production default).
+  4. The DJL model-zoo URL for the default model, downloading into `~/.djl.ai/` — dev-only, and only with
+     `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can never silently reach the network.
+
+  Each source carries `:include-token-types?`: the HF INT8 exports we bundle (and dirs prepared like them)
+  have a third `token_type_ids` graph input the translator must feed, while the DJL zoo export takes two.
+  Overrides inherit the bundle convention; set `MB_EMBEDDER_INCLUDE_TOKEN_TYPES=false` for a two-input
+  custom model."
   []
-  (let [resource-path (str "metabase-embedder/all-MiniLM-L6-v2-int8-" (bundled-model-arch) ".zip")]
+  (let [resource-path        (str "metabase-embedder/all-MiniLM-L6-v2-int8-" (bundled-model-arch) ".zip")
+        override-token-types (not= "false" (System/getenv "MB_EMBEDDER_INCLUDE_TOKEN_TYPES"))]
     (cond
       (some-> (System/getenv "MB_EMBEDDER_MODEL_PATH") not-empty)
-      {:type :path :path (System/getenv "MB_EMBEDDER_MODEL_PATH")}
+      {:type :path :path (System/getenv "MB_EMBEDDER_MODEL_PATH") :include-token-types? override-token-types}
+
+      (some-> (System/getenv "MB_EMBEDDER_MODEL_URL") not-empty)
+      {:type :url :url (System/getenv "MB_EMBEDDER_MODEL_URL") :include-token-types? override-token-types}
 
       (io/resource resource-path)
-      {:type :url :url (str "jar:///" resource-path)}
+      {:type :url :url (str "jar:///" resource-path) :include-token-types? true}
 
       (= "true" (System/getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD"))
-      {:type :url :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"}
+      {:type :url
+       :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"
+       :include-token-types? false}
 
       :else
       (throw (ex-info (str "No embedder model available: the plugin jar carries no bundled model, "
-                           "MB_EMBEDDER_MODEL_PATH is not set, and downloads are not enabled "
-                           "(MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true, dev only).")
+                           "neither MB_EMBEDDER_MODEL_PATH nor MB_EMBEDDER_MODEL_URL is set, and "
+                           "downloads are not enabled (MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true, dev only).")
                       {:resource resource-path})))))
+
+(defn- model-file-name
+  "DJL resolves the weights file as `<name>.onnx`, defaulting `<name>` to the model directory/archive name.
+  Our bundles (and `MB_EMBEDDER_MODEL_PATH` dirs prepared like them) always call it `model.onnx`;
+  `MB_EMBEDDER_MODEL_NAME` overrides for custom models that name theirs differently."
+  []
+  (or (not-empty (System/getenv "MB_EMBEDDER_MODEL_NAME")) "model"))
 
 (defn- build-model ^ZooModel []
   (let [source   (model-source)
@@ -56,15 +79,14 @@
                      (.setTypes String floats-class)
                      (.optEngine "OnnxRuntime")
                      (.optTranslatorFactory (TextEmbeddingTranslatorFactory.))
+                     (.optModelName (model-file-name))
                      ;; Explicit so behavior doesn't depend on a serving.properties inside the bundle.
                      (.optArgument "pooling" "mean")
-                     (.optArgument "normalize" "true"))]
+                     (.optArgument "normalize" "true")
+                     (.optArgument "includeTokenTypes" (str (boolean (:include-token-types? source)))))]
     (log/info "Loading in-process embedder model from" (pr-str source))
     (-> (case (:type source)
-          :path (-> criteria
-                    (.optModelPath (Paths/get ^String (:path source) (into-array String [])))
-                    ;; The extracted bundle names its weights model.onnx regardless of directory name.
-                    (.optModelName "model"))
+          :path (.optModelPath criteria (Paths/get ^String (:path source) (into-array String [])))
           :url  (.optModelUrls criteria ^String (:url source)))
         (.build)
         (.loadModel))))
@@ -82,7 +104,8 @@
             (reset! model* (build-model))))))
 
 (defn reset-model!
-  "Close and discard the loaded model so the next embed reloads it. REPL affordance."
+  "Close and discard the loaded model so the next embed reloads it.
+  REPL affordance."
   []
   (locking model*
     (when-let [^ZooModel m @model*]
