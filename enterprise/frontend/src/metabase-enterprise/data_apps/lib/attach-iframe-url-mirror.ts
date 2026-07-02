@@ -48,8 +48,15 @@ export function attachIframeUrlMirror(
   iframeWindow.addEventListener("popstate", mirror);
 
   return () => {
-    history.pushState = origPush;
-    history.replaceState = origReplace;
-    iframeWindow.removeEventListener("popstate", mirror);
+    try {
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+      iframeWindow.removeEventListener("popstate", mirror);
+    } catch {
+      // The frame navigated cross-origin (e.g. a form submitting to an external
+      // host, or a blocked navigation's chrome-error page): its window can no
+      // longer be touched, and the patched history/listeners are gone with the
+      // old document anyway.
+    }
   };
 }

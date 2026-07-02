@@ -244,7 +244,12 @@
                                    (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
-                  :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
+                  :frame-src    (into (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
+                                      ;; A data app may embed / navigate its iframe to
+                                      ;; the origins it declares in `allowed_hosts`
+                                      ;; (the same ones it may fetch). Empty for every
+                                      ;; non-data-app document.
+                                      data-app-connect-hosts)
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
@@ -299,9 +304,20 @@
 
 (defn- content-security-policy-header-with-frame-ancestors
   [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts]
-  (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
-          "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
+  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
+                  "Content-Security-Policy"
+                  #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
+    ;; Restrict native `<form action="…">` submissions to the app's declared
+    ;; `allowed_hosts` (mirroring `connect-src`); with none declared this is
+    ;; `'none'`, blocking every native submit. `form-action` does not fall back to
+    ;; `default-src`, so it must be set explicitly. Client-side `onSubmit` handlers
+    ;; are unaffected — they `preventDefault`, so no submission is ever checked.
+    data-app-iframe? (update "Content-Security-Policy"
+                             #(str % " form-action "
+                                   (if (seq data-app-connect-hosts)
+                                     (str/join " " data-app-connect-hosts)
+                                     "'none'")
+                                   ";"))))
 
 (defn- x-frame-options-header
   "Legacy `X-Frame-Options` companion to the CSP `frame-ancestors` (for browsers
@@ -433,11 +449,13 @@
   [request]
   (str/starts-with? (:uri request) "/embed/data-app/"))
 
-(defn- data-app-iframe-slug
-  "Slug of the data-app iframe document being served, parsed from
-   `/embed/data-app/<slug>` (and any deeper sub-route), or nil."
+(defn- data-app-slug
+  "Slug of the data-app document being served, parsed from the top-level
+   `/data-app/<slug>` page or the internal `/embed/data-app/<slug>` iframe (and
+   any deeper sub-route), or nil. The top page needs it too: its `frame-src`
+   governs what the iframe below it may navigate to."
   [request]
-  (second (re-matches #"/embed/data-app/([^/]+).*" (:uri request))))
+  (second (re-matches #"/(?:embed/)?data-app/([^/]+).*" (:uri request))))
 
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
@@ -454,8 +472,10 @@
                                                 :else                                              :none)
                  :allow-cache?                (request/cacheable? request)
                  :data-app-iframe?            (data-app-iframe-request? request)
-                 ;; Per-app `allowed_hosts` → `connect-src` for the data-app iframe document.
-                 :data-app-connect-hosts      (when-let [slug (data-app-iframe-slug request)]
+                 ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
+                 ;; doc) and `frame-src` (both the iframe doc and the top page,
+                 ;; whose `frame-src` gates the iframe's own navigations).
+                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
                                                 (data-app-connect-src-hosts slug)))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
