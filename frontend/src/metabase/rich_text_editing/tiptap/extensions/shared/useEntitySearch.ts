@@ -71,7 +71,6 @@ export function useEntitySearch({
   // Debounce the server search so typing an @-mention fires one request when the query settles,
   // not one per keystroke. Client-side recents/user filtering stays on the raw query for responsiveness.
   const debouncedQuery = useDebouncedValue(query, ENTITY_SEARCH_DEBOUNCE_MS);
-  const isDebouncing = query !== debouncedQuery;
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
       refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
@@ -116,11 +115,9 @@ export function useEntitySearch({
       .slice(0, USER_SEARCH_LIMIT);
   }, [usersResponse, query]);
 
-  // While the query is settling, don't surface the previous query's results. The current consumer
-  // renders a loading state instead, but this keeps menuItems/searchResults honest for any consumer.
   const searchResults = useMemo(
-    () => (isDebouncing ? [] : (searchResponse?.data ?? [])),
-    [isDebouncing, searchResponse],
+    () => searchResponse?.data ?? [],
+    [searchResponse],
   );
 
   const menuItems = useMemo(() => {
@@ -160,9 +157,7 @@ export function useEntitySearch({
 
   return {
     menuItems,
-    isLoading: shouldFetchRecents
-      ? isRecentsLoading
-      : isSearchLoading || isDebouncing,
+    isLoading: shouldFetchRecents ? isRecentsLoading : isSearchLoading,
     searchResults,
   };
 }

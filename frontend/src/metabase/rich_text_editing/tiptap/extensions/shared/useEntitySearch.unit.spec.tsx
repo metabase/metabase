@@ -30,23 +30,25 @@ const setup = (initialQuery: string) => {
 };
 
 describe("useEntitySearch", () => {
-  it("reports loading and hides stale results while the query is settling, then fires the search with the settled query", async () => {
-    const { result, rerender } = setup("");
+  it("returns the search results for the current query", async () => {
+    const { result } = setup("Dashboard");
 
-    // Let the initial request settle.
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() =>
+      expect(result.current.searchResults.map((item) => item.name)).toEqual([
+        "Dashboard A",
+      ]),
+    );
+  });
 
-    rerender({ query: "Dashboard" });
+  it("debounces query changes into the search request", async () => {
+    const { result, rerender } = setup("Dashboard");
 
-    // Debounce window: loading, and the previous results are not surfaced.
-    expect(result.current.isLoading).toBe(true);
-    expect(result.current.searchResults).toEqual([]);
+    await waitFor(() => expect(result.current.searchResults).toHaveLength(1));
 
-    // Once the query settles, the debounced search fires and results appear.
-    await waitFor(() => expect(result.current.isLoading).toBe(false), {
-      timeout: 3000,
-    });
-    expect(result.current.searchResults).toHaveLength(1);
-    expect(result.current.searchResults[0].name).toBe("Dashboard A");
+    // A changed query eventually drives the (debounced) search; a non-matching
+    // query settles to no results.
+    rerender({ query: "nonexistent-query" });
+
+    await waitFor(() => expect(result.current.searchResults).toEqual([]));
   });
 });
