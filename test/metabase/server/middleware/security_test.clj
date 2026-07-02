@@ -133,22 +133,45 @@
       (is (nil? (csp-directive-for uri "form-action"))))))
 
 (deftest data-app-frame-src-test
-  (testing "a data app's allowed_hosts are added to frame-src, so it can embed / navigate to them"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
-      ;; Both the top page and the iframe doc: the top page's `frame-src` gates
-      ;; what the iframe below it may navigate to.
-      (doseq [uri ["/data-app/sales" "/embed/data-app/sales"]]
-        (let [frame-src (csp-directive-for uri "frame-src")]
-          (is (str/includes? frame-src "'self'") uri)
-          (is (str/includes? frame-src "https://example.com") uri)))))
-  (testing "with no allowed_hosts, frame-src stays the base iframe-hosts list (no app hosts added)"
+  (testing "a data app's frame-src is a per-app allowlist: only 'self' + its allowed_hosts"
+    ;; A global iframe host (wikipedia) is configured but must NOT leak into a data
+    ;; app's frame-src — the app can only frame what it declares.
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        ;; Both the top page and the iframe doc: the top page's `frame-src` gates
+        ;; what the iframe below it may navigate to.
+        (doseq [uri ["/data-app/sales" "/embed/data-app/sales"]]
+          (let [frame-src (csp-directive-for uri "frame-src")]
+            (is (str/includes? frame-src "'self'") uri)
+            (is (str/includes? frame-src "https://example.com") uri)
+            (is (not (str/includes? frame-src "wikipedia"))
+                (str uri " must not include the instance-wide iframe hosts")))))))
+  (testing "with no allowed_hosts, a data app can only frame 'self'"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
-      (is (= (csp-directive-for "/embed/data-app/sales" "frame-src")
-             (csp-directive-for "/embed/dashboard/abc" "frame-src")))))
-  (testing "non-data-app documents don't get app hosts in frame-src"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
-      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "frame-src")
-                              "https://example.com"))))))
+      (is (= "frame-src 'self'" (csp-directive-for "/embed/data-app/sales" "frame-src")))))
+  (testing "non-data-app documents keep the instance-wide iframe hosts, not app hosts"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        (let [frame-src (csp-directive-for "/embed/dashboard/abc" "frame-src")]
+          (is (str/includes? frame-src "wikipedia"))
+          (is (not (str/includes? frame-src "https://example.com"))))))))
+
+(deftest data-app-instance-origin-excluded-test
+  (testing "the Metabase instance origin is dropped from a data app's allowlist even if listed"
+    (mt/with-temporary-setting-values [site-url "https://mymetabase.example"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://mymetabase.example" "https://api.allowed.test"])]
+        (let [form-action (csp-directive-for "/embed/data-app/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/data-app/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/data-app/sales" "connect-src")]
+          (testing "the genuinely-external host survives"
+            (is (str/includes? form-action "https://api.allowed.test"))
+            (is (str/includes? frame-src "https://api.allowed.test"))
+            (is (str/includes? connect-src "https://api.allowed.test")))
+          (testing "the instance origin is filtered out (no native form/frame/fetch to Metabase)"
+            (is (not (str/includes? form-action "mymetabase.example")))
+            (is (not (str/includes? frame-src "https://mymetabase.example")))
+            (is (not (str/includes? connect-src "https://mymetabase.example")))))))))
 
 (deftest data-app-connect-src-test
   (testing "a data app's allowed_hosts are added to the iframe document's connect-src"

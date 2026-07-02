@@ -13,6 +13,7 @@
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -244,12 +245,14 @@
                                    (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
-                  :frame-src    (into (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
-                                      ;; A data app may embed / navigate its iframe to
-                                      ;; the origins it declares in `allowed_hosts`
-                                      ;; (the same ones it may fetch). Empty for every
-                                      ;; non-data-app document.
-                                      data-app-connect-hosts)
+                  :frame-src    (if (some? data-app-connect-hosts)
+                                  ;; Data-app docs get a per-app framing allowlist:
+                                  ;; only `'self'` and the origins the app declared
+                                  ;; in `allowed_hosts` — NOT the instance-wide iframe
+                                  ;; hosts, so a data app can't frame those unless it
+                                  ;; lists them itself.
+                                  (into ["'self'"] data-app-connect-hosts)
+                                  (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
@@ -456,6 +459,32 @@
   [request]
   (second (re-matches #"/(?:embed/)?data-app/([^/]+).*" (:uri request))))
 
+(defn- site-origin
+  "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
+   `site-url`), or nil. Matches the shape [[parse-url]] returns so origins compare
+   with `=`."
+  []
+  (when-let [url (not-empty (system/site-url))]
+    (try
+      (let [^URI uri (URI. ^String url)]
+        (when-let [host (.getHost uri)]
+          {:protocol (.getScheme uri)
+           :domain   host
+           :port     (let [p (.getPort uri)] (when-not (neg? p) (str p)))}))
+      (catch Exception _ nil))))
+
+(defn- drop-instance-origin
+  "Removes any `allowed_hosts` entry that resolves to this Metabase instance's own
+   origin. A native `<form>` submit or frame to the instance would carry the
+   user's session cookies, and the SDK is the only sanctioned way to reach
+   Metabase — so we keep the instance out of the app's `form-action`/`frame-src`/
+   `connect-src` even when an app mistakenly lists it (mirroring the JS fetch/XHR
+   sandbox, which blocks the instance origin regardless)."
+  [hosts]
+  (if-let [self (site-origin)]
+    (remove #(= self (parse-url %)) hosts)
+    hosts))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
@@ -475,7 +504,7 @@
                  ;; doc) and `frame-src` (both the iframe doc and the top page,
                  ;; whose `frame-src` gates the iframe's own navigations).
                  :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (data-app-connect-src-hosts slug)))
+                                                (drop-instance-origin (data-app-connect-src-hosts slug))))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
