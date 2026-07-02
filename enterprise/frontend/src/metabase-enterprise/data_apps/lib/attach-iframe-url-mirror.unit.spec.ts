@@ -73,4 +73,15 @@ describe("attachIframeUrlMirror", () => {
 
     expect(() => detach()).not.toThrow();
   });
+
+  it("rethrows unexpected (non-cross-origin) cleanup errors so real bugs surface", () => {
+    const iframe = fakeIframeWindow("/embed/data-app/sales");
+    const detach = attachIframeUrlMirror(iframe as unknown as Window, "sales");
+
+    iframe.removeEventListener = jest.fn(() => {
+      throw new TypeError("boom");
+    });
+
+    expect(() => detach()).toThrow("boom");
+  });
 });

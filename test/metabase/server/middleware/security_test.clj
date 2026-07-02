@@ -159,6 +159,13 @@
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
       (is (= (csp-directive-for "/embed/data-app/sales" "connect-src")
              (csp-directive-for "/embed/dashboard/abc" "connect-src")))))
+  (testing "the top-level /data-app page keeps a tight connect-src — hosts go to the iframe doc, not here"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (not (str/includes? (csp-directive-for "/data-app/sales" "connect-src")
+                              "https://api.example.com")))
+      ;; ...but the top page still gets them in frame-src (it gates the iframe's nav).
+      (is (str/includes? (csp-directive-for "/data-app/sales" "frame-src")
+                         "https://api.example.com"))))
   (testing "non-data-app documents don't get app hosts in connect-src"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
       (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "connect-src")

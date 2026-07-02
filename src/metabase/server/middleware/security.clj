@@ -278,9 +278,8 @@
                                     (str "ws://*:" cljs-dev-port))]
                                  ;; Per-app `allowed_hosts` for the data-app iframe document, so its
                                  ;; sandboxed bundle can fetch/XHR the origins the app declared. Added
-                                 ;; separately from `'self'` (which stays for the host-side SDK calls)
-                                 ;; and empty for every non-data-app document.
-                                 data-app-connect-hosts)
+                                 ;; separately from `'self'` (which stays for the host-side SDK calls).
+                                 (when data-app-iframe? data-app-connect-hosts))
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})

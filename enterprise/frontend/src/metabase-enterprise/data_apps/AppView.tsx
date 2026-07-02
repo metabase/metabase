@@ -18,6 +18,7 @@ import {
 } from "./constants";
 import { attachIframeUrlMirror } from "./lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "./lib/derive-iframe-src";
+import { isCrossOriginError } from "./lib/is-cross-origin-error";
 
 interface AppViewProps {
   params: { name: string };
@@ -96,8 +97,13 @@ export function AppView({ params }: AppViewProps) {
         if (win) {
           detach = attachIframeUrlMirror(win, name);
         }
-      } catch {
+      } catch (error) {
         detach = null;
+        // Expected only for a cross-origin frame; rethrow anything else so mirror
+        // bugs surface.
+        if (!isCrossOriginError(error)) {
+          throw error;
+        }
       }
     };
 

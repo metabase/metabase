@@ -1,5 +1,7 @@
 import { DATA_APP_EMBED_PREFIX } from "../constants";
 
+import { isCrossOriginError } from "./is-cross-origin-error";
+
 /**
  * Mirrors the iframe's URL into the parent's URL bar (no page reload).
  *
@@ -52,11 +54,13 @@ export function attachIframeUrlMirror(
       history.pushState = origPush;
       history.replaceState = origReplace;
       iframeWindow.removeEventListener("popstate", mirror);
-    } catch {
-      // The frame navigated cross-origin (e.g. a form submitting to an external
-      // host, or a blocked navigation's chrome-error page): its window can no
-      // longer be touched, and the patched history/listeners are gone with the
-      // old document anyway.
+    } catch (error) {
+      // Expected only when the frame navigated cross-origin: its window can no
+      // longer be touched, and the patched history/listeners are gone with the old
+      // document anyway. Rethrow anything else so real bugs surface.
+      if (!isCrossOriginError(error)) {
+        throw error;
+      }
     }
   };
 }
