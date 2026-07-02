@@ -77,13 +77,28 @@ describe("admin > custom visualizations", () => {
 
         H.visitCustomVizSettings();
 
+        cy.log(
+          "Enabling custom viz is blocked until the image CSP setting is on",
+        );
         H.main()
           .findByRole("button", { name: /Enable custom visualizations/ })
-          .should("be.visible")
+          .should("be.disabled");
+        H.main()
+          .findByText(/Turn on "Restrict image domains"/)
+          .should("be.visible");
+
+        cy.log("Turn on the image CSP setting, then custom viz can be enabled");
+        H.updateSetting("csp-img-enabled", true);
+        cy.reload();
+
+        H.main()
+          .findByRole("button", { name: /Enable custom visualizations/ })
+          .should("be.enabled")
           .click();
 
         H.getAddVisualizationLink().should("be.visible");
 
+        cy.log("Deactivate custom visualizations");
         H.main()
           .findByRole("button", { name: /More options/ })
           .click();
@@ -124,6 +139,7 @@ describe("admin > custom visualizations", () => {
         });
 
         H.activateToken("bleeding-edge");
+        H.updateSetting("csp-img-enabled", true);
         H.updateSetting("custom-viz-enabled", true);
         H.visitCustomVizSettings();
         H.getAddVisualizationLink().click();
@@ -167,6 +183,7 @@ describe("admin > custom visualizations", () => {
   describe("admin settings page", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
     });
 
@@ -518,6 +535,7 @@ describe("admin > custom visualizations", () => {
   describe("using a plugin — question", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -775,6 +793,7 @@ describe("admin > custom visualizations", () => {
   describe("using a plugin — dashboard", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
     });
@@ -1044,6 +1063,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -1174,6 +1194,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
@@ -1246,21 +1267,6 @@ describe("admin > custom visualizations", () => {
     });
 
     it("renders the custom-viz icon across app surfaces when navigating through the UI", () => {
-      // Some routes (/search, dashboard edit mode) collapse the nav sidebar.
-      // Call this before any nav-sidebar interaction so we open it only when
-      // it's actually hidden — `H.openNavigationSidebar` toggles, so calling
-      // it unconditionally would close an already-open sidebar.
-      const ensureNavigationSidebarOpen = () => {
-        cy.get("body").then(($body) => {
-          const visible = $body.find(
-            '[data-testid="main-navbar-root"]:visible',
-          ).length;
-          if (!visible) {
-            H.openNavigationSidebar();
-          }
-        });
-      };
-
       H.interceptPluginBundle();
 
       cy.visit("/collection/root");
@@ -1311,7 +1317,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log('Navigate → home via the nav-sidebar "Home" link');
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar().findByText("Home").click();
 
       cy.log("Home recently-viewed section");
@@ -1323,7 +1329,7 @@ describe("admin > custom visualizations", () => {
         .should("exist");
 
       cy.log("Navigate → dashboard via bookmark link in the nav sidebar");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DASHBOARD_NAME) })
         .click();
@@ -1341,7 +1347,7 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("button", { name: /Cancel/i }).click();
 
       cy.log("Navigate → document via bookmark link");
-      ensureNavigationSidebarOpen();
+      H.openNavigationSidebar();
       H.navigationSidebar()
         .findByRole("link", { name: new RegExp(DOC_NAME) })
         .click();
@@ -1396,6 +1402,7 @@ describe("admin > custom visualizations", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
     });
 
@@ -1510,15 +1517,13 @@ describe("admin > custom visualizations", () => {
       cy.findByTestId("viz-type-button").click();
 
       cy.log(
-        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up image should render.",
+        "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up should render.",
       );
       H.main()
-        .findByAltText("Above threshold")
-        .should("be.visible")
-        .and("have.attr", "src")
-        .and("match", /thumbs-up\.png/);
+        .findByRole("img", { name: "Above threshold" })
+        .should("be.visible");
 
-      cy.log("Modifying plugin source to change the alt text via getAssetUrl");
+      cy.log("Modifying plugin source to change the rendered label");
       cy.readFile(pluginSrcPath).then((src) => {
         const updated = src.replace('"Above threshold"', '"Way above!"');
         if (updated === src) {
@@ -1530,7 +1535,7 @@ describe("admin > custom visualizations", () => {
       });
 
       cy.log("Checking if hot reload works");
-      H.main().findByAltText("Way above!").should("be.visible");
+      H.main().findByRole("img", { name: "Way above!" }).should("be.visible");
 
       cy.log("Verify plugin settings affect rendering.");
       cy.log(
@@ -1545,9 +1550,8 @@ describe("admin > custom visualizations", () => {
         name: /Done/,
       }).click();
       H.main()
-        .findByAltText("Below threshold")
-        .should("have.attr", "src")
-        .and("match", /thumbs-down\.png/);
+        .findByRole("img", { name: "Below threshold" })
+        .should("be.visible");
 
       cy.log(
         "Saving the question and reloading to verify persistence of settings and dev URL",
@@ -1558,9 +1562,8 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("dialog", { name: /Save question/ }).should("not.exist");
       cy.reload();
       H.main()
-        .findByAltText("Below threshold")
-        .should("have.attr", "src")
-        .and("match", /thumbs-down\.png/);
+        .findByRole("img", { name: "Below threshold" })
+        .should("be.visible");
 
       cy.log(
         "When the dev server is stopped, the visualization should revert to the default",
@@ -1577,6 +1580,7 @@ describe("sandbox", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.updateSetting("csp-img-enabled", true);
     H.updateSetting("custom-viz-enabled", true);
     H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
     H.createQuestion(
@@ -2355,7 +2359,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2375,12 +2378,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin read element id",
       "sandbox-decoy",
-    );
-
-    // The swap is reported to host console for diagnostics.
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div id="root"> with decoy/,
     );
 
     // The real host element was untouched.
@@ -2415,7 +2412,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2438,11 +2434,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin parentNode decoy:",
       "true",
-    );
-
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div.*> with decoy/,
     );
 
     cy.get("[data-plugin-sandbox]")
@@ -2476,7 +2467,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2498,9 +2488,86 @@ describe("sandbox", () => {
       doc.body.removeAttribute("data-mutation-probe-attr");
     });
 
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin observed mutations:",
+      0,
+    );
+  });
+
+  it("blocks forbidden apis in widget settings", () => {
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+
+    H.createQuestion(
+      {
+        name: "Custom Viz Question Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "table",
+      },
+      { wrapId: true, idAlias: "questionId" },
+    );
+
+    H.visitQuestion("@questionId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("custom-viz-plugins-toggle").click();
+    cy.findByTestId(`${H.CUSTOM_VIZ_IDENTIFIER_3_SECURITY}-button`).click();
+    cy.findByTestId("viz-type-button").click();
+
+    cy.log("open viz settings");
+    cy.findByTestId("viz-settings-button").click();
+
     cy.get("@consoleError").should(
       "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+      Cypress.sinon.match.has(
+        "message",
+        Cypress.sinon.match(/blocked API call: window\.fetch/),
+      ),
+    );
+  });
+
+  it("sandboxes React component setting widgets", () => {
+    H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
+
+    H.createQuestion(
+      {
+        name: "Custom Viz Component Widget Security Test",
+        query: {
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "table",
+      },
+      { wrapId: true, idAlias: "questionId" },
+    );
+
+    H.visitQuestion("@questionId", {
+      onBeforeLoad(win) {
+        cy.spy(win.console, "error").as("consoleError");
+      },
+    });
+
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("custom-viz-plugins-toggle").click();
+    cy.findByTestId(
+      `${H.CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT}-button`,
+    ).click();
+    cy.findByTestId("viz-type-button").click();
+
+    cy.log("open viz settings to mount the custom component widget");
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.log("the sandbox blocks the component's forbidden <input> element");
+    cy.get("@consoleError").should(
+      "have.been.calledWithMatch",
+      /render failed: \[plugin \d+\] blocked createElement: input/,
     );
   });
 });

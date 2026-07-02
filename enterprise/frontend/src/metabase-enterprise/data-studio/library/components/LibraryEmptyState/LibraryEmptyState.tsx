@@ -2,14 +2,13 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
+import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
   Card,
   Group,
   Icon,
-  type IconName,
   Paper,
   SimpleGrid,
   Stack,
@@ -17,6 +16,7 @@ import {
   Title,
 } from "metabase/ui";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
+import type { IconName } from "metabase-types/api";
 
 export function LibraryEmptyState() {
   const [createLibrary, { isLoading, isSuccess }] = useCreateLibraryMutation();
@@ -39,7 +39,7 @@ export function LibraryEmptyState() {
   }
 
   return (
-    <Card bg="background-primary" p={48} maw={640} mx="auto" withBorder>
+    <Card bg="background_page-primary" p={48} maw={640} mx="auto" withBorder>
       <Stack gap="3rem">
         <Stack gap="md">
           <Stack gap="sm">
@@ -94,9 +94,9 @@ type FeatureCardProps = {
 
 function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <Paper bg="background-secondary" p="md" radius="8px" shadow="none">
+    <Paper bg="background_page-secondary" p="md" radius="8px" shadow="none">
       <Group gap="sm" align="flex-start" wrap="nowrap">
-        <Icon name={icon} size={16} c="brand" style={{ flexShrink: 0 }} />
+        <Icon name={icon} size={16} c="core-brand" style={{ flexShrink: 0 }} />
         <Stack gap="xs">
           <Text fw="bold" lh="1rem">
             {title}

@@ -12,7 +12,7 @@ import { hasPermissionValueInSubgraph } from "./has";
 describe("data permissions", () => {
   describe("hasPermissionValueInSubgraph", () => {
     it("should handle database entity ids", async () => {
-      const schemas = [{ name: "", getTables: () => [{ id: 1 }, { id: 2 }] }];
+      const schemas = [{ name: "", tables: [{ id: 1 }, { id: 2 }] }];
       const database = {
         schemas,
         schema: (name: string) =>
@@ -73,8 +73,8 @@ describe("data permissions", () => {
 
     it("should handle databases with multiple schemas", async () => {
       const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
+        { name: "public", tables: [{ id: 1 }] },
+        { name: "public2", tables: [{ id: 2 }] },
       ];
       const database = {
         schemas,
@@ -109,8 +109,8 @@ describe("data permissions", () => {
 
     it("should handle schema entity ids", async () => {
       const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
+        { name: "public", tables: [{ id: 1 }] },
+        { name: "public2", tables: [{ id: 2 }] },
       ];
       const database = {
         schemas,
@@ -176,8 +176,8 @@ describe("data permissions", () => {
 
     it("should handle default permissions omitted from the graph", async () => {
       const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
+        { name: "public", tables: [{ id: 1 }] },
+        { name: "public2", tables: [{ id: 2 }] },
       ];
       const database = {
         schemas,

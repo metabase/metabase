@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import type { OnToggleSelectedWithItem } from "metabase/collections/types";
-import { isRootTrashCollection } from "metabase/collections/utils";
+import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -39,13 +39,11 @@ export const DefaultItemRenderer = ({
   visibleColumnsMap,
 }: ItemRendererProps) => {
   const getIcon = useGetIcon();
-  const canSelect =
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    typeof onToggleSelected === "function";
+  const canSelect = canSelectItems(collection, onToggleSelected);
 
   const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
-    icon.color = "text-tertiary";
+    icon.color = "text-disabled";
   }
 
   const handleSelectionToggled = useCallback(() => {

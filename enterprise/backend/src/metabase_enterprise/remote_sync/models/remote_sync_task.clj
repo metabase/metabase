@@ -2,8 +2,8 @@
   "Model for tracking remote sync tasks and their progress."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.models.interface :as mi]
+   [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -21,7 +21,8 @@
 (derive :model/RemoteSyncTask :metabase/model)
 
 (t2/deftransforms :model/RemoteSyncTask
-  {:conflicts mi/transform-json})
+  {:conflicts mi/transform-json
+   :outcome   mi/transform-json})
 
 (declare current-task)
 
@@ -96,13 +97,17 @@
 (defn complete-sync-task!
   "Marks a sync task as completed.
 
-  Takes the ID of the sync task to mark as completed.
+  Takes the ID of the sync task to mark as completed and an optional `outcome` map describing the result
+  (e.g. `{:kind \"pulled\" :count 12 :branch \"main\"}`). The UI renders the outcome to a localized
+  confirmation message; we store structured data rather than customer-facing copy.
 
   Returns the number of rows updated (should be 1 if successful)."
-  [task-id]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:progress 1.0
-               :ended_at (mi/now)}))
+  ([task-id] (complete-sync-task! task-id nil))
+  ([task-id outcome]
+   (t2/update! :model/RemoteSyncTask task-id
+               {:progress 1.0
+                :ended_at (mi/now)
+                :outcome  outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.
@@ -126,11 +131,37 @@
                           [:<> :started_at nil]
                           [:= :ended_at nil]
                           [:<
-                           (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms)))
+                           (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
                            :last_progress_report_at]]
                   :limit 1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
+
+(defn supersede-stale-tasks!
+  "Marks any genuinely stale task rows as cancelled and terminated.
+
+  A task is considered stale if it has `started_at` set, `ended_at` nil, and `last_progress_report_at`
+  is older than `remote-sync-task-time-limit-ms`. The DB schema requires `last_progress_report_at`
+  to be non-null with a default of `current_timestamp`, so a brand-new task always has a recent
+  value (set on insert) and is not considered stale.
+
+  Called from `create-task-with-lock!` before creating a new task, to clean up rows whose owning
+  JVM/thread is gone or hung. Returns nothing meaningful.
+
+  Combined with `handle-task-result!`'s already-terminated check, this means a stale task's thread
+  that eventually wakes up and tries to complete will detect that its row is terminated and exit
+  without writing the setting or overwriting bookkeeping."
+  []
+  (let [cutoff (t/minus (t/offset-date-time)
+                        (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
+    (t2/query {:update (t2/table-name :model/RemoteSyncTask)
+               :set    {:cancelled     true
+                        :ended_at      (mi/now)
+                        :error_message "Superseded after staleness timeout"}
+               :where  [:and
+                        [:<> :started_at nil]
+                        [:= :ended_at nil]
+                        [:< :last_progress_report_at cutoff]]})))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
@@ -209,7 +240,7 @@
   [task]
   (and (nil? (:ended_at task))
        (t/< (:last_progress_report_at task)
-            (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms))))))
+            (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms))))))
 
 (defn conflict?
   "Checks if a task ended with conflicts.

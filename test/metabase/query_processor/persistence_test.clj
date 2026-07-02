@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.query-processor.persistence-test
   {:clj-kondo/config '{:linters
                        ;; allowing with-temp in this namespace since model persistence needs to hit the app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.persistence-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -9,6 +10,10 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.test :as qp]
@@ -180,3 +185,84 @@
               (is (= {"Doohickey" 3976, "Gadget" 4939,
                       "Gizmo"     4784, "Widget" 5061}
                      (->> results :data :rows (into {})))))))))))
+
+(deftest persisted-models-repeated-column-names-test
+  (testing "Persisted models with repeated column names from joins query successfully (#25014)"
+    ;; Joining orders with people surfaces all columns from both tables, producing duplicate `id` and `created_at`
+    ;; in the model's result metadata (deduplicated as `id_2`/`created_at_2`). Pre-fix, the QP generated SQL like
+    ;; `select id, ..., id_2, ..., created_at_2 from cache_schema.model_N_slug`, but the cached table's actual
+    ;; columns used join-qualified names (e.g. `People - User__id`), so the database rejected the query with
+    ;; `column "id_2" does not exist`. The fix selects `*` from the cached table — see #28902.
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (let [mp           (mt/metadata-provider)
+                orders-table (lib.metadata/table mp (mt/id :orders))
+                people-table (lib.metadata/table mp (mt/id :people))
+                orders-user  (lib.metadata/field mp (mt/id :orders :user_id))
+                people-id    (lib.metadata/field mp (mt/id :people :id))
+                model-query  (-> (lib/query mp orders-table)
+                                 (lib/join (-> (lib/join-clause
+                                                people-table
+                                                [(lib/= orders-user
+                                                        (lib/with-join-alias people-id "People - User"))])
+                                               (lib/with-join-alias "People - User"))))]
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query model-query}]
+              (persist-models!)
+              (let [card-mp          (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    outer-query      (-> (lib/query card-mp (lib.metadata/card card-mp (:id model)))
+                                         (lib/aggregate (lib/count)))
+                    results          (qp/process-query outer-query)
+                    persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+                (testing "Query against the persisted table was substituted in"
+                  (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+                (testing "Query against the persisted table succeeds and returns the expected row count"
+                  (is (= [[18760]] (mt/rows results))))))))))))
+
+(deftest sql-qp-independent-persisted-lookup-test
+  (testing "SQL QP looks up the persisted cache rather than using an inline :persisted-info/native from the query map"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (mt/with-temp [:model/Card model {:type          :model
+                                            :database_id   (mt/id)
+                                            :query_type    :query
+                                            :dataset_query (mt/mbql-query products)}]
+            (persist-models!)
+            (let [inline-sql "SELECT 'INLINE' AS marker"
+                  query     {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table          (str "card__" (:id model))
+                                        :persisted-info/native inline-sql
+                                        :limit                 1}}
+                  results   (qp/process-query query)
+                  native-sql (-> results :data :native_form :query)
+                  persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+              (testing "Uses the persisted cache, not the inline SQL from the query map"
+                (is (str/includes? native-sql persisted-schema))
+                (is (not (str/includes? native-sql "INLINE")))))))))))
+
+(deftest resolve-persisted-source-sql-test
+  (testing "resolve-persisted-source-sql returns persisted SQL for a valid persisted card"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (mt/with-temp [:model/Card model {:type          :model
+                                            :database_id   (mt/id)
+                                            :query_type    :query
+                                            :dataset_query (mt/mbql-query products)}]
+            (persist-models!)
+            (mt/with-metadata-provider (mt/id)
+              (let [source-query     {:qp/stage-is-from-source-card (:id model)
+                                      :source-table                 (mt/id :products)}
+                    result           (#'sql.qp/resolve-persisted-source-sql source-query)
+                    persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+                (testing "Returns SQL pointing to the persisted cache table"
+                  (is (some? result))
+                  (is (str/includes? result persisted-schema)))
+                (testing "Returns nil when card-id is not present"
+                  (is (nil? (#'sql.qp/resolve-persisted-source-sql
+                             {:source-table (mt/id :products)}))))))))))))

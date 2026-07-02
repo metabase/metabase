@@ -1,7 +1,8 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.dashboards-rest.api-test]]."
   {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp           {:level :off}
-                                                   toucan2.tools.with-temp/with-temp {:level :off}}}}}
+                                                   toucan2.tools.with-temp/with-temp {:level :off}}
+                                 :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
@@ -19,20 +20,26 @@
   ;; stuff doesn't belong in the Dashboard QP namespace
   (mt/as-admin
     (apply qp.dashboard/process-query-for-dashcard
-           :dashboard-id dashboard-id
-           :card-id      card-id
-           :dashcard-id  dashcard-id
+           :dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+           :card      (t2/select-one :model/Card :id card-id)
+           :dashcard  (t2/select-one :model/DashboardCard :id dashcard-id)
            :make-run     (constantly
                           (fn run [query info]
                             (qp/process-query (assoc query :info info))))
            options)))
+
+(defn- resolve-params-for-query [dashboard-id card-id dashcard-id params]
+  (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
+                                           (t2/select-one :model/DashboardCard :id dashcard-id)
+                                           card-id
+                                           params))
 
 (deftest ^:parallel resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
                                                    {card-id :id}      :card
                                                    {dashcard-id :id}  :dashcard}]
     (letfn [(resolve-params [params]
-              (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id params))]
+              (resolve-params-for-query dashboard-id card-id dashcard-id params))]
       (testing "Valid parameters"
         (is (= [{:type   :category
                  :id     "_PRICE_"
@@ -76,7 +83,7 @@
                      :type :number/=
                      :value [4]
                      :target [:variable [:template-tag "qty_locked"]]}]
-                   (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id params)))
+                   (resolve-params-for-query dashboard-id card-id dashcard-id params)))
             ;; test the full query with two different values to ensure it is actually used
             (is (= [[2391]]
                    (mt/rows
@@ -98,25 +105,20 @@
                  :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id-3 :card_id card-id-3}]
     (testing "Sanity check that a valid combination card, dashcard and dashboard IDs executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
-
     (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
-
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
-
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
-
     (testing "Sanity check that a card-id in a dashboard card series executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-3 dashcard-id-3))))))
-
     (testing "A 404 error should be thrown if the card-id is not valid for the dashcard series"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Not found"
@@ -126,22 +128,23 @@
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
-        [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                    :type     :native
-                                                    :native   {:query (str "SELECT distinct category "
-                                                                           "FROM products "
-                                                                           "WHERE {{filter}} "
-                                                                           "ORDER BY category ASC")
-                                                               :template-tags
-                                                               {"filter"
-                                                                {:id           "xyz456"
-                                                                 :name         "filter"
-                                                                 :display-name "Filter"
-                                                                 :type         :dimension
-                                                                 :dimension    [:field (mt/id :products :category) nil]
-                                                                 :widget-type  :category
-                                                                 :default      ["Gizmo" "Gadget"]
-                                                                 :required     false}}}}}
+        [:model/Card {card-id :id, :as card}
+         {:dataset_query {:database (mt/id)
+                          :type     :native
+                          :native   {:query (str "SELECT distinct category "
+                                                 "FROM products "
+                                                 "WHERE {{filter}} "
+                                                 "ORDER BY category ASC")
+                                     :template-tags
+                                     {"filter"
+                                      {:id           "xyz456"
+                                       :name         "filter"
+                                       :display-name "Filter"
+                                       :type         :dimension
+                                       :dimension    [:field (mt/id :products :category) nil]
+                                       :widget-type  :category
+                                       :default      ["Gizmo" "Gadget"]
+                                       :required     false}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "category"
                                                             :slug    "category"
                                                             :id      "abc123"
@@ -154,7 +157,7 @@
                                                                        :target       [:dimension [:template-tag "filter"]]}]}]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Gadget"] ["Gizmo"]]
-                 (mt/rows (qp.card-test/run-query-for-card card-id)))))
+                 (mt/rows (qp.card-test/run-query-for-card card)))))
         (testing "No value specified: should prefer Card defaults"
           (is (= [["Gadget"] ["Gizmo"]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
@@ -224,17 +227,18 @@
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
-        [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                    :type     :native
-                                                    :native   {:query "SELECT {{filter}}"
-                                                               :template-tags
-                                                               {"filter"
-                                                                {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                                                                 :name         "filter"
-                                                                 :display-name "Filter"
-                                                                 :type         "text"
-                                                                 :required     true
-                                                                 :default      "Foo"}}}}}
+        [:model/Card {card-id :id, :as card}
+         {:dataset_query {:database (mt/id)
+                          :type     :native
+                          :native   {:query "SELECT {{filter}}"
+                                     :template-tags
+                                     {"filter"
+                                      {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                       :name         "filter"
+                                       :display-name "Filter"
+                                       :type         "text"
+                                       :required     true
+                                       :default      "Foo"}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "Text"
                                                             :slug    "text"
                                                             :id      "5791ff38"
@@ -247,7 +251,7 @@
                                                                        :target       [:variable [:template-tag "filter"]]}]}]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Foo"]]
-                 (mt/rows (qp.card-test/run-query-for-card card-id)))))
+                 (mt/rows (qp.card-test/run-query-for-card card)))))
         (testing "No value specified: should prefer Card defaults"
           (is (= [["Foo"]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))

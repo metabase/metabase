@@ -84,9 +84,7 @@ export function CustomVizPage({ params }: Props) {
   const [replaceBundle] = useReplaceCustomVizPluginBundleMutation();
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
-  const { url: docsUrl } = useDocsUrl(
-    "questions/visualizations/custom-visualizations",
-  );
+  const { url: docsUrl } = useDocsUrl("questions/visualizations/custom");
 
   const submitValues = useCallback(
     async (values: FormState) => {
@@ -163,7 +161,7 @@ export function CustomVizPage({ params }: Props) {
       <SettingsSection>
         <Box
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           data-testid="custom-viz-settings-form"
         >
           <FormProvider

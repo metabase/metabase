@@ -57,7 +57,7 @@ export const DestinationDatabasesList = ({
             {destinationDatabases.length > previewCount && (
               <Text
                 component={Link}
-                c="brand"
+                c="core-brand"
                 td="underline"
                 to={Urls.viewDestinationDatabases(primaryDatabaseId)}
               >

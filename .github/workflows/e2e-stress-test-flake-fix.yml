@@ -36,6 +36,54 @@ on:
         type: boolean
         required: false
         default: false
+      build_jar:
+        description: "Build the uberjar from this branch (required to test frontend fixes) instead of downloading a prebuilt one"
+        type: boolean
+        required: false
+        default: false
+  # Reusable form so other workflows (e.g. the flaky-test-fix PR auto-runner) can fan a
+  # matrix of changed specs into individual stress runs. Inputs mirror workflow_dispatch;
+  # both triggers read them via the `inputs` context.
+  workflow_call:
+    inputs:
+      spec:
+        description: "Relative path of the target spec"
+        type: string
+        required: true
+      burn_in:
+        description: "Number of times to run the test (e.g. 20)"
+        type: string
+        required: false
+        default: "20"
+      grep:
+        description: "Grep and filter tests to run in isolation"
+        type: string
+        required: false
+      mb_edition:
+        description: 'Set MB_EDITION env var to "ee" (enterprise) or "oss" (open-source)'
+        type: string
+        required: false
+        default: "ee"
+      qa_db:
+        description: "Whether to set up and include external QA databases"
+        type: boolean
+        required: false
+        default: false
+      enable_network_throttling:
+        description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
+        type: boolean
+        required: false
+        default: true
+      fail_fast:
+        description: "Stop running remaining tests after the first failure"
+        type: boolean
+        required: false
+        default: false
+      build_jar:
+        description: "Build the uberjar from this branch (required to test frontend fixes) instead of downloading a prebuilt one"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   determine-test-type:
@@ -73,6 +121,7 @@ jobs:
           echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"' >> $GITHUB_STEP_SUMMARY
           echo '- `fail_fast`: "${{ inputs.fail_fast }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `build_jar`: "${{ inputs.build_jar }}"' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
@@ -92,7 +141,7 @@ jobs:
       MB_EDITION: ${{ inputs.mb_edition }}
       CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Important because we need previous commits hashes to find and download the uberjar!
           fetch-depth: 20
@@ -109,15 +158,23 @@ jobs:
           mysql: ${{ inputs.qa_db }}
           mongo: ${{ inputs.qa_db }}
 
-      - name: Download Metabase ${{ matrix.edition }} uberjar
+      - name: Download Metabase ${{ inputs.mb_edition }} uberjar
+        if: ${{ !inputs.build_jar }}
         uses: ./.github/actions/e2e-download-uberjar
         with:
-          edition: "ee"
+          edition: ${{ inputs.mb_edition }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+
+      - name: Build Metabase ${{ inputs.mb_edition }} uberjar from this branch
+        if: ${{ inputs.build_jar }}
+        run: ./bin/build.sh
+        env:
+          # license check is irrelevant for ephemeral e2e jars and slows the build down
+          SKIP_LICENSES: true
 
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
@@ -146,13 +203,13 @@ jobs:
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep
-      - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
+      - name: Stress-test ${{ inputs.spec }} ${{ inputs.burn_in }} times
         env:
-          GREP: ${{ github.event.inputs.grep }}
+          GREP: ${{ inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           FAIL_FAST: ${{ inputs.fail_fast }}
-          SPEC: ${{ github.event.inputs.spec }}
-          BURN_IN: ${{ github.event.inputs.burn_in }}
+          SPEC: ${{ inputs.spec }}
+          BURN_IN: ${{ inputs.burn_in }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec "${SPEC}" \
@@ -160,7 +217,7 @@ jobs:
           --config-file e2e/support/cypress-stress-test.config.js
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-failed-tests-recording

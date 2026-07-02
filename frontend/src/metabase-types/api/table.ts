@@ -21,9 +21,7 @@ export function isConcreteTableId(
 
 export type TableVisibilityType =
   | null
-  | "details-only"
   | "hidden"
-  | "normal"
   | "retired"
   | "sensitive"
   | "technical"
@@ -74,11 +72,11 @@ export type Table = {
   data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
-  owner?: TableOwner | null;
+  owner?: TableOwner | { email: string } | null;
   estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   view_count: number;
-  transform?: Transform;
+  transform?: Transform | null;
 
   collection_id: CollectionId | null;
   is_published: boolean;
@@ -125,6 +123,7 @@ export interface TableListQuery {
   "owner-email"?: string | null;
   "unused-only"?: boolean | null;
   "orphan-only"?: boolean;
+  "published-only"?: boolean | null;
 }
 
 export interface ForeignKey {

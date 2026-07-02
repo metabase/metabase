@@ -55,6 +55,7 @@ export function TablePicker({
     ownerEmail: null,
     ownerUserId: null,
     unusedOnly: null,
+    publishedOnly: null,
   });
   const [isOpen, { toggle, close }] = useDisclosure();
   const filtersCount = getFiltersCount(filters);
@@ -115,7 +116,7 @@ export function TablePicker({
 
                     {filtersCount > 0 && (
                       <Badge
-                        bg="brand"
+                        bg="core-brand"
                         circle
                         size="8"
                         pos="absolute"
@@ -133,6 +134,7 @@ export function TablePicker({
           <Popover.Dropdown>
             <FilterPopover
               filters={filters}
+              isLibraryEnabled={isLibraryEnabled}
               onSubmit={(newFilters) => {
                 setFilters(newFilters);
                 close();

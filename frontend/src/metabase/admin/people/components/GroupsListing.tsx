@@ -147,7 +147,7 @@ function ActionsPopover({
       <Menu shadow="md" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-tertiary" name="ellipsis" />
+            <Icon c="text-disabled" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
@@ -187,7 +187,7 @@ function EditingGroupRow({
   const textIsValid = group.name && group.name.length;
 
   return (
-    <Box component="tr" bd="1px solid var(--mb-color-brand)">
+    <Box component="tr" bd="1px solid var(--mb-color-core-brand)">
       <td>
         <Input
           fz="lg"
@@ -271,7 +271,7 @@ function GroupRow({
             user={{ name: getGroupNameLocalized(group) }}
             bg={backgroundColor}
           />
-          <Box component="span" fw={700} c="brand">
+          <Box component="span" fw={700} c="core-brand">
             {getGroupNameLocalized(group)}
           </Box>
         </Flex>
@@ -299,7 +299,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-tertiary">
+    <Box component="span" c="text-disabled">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}
@@ -548,7 +548,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "brand" }}
+        confirmButtonProps={{ color: "core-brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

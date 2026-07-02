@@ -62,7 +62,7 @@ export function DatabasePage({ params, route }: DatabasePageProps) {
   };
 
   return (
-    <Flex direction="row" h="100%" bg="background-secondary">
+    <Flex direction="row" h="100%" bg="background_page-secondary">
       <Box h="100%" w="100%" component={ScrollArea}>
         <Box w="100%" maw="54rem" mx="auto" p={{ base: "md", sm: "xl" }}>
           <Flex

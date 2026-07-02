@@ -222,16 +222,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
-// We're setting the values here as unknown even though
-// the API will return numbers most of the time, because
-// sometimes it doesn't!
+// Properties are typed as optional unknown: the API returns numbers most of
+// the time but sometimes returns non-numbers, and sometimes omits the property
+// entirely.
 export type NumberFingerprintDisplayInfo = {
-  avg: unknown;
-  max: unknown;
-  min: unknown;
-  q1: unknown;
-  q3: unknown;
-  sd: unknown;
+  avg?: unknown;
+  max?: unknown;
+  min?: unknown;
+  q1?: unknown;
+  q3?: unknown;
+  sd?: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {
@@ -457,6 +457,9 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type AutomaticInsightsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/automatic-insights">;
+
 declare const ColumnExtractionSymbol: unique symbol;
 export type ColumnExtraction = unknown & {
   _opaque: typeof ColumnExtractionSymbol;
@@ -545,6 +548,7 @@ export type ZoomGeographicDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | AutomaticInsightsDrillThruInfo
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
   | QuickFilterDrillThruInfo
@@ -642,6 +646,6 @@ export type ValidationError = { message: string };
 
 export type JsColumnTypeInfo = {
   base_type?: string;
-  effective_type?: string;
+  effective_type?: string | null;
   semantic_type?: string | null;
 };

@@ -69,6 +69,18 @@
      [:* [:cast keyword-weight :float]
       [:coalesce [:/ 1.0 [:+ k :keyword_rank]] 0]]]))
 
+(def ^:private cosine-distance-ceiling
+  "Largest possible pgvector cosine distance (`<=>`): `1 - cos(theta)` tops out at 2 for opposed vectors."
+  2.0)
+
+(defn- semantic-distance-score-expr
+  "Map a cosine `distance` (pgvector `<=>`, range [0, 2]) to a [0, 1] score.
+  Linear for now: distance 0 scores 1, the maximum distance of 2 scores 0."
+  [distance]
+  ;; TODO (Chris 2026-06-22) -- a non-linear curve might rank better than this straight-line map. Keeping it
+  ;; linear for now so the score stays as transparent as possible.
+  [:- [:inline 1] [:/ distance [:inline cosine-distance-ceiling]]])
+
 (defn base-scorers
   "The default constituents of the search ranking scores."
   [index-table {:keys [search-string] :as search-ctx}]
@@ -77,6 +89,9 @@
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
     {:rrf        rrf-rank-exp
+     ;; Keyword-only hits have no vector distance; score them 0 directly rather than feeding the ceiling
+     ;; distance through the linear map.
+     :semantic-distance [:coalesce (semantic-distance-score-expr :semantic_distance) [:inline 0]]
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
      :recency    (search.scoring/inverse-duration
@@ -88,13 +103,17 @@
      :model      (search.scoring/model-rank-expr search-ctx)
      :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))
      :exact      (if search-string
-                   ;; perform the lower casing within the database, in case it behaves differently to our helper
-                   (search.scoring/equal [:lower :name] [:lower search-string])
+                   ;; normalize both sides in the database, in case it behaves differently to our helper
+                   (search.scoring/equal (search.scoring/normalize-text-expr :postgres :name)
+                                         (search.scoring/normalize-text-expr :postgres search-string))
                    [:inline 0])
      :prefix     (if search-string
                    ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                   (search.scoring/prefix [:lower :name] (u/lower-case-en search-string))
-                   [:inline 0])}))
+                   (search.scoring/prefix (search.scoring/normalize-text-expr :postgres :name)
+                                          (search.scoring/normalize-text search-string))
+                   [:inline 0])
+     :library    (search.scoring/library-score-expr)
+     :data-layer (search.scoring/data-layer-score-expr search-ctx)}))
 
 (def ^:private enterprise-scorers
   {:official-collection {:expr (search.scoring/truthy :official_collection)

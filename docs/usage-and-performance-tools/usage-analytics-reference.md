@@ -193,6 +193,8 @@ Columns:
 - IP Address
 - Tenant ID
 - Request ID
+- Cache Creation Tokens
+- Cache Read Tokens
 
 ### Alerts
 
@@ -636,7 +638,9 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-delete
 - transform-inspect-discover
 - transform-inspect-lens
+- transform-run-canceled
 - transform-run-start
+- transform-run-timeout
 - update-permission-failure
 - update-transform
 - upload-append
@@ -668,6 +672,7 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - embedded-xlsx-download
 - json-download
 - map-tiles
+- metric
 - public-csv-download
 - public-dashboard
 - public-json-download

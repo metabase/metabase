@@ -161,7 +161,6 @@
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")
     ;; and construct new v2 paths by adding prefixes to the base path.
     [(str "/data" base-path) (str "/query" base-path)]
-
     ;; For the specific v1 path that grants full data access but no native query access, we add a
     ;; /schema/ suffix to the corresponding v2 query permission path.
     (when-let [db-id (second (re-find #"^/db/(\d+)/schema/$" v1-path))]
@@ -389,7 +388,7 @@
                                   :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
                                   :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
                        (group-by :tab_position)
-                               ;; sort by tab position
+                       ;; sort by tab position
                        (sort-by first))
         cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
     (loop [position+cards tab+cards
@@ -541,11 +540,11 @@
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:and
-                                                 ;; only include cards with field refs in column_settings
+                                                    ;; only include cards with field refs in column_settings
                                                     [:or
                                                      [:like :object "%ref\\\\\",[\\\\\"field%"]
                                                      [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                 ;; only include cards with joins
+                                                    ;; only include cards with joins
                                                     [:like :object "%joins%"]
                                                     [:= :model "Card"]]})))
   ;; Reverse migration
@@ -778,13 +777,13 @@
                                                    (m/map-vals
                                                     #(select-keys % ["click_behavior"])
                                                     column_settings)))
-                             ;; select click behavior top level and in column settings
+                              ;; select click behavior top level and in column settings
                               (select-keys ["column_settings" "click_behavior"])
                               (remove-nil-keys)))
         fix-top-level   (fn [toplevel]
                           (if (= (get toplevel "click") "link")
                             (assoc toplevel
-                                  ;; add new shape top level
+                                   ;; add new shape top level
                                    "click_behavior"
                                    {"type"         (get toplevel "click")
                                     "linkType"     "url"
@@ -794,11 +793,11 @@
                           (reduce-kv
                            (fn [m col field-settings]
                              (assoc m col
-                                   ;; add the click stuff under the new click_behavior entry or keep the
-                                   ;; field settings as is
+                                    ;; add the click stuff under the new click_behavior entry or keep the
+                                    ;; field settings as is
                                     (if (and (= (get field-settings "view_as") "link")
                                              (contains? field-settings "link_template"))
-                                     ;; remove old shape and add new shape under click_behavior
+                                      ;; remove old shape and add new shape under click_behavior
                                       (assoc field-settings
                                              "click_behavior"
                                              {"type"             (get field-settings "view_as")
@@ -810,23 +809,23 @@
                            column-settings))
         fixed-card      (-> (if (contains? dashcard "click")
                               (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
-                             ;; behavior added
+                              ;; behavior added
                               (fix-top-level card))
                             (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
-                           ;; the settings tree
+                            ;; the settings tree
                             existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
         final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
-                            ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
-                            ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
-                            ;; doesn't have link text
+                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                             ;; doesn't have link text
                              (walk/postwalk (fn [form]
                                               (if (map? form)
                                                 (into {} (for [[k v] form
                                                                :when (if (seqable? v)
-                                                                      ;; remove keys with empty maps. must be postwalk
+                                                                       ;; remove keys with empty maps. must be postwalk
                                                                        (seq v)
-                                                                      ;; remove nils
+                                                                       ;; remove nils
                                                                        (some? v))]
                                                            [k v]))
                                                 form))))]
@@ -1059,7 +1058,6 @@
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Card"]}))))
-
   (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
@@ -1183,7 +1181,7 @@
   true)
 
 (define-migration CreateSampleContent)
-  ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
+;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
@@ -1331,6 +1329,121 @@
   (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
+
+(defn- card-ids-depending-on-database
+  "Set of report_card ids that depend on `database-id` directly (their own query targets it) or transitively
+  (a card built on such a card via source_card_id, to any depth)."
+  [database-id]
+  (loop [frontier (into #{} (map :id) (t2/query {:select [:id] :from [:report_card]
+                                                 :where  [:= :database_id database-id]}))
+         acc      #{}]
+    (if (empty? frontier)
+      acc
+      (let [acc'  (into acc frontier)
+            next* (into #{} (map :id) (t2/query {:select [:id] :from [:report_card]
+                                                 :where  [:and [:in :source_card_id frontier]
+                                                          [:not [:in :id acc']]]}))]
+        (recur next* acc')))))
+
+(defn- collection-has-survivors?
+  "True if `coll-id` still holds anything after sample content is gone: any content row filed into it, or any
+  surviving child collection (whose path is exactly `child-location`). Checked bottom-up so a child that itself
+  survived keeps its parent alive."
+  [coll-id child-location]
+  (boolean
+   (or (seq (t2/query {:select [1] :from [:collection] :where [:= :location child-location] :limit 1}))
+       (some (fn [table]
+               (seq (t2/query {:select [1] :from [table] :where [:= :collection_id coll-id] :limit 1})))
+             [:report_card :report_dashboard :native_query_snippet :pulse :timeline :document
+              :metabase_table :transform]))))
+
+(defn- remove-sqlite-sample-database-on-downgrade!
+  "Delete the SQLite sample database and everything that depends on it - its tables/fields, every Card whose
+  query targets it (directly or transitively through source_card_id), those cards' dashcards, and Dashboards
+  left empty as a result - even when that content was user-created, because it cannot work without the database.
+
+  The Example collections are then pruned, bottom-up: a sample collection is deleted only if nothing is left in
+  it once the sample content is gone (no content rows, no surviving child collection); a collection a user kept
+  their own content in is left intact. Permission records for the deleted collections go with them.
+
+  Children are deleted explicitly, bottom-up, rather than relying on ON DELETE CASCADE: MySQL 9.7 resolves
+  multi-level cascade fan-outs incompletely, leaving orphaned rows that later break ALTER TABLE statements which
+  re-validate foreign keys."
+  []
+  (when-let [sample-db-id (:id (t2/query-one {:select [:id]
+                                              :from   [:metabase_database]
+                                              :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))]
+    (let [card-ids               (card-ids-depending-on-database sample-db-id)
+          field-ids-q            {:select [:id]
+                                  :from   [:metabase_field]
+                                  :where  [:in :table_id {:select [:id]
+                                                          :from   [:metabase_table]
+                                                          :where  [:= :db_id sample-db-id]}]}
+          affected-dashboard-ids (if (empty? card-ids)
+                                   #{}
+                                   (->> (t2/query {:select-distinct [:dashboard_id]
+                                                   :from            [:report_dashboardcard]
+                                                   :where           [:in :card_id card-ids]})
+                                        (into #{} (map :dashboard_id))))]
+      (when (seq card-ids)
+        (t2/query {:delete-from :dashboardcard_series
+                   :where       [:or
+                                 [:in :card_id card-ids]
+                                 [:in :dashboardcard_id {:select [:id]
+                                                         :from   [:report_dashboardcard]
+                                                         :where  [:in :card_id card-ids]}]]})
+        (t2/query {:delete-from :report_dashboardcard :where [:in :card_id card-ids]})
+        (t2/query {:delete-from :parameter_card
+                   :where       [:or
+                                 [:in :card_id card-ids]
+                                 [:and [:= :parameterized_object_type "card"]
+                                  [:in :parameterized_object_id card-ids]]]})
+        (t2/query {:delete-from :report_card :where [:in :id card-ids]}))
+      (t2/query {:delete-from :dimension :where [:in :field_id field-ids-q]})
+      (t2/query {:delete-from :metabase_field
+                 :where       [:in :table_id {:select [:id]
+                                              :from   [:metabase_table]
+                                              :where  [:= :db_id sample-db-id]}]})
+      (t2/query {:delete-from :metabase_table :where [:= :db_id sample-db-id]})
+      (t2/query {:delete-from :metabase_database :where [:= :id sample-db-id]})
+      (when (seq affected-dashboard-ids)
+        ;; A dashboard that depended on the sample DB is removed once no card-backed dashcard survives - even if
+        ;; text/heading dashcards remain (the example dashboard is built entirely from sample cards plus headings).
+        ;; A dashboard that still has a real card of its own (e.g. a user mixed in another card) is left alone.
+        (let [non-empty (->> (t2/query {:select-distinct [:dashboard_id]
+                                        :from            [:report_dashboardcard]
+                                        :where           [:and [:in :dashboard_id affected-dashboard-ids]
+                                                          [:not= :card_id nil]]})
+                             (into #{} (map :dashboard_id)))
+              empty-ids (remove non-empty affected-dashboard-ids)]
+          (when (seq empty-ids)
+            (t2/query {:delete-from :report_dashboardcard :where [:in :dashboard_id empty-ids]})
+            (t2/query {:delete-from :dashboard_tab :where [:in :dashboard_id empty-ids]})
+            (t2/query {:delete-from :parameter_card
+                       :where       [:and [:= :parameterized_object_type "dashboard"]
+                                     [:in :parameterized_object_id empty-ids]]})
+            (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]}))))
+      ;; Prune the Example collections deepest-first, so an emptied child is gone before its parent is judged.
+      (doseq [{:keys [id location]} (->> (t2/query {:select [:id :location] :from [:collection] :where [:= :is_sample true]})
+                                         (sort-by (comp count :location) >))]
+        (when-not (collection-has-survivors? id (str location id "/"))
+          (t2/query {:delete-from :permissions
+                     :where       [:or
+                                   [:= :collection_id id]
+                                   [:in :object [(format "/collection/%d/" id)
+                                                 (format "/collection/%d/read/" id)]]]})
+          (t2/query {:delete-from :collection :where [:= :id id]}))))))
+
+;; The bundled sample database moved from H2 to SQLite. If an instance running a SQLite-sample
+;; version is downgraded to an H2-sample version, the older code cannot use the SQLite sample
+;; database (it has the wrong engine/details) and would leave it broken. On downgrade we therefore
+;; remove the SQLite sample database and the content left dangling by it, and we do NOT restore an
+;; H2 sample database. This mirrors the upgrade behavior in
+;; metabase.sample-data.impl/replace-sample-database!. There is no forward migration: the upgrade
+;; (H2 -> SQLite) replacement is handled at startup, not here.
+(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade
+  (log/info "No forward migration for MigrateAwayFromSqliteSampleDatabaseOnDowngrade")
+  (remove-sqlite-sample-database-on-downgrade!))
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
@@ -1486,7 +1599,7 @@
 (defn- json-column-key-like-clause
   [key column]
   [:or [:like column (str "%\\\\\"" key "\\\\\"%")]
-       ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+   ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
    [:like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
 
 (defn- update-legacy-column-keys-in-card-viz-settings

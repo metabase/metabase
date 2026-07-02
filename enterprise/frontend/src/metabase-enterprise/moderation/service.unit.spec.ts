@@ -1,4 +1,5 @@
-import { ModerationReviewApi } from "metabase/services";
+import fetchMock from "fetch-mock";
+
 import type Question from "metabase-lib/v1/Question";
 import type { ModerationReview } from "metabase-types/api";
 import {
@@ -15,55 +16,11 @@ import {
   getStatusIconForQuestion,
   getTextForReviewBanner,
   isItemVerified,
-  removeReview,
-  verifyItem,
 } from "./service";
 
-jest.mock("metabase/services", () => ({
-  ModerationReviewApi: {
-    create: jest.fn(() => Promise.resolve({ id: 123 })),
-  },
-}));
-
 describe("moderation/service", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  describe("verifyItem", () => {
-    it("should create a new moderation review", async () => {
-      const review = await verifyItem({
-        itemId: 123,
-        itemType: "card",
-        text: "bar",
-      });
-
-      expect(ModerationReviewApi.create).toHaveBeenCalledWith({
-        status: "verified",
-        moderated_item_id: 123,
-        moderated_item_type: "card",
-        text: "bar",
-      });
-
-      expect(review).toEqual({ id: 123 });
-    });
-  });
-
-  describe("removeReview", () => {
-    it("should create a new moderation review with a null status", async () => {
-      const review = await removeReview({
-        itemId: 123,
-        itemType: "card",
-      });
-
-      expect(ModerationReviewApi.create).toHaveBeenCalledWith({
-        status: null,
-        moderated_item_id: 123,
-        moderated_item_type: "card",
-      });
-
-      expect(review).toEqual({ id: 123 });
-    });
+  afterEach(() => {
+    fetchMock.removeRoutes().clearHistory();
   });
 
   describe("getStatusIcon", () => {
@@ -74,7 +31,7 @@ describe("moderation/service", () => {
     it("should return an icon if there is a matching status", () => {
       expect(getStatusIcon("verified")).toEqual({
         name: "verified",
-        color: "brand",
+        color: "core-brand",
       });
     });
 
@@ -92,7 +49,7 @@ describe("moderation/service", () => {
     it("should return an icon for a removed review", () => {
       expect(getRemovedReviewStatusIcon()).toEqual({
         name: "close",
-        color: "text-tertiary",
+        color: "text-disabled",
       });
     });
   });

@@ -1,19 +1,24 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useSearchQuery } from "metabase/api";
+import {
+  cardApi,
+  databaseApi,
+  useLazyListDatabaseSchemaTablesQuery,
+  useLazyListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+  useSearchQuery,
+} from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Databases } from "metabase/entities/databases";
-import { Questions } from "metabase/entities/questions";
-import { Schemas } from "metabase/entities/schemas";
-import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/redux";
+import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { canUserCreateQueries } from "metabase/selectors/user";
@@ -23,6 +28,7 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import { DataSelectorDataBucketPicker } from "./DataSelectorDataBucketPicker";
 import { DataSelectorDatabasePicker } from "./DataSelectorDatabasePicker";
@@ -179,7 +185,6 @@ export class UnconnectedDataSelector extends Component {
     delete: PropTypes.func,
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
-    allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
@@ -396,6 +401,7 @@ export class UnconnectedDataSelector extends Component {
       selectedSchema,
       selectedTable,
       selectedField,
+      schemas,
     } = this.state;
 
     const invalidSchema =
@@ -423,6 +429,22 @@ export class UnconnectedDataSelector extends Component {
       selectedField &&
       selectedField.table.id !== selectedTable.id;
 
+    // A database with a single schema auto-selects it (see `skipSteps`). When the
+    // schema list arrives asynchronously *after* we already switched to the schema
+    // step (e.g. a freshly selected Mongo database in the native editor), that
+    // auto-selection ran against stale state and didn't advance, leaving us
+    // stranded on the schema step. Retry it now that the schema is available,
+    // but only if schema selection is truly missing in both controlled and
+    // uncontrolled usage.
+    const onStepMissingOnlySchemaSelection =
+      activeStep === SCHEMA_STEP &&
+      !selectedSchema &&
+      this.props.useOnlyAvailableSchema &&
+      !this.props.readOnly &&
+      this.props.selectedSchemaId == null &&
+      this.state.selectedSchemaId == null &&
+      schemas.length === 1;
+
     if (invalidSchema || onStepMissingSchemaAndTable) {
       await this.switchToStep(SCHEMA_STEP, {
         selectedSchemaId: null,
@@ -436,6 +458,8 @@ export class UnconnectedDataSelector extends Component {
       });
     } else if (invalidField) {
       await this.switchToStep(FIELD_STEP, { selectedFieldId: null });
+    } else if (onStepMissingOnlySchemaSelection) {
+      await this.onChangeSchema(schemas[0]);
     }
   }
 
@@ -1059,6 +1083,42 @@ export class UnconnectedDataSelector extends Component {
   }
 }
 
+// Exposes `fetchSchemas` / `fetchSchemaTables` as props backed by RTK's lazy
+// query triggers. The triggers' subscriptions are tied to this wrapper's
+// lifecycle, so the cache is released when the DataSelector unmounts.
+function withSchemaFetchers(WrappedComponent) {
+  return function DataSelectorWithSchemaFetchers(props) {
+    const [triggerListSchemas] = useLazyListDatabaseSchemasQuery();
+    const [triggerListSchemaTables] = useLazyListDatabaseSchemaTablesQuery();
+
+    const fetchSchemas = useCallback(
+      (databaseId) =>
+        triggerListSchemas({ id: databaseId, "can-query": true }).unwrap(),
+      [triggerListSchemas],
+    );
+
+    const fetchSchemaTables = useCallback(
+      (schemaId) => {
+        const [dbId, schema] = parseSchemaId(schemaId);
+        return triggerListSchemaTables({
+          id: dbId,
+          schema,
+          "can-query": true,
+        }).unwrap();
+      },
+      [triggerListSchemaTables],
+    );
+
+    return (
+      <WrappedComponent
+        {...props}
+        fetchSchemas={fetchSchemas}
+        fetchSchemaTables={fetchSchemaTables}
+      />
+    );
+  };
+}
+
 // If there is at least one model or metric, we want to display a slightly
 // different data picker view (see DATA_BUCKET step). Pre-fetches available
 // models via search and exposes them as `metadata`/`loading`/`loaded` props.
@@ -1068,6 +1128,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset", "metric"],
+      context: "data-picker",
     });
     let metadata;
     if (response) {
@@ -1086,49 +1147,71 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
+function withDatabaseList(WrappedComponent) {
+  return function DataSelectorWithDatabaseList(props) {
+    useListDatabasesQuery({ "can-query": true });
+    return <WrappedComponent {...props} />;
+  };
+}
+
+const isListDatabasesQuerySuccess = (state, query) =>
+  databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
+
 const DataSelector = _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-    listName: "allDatabases",
-  }),
+  withDatabaseList,
   withAvailableModels,
+  withSchemaFetchers,
   connect(
-    (state, ownProps) => ({
-      availableModels: ownProps.metadata?.available_models ?? [],
-      metadata: getMetadata(state),
-      databases:
-        ownProps.databases ||
-        Databases.selectors.getList(state, {
-          entityQuery: { ...ownProps.databaseQuery, "can-query": true },
-        }) ||
-        [],
-      hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true, "can-query": true },
-      }),
-      hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true, "can-query": true },
-      }),
-      hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", "can-query": true },
-      }),
-      hasDataAccess: canUserCreateQueries(state),
-      hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-      selectedQuestion: Questions.selectors.getObject(state, {
-        entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
-      }),
-    }),
-    {
-      fetchDatabases: (databaseQuery) =>
-        Databases.actions.fetchList({ ...databaseQuery, "can-query": true }),
-      fetchSchemas: (databaseId) =>
-        Schemas.actions.fetchList({ dbId: databaseId, "can-query": true }),
-      fetchSchemaTables: (schemaId) =>
-        Schemas.actions.fetch({ id: schemaId, "can-query": true }),
-      fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
-      fetchQuestion: (id) =>
-        Questions.actions.fetch({
-          id: getQuestionIdFromVirtualTableId(id),
+    (state, ownProps) => {
+      const databaseQuery = { ...ownProps.databaseQuery, "can-query": true };
+      const queriedDatabases =
+        databaseApi.endpoints.listDatabases.select(databaseQuery)(state).data
+          ?.data;
+      const metadata = getMetadata(state);
+      return {
+        availableModels: ownProps.metadata?.available_models ?? [],
+        metadata,
+        databases:
+          ownProps.databases ||
+          queriedDatabases
+            ?.map(({ id }) => metadata.database(id))
+            .filter((database) => database != null) ||
+          [],
+        hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+          saved: true,
+          "can-query": true,
         }),
+        hasLoadedDatabasesWithSaved: isListDatabasesQuerySuccess(state, {
+          saved: true,
+          "can-query": true,
+        }),
+        hasLoadedDatabasesWithTables: isListDatabasesQuerySuccess(state, {
+          include: "tables",
+          "can-query": true,
+        }),
+        hasDataAccess: canUserCreateQueries(state),
+        hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
+        selectedQuestion: getMetadata(state).question(
+          getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+        ),
+      };
     },
+    (dispatch) => ({
+      fetchDatabases: (databaseQuery) =>
+        runRtkEndpoint(
+          { ...databaseQuery, "can-query": true },
+          dispatch,
+          databaseApi.endpoints.listDatabases,
+          { forceRefetch: false },
+        ),
+      fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
+      fetchQuestion: (id) =>
+        runRtkEndpoint(
+          { id: getQuestionIdFromVirtualTableId(id) },
+          dispatch,
+          cardApi.endpoints.getCard,
+        ),
+    }),
   ),
 )(UnconnectedDataSelector);

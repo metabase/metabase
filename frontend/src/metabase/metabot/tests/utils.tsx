@@ -130,7 +130,10 @@ export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,
 ) => {
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-  return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
+  // The client calls `fetch(new Request(url, init))`, so the body lives on the
+  // Request object rather than a separate init arg.
+  const [request] = agentSpy.mock.lastCall ?? [];
+  return JSON.parse(await (request as Request).clone().text());
 };
 
 // Common mock response fixtures
@@ -182,14 +185,13 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
-    isHosted?: boolean;
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
+    isConfigured?: boolean;
   } | void,
 ) {
   const settings = mockSettings({
-    "llm-metabot-configured?": true,
-    "is-hosted?": options?.isHosted ?? false,
+    "llm-metabot-configured?": options?.isConfigured ?? true,
   });
 
   setupEnterprisePlugins();

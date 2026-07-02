@@ -14,12 +14,11 @@
 (def ^:private js-file-path "frontend_shared/color_selector.js")
 
 (def ^:private ^{:arglists '([])} js-engine
-  ;; As of 2024/05/13, a single color selector js engine takes 3.5 MiB of memory
   (js.engine/threadlocal-fifo-memoizer
    (fn []
      (let [file-url (io/resource js-file-path)]
        (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
-       (doto (js.engine/trusted-context)
+       (doto (js.engine/context)
          (js.engine/load-resource  js-file-path))))
    5))
 
@@ -32,39 +31,21 @@
                         [:name :string]]]]
    [:rows [:sequential [:sequential :any]]]])
 
-(defn- convert-bignumbers-by-column
-  "Convert BigDecimal and BigInteger values to doubles/longs since Graal doesn't handle these"
-  [data]
-  (if (empty? data)
-    []
-    (let [first-row (first data)
-          bignum-column-indices (->> (map-indexed
-                                      (fn [idx item]
-                                        (when (or (instance? BigDecimal item)
-                                                  (instance? BigInteger item))
-                                          idx))
-                                      first-row)
-                                     (filter some?)
-                                     (into #{}))]
-      (if (empty? bignum-column-indices)
-        data
-        (mapv
-         (fn [row]
-           (vec
-            (map-indexed
-             (fn [idx item]
-               (if (bignum-column-indices idx)
-                 (cond
-                   (instance? BigDecimal item)
-                   (.doubleValue ^BigDecimal item)
+(defn- ->js-number
+  "Coerce BigDecimal/BigInteger to primitive double/long so Graal's JS context sees them as numbers, not host objects.
+   Returns nil when the value would overflow — BigInteger too wide for long, or BigDecimal magnitude beyond Double's
+   finite range — since silently truncating would feed wrong values into gradient/comparison logic."
+  [v]
+  (cond
+    (instance? BigDecimal v)
+    (let [d (.doubleValue ^BigDecimal v)]
+      (when (Double/isFinite d) d))
 
-                   (instance? BigInteger item)
-                   (.longValue ^BigInteger item)
+    (instance? BigInteger v)
+    (when (<= (.bitLength ^BigInteger v) 63)
+      (.longValue ^BigInteger v))
 
-                   :else item)
-                 item))
-             row)))
-         data)))))
+    :else v))
 
 (mu/defn make-color-selector
   "Returns a curried javascript function (object) that can be used with `get-background-color` for delegating to JS
@@ -74,15 +55,10 @@
   `get-background-color` on each cell."
   [{:keys [cols rows]} :- QueryResults
    viz-settings]
-  ;; Ideally we'd convert everything to JS data before invoking the function below, but converting rows would be
-  ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
-  ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
-  ;; code. We do however need to handle BigDecimals as Graal won't convert these
-  (let [converted-rows (convert-bignumbers-by-column rows)]
-    (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
-                               converted-rows
-                               (json/encode cols)
-                               (json/encode viz-settings))))
+  (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
+                             (json/encode rows)
+                             (json/encode cols)
+                             (json/encode viz-settings)))
 
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
@@ -91,11 +67,11 @@
   ^String [color-selector cell-value column-name row-index]
   (let [cell-value (cond
                      (formatter/NumericWrapper? cell-value)
-                     (:num-value cell-value)
+                     (->js-number (:num-value cell-value))
 
                      (formatter/TextWrapper? cell-value)
                      (:original-value cell-value)
 
                      :else
-                     cell-value)]
+                     (->js-number cell-value))]
     (.asString (js.engine/execute-fn color-selector cell-value row-index column-name))))

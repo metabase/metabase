@@ -5,6 +5,7 @@ import { push, replace } from "react-router-redux";
 
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
+import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
@@ -21,6 +22,7 @@ import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,
   getPathNameFromQueryBuilderMode,
+  getTableUrlForPristineQuestion,
   getURLForCardState,
 } from "../utils";
 
@@ -90,7 +92,21 @@ export const updateUrl = createThunkAction(
 
       const { currentState } = getState().qb;
       const queryParams = preserveParameters ? getCurrentQueryParams() : {};
-      const url = getURLForCardState(newState, dirty, queryParams, objectId);
+      // While we're on the /table/:slug route and the question is still the
+      // pristine default view of that table, keep the canonical /table URL.
+      // Any edit falls through to /question#hash and stays there — we don't
+      // convert a /question entry point into /table.
+      // Compare against the basename-aware path so this still works under
+      // subpath deployments (e.g. /mb/table/...).
+      const isOnTableRoute = window.location.pathname.startsWith(
+        `${getBasename()}/table/`,
+      );
+      const tableUrl =
+        isOnTableRoute && objectId == null && queryBuilderMode === "view"
+          ? getTableUrlForPristineQuestion(question)
+          : null;
+      const url =
+        tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
 
       const urlParsed = parseUrl(url);
       const locationDescriptor: LocationDescriptor = {

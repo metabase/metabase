@@ -122,11 +122,27 @@ export interface SearchResult<
   collection_id?: CollectionId;
 }
 
+/**
+ * Model retrieved through the search endpoint
+ */
+export type ModelResult = SearchResult<number, "dataset">;
+
+// The frontend surface that issued a search request; the backend uses it to pick ranking weights and
+// filter defaults. Keep in sync with `metabase.search.config/ui-contexts`.
 export type SearchContext =
-  | "search-bar"
-  | "search-app"
+  | "basic-actions"
+  | "browse"
   | "command-palette"
-  | "entity-picker";
+  | "data-picker"
+  | "dependencies"
+  | "document"
+  | "embedding-setup"
+  | "entity-picker"
+  | "library"
+  | "model-migration"
+  | "search-app"
+  | "search-bar"
+  | "type-filter";
 
 export type SearchRequest = {
   q?: string;
@@ -135,7 +151,7 @@ export type SearchRequest = {
   models?: SearchModel[];
   ids?: SearchResultId[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: SearchContext;
+  context: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;

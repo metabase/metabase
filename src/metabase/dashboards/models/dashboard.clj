@@ -11,6 +11,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -23,6 +24,8 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -30,7 +33,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -50,20 +52,16 @@
   ([instance]
    ;; Dashboards in audit collection should be read only
    (and (not (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
+              ;; We want to make sure there's an existing audit collection before doing the equality check below.
+              ;; If there is no audit collection, this will be nil:
               (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
+              ;; Is a direct descendant of audit collection
               (= (:collection_id instance) (:id (audit/default-audit-collection)))))
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
-(defmethod mi/can-read? :model/Dashboard
-  ([instance]
-   (perms/can-read-audit-helper :model/Dashboard instance))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
+(perms/define-collection-based-visibility! :model/Dashboard)
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
@@ -98,7 +96,6 @@
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
-
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
@@ -120,9 +117,9 @@
      ;; have linked filters. (metabase#33892)
      (some? (:values_source_type p))
      (= (:values_query_type p) :none))
-     ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
-     ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
-     ;; (metabase#34657)
+    ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
+    ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
+    ;; (metabase#34657)
     (dissoc :filteringParameters)))
 
 (defn- migrate-parameters-list
@@ -168,7 +165,6 @@
                                        ;; show it if:
                                        ;; - the card isn't archived
                                        [:= :card.archived false]
-
                                        ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
                                        [:and
                                         [:not= :card.dashboard_id nil]
@@ -212,6 +208,30 @@
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
       (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
 
+(defn cascade-card-state-from-dashboard-update!
+  "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
+   - Archiving the dashboard archives its (non-`archived_directly`) cards. Un-archiving restores them.
+   - Moving the dashboard into a new collection moves its cards into the same collection.
+
+   Shared between the REST `update-dashboard!` and the MCP `update_dashboard` tool so they
+   don't drift. Call inside the same transaction as the dashboard update itself."
+  [current-dash updates]
+  (let [id (:id current-dash)]
+    (when (api/column-will-change? :archived current-dash updates)
+      (if (:archived updates)
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived false
+                    {:archived true :archived_directly false})
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived true
+                    :archived_directly false
+                    {:archived false})))
+    (when (api/column-will-change? :collection_id current-dash updates)
+      (t2/update! :model/Card :dashboard_id id
+                  {:collection_id (:collection_id updates)}))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -233,7 +253,7 @@
       (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
                 "Is Now:" new-param-field-ids
                 "Newly Added:" newly-added-param-field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
+      ((requiring-resolve 'metabase.sync.field-values/update-field-values-for-on-demand-dbs!) newly-added-param-field-ids))))
 
 (defn add-dashcards!
   "Add Cards to a Dashboard.
@@ -304,7 +324,7 @@
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
-                            ;; Xrays populate this in their transient cards
+                           ;; Xrays populate this in their transient cards
                            (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
@@ -353,8 +373,14 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
 
-(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
-  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
+(mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+  "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
+  below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
+  for the full hydration."
+  [dashboard :- [:map
+                 [:parameters [:maybe [:sequential :map]]]
+                 [:dashcards [:maybe [:sequential [:map
+                                                   [:parameter_mappings [:maybe [:sequential :map]]]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)
@@ -384,7 +410,7 @@
                                :dashcard     ...
                                :target       [:dimension [:field-id 264]]}}}}"
   [_model k dashboards]
-  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
+  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card :series])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard
@@ -480,16 +506,19 @@
                   :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :verified       [:= "verified" :mr.status]
+                  :official-collection [:= "official" :collection.authority_level]
                   :view-count     true
                   :created-at     true
-                  :updated-at     true}
+                  :updated-at     true
+                  :collection-type :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type
                   :moderated-status           :mr.status}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and
@@ -507,3 +536,35 @@
                                                         [:= :mr.moderated_item_type "dashboard"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}})
+
+(defmethod staleness/find-stale-query :model/Dashboard
+  [_model args]
+  {:select [:report_dashboard.id
+            [(h2x/literal "Dashboard") :model]
+            [:report_dashboard.name :name]
+            [:last_viewed_at :last_used_at]]
+   :from :report_dashboard
+   :left-join [:pulse [:and
+                       [:= :pulse.archived false]
+                       [:= :pulse.dashboard_id :report_dashboard.id]]
+               :collection [:= :collection.id :report_dashboard.collection_id]
+               :moderation_review [:and
+                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                   [:= :moderation_review.most_recent true]
+                                   [:= :moderation_review.status (h2x/literal "verified")]]]
+   :where [:and
+           [:= :pulse.id nil]
+           [:= :moderation_review.id nil]
+           [:= :report_dashboard.archived false]
+           [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           [:= :collection.type nil]
+           (when (embed.settings/some-embedding-enabled?)
+             [:= :report_dashboard.enable_embedding false])
+           (when (setting/get :enable-public-sharing)
+             [:= :report_dashboard.public_uuid nil])
+           [:or
+            (when (contains? (:collection-ids args) nil)
+              [:is :report_dashboard.collection_id nil])
+            [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})

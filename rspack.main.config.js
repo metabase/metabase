@@ -4,9 +4,15 @@
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
-const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
+const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -109,7 +115,7 @@ const config = {
     "app-public": "./app-public.ts",
     "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
-    "vendor-styles": "./css/vendor.css",
+    "app-embed-mcp": "./app-embed-mcp.tsx",
     styles: "./css/index.module.css",
   },
 
@@ -257,6 +263,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
@@ -271,26 +278,38 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-main"],
+      chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-public"],
+      chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
+      chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-sdk.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
+      chunks: ["vendor", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-mcp.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "styles", "app-embed-mcp"],
+      template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
+
+      // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
+      // so asset URLs must point to the Metabase instance. We embed a Mustache
+      // variable in publicPath — HtmlWebpackPlugin emits it literally, then
+      // Stencil substitutes it at runtime with the real instance URL.
+      publicPath: "{{{instanceUrlRaw}}}/app/dist/",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     // https://github.com/orgs/remarkjs/discussions/903
@@ -303,6 +322,7 @@ const config = {
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
+    ...COMPRESSION_CONFIG,
   ],
 };
 
@@ -319,6 +339,9 @@ if (shouldEnableHotRefresh) {
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
     `http://localhost:${PORT}/` + config.output.publicPath;
+
+  // Disable lazy compilation explicitly to match behavior of rspack 1.x
+  config.lazyCompilation = false;
 
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
@@ -354,9 +377,10 @@ if (shouldEnableHotRefresh) {
   };
 
   config.plugins.unshift(
-    new ReactRefreshPlugin({
-      overlay: false,
-      exclude: [SDK_DOCS_SNIPPETS_PATH],
+    new ReactRefreshRspackPlugin({
+      // app-embed-mcp runs in an isolated iframe with CSP restrictions.
+      // Excluding it avoids injecting the React Refresh runtime which uses eval.
+      exclude: [SDK_DOCS_SNIPPETS_PATH, /app-embed-mcp/],
     }),
   );
 }

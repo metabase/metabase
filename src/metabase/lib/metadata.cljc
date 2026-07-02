@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.metadata.transforming-provider :as lib.metadata.transforming-provider]
    [metabase.lib.metadata.util :as lib.metadata.util]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -28,7 +29,9 @@
 
 (shared.ns/import-fns
  [lib.metadata.util
-  ->metadata-provider])
+  ->metadata-provider]
+ [lib.metadata.transforming-provider
+  transforming-metadata-provider])
 
 (mu/defn database :- ::lib.schema.metadata/database
   "Get metadata about the Database we're querying."
@@ -272,6 +275,17 @@
       (into []
             (keep id->result)
             ids))))
+
+(mu/defn metadatas :- [:maybe [:sequential :metabase.lib.metadata.protocols/metadata]]
+  "Return a sequence of metadata objects matching `metadata-spec` (see
+  `:metabase.lib.metadata.protocols/metadata-spec`). A thin wrapper over [[lib.metadata.protocols/metadatas]] that
+  resolves the MetadataProvider from `metadata-providerable` for you, so callers don't need to reach for
+  [[->metadata-provider]] or the protocol namespace directly.
+
+  Like the underlying method, can be called for side-effects to warm the cache."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   metadata-spec         :- :metabase.lib.metadata.protocols/metadata-spec]
+  (lib.metadata.protocols/metadatas (->metadata-provider metadata-providerable) metadata-spec))
 
 (defn- missing-bulk-metadata-error [metadata-type id]
   (ex-info (i18n/tru "Failed to fetch {0} {1}: either it does not exist, or it belongs to a different Database"

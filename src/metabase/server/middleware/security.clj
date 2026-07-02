@@ -11,13 +11,13 @@
    [metabase.mcp.core :as mcp]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
-
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
+   (java.net URI)
    (java.security MessageDigest SecureRandom)))
 
 (set! *warn-on-reflection* true)
@@ -60,20 +60,44 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
-(defn parse-url
-  "Returns an object with protocol, domain and port for the given url"
+(def ^:private url-scheme-pattern
+  "RFC 3986 generic URI scheme syntax: a letter followed by any number of letters, digits, `+`, `-`,
+   or `.`. We don't restrict this to a closed set of known schemes (`http`, `app`, ...) since MCP
+   clients are free to register arbitrary custom schemes (e.g. `vscode-webview`, `chrome-extension`,
+   `electron`). Schemes are case-insensitive; callers that need case-insensitive matching normalize
+   case themselves."
+  "[a-zA-Z][a-zA-Z0-9+.\\-]*")
+
+(def ^:private url-domain-pattern
+  "Valid characters for a CORS origin's domain: standard hostname/IPv4 labels (letters, digits,
+   hyphens, separated by dots), plus `*` so wildcard entries like `*.example.com` are still accepted."
+  "[a-zA-Z0-9*](?:[a-zA-Z0-9*-]*[a-zA-Z0-9*])?(?:\\.[a-zA-Z0-9*](?:[a-zA-Z0-9*-]*[a-zA-Z0-9*])?)*")
+
+(def ^:private url-host-pattern
+  "Bracketed IPv6 literal (e.g. `[::1]`) or a hostname/IPv4/wildcard domain."
+  (str "\\[[^\\]]+\\]|" url-domain-pattern))
+
+(def ^:private url-pattern
+  (re-pattern (str "^(?:(" url-scheme-pattern ")://)?(" url-host-pattern ")(?::(\\d+|\\*))?$")))
+
+(defn try-parse-url
+  "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
+   client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
+   fill the error logs."
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    ;; Pattern supports both regular hostnames/IPv4 and bracketed IPv6 addresses like [::1]
-    (let [pattern #"^(?:(https?|app|capacitor)://)?(\[[^\]]+\]|[^:/]+)(?::(\d+|\*))?$"
-          matches (re-matches pattern url)]
-      (if-not matches
-        (do (log/errorf "Invalid URL: %s" url) nil)
-        (let [[_ protocol domain port] matches]
-          {:protocol protocol
-           :domain domain
-           :port port})))))
+    (let [[_ protocol domain port] (re-matches url-pattern url)]
+      (when domain
+        {:protocol protocol :domain domain :port port}))))
+
+(defn parse-url
+  "Returns an object with protocol, domain and port for the given url. Logs an error when the input
+   doesn't parse — appropriate for server-side config (where bad input indicates a misconfiguration).
+   For client-controlled input prefer [[try-parse-url]]."
+  [url]
+  (or (try-parse-url url)
+      (do (log/errorf "Invalid URL: %s" url) nil)))
 
 (defn- add-wildcard-entries
   "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
@@ -110,16 +134,62 @@
    "https://www.metabase.com/"
    "https://metabase.com/"])
 
+(def ^:private always-allowed-resource-hosts
+  "Implicitly-allowed `img-src`/`font-src` hosts: our own origin and `data:` URIs."
+  ["'self'" "data:"])
+
+(defn- parse-hosts-string
+  "Split a comma/whitespace-separated `hosts-string` into individual hosts, adding wildcard prefixes as needed."
+  [hosts-string]
+  (->> (str/split (or hosts-string "") #"[ ,\s\r\n]+")
+       (remove str/blank?)
+       (mapcat add-wildcard-entries)))
+
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
-  (->> (str/split hosts-string #"[ ,\s\r\n]+")
-       (remove str/blank?)
-       (mapcat add-wildcard-entries)
-       (into always-allowed-iframe-hosts)))
+  (into always-allowed-iframe-hosts (parse-hosts-string hosts-string)))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
+
+(defn- parse-allowed-resource-hosts*
+  [hosts-string]
+  (into always-allowed-resource-hosts (parse-hosts-string hosts-string)))
+
+(def ^{:doc "Parse a string of allowed resource hosts (e.g. for `img-src`), adding wildcard prefixes as needed."}
+  parse-allowed-resource-hosts
+  (memoize parse-allowed-resource-hosts*))
+
+(defn- bracket-ipv6-host
+  "`URI#getHost` returns IPv6 literals unbracketed, but CSP origins require the brackets."
+  [host]
+  (if (and (str/includes? host ":") (not (str/starts-with? host "[")))
+    (str "[" host "]")
+    host))
+
+(defn- font-file-src->origin
+  "Extract the `scheme://host[:port]` origin from a custom font file `src` URL, or nil if it is
+  blank, relative, or unparseable."
+  [src]
+  (when (and (string? src) (not (str/blank? src)))
+    (try
+      (let [uri    (URI. src)
+            scheme (.getScheme uri)
+            host   (some-> uri .getHost bracket-ipv6-host)
+            port   (.getPort uri)]
+        (when (and scheme host)
+          (str scheme "://" host (when (pos? port) (str ":" port)))))
+      (catch Exception _ nil))))
+
+(defn- application-font-files->hosts
+  "Origins of any custom font files configured via the `application-font-files` setting, so that
+  `font-src` allows the fonts an admin has explicitly opted into without a separate setting."
+  []
+  (->> (setting/get-value-of-type :json :application-font-files)
+       (keep (comp font-file-src->origin :src))
+       distinct
+       vec))
 
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
@@ -170,9 +240,13 @@
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
-                  :font-src     ["*"]
-                  :img-src      ["*"
-                                 "'self' data:"]
+                  :font-src     (into (cond-> always-allowed-resource-hosts
+                                        config/is-dev? (conj frontend-address))
+                                      (application-font-files->hosts))
+                  :img-src      (if (server.settings/csp-img-enabled)
+                                  (cond-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                    config/is-dev? (conj frontend-address))
+                                  (into ["*"] always-allowed-resource-hosts))
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
@@ -181,6 +255,8 @@
                                  ;; Snowplow analytics
                                  (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
+                                 (when (analytics/anon-tracking-enabled)
+                                   (setting/get-value-of-type :string :metaplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
@@ -226,11 +302,25 @@
    (= reference-port "*")
    (= port reference-port)))
 
+(def ^:private url-authority-pattern
+  ;;                  _________________________________$1_____________________________________
+  (re-pattern (str "^((?:" url-scheme-pattern "://)?(?:" url-host-pattern ")(?::(?:\\d+|\\*))?)(?:/.*)?$")))
+
+(defn- strip-origin-path
+  "Strips a trailing `/path` from an admin-entered CORS origin entry. Origins have no path component by
+   definition (just scheme + host + port), so a bare trailing slash pasted into an allowlist setting
+   (e.g. `http://localhost:6274/`) shouldn't silently make that entry fail to parse and drop out of the
+   allowlist. Entries with a real path are rejected at save time (see the setting's `:setter`); this
+   only needs to normalize bare trailing slashes and any non-trivial paths saved before that validation
+   existed."
+  [url]
+  (str/replace url url-authority-pattern "$1"))
+
 (defn parse-approved-origins
   "Parses the space separated string of approved origins"
   [approved-origins-raw]
   (let [urls (str/split approved-origins-raw #" +")]
-    (keep parse-url urls)))
+    (keep (comp parse-url strip-origin-path) urls)))
 
 (def ^:private loopback-hosts
   "Set of hostnames/IPs that represent loopback addresses.
@@ -280,7 +370,7 @@
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
         "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
+        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
         ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
         "Access-Control-Max-Age"  "60"}))))
 
@@ -299,9 +389,7 @@
                                                           (setting/get-value-of-type :string :embedding-app-origins-interactive))]
                                           (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
-   {;; Tell browser to block suspected XSS attacks
-    "X-XSS-Protection"                  "1; mode=block"
-    ;; Prevent Flash / PDF files from including content from site.
+   {;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
     "X-Content-Type-Options"            "nosniff"}

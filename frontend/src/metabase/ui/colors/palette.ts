@@ -1,6 +1,7 @@
 import Color from "color";
 
 import { colors, getColors } from "./colors";
+import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
 import type { ColorGetter, ColorName, ColorPalette } from "./types";
 
 export const ACCENT_COUNT = 8;
@@ -8,10 +9,10 @@ export const ACCENT_COUNT = 8;
 export const originalColors = getColors();
 
 export const aliases: Record<string, (palette: ColorPalette) => string> = {
-  dashboard: (palette) => color("brand", palette),
-  document: (palette) => color("brand", palette),
-  nav: (palette) => color("background-primary", palette),
-  content: (palette) => color("background-secondary", palette),
+  dashboard: (palette) => color("core-brand", palette),
+  document: (palette) => color("core-brand", palette),
+  nav: (palette) => color("background_page-primary", palette),
+  content: (palette) => color("background_page-secondary", palette),
   database: (palette) => color("accent2", palette),
   pulse: (palette) => color("accent4", palette),
   "text-primary": (palette) => color("text-primary", palette),
@@ -19,7 +20,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   "text-tertiary": (palette) => color("text-tertiary", palette),
   background: (palette) => color("white", palette),
   "background-disbaled": (palette) => color("accent-gray", palette),
-  focus: (palette) => getFocusColor("brand", palette),
+  focus: (palette) => getFocusColor("core-brand", palette),
 
   "accent0-light": (palette) => tint(color(`accent0`, palette)),
   "accent1-light": (palette) => tint(color(`accent1`, palette)),
@@ -68,7 +69,7 @@ export function color(color: any, palette: ColorPalette = colors) {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-background-secondary), transparent 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-background_page-secondary), transparent 10%)`
  *
  * When the hex values are needed, use the themeColor function
  * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-tertiary"), 0.1)`
@@ -138,19 +139,22 @@ export const getFocusColor = (
 // https://www.notion.so/Maz-notes-on-viz-settings-67aed0e4ddcc4d4a83028992c4301820?d=513f4f7fa9c143cb874c7e4525dfb1e9#277d6b3eeb464eac86088abd144fde9e
 const whiteTextColorPriorityFactor = 3;
 
+// The text color must contrast with the given background,
+// which is a fixed independent of the app's light/dark theme.
+const baseColors = getBaseColorsForThemeDefinitionOnly();
+const LIGHT_TEXT_COLOR = baseColors.orionAlphaInverse[80];
+const DARK_TEXT_COLOR = baseColors.orionAlpha[80];
+
 export const getTextColorForBackground = (
   backgroundColor: string,
   getColor: ColorGetter = color,
 ) => {
-  const whiteTextContrast =
-    Color(getColor(backgroundColor)).contrast(
-      Color(getColor("text-primary-inverse")),
-    ) * whiteTextColorPriorityFactor;
-  const darkTextContrast = Color(getColor(backgroundColor)).contrast(
-    Color(getColor("text-primary")),
-  );
+  const background = Color(getColor(backgroundColor));
+  const lightTextContrast =
+    background.contrast(Color(LIGHT_TEXT_COLOR)) * whiteTextColorPriorityFactor;
+  const darkTextContrast = background.contrast(Color(DARK_TEXT_COLOR));
 
-  return whiteTextContrast > darkTextContrast
-    ? getColor("text-primary-inverse")
-    : getColor("text-primary");
+  return lightTextContrast > darkTextContrast
+    ? LIGHT_TEXT_COLOR
+    : DARK_TEXT_COLOR;
 };

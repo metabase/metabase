@@ -5,7 +5,8 @@ import _ from "underscore";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { IconData } from "metabase/common/utils/icon";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   FullWidthButton,
@@ -75,7 +76,7 @@ function SidebarLink({
             name={iconProps.name}
             iconUrl={iconProps.iconUrl}
             size="1rem"
-            color="brand"
+            color="core-brand"
           />
         ) : (
           <SidebarIcon {...iconProps} isSelected={isSelected} />

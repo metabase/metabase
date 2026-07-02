@@ -1,3 +1,4 @@
+import type { Dayjs } from "dayjs";
 import { t } from "ttag";
 
 import { getObjectKeys } from "metabase/utils/objects";
@@ -521,13 +522,33 @@ function getBarSeriesDataLabelTransform(
 function getBarSeriesZeroToNullTransform(
   barSeriesModels: SeriesModel[],
 ): ConditionalTransform {
+  const dataKeysWithNonZeroValues = new Set<DataKey>();
+  let hasCheckedNonZeroValues = false;
+
   return {
     condition: barSeriesModels.length > 0,
-    fn: (datum: Datum) => {
+    fn: (datum: Datum, _index: number, dataset: ChartDataset) => {
+      if (!hasCheckedNonZeroValues) {
+        barSeriesModels.forEach(({ dataKey }) => {
+          if (
+            dataset.some(
+              (datum) =>
+                typeof datum[dataKey] === "number" && datum[dataKey] !== 0,
+            )
+          ) {
+            dataKeysWithNonZeroValues.add(dataKey);
+          }
+        });
+        hasCheckedNonZeroValues = true;
+      }
+
       const transforedDatum = { ...datum };
 
       barSeriesModels.forEach(({ dataKey }) => {
-        transforedDatum[dataKey] = datum[dataKey] === 0 ? null : datum[dataKey];
+        transforedDatum[dataKey] =
+          dataKeysWithNonZeroValues.has(dataKey) && datum[dataKey] === 0
+            ? null
+            : datum[dataKey];
       });
 
       return transforedDatum;
@@ -625,6 +646,11 @@ function getHistogramDataset(
 
 const MAX_FILL_COUNT = 10000;
 
+/**
+ * Inserts placeholder rows for missing time-series buckets so downstream
+ * transforms can replace missing metric values with zeros or nulls.
+ * For example, monthly values for January and March produce a February row.
+ */
 const interpolateTimeSeriesData = (
   dataset: ChartDataset,
   axisModel: TimeSeriesXAxisModel,
@@ -634,7 +660,23 @@ const interpolateTimeSeriesData = (
   }
 
   const { count, unit } = axisModel.interval;
+  const timezone = axisModel.timezone;
+  const isWeeklyIntervalInTimezone = timezone != null && unit === "week";
   const result = [];
+
+  const addInterval = (date: Dayjs) => {
+    const nextDate = date.add(count, unit);
+
+    // Weekly buckets should stay anchored to the same local wall-clock time
+    // across DST boundaries, e.g. Sunday 00:00 before and after spring-forward.
+    return isWeeklyIntervalInTimezone ? nextDate.tz(timezone, true) : nextDate;
+  };
+
+  const isBeforeEnd = (date: Dayjs, end: Dayjs) => {
+    return isWeeklyIntervalInTimezone
+      ? date.isBefore(end)
+      : date.isBefore(end, unit);
+  };
 
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
@@ -647,19 +689,26 @@ const interpolateTimeSeriesData = (
     const end = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]);
 
     let start = parseTimestamp(datum[X_AXIS_DATA_KEY]);
-    while (start.add(count, unit).isBefore(end, unit)) {
-      const interpolatedValue = start.add(count, unit);
+    let interpolatedValue = addInterval(start);
+
+    while (isBeforeEnd(interpolatedValue, end)) {
       result.push({
         [X_AXIS_DATA_KEY]: interpolatedValue.toISOString(),
       });
 
       start = interpolatedValue;
+      interpolatedValue = addInterval(start);
     }
   }
 
   return result;
 };
 
+/**
+ * Applies per-column display scaling to metric values before they reach
+ * ECharts. For example, a column configured as percentage points can be
+ * multiplied by 100 while leaving non-numeric values as null.
+ */
 export function scaleDataset(
   dataset: ChartDataset,
   seriesModels: BaseSeriesModel[],
@@ -807,7 +856,10 @@ export const applyVisualizationSettingsDataTransformations = (
           : value;
       }),
     },
-    getStackedDataLabelTransform(settings, seriesDataKeys),
+    getStackedDataLabelTransform(
+      settings,
+      stackModels.flatMap((stackModel) => stackModel.seriesKeys),
+    ),
     getBarSeriesDataLabelTransform(barSeriesModels),
     {
       condition:
@@ -839,7 +891,15 @@ export const sortDataset = (
 
       if (leftDate == null || rightDate == null) {
         showWarning?.(invalidDateWarning(leftDate == null ? left : right).text);
-        return 0;
+        if (leftDate == null && rightDate == null) {
+          return 0;
+        }
+        if (leftDate == null) {
+          return 1; // sort nulls to end
+        }
+        if (rightDate == null) {
+          return -1;
+        }
       }
 
       return leftDate.valueOf() - rightDate.valueOf();

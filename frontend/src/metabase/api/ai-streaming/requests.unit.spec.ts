@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import api from "metabase/api/legacy-client";
+import { setupBasename } from "__support__/basename";
 
 import {
   aiStreamingQuery,
@@ -10,16 +10,9 @@ import { mockStreamedEndpoint } from "./test-utils";
 
 const endpoint = "/some-streamed-endpoint";
 const fakeBasename = "http://example.com";
-const originalBasename = api.basename;
 
 describe("ai requests", () => {
-  beforeAll(() => {
-    api.basename = fakeBasename;
-  });
-
-  afterAll(() => {
-    api.basename = originalBasename;
-  });
+  setupBasename(fakeBasename);
 
   describe("aiStreamingQuery", () => {
     it("should call a request with a baseurl", async () => {
@@ -31,9 +24,10 @@ describe("ai requests", () => {
 
       await aiStreamingQuery({ url: endpoint, body: {} });
 
-      expect(fetchSpy).toHaveBeenCalledWith(
+      // The client wraps the args in a `Request`, so assert on its URL.
+      const [request] = fetchSpy.mock.calls[0];
+      expect((request as Request).url).toBe(
         "http://example.com/some-streamed-endpoint",
-        expect.anything(),
       );
 
       fetchSpy.mockRestore();
@@ -92,7 +86,7 @@ describe("ai requests", () => {
       fetchMock.post(`path:${endpoint}`, 500);
       await expect(
         aiStreamingQuery({ url: endpoint, body: {} }),
-      ).rejects.toThrow(/Response status: 500/);
+      ).rejects.toMatchObject({ status: 500 });
     });
 
     it("preserves structured JSON error responses", async () => {
@@ -108,8 +102,10 @@ describe("ai requests", () => {
         aiStreamingQuery({ url: endpoint, body: {} }),
       ).rejects.toMatchObject({
         status: 402,
-        message: "You've used all of your included AI service tokens.",
-        "error-code": "metabase_ai_managed_locked",
+        data: {
+          message: "You've used all of your included AI service tokens.",
+          "error-code": "metabase_ai_managed_locked",
+        },
       });
     });
 

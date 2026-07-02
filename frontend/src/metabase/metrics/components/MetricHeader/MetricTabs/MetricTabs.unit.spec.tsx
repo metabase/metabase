@@ -2,21 +2,21 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupMetricEndpoint } from "__support__/server-mocks/metric";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockField,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockMetric,
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-import type { MetricUrls } from "../../../types";
 
 import { MetricTabs } from "./MetricTabs";
 
@@ -25,7 +25,6 @@ const urls: MetricUrls = {
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
   dependencies: (id) => `/metric/${id}/dependencies`,
-  caching: (id) => `/metric/${id}/caching`,
   history: (id) => `/metric/${id}/history`,
 };
 
@@ -34,6 +33,7 @@ describe("MetricTabs", () => {
     mockSettings({
       "token-features": createMockTokenFeatures({
         cache_granular_controls: true,
+        dependencies: true,
       }),
     });
     setupEnterprisePlugins();
@@ -43,10 +43,12 @@ describe("MetricTabs", () => {
     card: cardOverrides,
     hasDimensions = true,
     hasDataPermissions = true,
+    role = "consumer",
   }: {
     card?: Partial<Card>;
     hasDimensions?: boolean;
     hasDataPermissions?: boolean;
+    role?: "admin" | "analyst" | "consumer";
   } = {}) {
     const card = createMockCard({
       type: "metric",
@@ -64,6 +66,10 @@ describe("MetricTabs", () => {
     setupMetricEndpoint(metric);
 
     const state = createMockState({
+      currentUser: createMockUser({
+        is_superuser: role === "admin",
+        is_data_analyst: role === "analyst",
+      }),
       entities: createMockEntitiesState({
         databases: hasDataPermissions ? [createSampleDatabase()] : [],
         questions: [card],
@@ -77,24 +83,23 @@ describe("MetricTabs", () => {
 
   function getTabLabels() {
     return Array.from(
-      document.querySelectorAll(".mb-mantine-Button-label"),
+      document.querySelectorAll(".mb-mantine-Tabs-tabLabel"),
     ).map((element) => element.textContent);
   }
 
-  it("should show the caching tab when the user has write access", async () => {
+  it("does not show the caching tab in the tabs row regardless of write access", async () => {
     setup({ card: { can_write: true } });
     await waitFor(() => {
       expect(getTabLabels()).toEqual([
         "About",
         "Overview",
         "Definition",
-        "Caching",
         "History",
       ]);
     });
   });
 
-  it("should not show the caching tab when the user has no write access", async () => {
+  it("does not show the caching tab when the user has no write access", async () => {
     setup({ card: { can_write: false } });
     await waitFor(() => {
       expect(getTabLabels()).toEqual([
@@ -109,12 +114,7 @@ describe("MetricTabs", () => {
   it("should hide the overview tab when metric has no dimensions", async () => {
     setup({ hasDimensions: false });
     await waitFor(() => {
-      expect(getTabLabels()).toEqual([
-        "About",
-        "Definition",
-        "Caching",
-        "History",
-      ]);
+      expect(getTabLabels()).toEqual(["About", "Definition", "History"]);
     });
   });
 
@@ -126,6 +126,28 @@ describe("MetricTabs", () => {
     });
     await waitFor(() => {
       expect(getTabLabels()).toEqual(["About", "History"]);
+    });
+  });
+
+  describe("Dependencies tab (role-gated)", () => {
+    it("shows for admins", async () => {
+      setup({ role: "admin" });
+      await waitFor(() => {
+        expect(getTabLabels()).toContain("Dependencies");
+      });
+    });
+
+    it("shows for data analysts", async () => {
+      setup({ role: "analyst" });
+      await waitFor(() => {
+        expect(getTabLabels()).toContain("Dependencies");
+      });
+    });
+
+    it("is hidden for consumers", async () => {
+      setup({ role: "consumer" });
+      await screen.findByText("About");
+      expect(getTabLabels()).not.toContain("Dependencies");
     });
   });
 });

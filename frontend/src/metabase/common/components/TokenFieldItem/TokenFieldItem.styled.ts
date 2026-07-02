@@ -13,7 +13,7 @@ export const TokenFieldItem = styled.li<{
   color: ${({ isValid }) =>
     isValid ? `var(--mb-color-text-primary-inverse)` : `var(--mb-color-error)`};
 
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 `;
 
 export const TokenFieldAddon = styled.a<{
@@ -25,6 +25,6 @@ export const TokenFieldAddon = styled.a<{
   color: ${({ isValid }) => (isValid ? "" : `var(--mb-color-error)`)};
 
   &:hover {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
   }
 `;

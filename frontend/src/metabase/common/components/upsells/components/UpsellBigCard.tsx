@@ -90,13 +90,13 @@ export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
     <Box
       data-testid="upsell-big-card"
       className={S.UpsellBigCardComponent}
-      bg="background-primary"
+      bg="background_page-primary"
       {...props}
     >
       <Flex px="xl" py="md">
         <UpsellGem size={24} />
         <Stack align="flex-start" gap={0} ml="0.75rem" maw="18.75rem">
-          <Title order={2} lh={1} mb="sm">
+          <Title order={2} lh={1} mb="sm" pr="1rem">
             {title}
           </Title>
           <Text lh="xl" mb="lg">

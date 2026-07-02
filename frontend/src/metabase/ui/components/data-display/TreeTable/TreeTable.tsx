@@ -33,6 +33,8 @@ export function TreeTable<TData extends TreeNodeData>({
   onRowDoubleClick,
   getSelectionState,
   onCheckboxClick,
+  onHeaderCheckboxClick,
+  headerCheckboxAriaLabel,
   isChildrenLoading,
   isRowDisabled,
   getRowProps,
@@ -190,7 +192,7 @@ export function TreeTable<TData extends TreeNodeData>({
         style={styles?.body}
       >
         {showEmptyState ? (
-          <Center h="100%" p="xl" c="text-tertiary">
+          <Center h="100%" p="xl" c="text-disabled">
             {emptyState}
           </Center>
         ) : (
@@ -209,6 +211,9 @@ export function TreeTable<TData extends TreeNodeData>({
                 styles={styles}
                 isMeasured={isMeasured}
                 totalContentWidth={totalContentWidth}
+                getSelectionState={getSelectionState}
+                onHeaderCheckboxClick={onHeaderCheckboxClick}
+                headerCheckboxAriaLabel={headerCheckboxAriaLabel}
               />
               {topPinnedRows.length > 0 && (
                 <Box

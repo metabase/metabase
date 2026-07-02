@@ -4,10 +4,9 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider, useFormSubmitButton } from "metabase/forms";
+import { useValidatePassword } from "metabase/common/hooks";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import type { UserInfo } from "metabase/redux/store";
-import { validatePassword } from "metabase/setup/utils";
 import { Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
@@ -38,11 +37,12 @@ interface UserFormProps {
   onSubmit: (user: UserInfo) => Promise<void>;
 }
 
-const validationContext = {
-  onValidatePassword: _.memoize(validatePassword),
-};
-
 export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
+  const validatePassword = useValidatePassword();
+  const validationContext = useMemo(
+    () => ({ onValidatePassword: _.memoize(validatePassword) }),
+    [validatePassword],
+  );
   const initialValues = useMemo(() => {
     return user ?? USER_SCHEMA.getDefault();
   }, [user]);
@@ -97,22 +97,14 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
         />
-        <UserFormSubmitButton />
+        <Flex align="center">
+          <FormSubmitButton
+            label={t`Next`}
+            activeLabel={t`Saving`}
+            variant="filled"
+          />
+        </Flex>
       </Form>
     </FormProvider>
-  );
-};
-
-const UserFormSubmitButton = () => {
-  const { status } = useFormSubmitButton({ isDisabled: false });
-
-  return (
-    <Flex align="center">
-      <FormSubmitButton
-        title={t`Next`}
-        activeTitle={t`Saving`}
-        primary={status === "idle"}
-      />
-    </Flex>
   );
 };

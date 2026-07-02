@@ -1,0 +1,25 @@
+.breadcrumb {
+  min-width: 0;
+  font-size: 0.875em;
+}
+
+.content {
+  --color: var(--mb-color-text-disabled);
+  --active-color: var(--mb-color-brand);
+}
+
+.icon,
+.text {
+  color: var(--color);
+}
+
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    .icon,
+    .text {
+      color: var(--active-color);
+    }
+  }
+}

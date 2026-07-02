@@ -8,12 +8,21 @@ import type {
   Datum,
   DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createMockColumn,
   createMockDatetimeColumn,
+  createMockSingleSeries,
+  createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { getEventDimensions } from "./events";
+import {
+  canBrush,
+  getEventDimensions,
+  getTimelineEventsForEvent,
+} from "./events";
 
 const CARD_ID = 107;
 
@@ -205,5 +214,183 @@ describe("getEventDimensions", () => {
       { column: createdAtColumn, value: "2027-10-01T00:00:00" },
       { column: sourceColumn, value: "Affiliate" },
     ]);
+  });
+
+  it("includes the x-axis breakout when clicking a bar with only metric data (#73448)", () => {
+    const categoryColumn = createMockColumn({
+      name: "CATEGORY",
+      display_name: "Product → Category",
+      source: "breakout",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+    });
+    const countColumn = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      source: "aggregation",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+    });
+    const countKey = `${CARD_ID}:count`;
+    const datum: Datum = {
+      [X_AXIS_DATA_KEY]: "Doohickey",
+      [countKey]: 3976,
+    };
+    const chartModel = createMockCartesianChartModel({
+      columnByDataKey: {
+        [countKey]: countColumn,
+      },
+    });
+    const categoryDimensionModel: DimensionModel = {
+      column: categoryColumn,
+      columnIndex: 0,
+      columnByCardId: { [CARD_ID]: categoryColumn },
+    };
+    const seriesModel = createMockSeriesModel({
+      dataKey: countKey,
+      column: countColumn,
+      columnIndex: 1,
+      cardId: CARD_ID,
+      vizSettingsKey: "count",
+    });
+
+    const dimensions = getEventDimensions(
+      chartModel,
+      datum,
+      categoryDimensionModel,
+      seriesModel,
+    );
+
+    expect(dimensions).toEqual([
+      { column: categoryColumn, value: "Doohickey" },
+    ]);
+  });
+});
+
+describe("canBrush", () => {
+  const productIdColumn = createMockColumn({
+    name: "PRODUCT_ID",
+    display_name: "Product ID",
+    source: "breakout",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+  });
+
+  const sumSubtotalColumn = createMockColumn({
+    name: "sum",
+    display_name: "Sum of Subtotal",
+    source: "aggregation",
+    base_type: "type/Float",
+    effective_type: "type/Float",
+  });
+
+  const sumTotalColumn = createMockColumn({
+    name: "sum_2",
+    display_name: "Sum of Total",
+    source: "aggregation",
+    base_type: "type/Float",
+    effective_type: "type/Float",
+  });
+
+  const baseSettings: ComputedVisualizationSettings = {
+    "graph.x_axis.scale": "linear",
+  };
+
+  const onChangeCardAndRun = jest.fn();
+
+  // Reproduces UXW-3333 (metabase#71073): a scatter chart with aggregations on
+  // both axes ends up with `dimensionModel.column.source === "aggregation"`.
+  // The brush-to-filter handler can't safely filter an aggregation in the same
+  // stage that produces it (the resulting MBQL is rejected by the QP), so brush
+  // must be disabled in this configuration.
+  it("returns false when the x-axis dimension is an aggregation column (metabase#71073)", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        {
+          data: { cols: [sumSubtotalColumn, sumTotalColumn, productIdColumn] },
+        },
+      ),
+    ];
+
+    expect(
+      canBrush(series, baseSettings, sumSubtotalColumn, onChangeCardAndRun),
+    ).toBe(false);
+  });
+
+  it("returns true when the x-axis dimension is a breakout column", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        { data: { cols: [productIdColumn, sumSubtotalColumn] } },
+      ),
+    ];
+
+    expect(
+      canBrush(series, baseSettings, productIdColumn, onChangeCardAndRun),
+    ).toBe(true);
+  });
+
+  // External `onBrush` consumers (e.g. MetricsViewer) handle the range
+  // themselves and never produce an aggregation-on-aggregation filter, so brush
+  // should remain enabled even when the x-axis dimension is an aggregation.
+  it("returns true for external onBrush even when the x-axis is an aggregation", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        {
+          data: { cols: [sumSubtotalColumn, sumTotalColumn, productIdColumn] },
+        },
+      ),
+    ];
+    const onBrush = jest.fn();
+
+    expect(
+      canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
+    ).toBe(true);
+  });
+});
+
+describe("getTimelineEventsForEvent", () => {
+  const timelineEventsModel: TimelineEventsModel = [
+    {
+      date: "2027-10-01T00:00:00Z",
+      events: [createMockTimelineEvent({ id: 1, name: "RC1" })],
+    },
+    {
+      date: "2027-11-01T00:00:00Z",
+      events: [createMockTimelineEvent({ id: 2, name: "RC2" })],
+    },
+  ];
+
+  it("finds events by event.value", () => {
+    const event = {
+      value: "2027-10-01T00:00:00Z",
+      data: null,
+    } as unknown as EChartsSeriesMouseEvent;
+
+    const result = getTimelineEventsForEvent(timelineEventsModel, event);
+    expect(result).toEqual(timelineEventsModel[0].events);
+  });
+
+  it("finds events by event.data.xAxis when value is not populated (stacked series) #74005", () => {
+    const event = {
+      value: undefined,
+      data: { xAxis: "2027-10-01T00:00:00Z" },
+    } as unknown as EChartsSeriesMouseEvent;
+
+    const result = getTimelineEventsForEvent(timelineEventsModel, event);
+    expect(result).toEqual(timelineEventsModel[0].events);
+  });
+
+  it("returns undefined when no matching date exists", () => {
+    const event = {
+      value: "9999-01-01T00:00:00Z",
+      data: null,
+    } as unknown as EChartsSeriesMouseEvent;
+
+    expect(
+      getTimelineEventsForEvent(timelineEventsModel, event),
+    ).toBeUndefined();
   });
 });

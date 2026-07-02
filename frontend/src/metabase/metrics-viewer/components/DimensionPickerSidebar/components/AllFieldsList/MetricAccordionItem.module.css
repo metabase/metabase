@@ -1,0 +1,34 @@
+.metricAccordionItem {
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.metricAccordionControl {
+  align-items: center;
+  background-color: var(--mb-color-background_page-secondary);
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary);
+  display: flex;
+  justify-content: space-between;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  width: 100%;
+}
+
+.metricAccordionLabel {
+  color: currentcolor;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metricAccordionPanel {
+  padding: 1rem;
+}
+
+.occurrenceCountBadge {
+  box-shadow: 0 0 0 1px var(--mb-color-border-neutral);
+}

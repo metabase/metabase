@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sql.query-processor-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
@@ -9,6 +11,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.query-processor.deprecated]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -17,6 +20,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.test-util.places-cam-likes-metadata-provider :as lib.tu.places-cam-likes-metadata-provider]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -221,12 +225,18 @@
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
         (is (= {:query  "SELECT \"__mb_source\".* FROM (SELECT * FROM some_table WHERE name = ?) AS \"__mb_source\" WHERE (\"__mb_source\".\"name\" <> ?) OR (\"__mb_source\".\"name\" IS NULL)"
                 :params ["Cam" "Lucky Pigeon"]}
-               (sql.qp/mbql->native
-                :h2
-                (lib.tu.macros/mbql-query venues
-                  {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
-                   :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
-                   :filter          [:!= *name/Integer "Lucky Pigeon"]}))))))))
+               (->> {:source-query    {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
+                     :source-metadata [{:name "name", :display_name "Name", :base_type :type/Integer}]
+                     :filter          [:!= *name/Integer "Lucky Pigeon"]}
+                    (lib.tu.macros/mbql-query venues)
+                    (lib.convert/->mbql5)
+                    (lib/query meta/metadata-provider)
+                    (sql.qp/mbql->native :h2))))))))
+
+(defn- legacy-join->honeysql [driver join]
+  (sql.qp/join->honeysql driver (if (isa? driver/hierarchy driver :sql-mbql5)
+                                  (lib.convert/->mbql5 (#'lib.util/join->pipeline join))
+                                  join)))
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
@@ -237,33 +247,31 @@
                 [:=
                  (h2x/with-database-type-info (h2x/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
                  (h2x/identifier :field "card" "id")]]
-               (sql.qp/join->honeysql :h2
-                                      (lib.tu.macros/$ids checkins
-                                        {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                                         :alias        "card"
-                                         :strategy     :left-join
-                                         :condition    [:=
-                                                        [:field %venue-id {::add/source-table $$checkins
-                                                                           ::add/source-alias "VENUE_ID"}]
-                                                        [:field "id" {:join-alias        "card"
-                                                                      :base-type         :type/Integer
-                                                                      ::add/source-table "card"
-                                                                      ::add/source-alias "id"}]]}))))))))
+               (legacy-join->honeysql :h2
+                                      {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                                       :alias        "card"
+                                       :strategy     :left-join
+                                       :condition    [:=
+                                                      [:field (meta/id :checkins :venue-id) {::add/source-table (meta/id :checkins)
+                                                                                             ::add/source-alias "VENUE_ID"}]
+                                                      [:field "id" {:join-alias        "card"
+                                                                    :base-type         :type/Integer
+                                                                    ::add/source-table "card"
+                                                                    ::add/source-alias "id"}]]})))))))
 
 (defn- compile-join [driver]
   (driver/with-driver driver
     (qp.store/with-metadata-provider meta/metadata-provider
-      (let [join (sql.qp/join->honeysql
-                  driver
-                  {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                   :alias        "card"
-                   :strategy     :left-join
-                   :condition    [:=
-                                  [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
-                                                                   ::add/source-alias "VENUE_ID"}]
-                                  [:field "id" {:base-type         :type/Text
-                                                ::add/source-table "card"
-                                                ::add/source-alias "id"}]]})]
+      (let [join (legacy-join->honeysql driver
+                                        {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                                         :alias        "card"
+                                         :strategy     :left-join
+                                         :condition    [:=
+                                                        [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
+                                                                                         ::add/source-alias "VENUE_ID"}]
+                                                        [:field "id" {:base-type         :type/Text
+                                                                      ::add/source-table "card"
+                                                                      ::add/source-alias "id"}]]})]
         (sql.qp/format-honeysql driver {:join join})))))
 
 ;;; Ok to hardcode driver names here because it's for general HoneySQL compilation behavior and not something that needs
@@ -1250,16 +1258,15 @@
       "(SELECT 'string with \n ; -- ends \n on new line')"
 
       ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
-      ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
-      ;; Tech debt issue: #39401
-      #_#_"SELECT 'string with \n ; -- ending on the same line';"
-        "(SELECT 'string with \n ; -- ending on the same line')"
-      #_#_"SELECT 'string with \n ; -- ending on the same line';\n-- comment"
-        "(SELECT 'string with \n ; -- ending on the same line')"
+      "SELECT 'string with \n ; -- ending on the same line';"
+      "(SELECT 'string with \n ; -- ending on the same line')"
+
+      "SELECT 'string with \n ; -- ending on the same line';\n-- comment"
+      "(SELECT 'string with \n ; -- ending on the same line')"
 
       ;; String containing just `--` without `;` works
       "SELECT 'string with \n -- ending on the same line';"
-      "(SELECT 'string with \n -- ending on the same line'\n)"
+      "(SELECT 'string with \n -- ending on the same line')"
 
       ;; String with just `;`
       "SELECT 'string with ; ending on the same line';"
@@ -1270,7 +1277,34 @@
       --c1\n
       ; --c2\n
       -- c3"
-      "(SELECT ';')")))
+      "(SELECT ';')"
+
+      ;; Trailing block comment after a semicolon is stripped.
+      "SELECT 1; /* bye */"
+      "(SELECT 1)"
+
+      ;; Block comment with no trailing semicolon is preserved.
+      "SELECT 1 /* note */"
+      "(SELECT 1 /* note */)"
+
+      ;; Semicolon inside a double-quoted identifier is not a terminator.
+      "SELECT 1 AS \"a;b\";"
+      "(SELECT 1 AS \"a;b\")"
+
+      ;; Double dash inside a backtick-quoted identifier is not a comment.
+      "SELECT 1 AS `a--b`;"
+      "(SELECT 1 AS `a--b`)"
+
+      ;; Escaped single quote inside a string literal.
+      "SELECT 'it''s fine';"
+      "(SELECT 'it''s fine')")))
+
+(deftest ^:parallel make-nestable-sql-no-superlinear-backtracking-test
+  (testing "Stripping trailing comments/semicolons completes in linear time, without catastrophic backtracking"
+    (let [sql (str "SELECT 1;\n"
+                   (apply str (repeat 20000 "-- a comment line\n"))
+                   "SELECT 2")]
+      (is (= (str "(" sql ")") (sql.qp/make-nestable-sql sql))))))
 
 (deftest ^:parallel string-inline-value-test
   (testing `String
@@ -1392,7 +1426,7 @@
         (let [uuid #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
           (is (= uuid
                  (sql.qp/->honeysql driver
-                                    [:value uuid {:base_type :type/UUID :effective_type :type/UUID}]))))))))
+                                    (sql.qp/mbql-clause-with-opts driver :value {:base_type :type/UUID :effective_type :type/UUID} uuid)))))))))
 
 (deftest ^:parallel multiple-counts-test
   (testing "Count of count grouping works (#15074)"
@@ -1682,3 +1716,75 @@
              (->> (qp/process-query query)
                   (mt/formatted-rows [identity int])
                   (map second)))))))
+
+(deftest ^:parallel multiple-aggregations-on-the-same-column-test
+  (testing "Multiple breakouts against the same column with different bucketing should produce correct SQL (#68701, QUE2-72)"
+    (let [mp    meta/metadata-provider
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                      (lib/with-temporal-bucket :day)))
+                    lib/append-stage
+                    (as-> $query (lib/aggregate $query (lib/avg (lib.tu.notebook/find-col-with-spec
+                                                                 $query
+                                                                 (lib/aggregable-columns $query nil)
+                                                                 {}
+                                                                 {:display-name "Count"}))))
+                    (as-> $query (let [created-at (lib.tu.notebook/find-col-with-spec
+                                                   $query
+                                                   (lib/breakoutable-columns $query)
+                                                   {}
+                                                   {:display-name "Created At: Day"})]
+                                   (-> $query
+                                       (lib/breakout (lib/with-temporal-bucket created-at :day-of-month))
+                                       (lib/breakout (lib/with-temporal-bucket created-at :month)))))
+                    lib/append-stage
+                    (as-> $query (lib/aggregate $query (lib/avg (lib.tu.notebook/find-col-with-spec
+                                                                 $query
+                                                                 (lib/aggregable-columns $query nil)
+                                                                 {}
+                                                                 {:display-name "Average of Count"})))))]
+      (is (= ["SELECT"
+              "  AVG(__mb_source.avg) AS avg"
+              "FROM"
+              "  ("
+              "    SELECT"
+              "      extract("
+              "        day"
+              "        from"
+              "          __mb_source.CREATED_AT"
+              "      ) AS CREATED_AT,"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT) AS CREATED_AT_2," ; <= this should be `CREATED_AT_2`, not a repeat of `CREATED_AT`
+              "      AVG(__mb_source.count) AS avg"
+              "    FROM"
+              "      ("
+              "        SELECT"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) AS CREATED_AT,"
+              "          COUNT(*) AS count"
+              "        FROM"
+              "          PUBLIC.ORDERS"
+              "        GROUP BY"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date)"
+              "        ORDER BY"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) ASC"
+              "      ) AS __mb_source"
+              "    GROUP BY"
+              "      extract("
+              "        day"
+              "        from"
+              "          __mb_source.CREATED_AT"
+              "      ),"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT)"
+              "    ORDER BY"
+              "      extract("
+              "        day"
+              "        from"
+              "          __mb_source.CREATED_AT"
+              "      ) ASC,"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT) ASC"
+              "  ) AS __mb_source"]
+             (-> (qp.compile/compile query)
+                 :query
+                 (->> (driver/prettify-native-form :h2))
+                 (str/replace #"\"" "")
+                 str/split-lines))))))

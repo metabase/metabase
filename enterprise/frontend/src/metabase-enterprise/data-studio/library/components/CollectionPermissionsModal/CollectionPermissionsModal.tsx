@@ -1,29 +1,29 @@
-import { useEffect } from "react";
-
 import CollectionPermissionsModalBase from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import { Modal } from "metabase/common/components/Modal";
-import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { skipToken, useListCollectionsQuery } from "metabase/api";
 import type { CollectionPermissionsModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
+import { Modal } from "metabase/ui";
 
 export function CollectionPermissionsModal({
+  opened,
   collectionId,
   namespace,
   onClose,
 }: CollectionPermissionsModalProps) {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (namespace === "snippets") {
-      dispatch(SnippetCollections.actions.fetchList());
-    }
-  }, [dispatch, namespace]);
+  useListCollectionsQuery(
+    namespace === "snippets" ? { namespace: "snippets" } : skipToken,
+  );
 
   return (
-    <Modal onClose={onClose}>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size="lg"
+      withCloseButton={false}
+      padding={0}
+    >
       <CollectionPermissionsModalBase
         params={{ slug: String(collectionId) }}
-        namespace={namespace}
+        namespace={namespace ?? null}
         onClose={onClose}
       />
     </Modal>

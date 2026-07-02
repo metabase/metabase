@@ -450,7 +450,7 @@ describe("scenarios > question > native", () => {
     H.NativeEditor.type("select * from people where false");
     runQuery();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("No results!");
+    cy.contains("No results");
     cy.icon("contract").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
@@ -505,7 +505,7 @@ describe("scenarios > question > native", () => {
         `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
       );
       cy.findByText(`V ${operator.toLowerCase()} This has a value`);
-      cy.findByText("No results!").should("not.exist");
+      cy.findByText("No results").should("not.exist");
 
       cy.log(
         "**Final assertion: Count of rows with 'null' value should be 1**",

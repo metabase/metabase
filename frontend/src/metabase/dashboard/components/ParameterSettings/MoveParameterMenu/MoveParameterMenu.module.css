@@ -4,12 +4,9 @@
   cursor: pointer;
   color: transparent;
 
-  &:hover {
-    background-color: var(--mb-color-background-hover);
-
-    &::placeholder {
-      color: var(--mb-color-brand);
-    }
+  &[data-variant="default"]:hover:not(:disabled) {
+    border-color: var(--mb-color-border-neutral);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -26,10 +23,14 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
   }
+
+  &:hover::after {
+    color: var(--mb-color-text-brand-hover);
+  }
 }
 
 .MoveParameterMenuOptionIcon {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .MoveParameterMenuOptionText {
@@ -39,6 +40,6 @@
 .MoveParameterMenuOption[aria-selected="true"] {
   .MoveParameterMenuOptionIcon,
   .MoveParameterMenuOptionText {
-    color: var(--mb-color-text-primary-inverse);
+    color: var(--mb-color-text-selected);
   }
 }

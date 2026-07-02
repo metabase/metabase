@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.add-implicit-clauses-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-implicit-clauses-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -357,7 +358,6 @@
                {:fields [{:id                (mt/id :venues :price)
                           :coercion-strategy :Coercion/UNIXSeconds->DateTime
                           :effective-type    :type/Instant}]})]
-
     (is (=? {:status :completed}
             (qp/process-query (assoc query :lib/metadata mp'))))))
 

@@ -85,7 +85,6 @@
 (deftest conversations-list-test
   (testing "conversations-list"
     (test-auth! conversations-endpoint slack/conversations-list)
-
     (testing ":private_channel flag determines the \"types\" param sent to slack"
       (are [opts conversation-types]
            (let [request (atom nil)]
@@ -102,7 +101,6 @@
         {}                        "public_channel"
         {:private-channels false} "public_channel"
         {:private-channels true}  "public_channel,private_channel"))
-
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
         (let [expected-result (map slack/channel-transform
@@ -148,7 +146,6 @@
 (deftest users-list-test
   (testing "users-list"
     (test-auth! users-endpoint slack/users-list)
-
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
         (let [expected-result (map slack/user-transform
@@ -181,6 +178,42 @@
           (is (= {:url "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
                   :id "DDDDDDDDD-EEEEEEEEE"}
                  (slack/upload-file! image-bytes filename))))))))
+
+(deftest upload-file-to-channel!-test
+  (testing "upload-file-to-channel! shares the file into the given channel via channel_id"
+    (let [file-bytes   (.getBytes "fake-pdf")
+          filename     "dashboard.pdf"
+          upload-url   "https://files.slack.com/upload/v1/CwABAAAAWgoAAZnBg"
+          complete-req (atom nil)
+          join-req     (atom nil)
+          fake-routes  {#"^https://slack.com/api/files\.getUploadURLExternal.*"
+                        (fn [_] (mock-200-response {:ok         true
+                                                    :upload_url upload-url
+                                                    :file_id    "DDDDDDDDD-EEEEEEEEE"}))
+
+                        upload-url
+                        (fn [_] (mock-200-response "OK"))
+
+                        #"^https://slack.com/api/files\.completeUploadExternal.*"
+                        (fn [req]
+                          (reset! complete-req req)
+                          (mock-200-response (slurp "./test_resources/slack_upload_file_response.json")))}]
+      (http-fake/with-fake-routes
+        (assoc fake-routes
+               #"^https://slack.com/api/conversations\.join.*"
+               (fn [req]
+                 (reset! join-req req)
+                 (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json"))))
+        (mt/with-temporary-setting-values [slack-app-token "test-token"]
+          (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
+                 (slack/upload-file-to-channel! file-bytes filename "C0CHANNEL" "*Aviary KPIs*")))
+          (testing "joins the channel first (file sharing requires membership)"
+            (is (= "C0CHANNEL"
+                   (:channel (parse-query-string (:query-string @join-req))))))
+          (testing "shares the file into the channel with its caption as the message comment"
+            (let [params (parse-query-string (:query-string @complete-req))]
+              (is (= "C0CHANNEL" (:channel_id params)))
+              (is (= "*Aviary KPIs*" (:initial_comment params))))))))))
 
 (deftest post-chat-message!-test
   (testing "post-chat-message!"
@@ -216,7 +249,6 @@
                   (is (= (t2/select-fn-set :email :model/User :is_superuser true)
                          (set (keys recipient->emails)))))
                 (is (false? (channel.settings/slack-token-valid?))))))
-
           (testing "If `slack-token-valid?` is already false, no email should be sent"
             (mt/reset-inbox!)
             (try
@@ -224,7 +256,6 @@
               (catch Throwable e
                 (is (= :slack/invalid-token (:error-type (ex-data e))))
                 (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))))))
-
         (testing "No email is sent during token validation checks, even if `slack-token-valid?` is currently true"
           (mt/with-temporary-setting-values [slack-token-valid? true]
             (http-fake/with-fake-routes {conversations-endpoint (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}

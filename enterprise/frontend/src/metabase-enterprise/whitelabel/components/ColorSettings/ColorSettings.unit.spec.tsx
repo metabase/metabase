@@ -11,10 +11,10 @@ describe("ColorSettings", () => {
   const textMediumHex = Color(
     color("text-secondary", staticVizOverrides),
   ).hex();
-  const textLightHex = Color(color("text-tertiary", staticVizOverrides)).hex();
+  const textLightHex = Color(color("text-disabled", staticVizOverrides)).hex();
 
   const initialColors = {
-    brand: color("filter"),
+    brand: color("core-filter"),
     accent1: textMediumHex,
   };
 
@@ -29,12 +29,14 @@ describe("ColorSettings", () => {
       />,
     );
 
-    const input = screen.getByPlaceholderText(Color(color("summarize")).hex());
+    const input = screen.getByPlaceholderText(
+      Color(color("core-summarize")).hex(),
+    );
     await userEvent.clear(input);
     await userEvent.type(input, color("error"));
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("filter"),
+      brand: color("core-filter"),
       /* Needs to convert this to hex because the input is transform to hex,
        * but we want to use hsla for our new colors, this is to allow better text search. */
       summarize: Color(color("error")).hex(),
@@ -58,7 +60,7 @@ describe("ColorSettings", () => {
     await userEvent.type(input, textLightHex);
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("filter"),
+      brand: color("core-filter"),
       accent1: textLightHex,
     });
   });
@@ -78,7 +80,7 @@ describe("ColorSettings", () => {
     await userEvent.click(screen.getByText("Reset"));
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("filter"),
+      brand: color("core-filter"),
     });
   });
 
@@ -96,7 +98,7 @@ describe("ColorSettings", () => {
     await userEvent.click(screen.getByText("Generate chart colors"));
 
     expect(onChange).toHaveBeenLastCalledWith({
-      brand: color("filter"),
+      brand: color("core-filter"),
       accent0: expect.any(String),
       accent1: textMediumHex,
       accent2: expect.any(String),

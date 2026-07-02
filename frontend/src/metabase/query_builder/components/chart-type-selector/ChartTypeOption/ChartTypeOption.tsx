@@ -56,7 +56,7 @@ export const ChartTypeOption = ({
               onSelectVisualization(visualizationType);
             }
           }}
-          color="brand"
+          color="core-brand"
           data-is-selected={isSelected}
           variant={isSelected ? "filled" : "outline"}
           className={cx(
@@ -69,7 +69,7 @@ export const ChartTypeOption = ({
             name={iconName ?? "unknown"}
             iconUrl={visualization?.iconUrl}
             alt={displayName}
-            color={isSelected ? "white" : "brand"}
+            color={isSelected ? "white" : "core-brand"}
             size={20}
             style={
               hasCustomIcon && isSelected
@@ -85,9 +85,9 @@ export const ChartTypeOption = ({
             top="-0.5rem"
             right="-0.6rem"
             radius="xl"
-            color="text-tertiary"
+            color="text-disabled"
             variant="viewHeader"
-            bg="background-primary"
+            bg="background_page-primary"
             className={cx(
               ChartTypeOptionS.BorderedButton,
               ChartTypeOptionS.SettingsButton,
@@ -103,7 +103,7 @@ export const ChartTypeOption = ({
           ta="center"
           fw="bold"
           fz="sm"
-          color={isSelected ? "brand" : "text-secondary"}
+          color={isSelected ? "core-brand" : "text-secondary"}
           data-testid="chart-type-option-label"
         >
           {displayName}

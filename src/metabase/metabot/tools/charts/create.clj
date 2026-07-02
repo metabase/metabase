@@ -63,24 +63,22 @@
                       {:agent-error? true
                        :query-id query-id
                        :available-queries (keys queries-state)})))
-
     ;; Create the chart and generate navigation URL
     (let [chart-id (str (random-uuid))
           results-url (links/query-and-viz-link query chart-type)
           chart-data {:chart-id chart-id
                       :query-id query-id
                       :chart-type chart-type}]
-
       (log/info "Created chart" {:chart-id chart-id
                                  :chart-type chart-type
                                  :results-url results-url})
-
       {:chart-id chart-id
        :chart-content (format-chart-for-llm chart-data)
        :chart-link (format-chart-link chart-id)
        :chart-type chart-type
        :query-id query-id
+       :query query
+       :results-url results-url
        :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
                           "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "
-                          "where 'Chart' is a meaningful description.")
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})))
+                          "where 'Chart' is a meaningful description.")})))

@@ -13,7 +13,7 @@ export const createMockEditor = (overrides: Partial<Editor> = {}): Editor =>
     },
     state: {
       selection: { $from: {}, empty: true },
-      doc: { nodeAt: jest.fn(), resolve: jest.fn() },
+      doc: { nodeAt: jest.fn(), resolve: jest.fn(() => ({ depth: 0 })) },
     },
     options: {
       editable: true,

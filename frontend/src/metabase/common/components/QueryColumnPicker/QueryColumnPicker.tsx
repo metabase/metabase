@@ -12,18 +12,18 @@ import {
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
@@ -91,7 +91,7 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   checkIsColumnSelected,
   onSelect,
   onSelectSection,

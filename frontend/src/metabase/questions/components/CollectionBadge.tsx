@@ -1,11 +1,8 @@
-import type { ComponentType, PropsWithChildren } from "react";
-
-import { Badge } from "metabase/common/components/Badge";
-import { Collections } from "metabase/entities/collections";
+import { useGetCollectionQuery } from "metabase/api";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { getName } from "metabase/utils/name";
 import type {
@@ -22,19 +19,15 @@ const IRREGULAR_ICON_PROPS = {
   targetOffsetX: IRREGULAR_ICON_WIDTH,
 };
 
-type CollectionBadgeProps = {
-  className?: string;
+type CollectionBadgeInnerProps = {
   collection: CollectionType;
-  isSingleLine?: boolean;
   onClick?: () => void;
 };
 
 const CollectionBadgeInner = ({
-  className,
   collection,
-  isSingleLine,
   onClick,
-}: CollectionBadgeProps) => {
+}: CollectionBadgeInnerProps) => {
   const tc = useTranslateContent();
   const getIcon = useGetIcon();
 
@@ -48,32 +41,34 @@ const CollectionBadgeInner = ({
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
 
-  const clickActionProps = onClick
-    ? { onClick }
-    : { to: modelToUrl({ model: "collection", ...collection }) };
   return (
-    <Badge
-      className={className}
-      icon={icon}
-      activeColor={icon.color}
-      inactiveColor="text-tertiary"
-      isSingleLine={isSingleLine}
-      {...clickActionProps}
+    <Breadcrumb
+      icon={icon.name}
+      iconColor={icon.color}
+      to={
+        onClick ? undefined : modelToUrl({ model: "collection", ...collection })
+      }
+      onClick={onClick}
     >
       {tc(getName(collection))}
-    </Badge>
+    </Breadcrumb>
   );
 };
 
-export const CollectionBadge = Collections.load({
-  id: (state: State, props: { collectionId?: CollectionId }) =>
-    props.collectionId || "root",
-  wrapped: true,
-  loadingAndErrorWrapper: false,
-})(CollectionBadgeInner) as ComponentType<
-  PropsWithChildren<
-    {
-      collectionId?: CollectionId;
-    } & Omit<CollectionBadgeProps, "collection">
-  >
->;
+type CollectionBadgeProps = {
+  collectionId?: CollectionId;
+  onClick?: () => void;
+};
+
+export const CollectionBadge = ({
+  collectionId,
+  onClick,
+}: CollectionBadgeProps) => {
+  const { data: collection } = useGetCollectionQuery({
+    id: collectionId || "root",
+  });
+  if (!collection) {
+    return null;
+  }
+  return <CollectionBadgeInner collection={collection} onClick={onClick} />;
+};

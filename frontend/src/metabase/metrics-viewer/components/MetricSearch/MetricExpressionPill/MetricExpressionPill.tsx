@@ -1,11 +1,12 @@
+import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import type { ExpressionDefinitionEntry } from "metabase/metrics-viewer/types";
 import { Badge, Flex, Icon, Menu, Pill } from "metabase/ui";
 
-import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
 import {
   type MetricNameMap,
   buildExpressionForPill,
@@ -18,6 +19,7 @@ type MetricExpressionPillProps = {
   expressionEntry: ExpressionDefinitionEntry;
   metricNames: MetricNameMap;
   colors?: string[];
+  isDisabled?: boolean;
   onNameChange: (name: string) => void;
   onRemove: () => void;
   onEdit: () => void;
@@ -27,6 +29,7 @@ export function MetricExpressionPill({
   expressionEntry,
   metricNames,
   colors,
+  isDisabled,
   onNameChange,
   onRemove,
   onEdit,
@@ -107,10 +110,12 @@ export function MetricExpressionPill({
             ml: 0,
             "aria-label": t`Remove expression`,
           }}
-          data-testid="metrics-viewer-search-pill"
+          data-testid="metrics-viewer-expression-pill"
         >
           <Flex align="center" gap="xs">
-            <SourceColorIndicator colors={colors} />
+            <SourceColorIndicator
+              colors={isDisabled ? ["var(--mb-color-icon-secondary)"] : colors}
+            />
             {isRenaming ? (
               <EditableText
                 ref={editableRef}
@@ -125,28 +130,48 @@ export function MetricExpressionPill({
               />
             ) : (
               <Flex align="center" gap={0}>
-                {expressionEntry.name && expressionEntry.name !== expressionText
-                  ? expressionEntry.name
-                  : expressionForPill.map((segment, i) => {
-                      if (typeof segment === "number") {
-                        return (
-                          <Badge
-                            key={i}
-                            circle
-                            c="text-hover"
-                            style={{ marginInlineStart: "0.2em" }}
-                          >
-                            {segment}
-                          </Badge>
-                        );
-                      }
+                {expressionEntry.name &&
+                expressionEntry.name !== expressionText ? (
+                  <span
+                    className={cx(
+                      S.expressionText,
+                      isDisabled && S.disabledText,
+                    )}
+                  >
+                    {expressionEntry.name}
+                  </span>
+                ) : (
+                  expressionForPill.map((segment, i) => {
+                    if (typeof segment === "number") {
                       return (
-                        <span key={i} className={S.expressionText}>
+                        <Badge
+                          key={i}
+                          circle
+                          c="text-brand-hover"
+                          style={{ marginInlineStart: "0.2em" }}
+                        >
                           {segment}
-                        </span>
+                        </Badge>
                       );
-                    })}
-                <span className={S.expressionText}>{"\u00a0"}</span>
+                    }
+                    return (
+                      <span
+                        key={i}
+                        className={cx(
+                          S.expressionText,
+                          isDisabled && S.disabledText,
+                        )}
+                      >
+                        {segment}
+                      </span>
+                    );
+                  })
+                )}
+                <span
+                  className={cx(S.expressionText, isDisabled && S.disabledText)}
+                >
+                  {"\u00a0"}
+                </span>
               </Flex>
             )}
           </Flex>

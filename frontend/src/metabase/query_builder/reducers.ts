@@ -58,7 +58,6 @@ import type {
   Range,
 } from "metabase/redux/store";
 import { clone } from "metabase/utils/clone";
-import type { Deferred } from "metabase/utils/promise";
 import type {
   Card,
   CollectionItemModel,
@@ -310,7 +309,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
           ...UI_CONTROLS_SIDEBAR_DEFAULTS,
           ...CLOSED_NATIVE_EDITOR_SIDEBARS,
           isShowingQuestionInfoSidebar: true,
-          queryBuilderMode: "view",
         }),
       )
       .addCase(CLOSE_QUESTION_INFO, (state) => ({
@@ -321,7 +319,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         setUIControls(state, {
           ...(UI_CONTROLS_SIDEBAR_DEFAULTS as Partial<QueryBuilderUIControls>),
           isShowingQuestionSettingsSidebar: true,
-          queryBuilderMode: "view",
         } as Partial<QueryBuilderUIControls>),
       )
       .addCase(CLOSE_QUESTION_SETTINGS, (state) => ({
@@ -490,15 +487,15 @@ export const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   },
 );
 
-// promise used for tracking a query execution in progress. when a query is started we capture this.
-export const cancelQueryDeferred = createReducer<Deferred<void> | null>(
+// AbortController used for tracking a query execution in progress. when a query is started we capture this.
+export const cancelQueryController = createReducer<AbortController | null>(
   null,
   (builder) => {
     builder
       .addCase<
         string,
-        { type: string; payload: { cancelQueryDeferred: Deferred<void> } }
-      >(RUN_QUERY, (_state, action) => action.payload.cancelQueryDeferred)
+        { type: string; payload: { cancelQueryController: AbortController } }
+      >(RUN_QUERY, (_state, action) => action.payload.cancelQueryController)
       .addCase(CANCEL_QUERY, () => null)
       .addCase(QUERY_COMPLETED, () => null)
       .addCase(QUERY_ERRORED, () => null);
@@ -624,96 +621,68 @@ export const selectedTimelineEventIds = createReducer<number[]>(
   },
 );
 
+type CardPayloadAction = {
+  type: string;
+  payload: Card;
+};
+
+type NestedCardPayloadAction = {
+  type: string;
+  payload: {
+    card: Card;
+  };
+};
+
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
   builder
     .addCase(RESET_QB, () => null)
     .addCase(CLOSE_QB, () => null)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(INITIALIZE_QB, (state, action) =>
+    .addCase<string, NestedCardPayloadAction>(INITIALIZE_QB, (state, action) =>
       action.payload ? action.payload.card : null,
     )
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(SOFT_RELOAD_CARD, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(RELOAD_CARD, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
+    .addCase<string, CardPayloadAction>(
+      SOFT_RELOAD_CARD,
+      (state, action) => action.payload,
+    )
+    .addCase<string, CardPayloadAction>(
+      RELOAD_CARD,
+      (state, action) => action.payload,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      SET_CARD_AND_RUN,
+      (state, action) => action.payload.card,
+    )
+    .addCase<string, CardPayloadAction>(
+      API_CREATE_QUESTION,
+      (state, action) => action.payload,
+    )
+    .addCase<string, CardPayloadAction>(
+      API_UPDATE_QUESTION,
+      (state, action) => action.payload,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      CANCEL_QUESTION_CHANGES,
+      (state, action) => action.payload.card,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      UPDATE_QUESTION,
+      (state, action) => action.payload.card,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      QUERY_COMPLETED,
+      (state, action) => {
+        if (!state) {
+          return state;
+        }
+        return {
+          ...state,
+          display: action.payload.card.display,
+          result_metadata: action.payload.card.result_metadata,
+          visualization_settings: action.payload.card.visualization_settings,
         };
-      }
-    >(SET_CARD_AND_RUN, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(API_CREATE_QUESTION, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(API_UPDATE_QUESTION, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(CANCEL_QUESTION_CHANGES, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(UPDATE_QUESTION, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(QUERY_COMPLETED, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        display: action.payload.card.display,
-        result_metadata: action.payload.card.result_metadata,
-        visualization_settings: action.payload.card.visualization_settings,
-      };
-    })
+      },
+    )
     .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
       if (!state) {
         return state;

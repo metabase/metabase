@@ -1,4 +1,5 @@
 (ns metabase-enterprise.tenants.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.tenants.api-test]}}}}}}
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [metabase.collections.models.collection :as collection]
@@ -414,7 +415,6 @@
           (testing "attempting to archive tenant root collection returns 400"
             (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
                                   {:archived true}))
-
           (testing "tenant root collection remains unarchived"
             (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
 
@@ -430,7 +430,6 @@
               (testing "archive child collection returns 200"
                 (mt/user-http-request :crowberto :put 200 (str "collection/" child-id)
                                       {:archived true}))
-
               (testing "child collection is archived"
                 (is (t2/select-one-fn :archived :model/Collection :id child-id))))))))))
 
@@ -441,7 +440,6 @@
         (mt/with-temp [:model/Tenant {tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test"}]
           (testing "attempting to delete tenant root collection returns 400"
             (mt/user-http-request :crowberto :delete 400 (str "collection/" tenant-collection-id)))
-
           (testing "tenant root collection still exists"
             (is (t2/exists? :model/Collection :id tenant-collection-id))))))))
 
@@ -457,7 +455,6 @@
                                                              :archived true}]
               (testing "deleting the collection is allowed"
                 (mt/user-http-request :crowberto :delete 200 (str "collection/" child-id)))
-
               (testing "child collection still exists"
                 (is (not (t2/exists? :model/Collection :id child-id)))))))))))
 
@@ -472,7 +469,6 @@
           (testing "attempting to move tenant root collection returns 400"
             (mt/user-http-request :crowberto :put 400 (str "collection/" tenant-collection-id)
                                   {:parent_id target-id}))
-
           (testing "tenant root collection location remains at root"
             (is (= "/" (t2/select-one-fn :location :model/Collection :id tenant-collection-id)))))))))
 
@@ -491,7 +487,6 @@
               (testing "can move child B under child A"
                 (mt/user-http-request :crowberto :put 200 (str "collection/" child-b-id)
                                       {:parent_id child-a-id})
-
                 (is (= (str "/" tenant-collection-id "/" child-a-id "/")
                        (t2/select-one-fn :location :model/Collection :id child-b-id)))))))))))
 
@@ -658,6 +653,24 @@
                                    (into #{}))]
               (is (= #{"Normal Collection" "Shared Tenant Collection" "Tenant Specific Collection"}
                      trash-items)))))))))
+
+(deftest tenant-collections-can-be-permanently-deleted-from-trash-test
+  (testing "DELETE /api/collection/:id"
+    (testing "archived tenant collections can be permanently deleted (#74148)"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Collection"}
+                         :model/Collection {shared-id :id} {:name      "Shared Tenant Collection"
+                                                            :namespace "shared-tenant-collection"}
+                         :model/Collection {tenant-id :id} {:name      "Tenant Specific Collection"
+                                                            :namespace "tenant-specific"}]
+            ;; collections must be trashed before they can be deleted
+            (doseq [id [normal-id shared-id tenant-id]]
+              (mt/user-http-request :crowberto :put 200 (str "collection/" id) {:archived true}))
+            (testing "every trashed collection is permanently deleted, regardless of namespace"
+              (doseq [id [normal-id shared-id tenant-id]]
+                (mt/user-http-request :crowberto :delete 200 (str "collection/" id))
+                (is (not (t2/exists? :model/Collection :id id)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            Tenant Deactivation Archives Collections Tests                                       |

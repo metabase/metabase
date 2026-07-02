@@ -63,27 +63,26 @@
                                         :thread-ts            thread-ts
                                         :tool-name->friendly  tool-name->friendly})
         prefetched-viz (atom {})
-        on-data        (make-viz-prefetch-callback prefetched-viz)
-        stored-msg-id  (atom nil)]
+        on-data        (make-viz-prefetch-callback prefetched-viz)]
     (set-status! "Thinking...")
     (try
-      (let [message-external-id (make-streaming-ai-request
-                                 conversation-id
-                                 prompt
-                                 thread
-                                 bot-user-id
-                                 channel-id
-                                 extra-history
-                                 {:on-text              on-text
-                                  :on-tool-start        on-tool-start
-                                  :on-tool-end          nil
-                                  :on-data              on-data
-                                  :team-id              (:team_id auth-info)
-                                  :thread-ts            thread-ts
-                                  :req-slack-msg-id     (:ts event)
-                                  :get-res-slack-msg-id nil
-                                  :request-prompt       (channel-request-prompt prompt)
-                                  :stored-msg-id        stored-msg-id})]
+      (let [{message-external-id :external-id assistant-msg-id :msg-id}
+            (make-streaming-ai-request
+             conversation-id
+             prompt
+             thread
+             bot-user-id
+             channel-id
+             extra-history
+             {:on-text              on-text
+              :on-tool-start        on-tool-start
+              :on-tool-end          nil
+              :on-data              on-data
+              :team-id              (:team_id auth-info)
+              :thread-ts            thread-ts
+              :req-slack-msg-id     (:ts event)
+              :get-res-slack-msg-id nil
+              :request-prompt       (channel-request-prompt prompt)})]
         (when (seq @prefetched-viz)
           (set-status! "Rendering results..."))
         (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
@@ -96,7 +95,7 @@
               res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
                                                                          final-text :blocks final-blocks)]
           (when-let [res-ts (:ts res)]
-            (metabot.persistence/set-response-slack-msg-id! @stored-msg-id res-ts))
+            (metabot.persistence/set-response-slack-msg-id! assistant-msg-id res-ts))
           (when-not (:ok res)
             (log/errorf "[slackbot] channel post-message failed: %s (block_count=%d block_types=%s response_messages=%s)"
                         (:error res)

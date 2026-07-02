@@ -1,13 +1,13 @@
 ::-webkit-input-placeholder {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 :-moz-placeholder {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 :-ms-input-placeholder {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .FormField {
@@ -32,9 +32,9 @@
   font-weight: 700;
   font-size: 16px;
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   padding: 0.75em;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 8px;
   outline: none;
 }
@@ -49,6 +49,6 @@
 
 .FormInput:focus:not(.noFocus),
 .FormField:hover .FormInput:not(.noFocus) {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
   transition: border 300ms ease-in-out;
 }

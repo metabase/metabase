@@ -1,4 +1,7 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
@@ -23,30 +26,35 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
-      (with-redefs [process-userland-query/save-execution-metadata!*
-                    (fn [query-execution]
-                      (when-let [^bytes qe-hash (:hash query-execution)]
-                        (deliver
-                         result
-                         (if (java.util.Arrays/equals qe-hash original-hash)
-                           query-execution
-                           ;; if you're seeing this there is probably some
-                           ;; bug that is causing query hashes to get
-                           ;; calculated in an inconsistent manner; check
-                           ;; `:query` vs `:query-execution-query`
-                           (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
-                                    {:query                 query
-                                     :original-hash         (some-> original-hash codecs/bytes->hex)
-                                     :query-execution       query-execution
-                                     :query-execution-hash  (some-> qe-hash codecs/bytes->hex)
-                                     :query-execution-query (:json_query query-execution)})))))]
-        (run
-         (fn qe-result* []
-           (let [qe (deref result 1000 ::timed-out)]
-             (cond-> qe
-               (:running_time qe) (update :running_time int?)
-               (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                  (some-> a-hash codecs/bytes->hex)))))))))))
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
+        ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [process-userland-query/save-execution-metadata!*
+                      (fn [query-executions]
+                        (doseq [{qe-hash :hash, :as query-execution} query-executions
+                                :when qe-hash]
+                          (deliver
+                           result
+                           (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
+                             query-execution
+                             ;; if you're seeing this there is probably some
+                             ;; bug that is causing query hashes to get
+                             ;; calculated in an inconsistent manner; check
+                             ;; `:query` vs `:query-execution-query`
+                             (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
+                                      {:query                 query
+                                       :original-hash         (some-> original-hash codecs/bytes->hex)
+                                       :query-execution       query-execution
+                                       :query-execution-hash  (some-> ^bytes qe-hash codecs/bytes->hex)
+                                       :query-execution-query (:json_query query-execution)})))))]
+          (run
+           (fn qe-result* []
+             (let [qe (deref result 1000 ::timed-out)]
+               (cond-> qe
+                 (:running_time qe) (update :running_time int?)
+                 (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                    (some-> a-hash codecs/bytes->hex))))))))))))
 
 (defmacro with-query-execution! {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution! ~query (fn [~qe-result-binding] ~@body)))
@@ -142,7 +150,6 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized false} (qe)))))
-
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -152,7 +159,6 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized false} (qe)))))
-
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -202,8 +208,8 @@
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-execution-metadata! (fn [info]
-                                                                    (reset! saved-query-execution? info))]
+    (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
+                                                                                  (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (let [status (atom ::not-started)]
           (binding [qp.pipeline/*canceled-chan* canceled-chan

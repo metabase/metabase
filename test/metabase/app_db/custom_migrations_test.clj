@@ -443,14 +443,12 @@
                  :row 0}
                 {:id  tab1-card2-id
                  :row 2}
-
-               ;; tab 2
+                ;; tab 2
                 {:id  tab2-card1-id
                  :row 8}
                 {:id  tab2-card2-id
                  :row 12}
-
-               ;; tab 3
+                ;; tab 3
                 {:id  tab4-card1-id
                  :row 14}
                 {:id  tab4-card2-id
@@ -487,7 +485,6 @@
                                                         :model_id  1
                                                         :user_id   user-id
                                                         :timestamp :%now}))]
-
       (migrate!)
       (testing "forward migration migrate correclty"
         (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
@@ -530,7 +527,6 @@
                                                         :model_id  1
                                                         :user_id   user-id
                                                         :timestamp :%now}))]
-
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 5 :size_y 4}
@@ -595,10 +591,10 @@
                                 acc-row []]
                            (let [size-x  (inc (math/round (* 9 (math/random))))
                                  new-col (+ col size-x)]
-                              ;; we want to ensure we have a card at the end of the row
+                             ;; we want to ensure we have a card at the end of the row
                              (if (>= new-col 18)
                                (cons [col row (- 18 col) size-y] acc-row)
-                                ;; probability of skipping is 5%
+                               ;; probability of skipping is 5%
                                (if (> (math/random) 0.95)
                                  (recur (+ col size-x) acc-row)
                                  (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
@@ -610,17 +606,14 @@
 (deftest ^:mb/old-migrations-test migrated-grid-18-to-24-stretch-test
   (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
         rollbacked-to-24 (map @#'custom-migrations/migrate-dashboard-grid-from-24-to-18 migrated-to-18)]
-
     (testing "make sure the initial arry is good to start with"
       (is (true? (no-cards-are-out-of-grid-and-has-size-0? big-random-dashboard-cards 18)))
       (is (true? (no-cards-are-overlap? big-random-dashboard-cards))))
-
     (testing "migrates to 24"
       (testing "shouldn't have any cards out of grid"
         (is (true? (no-cards-are-out-of-grid-and-has-size-0? migrated-to-18 24))))
       (testing "shouldn't have overlapping cards"
         (is (true? (no-cards-are-overlap? migrated-to-18)))))
-
     (testing "rollbacked to 18"
       (testing "shouldn't have any cards out of grid"
         (is (true? (no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-24 18))))
@@ -1071,7 +1064,7 @@
           ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
           ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
           ;; applied so we can't do that.
-          (with-redefs [database/set-new-database-permissions! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [database/set-new-database-permissions! (constantly nil)]
             (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
               (let [default-db                {:name       "DB"
                                                :engine     "postgres"
@@ -1116,7 +1109,6 @@
                                   (:settings (t2/query-one {:select [:settings]
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
-
                   (testing "the options is merged into settings correctly"
                     (is (= {:persist-models-enabled true
                             :database-enable-actions true}
@@ -1127,24 +1119,21 @@
                     (testing "even when settings is empty"
                       (is (= {:persist-models-enabled true}
                              (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
-
                   (testing "nil or empty options doesn't break migration"
                     (is (= {:database-enable-actions true}
                            (t2/select-one-fn :settings :model/Database nil-options-id)))
                     (is (= {:database-enable-actions true}
                            (t2/select-one-fn :settings :model/Database empty-options-id)))))
-
                 (testing "rollback migration"
                   (migrate! :down 46)
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] success-id)))
+                           (t2/select-one [:model/Database :settings :options] success-id))))
+                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] empty-options-id))))
-
-                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
+                           (t2/select-one [:model/Database :settings :options] empty-options-id)))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1553,14 +1542,12 @@
         sso-expected-mapping  {"group-mapping-a" [(inc admin-group-id)]
                                "group-mapping-b" [(inc admin-group-id) (+ 2 admin-group-id)]}
         ldap-expected-mapping {"dc=metabase,dc=com" [(inc admin-group-id)]}]
-
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
         (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
-
     (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
@@ -1571,7 +1558,6 @@
           (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
-
     (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
@@ -1587,11 +1573,9 @@
       ;; 0 because we removed them and fresh db won't trigger any
       (is (= 0 (t2/count :data_migrations)))
       (migrate!))
-
     (testing "no data_migrations table after v.48.00-024"
       (is (thrown? ExceptionInfo
                    (t2/count :data_migrations))))
-
     (testing "rollback causes all known data_migrations to reappear"
       (migrate! :down 47)
       ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
@@ -1629,19 +1613,16 @@
         (is (true? (set/subset?
                     (set (#'custom-migrations/db-type->to-unified-columns db-type))
                     (table-and-column-of-type datetime-type)))))
-
       (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
         (migrate!)
         (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
                (set (table-and-column-of-type datetime-type)))))
-
       (testing "downgrade should revert all converted columns to its original type"
         (migrate! :down 48)
         (is (true? (set/subset?
                     (set (#'custom-migrations/db-type->to-unified-columns db-type))
                     (table-and-column-of-type datetime-type)))))
-
-        ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
+      ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
       (testing "not nullable timestamp column should not have extra on update"
         (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
                                                            :last_name   "Hughes"
@@ -1692,14 +1673,12 @@
             (is (not (contains? card-revision-object "type"))))
           (testing "has dataset"
             (is (contains? card-revision-object "dataset")))))
-
       (testing "after migration card revisions should have type"
         (migrate!)
         (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
               model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
           (is (= "question" (get card-revision-object "type")))
           (is (= "model" (get model-revision-object "type")))))
-
       (testing "rollback should remove type and keep dataset"
         (migrate! :down 48)
         (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
@@ -1710,30 +1689,30 @@
           (is (not (contains? model-revision-object "type"))))))))
 
 (deftest ^:mb/old-migrations-test card-revision-add-type-null-character-test
-  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)")
-  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
-    (let [user-id          (:id (new-instance-with-default :core_user))
-          db-id            (:id (new-instance-with-default :metabase_database))
-          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
-          viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
-          card-revision-id (:id (new-instance-with-default :revision
-                                                           {:object    (json/encode
-                                                                        (assoc (dissoc card :type)
-                                                                               :visualization_settings viz-settings))
-                                                            :model     "Card"
-                                                            :model_id  (:id card)
-                                                            :user_id   user-id}))]
-      (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
-          (testing "doesn't have type"
-            (is (not (contains? card-revision-object "type"))))))
-      (testing "after migration card revisions should have type"
-        (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
-          (is (= "question" (get card-revision-object "type")))
-          (testing "original visualization_settings should be preserved"
-            (is (= viz-settings
-                   (get card-revision-object "visualization_settings")))))))))
+  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)"
+    (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+      (let [user-id          (:id (new-instance-with-default :core_user))
+            db-id            (:id (new-instance-with-default :metabase_database))
+            card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+            viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
+            card-revision-id (:id (new-instance-with-default :revision
+                                                             {:object   (json/encode
+                                                                         (assoc (dissoc card :type)
+                                                                                :visualization_settings viz-settings))
+                                                              :model    "Card"
+                                                              :model_id (:id card)
+                                                              :user_id  user-id}))]
+        (testing "sanity check revision object"
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+            (testing "doesn't have type"
+              (is (not (contains? card-revision-object "type"))))))
+        (testing "after migration card revisions should have type"
+          (migrate!)
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+            (is (= "question" (get card-revision-object "type")))
+            (testing "original visualization_settings should be preserved"
+              (is (= viz-settings
+                     (get card-revision-object "visualization_settings"))))))))))
 
 (deftest ^:mb/old-migrations-test delete-scan-field-values-trigger-test
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
@@ -1770,13 +1749,11 @@
                       (testing "sanity check that the schedule exists"
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-
                     (migrate!)
                     (testing "default options and scan with manual schedules should have scan field values"
                       (doseq [db db-with-scan-fv]
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-
                     (testing "never scan and on demand should not have scan field values"
                       (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
                         (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
@@ -1801,7 +1778,6 @@
                                                  :where  [:= :id db-id]})))]
         (testing "sanity check that db details is encrypted"
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
-
         (testing "after migrate up, db details should still be encrypted"
           (migrate!)
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
@@ -1841,7 +1817,6 @@
           (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
             (migrate! :down 49)
             (is (= #{} (scheduler-job-keys))))
-
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
             (migrate!)
             ;; we redefine this so quartz triggers that run on different threads use the same db connection as this test
@@ -2049,13 +2024,10 @@
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
-
     (testing "Values were indeed encrypted"
       (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
-
     (encryption-test/with-secret-key "whateverwhatever"
       (migrate!))
-
     (testing "But not anymore"
       (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
@@ -2213,7 +2185,6 @@
             (is (false? (sample-content-created?)))
             (migrate!)
             (is (= create? (sample-content-created?))))
-
           (when (true? create?)
             (testing "The Examples collection has permissions set to grant read-write access to all users"
               (let [id (t2/select-one-pk :model/Collection :is_sample true)]
@@ -2596,7 +2567,6 @@
                                                                  :channel_type "email"
                                                                  :details      (json/encode {:emails ["test@test.com"]})
                                                                  :enabled      true})))]
-
           (testing "after migration"
             (migrate!)
             (testing "pulse is migrated to notification"
@@ -2609,16 +2579,13 @@
                         :active       true
                         :creator_id   user-id}
                        (select-keys notification [:payload_type :active :creator_id])))
-
                 (is (= {:card_id        card-id
                         :send_once      false
                         :send_condition "has_result"}
                        (select-keys notification-card [:card_id :send_once :send_condition])))
-
                 (is (= {:type          "notification-subscription/cron"
                         :cron_schedule "0 0 18 * * ? *"}
                        (select-keys subscription [:type :cron_schedule])))
-
                 (is (= {:channel_type "channel/email"}
                        (select-keys handler [:channel_type])))
                 (is (= {:type    "notification-recipient/raw-value"
@@ -2627,7 +2594,6 @@
                 (is (= {:type    "notification-recipient/raw-value"
                         :details "{\"value\":\"test@test.com\"}"}
                        (select-keys recipient [:type :details]))))))
-
           (testing "after downgrade"
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))
@@ -2972,3 +2938,200 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest ^:mb/old-migrations-test migrate-away-from-sqlite-sample-database-on-downgrade-rollback-test
+  (testing "Downgrading past the changeset (the real rollback path - the target version has none of the new
+           sample database code) removes the SQLite sample database and the whole Example collection tree that
+           the CreateSampleContent migration installed"
+    ;; Start early enough that CreateSampleContent runs under our binding and installs the real SQLite Sample
+    ;; Database and Example collection tree - the exact state a SQLite-sample version leaves to be torn down.
+    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
+      (binding [custom-migrations/*create-sample-content* true]
+        (migrate!))
+      (let [sample-db-id    (:id (t2/query-one {:select [:id] :from [:metabase_database]
+                                                :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
+            sample-coll-ids (mapv :id (t2/query {:select [:id] :from [:collection] :where [:= :is_sample true]}))]
+        (testing "precondition: the SQLite sample database and its Example collections exist after upgrade"
+          (is (some? sample-db-id))
+          (is (seq sample-coll-ids)))
+        (migrate! :down 62)
+        (testing "the SQLite sample database is gone"
+          (is (not (t2/exists? (t2/table-name :model/Database) :id sample-db-id))))
+        (testing "the entire outgoing Example collection tree is deleted - the cascade is complete"
+          (is (zero? (t2/count (t2/table-name :model/Collection) :id [:in sample-coll-ids]))))))))
+
+(deftest migrate-away-from-sqlite-sample-database-on-downgrade-test
+  (testing "Downgrade removes the SQLite sample database and the content it leaves empty, keeping everything else"
+    (mt/with-temp
+      [:model/Database   sample      {:engine :sqlite, :is_sample true, :details {:db "mem:sample"}}
+       :model/Database   other       {:engine :h2,     :details {:db "mem:other"}}
+       :model/Card       other-card  {:database_id (:id other)}
+       :model/Dashboard  sample-dash {}
+       :model/Dashboard  mixed-dash  {}
+       :model/Collection examples    {:name "Examples",   :is_sample true}
+       :model/Collection ecommerce   {:name "E-commerce", :is_sample true, :location (str "/" (:id examples) "/")}
+       :model/Collection keep-coll   {:name "Keep me"}]
+      ;; Mirror the bundled sample content's fan-out: 8 tables x 7 fields, 39 cards, plus dashcards,
+      ;; series, and tabs. MySQL 9.7 resolves a multi-level ON DELETE CASCADE of this shape
+      ;; incompletely (it deletes the tables but orphans most cards and all fields), so the cleanup
+      ;; must not rely on DB-level cascade. This fixture makes that regression visible.
+      (let [table-ids     (vec (t2/insert-returning-pks! :model/Table
+                                                         (for [i (range 8)]
+                                                           {:db_id  (:id sample)
+                                                            :name   (str "sample_table_" i)
+                                                            :active true})))
+            _             (t2/insert! :model/Field
+                                      (for [tid table-ids
+                                            i   (range 7)]
+                                        {:table_id      tid
+                                         :name          (str "field_" i)
+                                         :base_type     :type/Text
+                                         :database_type "TEXT"
+                                         :position      i}))
+            card-ids      (vec (t2/insert-returning-pks! :model/Card
+                                                         (for [i (range 39)]
+                                                           {:name                   (str "sample card " i)
+                                                            :display                "table"
+                                                            :dataset_query          {}
+                                                            :visualization_settings {}
+                                                            :creator_id             (mt/user->id :rasta)
+                                                            :database_id            (:id sample)
+                                                            :table_id               (nth table-ids (mod i (count table-ids)))})))
+            [dc1 _dc2 dc3] (t2/insert-returning-pks! :model/DashboardCard
+                                                     [{:dashboard_id (:id sample-dash) :card_id (first card-ids)
+                                                       :size_x 4 :size_y 4 :row 0 :col 0}
+                                                      {:dashboard_id (:id mixed-dash) :card_id (second card-ids)
+                                                       :size_x 4 :size_y 4 :row 0 :col 0}
+                                                      {:dashboard_id (:id mixed-dash) :card_id (:id other-card)
+                                                       :size_x 4 :size_y 4 :row 0 :col 4}])
+            _             (t2/insert! :model/DashboardCardSeries {:dashboardcard_id dc1
+                                                                  :card_id          (nth card-ids 2)
+                                                                  :position         0})
+            _             (t2/insert! :model/DashboardTab {:dashboard_id (:id sample-dash)
+                                                           :name         "Tab 1"
+                                                           :position     0})
+            ;; parameter_card rows orphan in three ways; a fourth must survive.
+            [pc-src
+             pc-card-owner
+             pc-dash-owner
+             pc-keep]    (t2/insert-returning-pks!
+                          :model/ParameterCard
+                          [;; value source is a sample card -> delete
+                           {:card_id (first card-ids) :parameterized_object_type "dashboard"
+                            :parameterized_object_id (:id mixed-dash) :parameter_id "src"}
+                           ;; parameterized object is a sample card -> delete
+                           {:card_id (:id other-card) :parameterized_object_type "card"
+                            :parameterized_object_id (second card-ids) :parameter_id "card-owner"}
+                           ;; parameterized object is a deleted sample dashboard -> delete
+                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
+                            :parameterized_object_id (:id sample-dash) :parameter_id "dash-owner"}
+                           ;; non-sample source on a surviving dashboard -> keep
+                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
+                            :parameterized_object_id (:id mixed-dash) :parameter_id "keep"}])]
+        ;; Collection creation auto-grants an "All Users" permission row (object "/collection/<id>/") for each
+        ;; sample collection; the migration must clean those up too.
+        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
+        (testing "the SQLite sample database and all of its child content are deleted, with no orphans"
+          (is (not (t2/exists? :model/Database :id (:id sample))))
+          (is (zero? (t2/count :metabase_table :db_id (:id sample))))
+          (is (zero? (t2/count :metabase_field :table_id [:in table-ids])))
+          (is (zero? (t2/count :report_card :database_id (:id sample))))
+          (is (zero? (t2/count :report_dashboardcard :card_id [:in card-ids])))
+          (is (zero? (t2/count :dashboardcard_series :card_id [:in card-ids]))))
+        (testing "a dashboard left empty by the deletion is deleted, along with its tabs"
+          (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))
+          (is (zero? (t2/count :dashboard_tab :dashboard_id (:id sample-dash)))))
+        (testing "parameter_card rows referencing a deleted sample card or dashboard are removed"
+          (is (not (t2/exists? :model/ParameterCard :id pc-src)))
+          (is (not (t2/exists? :model/ParameterCard :id pc-card-owner)))
+          (is (not (t2/exists? :model/ParameterCard :id pc-dash-owner)))
+          (testing "but an unrelated parameter_card is kept"
+            (is (t2/exists? :model/ParameterCard :id pc-keep))))
+        (testing "the sample Example collections and their permission records are deleted"
+          (is (not (t2/exists? :model/Collection :id (:id examples))))
+          (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
+          (is (zero? (t2/count :permissions :object [:in [(format "/collection/%d/" (:id examples))
+                                                          (format "/collection/%d/read/" (:id examples))]]))))
+        (testing "a dashboard that still has other cards, and unrelated content, is kept"
+          (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
+          (is (t2/exists? :report_dashboardcard :id dc3))
+          (is (t2/exists? :model/Card :id (:id other-card)))
+          (is (t2/exists? :model/Database :id (:id other)))
+          (is (t2/exists? :model/Collection :id (:id keep-coll))))))))
+
+(deftest ^:mb/old-migrations-test downgrade-keeps-user-content-and-deletes-sample-dependents-test
+  (testing "Downgrade deletes everything that depends on the sample DB (transitively, even user-created), then keeps
+           any Example collection a user still has their own content in - leaving the RESTRICT FKs intact rather than
+           aborting on them"
+    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
+      (binding [custom-migrations/*create-sample-content* true]
+        (migrate!))
+      (let [examples-id  (:id (t2/query-one {:select [:id] :from [:collection]
+                                             :where [:= :is_sample true] :order-by [[:id :asc]]}))
+            ecommerce-id (:id (t2/query-one {:select [:id] :from [:collection]
+                                             :where [:= :is_sample true] :order-by [[:id :desc]]}))
+            sqlite-db-id (:id (t2/query-one {:select [:id] :from [:metabase_database]
+                                             :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
+            sample-card  (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
+            ins          (fn [t r] (first (t2/insert-returning-pks! t r)))
+            other-db     (ins :metabase_database {:name "User DB" :engine "h2" :is_sample false
+                                                  :details "{}" :created_at :%now :updated_at :%now})
+            ;; a user question that doesn't touch the sample DB, filed in Examples -> must survive
+            user-card    (ins :report_card {:name "keep me" :display "table" :dataset_query "{}"
+                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
+                                            :collection_id examples-id :created_at :%now :updated_at :%now})
+            ;; a user model built on a sample card -> depends transitively -> must be deleted
+            user-model   (ins :report_card {:name "built on sample" :display "table" :dataset_query "{}"
+                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
+                                            :source_card_id sample-card :collection_id examples-id
+                                            :created_at :%now :updated_at :%now})
+            ;; a curated table + a transform filed in E-commerce (RESTRICT FKs) -> keep that collection, FKs intact
+            table-id     (ins :metabase_table {:name "curated" :active true :db_id other-db
+                                               :collection_id ecommerce-id :created_at :%now :updated_at :%now})
+            transform-id (ins :transform {:name "tf" :source "{}" :target "{}" :source_type "query"
+                                          :collection_id ecommerce-id :created_at :%now :updated_at :%now})
+            exists?      (fn [t id] (boolean (seq (t2/query {:select [1] :from [t] :where [:= :id id] :limit 1}))))
+            coll-of      (fn [t id] (:collection_id (t2/query-one {:select [:collection_id] :from [t] :where [:= :id id]})))]
+        (migrate! :down 62)
+        (testing "the sample database and everything depending on it - including the user model - are deleted"
+          (is (not (exists? :metabase_database sqlite-db-id)))
+          (is (not (exists? :report_card sample-card)))
+          (is (not (exists? :report_card user-model))))
+        (testing "a user question that does not depend on the sample DB survives"
+          (is (exists? :report_card user-card)))
+        (testing "Example collections holding surviving user content are kept"
+          (is (exists? :collection examples-id))
+          (is (exists? :collection ecommerce-id)))
+        (testing "the RESTRICT-FK table and transform survive with their collection_id intact (no abort, no null-out)"
+          (is (exists? :metabase_table table-id))
+          (is (= ecommerce-id (coll-of :metabase_table table-id)))
+          (is (exists? :transform transform-id))
+          (is (= ecommerce-id (coll-of :transform transform-id))))))))
+
+(deftest ^:mb/old-migrations-test downgrade-leaves-no-orphaned-card-children-test
+  ;; B1 characterization: the migration hand-deletes only the dashcard tables and lets DB-level ON DELETE CASCADE
+  ;; clear report_card's other ~11 children (query_field, query_table, card_bookmark, report_cardfavorite, ...).
+  ;; Its own comment warns that MySQL 9.7 resolves cascades incompletely. This test seeds those children for a
+  ;; sample card and asserts none survive the card's deletion - i.e. it FAILS if the relied-on cascade leaves
+  ;; orphans. It deliberately asserts only on the outcome (no orphans), not on how the cleanup is done.
+  (testing "downgrade leaves no child rows pointing at a deleted sample card"
+    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
+      (binding [custom-migrations/*create-sample-content* true]
+        (migrate!))
+      (let [internal-user 13371338
+            sqlite-db-id  (:id (t2/query-one {:select [:id] :from [:metabase_database]
+                                              :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
+            sample-card   (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
+            ins           (fn [t r] (first (t2/insert-returning-pks! t r)))]
+        ;; children of report_card that the migration leaves to ON DELETE CASCADE (not hand-deleted)
+        (ins :query_field {:card_id sample-card :column "TOTAL" :explicit_reference true})
+        (ins :query_table {:card_id sample-card :table "ORDERS"})
+        (ins :card_bookmark {:user_id internal-user :card_id sample-card})
+        (ins :report_cardfavorite {:card_id sample-card :owner_id internal-user :created_at :%now :updated_at :%now})
+        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
+        (testing "the sample card was deleted"
+          (is (not (t2/exists? :report_card :id sample-card))))
+        (testing "no child table is left with a row pointing at the deleted card"
+          (doseq [table [:query_field :query_table :card_bookmark :report_cardfavorite]]
+            (is (zero? (t2/count table :card_id sample-card))
+                (str table " has an orphaned row referencing the deleted sample card"))))))))

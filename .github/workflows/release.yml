@@ -11,10 +11,6 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      auto:
-        description: 'auto-patch release DO NOT SET MANUALLY'
-        type: boolean
-        default: false
   workflow_call:
     inputs:
       version:
@@ -25,10 +21,6 @@ on:
         description: 'A full-length commit SHA-1 hash'
         type: string
         required: true
-      auto:
-        description: 'auto-patch release DO NOT SET MANUALLY'
-        type: boolean
-        default: false
 
 permissions:
   id-token: write
@@ -44,6 +36,7 @@ jobs:
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
       oss: ${{ fromJson(steps.canonical_version.outputs.result).oss }}
+      kind: ${{ fromJson(steps.canonical_version.outputs.result).kind }}
     steps:
     - name: Fail early on the incorrect version format
       if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
@@ -52,7 +45,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -60,11 +53,11 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: canonical_version
       with:
         script: | # js
-          const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { isValidVersionString, getCanonicalVersion, getVersionType, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
@@ -75,6 +68,7 @@ jobs:
           const versions = {
             ee: getCanonicalVersion(version, 'ee'),
             oss: getCanonicalVersion(version, 'oss'),
+            kind: getVersionType(version),
           };
 
           const released = await hasBeenReleased({
@@ -99,7 +93,7 @@ jobs:
     needs: [check-version]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -107,7 +101,7 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send publish start message
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -132,7 +126,7 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: .github
     - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
@@ -158,7 +152,7 @@ jobs:
         # ensure the build is not a snapshot build
         grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
     - name: Upload Uberjar as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         overwrite: true
@@ -177,23 +171,23 @@ jobs:
         edition: [oss, ee]
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
           .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Determine the upload path ## EE is always v1.x.y, OSS is always v0.x.y
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: version_path
       with:
         result-encoding: string
@@ -227,12 +221,12 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Determine the download path ## EE is always v1.x.y, OSS is always v0.x.y
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: version_path
       with:
         result-encoding: string
@@ -279,7 +273,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -287,7 +281,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Tag Release
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         result-encoding: string
@@ -313,7 +307,7 @@ jobs:
     outputs:
       extra_tags: ${{ steps.taglist.outputs.extra_tags }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -322,7 +316,7 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
       - name: Get extra tags
         id: taglist
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           result-encoding: string
           script: | # js
@@ -358,12 +352,12 @@ jobs:
       dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
-    if: ${{ !inputs.auto }}
-    needs: push-tags
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    needs: [push-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -372,7 +366,7 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
       - name: Find milestone
         id: find-milestone
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const { findMilestone } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -388,7 +382,7 @@ jobs:
 
             console.log("Milestone:", milestone.number);
             core.setOutput('milestone', milestone.number);
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
@@ -415,7 +409,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | # js
@@ -433,8 +427,8 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ !inputs.auto }}
-    needs: add-extra-tags
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    needs: [add-extra-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
@@ -442,7 +436,7 @@ jobs:
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
       DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -450,7 +444,7 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           result-encoding: string
@@ -473,12 +467,11 @@ jobs:
               repo: context.repo.repo,
             });
 
-            // github release notes
+            // github releases page
             await publishRelease({
               github,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issues,
               version,
             }).then(() => {
               console.log('Successfully published release notes', '${{ inputs.version }}');
@@ -502,6 +495,7 @@ jobs:
             }).catch(console.warn);
 
   publish-version-info:
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [push-tags, check-version]
     timeout-minutes: 15
@@ -512,17 +506,12 @@ jobs:
       AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
-    - name: Finish early
-      if: ${{ inputs.auto }}
-      run: |
-        echo "skipping version info update for nightly patch"
-        exit 0
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -530,7 +519,7 @@ jobs:
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
     - name: Publish version info
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       id: new_version_info
       with:
         result-encoding: string
@@ -565,12 +554,59 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
+  linear-release-lifecycle:
+    # Advance / finalize the matching Linear release (single "Metabase" pipeline).
+    # Only minors and majors map to a Linear release; patches fold into their minor
+    # and have no release of their own, so we skip them (same gate as the jobs above).
+    # Pre-releases (RC/beta) -> `update` the stage (keep it open); stable -> `complete`.
+    # Requires the LINEAR_RELEASE_ACCESS_KEY secret + the "Metabase" pipeline (see
+    # release/LINEAR_RELEASES.md). The sync side lives in linear-release-sync.yml.
+    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    needs: [push-tags, check-version]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    continue-on-error: true # don't block the release if Linear fails (we can fix it manually)
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # complete/update target a release by version and do NOT scan commits,
+          # so the default shallow clone is enough (sync, which scans, needs depth 0).
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Resolve the Linear MINOR release + lifecycle command
+        id: linear
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const R = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const version = '${{ inputs.version }}';
+            const releaseVersion = R.getLinearReleaseName(version);
+
+            const preRelease = R.isPreReleaseVersion(version);
+            core.setOutput('release_version', releaseVersion);
+
+            // if we're doing a beta, we want to update the stage (keep it open) instead of completing it
+            core.setOutput('command', preRelease ? 'update' : 'complete');
+            core.setOutput('stage', preRelease ? 'beta' : 'Released');
+
+      - name: Advance / complete the Linear release
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
+          command: ${{ steps.linear.outputs.command }}
+          release_version: ${{ steps.linear.outputs.release_version }}
+          stage: ${{ steps.linear.outputs.stage }}
+
   publish-complete-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [add-extra-tags]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -578,15 +614,13 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Send publish complete message
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
             const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const isAutoRelease = '${{ inputs.auto }}' === 'true';
 
             await sendPublishCompleteMessage({
               owner: context.repo.owner,

@@ -283,17 +283,11 @@
         f (if *memoize-supports?* memoized-features* features*)]
     (f driver database)))
 
-(mu/defn- supported-in-environment?
-  "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the
-  sqlite driver on hosted metabase because hosted metabase does not support uploading a SQLite file for use."
-  [driver :- :keyword]
-  (or (not (premium-features/is-hosted?))
-      (not= :sqlite (keyword driver))))
-
 (defn available-drivers
   "Return a set of all currently available drivers."
   []
-  (into #{} (filter #(and (driver/available? %) (supported-in-environment? %)))
+  (into #{}
+        (filter driver/available?)
         (descendants driver/hierarchy :metabase.driver/driver)))
 
 (mu/defn semantic-version-gte :- :boolean
@@ -601,27 +595,41 @@
     "official"
     "community"))
 
+(defn- creatable?
+  "Whether users may select this driver to create a new data warehouse connection, given `context` -- a map describing
+  the environment, currently `{:hosted? <boolean>}`. Defaults to true. A driver registered only to power an
+  internal/bundled database -- e.g. SQLite, which backs the bundled Sample Database but is not offered to Cloud users
+  as a warehouse -- returns false in the contexts where it is not user-creatable, so it is omitted from the
+  add-database engine list there. Affects only the engine list shown to users; the driver stays registered and
+  `available?` for internal use."
+  [driver {:keys [hosted?]}]
+  (not (and
+        (= driver :sqlite)
+        hosted?)))
+
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
   being returned, to handle any transformation between the server side and client side representation."
   []
-  (persistent!
-   (reduce (fn [acc driver]
-             (if-some [props (try
-                               (->> (driver/connection-properties driver)
-                                    (connection-props-server->client driver))
-                               (catch Throwable e
-                                 (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
-               ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-               (assoc! acc driver {:source {:type (driver-source (name driver))
-                                            :contact (driver/contact-info driver)}
-                                   :details-fields props
-                                   :driver-name    (driver/display-name driver)
-                                   :superseded-by  (driver/superseded-by driver)
-                                   :extra-info     (driver/extra-info driver)})
-               acc))
-           (transient {}) (available-drivers))))
+  (let [context {:hosted? (premium-features/is-hosted?)}]
+    (persistent!
+     (reduce (fn [acc driver]
+               (if-some [props (try
+                                 (->> (driver/connection-properties driver)
+                                      (connection-props-server->client driver))
+                                 (catch Throwable e
+                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
+                 ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
+                 (assoc! acc driver {:source         {:type    (driver-source (name driver))
+                                                      :contact (driver/contact-info driver)}
+                                     :details-fields props
+                                     :driver-name    (driver/display-name driver)
+                                     :superseded-by  (driver/superseded-by driver)
+                                     :creatable?     (creatable? driver context)
+                                     :extra-info     (driver/extra-info driver)})
+                 acc))
+             (transient {}) (available-drivers)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |
@@ -679,12 +687,10 @@
                                      (.init ^KeyStore (cast KeyStore nil)))]
     (doseq [cert certs]
       (.setCertificateEntry keystore (dn-for-cert cert) cert))
-
     (doseq [^X509TrustManager trust-mgr (.getTrustManagers base-trust-manager-factory)]
       (when (instance? X509TrustManager trust-mgr)
         (doseq [issuer (.getAcceptedIssuers trust-mgr)]
           (.setCertificateEntry keystore (dn-for-cert issuer) issuer))))
-
     keystore))
 
 (defn- key-managers [private-key password own-cert]
@@ -730,20 +736,33 @@
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
-(defn fields-hidden-for-write-data-connection
-  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
-   when the write-data-connection form marker is true."
-  [driver]
+(defn- fields-hidden-by-form-marker
+  "Returns the set of field names (strings) whose resolved `visible-if` includes `marker false`,
+   meaning they are hidden when the named form marker is set on the connection-edit form."
+  [driver marker]
   (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-props     (conn-prop-fn driver)
           resolved      (connection-props-server->client driver all-props)
           props-by-name (collect-all-props-by-name resolved)]
       (into #{}
             (keep (fn [[field-name {:keys [visible-if]}]]
-                    (when (false? (get visible-if "write-data-connection"))
+                    (when (false? (get visible-if marker))
                       field-name)))
             props-by-name))))
+
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "write-data-connection"))
+
+(defn fields-hidden-for-admin-connection
+  "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
+   when the admin-connection form marker is true."
+  [driver]
+  (fields-hidden-by-form-marker driver "admin-connection"))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
@@ -826,6 +845,33 @@
        (map rand-nth)
        shuffle
        (apply str)))
+
+(defn- redact-msg
+  "Replace all `secrets` in `msg` with `****`."
+  [msg secrets]
+  (reduce (fn [s secret] (str/replace s secret "****")) (or msg "") secrets))
+
+(defn scrub-exceptions
+  "Scrub `secrets` from the exception message and cause chain of `t`. Returns a new
+   exception with every occurrence of each secret replaced by `****`. Use this to prevent
+   credentials embedded in DDL SQL from leaking into logs via exception messages."
+  [^Throwable t secrets]
+  (let [msg   (redact-msg (ex-message t) secrets)
+        cause (some-> (.getCause t) (scrub-exceptions secrets))]
+    (cond
+      (instance? clojure.lang.ExceptionInfo t)
+      (ex-info msg (ex-data t) cause)
+
+      (instance? java.sql.SQLException t)
+      (let [^java.sql.SQLException sql-ex t
+            next-ex (some-> (.getNextException sql-ex) (scrub-exceptions secrets))]
+        (doto (java.sql.SQLException. msg (.getSQLState sql-ex) (.getErrorCode sql-ex) cause)
+          (.setStackTrace (.getStackTrace t))
+          (cond-> next-ex (.setNextException next-ex))))
+
+      :else
+      (doto (Exception. msg cause)
+        (.setStackTrace (.getStackTrace t))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Macaw parsing helpers                                                |

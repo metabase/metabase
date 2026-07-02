@@ -155,7 +155,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
       {logo ? (
         <img src={logo} width="100%" />
       ) : (
-        <Icon name="database" c="brand" />
+        <Icon name="database" c="core-brand" />
       )}
     </Center>
   );
@@ -229,7 +229,7 @@ const SampleDatabaseIndicator = () => {
           {t`Sample Database for testing`}
         </Text>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown to admins during setup */}
-        <Text inline c="text-tertiary">{t`(by Metabase)`}</Text>
+        <Text inline c="text-disabled">{t`(by Metabase)`}</Text>
       </Flex>
       <Group gap="xs">
         <Icon name="check_filled" c="success" />

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.task.backfill-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.backfill-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [environ.core :as env]
@@ -12,7 +13,9 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.quartz JobKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -156,7 +159,7 @@
             (recur))))))
 
 (deftest ^:sequential backfill-scheduling-test
-  (testing "Test that the backfill job schedules and reschedules itself correctly"
+  (testing "With 2 entities and batch size 1, the job reschedules itself and processes both"
     (backfill-all-existing-entities!)
     (mt/with-temp-scheduler!
       (with-redefs [env/env (assoc env/env
@@ -167,24 +170,49 @@
           (mt/test-helpers-set-global-values!
             (mt/with-premium-features #{}
               (mt/with-temp [:model/Card {card1-id :id} card-data
-                             :model/Card {card2-id :id} card-data
-                             :model/Card {card3-id :id} card-data]
-                ;; Mark all as stale
+                             :model/Card {card2-id :id} card-data]
                 (mark-stale! :card card1-id)
                 (mark-stale! :card card2-id)
-                (mark-stale! :card card3-id)
                 (let [processed? (fn []
-                                   (= 3 (t2/count :model/DependencyStatus
+                                   (= 2 (t2/count :model/DependencyStatus
                                                   :entity_type :card
-                                                  :entity_id [:in [card1-id card2-id card3-id]]
+                                                  :entity_id [:in [card1-id card2-id]]
                                                   :stale false
                                                   :dependency_analysis_version dependencies.model/current-dependency-analysis-version)))]
                   (is (not (processed?)))
                   (mt/with-premium-features #{:dependencies}
-                    ;; Initialize the task, which should schedule the first run
                     (task/init! ::dependencies.backfill/DependencyBackfill)
-                    (wait-for-condition processed? 10000)
+                    (wait-for-condition processed? 2500)
                     (is (processed?))))))))))))
+
+(deftest ^:sequential backfill-no-trigger-pile-up-test
+  (testing "Scheduling new runs while the backfill job is executing keeps the trigger count ≤ 1"
+    (let [job-started (promise)
+          can-finish  (promise)]
+      (with-redefs [dependencies.backfill/backfill-dependencies!
+                    (fn []
+                      (deliver job-started true)
+                      (deref can-finish 1500 :timeout)
+                      ;; non-nil → the job will hit the in-job self-reschedule path on exit
+                      true)]
+        (mt/with-temp-scheduler!
+          ;; Start the job immediately.
+          (#'dependencies.backfill/schedule-run! (task/scheduler) 0)
+          (is (true? (deref job-started 1000 :timeout))
+              "BackfillDependencies job did not start within 1s")
+          (let [scheduler (task/scheduler)
+                job-key   (JobKey. "metabase.task.dependency-backfill.job")
+                trigger-count #(count (.getTriggersOfJob scheduler job-key))]
+            ;; Spam 50 event-driven schedule attempts while the job is in-flight.
+            (dotimes [_ 50]
+              (dependencies.backfill/trigger-backfill-job!))
+            (is (<= (trigger-count) 1)
+                (str "During execution: expected ≤ 1 trigger, got " (trigger-count)))
+            ;; Release the job; on exit it self-reschedules via the in-job path.
+            (deliver can-finish true)
+            (Thread/sleep 200)
+            (is (<= (trigger-count) 1)
+                (str "After self-reschedule: expected ≤ 1 trigger, got " (trigger-count)))))))))
 
 (deftest ^:sequential backfill-error-logging-test
   (testing "When calculate-deps throws, the error is logged and the entity remains stale"
@@ -239,7 +267,6 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         (mark-stale! :card card-id)
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
         (let [compute-attempts (volatile! 0)
               failures (inc @#'dependencies.backfill/max-retries)]
           (with-redefs [env/env (assoc env/env
@@ -253,10 +280,8 @@
             ;; fail MAX_RETRIES + 1 times
             (while (< @compute-attempts failures)
               (backfill-dependencies-single-trigger!))))
-
         ;; verify card is still stale (not processed)
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
         ;; verify subsequent runs don't process it
         (backfill-dependencies-single-trigger!)
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))))))
@@ -279,17 +304,14 @@
                             ;; Return valid deps on subsequent attempts
                             {:table #{(mt/id :orders)}}))]
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
             ;; first failure - should be put into retry state
             (while (zero? @compute-attempts)
               (backfill-dependencies-single-trigger!))
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
             ;; advance time by less than retry delay - should NOT be processed
             (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
               (backfill-dependencies-single-trigger!))
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-
             ;; advance time by more than retry delay - should be processed
             (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
               (backfill-dependencies-single-trigger!))
@@ -380,3 +402,35 @@
         (assert-processed :card card-id)
         (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                         :to_entity_type :table :to_entity_id (mt/id :orders)))))))
+
+(deftest ^:sequential backfill-no-status-row-test
+  (testing "Entities with no dependency_status row yet get picked up and processed by the backfill"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        ;; Precondition: the temp card was inserted directly (no :event/card-create), so it has no
+        ;; status row at all. This is the case the left-join in instances-for-dependency-calculation
+        ;; must catch — guard it so the test can't silently pass without exercising that branch.
+        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
+            "Expected the temp card to start with no dependency_status row")
+        (backfill-dependencies-single-trigger!)
+        (assert-processed :card card-id)
+        (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
+                        :to_entity_type :table :to_entity_id (mt/id :orders)))))))
+
+(deftest ^:sequential has-stale-or-outdated?-counts-no-status-row-test
+  (testing "has-stale-or-outdated? (backing /backfill-status) stays consistent with what the backfill processes"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      ;; Clean slate: nothing left to process.
+      (is (false? (deps.dependency-status/has-stale-or-outdated?))
+          "Expected no pending work after backfilling all existing entities")
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        ;; A card with no status row is pending work, even though no DependencyStatus row exists.
+        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id)))
+        (is (true? (deps.dependency-status/has-stale-or-outdated?))
+            "Expected pending work: a card with no status row still needs calculation")
+        (backfill-dependencies-single-trigger!)
+        (assert-processed :card card-id)
+        (is (false? (deps.dependency-status/has-stale-or-outdated?))
+            "Expected no pending work once the card has been processed")))))

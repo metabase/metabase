@@ -10,6 +10,7 @@ import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
@@ -19,25 +20,26 @@ import {
 import { useRouter } from "metabase/router/useRouter";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
+import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
+import { EmbeddedMetabotUpsell } from "./EmbeddedMetabotUpsell";
 import { McpAppsSettings } from "./McpAppsSettings";
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
-import { MetabotSetup } from "./MetabotSetup";
 
-type MetabotTabValue = "embedded" | "internal";
+type MetabotTabId =
+  | typeof FIXED_METABOT_IDS.DEFAULT
+  | typeof FIXED_METABOT_IDS.EMBEDDED;
 
 const SETUP_SECTION_ID = "setup";
 const METABOT_SECTION_ID = "metabot";
 const MCP_SECTION_ID = "mcp";
 const AGENT_API_SECTION_ID = "agent-api";
 const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
-
-const DEFAULT_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`;
-const EMBEDDED_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`;
+const METABOT_SETTINGS_PATH = "/admin/metabot";
+const METABOT_ID_QUERY_PARAM = "metabot_id";
 
 export function AISettingsPage() {
   const {
-    location: { pathname },
-    params,
+    location: { query },
   } = useRouter();
 
   const isConfigured = !!useSetting("llm-metabot-configured?");
@@ -51,18 +53,9 @@ export function AISettingsPage() {
   } = useAdminSetting("ai-features-enabled?");
   const areAiFeaturesEnabled = aiFeaturesEnabledValue !== false;
 
-  const {
-    value: agentApiEnabledValue,
-    updateSetting: updateAgentApiSetting,
-    isLoading: isUpdatingAgentApi,
-  } = useAdminSetting("agent-api-enabled?");
-  const isAgentApiEnabled = agentApiEnabledValue !== false;
-
-  const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
-
-  const selectedTab = getSelectedMetabotTab(params.metabotId, pathname, {
-    hasEmbedding,
-  });
+  const selectedMetabotId = getSelectedMetabotId(
+    query?.[METABOT_ID_QUERY_PARAM],
+  );
 
   const handleAiFeaturesEnabledChange = async (checked: boolean) => {
     await updateAiSetting({
@@ -71,46 +64,21 @@ export function AISettingsPage() {
     });
   };
 
-  const handleAgentApiChange = async (checked: boolean) => {
-    await updateAgentApiSetting({
-      key: "agent-api-enabled?",
-      value: checked,
-    });
-  };
-
   return (
     <SettingsPageWrapper
       title={t`AI features`}
-      description={t`Manage AI integrations and Metabot.`}
+      description={t`Manage your AI provider connection and Metabot.`}
     >
       {areAiFeaturesEnabled && (
         <>
-          <MetabotSetup id={SETUP_SECTION_ID} />
+          <AIProviderSettingsSection id={SETUP_SECTION_ID} />
           <DisabledSection disabled={!isConfigured}>
             <MetabotSettingsSection
               hasEmbedding={hasEmbedding}
               id={METABOT_SECTION_ID}
-              selectedTab={selectedTab}
+              selectedMetabotId={selectedMetabotId}
             />
           </DisabledSection>
-          <Divider />
-          <Stack gap="lg">
-            <McpAppsSettings id={MCP_SECTION_ID} />
-
-            <ToggleSettingsSection
-              checked={isAgentApiEnabled}
-              description={jt`Enable external access to the Agent API. ${(
-                <ExternalLink key="docs" href={agentApiDocsUrl}>
-                  {t`Learn more`}
-                </ExternalLink>
-              )}`}
-              disabled={isUpdatingAgentApi}
-              id={AGENT_API_SECTION_ID}
-              onChange={handleAgentApiChange}
-              title={t`Agent API`}
-            />
-          </Stack>
-
           <Divider />
         </>
       )}
@@ -127,50 +95,109 @@ export function AISettingsPage() {
   );
 }
 
+export function McpSettingsPage() {
+  const { value: aiFeaturesEnabledValue } = useAdminSetting(
+    "ai-features-enabled?",
+  );
+  const areAiFeaturesEnabled = aiFeaturesEnabledValue !== false;
+
+  return (
+    <SettingsPageWrapper
+      title={t`MCP`}
+      description={t`Manage MCP server and Agent API access.`}
+    >
+      <DisabledSection disabled={!areAiFeaturesEnabled}>
+        <McpAppsSettings id={MCP_SECTION_ID} />
+
+        <AgentApiSettingsSection disabled={!areAiFeaturesEnabled} />
+      </DisabledSection>
+    </SettingsPageWrapper>
+  );
+}
+
+function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
+  const {
+    value: agentApiEnabledValue,
+    updateSetting: updateAgentApiSetting,
+    isLoading: isUpdatingAgentApi,
+  } = useAdminSetting("agent-api-enabled?");
+  const isAgentApiEnabled = agentApiEnabledValue !== false;
+
+  const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
+
+  const handleAgentApiChange = async (checked: boolean) => {
+    await updateAgentApiSetting({
+      key: "agent-api-enabled?",
+      value: checked,
+    });
+  };
+
+  return (
+    <ToggleSettingsSection
+      checked={isAgentApiEnabled}
+      description={jt`Enable external access to the Agent API. ${(
+        <ExternalLink key="docs" href={agentApiDocsUrl}>
+          {t`Learn more`}
+        </ExternalLink>
+      )}`}
+      disabled={disabled || isUpdatingAgentApi}
+      id={AGENT_API_SECTION_ID}
+      onChange={handleAgentApiChange}
+      title={t`Agent API`}
+    />
+  );
+}
+
 function MetabotSettingsSection({
   hasEmbedding,
   id,
-  selectedTab,
+  selectedMetabotId,
 }: {
   hasEmbedding: boolean;
   id: string;
-  selectedTab: MetabotTabValue;
+  selectedMetabotId: MetabotTabId;
 }) {
   const { data, isLoading, error } = useListMetabotsQuery();
-  const activeMetabotId =
-    selectedTab === "embedded"
-      ? FIXED_METABOT_IDS.EMBEDDED
-      : FIXED_METABOT_IDS.DEFAULT;
-  const activeMetabot = data?.items.find((m) => m.id === activeMetabotId);
-  const showTabs = hasEmbedding;
+  const shouldShowUpsell =
+    !hasEmbedding && selectedMetabotId === FIXED_METABOT_IDS.EMBEDDED;
+  const activeMetabot = !shouldShowUpsell
+    ? data?.items.find((m) => m.id === selectedMetabotId)
+    : null;
 
   return (
     <SettingsSection id={id} title={t`Metabot settings`}>
-      {showTabs && (
-        <Tabs value={selectedTab}>
-          <Tabs.List>
-            <Tabs.Tab
-              renderRoot={(props) => (
-                <Link {...props} to={getMetabotTabPath("internal")} />
-              )}
-              value="internal"
-            >
-              {t`Internal`}
-            </Tabs.Tab>
-            <Tabs.Tab
-              renderRoot={(props) => (
-                <Link {...props} to={getMetabotTabPath("embedded")} />
-              )}
-              value="embedded"
-            >
-              {t`Embedded`}
-            </Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-      )}
+      <Tabs value={String(selectedMetabotId)}>
+        <Tabs.List>
+          <Tabs.Tab
+            renderRoot={(props) => (
+              <Link
+                {...props}
+                to={getMetabotTabPath(FIXED_METABOT_IDS.DEFAULT)}
+              />
+            )}
+            value={String(FIXED_METABOT_IDS.DEFAULT)}
+          >
+            {t`Internal`}
+          </Tabs.Tab>
+          <Tabs.Tab
+            renderRoot={(props) => (
+              <Link
+                {...props}
+                to={getMetabotTabPath(FIXED_METABOT_IDS.EMBEDDED)}
+              />
+            )}
+            value={String(FIXED_METABOT_IDS.EMBEDDED)}
+            rightSection={!hasEmbedding && <UpsellGem.New size={14} />}
+          >
+            {t`Embedded`}
+          </Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
 
       {activeMetabot ? (
         <MetabotSettingsPanel metabot={activeMetabot} />
+      ) : shouldShowUpsell ? (
+        <EmbeddedMetabotUpsell />
       ) : (
         <LoadingAndErrorWrapper
           loading={isLoading}
@@ -238,29 +265,19 @@ function DisabledSection({
   );
 }
 
-function getSelectedMetabotTab(
-  metabotId: string | undefined,
-  pathname: string,
-  {
-    hasEmbedding,
-  }: {
-    hasEmbedding: boolean;
-  },
-): MetabotTabValue {
-  if (
-    (metabotId === String(FIXED_METABOT_IDS.EMBEDDED) ||
-      pathname === EMBEDDED_METABOT_PATH) &&
-    hasEmbedding
-  ) {
-    return "embedded";
+function getSelectedMetabotId(metabotId: string | undefined): MetabotTabId {
+  if (metabotId === String(FIXED_METABOT_IDS.EMBEDDED)) {
+    return FIXED_METABOT_IDS.EMBEDDED;
   }
 
-  return "internal";
+  return FIXED_METABOT_IDS.DEFAULT;
 }
 
-function getMetabotTabPath(tab: MetabotTabValue) {
-  const pathname =
-    tab === "embedded" ? EMBEDDED_METABOT_PATH : DEFAULT_METABOT_PATH;
-
-  return `${pathname}#${METABOT_SECTION_ID}`;
+function getMetabotTabPath(metabotId: MetabotTabId) {
+  return {
+    pathname: METABOT_SETTINGS_PATH,
+    query: {
+      [METABOT_ID_QUERY_PARAM]: String(metabotId),
+    },
+  };
 }

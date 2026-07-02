@@ -2,14 +2,12 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 
 import type { ColorGetter } from "metabase/ui/colors/types";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { isNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";
-import type { ColumnSettings } from "metabase/visualizations/types";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import {
   formatChange,
@@ -19,6 +17,7 @@ import type { ClickObject } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   LegacyDatasetQuery,
@@ -291,16 +290,32 @@ function getCurrentMetricData({
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
-  const dateColumnWithUnit = { ...dateColumn };
-  dateColumnWithUnit.unit ??= dateUnit;
-  const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
 
   const question = new Question(card);
+  const isNative = question.isNative();
+
+  const dateColumnWithUnit = { ...dateColumn };
+  if (!isNative) {
+    dateColumnWithUnit.unit ??= dateUnit;
+  }
+  const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
+
+  const { date_granularity } = dateColumnSettings;
+  const displayUnit = isAbsoluteDateTimeUnit(date_granularity)
+    ? date_granularity
+    : undefined;
+  const displaySettings = displayUnit
+    ? { ...dateColumnSettings, time_enabled: null }
+    : dateColumnSettings;
+  if (displayUnit) {
+    dateColumnWithUnit.unit = displayUnit;
+  }
+
   const dateUnitSettings: DateUnitSettings = {
     dateColumn: dateColumnWithUnit,
-    dateColumnSettings,
-    dateUnit,
-    queryType: question.isNative() ? "native" : "query",
+    dateColumnSettings: displaySettings,
+    dateUnit: displayUnit ?? dateUnit,
+    queryType: isNative ? "native" : "query",
   };
 
   const formatOptions = {
@@ -687,7 +702,7 @@ function formatDateStr({
 }: {
   date: string;
   dateUnitSettings: DateUnitSettings;
-  options?: OptionsType;
+  options?: ColumnSettings;
 }) {
   const { dateColumn, dateColumnSettings, dateUnit, queryType } =
     dateUnitSettings;

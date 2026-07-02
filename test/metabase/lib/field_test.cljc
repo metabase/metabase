@@ -25,6 +25,7 @@
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.validate :as lib.validate]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -665,7 +666,6 @@
                         (lib.binning/with-binning field-metadata)
                         lib.binning/binning
                         (lib/display-info query)))))))
-
   (testing "coordinate binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :people))
           field-metadata (meta/field-metadata :people :latitude)
@@ -804,6 +804,50 @@
                {:name "myadd"}]
               metadatas)))))
 
+(deftest ^:parallel with-fields-throws-on-stranded-downstream-refs-test
+  (testing "narrowing a stage's :fields throws if it strands a later-stage reference"
+    (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     lib/append-stage)
+          total  (->> (lib.metadata.calculation/visible-columns base 1)
+                      (m/find-first (comp #{"TOTAL"} :name)))
+          base   (lib/order-by base 1 total :asc)
+          id-col (->> (lib.metadata.calculation/returned-columns base 0)
+                      (m/find-first (comp #{"ID"} :name)))]
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                   (lib/with-fields base 0 [id-col]))))))
+
+(deftest ^:parallel with-fields-allows-safe-narrowing-test
+  (testing "narrowing that keeps every referenced column does not throw"
+    (let [base     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       lib/append-stage)
+          total    (->> (lib.metadata.calculation/visible-columns base 1)
+                        (m/find-first (comp #{"TOTAL"} :name)))
+          base     (lib/order-by base 1 total :asc)
+          kept     (->> (lib.metadata.calculation/returned-columns base 0)
+                        (filter (comp #{"ID" "TOTAL"} :name)))
+          narrowed (lib/with-fields base 0 kept)]
+      (is (empty? (lib.validate/find-bad-refs narrowed))))))
+
+(deftest ^:parallel newly-stranded-downstream-refs-test
+  (let [before    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      lib/append-stage)
+        total     (->> (lib.metadata.calculation/visible-columns before 1)
+                       (m/find-first (comp #{"TOTAL"} :name)))
+        before    (lib/order-by before 1 total :asc)
+        id-ref    (lib/ref (->> (lib.metadata.calculation/returned-columns before 0)
+                                (m/find-first (comp #{"ID"} :name))))
+        total-ref (lib/ref (->> (lib.metadata.calculation/returned-columns before 0)
+                                (m/find-first (comp #{"TOTAL"} :name))))
+        narrow    (fn [refs] (lib.util/update-query-stage before 0 assoc :fields refs))]
+    (testing "reports a later-stage ref the narrowing drops"
+      (is (= #{"TOTAL"}
+             (into #{} (map peek)
+                   (#'lib.field/newly-stranded-downstream-refs before (narrow [id-ref]) 0)))))
+    (testing "reports nothing when the narrowing keeps the referenced column"
+      (is (empty? (#'lib.field/newly-stranded-downstream-refs before (narrow [id-ref total-ref]) 0))))
+    (testing "considers only stages after stage-number"
+      (is (empty? (#'lib.field/newly-stranded-downstream-refs before (narrow [id-ref]) 1))))))
+
 (deftest ^:parallel fieldable-columns-test
   (testing "query with no :fields"
     (is (=? [{:lib/source-column-alias "ID", :selected? true}
@@ -910,14 +954,18 @@
              [:field {} (meta/id :orders :user-id)]]
             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                 (#'lib.field/populate-fields-for-stage -1)
-                fields-of))))
+                fields-of)))))
+
+(deftest ^:parallel populate-fields-for-stage-test-2
   (testing "aggregated"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate -1 (lib/count)))]
       (is (=? [[:aggregation {} (-> query lib/aggregations first lib.options/uuid)]]
               (-> query
                   (#'lib.field/populate-fields-for-stage -1)
-                  fields-of)))))
+                  fields-of))))))
+
+(deftest ^:parallel populate-fields-for-stage-test-3
   (testing "aggregated with breakout"
     (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/aggregate -1 (lib/count)))
@@ -928,8 +976,9 @@
                               [:aggregation {} (-> query lib/aggregations first lib.options/uuid)]])
               (-> query
                   (#'lib.field/populate-fields-for-stage -1)
-                  fields-of)))))
+                  fields-of))))))
 
+(deftest ^:parallel populate-fields-for-stage-test-4
   (testing "explicit join fields are *not* included"
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
@@ -956,8 +1005,9 @@
                   (-> query
                       (lib.util/update-query-stage -1 update-in [:joins 0] lib/with-join-fields (take 3 returned))
                       (#'lib.field/populate-fields-for-stage -1)
-                      fields-of)))))))
+                      fields-of))))))))
 
+(deftest ^:parallel populate-fields-for-stage-test-5
   (testing "sourced from another card"
     (let [query   (lib.tu/query-with-source-card)]
       (testing "starts with no :fields"
@@ -1059,7 +1109,6 @@
                          lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))))
-
       (testing "join :fields list"
         (let [join-fields-query (lib.util/update-query-stage
                                  query -1
@@ -1462,18 +1511,15 @@
           implied2         (clean-ref (second implicit-columns))]
       (is (= (map #(dissoc % :selected?) table-columns)
              (lib/returned-columns query)))
-
       (testing "attaching implicitly joined fields should alter the query"
         (is (not= query implied-query))
         (is (nil? (lib.equality/find-matching-ref (first implicit-columns)
                                                   (map lib/ref (lib/returned-columns query))))))
-
       (testing "with no :fields set does nothing"
         (is (=? query
                 (lib/remove-field query -1 (first implicit-columns))))
         (is (=? query
                 (lib/remove-field query -1 (second implicit-columns)))))
-
       (testing "with explicit :fields list"
         (is (=? (sorted-fields (conj table-fields implied2))
                 (-> implied-query
@@ -1532,7 +1578,6 @@
                 (-> query
                     (#'lib.field/populate-fields-for-stage 1)
                     fields-of))))
-
       (testing "removing each field"
         (is (=? [[:field {} "CREATED_AT"]]
                 (-> query
@@ -1542,7 +1587,6 @@
                 (-> query
                     (lib/remove-field 1 created-at)
                     fields-of))))
-
       (testing "removing and adding each field"
         (is (nil? (-> query
                       (lib/remove-field 1 sum)
@@ -1574,7 +1618,6 @@
                     (-> query
                         (lib/remove-field 1 (second columns))
                         fields-of))))
-
           (testing "removing and adding each field"
             (is (nil? (-> query
                           (lib/remove-field 1 (first columns))
@@ -1718,7 +1761,6 @@
                     (filter :selected? (lib.equality/mark-selected-columns
                                         (lib.metadata.calculation/visible-columns hidden)
                                         (lib.metadata.calculation/returned-columns hidden)))))
-
             (testing "and showing it again"
               (let [shown (lib/add-field query -1 to-hide)]
                 (is (=? exp-shown
@@ -1840,7 +1882,6 @@
       (testing "can add an implicit join"
         (is (= (inc (count (lib.metadata.calculation/returned-columns query)))
                (count (lib.metadata.calculation/returned-columns joined)))))
-
       (testing "correctly marks columns as selected"
         (testing "without the implicit join"
           (is (not (-> query mark-selected get-state :selected?))))
@@ -2539,3 +2580,52 @@
            (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "a1898aa6-4928-4e97-837d-e440ce21085e")))
     (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000002")))
     (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query 0  "a1898aa6-4928-4e97-837d-e440ce21085e")))))
+
+(deftest ^:parallel add-field-to-join-disambiguated-by-join-alias-test
+  (testing "adding a column back to a join that matches a column from a joined native model works (#64779)"
+    (let [id-col (-> (lib.metadata/field meta/metadata-provider (meta/id :products :id))
+                     (dissoc :table-id :id :fk-target-field-id))
+          mp (lib.tu/metadata-provider-with-mock-card {:lib/type        :metadata/card
+                                                       :id              1
+                                                       :database-id     (meta/id)
+                                                       :name            "Products ID model"
+                                                       :type            :model
+                                                       :dataset-query   {:database (meta/id)
+                                                                         :type     :native
+                                                                         :native   {:query "SELECT ID FROM PRODUCTS"}}
+                                                       :result-metadata [id-col]})
+          native-model       (lib.metadata/card mp 1)
+          model-id           (-> (lib/query mp native-model) lib/returned-columns first)
+          products-table     (lib.metadata/table mp (meta/id :products))
+          products-id        (lib.metadata/field mp (meta/id :products :id))
+          reviews-table      (lib.metadata/table mp (meta/id :reviews))
+          reviews-product-id (lib.metadata/field mp (meta/id :reviews :product-id))
+          query (-> (lib/query mp products-table)
+                    (lib/join (lib/join-clause native-model [(lib/= products-id model-id)]))
+                    (lib/join (lib/join-clause reviews-table [(lib/= products-id reviews-product-id)])))
+          reviews? #(= (:lib/original-join-alias %) "Reviews")
+          query-without-reviews-cols (reduce #(lib/remove-field %1 -1 %2)
+                                             query
+                                             (filter reviews? (lib/visible-columns query)))
+          reviews-id (m/find-first #(and (= (:name %) "ID") (reviews? %))
+                                   (lib/visible-columns query-without-reviews-cols))]
+      (testing "check every reviews column has been unselected"
+        (is (= :none
+               (->> (lib/joins query-without-reviews-cols)
+                    (m/find-first #(= (:alias %) "Reviews"))
+                    (lib/join-fields)))))
+      (let [query-with-reviews-id (lib/add-field query-without-reviews-cols -1 reviews-id)
+            query-joins (lib/joins query-with-reviews-id)]
+        (testing "reviews.ID is added to the Reviews join, not the ID column in the native model join"
+          (is (=? [[:field {:join-alias "Reviews"} (meta/id :reviews :id)]]
+                  (->> query-joins
+                       (m/find-first #(= (:alias %) "Reviews"))
+                       (lib/join-fields)))))
+        (testing "the native model join remains the same"
+          (is (= :all
+                 (->> query-joins
+                      (m/find-first #(= (:alias %) "Products ID model"))
+                      (lib/join-fields)))))
+        (testing "Reviews.ID is now returned by the query"
+          (is (some #(= (:id %) (meta/id :reviews :id))
+                    (lib/returned-columns query-with-reviews-id))))))))

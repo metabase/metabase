@@ -5,11 +5,11 @@ import {
   useCreateCollectionMutation,
   useListCollectionsQuery,
 } from "metabase/api";
-import { CreateCollectionForm } from "metabase/collections/components/CreateCollectionForm";
-import type { CreateCollectionProperties } from "metabase/collections/components/CreateCollectionForm/CreateCollectionForm";
+import { CreateCollectionForm } from "metabase/common/collections/components/CreateCollectionForm";
+import type { CreateCollectionProperties } from "metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm";
+import { buildCollectionTree } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting } from "metabase/common/hooks";
-import { buildCollectionTree } from "metabase/entities/collections";
 import {
   PaddedSidebarLink,
   SidebarHeading,

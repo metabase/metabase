@@ -21,12 +21,10 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
+import { collectionApi } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { getCollectionIcon } from "metabase/common/collections/utils";
 import { findCollectionById } from "metabase/common/utils/collections";
-import {
-  Collections,
-  ROOT_COLLECTION,
-  getCollectionIcon,
-} from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
@@ -38,11 +36,10 @@ import type {
 } from "metabase-types/api";
 
 export const tenantSpecificCollectionsQuery = {
-  tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
   namespace: "tenant-specific",
-};
+} as const;
 
 export const getIsTenantSpecificDirty = createSelector(
   (state: State) => state.admin.permissions.tenantSpecificCollectionPermissions,
@@ -78,10 +75,12 @@ const getTenantSpecificRootCollectionTreeItem = () => {
   };
 };
 
-const getTenantSpecificCollections = (state: State) =>
-  Collections.selectors.getList(state, {
-    entityQuery: tenantSpecificCollectionsQuery,
-  }) ?? [];
+const getTenantSpecificCollections = (state: State) => {
+  const queryState = collectionApi.endpoints.listCollectionsTree.select(
+    tenantSpecificCollectionsQuery,
+  )(state);
+  return queryState?.data ?? [];
+};
 
 const getTenantSpecificCollectionsTree = () => {
   // Only show the single "Root tenant collection" in the sidebar

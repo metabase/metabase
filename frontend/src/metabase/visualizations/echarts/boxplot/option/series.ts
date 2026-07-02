@@ -60,7 +60,7 @@ export const buildEChartsBoxPlotSeries = (
     .filter((seriesModel) => seriesModel.visible)
     .map((seriesModel) => {
       const seriesColor =
-        seriesModel.color ?? renderingContext.getColor("brand");
+        seriesModel.color ?? renderingContext.getColor("core-brand");
       const fillColor = Color(seriesColor).alpha(BOX_FILL_OPACITY).string();
       const yAxisIndex = getSeriesYAxisIndex(chartModel, seriesModel.dataKey);
       const dataKey = seriesModel.dataKey;
@@ -132,7 +132,7 @@ export const buildEChartsMeanSeries = (
     .filter((seriesModel) => seriesModel.visible)
     .map((seriesModel) => {
       const seriesColor =
-        seriesModel.color ?? renderingContext.getColor("brand");
+        seriesModel.color ?? renderingContext.getColor("core-brand");
       const meanColor = Color(seriesColor)
         .darken(MEAN_COLOR_DARKEN_FACTOR)
         .hex();
@@ -157,7 +157,7 @@ export const buildEChartsMeanSeries = (
         itemStyle: {
           color: meanColor,
           opacity: 1,
-          borderColor: renderingContext.getColor("background-primary"),
+          borderColor: renderingContext.getColor("background_page-primary"),
           borderWidth: 1,
         },
         emphasis: {
@@ -209,7 +209,7 @@ export const buildEChartsPointsSeries = (
         showValuesMode === "all" && labelFormatter != null && showSeriesValues;
 
       const seriesColor =
-        seriesModel.color ?? renderingContext.getColor("brand");
+        seriesModel.color ?? renderingContext.getColor("core-brand");
       const xOffsetPixels = visibleSeriesOffsets.get(seriesModel.dataKey) ?? 0;
       const yAxisIndex = getSeriesYAxisIndex(chartModel, seriesModel.dataKey);
       const dataKey = seriesModel.dataKey;
@@ -230,7 +230,9 @@ export const buildEChartsPointsSeries = (
             fontWeight: BOXPLOT_DATA_LABEL_STYLE.fontWeight,
             fontSize: BOXPLOT_DATA_LABEL_STYLE.fontSize,
             color: renderingContext.getColor("text-primary"),
-            textBorderColor: renderingContext.getColor("background-primary"),
+            textBorderColor: renderingContext.getColor(
+              "background_page-primary",
+            ),
             textBorderWidth: BOXPLOT_DATA_LABEL_STYLE.textBorderWidth,
             formatter: (params) => {
               const data = params.data as Record<string, unknown> | undefined;
@@ -264,7 +266,7 @@ export const buildEChartsPointsSeries = (
         itemStyle: {
           color: seriesColor,
           opacity: CHART_STYLE.opacity.scatter,
-          borderColor: renderingContext.getColor("background-primary"),
+          borderColor: renderingContext.getColor("background_page-primary"),
           borderWidth: 1,
         },
         ...getOutlierLabelConfig(labelPosition),
@@ -295,7 +297,7 @@ export const buildEChartsPointsSeries = (
           itemStyle: {
             color: seriesColor,
             opacity: NON_OUTLIER_OPACITY,
-            borderColor: renderingContext.getColor("background-primary"),
+            borderColor: renderingContext.getColor("background_page-primary"),
             borderWidth: 1,
           },
           label: { show: false },
@@ -401,7 +403,9 @@ export const buildEChartsBoxPlotLabelsSeries = (
             fontWeight: BOXPLOT_DATA_LABEL_STYLE.fontWeight,
             fontSize: BOXPLOT_DATA_LABEL_STYLE.fontSize,
             color: renderingContext.getColor("text-primary"),
-            textBorderColor: renderingContext.getColor("background-primary"),
+            textBorderColor: renderingContext.getColor(
+              "background_page-primary",
+            ),
             textBorderWidth: BOXPLOT_DATA_LABEL_STYLE.textBorderWidth,
             formatter: (params) => {
               const data = params.data as Record<string, unknown>;

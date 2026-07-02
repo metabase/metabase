@@ -1,9 +1,12 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/redux";
+import { datasetApi } from "metabase/api";
+import { useLazyGetBugReportDetailsQuery } from "metabase/api/bug-report";
+import { useLazyListLogsQuery } from "metabase/api/logger";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { MetabaseApi, UtilApi } from "metabase/services";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getBrowserInfo, getEntityDetails, hasQueryData } from "./utils";
@@ -25,7 +28,10 @@ export const useErrorInfo = (
 ) => {
   const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
+  const dispatch = useDispatch();
   const location = window.location.href;
+  const [getBugReportDetails] = useLazyGetBugReportDetailsQuery();
+  const [listLogs] = useLazyListLogsQuery();
 
   return useAsync(async () => {
     if (!enabled) {
@@ -43,13 +49,18 @@ export const useErrorInfo = (
 
     const isAdHoc = entity === "question" && window.location.href.includes("#");
 
-    const entityInfoRequest = getEntityDetails({ entity, id, isAdHoc });
+    const entityInfoRequest = getEntityDetails({
+      entity,
+      id,
+      isAdHoc,
+      dispatch,
+    });
     const bugReportDetailsRequest = isAdmin
-      ? UtilApi.bug_report_details().catch(nullOnCatch)
+      ? getBugReportDetails().unwrap().catch(nullOnCatch)
       : Promise.resolve(null);
 
     const logsRequest: any = isAdmin
-      ? UtilApi.logs().catch(nullOnCatch)
+      ? listLogs().unwrap().catch(nullOnCatch)
       : Promise.resolve(null);
 
     const frontendErrors = console?.errorBuffer?.map?.((errArray) =>
@@ -71,13 +82,18 @@ export const useErrorInfo = (
     const queryResults =
       hasQueryData(entity) &&
       entityInfo?.dataset_query &&
-      (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
+      (await runRtkEndpoint(
+        entityInfo.dataset_query,
+        dispatch,
+        datasetApi.endpoints.getAdhocQuery,
+      ).catch(nullOnCatch));
 
     // if this is an ad-hoc exploration on top of a saved question, fetch the original card
     if (hasQueryData(entity) && entityInfo?.original_card_id) {
       entityInfo.originalCard = await getEntityDetails({
         entity,
         id: entityInfo.original_card_id,
+        dispatch,
       });
     }
 
@@ -115,7 +131,7 @@ export const useErrorInfo = (
     };
 
     return payload;
-  }, [enabled]);
+  }, [enabled, getBugReportDetails, listLogs]);
 };
 
 const nullOnCatch = () => null;

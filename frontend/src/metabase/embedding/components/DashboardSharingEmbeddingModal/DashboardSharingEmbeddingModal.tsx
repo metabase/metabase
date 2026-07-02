@@ -30,7 +30,7 @@ export const DashboardSharingEmbeddingModal = ({
 
   return (
     <EmbedModal
-      isOpen={isOpen}
+      opened={isOpen}
       resource={dashboard}
       resourceParameters={parameters}
       resourceType="dashboard"

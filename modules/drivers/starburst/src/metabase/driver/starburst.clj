@@ -110,8 +110,8 @@
 ;;; The Starburst JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the
 ;;; implementation doesn't try to use it.
 #_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :starburst
-  [_driver _database _table]
+(defmethod driver/describe-fks :starburst
+  [_driver _database & {:as _options}]
   ;; starburst does not support finding foreign key metadata tables, but some connectors support foreign keys.
   ;; We have this return nil to avoid running unnecessary queries during fks sync.
   nil)
@@ -484,10 +484,33 @@
     (let [sql (describe-catalog-sql driver catalog)
           rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
       (into []
-            (map (fn [{:keys [schema] :as _full}]
-                   (when-not (contains? excluded-schemas schema)
-                     (describe-schema driver conn catalog schema))))
+            (keep (fn [{:keys [schema] :as _full}]
+                    (when-not (contains? excluded-schemas schema)
+                      (describe-schema driver conn catalog schema))))
             (jdbc/reducible-result-set rs {})))))
+
+(defn- table-comments
+  "Returns a map of `[schema table-name] -> comment` for tables in `catalog`, with an optional `schema` filter."
+  [driver ^Connection conn catalog schema]
+  (if (str/blank? catalog)
+    {}
+    (try
+      (let [sql (str "SELECT schema_name AS schema, table_name AS name, comment
+                      FROM system.metadata.table_comments
+                      WHERE catalog_name = ?"
+                     (when schema " AND schema_name = ?"))]
+        (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
+          (.setString stmt 1 catalog)
+          (when schema (.setString stmt 2 schema))
+          (let [rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+            (into {}
+                  (keep (fn [{:keys [schema name comment]}]
+                          (when-not (str/blank? comment)
+                            [[schema name] comment])))
+                  (jdbc/reducible-result-set rs {})))))
+      (catch Throwable e
+        (log/debug e "Failed to read table comments from system.metadata.table_comments")
+        {}))))
 
 (defmethod driver/describe-database* :starburst
   [driver database]
@@ -498,9 +521,16 @@
      nil
      (fn [^Connection conn]
        (let [schemas (if schema
-                       #{(describe-schema driver conn catalog schema)}
-                       (all-schemas driver conn catalog))]
-         {:tables (reduce set/union #{} schemas)})))))
+                       [(describe-schema driver conn catalog schema)]
+                       (all-schemas driver conn catalog))
+             tables (reduce set/union #{} schemas)
+             comments (table-comments driver conn catalog schema)]
+         {:tables (into #{}
+                        (map (fn [{:keys [schema name] :as table}]
+                               (let [table-comment (get comments [schema name])]
+                                 (cond-> table
+                                   (not (str/blank? table-comment)) (assoc :description table-comment)))))
+                        tables)})))))
 
 (defmethod driver/describe-table :starburst
   [driver database {schema :schema, table-name :name}]
@@ -517,11 +547,12 @@
             :name   table-name
             :fields (into
                      #{}
-                     (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                    {:name              column
-                                     :database-type     type
-                                     :base-type         (starburst-type->base-type type)
-                                     :database-position idx}))
+                     (map-indexed (fn [idx {:keys [column type comment], :as _col}]
+                                    (cond-> {:name              column
+                                             :database-type     type
+                                             :base-type         (starburst-type->base-type type)
+                                             :database-position idx}
+                                      (not (str/blank? comment)) (assoc :field-comment comment))))
                      (jdbc/reducible-result-set rs {}))}))))))
 
 (defmethod driver/db-default-timezone :starburst
@@ -559,26 +590,26 @@
    options
    (fn [^java.sql.Connection conn]
      (when-let [db (cond
-                  ;; id?
+                     ;; id?
                      (integer? db-or-id-or-spec)
                      (driver-api/with-metadata-provider db-or-id-or-spec
                        (driver-api/database (driver-api/metadata-provider)))
-                  ;; db?
+                     ;; db?
                      (u/id db-or-id-or-spec)     db-or-id-or-spec
-                  ;; otherwise it's a spec and we can't get the db
+                     ;; otherwise it's a spec and we can't get the db
                      :else nil)]
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]
          (when-not (str/blank? (get options :session-timezone))
-            ;; set session time zone if defined
+           ;; set session time zone if defined
            (.setTimeZoneId underlying-conn (get options :session-timezone))))
        (try
          (.setReadOnly conn true)
          (catch Throwable e
            (log/warn e "Error setting starburst connection to read-only")))
-          ;; as with statement and prepared-statement, cannot set holdability on the connection level
+       ;; as with statement and prepared-statement, cannot set holdability on the connection level
        conn
        (catch Throwable e
          (.close conn)
@@ -600,7 +631,7 @@
             (or (instance? OffsetDateTime t)
                 (instance? ZonedDateTime t))
             (-> (t/offset-date-time t)
-              ;; tests are expecting this to be in the UTC offset, so convert to UTC
+                ;; tests are expecting this to be in the UTC offset, so convert to UTC
                 (t/with-offset-same-instant (t/zone-offset 0)))
 
             ;; starburst returns local results already adjusted to session time zone offset for us, e.g.
@@ -947,7 +978,6 @@
                                   (:tag driver-api/mb-version-info "")
                                   driver-api/local-process-uuid))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
-
                   ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
                   ;; very picky about properties (throwing an error if any are unrecognized)
                   ;; all valid properties can be found in the JDBC Driver source here:
@@ -1005,3 +1035,9 @@
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
+;; starburst returns line numbers in error messages which will be off by 1 if
+;; the remark is prepended (#64133)
+(defmethod sql-jdbc.execute/inject-remark :starburst
+  [_ sql remark]
+  (str sql "\n\n-- " remark))

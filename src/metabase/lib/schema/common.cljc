@@ -93,7 +93,9 @@
   [:and
    {:error/message "non-blank string"
     :json-schema   {:type "string" :minLength 1}}
-   [:string {:min 1}]
+   [:string {:min 1, :decode/normalize (fn [x]
+                                         (cond-> x
+                                           (keyword? x) u/qualified-name))}]
    [:fn
     {:error/message "non-blank string"}
     (complement str/blank?)]])

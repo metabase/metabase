@@ -3,14 +3,14 @@
   align-items: center;
   padding: 4px 6px;
   border-radius: 99px;
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   transition: background 300ms linear;
   cursor: pointer;
 
   &:hover {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-tertiary),
+      var(--mb-color-background_page-tertiary),
       black 5%
     );
   }
@@ -30,7 +30,7 @@
   cursor: pointer;
 
   &.active {
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 }
 

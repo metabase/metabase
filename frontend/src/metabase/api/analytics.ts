@@ -1,6 +1,10 @@
 import { trackSchemaEvent } from "metabase/analytics";
+import { hashSearchTerm, shouldReportSearchTerm } from "metabase/common/search";
 import { openSaveDialog } from "metabase/utils/dom";
-import { hashSearchTerm, shouldReportSearchTerm } from "metabase/utils/search";
+import {
+  toSnowplowContentTypes,
+  toSnowplowContext,
+} from "metabase-types/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -79,7 +83,7 @@ export const trackSearchRequest = (
         : null,
       search_term:
         shouldReportSearchTerm() && searchRequest.q ? searchRequest.q : null,
-      content_type: searchRequest.models ?? null,
+      content_type: toSnowplowContentTypes(searchRequest.models),
       creator: !!searchRequest.created_by,
       creation_date: !!searchRequest.created_at,
       last_edit_date: !!searchRequest.last_edited_at,
@@ -87,7 +91,7 @@ export const trackSearchRequest = (
       verified_items: !!searchRequest.verified,
       search_native_queries: !!searchRequest.search_native_query,
       search_archived: !!searchRequest.archived,
-      context: searchRequest.context ?? null,
+      context: toSnowplowContext(searchRequest.context),
       runtime_milliseconds: duration,
       total_results: searchResponse.total,
       page_results: searchResponse.limit,

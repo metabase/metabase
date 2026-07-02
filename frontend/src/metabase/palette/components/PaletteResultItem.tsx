@@ -33,7 +33,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         flexGrow: 1,
         flexBasis: 0,
       }}
-      bg={active ? "background-hover" : undefined}
+      bg={active ? "background_surface-hover" : undefined}
       c="text-primary"
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
@@ -61,7 +61,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
                 status={item.extra.moderatedStatus}
                 filled
                 size={14}
-                color="brand"
+                color="core-brand"
                 style={{
                   verticalAlign: "text-bottom",
                 }}
@@ -72,7 +72,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           {subtext && (
             <Flex
               flex="0 0 auto"
-              c={active ? "text-secondary" : "text-tertiary"}
+              c={active ? "text-secondary" : "text-disabled"}
               fz="0.75rem"
               lh="1rem"
               maw="40%"
@@ -87,7 +87,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
 
         {item.subtitle && (
           <Text
-            c={active ? "text-secondary" : "text-tertiary"}
+            c={active ? "text-secondary" : "text-disabled"}
             component="span"
             lh="1rem"
             style={{

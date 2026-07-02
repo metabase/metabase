@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-studio.permissions.query-test
   "Tests for published table query permissions.
   Published tables can be queried via collection permissions instead of data permissions."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.data-studio.permissions.query-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set* *is-superuser?*]]
@@ -76,7 +77,6 @@
               ;; Set table-level permissions
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
               (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :blocked)
-
               (perms/disable-perms-cache
                 (binding [*current-user-id*              user-id
                           *current-user-permissions-set* (delay (perms/user-permissions-set user-id))

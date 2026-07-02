@@ -2,12 +2,17 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useDeleteActionMutation, useListActionsQuery } from "metabase/api";
-import { Button } from "metabase/common/components/Button";
+import {
+  useDeleteActionMutation,
+  useListActionsQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
-import { useSetArchive } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Databases } from "metabase/entities/databases";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+import { ActionIcon, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -16,7 +21,6 @@ import {
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -29,7 +33,6 @@ import {
 import {
   ActionAlert,
   ActionList,
-  ActionMenu,
   ActionsHeader,
   Root,
 } from "./ModelActionDetails.styled";
@@ -40,13 +43,11 @@ interface OwnProps {
   model: Question;
 }
 
-interface DatabaseLoaderProps {
-  databases: Database[];
-}
+type Props = OwnProps;
 
-type Props = OwnProps & DatabaseLoaderProps;
-
-function ModelActionDetails({ model, databases }: Props) {
+function ModelActionDetails({ model }: Props) {
+  useListDatabasesQuery();
+  const databases = useSelector((state) => getMetadata(state).databasesList());
   const { data: actions = [] } = useListActionsQuery({
     "model-id": model.id(),
   });
@@ -93,31 +94,8 @@ function ModelActionDetails({ model, databases }: Props) {
     });
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
-  const menuItems = useMemo(() => {
-    const items = [];
-    const hasImplicitActions = implicitActions.length > 0;
-
-    if (hasImplicitActions) {
-      items.push({
-        title: t`Disable basic actions`,
-        icon: "bolt",
-        action: onDeleteImplicitActions,
-      });
-    } else if (supportsImplicitActions) {
-      items.push({
-        title: t`Create basic actions`,
-        icon: "bolt",
-        action: onEnableImplicitActions,
-      });
-    }
-
-    return items;
-  }, [
-    implicitActions,
-    supportsImplicitActions,
-    onEnableImplicitActions,
-    onDeleteImplicitActions,
-  ]);
+  const hasImplicitActions = implicitActions.length > 0;
+  const hasActionsMenu = hasImplicitActions || supportsImplicitActions;
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -145,13 +123,32 @@ function ModelActionDetails({ model, databases }: Props) {
     <Root data-testid="model-action-details">
       {canWrite && (
         <ActionsHeader data-testid="model-actions-header">
-          <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
-          {menuItems.length > 0 && (
-            <ActionMenu
-              triggerIcon="ellipsis"
-              items={menuItems}
-              triggerProps={{ "aria-label": t`Actions menu` }}
-            />
+          <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
+          {hasActionsMenu && (
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <ActionIcon aria-label={t`Actions`} variant="subtle" ml="sm">
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {hasImplicitActions ? (
+                  <Menu.Item
+                    leftSection={<Icon name="bolt" aria-hidden />}
+                    onClick={onDeleteImplicitActions}
+                  >
+                    {t`Disable basic actions`}
+                  </Menu.Item>
+                ) : (
+                  <Menu.Item
+                    leftSection={<Icon name="bolt" aria-hidden />}
+                    onClick={onEnableImplicitActions}
+                  >
+                    {t`Create basic actions`}
+                  </Menu.Item>
+                )}
+              </Menu.Dropdown>
+            </Menu>
           )}
         </ActionsHeader>
       )}
@@ -189,7 +186,7 @@ function NoActionsState({
       {hasCreateButton && (
         <EmptyStateActionContainer>
           <Button
-            icon="bolt"
+            leftSection={<Icon name="bolt" />}
             onClick={onCreateClick}
           >{t`Create basic actions`}</Button>
         </EmptyStateActionContainer>
@@ -204,4 +201,4 @@ function mostRecentFirst(action: WritebackAction) {
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(Databases.loadList())(ModelActionDetails);
+export default ModelActionDetails;

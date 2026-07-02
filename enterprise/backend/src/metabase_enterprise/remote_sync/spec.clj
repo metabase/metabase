@@ -594,6 +594,51 @@
              :message  (format "Import contains %s but local instance has unsynced %s namespace collections"
                                category category)}))))
 
+(defn- removal-condition-clauses
+  "Converts a spec's removal-conditions map into HoneySQL where-fragments, matching the semantics
+   [[metabase-enterprise.remote-sync.impl/build-entity-id-where-clause]] uses: an :entity_id entry
+   whose value is an [op value] pair becomes [op :entity_id value]; any other entry becomes [:= key value]."
+  [removal-conds]
+  (for [[k v] removal-conds]
+    (if (and (= k :entity_id) (vector? v))
+      (let [[op value] v] [op :entity_id value])
+      [:= k v])))
+
+(defn check-deletion-conflicts
+  "Detects local entities of all-or-nothing models (specs with :all-on-setting-disable) that an import
+   would wholesale-delete because they are absent from it, but which hold unsaved local work — i.e. they
+   have no RemoteSyncObject in 'synced' status. Already-synced entities are excluded: their removal is a
+   normal reconcile against the remote source of truth, not data loss.
+
+   Takes imported-data from [[extract-imported-entities]]. Returns a vector of conflict maps
+   ({:type :category :message}), one per affected model type (categories repeat across the transform models;
+   callers dedupe via the conflict summary)."
+  [{:keys [by-entity-id]}]
+  (into []
+        (for [[model-key spec] (specs-for-deletion)
+              :let [setting-kw (get-in spec [:removal :all-on-setting-disable])]
+              :when setting-kw
+              :let [model-type   (:model-type spec)
+                    imported-ids (get by-entity-id model-type #{})
+                    conds        (cond-> []
+                                   (seq imported-ids) (conj [:not-in :entity_id imported-ids])
+                                   :always            (into (removal-condition-clauses (removal-conditions spec))))
+                    candidates   (if (seq conds)
+                                   (t2/select [model-key :id] {:where (into [:and] conds)})
+                                   (t2/select [model-key :id]))
+                    n-unsynced   (count (remove (fn [{:keys [id]}]
+                                                  (t2/exists? :model/RemoteSyncObject
+                                                              :model_type model-type
+                                                              :model_id id
+                                                              :status "synced"))
+                                                candidates))]
+              :when (pos? n-unsynced)
+              :let [category (setting->category setting-kw)]]
+          {:type    (keyword (str (u/lower-case-en category) "-conflict"))
+           :category category
+           :message  (format "Import would delete %d unsynced local %s %s"
+                             n-unsynced category (if (= 1 n-unsynced) "entity" "entities"))})))
+
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------
 
 (defn transforms-namespace-collection?
@@ -1103,45 +1148,46 @@
 
 (defmethod query-export-roots :default [_] nil)
 
-(defn- resolve-targets
-  "Expands collection IDs to include all descendant collections.
-   Takes a set of collection IDs and returns a set including the original IDs
-   plus all IDs of nested collections."
-  [targets opts]
-  (when (seq targets)
-    (merge-with into
-                (u/traverse targets #(serdes/descendants (first %) (second %) opts))
-                (u/traverse targets #(serdes/required (first %) (second %))))))
+(defn exportable-entities
+  "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
+  `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
+  []
+  (let [opts {:include-field-values     false
+              :include-database-secrets false
+              :continue-on-error        false
+              :skip-archived            true}
+        root-targets (into []
+                           (mapcat query-export-roots)
+                           (vals (enabled-specs)))
+        targets (-> #{}
+                    (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) opts))))
+                    (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
+    (u/group-by first second targets)))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
 
    Returns a lazy sequence of serialized entities ready for storage.
 
-   Iterates over enabled specs and uses `query-export-roots` to find root targets
-   for each model type. Models with `:export-scope :derived` or no export-scope
-   are expanded from other targets via serdes/descendants.
-
    Only extracts models that:
    1. Have a spec in remote-sync-specs
    2. Are currently enabled (based on :enabled? field)
    3. Are in one of the provided collections (or descendants)"
   []
-  (let [specs (enabled-specs)
-        ;; Collect all root targets by iterating over enabled specs
-        root-targets (into []
-                           (comp (map val)
-                                 (mapcat query-export-roots)
-                                 (filter identity))
-                           specs)]
-    (when-let [targets (resolve-targets
-                        root-targets
-                        {:include-field-values false
-                         :include-database-secrets false
-                         :continue-on-error false
-                         :skip-archived true})]
-      (eduction (map (fn [[model ids]]
-                       (serdes/extract-all model {:where [:in :id ids]
-                                                  :skip-archived true})))
-                cat
-                (u/group-by first second (keys targets))))))
+  (eduction (map (fn [[model ids]]
+                   (serdes/extract-all model {:where [:in :id ids]
+                                              :skip-archived true})))
+            cat
+            (exportable-entities)))
+
+(defn extract-entities-for-rows
+  "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a
+   `:model_type` (the serdes model name) and a `:model_id` (the local DB primary key). Returns a lazy
+   sequence of serialized entities."
+  [rows]
+  (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
+    (eduction (map (fn [[model ids]]
+                     (serdes/extract-all model {:where [:in :id ids]
+                                                :skip-archived true})))
+              cat
+              by-model)))

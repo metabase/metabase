@@ -9,7 +9,7 @@ export const OptionsIcon = styled(Icon)`
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 

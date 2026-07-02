@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.preview-embed-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.embedding-rest.api.preview-embed-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.embedding-rest.api.preview-embed-test]}}}}}}
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
@@ -74,16 +77,13 @@
           #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (card-query-url card))))
-
         (testing "if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (card-query-url card)))))
-
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card))))))
-
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (card-query-url card))))))))))
@@ -96,13 +96,11 @@
           (testing "check that if embedding is enabled globally fail if the token is missing a `:locked` parameter"
             (is (= "You must specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "locked"}})))))
-
           (testing "if `:locked` param is supplied, request should succeed"
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "locked"}
                                                                              :params            {:venue_id 100}}))))
-
           (testing "if `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "locked"}
@@ -118,7 +116,6 @@
             (is (= "You're not allowed to specify a value for :venue_id."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "disabled"}
                                                                                    :params            {:venue_id 100}})))))
-
           (testing "If a `:disabled` param is passed in the URL the request should fail"
             (is (= "You're not allowed to specify a value for :venue_id."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "disabled"}})
@@ -134,7 +131,6 @@
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}
                                                                                         :params            {:venue_id 100}})
                                                                   "?venue_id=200")))))
-
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
@@ -266,16 +262,13 @@
           #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))))
-
         (testing "...but if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (dashcard-url dashcard)))))
-
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (is (= "Embedding is not enabled."
                  (mt/with-temporary-setting-values [enable-embedding-static false]
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard))))))
-
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (dashcard-url dashcard))))))))))
@@ -289,13 +282,11 @@
             (is (= "You must specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
                                                                            {:_embedding_params {:venue_id "locked"}})))))
-
           (testing "If `:locked` param is supplied, request should succeed"
             (is (=? {:status   "completed"
                      :data     {:rows     [[1]]}}
                     (mt/user-http-request :crowberto :get 202
                                           (dashcard-url dashcard {:_embedding_params {:venue_id "locked"}, :params {:venue_id 100}})))))
-
           (testing "If `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard
@@ -311,7 +302,6 @@
             (is (= "You're not allowed to specify a value for :venue_id."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
                                                                            {:_embedding_params {:venue_id "disabled"}, :params {:venue_id 100}})))))
-
           (testing "If a `:disabled` param is passed in the URL the request should fail"
             (is (= "You're not allowed to specify a value for :venue_id."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "disabled"}})
@@ -327,13 +317,11 @@
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}
                                                                                           :params            {:venue_id 100}})
                                                                   "?venue_id=200")))))
-
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             (is (=? {:status "completed"
                      :data   {:rows [[1]]}}
                     (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}
                                                                                       :params            {:venue_id 100}})))))
-
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
             (is (=? {:status "completed"
                      :data   {:rows [[0]]}}
@@ -427,20 +415,17 @@
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 1144 (count rows)))))
-
         (testing "should fail if user is not an admin"
           (is (= "You don't have permissions to do that."
                  (embed-test/with-embedding-enabled-and-new-secret-key!
                    (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                      (mt/user-http-request :rasta :get 403 (pivot-card-query-url card)))))))
-
         (testing "should fail if embedding is disabled"
           (is (= "Embedding is not enabled."
                  (mt/with-temporary-setting-values [enable-embedding false]
                    (embed-test/with-new-secret-key!
                      (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                        (mt/user-http-request :crowberto :get 400 (pivot-card-query-url card))))))))
-
         (testing "should fail if embedding is enabled and the wrong key is used"
           (is (= "Message seems corrupt or manipulated"
                  (embed-test/with-embedding-enabled-and-new-secret-key!
@@ -469,17 +454,14 @@
                 (is (= "completed" (:status result)))
                 (is (= 6 (count (get-in result [:data :cols]))))
                 (is (= 1144 (count rows)))))
-
             (testing "should fail if user is not an admin"
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (pivot-dashcard-url dashcard)))))
-
             (testing "should fail if embedding is disabled"
               (is (= "Embedding is not enabled."
                      (mt/with-temporary-setting-values [enable-embedding-static false]
                        (embed-test/with-new-secret-key!
                          (mt/user-http-request :crowberto :get 400 (pivot-dashcard-url dashcard)))))))
-
             (testing "should fail if embedding is enabled and the wrong key is used"
               (is (= "Message seems corrupt or manipulated"
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (pivot-dashcard-url dashcard))))))))))))

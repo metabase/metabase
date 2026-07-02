@@ -46,10 +46,10 @@ export function buildExpressionForPill(
     } else if (token.type === "metric") {
       const name = metricNames[token.sourceId];
       curr += name ?? "";
-      if (token.count > 1) {
+      if (token.occurrenceCount > 1) {
         result.push(curr);
         curr = "";
-        result.push(token.count);
+        result.push(token.occurrenceCount);
       }
     } else if (token.type === "constant") {
       curr += String(token.value);
@@ -487,7 +487,7 @@ export function traverseMetricTokens(
 function stripPositions(token: PositionedToken): ExpressionSubToken | null {
   switch (token.type) {
     case "metric":
-      return { type: "metric", sourceId: token.sourceId, count: 0 };
+      return { type: "metric", sourceId: token.sourceId, occurrenceCount: 0 };
     case "operator":
       return { type: "operator", op: token.op };
     case "constant":
@@ -713,7 +713,7 @@ export function parseFullTextWithPositions(
       tokens.push({
         type: "metric",
         sourceId: identity.sourceId,
-        count: 0,
+        occurrenceCount: 0,
         from: identity.from,
         to: identity.to,
       });
@@ -805,7 +805,7 @@ export function parseFullTextWithPositions(
           tokens.push({
             type: "metric",
             sourceId: id,
-            count: 0,
+            occurrenceCount: 0,
             from: i,
             to: nextI,
           });

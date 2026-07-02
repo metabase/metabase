@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 
 import { createMockSeriesModel } from "__support__/echarts";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNumber } from "metabase/utils/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -42,6 +43,7 @@ import type {
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "./types";
+import { getBarSeriesDataLabelKey } from "./util";
 
 const createMockComputedVisualizationSettings = (
   opts: Partial<ComputedVisualizationSettings> = {},
@@ -344,7 +346,13 @@ describe("dataset transform functions", () => {
     it("should populate dataset with min numeric values for positive and negative stack totals", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
-        [],
+        [
+          {
+            seriesKeys: seriesModels.map((seriesModel) => seriesModel.dataKey),
+            display: "bar",
+            axis: "left",
+          },
+        ],
         xAxisModel,
         seriesModels,
         [],
@@ -374,6 +382,57 @@ describe("dataset transform functions", () => {
           series1: 300,
           series2: 400,
           unusedSeries: 100,
+        },
+      ]);
+    });
+
+    it("should not use line series to create stacked bar total labels (UXW-3433)", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          dimensionKey: "A",
+          barSeries: null,
+          lineSeries: 100,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          dimensionKey: "B",
+          barSeries: 200,
+          lineSeries: 300,
+        },
+      ];
+      const barSeriesModel = createMockSeriesModel({ dataKey: "barSeries" });
+      const lineSeriesModel = createMockSeriesModel({ dataKey: "lineSeries" });
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [{ seriesKeys: ["barSeries"], display: "bar", axis: "left" }],
+        xAxisModel,
+        [barSeriesModel, lineSeriesModel],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          "stackable.stack_type": "stacked",
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          dimensionKey: "A",
+          barSeries: null,
+          lineSeries: 100,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
+          dimensionKey: "B",
+          barSeries: 200,
+          lineSeries: 300,
         },
       ]);
     });
@@ -452,6 +511,90 @@ describe("dataset transform functions", () => {
           dimensionKey: "A",
           series1: 0,
           series2: 200,
+        },
+      ]);
+    });
+
+    it("should replace bar series zero values with nulls when the series has non-zero values", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 10,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: null,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 10,
+        },
+      ]);
+    });
+
+    it("should preserve bar series zero values when the whole series is zero", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 0,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
         },
       ]);
     });
@@ -639,6 +782,54 @@ describe("dataset transform functions", () => {
 
         expect(result).toHaveLength(dataset.length);
       });
+
+      it("should replace the missing DST spring-forward week with zero (#71811)", () => {
+        const dstDataset = [
+          {
+            [X_AXIS_DATA_KEY]: "2026-03-01T00:00:00-05:00",
+            series1: 12,
+          },
+          {
+            [X_AXIS_DATA_KEY]: "2026-03-15T00:00:00-04:00",
+            series1: 10,
+          },
+        ];
+        const dstXAxisModel: TimeSeriesXAxisModel = {
+          ...xAxisModel,
+          intervalsCount: 2,
+          interval: {
+            count: 1,
+            unit: "week",
+          },
+          timezone: "America/New_York",
+          toEChartsAxisValue: (value) => {
+            return parseTimestamp(value)
+              .tz("America/New_York")
+              .format("YYYY-MM-DDTHH:mm:ss[Z]");
+          },
+        };
+
+        const result = applyVisualizationSettingsDataTransformations(
+          dstDataset,
+          [],
+          dstXAxisModel,
+          [createMockSeriesModel({ dataKey: "series1" })],
+          [],
+          yAxisScaleTransforms,
+          createMockComputedVisualizationSettings({
+            series: () => ({
+              "line.missing": "zero",
+            }),
+          }),
+        );
+
+        expect(result.map((datum) => datum[X_AXIS_DATA_KEY])).toEqual([
+          "2026-03-01T00:00:00Z",
+          "2026-03-08T00:00:00Z",
+          "2026-03-15T00:00:00Z",
+        ]);
+        expect(result.map((datum) => datum.series1)).toEqual([12, 0, 10]);
+      });
     });
 
     describe("null dimension values", () => {
@@ -775,6 +966,24 @@ describe("dataset transform functions", () => {
       expect(result[0][X_AXIS_DATA_KEY]).toBe("2022-01-01");
       expect(result[1][X_AXIS_DATA_KEY]).toBe("2022-02-01");
       expect(result[2][X_AXIS_DATA_KEY]).toBe("2022-03-01");
+    });
+
+    it("should sort valid dates and move null dates to the end", () => {
+      const dataset = [
+        { [X_AXIS_DATA_KEY]: "2022-03-01", [seriesKey]: 10 },
+        { [X_AXIS_DATA_KEY]: null, [seriesKey]: 2 },
+        { [X_AXIS_DATA_KEY]: "2022-01-01", [seriesKey]: 5 },
+        { [X_AXIS_DATA_KEY]: "2022-02-01", [seriesKey]: 8 },
+      ];
+
+      const result = sortDataset(dataset, "timeseries");
+
+      expect(result.map((datum) => datum[X_AXIS_DATA_KEY])).toEqual([
+        "2022-01-01",
+        "2022-02-01",
+        "2022-03-01",
+        null,
+      ]);
     });
 
     it.each(numericScale)("should sort numeric datasets", (xAxisScale) => {

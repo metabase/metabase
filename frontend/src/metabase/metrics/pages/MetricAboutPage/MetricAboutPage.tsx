@@ -1,11 +1,8 @@
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
-import { Center } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type { MetricPageProps } from "metabase/common/metrics/types";
 
+import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
-import type { MetricPageProps } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
 import { MetricAbout } from "./MetricAbout";
@@ -17,27 +14,20 @@ export function MetricAboutPage({
   showAppSwitcher,
   showDataStudioLink = true,
 }: MetricPageProps) {
-  const cardId = Urls.extractEntityId(params.cardId);
-  const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
-
-  if (isLoading || error != null || card == null) {
-    return (
-      <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Center>
-    );
-  }
-
   return (
-    <PageContainer data-testid="metric-about-page" gap="xl">
-      <MetricPageShell
-        card={card}
-        urls={urls}
-        renderBreadcrumbs={renderBreadcrumbs}
-        showAppSwitcher={showAppSwitcher}
-        showDataStudioLink={showDataStudioLink}
-      />
-      <MetricAbout card={card} urls={urls} />
-    </PageContainer>
+    <MetricPageCard cardId={params.cardId}>
+      {(card) => (
+        <PageContainer data-testid="metric-about-page" gap="xl">
+          <MetricPageShell
+            card={card}
+            urls={urls}
+            renderBreadcrumbs={renderBreadcrumbs}
+            showAppSwitcher={showAppSwitcher}
+            showDataStudioLink={showDataStudioLink}
+          />
+          <MetricAbout card={card} urls={urls} />
+        </PageContainer>
+      )}
+    </MetricPageCard>
   );
 }

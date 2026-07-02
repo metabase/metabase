@@ -1,3 +1,4 @@
+import type { LoginData } from "metabase/redux/auth";
 import { loadSettings } from "metabase/redux/settings";
 import {
   isValidColorScheme,
@@ -14,8 +15,62 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const sessionPropertiesPath = "/api/session/properties";
 
+export interface SessionResponse {
+  id: string;
+}
+
+export interface GoogleAuthData {
+  token: string;
+  remember?: boolean;
+}
+
+export interface ResetPasswordData {
+  token: string;
+  password: string;
+}
+
+export interface SsoLogoutResponse {
+  "saml-logout-url"?: string;
+}
+
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    createSession: builder.mutation<SessionResponse, LoginData>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session",
+        body,
+      }),
+    }),
+    createSessionWithGoogleAuth: builder.mutation<
+      SessionResponse,
+      GoogleAuthData
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/google_auth",
+        body,
+      }),
+    }),
+    deleteSession: builder.mutation<void, void>({
+      query: () => ({
+        method: "DELETE",
+        url: "/api/session",
+      }),
+    }),
+    logoutSso: builder.mutation<SsoLogoutResponse, void>({
+      query: () => ({
+        method: "POST",
+        url: "/auth/sso/logout",
+      }),
+    }),
+    resetPassword: builder.mutation<void, ResetPasswordData>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/reset_password",
+        body,
+      }),
+    }),
     getPasswordResetTokenStatus: builder.query<
       PasswordResetTokenStatus,
       string
@@ -31,6 +86,13 @@ export const sessionApi = Api.injectEndpoints({
         method: "POST",
         url: "/api/session/forgot_password",
         body: { email },
+      }),
+    }),
+    checkPassword: builder.mutation<void, { password: string }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/password-check",
+        body,
       }),
     }),
     getSessionProperties: builder.query<EnterpriseSettings, void>({
@@ -58,8 +120,14 @@ export const sessionApi = Api.injectEndpoints({
 });
 
 export const {
+  useCreateSessionMutation,
+  useCreateSessionWithGoogleAuthMutation,
+  useDeleteSessionMutation,
+  useLogoutSsoMutation,
+  useResetPasswordMutation,
   useGetPasswordResetTokenStatusQuery,
   useForgotPasswordMutation,
+  useCheckPasswordMutation,
   useGetSessionPropertiesQuery,
 } = sessionApi;
 

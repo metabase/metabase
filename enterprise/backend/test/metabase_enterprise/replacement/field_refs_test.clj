@@ -187,7 +187,6 @@
           (testing "parameters should be upgraded"
             (is (=? [{:values_source_config {:value_field [:field "CATEGORY" {}]}}]
                     (:parameters card))))))))
-
   (testing "should not update when there are no changes"
     (let [mp              (mt/metadata-provider)
           query           (lib/native-query mp "SELECT * FROM orders")

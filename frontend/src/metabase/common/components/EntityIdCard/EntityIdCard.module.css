@@ -1,19 +1,19 @@
 .CopyButton {
   cursor: pointer;
   position: relative;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
 .InfoIcon {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
-    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background_surface-hover);
+    color: var(--mb-color-core-brand);
   }
 
   border-radius: 100%;

@@ -10,7 +10,7 @@ import {
   useUpdateMetabotMutation,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils/settings";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
@@ -237,11 +237,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-tertiary" mb="sm">
+    <Flex align="center" gap="sm" c="text-disabled" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-tertiary" fw="bold">
+          <Text c="text-disabled" fw="bold">
             /
           </Text>
         </>
@@ -260,7 +260,7 @@ const CollectionDisplay = ({
   const icon = getIcon({ model: "collection", ...collection });
   return (
     <Flex align="center" gap="sm">
-      <Icon {...icon} c={icon.color ?? "brand"} />
+      <Icon {...icon} c={icon.color ?? "core-brand"} />
       <Text c="text-secondary" fw="bold">
         {collection.name}
       </Text>

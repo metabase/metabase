@@ -12,6 +12,8 @@
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
@@ -160,6 +162,23 @@
       (log/error e "Failed to transfer data using drop-create fallback strategy")
       (throw e))))
 
+(defn- upsert-with-merge-strategy!
+  "Upsert the staged data into `table-name`, keyed on `unique-key` (a vector of column names)."
+  [driver db table-name metadata data-source unique-key]
+  (let [db-id   (:id db)
+        staging (transforms-base.u/temp-table-name driver (namespace table-name))]
+    (transforms-base.u/validate-merge-unique-key! unique-key (mapv :name (:fields metadata)))
+    (create-table-and-insert-data! driver db-id (table-schema staging metadata) data-source)
+    (try
+      (let [[sql & params] (sql.qp/format-honeysql driver {:select [:*], :from [staging]})
+            select     {:query sql, :params (vec params)}
+            merge-spec {:unique-key unique-key
+                        :columns    (mapv :name (:fields metadata))}]
+        (driver/execute-raw-queries! driver (driver/connection-spec driver db)
+                                     (driver.sql/compile-merge driver table-name select merge-spec)))
+      (finally
+        (transforms-base.u/drop-table! driver db-id staging)))))
+
 (defmulti ^:private transfer-file-to-db
   {:arglists '([driver db transform metadata temp-file])}
   (fn [_ _ transform _ _] (-> transform :target :type keyword)))
@@ -168,19 +187,26 @@
   [driver {db-id :id :as db}
    {:keys [target] :as transform}
    metadata temp-file]
-  ;; First incremental run: no checkpoint exists yet, behave like non-incremental
-  ;; to drop and recreate the table rather than appending to existing data.
-  (if (nil? (:last_checkpoint_value transform))
+  ;; Full incremental run (no watermark — first ever or after a checkpoint-config reset): behave
+  ;; like non-incremental and drop-and-recreate rather than appending.
+  (if (transforms-base.u/full-incremental-run? transform)
     ((get-method transfer-file-to-db :table) driver db transform metadata temp-file)
-    ;; Normal incremental: append if table exists, create if it doesn't
+    ;; Normal incremental: append (or merge) if table exists, create if it doesn't
     (let [table-name (transforms-base.u/qualified-table-name driver target)
           table-exists? (transforms-base.u/target-table-exists? transform)
           data-source {:type :jsonl-file
-                       :file temp-file}]
-      (if (not table-exists?)
+                       :file temp-file}
+          unique-key (transforms-base.u/merge-target-unique-key transform)]
+      (cond
+        (not table-exists?)
         (do
           (log/info "New table")
           (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
+
+        unique-key
+        (upsert-with-merge-strategy! driver db table-name metadata data-source unique-key)
+
+        :else
         (insert-data! driver db-id (table-schema table-name metadata) data-source)))))
 
 (defmethod transfer-file-to-db :table
@@ -216,8 +242,16 @@
 
 ;;; ------------------------------------------------- Core Execution -------------------------------------------------
 
-(defn- run-python-transform-impl!
-  "Core Python transform execution. Returns {:status :result :logs :events}.
+(defn- count-jsonl-rows
+  "Non-blank line count of a JSONL temp file."
+  [^File file]
+  (with-open [rdr (io/reader file)]
+    (->> (line-seq rdr) (remove str/blank?) count)))
+
+(mu/defn- run-python-transform-impl! :- ::driver/run-transform-result
+  "Core Python transform execution. Returns an open map carrying an integer `:rows-affected` (the JSONL row count),
+   plus the HTTP runner response's `:status`/`:body`. Conforms to [[::driver/run-transform-result]] so the Python
+   path is held to the same contract as the SQL `run-transform!` methods. Every non-success path throws.
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
@@ -266,15 +300,16 @@
                 (with-open [in (python-runner/open-output @shared-storage-ref)]
                   (io/copy in temp-file))
                 ;; Transfer file to database with instrumentation
-                (let [file-size (.length temp-file)
-                      do-transfer (fn [] (transfer-file-to-db driver db transform output-manifest temp-file))]
+                (let [file-size    (.length temp-file)
+                      rows-written (count-jsonl-rows temp-file)
+                      do-transfer  (fn [] (transfer-file-to-db driver db transform output-manifest temp-file))]
                   (if with-stage-timing-fn
                     (with-stage-timing-fn run-id [:import :file-to-dwh] do-transfer)
                     (do-transfer))
-                  (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
+                  (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size rows-written)
+                  (assoc response :rows-affected rows-written))
                 (finally
                   (.delete temp-file))))
-            response
             (catch Exception e
               (log/error e "Failed to create resulting table")
               (throw (ex-info "Failed to create the resulting table"
@@ -318,7 +353,6 @@
       ;; Check cancellation before starting
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
-
       (let [{:keys [target] transform-id :id} transform
             db (t2/select-one :model/Database (:database target))
             ;; Use run-id if provided, otherwise generate a temp one for python runner
@@ -337,25 +371,20 @@
                                           (recur)))))))
                               ch))
             start-ms (u/start-timer)]
-
         (log! message-log (i18n/tru "Executing Python transform"))
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
-
         (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
                                                  {:with-stage-timing-fn with-stage-timing-fn
                                                   :source-range-params  source-range-params})]
           (log! message-log (i18n/tru "Python execution finished successfully in {0}"
                                       (u.format/format-milliseconds (u/since-ms start-ms))))
-
           ;; Check cancellation after python
           (when (and cancelled? (cancelled?))
             (throw (ex-info "Transform cancelled after python execution" {:status :cancelled})))
-
           {:status :succeeded
            :result result
            :logs (message-log->string message-log)
            :source-range-params source-range-params}))
-
       (catch Exception e
         (let [data (ex-data e)
               logs (message-log->string message-log)

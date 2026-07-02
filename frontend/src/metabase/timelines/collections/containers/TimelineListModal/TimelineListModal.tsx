@@ -1,8 +1,9 @@
-import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
-import { Collections } from "metabase/entities/collections";
-import type { State } from "metabase/redux/store";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useListCollectionTimelinesQuery,
+} from "metabase/api";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import TimelineListModal from "../../components/TimelineListModal";
@@ -10,15 +11,8 @@ import type { ModalParams } from "../../types";
 
 interface TimelineListModalContainerProps {
   params: ModalParams;
-  collection: Collection;
   onClose?: () => void;
 }
-
-const collectionProps = {
-  id: (state: State, props: TimelineListModalContainerProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
 
 function TimelineListModalContainer({
   params,
@@ -27,20 +21,36 @@ function TimelineListModalContainer({
   const collectionId = Urls.extractCollectionId(params.slug);
   const {
     data: timelines = [],
-    isLoading,
-    error,
+    isLoading: isTimelinesLoading,
+    error: timelinesError,
   } = useListCollectionTimelinesQuery(
     collectionId != null ? { id: collectionId, include: "events" } : skipToken,
   );
+  const {
+    data: collection,
+    isLoading: isCollectionLoading,
+    error: collectionError,
+  } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
 
-  if (isLoading || error) {
+  const isLoading = isTimelinesLoading || isCollectionLoading;
+  const error = timelinesError ?? collectionError;
+
+  if (isLoading || error || !collection) {
     return (
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
     );
   }
 
-  return <TimelineListModal {...props} timelines={timelines} />;
+  return (
+    <TimelineListModal
+      {...props}
+      collection={collection}
+      timelines={timelines}
+    />
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Collections.load(collectionProps)(TimelineListModalContainer);
+export default TimelineListModalContainer;

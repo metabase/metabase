@@ -18,7 +18,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   createMockCollection,
   createMockCollectionItemFromCollection,
@@ -108,12 +108,12 @@ describe("CreateDashboardModal", () => {
     jest.restoreAllMocks();
   });
 
-  it("displays empty form fields", () => {
+  it("displays empty form fields", async () => {
     setup();
 
     expect(screen.getByLabelText("Name")).toHaveValue("");
     expect(screen.getByLabelText("Description")).toHaveValue("");
-    expect(screen.getByText("Our analytics")).toBeInTheDocument();
+    expect(await screen.findByText("Our analytics")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 

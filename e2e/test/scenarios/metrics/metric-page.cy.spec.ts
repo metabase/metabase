@@ -62,15 +62,13 @@ describe("scenarios > metrics > metric page", () => {
     H.MetricPage.aboutPage().should("be.visible");
     H.MetricPage.aboutPageDescriptionSidebar().within(() => {
       cy.findByText("Total number of orders").should("be.visible");
+      cy.findByText("Source").should("be.visible");
       cy.findByText("Sample Database").should("be.visible");
-      cy.findByText("Source table").should("be.visible");
       cy.findByText("Orders").should("be.visible");
     });
 
     cy.log("explore link");
-    H.MetricPage.header()
-      .findByText("Explore")
-      .closest("a")
+    H.MetricPage.exploreLink()
       .should("have.attr", "href")
       .and("include", "/explore");
 
@@ -259,6 +257,23 @@ describe("scenarios > metrics > metric page", () => {
     H.getNotebookStep("summarize")
       .findByText("Sum of Total")
       .should("be.visible");
+    H.undoToast().should("contain.text", "Metric query updated");
+    H.undoToast().findByRole("img", { name: /close/ }).click();
+
+    cy.log("surface backend error when a revert fails (UXW-310)");
+    cy.intercept("POST", "/api/revision/revert", {
+      statusCode: 500,
+      body: { message: "Cannot revert: missing metric" },
+    }).as("failedRevert");
+
+    H.MetricPage.historyTab().click();
+    cy.findByTestId("saved-question-history-list")
+      .findAllByTestId("question-revert-button")
+      .first()
+      .click();
+    cy.wait("@failedRevert");
+
+    H.undoToast().should("contain.text", "Cannot revert: missing metric");
   });
 
   it("should add metric to dashboard and move to trash via more menu", () => {
@@ -381,8 +396,9 @@ describe("scenarios > metrics > metric page", () => {
       });
 
       H.MetricPage.aboutPageDescriptionSidebar().within(() => {
-        cy.findByText("Dependencies").should("be.visible");
-        cy.findByText("Dependents").should("be.visible");
+        cy.findByText("Relationships").should("be.visible");
+        cy.findByText("No dependencies").should("be.visible");
+        cy.findByText("No charts use this metric").should("be.visible");
       });
 
       H.MetricPage.dependenciesTab().click();

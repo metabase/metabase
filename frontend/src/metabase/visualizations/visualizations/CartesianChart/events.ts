@@ -70,6 +70,7 @@ import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
+  DatasetColumn,
   RawSeries,
   TimelineEvent,
   TimelineEventId,
@@ -137,7 +138,7 @@ export const getEventDimensions = (
       ? dimensionModel.columnByCardId[seriesModel.cardId]
       : dimensionModel.column;
 
-  const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
+  const hasDimensionValue = sameCardDatumColumns.length > 0;
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
@@ -302,6 +303,7 @@ const computeDiffWithPreviousPeriod = (
 export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
+  dimensionColumn: DatasetColumn | undefined,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
   onBrush?: ((range: { start: number; end: number }) => void) | null,
 ) => {
@@ -315,6 +317,11 @@ export const canBrush = (
 
   if (onBrush) {
     return true;
+  }
+
+  // Can't filter an aggregation in the stage that produces it (metabase#71073).
+  if (dimensionColumn?.source === "aggregation") {
+    return false;
   }
 
   const hasCombinedCards = series.length > 1;
@@ -861,10 +868,28 @@ export const getOtherSeriesTooltipModel = (
   };
 };
 
+const isMouseEventWithXAxis = (
+  event: EChartsSeriesMouseEvent,
+): event is EChartsSeriesMouseEvent<{ xAxis: string }> => {
+  return (
+    typeof event.data === "object" &&
+    event.data !== null &&
+    "xAxis" in event.data &&
+    typeof event.data.xAxis === "string" &&
+    event.data.xAxis.length > 0
+  );
+};
+
 export const getTimelineEventsForEvent = (
   timelineEventsModel: TimelineEventsModel,
   event: EChartsSeriesMouseEvent,
 ) => {
+  if (isMouseEventWithXAxis(event)) {
+    return timelineEventsModel.find(
+      (timelineEvents) => timelineEvents.date === event.data.xAxis,
+    )?.events;
+  }
+
   return timelineEventsModel.find(
     (timelineEvents) => timelineEvents.date === event.value,
   )?.events;

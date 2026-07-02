@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       test:
+        # Technically this accepts anything that is accepted by Hawk:
+        # https://github.com/metabase/hawk/#leiningen-style-test-selection
+        # For example, to run everything in the tests/ dir you can do
+        # $ gh workflow run .github/workflows/drivers-stress-test.yml --field 'test=\"test/\" :only-tags [:mb/driver-tests]' --field times=2 --field driver=Snowflake
         description: 'The exact test name with its namespace.'
         type: string
         required: true
@@ -59,7 +63,7 @@ jobs:
       MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
       MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Athena driver
       uses: ./.github/actions/test-driver
       with:
@@ -79,8 +83,9 @@ jobs:
       MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test BigQuery Cloud SDK driver
       uses: ./.github/actions/test-driver
       with:
@@ -102,7 +107,7 @@ jobs:
         env:
           CLUSTER_SIZE: nano-quickstart
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Druid driver
       uses: ./.github/actions/test-driver
       with:
@@ -131,7 +136,7 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MariaDB driver (10.6)
       uses: ./.github/actions/test-driver
       with:
@@ -160,7 +165,7 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MariaDB driver (latest)
       uses: ./.github/actions/test-driver
       with:
@@ -182,7 +187,7 @@ jobs:
         ports:
           - "27017:27017"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MongoDB driver (4.4)
       uses: ./.github/actions/test-driver
       with:
@@ -200,7 +205,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Spin up Mongo docker container
         run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.4 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
       - name: Wait until the port 27017 is ready
@@ -238,7 +243,7 @@ jobs:
         ports:
           - "27017:27017"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MongoDB driver (5.0)
       uses: ./.github/actions/test-driver
       with:
@@ -256,7 +261,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Spin up Mongo docker container
       run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-5.0 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
     - name: Wait until the port 27017 is ready
@@ -297,7 +302,7 @@ jobs:
           MONGO_INITDB_ROOT_USERNAME: metabase
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MongoDB driver (latest)
       uses: ./.github/actions/test-driver
       with:
@@ -326,7 +331,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MySQL driver (8.0)
       uses: ./.github/actions/test-driver
       with:
@@ -364,7 +369,7 @@ jobs:
         ports:
         - "3306:3306"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MySQL driver (latest)
       uses: ./.github/actions/test-driver
       with:
@@ -390,7 +395,7 @@ jobs:
         ports:
           - "1521:1521"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Oracle driver (18.4)
       uses: ./.github/actions/test-driver
       with:
@@ -425,7 +430,7 @@ jobs:
         ports:
           - "2484:2484"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Oracle driver (21.3)
       uses: ./.github/actions/test-driver
       with:
@@ -455,7 +460,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Postgres driver (14)
       uses: ./.github/actions/test-driver
       with:
@@ -488,7 +493,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Postgres driver (latest)
       uses: ./.github/actions/test-driver
       with:
@@ -518,7 +523,7 @@ jobs:
         env:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
       run: while ! nc -z localhost ${{ env.MB_PRESTO_JDBC_TEST_PORT }}; do sleep 0.1; done
       timeout-minutes: 15
@@ -556,7 +561,7 @@ jobs:
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Redshift driver
       uses: ./.github/actions/test-driver
       with:
@@ -573,11 +578,21 @@ jobs:
       MB_SNOWFLAKE_TEST_USER: METABASE CI
       MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
       MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
       MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
       MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
       MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Snowflake driver
       uses: ./.github/actions/test-driver
       with:
@@ -597,7 +612,7 @@ jobs:
         ports:
           - "10000:10000"
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test Spark driver
       uses: ./.github/actions/test-driver
       with:
@@ -612,7 +627,7 @@ jobs:
       CI: 'true'
       DRIVERS: sqlite
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test SQLite driver
       uses: ./.github/actions/test-driver
       with:
@@ -639,7 +654,7 @@ jobs:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MS SQL Server 2017 driver
       uses: ./.github/actions/test-driver
       with:
@@ -666,7 +681,7 @@ jobs:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Test MS SQL Server 2022 driver
       uses: ./.github/actions/test-driver
       with:
@@ -689,7 +704,7 @@ jobs:
           - "8080:8080"
     name: Starburst
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Starburst driver
@@ -707,7 +722,7 @@ jobs:
       contents: read
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
       with:
         role-to-assume: ${{ secrets.CI_IAM_ROLE }}
         role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -744,7 +759,7 @@ jobs:
           username: ${{ needs.login-to-ecr.outputs.docker_username }}
           password: ${{ needs.login-to-ecr.outputs.docker_password }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver

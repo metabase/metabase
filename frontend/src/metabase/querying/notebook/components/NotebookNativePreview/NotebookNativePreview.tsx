@@ -37,6 +37,7 @@ type NotebookNativePreviewProps = {
   onConvertClick: (newQuestion: Question) => void;
   readOnly?: boolean;
   disableDefaultLimit?: boolean;
+  disableConvert?: boolean;
 };
 
 export const NotebookNativePreview = ({
@@ -46,6 +47,7 @@ export const NotebookNativePreview = ({
   onConvertClick,
   readOnly,
   disableDefaultLimit,
+  disableConvert,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
   const engine = database?.engine;
@@ -70,7 +72,7 @@ export const NotebookNativePreview = ({
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = "1px solid var(--mb-color-border)";
+  const borderStyle = "1px solid var(--mb-color-border-neutral)";
 
   const handleConvertClick = useCallback(() => {
     if (newQuestion) {
@@ -84,7 +86,7 @@ export const NotebookNativePreview = ({
       data-testid="native-query-preview-sidebar"
       w="100%"
       h="100%"
-      bg="background-primary"
+      bg="background_page-primary"
       display="flex"
       style={{ flexDirection: "column" }}
     >
@@ -125,7 +127,7 @@ export const NotebookNativePreview = ({
             variant="subtle"
             p={0}
             onClick={handleConvertClick}
-            disabled={!showQuery}
+            disabled={!showQuery || disableConvert}
           >
             {buttonTitle ?? BUTTON_TITLE[engineType]}
           </Button>

@@ -32,7 +32,7 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("create", () => {
-    it("new dashboard UI flow", { tags: "@smoke" }, () => {
+    it("new dashboard UI flow", { tags: "@prerelease" }, () => {
       cy.intercept("POST", "/api/dashboard").as("createDashboard");
       cy.intercept("POST", "/api/card").as("createQuestion");
 
@@ -138,7 +138,13 @@ describe("scenarios > dashboard", () => {
 
       H.checkSavedToCollectionQuestionToast(true);
 
-      H.entityPickerModal().findByText("New dashboard").click();
+      // The "New dashboard" button stays disabled until the selected
+      // collection's details (incl. can_write) load; clicking too early is a
+      // no-op, so wait for it to be enabled before clicking.
+      H.entityPickerModal()
+        .findByRole("button", { name: "New dashboard" })
+        .should("be.enabled")
+        .click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();
@@ -1493,13 +1499,27 @@ describe("scenarios > dashboard", () => {
         event: "revert_version_clicked",
         event_detail: "dashboard",
       });
+
+      // Simulate a backend failure on revert and confirm we surface
+      // the error message as a toast (UXW-310).
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing dashboard" },
+      }).as("failedRevert");
+
+      H.sidesheet().within(() => {
+        cy.findAllByTestId("question-revert-button").first().click();
+      });
+      cy.wait("@failedRevert");
+
+      H.undoToast().should("contain.text", "Cannot revert: missing dashboard");
     });
   });
 });
 
 function checkOptionsForFilter(filter) {
   cy.findByText("Available filters").parent().contains(filter).click();
-  H.popover()
+  cy.findByRole("listbox")
     .should("contain", "Columns")
     .and("contain", "COUNT(*)")
     .and("not.contain", "Dashboard filters");

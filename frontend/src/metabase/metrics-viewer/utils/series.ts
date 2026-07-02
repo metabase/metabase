@@ -7,7 +7,6 @@ import type {
   ExpressionMetricSource,
   MetricDimensionItem,
 } from "metabase/metrics-viewer/components/DimensionPillBar";
-import type { IconName } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -24,6 +23,7 @@ import type {
   DatasetColumn,
   DatasetData,
   DimensionId,
+  IconName,
   MetricBreakoutValuesResponse,
   RowValue,
   RowValues,
@@ -54,10 +54,10 @@ import {
   getEffectiveDefinitionEntry,
   getEntryBreakout,
 } from "./definition-entries";
+import { DISPLAY_TYPE_REGISTRY } from "./dimension-breakout-config";
+import { getDimensionIcon } from "./dimension-breakouts";
 import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
-import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
-import { getDimensionIcon } from "./tabs";
 
 export function shouldShowStackSeries(
   display: MetricsViewerDisplayType,
@@ -352,7 +352,7 @@ export const DIMENSION_COLUMN_INDEX = 0;
 export const BREAKOUT_COLUMN_INDEX = 1;
 export const METRIC_COLUMN_INDEX = 2;
 
-// When the breakout dimension is the same as the tab's dimension,
+// When the breakout dimension is the same as the dimension breakout's dimension,
 // the query avoids adding it twice, so we get [breakout, metric] instead of [dimension, breakout, metric].
 function getBreakoutColumnDescriptor(cols: DatasetColumn[]): {
   index: number;
@@ -614,7 +614,7 @@ export function buildDimensionItemsFromDefinitions(
 
       items.push({
         type: "expression",
-        id: slot.entityIndex,
+        entityIndex: slot.entityIndex,
         colors: expressionColors,
         label,
         icon,
@@ -686,8 +686,8 @@ function buildStandaloneDimensionItem(
     );
 
     return {
-      id: slot.slotIndex,
       type: "metric",
+      slotIndex: slot.slotIndex,
       label: dimensionInfo.longDisplayName,
       icon: getDimensionIcon(projectionDimension),
       colors: entryColors,
@@ -700,8 +700,8 @@ function buildStandaloneDimensionItem(
   }
 
   return {
-    id: slot.slotIndex,
     type: "metric",
+    slotIndex: slot.slotIndex,
     label: undefined,
     icon: undefined,
     colors: entryColors,
@@ -777,7 +777,7 @@ function buildExpressionMetricSources(
             return undefined;
           }
           const token = entity.tokens[slot.tokenPosition];
-          return token?.type === "metric" ? token.count : undefined;
+          return token?.type === "metric" ? token.occurrenceCount : undefined;
         })(),
         colors: entryColors,
         currentDimension,

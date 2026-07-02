@@ -1,10 +1,11 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
 
 import { RunSection } from "./RunSection";
@@ -40,6 +41,7 @@ export const TransformRunPage = ({ params }: TransformRunPageProps) => {
   return (
     <PageContainer data-testid="transforms-run-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
+      <TransformDisconnectedDatabaseBanner transform={transform} />
       <RunSection transform={transform} readOnly={readOnly} />
     </PageContainer>
   );

@@ -246,7 +246,8 @@ export const StrategyEditorForQuestionsAndDashboards = () => {
             savedStrategy={savedStrategy}
             shouldAllowInvalidation={true}
             shouldShowName={false}
-            isInSidebar
+            onReset={closeForm}
+            layout="sidebar"
           />
         )}
       </Sidesheet>
@@ -272,7 +273,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
 );
 
 const NoResultsTableRow = () => (
-  <Center fw="bold" c="text-tertiary">
+  <Center fw="bold" c="text-disabled">
     {t`No dashboards or questions have their own caching policies yet.`}
   </Center>
 );

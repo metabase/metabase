@@ -7,7 +7,6 @@ import { isNative } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { displayNameForColumn } from "metabase/utils/formatting";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,
@@ -47,6 +46,7 @@ import {
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DatasetData,
   Series,
@@ -96,11 +96,9 @@ export class Table extends Component<TableProps, TableState> {
   static isPivoted = _isPivoted;
 
   static settings = {
-    ...columnSettings({ hidden: true }),
+    ...columnSettings({ getHidden: () => true }),
     "table.pagination": {
-      get section() {
-        return t`Columns`;
-      },
+      getSection: () => t`Columns`,
       get title() {
         return t`Paginate results`;
       },
@@ -110,9 +108,7 @@ export class Table extends Component<TableProps, TableState> {
       getDefault: () => false,
     },
     "table.row_index": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Show row index`;
       },
@@ -121,9 +117,7 @@ export class Table extends Component<TableProps, TableState> {
       getDefault: () => false,
     },
     "table.freeze_columns": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Freeze columns`;
       },
@@ -140,9 +134,7 @@ export class Table extends Component<TableProps, TableState> {
       },
     },
     "table.freeze_columns_count": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Number of columns to freeze`;
       },
@@ -156,9 +148,7 @@ export class Table extends Component<TableProps, TableState> {
       getProps: () => ({ min: 1 }),
     },
     "table.freeze_rows": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Freeze rows`;
       },
@@ -175,9 +165,7 @@ export class Table extends Component<TableProps, TableState> {
       },
     },
     "table.freeze_rows_count": {
-      get section() {
-        return t`Display`;
-      },
+      getSection: () => t`Display`,
       get title() {
         return t`Number of rows to freeze`;
       },
@@ -191,9 +179,7 @@ export class Table extends Component<TableProps, TableState> {
       getProps: () => ({ min: 1 }),
     },
     "table.pivot": {
-      get section() {
-        return t`Columns`;
-      },
+      getSection: () => t`Columns`,
       get title() {
         return t`Pivot table`;
       },
@@ -226,9 +212,7 @@ export class Table extends Component<TableProps, TableState> {
     },
 
     "table.pivot_column": {
-      get section() {
-        return t`Columns`;
-      },
+      getSection: () => t`Columns`,
       get title() {
         return t`Pivot column`;
       },
@@ -253,9 +237,7 @@ export class Table extends Component<TableProps, TableState> {
       persistDefault: true,
     },
     "table.cell_column": {
-      get section() {
-        return t`Columns`;
-      },
+      getSection: () => t`Columns`,
       get title() {
         return t`Cell column`;
       },
@@ -286,9 +268,7 @@ export class Table extends Component<TableProps, TableState> {
     ...tableColumnSettings({ isShowingDetailsOnlyColumns: false }),
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
-      get section() {
-        return t`Conditional Formatting`;
-      },
+      getSection: () => t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       getDefault: () => [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
@@ -362,7 +342,7 @@ export class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
-      const isNotImage = (columnSettings: OptionsType) =>
+      const isNotImage = (columnSettings: ColumnSettings) =>
         columnSettings["view_as"] !== "image";
 
       settings["text_wrapping"] = {
@@ -512,7 +492,13 @@ export class Table extends Component<TableProps, TableState> {
         (col, index) => index !== pivotIndex && index !== cellIndex,
       );
       this.setState({
-        data: DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex),
+        data: DataGrid.pivot(
+          data,
+          normalIndex,
+          pivotIndex,
+          cellIndex,
+          settings,
+        ),
         question,
       });
     } else {

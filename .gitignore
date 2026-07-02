@@ -56,6 +56,7 @@ cypress.env.json
 !/e2e/tmp/db_dumps
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
+/e2e/support/assets/example_custom_viz_plugin*.tgz
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -67,6 +68,10 @@ cypress.env.json
 /plugins
 /process.yml
 /reset-password-artifacts
+/resources/frontend_client/app/**/*.br
+/resources/frontend_client/app/**/*.gz
+/resources/frontend_client/app/**/*.hot-update.js
+/resources/frontend_client/app/**/*.hot-update.json
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
 /resources/frontend_client/app/embed.js
@@ -76,6 +81,7 @@ cypress.env.json
 /resources/frontend_client/tmp-*/
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
+/resources/frontend_client/embed-mcp.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/embedding-sdk
@@ -86,6 +92,7 @@ cypress.env.json
 /resources/metabase/config/modules.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
+!/resources/sample-database.*
 /resources/version.properties
 /screenshots
 /sqlite.db
@@ -166,6 +173,7 @@ llm-payloads
 /config.yml
 CLAUDE.local.md
 .claude/settings.local.json
+.claude/agent-memory/
 
 .eslintcache
 
@@ -178,6 +186,11 @@ CLAUDE.local.md
 /resources/python-sources/.lock
 __pycache__/
 .mcp.json
+.config/wt.toml
 .claude/worktrees
 .claude/scheduled_tasks.lock
 .playwright-mcp
+.ci_reports/
+
+# dependency-cruiser output
+dependency-graph.json

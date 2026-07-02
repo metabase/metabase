@@ -34,13 +34,13 @@ export const EntityDisplay = ({
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <EntityIcon color="brand" {...getSearchIcon(entity)} />
+        <EntityIcon color="core-brand" {...getSearchIcon(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
         <Icon
           name="info"
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={
             <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
               {entity.description}
@@ -55,7 +55,7 @@ export const EntityDisplay = ({
 export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
-      <Icon name="key" c="text-tertiary" />
+      <Icon name="key" c="text-disabled" />
       <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>
@@ -68,7 +68,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon c={"brand"} name={urlIcon} />
+        <Icon c={"core-brand"} name={urlIcon} />
         <EllipsifiedEntityContainer>
           {!isEmpty(url) ? url : t`Choose a link`}
         </EllipsifiedEntityContainer>

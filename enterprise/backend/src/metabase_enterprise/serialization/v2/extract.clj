@@ -43,6 +43,13 @@
     (not (:no-custom-viz-plugins opts))
     (conj "CustomVizPlugin")))
 
+;; OsiAiContext is intentionally NOT in the default export set. It's a top-level model that *depends on* its
+;; entity, extracted unfiltered, so any export — even an untargeted "full" one, which still omits personal and
+;; analytics collections — would pull ai_context rows whose referenced Card/Table/Measure/Segment is absent,
+;; leaking curator text and creating dangling deps that fail import. It stays out until reverse-dependency
+;; export lands (its row should travel *with* its entity), tracked in
+;; https://linear.app/metabase/issue/BOT-1759; see the metabase.osi.models.osi-ai-context serdes TODO.
+
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
   [model-name ids]
@@ -130,7 +137,13 @@
                                                                  :id    id})))))
            :analytics-card-ids escaped-in-analytics})))))
 
-(defn- log-escape-report! [escaped]
+(defn- handle-escapees!
+  "Reports cards that are referenced from inside the requested collections but saved outside them.
+
+  Logs a per-entity warning for each escapee.
+
+  Throws if `continue-on-error?` is false."
+  [escaped continue-on-error?]
   (let [dashboards (group-by #(get % "Dashboard") escaped)]
     (doseq [[dash-id escapes] (dissoc dashboards nil)]
       (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
@@ -144,7 +157,14 @@
                                           (if (get item "Card")
                                             (entity-label {:model :model/Card :id (get item "Card")})
                                             (dissoc item :escapee))
-                                          (entity-label (:escapee item)))))))))
+                                          (entity-label (:escapee item))))))))
+  (when-not continue-on-error?
+    (throw (ex-info (format (str "Serialization failed: %d card(s) referenced by the requested collections "
+                                 "are saved outside them, which would produce an incomplete export. See the "
+                                 "warnings above for the affected entities. Pass continue-on-error to export "
+                                 "anyway, skipping the affected dashboards and cards.")
+                            (count (distinct (map (comp :id :escapee) escaped))))
+                    {:status-code 400}))))
 
 (defn- resolve-targets
   "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
@@ -184,31 +204,33 @@
         ;; cards referenced by dashboards live outside the target collections.
         {:keys [reportable-escaped analytics-card-ids]} (when has-content?
                                                           (escape-analysis by-model nodes))]
-    (if (seq reportable-escaped)
-      (log-escape-report! reportable-escaped)
-      (let [coll-set        (get by-model "Collection")
-            ;; When targets are specified, also include Tables found via descendants
-            ;; (published tables in target collections). These are extracted by ID, not all.
-            targeted-data-model (when (seq targets)
-                                  (select-keys by-model serdes.models/data-model-in-collection))
-            by-model        (cond-> (select-keys by-model models)
-                              ;; Add Tables back if they were found in descendants
-                              (seq targeted-data-model) (merge targeted-data-model)
-                              ;; Remove analytics cards from extraction - they have stable entity_ids across instances
-                              ;; so cards that reference them can still be exported and imported correctly
-                              (and analytics-card-ids (contains? by-model "Card"))
-                              (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
-            extract-by-ids  (fn [[model ids]]
-                              (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                     :where          [:in :id ids]})))
-            extract-all     (fn [model]
-                              (serdes/extract-all model (assoc opts :collection-set coll-set)))]
-        (eduction cat
-                  [(if (seq targets)
-                     (eduction (map extract-by-ids) cat by-model)
-                     (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
-                   ;; extract all non-content entities like data model and settings if necessary
-                   (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
+    ;; A card referenced from inside the requested collections but living outside them would produce an incomplete
+    ;; export.
+    (when (seq reportable-escaped)
+      (handle-escapees! reportable-escaped (:continue-on-error opts))) ;; may throw
+    (let [coll-set        (get by-model "Collection")
+          ;; When targets are specified, also include Tables found via descendants
+          ;; (published tables in target collections). These are extracted by ID, not all.
+          targeted-data-model (when (seq targets)
+                                (select-keys by-model serdes.models/data-model-in-collection))
+          by-model        (cond-> (select-keys by-model models)
+                            ;; Add Tables back if they were found in descendants
+                            (seq targeted-data-model) (merge targeted-data-model)
+                            ;; Remove analytics cards from extraction - they have stable entity_ids across instances
+                            ;; so cards that reference them can still be exported and imported correctly
+                            (and analytics-card-ids (contains? by-model "Card"))
+                            (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
+          extract-by-ids  (fn [[model ids]]
+                            (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                   :where          [:in :id ids]})))
+          extract-all     (fn [model]
+                            (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+      (eduction cat
+                [(if (seq targets)
+                   (eduction (map extract-by-ids) cat by-model)
+                   (eduction (map extract-all) cat (set/intersection (set serdes.models/content) models)))
+                 ;; extract all non-content entities like data model and settings if necessary
+                 (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))]))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
@@ -222,4 +244,5 @@
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
                 (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
   (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
-  (log-escape-report! escaped))
+  ;; continue-on-error? true so this just logs in the REPL instead of throwing
+  (handle-escapees! (:reportable-escaped escaped) true))

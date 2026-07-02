@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Anchor } from "metabase/ui";
 
-import { useMCPServerURL } from "./utils";
+import { useMCPServerURL } from "./useMCPServerURL";
 
 const CURSOR_DEEPLINK = {
   url: "cursor://anysphere.cursor-deeplink/mcp/install",
@@ -30,6 +30,7 @@ export const CursorInstallLink = () => {
       href={buildCursorInstallUrl(mcpUrl)}
       fz="sm"
       w="fit-content"
+      pos="relative"
       onClick={(event) => event.stopPropagation()}
     >
       {t`Install in Cursor`}

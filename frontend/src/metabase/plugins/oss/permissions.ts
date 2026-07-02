@@ -1,20 +1,18 @@
 import type { ReactNode } from "react";
 
-import type {
-  DatabaseEntityId,
-  EntityId,
-  PermissionSubject,
-  SpecialGroupType,
-} from "metabase/admin/permissions/types";
 import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DataPermission,
+  DatabaseEntityId,
   Dataset,
   Group,
   GroupPermissions,
   GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
   User,
 } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
@@ -37,7 +35,7 @@ const getDefaultAdminPermissionsTableFieldsConfirmations = (): Array<
   (
     _permissions: GroupsPermissions,
     _groupId: number,
-    _entityId: EntityId,
+    _entityId: PermissionEntityId,
     _value: DataPermissionValue,
   ) => any
 > => [];
@@ -86,7 +84,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
     groupId: number,
-    entityId: EntityId,
+    entityId: PermissionEntityId,
     permission: DataPermission,
     value: DataPermissionValue,
     database: Database,
@@ -96,7 +94,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     | ((
         permissions: GroupsPermissions,
         groupId: number,
-        entityId: EntityId,
+        entityId: PermissionEntityId,
         value: any,
         database: Database,
         permission: DataPermission,

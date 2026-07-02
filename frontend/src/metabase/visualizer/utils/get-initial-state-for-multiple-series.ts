@@ -1,4 +1,4 @@
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
+import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Card,
@@ -13,6 +13,7 @@ import {
   copyColumn,
   createVisualizerColumnReference,
   extractReferencedColumns,
+  rewriteRemappedReferences,
 } from "./column";
 import { createDataSource } from "./data-source";
 import { updateVizSettingsWithRefs } from "./update-viz-settings-with-refs";
@@ -62,9 +63,11 @@ function mapColumnVizSettings(
 function processColumnsForDataSource(
   dataSource: VisualizerDataSource,
   columns: DatasetColumn[],
-  state: VisualizerVizDefinitionWithColumnsAndFallbacks,
+  state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets,
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
+
+  const firstNewIndex = state.columns.length;
 
   columns.forEach((column) => {
     const columnRef = createVisualizerColumnReference(
@@ -89,18 +92,31 @@ function processColumnsForDataSource(
     });
   });
 
+  const columnRenames = new Map(
+    columnInfos.map(({ columnRef }) => [
+      columnRef.originalName,
+      columnRef.name,
+    ]),
+  );
+  for (let i = firstNewIndex; i < state.columns.length; i++) {
+    state.columns[i] = rewriteRemappedReferences(
+      state.columns[i],
+      columnRenames,
+    );
+  }
+
   return columnInfos;
 }
 
 export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   const mainCard = rawSeries[0].card;
 
-  const state: VisualizerVizDefinitionWithColumnsAndFallbacks = {
+  const state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets = {
     display: mainCard.display,
     columns: [],
     columnValuesMapping: {},
     settings: {},
-    datasetFallbacks: rawSeries.reduce(
+    preloadedDatasets: rawSeries.reduce(
       (acc, s) => {
         acc[s.card.id] = s as unknown as Dataset;
         return acc;

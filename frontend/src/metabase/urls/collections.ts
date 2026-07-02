@@ -3,7 +3,7 @@ import slugg from "slugg";
 import {
   isRootPersonalCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type {
   Collection as BaseCollection,
   CollectionId,
@@ -79,4 +79,11 @@ export function extractCollectionId(slug = ""): CollectionId | undefined {
     return slug;
   }
   return extractEntityId(slug);
+}
+
+export function extractCollectionIdFromPath(
+  path: string,
+): CollectionId | undefined {
+  const match = path.match(/^\/collection\/([^/]+)/);
+  return match ? extractCollectionId(match[1]) : undefined;
 }

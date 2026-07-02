@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.query-processor-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -157,7 +159,6 @@
                 :params     nil
                 :table-name "venues"
                 :mbql?      true})
-
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
                     :breakout    [$price]
@@ -190,7 +191,7 @@
                        "  `categories__via__category_id__name`"
                        "ORDER BY"
                        "  `categories__via__category_id__name` ASC"]
-                        ;; reformat the SQL because the formatting may have changed once we change the test DB name.
+                      ;; reformat the SQL because the formatting may have changed once we change the test DB name.
                       (str/join " ")
                       (driver/prettify-native-form :bigquery-cloud-sdk)
                       str/split-lines))
@@ -212,7 +213,6 @@
     (is (= "2018-08-31T00:00:00Z"
            (native-timestamp-query (mt/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
-
     (test.tz/with-system-timezone-id! "America/Chicago"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -222,7 +222,6 @@
             (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
                  "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
                  "the correct date is compared"))))
-
     (test.tz/with-system-timezone-id! "Asia/Jakarta"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -248,8 +247,7 @@
 (deftest ^:parallel remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
-             (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
-                  "SELECT"
+             (str "SELECT"
                   " `v4_test_data.venues`.`id` AS `id`,"
                   " `v4_test_data.venues`.`name` AS `name`,"
                   " `v4_test_data.venues`.`category_id` AS `category_id`,"
@@ -257,7 +255,8 @@
                   " `v4_test_data.venues`.`longitude` AS `longitude`,"
                   " `v4_test_data.venues`.`price` AS `price` "
                   "FROM `v4_test_data.venues` "
-                  "LIMIT 1"))
+                  "LIMIT 1"
+                  "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304"))
            (query->native
             {:database (mt/id)
              :type     :query
@@ -1034,9 +1033,31 @@
     (testing "replace non-letter characters with underscores"
       (is (= "_"
              (driver/escape-alias :bigquery-cloud-sdk "😍"))))
+    (testing "preserve Unicode letters"
+      (is (= "通過後内定承諾応募数"
+             (driver/escape-alias :bigquery-cloud-sdk "通過後内定承諾応募数"))))
     (testing "trim long strings"
       (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
              (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
+
+(deftest ^:parallel japanese-aggregation-aliases-test
+  (driver/with-driver :bigquery-cloud-sdk
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          price (lib.metadata/field mp (mt/id :products :price))
+          rating (lib.metadata/field mp (mt/id :products :rating))
+          category (lib.metadata/field mp (mt/id :products :category))
+          query (as-> (lib/query mp products) q
+                  (lib/aggregate q (lib/with-expression-name (lib/sum price) "通過後内定承諾応募数"))
+                  (lib/aggregate q (lib/with-expression-name (lib/sum rating) "通過後入社決定応募数"))
+                  (lib/breakout q category)
+                  (lib/order-by q (lib/aggregation-ref q 0))
+                  (lib/order-by q (lib/aggregation-ref q 1)))]
+      (is (= [["Doohickey" 2185 156]
+              ["Gizmo" 2834 185]
+              ["Gadget" 3019 181]
+              ["Widget" 3109 170]]
+             (mt/formatted-rows [str int int] (qp/process-query query)))))))
 
 (deftest ^:parallel remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1120,7 +1141,6 @@
                                  "    SELECT"
                                  "      DATE_TRUNC("
                                  "        `v4_test_data.checkins`.`date`,"
-
                                  "        month"
                                  "      ) AS `date`,"
                                  "      COUNT(*) AS `count`"
@@ -1293,7 +1313,7 @@
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :bigquery-cloud-sdk))
-                 (str/replace #"sha_[a-z0-9]+_test_data" "test_data")
+                 (str/replace #"sha_[a-z0-9_]+_test_data" "test_data")
                  str/split-lines))))))
 
 (deftest ^:parallel case-expression-with-default-Date-case-DateTime-test

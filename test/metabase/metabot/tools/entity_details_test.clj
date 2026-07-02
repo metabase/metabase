@@ -1,11 +1,13 @@
 (ns metabase.metabot.tools.entity-details-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.entity-details-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -150,10 +152,8 @@
               output (:structured-output result)
               related-tables (:related_tables output)
               products-related (first (filter #(= products-id (:id %)) related-tables))]
-
           (testing "Orders table has Products as a related table"
             (is (some? products-related)))
-
           (testing "Related Products table has correct number of fields (excluding implicitly joinable fields)"
             (is (= expected-products-field-count
                    (count (:fields products-related)))
@@ -190,7 +190,6 @@
                                                             :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:measures output)))))
-
           (testing "with_measures: true includes measures for the table"
             (let [result (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)
@@ -199,11 +198,26 @@
                   measures (:measures output)]
               (is (sequential? measures))
               (is (= 1 (count measures)))
-              (let [measure (first measures)]
+              (let [measure (first measures)
+                    definition (:definition measure)]
                 (is (= measure-id (:id measure)))
                 (is (= "Total Revenue" (:name measure)))
                 (is (string? (:definition-description measure)))
-                (is (map? (:definition measure)))))))))))
+                (testing "portable_entity_id is surfaced (21-char NanoID for `[measure, {}, <pid>]` clauses)"
+                  (is (string? (:portable-entity-id measure)))
+                  (is (= 21 (count (:portable-entity-id measure)))))
+                (testing "definition is a portable aggregation clause array"
+                  (is (vector? definition))
+                  (is (= 1 (count definition))
+                      "measures have exactly one aggregation clause")
+                  (let [[head opts arg] (first definition)]
+                    (is (= "sum" head) "head is a string operator")
+                    (is (map? opts) "options map at position 1")
+                    (is (= "field" (first arg)) "argument is a field clause")
+                    (is (vector? (nth arg 2))
+                        "field's FK is a portable string array (not numeric id)")
+                    (is (every? (some-fn string? nil?) (nth arg 2))
+                        "every portable FK segment is a string (or null for schemaless)")))))))))))
 
 (deftest get-table-details-with-segments-test
   (testing "get-table-details returns segments when with_segments is true"
@@ -217,7 +231,6 @@
                                                             :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
-
           (testing "with_segments: true includes segments for the table"
             (let [result (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)
@@ -226,11 +239,111 @@
                   segments (:segments output)]
               (is (sequential? segments))
               (is (= 1 (count segments)))
-              (let [segment (first segments)]
+              (let [segment (first segments)
+                    definition (:definition segment)]
                 (is (= segment-id (:id segment)))
                 (is (= "High Value Orders" (:name segment)))
                 (is (string? (:definition-description segment)))
-                (is (map? (:definition segment)))))))))))
+                (testing "portable_entity_id is surfaced (21-char NanoID for `[segment, {}, <pid>]` clauses)"
+                  (is (string? (:portable-entity-id segment)))
+                  (is (= 21 (count (:portable-entity-id segment)))))
+                (testing "definition is a portable filter clause array"
+                  (is (vector? definition))
+                  (is (>= (count definition) 1)
+                      "segments have one or more filter clauses")
+                  (let [[head opts field-clause value] (first definition)]
+                    (is (= ">" head) "head is a string operator")
+                    (is (map? opts) "options map at position 1")
+                    (is (= "field" (first field-clause)) "argument is a field clause")
+                    (is (vector? (nth field-clause 2))
+                        "field's FK is a portable string array")
+                    (is (= 100 value) "literal comparison value is preserved")))))))))))
+
+(deftest measure-segment-definition-round-trips-through-construct-test
+  (testing (str "the exported measure/segment definition is in the exact portable form "
+                "an agent can paste into construct_notebook_query's external-query — "
+                "regression test for benchmark/5 Tables - Measures and Segments failures")
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)
+          table-fk    [(:name (lib.metadata/database (mt/metadata-provider)))
+                       (:schema (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                       "ORDERS"]]
+      (mt/with-temp [:model/Measure _ {:name "Round-trip Measure"
+                                       :table_id (mt/id :orders)
+                                       :definition measure-def}
+                     :model/Segment _ {:name "Round-trip Segment"
+                                       :table_id (mt/id :orders)
+                                       :definition segment-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [result   (entity-details/get-table-details
+                          {:entity-type :table :entity-id (mt/id :orders)
+                           :with-measures? true :with-segments? true})
+                output   (:structured-output result)
+                m-clause (-> output :measures first :definition)
+                s-clause (-> output :segments first :definition)
+                ;; Simulate the agent pasting these clauses into a fresh external-query.
+                fresh-query {:lib/type "mbql/query"
+                             :stages [{:lib/type "mbql.stage/mbql"
+                                       :source-table table-fk
+                                       :aggregation m-clause
+                                       :filters s-clause}]}]
+            (testing "external-query containing the pasted clauses resolves cleanly"
+              ;; require the construct-tool pipeline lazily — it's the agent-facing entry point
+              (let [repr      (requiring-resolve 'metabase.agent-lib.representations/external-query->portable)
+                    repair    (requiring-resolve 'metabase.agent-lib.representations.repair/repair)
+                    resolve-q (requiring-resolve 'metabase.agent-lib.representations.resolve/resolve-query)
+                    mp        ((requiring-resolve 'metabase.lib-be.core/application-database-metadata-provider) (mt/id))
+                    cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)
+                    portable  (repr fresh-query)
+                    repaired  (repair mp portable cs)
+                    resolved  (resolve-q mp repaired cs)]
+                (is (= :mbql/query (:lib/type resolved)))
+                (is (= 1 (count (get-in resolved [:stages 0 :aggregation]))))
+                (is (= 1 (count (get-in resolved [:stages 0 :filters]))))))))))))
+
+(deftest measure-segment-opaque-id-clause-round-trips-test
+  (testing (str "the `portable_entity_id` surfaced on `<measure>` / `<segment>` can be used in "
+                "`[measure, {}, pid]` / `[segment, {}, pid]` clauses end-to-end — regression "
+                "test for benchmark/6 Tables-MS rubric (data_source must reference the ids)")
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)
+          table-fk    [(:name (lib.metadata/database (mt/metadata-provider)))
+                       (:schema (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                       "ORDERS"]]
+      (mt/with-temp [:model/Measure {measure-id :id measure-pid :entity_id}
+                     {:name "Opaque Measure"
+                      :table_id (mt/id :orders)
+                      :definition measure-def}
+                     :model/Segment {segment-id :id segment-pid :entity_id}
+                     {:name "Opaque Segment"
+                      :table_id (mt/id :orders)
+                      :definition segment-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [;; Mirrors what the agent does: paste `[measure, {}, "<pid>"]` and
+                ;; `[segment, {}, "<pid>"]` into a fresh external-query and send it.
+                fresh-query {:lib/type "mbql/query"
+                             :stages [{:lib/type "mbql.stage/mbql"
+                                       :source-table table-fk
+                                       :aggregation [["measure" {} measure-pid]]
+                                       :filters [["segment" {} segment-pid]]}]}
+                repr      (requiring-resolve 'metabase.agent-lib.representations/external-query->portable)
+                repair    (requiring-resolve 'metabase.agent-lib.representations.repair/repair)
+                resolve-q (requiring-resolve 'metabase.agent-lib.representations.resolve/resolve-query)
+                mp        ((requiring-resolve 'metabase.lib-be.core/application-database-metadata-provider) (mt/id))
+                cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)
+                portable  (repr fresh-query)
+                repaired  (repair mp portable cs)
+                resolved  (resolve-q mp repaired cs)]
+            (testing "measure clause resolves to numeric id (rubric's `data_source` check)"
+              (let [agg (get-in resolved [:stages 0 :aggregation])]
+                (is (= 1 (count agg)))
+                (is (= :measure (first (first agg))))
+                (is (= measure-id (nth (first agg) 2)))))
+            (testing "segment clause resolves to numeric id"
+              (let [filters (get-in resolved [:stages 0 :filters])]
+                (is (= 1 (count filters)))
+                (is (= :segment (first (first filters))))
+                (is (= segment-id (nth (first filters) 2)))))))))))
 
 (deftest get-table-details-measures-scoped-to-table-test
   (testing "get-table-details only returns measures for the requested table, not other tables"
@@ -271,7 +384,6 @@
             (let [result (entity-details/get-metric-details {:metric-id metric-id})
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
-
           (testing "with_segments: true includes segments for the metric"
             (let [result (entity-details/get-metric-details {:metric-id metric-id
                                                              :with-segments? true})
@@ -282,3 +394,279 @@
               (let [segment (first segments)]
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
+
+;;; ============================================================
+;;; Base-table surfacing on get-metric-details (regression)
+;;; ============================================================
+
+(deftest get-metric-details-exposes-base-table-test
+  (testing (str "get-metric-details must populate `:base_table_id`, `:base_table_name`, and\n"
+                "`:base_table_portable_fk` so the LLM can write `source-table:` verbatim.\n"
+                "Regression: earlier code read `(some-> (:dataset-query card) :query :source-table)`,\n"
+                "which silently produced nil because the t2 row uses `:dataset_query` (snake_case)\n"
+                "and the query is MBQL 5 with `:stages[0] :source-table`, not legacy `:query`.\n"
+                "The fix reads `:table_id` directly from the card row.")
+    (let [mp (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Base-table Sample Metric"
+                                                  :type          :metric}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [output  (:structured-output (entity-details/get-metric-details
+                                             {:metric-id metric-id
+                                              :with-queryable-dimensions? false
+                                              :with-field-values? false}))
+                db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+            (is (= (mt/id :orders) (:base_table_id output)))
+            (is (= (:name orders)  (:base_table_name output)))
+            (is (= [db-name (:schema orders) (:name orders)]
+                   (:base_table_portable_fk output))
+                "portable FK should be `[database_name, schema, table_name]`")))))))
+
+;;; ============================================================
+;;; Portable entity_id in card details (step 11.2)
+;;; ============================================================
+
+(deftest get-entity-details-question-exposes-portable-entity-id-test
+  (testing "card details (question) expose :portable_entity_id for the agent to use in source-card"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "My Saved Q"
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues)}}}]
+          (let [result (entity-details/get-table-details {:entity-type :question :entity-id card-id})
+                output (:structured-output result)]
+            (is (= :question (:type output)))
+            (is (= card-id (:id output)))
+            (is (= card-eid (:portable_entity_id output)))
+            (is (string? (:portable_entity_id output)))))))))
+
+(deftest get-entity-details-model-exposes-portable-entity-id-test
+  (testing "card details (model) also expose :portable_entity_id"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                       {:database_id  (mt/id)
+                        :type         :model
+                        :name         "My Model"
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues)}}}]
+          (let [result (entity-details/get-table-details {:entity-type :model :entity-id card-id})
+                output (:structured-output result)]
+            (is (= :model (:type output)))
+            (is (= card-id (:id output)))
+            (is (= card-eid (:portable_entity_id output)))))))))
+
+(deftest card-details-exposes-query-json-structured-test
+  (testing "card-details surfaces the saved structured query as a portable representations map"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "Venues by Price"
+                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                              :breakout    [$price]})}]
+          (let [output (-> (entity-details/get-table-details {:entity-type :question :entity-id card-id})
+                           :structured-output)
+                exported (:query_json output)]
+            (is (map? exported)
+                "`:query_json` is present for an MBQL question")
+            (is (= "mbql/query" (get exported "lib/type")))
+            ;; Portable FK paths use the human-readable database name, not numeric ids.
+            (is (vector? (get-in exported ["stages" 0 "source-table"])))
+            (is (not (contains? exported "lib/metadata")))))))))
+
+(deftest card-details-exposes-query-json-native-test
+  (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "Native Venues"
+                        :dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query "SELECT * FROM VENUES LIMIT 5"}}}]
+          (let [output (-> (entity-details/get-table-details {:entity-type :question :entity-id card-id})
+                           :structured-output)
+                exported (:query_json output)]
+            (is (map? exported))
+            (is (= "mbql/query" (get exported "lib/type")))
+            (is (= "mbql.stage/native" (get-in exported ["stages" 0 "lib/type"]))
+                "native stage is exported in the canonical repr form, not as a bare SQL string")
+            (is (= "SELECT * FROM VENUES LIMIT 5"
+                   (get-in exported ["stages" 0 "native"]))
+                "the SQL body itself is preserved verbatim inside `native:`")))))))
+
+(deftest get-report-details-includes-query-json-test
+  (testing "get-report-details (slim payload) carries `:query_json` so question->xml can render it"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "Q"
+                        :dataset_query (mt/mbql-query venues {:limit 3})}]
+          (let [output (-> (entity-details/get-report-details {:report-id card-id})
+                           :structured-output)]
+            (is (map? (:query_json output)))
+            (is (= "mbql/query" (get-in output [:query_json "lib/type"])))))))))
+
+(deftest related-tables-with-fields-capped-test
+  (testing (str "FK-related-table *column* expansion is capped at `max-related-tables-with-fields` so a table "
+                "with a very large / highly-connected schema can't fetch and pin an unbounded number of columns "
+                "during a single MetaBot context build (metabase#76493)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [with-fields-tables (fn []
+                                   (-> (entity-details/get-table-details {:entity-type :table
+                                                                          :entity-id (mt/id :orders)})
+                                       :structured-output
+                                       :related_tables))]
+          (testing "Orders has more than one FK-related table by default (Products + People)"
+            (is (> (count (with-fields-tables)) 1)))
+          (testing "with the cap lowered, no more than `max-related-tables-with-fields` related tables carry columns"
+            (with-redefs-fn {#'entity-details/max-related-tables-with-fields 1}
+              (fn []
+                (let [tables (with-fields-tables)]
+                  (is (= 1 (count tables)))
+                  (is (every? (comp seq :fields) tables)
+                      "the surfaced column-bearing table actually carries its fields"))))))))))
+
+(deftest related-tables-without-fields-list-test
+  (testing (str "FK-related tables beyond the column-expansion cap are still surfaced by identity (no column "
+                "fetch) in :related_tables_without_fields, so the LLM knows they exist and can look them up "
+                "individually (metabase#76493)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [details (fn []
+                        (:structured-output
+                         (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (mt/id :orders)})))]
+          (testing "no without-fields list when every related table fits under the column cap"
+            (let [output (details)]
+              (is (nil? (:related_tables_without_fields output)))
+              (is (nil? (:related_tables_total output)))))
+          (testing "lowering the column cap moves the remaining tables into the without-fields list"
+            (with-redefs-fn {#'entity-details/max-related-tables-with-fields 1}
+              (fn []
+                (let [output      (details)
+                      with-fields (:related_tables output)
+                      without     (:related_tables_without_fields output)]
+                  (is (= 1 (count with-fields)))
+                  (is (= 1 (count without)))
+                  (testing "list entries carry id/name but no columns"
+                    (is (every? :id without))
+                    (is (every? :name without))
+                    (is (every? (comp empty? :fields) without)))
+                  (testing ":related_tables and the list are disjoint FK paths"
+                    (let [shown-paths (into #{} (map (juxt :id :related_by)) with-fields)]
+                      (is (not-any? (comp shown-paths (juxt :id :related_by)) without))))
+                  (testing "no tables were dropped entirely, so no :related_tables_total"
+                    (is (nil? (:related_tables_total output)))))))))))))
+
+(deftest related-tables-total-truncation-test
+  (testing (str "FK-related tables beyond `max-related-tables` are dropped entirely and the drop is reported via "
+                ":related_tables_total so the LLM knows the surfaced set is itself truncated (metabase#76493)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; surface only one of Orders' two FK-related tables; the other is dropped entirely
+        (with-redefs-fn {#'entity-details/max-related-tables 1}
+          (fn []
+            (let [output (:structured-output
+                          (entity-details/get-table-details {:entity-type :table
+                                                             :entity-id (mt/id :orders)}))]
+              (is (= 1 (count (:related_tables output))))
+              (is (nil? (:related_tables_without_fields output))
+                  "with only one table surfaced and it carrying fields, the without-fields list is empty")
+              (is (= 2 (:related_tables_total output))
+                  ":related_tables_total reports the full FK-related count before the cap")
+              (is (> (:related_tables_total output)
+                     (+ (count (:related_tables output))
+                        (count (:related_tables_without_fields output))))
+                  "total exceeds the surfaced set, signalling tables were dropped"))))))))
+
+(deftest related-tables-without-fields-omitted-when-no-fields-requested-test
+  (testing (str "with `with-fields?` false every related table is column-free, so there is no with/without "
+                "distinction: the whole capped set is surfaced in :related_tables and :related_tables_without_fields "
+                "is omitted, while the :related_tables cap is still enforced")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [orders-query (let [mp (mt/metadata-provider)]
+                             (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+              related      (fn [] (#'entity-details/related-tables orders-query false identity))]
+          (testing "Orders has more than one FK-related table (Products + People)"
+            (is (> (count (:related_tables (related))) 1)))
+          (testing "lowering the column-expansion cap does NOT spill into a without-fields list"
+            (with-redefs-fn {#'entity-details/max-related-tables-with-fields 1}
+              (fn []
+                (let [output (related)]
+                  (is (> (count (:related_tables output)) 1)
+                      "every surfaced table stays in :related_tables")
+                  (is (every? (comp empty? :fields) (:related_tables output))
+                      "no table carries columns when with-fields? is false")
+                  (is (nil? (:related_tables_without_fields output))
+                      ":related_tables_without_fields is omitted entirely when with-fields? is false")))))
+          (testing "the :related_tables cap still applies (and reports drops) when with-fields? is false"
+            (with-redefs-fn {#'entity-details/max-related-tables 1}
+              (fn []
+                (let [output (related)]
+                  (is (= 1 (count (:related_tables output))))
+                  (is (nil? (:related_tables_without_fields output)))
+                  (is (= 2 (:related_tables_total output))
+                      "tables dropped by the cap are still reported via :related_tables_total"))))))))))
+
+(defn- orders+reviews-join-query
+  "A query whose source table is Orders with an explicit join to Reviews.
+
+  Both tables carry a `PRODUCT_ID` FK to Products, so `visible-columns` exposes two FK columns with the same name
+  pointing at the same target table and therefore must be distinguished by field id, not name."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                   [(lib/= (lib.metadata/field mp (mt/id :orders :id))
+                                           (lib.metadata/field mp (mt/id :reviews :id)))])))))
+
+(deftest fk-related-table-groups-distinguishes-same-named-fks-test
+  (testing (str "two distinct FK fields that share a name and point at the same target table stay separate FK paths: "
+                "`fk-related-table-groups` keys distinctness on the FK field id, not its name (so they don't collapse)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [groups   (#'entity-details/fk-related-table-groups (orders+reviews-join-query))
+              products (mt/id :products)
+              ;; the two PRODUCT_ID FK paths: orders.PRODUCT_ID and reviews.PRODUCT_ID, both -> products
+              product-paths (filter (fn [[target-table-id _ fk-name]]
+                                      (and (= target-table-id products) (= fk-name "PRODUCT_ID")))
+                                    groups)]
+          (testing "both PRODUCT_ID FKs survive distinct/sort as separate tuples"
+            (is (= 2 (count product-paths))))
+          (testing "they share a name and target table but differ by FK field id"
+            (is (=? #{[products (mt/id :orders :product_id) "PRODUCT_ID"]
+                      [products (mt/id :reviews :product_id) "PRODUCT_ID"]}
+                    (set product-paths)))))))))
+
+(deftest related-tables-related-by-field-id-test
+  (testing (str "`:related_by` carries a `{:id :name}` map so the LLM can disambiguate two related-table entries that "
+                "share a `:related_by` name and target table (e.g. orders.PRODUCT_ID vs reviews.PRODUCT_ID)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output       (#'entity-details/related-tables (orders+reviews-join-query) false identity)
+              products     (mt/id :products)
+              product-rows (filter #(and (= (:id %) products) (= (-> % :related_by :name) "PRODUCT_ID"))
+                                   (:related_tables output))]
+          (testing "every related table's :related_by is a {:id :name} map"
+            (is (every? #(and (-> % :related_by :id) (-> % :related_by :name)) (:related_tables output))))
+          (testing "the two same-named PRODUCT_ID entries are present and distinguished only by :related_by :id"
+            (is (=? #{{:id products :related_by {:id (mt/id :orders :product_id) :name "PRODUCT_ID"}}
+                      {:id products :related_by {:id (mt/id :reviews :product_id) :name "PRODUCT_ID"}}}
+                    (into #{} (map #(select-keys % [:id :related_by])) product-rows)))))))))

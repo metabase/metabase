@@ -373,7 +373,7 @@
                                        :id     uuid}]}]
               (is (= [[1 1574982000000 "Event A"]
                       [2 1575068400000 "Event B"]]
-                     (mt/rows (qp/process-query query)))))))))))
+                     (mt/formatted-rows [int long str] (qp/process-query query)))))))))))
 
 (deftest clickhouse-native-query-with-uuid-filter-test
   (mt/test-driver :clickhouse
@@ -407,4 +407,3 @@
           (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
                       (format "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('%s' AS UUID))" uuid-2))
                  (:query (qp.compile/compile-with-inline-parameters query)))))))))
-

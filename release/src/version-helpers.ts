@@ -252,6 +252,7 @@ export const versionRequirements: Record<
   59: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   60: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   61: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  62: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -314,6 +315,28 @@ export const getMilestoneName = (version: string) => {
 
   return Number(minor) ? `0.${major}.${minor}` : `0.${major}`;
 };
+
+// pre-release: v58.0-beta
+// major: v58.0
+// minor: v58.1
+// patch: v58.1.1
+const getSimpleVersion = (version: string) => {
+  const { major, minor, patch } = getVersionParts(version)
+
+  if (patch) {
+    return `v${major}.${minor}.${patch}`;
+  }
+
+  if (minor) {
+    return `v${major}.${minor}`;
+  }
+
+  return `v${major}.0`;
+}
+
+export const getLinearReleaseName = (version: string) => {
+  return getSimpleVersion(version);
+}
 
 // for auto-setting milestones, we don't ever want to auto-set a patch milestone
 // which we release VERY rarely
@@ -481,6 +504,18 @@ export const getNextMinorVersion = async ({
   }
 
   return findNextMinorVersion(lastRelease);
+};
+
+export const getNextVersion = async ({
+  github,
+  owner,
+  repo,
+  majorVersion,
+  kind,
+}: GithubProps & { majorVersion: number; kind: "patch" | "minor" }) => {
+  return kind === "patch"
+    ? getNextPatchVersion({ github, owner, repo, majorVersion })
+    : getNextMinorVersion({ github, owner, repo, majorVersion });
 };
 
 type SdkVersionInfo = {

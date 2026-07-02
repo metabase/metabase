@@ -112,6 +112,7 @@ function makeMockNavigation(
     currentEntry: undefined,
     previousEntry: undefined,
     initWithDashboard: jest.fn(),
+    hasNavigatedToEntity: false,
     ...overrides,
   };
 }
@@ -352,7 +353,7 @@ describe("InteractiveQuestion", () => {
     await userEvent.paste("A New Test Column");
 
     expect(
-      await screen.findByTestId("draggable-item-A New Test Column"),
+      await screen.findByTestId("A New Test Column-settings-button"),
     ).toBeInTheDocument();
   });
 

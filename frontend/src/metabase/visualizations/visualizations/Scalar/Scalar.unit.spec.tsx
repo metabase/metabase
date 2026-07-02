@@ -92,6 +92,22 @@ describe("Scalar", () => {
     // as the ScalarValue component handles sizing to fit
     expect(styles.textOverflow).not.toBe("ellipsis");
   });
+
+  it("lets Unicode subscript descenders render past the line box (metabase#72443)", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(344)}
+        rawSeries={series(344)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        width={230}
+      />,
+    );
+    expect(screen.getByTestId("scalar-container")).toHaveStyle({
+      overflowY: "visible",
+    });
+  });
 });
 
 describe("scalar viz settings", () => {
@@ -125,8 +141,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("Field to show")).toBeInTheDocument();
 
     const getFieldSelect = async () =>
@@ -161,8 +177,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
 
     expect(
       screen.queryByTestId("chart-settings-widget-scalar.field"),

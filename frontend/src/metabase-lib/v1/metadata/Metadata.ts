@@ -6,11 +6,12 @@ import type {
   DatabaseId,
   FieldId,
   FieldReference,
+  Measure,
   MeasureId,
   Metric,
   NativeQuerySnippet,
   SchemaId,
-  SegmentId,
+  Segment,
   SettingKey,
   Settings,
   TableId,
@@ -20,12 +21,9 @@ import type Question from "../Question";
 
 import type Database from "./Database";
 import type Field from "./Field";
-import type Measure from "./Measure";
 import type Schema from "./Schema";
-import type Segment from "./Segment";
 import type Table from "./Table";
 import { getUniqueFieldId } from "./utils/fields";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "./utils/saved-questions";
 
 interface MetadataOpts {
   databases?: Record<string, Database>;
@@ -76,38 +74,10 @@ class Metadata {
   }
 
   /**
-   * @deprecated load data via RTK Query - useListDatabaseSchemaTablesQuery
-   */
-  tablesList(): Table[] {
-    return Object.values(this.tables);
-  }
-
-  /**
    * @deprecated load data via RTK Query - useListFieldsQuery
    */
   fieldsList(): Field[] {
     return Object.values(this.fields);
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useListSegmentsQuery
-   */
-  segmentsList(): Segment[] {
-    return Object.values(this.segments);
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useGetSegmentQuery
-   */
-  segment(segmentId: SegmentId | undefined | null): Segment | null {
-    return (segmentId != null && this.segments[segmentId]) || null;
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useListMeasuresQuery
-   */
-  measuresList(): Measure[] {
-    return Object.values(this.measures);
   }
 
   /**
@@ -122,13 +92,6 @@ class Metadata {
    */
   database(databaseId: DatabaseId | undefined | null): Database | null {
     return (databaseId != null && this.databases[databaseId]) || null;
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useListDatabasesQuery({ saved: true })
-   */
-  savedQuestionsDatabase() {
-    return this.databases[SAVED_QUESTIONS_VIRTUAL_DB_ID];
   }
 
   /**

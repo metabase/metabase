@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { Box, Icon, type IconName, Text } from "metabase/ui";
+import { Box, Icon, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { EntityNameCell } from "./EntityNameCell";
 import { TreeTable } from "./TreeTable";
@@ -258,7 +259,7 @@ export const EmptyState = {
           instance={instance}
           emptyState={
             <Box ta="center" py="xl">
-              <Icon name="folder" size={48} c="text-tertiary" />
+              <Icon name="folder" size={48} c="text-disabled" />
               <Text c="text-secondary" mt="md">
                 This collection is empty
               </Text>

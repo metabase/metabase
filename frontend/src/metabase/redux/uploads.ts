@@ -1,9 +1,9 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
-import { Collections } from "metabase/entities/collections";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { Api, cardApi, tableApi } from "metabase/api";
+import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
 import { UploadMode } from "metabase/redux/store/upload";
@@ -12,7 +12,6 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux/utils";
-import { MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
@@ -98,12 +97,20 @@ export const uploadFile = createThunkAction(
         const response = await (() => {
           switch (uploadMode) {
             case UploadMode.append:
-              return MetabaseApi.tableAppendCSV({ tableId, formData });
+              return runRtkEndpoint(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.appendTableCsv,
+              );
             case UploadMode.replace:
-              return MetabaseApi.tableReplaceCSV({ tableId, formData });
+              return runRtkEndpoint(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.replaceTableCsv,
+              );
             case UploadMode.create:
             default:
-              return entityCompatibleQuery(
+              return runRtkEndpoint(
                 { file, collection_id: collectionId },
                 dispatch,
                 cardApi.endpoints.createCardFromCsv,
@@ -122,7 +129,12 @@ export const uploadFile = createThunkAction(
         if (tableId && onUploadComplete) {
           onUploadComplete();
         } else if (collectionId) {
-          dispatch(Collections.actions.invalidateLists());
+          dispatch(
+            Api.util.invalidateTags([
+              listTag("collection"),
+              listTag("collection-tree"),
+            ]),
+          );
         }
 
         clear();

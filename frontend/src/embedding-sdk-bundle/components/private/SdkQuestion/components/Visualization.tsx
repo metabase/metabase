@@ -53,7 +53,6 @@ export const QuestionVisualization = ({
     updateQuestion,
     originalId,
     onVisualizationChange,
-    token,
   } = useSdkQuestionContext();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
@@ -110,9 +109,8 @@ export const QuestionVisualization = ({
         isNativeEditorOpen={false}
         result={result}
         noHeader
-        mode={mode}
-        token={token}
-        navigateToNewCardInsideQB={navigateToNewCard}
+        mode={mode ?? undefined}
+        navigateToNewCardInsideQB={navigateToNewCard ?? undefined}
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>
           updateQuestion(question, { run: false })

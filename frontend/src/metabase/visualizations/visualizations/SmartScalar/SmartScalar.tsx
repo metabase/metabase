@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box } from "metabase/ui";
@@ -22,8 +22,9 @@ import type {
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, Series } from "metabase-types/api";
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn, DatasetData, Series } from "metabase-types/api";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
@@ -165,15 +166,13 @@ export function SmartScalar({
 
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...fieldSetting("scalar.field", {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Data`,
+    getSection: () => t`Data`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Primary number`,
     fieldFilter: isSuitableScalarColumn,
   }),
   "scalar.comparisons": {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Data`,
+    getSection: () => t`Data`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Comparisons`,
     widget: SmartScalarComparisonWidget,
@@ -194,8 +193,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     readDependencies: ["scalar.field"],
   },
   "scalar.switch_positive_negative": {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Display`,
+    getSection: () => t`Display`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Switch positive / negative colors?`,
     widget: "toggle",
@@ -203,8 +201,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
   },
   "scalar.compact_primary_number": {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Display`,
+    getSection: () => t`Display`,
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Compact number`,
     widget: "toggle",
@@ -212,8 +209,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
   },
   ...columnSettings({
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    section: t`Display`,
+    getSection: () => t`Display`,
     getColumns: (
       [
         {
@@ -221,14 +217,23 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
         },
       ],
       settings,
-    ) => [
-      // try and find a selected field setting
-      cols.find((col) => col.name === settings["scalar.field"]) ||
+    ) => {
+      const metricColumn =
+        // try and find a selected field setting
+        cols.find((col) => col.name === settings["scalar.field"]) ||
         // fall back to the second column
         cols[1] ||
         // but if there's only one column use that
-        cols[0],
-    ],
+        cols[0];
+      // expose the date dimension so its granularity/format can be configured
+      const dateColumn = cols.find(
+        (col) => isDate(col) || isAbsoluteDateTimeUnit(col.unit),
+      );
+      const columns = [metricColumn, dateColumn].filter(
+        (col): col is DatasetColumn => col != null,
+      );
+      return columns.filter((col, index) => columns.indexOf(col) === index);
+    },
     readDependencies: ["scalar.field"],
   }),
   click_behavior: {},
@@ -244,6 +249,33 @@ const SmartScalarViz: VisualizationDefinition = {
   defaultSize: getDefaultSize("smartscalar"),
 
   settings: SETTINGS_DEFINITIONS,
+
+  columnSettings: (column) => {
+    const isDateColumn = isDate(column) || isAbsoluteDateTimeUnit(column.unit);
+    if (!isDateColumn) {
+      return {};
+    }
+    return {
+      date_granularity: {
+        title: t`Date granularity`,
+        widget: "select",
+        getDefault: () => "default",
+        getProps: () => ({
+          options: [
+            { name: t`Full date`, value: "default" },
+            {
+              name: c(
+                "Date granularity option, distinct from the pluralized unit",
+              ).t`Year`,
+              value: "year",
+            },
+            { name: t`Quarter and year`, value: "quarter" },
+            { name: t`Month and year`, value: "month" },
+          ],
+        }),
+      },
+    };
+  },
 
   isSensible({ cols, insights }: DatasetData) {
     const dimensionCount = cols.filter(

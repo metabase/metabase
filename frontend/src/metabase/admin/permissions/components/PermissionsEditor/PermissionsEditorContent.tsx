@@ -88,7 +88,7 @@ export function PermissionsEditorContent({
 
       <EditorFilterContainer>
         <Input
-          colorScheme="filter"
+          colorScheme="core-filter"
           placeholder={filterPlaceholder}
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}

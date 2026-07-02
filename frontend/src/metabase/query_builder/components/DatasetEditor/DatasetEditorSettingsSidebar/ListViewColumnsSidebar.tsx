@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListColumns } from "metabase/list-view/components/ListView";
 import {
   Button,
   type FlexProps,
@@ -13,6 +12,7 @@ import {
 } from "metabase/ui";
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { useListColumns } from "metabase/visualizations/visualizations/List/components/ListView";
 import type { DatasetColumn } from "metabase-types/api";
 
 import styles from "./ListViewColumnsSidebar.module.css";
@@ -80,7 +80,7 @@ export function ListViewColumnsSidebar({
       <Stack gap="md">
         <TextInput
           placeholder={t`Find a column...`}
-          leftSection={<Icon name="search" size={14} c="text-tertiary" />}
+          leftSection={<Icon name="search" size={14} c="text-disabled" />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />
@@ -98,7 +98,7 @@ export function ListViewColumnsSidebar({
             />
           ))}
           {filtered.length === 0 ? (
-            <Text size="sm" c="text-tertiary">{t`No available columns`}</Text>
+            <Text size="sm" c="text-disabled">{t`No available columns`}</Text>
           ) : null}
         </Stack>
       </Stack>{" "}

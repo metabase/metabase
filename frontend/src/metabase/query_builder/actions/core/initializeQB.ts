@@ -1,26 +1,29 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
-import { Questions } from "metabase/entities/questions";
-import { Snippets } from "metabase/entities/snippets";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
-import { addFields } from "metabase/redux/metadata";
+import type { DispatchFn } from "metabase/redux/hooks";
+import { fetchDatabaseMetadata, updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase/redux/store";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
+import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
@@ -233,10 +236,11 @@ export async function updateTemplateTagNames(
     await Promise.all(
       query.referencedQuestionIds().map(async (id) => {
         try {
-          const actionResult = await dispatch(
-            Questions.actions.fetch({ id }, { noEvent: true }),
+          return await runRtkEndpoint(
+            { id, ignore_error: true },
+            dispatch,
+            cardApi.endpoints.getCard,
           );
-          return Questions.HACK_getObjectFromAction(actionResult);
         } catch {
           return null;
         }
@@ -246,12 +250,26 @@ export async function updateTemplateTagNames(
 
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
-    await dispatch(Snippets.actions.fetchList());
-    const snippets = Snippets.selectors.getList(getState());
-    query = query.updateSnippetNames(snippets);
+    const action = (dispatch as DispatchFn)(
+      snippetApi.endpoints.listSnippets.initiate(undefined, {
+        forceRefetch: true,
+      }),
+    );
+    try {
+      const snippets = await action.unwrap();
+      query = query.updateSnippetNames(snippets);
+    } finally {
+      action.unsubscribe();
+    }
   }
   return query;
 }
+
+// Tracks the most recent initializeQB invocation so that stale, in-flight
+// calls (whose location has been superseded by a newer navigation before they
+// finished awaiting metadata) don't overwrite the QB state with results
+// belonging to the previous URL.
+let latestInitializeQBVersion = 0;
 
 async function handleQBInit(
   dispatch: Dispatch,
@@ -259,17 +277,63 @@ async function handleQBInit(
   {
     location,
     params,
-  }: { location: LocationDescriptorObject; params: QueryParams },
+    isStale,
+  }: {
+    location: LocationDescriptorObject;
+    params: QueryParams;
+    isStale: () => boolean;
+  },
 ) {
   dispatch(resetQB());
   dispatch(cancelQuery());
 
+  // Preload the full database list up front so the data selector already has it
+  // when it mounts
+  const databasesPromise = runRtkEndpoint(
+    { "can-query": true },
+    dispatch,
+    databaseApi.endpoints.listDatabases,
+    { forceRefetch: false },
+  ).catch((error) => {
+    console.error(
+      "Failed to load database list during QB initialization",
+      error,
+    );
+  });
+
   const queryParams = location.query;
-  const cardId = Urls.extractEntityId(params.slug);
+  const isTableRoute = location.pathname?.startsWith("/table");
+  const slugEntityId = Urls.extractEntityId(params.slug);
+  // On the /table/:slug route the slug identifies a table, not a saved card.
+  const cardId = isTableRoute ? undefined : slugEntityId;
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
-  const { options, serializedCard } = parseHash(location.hash);
-  const hasCard = cardId || serializedCard;
+  let { options, serializedCard } = parseHash(location.hash);
   const currentUser = getUser(getState());
+
+  if (isTableRoute && slugEntityId != null) {
+    await dispatch(fetchTableMetadataAndForeignKeys({ id: slugEntityId }));
+    if (isStale()) {
+      return;
+    }
+    const table = getMetadata(getState()).table(slugEntityId);
+    if (!table) {
+      dispatch(setErrorPage(NOT_FOUND_ERROR));
+      return;
+    }
+    await dispatch(fetchDatabaseMetadata(table.db_id));
+    if (isStale()) {
+      return;
+    }
+    // The /table URL only carries the table id; resolve its db so the QB can
+    // build the table's default ad-hoc question, just like `?db=&table=`.
+    options = {
+      ...options,
+      db: String(table.db_id),
+      table: String(slugEntityId),
+    };
+  }
+
+  const hasCard = cardId || serializedCard;
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {
@@ -289,6 +353,10 @@ async function handleQBInit(
     dispatch,
     getState,
   });
+
+  if (isStale()) {
+    return;
+  }
 
   if (isSavedCard(card) && card.archived && !currentUser) {
     dispatch(setErrorPage(ARCHIVED_ERROR));
@@ -322,13 +390,23 @@ async function handleQBInit(
     });
   }
 
+  if (isStale()) {
+    return;
+  }
+
   await dispatch(loadMetadataForCard(card));
+
+  if (isStale()) {
+    return;
+  }
 
   // Populate the metadata store with param_fields from the card response.
   // This ensures field filter widgets have has_field_values even when the user
   // lacks create-queries permission on the underlying table (GHY-1605).
   if (card.param_fields) {
-    await dispatch(addFields(Object.values(card.param_fields).flat()));
+    await dispatch(
+      updateMetadata(Object.values(card.param_fields).flat(), [FieldSchema]),
+    );
   }
 
   const metadata = getMetadata(getState());
@@ -371,6 +449,10 @@ async function handleQBInit(
     question = question.setLegacyQuery(newQuery);
   }
 
+  if (isStale()) {
+    return;
+  }
+
   const finalCard = question.card();
 
   const parameterValues = getParameterValuesForQuestion({
@@ -383,6 +465,13 @@ async function handleQBInit(
 
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
+
+  // make sure db list is loaded
+  await databasesPromise;
+
+  if (isStale()) {
+    return;
+  }
 
   dispatch({
     type: INITIALIZE_QB,
@@ -418,9 +507,14 @@ async function handleQBInit(
 export const initializeQB =
   (location: LocationDescriptorObject, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    const version = ++latestInitializeQBVersion;
+    const isStale = () => version !== latestInitializeQBVersion;
     try {
-      await handleQBInit(dispatch, getState, { location, params });
+      await handleQBInit(dispatch, getState, { location, params, isStale });
     } catch (error) {
+      if (isStale()) {
+        return;
+      }
       console.warn("initializeQB failed because of an error:", error);
       dispatch(setErrorPage(error));
     }

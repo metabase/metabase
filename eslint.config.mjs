@@ -82,6 +82,7 @@ const configs = [
       "e2e/embedding-sdk-host-apps/**",
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
+      "**/custom-viz/fixtures/example_custom_viz_plugin/**",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -289,12 +290,7 @@ const configs = [
     },
     settings: {
       "boundaries/elements": boundaryElements,
-      "boundaries/ignore": [
-        "**/*.unit.spec.*",
-        "**/e2e/**",
-        "*.stories.*",
-        "test/**",
-      ],
+      "boundaries/ignore": ["**/e2e/**", "test/**"],
     },
     rules: {
       "boundaries/element-types": [
@@ -305,6 +301,8 @@ const configs = [
           message: "${file.type} cannot import from ${dependency.type}",
         },
       ],
+      // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
+      "boundaries/no-unknown-files": "error",
     },
   },
   {
@@ -325,6 +323,7 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
+      "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",
       "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
       "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
@@ -584,7 +583,16 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/redux/hooks.ts"],
+    // MCP UI app is a standalone SDK consumer — allow embedding-sdk-package imports
+    // and raw hex color literals (used for MCP host theme fallback values).
+    files: ["frontend/src/metabase/embedding/mcp/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+      "metabase/no-color-literals": "off",
+    },
+  },
+  {
+    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },

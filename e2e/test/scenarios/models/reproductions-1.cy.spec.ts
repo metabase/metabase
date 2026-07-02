@@ -837,6 +837,12 @@ describe("issue 33844", () => {
 
   function testModelMetadata(isNew: boolean) {
     cy.log("make a column visible only in detail views");
+    // Wait for the metadata editor to finish loading before clicking the
+    // header. Otherwise a late query/metadata load remounts the results
+    // table and closes the column-settings sidebar we just opened, so the
+    // "Detail views only" option never appears.
+    H.waitForLoaderToBeRemoved();
+    H.tableInteractive().findByText("ID").should("be.visible");
     cy.findAllByTestId("detail-shortcut").should("not.exist");
     H.tableHeaderClick("ID");
     cy.findByLabelText("Detail views only").click();
@@ -1066,11 +1072,11 @@ describe("issue 35840", () => {
 
   function checkColumnMapping(path: string[]) {
     H.pickEntity({ path, select: true });
-    H.modal().findByText("Pick a column…").click();
-    H.popover().findAllByText("Category").eq(0).click();
+    H.modal().findByPlaceholderText("Pick a column…").click();
+    cy.findByRole("listbox").findAllByText("Category").eq(0).click();
     H.modal().within(() => {
-      cy.findByText("Category").should("be.visible");
-      cy.findByText("Category, Category").should("not.exist");
+      cy.findByDisplayValue("Category").should("be.visible");
+      cy.findByDisplayValue("Category, Category").should("not.exist");
     });
   }
 

@@ -1,4 +1,5 @@
 (ns metabase.parameters.dashboard-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -118,12 +119,10 @@
                            qp.perms/*param-values-query* true]
                    (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                          parameter (first (:parameters dashboard))]
-
                      (testing "Should get remapped values for parameter with multiple FK fields pointing to same PK"
                        (let [remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                          (is (some? remapped-values)
                              "Should get remapped values for multi-field FK scenario")
-
                          (when remapped-values
                            (is
                             (= [1 "Rustic Paper Wallet"]
@@ -172,7 +171,6 @@
                      ;; Mimicks the API endpoint (required):
                      (binding [qp.perms/*param-values-query* true]
                        (let [remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-
                          (is (= [1 "Rustic Paper Wallet"]
                                 remapped-values)
                              "we still get the remapped value"))))))
@@ -220,10 +218,10 @@
                 (binding [api/*current-user-id* (mt/user->id :rasta)]
                   (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                         parameter (first (:parameters dashboard))]
-                  ;; Mimicks the API endpoint (required):
+                    ;; Mimicks the API endpoint (required):
                     (binding [qp.perms/*param-values-query* true]
-                    ;; Important to check all the mappings here because sometimes they match up by coincidence
-                    ;; and pass even when the bug is still present.
+                      ;; Important to check all the mappings here because sometimes they match up by coincidence
+                      ;; and pass even when the bug is still present.
                       (let [expected (into {} (mt/rows (mt/process-query (mt/mbql-query users))))
                             actual   (into {} (map (fn [id]
                                                      (parameters.dashboard/dashboard-param-remapped-value
@@ -260,7 +258,6 @@
                                                      :parameter_mappings [{:card_id      reviews-card-id
                                                                            :parameter_id "p1"
                                                                            :target       ["dimension" ["field" reviews-product-id-field-id nil]]}]}]
-
                (testing "Scenario 1: FK1→A, FK2→B should return raw value (no common remapping)"
                  (mt/with-column-remappings [orders.product_id products.title
                                              reviews.product_id products.category ; Different remapping
@@ -271,7 +268,6 @@
                            remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                        (is (= [1] remapped-values)
                            "Should return raw value when FK remappings conflict")))))
-
                (testing "Scenario 2: FK1→A, FK2→A, PK→C should return A (common FK remapping wins)"
                  (mt/with-column-remappings [orders.product_id products.title
                                              reviews.product_id products.title ; Same remapping as FK1
@@ -282,9 +278,8 @@
                            remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                        (is (= [1 "Rustic Paper Wallet"] remapped-values)
                            "Should return common FK remapping when FKs agree")))))
-
                (testing "Scenario 3: FK1→∅, FK2→A should return raw value (no consensus among FKs)"
-                  ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
+                 ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
                  (mt/with-column-remappings [reviews.product_id products.title
                                              products.id products.category]
                    (binding [api/*current-user-id* (mt/user->id :rasta)]
@@ -293,16 +288,14 @@
                            remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                        (is (= [1] remapped-values)
                            "Should return raw value when only some FKs have remapping")))))
-
                (testing "Scenario 4: No remappings at all should return raw value"
-                  ;; No remappings set up
+                 ;; No remappings set up
                  (binding [api/*current-user-id* (mt/user->id :rasta)]
                    (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
                          parameter       (first (:parameters dashboard))
                          remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
                      (is (= [1] remapped-values)
                          "Should return only raw value when no remappings are configured"))))
-
                (testing "Scenario 5: Only PK remapping should return raw value (PK ignored)"
                  (mt/with-column-remappings [products.id products.title]
                    (binding [api/*current-user-id* (mt/user->id :rasta)]
@@ -318,7 +311,6 @@
       (let [orders-product-id-field-id (mt/id :orders :product_id)
             reviews-product-id-field-id (mt/id :reviews :product_id)
             products-title-field-id (mt/id :products :title)]
-
         (testing "When both FK fields remap to the same target"
           (mt/with-column-remappings [orders.product_id products.title
                                       reviews.product_id products.title]
@@ -326,29 +318,24 @@
                    (#'parameters.dashboard/find-common-remapping-target
                     [orders-product-id-field-id reviews-product-id-field-id]))
                 "Should return common target when both FKs remap to same field")))
-
         (testing "When FK fields remap to different targets"
           (mt/with-column-remappings [orders.product_id products.title
                                       reviews.product_id products.category]
             (is (nil? (#'parameters.dashboard/find-common-remapping-target
                        [orders-product-id-field-id reviews-product-id-field-id]))
                 "Should return nil when FKs remap to different fields")))
-
         (testing "When only one FK field has remapping"
           (mt/with-column-remappings [orders.product_id products.title]
             (is (nil? (#'parameters.dashboard/find-common-remapping-target
                        [orders-product-id-field-id reviews-product-id-field-id]))
                 "Should return nil when only one FK has remapping (no consensus)")))
-
         (testing "When no FK fields have remapping"
           (is (nil? (#'parameters.dashboard/find-common-remapping-target
                      [orders-product-id-field-id reviews-product-id-field-id]))
               "Should return nil when no FKs have remapping"))
-
         (testing "With empty field list"
           (is (nil? (#'parameters.dashboard/find-common-remapping-target []))
               "Should return nil for empty field list"))
-
         (testing "With single field that has remapping"
           (mt/with-column-remappings [orders.product_id products.title]
             (is (= products-title-field-id

@@ -5,9 +5,9 @@ import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";

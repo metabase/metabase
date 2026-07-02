@@ -134,8 +134,7 @@
                        :model/NativeQuerySnippet snippet {:name "Existing Snippet" :content "SELECT 1" :collection_id coll-id}]
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Should have no snippet tracking entries initially")
-          ;; Enable snippet sync
-          (rs-events/sync-snippet-tracking! true)
+          (rs-events/enable-snippet-tracking!)
           ;; Verify tracking entries created
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
@@ -168,8 +167,7 @@
           (is (= 2 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "NativeQuerySnippet"]]
                              :model_id [:in [coll-id (:id snippet)]]))
               "Should have 2 tracking entries")
-          ;; Disable snippet sync
-          (rs-events/sync-snippet-tracking! false)
+          (rs-events/disable-snippet-tracking!)
           ;; Verify tracking entries removed
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Snippet tracking entries should be removed")
@@ -417,6 +415,6 @@ is_sample: false
                 (let [files-after-export (get @(:files-atom mock-source) "main")]
                   (is (not (some #(str/includes? % "archived_snippet") (keys files-after-export)))
                       "Archived snippet file should be deleted after export")))
-              (testing "RemoteSyncObject entry is updated to synced after export"
-                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id snippet-id)))
-                    "RemoteSyncObject entry for archived snippet should have synced status")))))))))
+              (testing "the archived snippet's tracking row is dropped after export (it left the synced set)"
+                (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id snippet-id))
+                    "RemoteSyncObject entry for the archived snippet should be deleted")))))))))

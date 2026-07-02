@@ -16,7 +16,6 @@ export const MetricPage = {
   overviewTab: () => MetricPage.header().findByText("Overview"),
   definitionTab: () => MetricPage.header().findByText("Definition"),
   dependenciesTab: () => MetricPage.header().findByText("Dependencies"),
-  cachingTab: () => MetricPage.header().findByText("Caching"),
   historyTab: () => MetricPage.header().findByText("History"),
   aboutPageDescriptionSidebar: () =>
     metricAboutPage().findByTestId("metric-description-sidebar"),

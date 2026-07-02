@@ -128,6 +128,7 @@
     :model/Measure
     ;; 60+
     :model/OAuthClient
+    :model/OAuthClientEvent
     :model/OAuthAuthorizationCode
     :model/OAuthAccessToken
     :model/OAuthRefreshToken
@@ -136,7 +137,9 @@
     :model/MetabotMessage
     :model/MetabotFeedback
     :model/MetabotSourceFeedback
-    :model/MetabotPrompt]
+    :model/MetabotUsedTable
+    :model/MetabotPrompt
+    :model/OsiAiContext]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit
@@ -144,7 +147,10 @@
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
-      :model/CustomVizPlugin])))
+      :model/CustomVizPlugin
+      :model/Workspace
+      :model/WorkspaceDatabase
+      :model/TableRemapping])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -377,7 +383,8 @@
     :model/FieldUserSettings
     :model/QueryAction
     :model/MetabotConversation
-    :model/ModelIndexValue})
+    :model/ModelIndexValue
+    :model/OsiAiContext})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

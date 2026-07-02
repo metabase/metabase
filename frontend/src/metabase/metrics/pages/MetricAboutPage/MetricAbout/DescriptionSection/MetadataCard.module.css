@@ -1,0 +1,47 @@
+/* Spec: Orion-Alpha-5 (hsla(204, 66%, 8%, 0.02)) in light mode.
+   Dark mode flips to a subtle white overlay so the card stays visible
+   against the dark page bg. */
+.card {
+  background: hsla(204, 66%, 8%, 0.02);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  box-shadow: none;
+}
+
+[data-mantine-color-scheme="dark"] .card {
+  background: hsla(0, 0%, 100%, 0.05);
+}
+
+.rows {
+  position: relative;
+}
+
+/* Vertical line running through the icon column, connecting circles.
+   Sits behind the icon circles, which cover it on their own footprint. */
+.rows::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem; /* center of 24px (1.5rem) icon circle */
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 1px;
+  background: var(--mb-color-border-neutral);
+  pointer-events: none;
+}
+
+.iconCircle {
+  position: relative;
+  border-radius: 100%;
+  flex-shrink: 0;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.1),
+    0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.text {
+  color: var(--mb-color-core-brand);
+}
+
+.link:hover .text {
+  color: var(--mb-color-text-brand-hover);
+}

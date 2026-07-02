@@ -9,6 +9,7 @@
   Namespaces outside of src/metabase/app_db/ should not use any metabase.app-db.* namespace but use this api namespace."
   (:refer-clojure :exclude [compile])
   (:require
+   [clojure.core.memoize :as memoize]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
@@ -35,38 +36,30 @@
   application-db
   data-source
   db-type
+  do-after-commit
   in-transaction?
   quoting-style
   unique-identifier]
-
  [mdb.connection-pool-setup
   recent-activity?]
-
  [mdb.data-source
   broken-out-details->DataSource]
-
  [mdb.env
   db-file]
-
  [mdb.jdbc-protocols
   clob->str]
-
  [mdb.encryption
   decrypt-db
   encrypt-db]
-
  [metabase.app-db.format
   format-sql]
-
  [mdb.setup
   can-connect-to-data-source?
   migrate!
   quote-for-application-db]
-
  [mdb.spec
   make-subname
   spec]
-
  [metabase.app-db.query
   compile
   isa
@@ -74,15 +67,11 @@
   qualify
   query
   select-or-insert!
-  streaming-reducible
-  streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
   with-conflict-retry]
-
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
-
  [liquibase
   changelog-by-id])
 
@@ -97,6 +86,31 @@
   "Mark the bound Metabase DB as set up and ready."
   []
   (reset! (:status mdb.connection/*application-db*) ::setup-finished))
+
+(defn verify-application-db-connection!
+  "Open a connection to the bound application DB and check its server version. Throws on failure.
+  Does *not* run migrations or any encryption checks — use [[setup-db!]] for the full bootstrap.
+  This is the public, no-argument hook for tools that need to confirm appdb connectivity without
+  modifying the schema."
+  []
+  (mdb.setup/verify-db-connection (mdb.connection/db-type) (mdb.connection/data-source)))
+
+(defn setup-db-without-migrations!
+  "Like [[setup-db!]] but never runs migrations or mutates the schema. Idempotent: no-ops if the
+  DB is already set up. Verifies connectivity, then marks the DB ready.
+
+  For read-only tools (e.g. Data Complexity CLI) that need to query Toucan models against a live
+  appdb without modifying it. Any schema mismatch surfaces as a runtime error at query time
+  rather than during setup.
+
+  Skips:
+  - Liquibase migrations.
+  - [[metabase.app-db.setup/check-encryption]], whose auto-encrypt branch can silently rewrite
+    every encrypted `setting` row when an encryption key is configured."
+  []
+  (when-not (db-is-set-up?)
+    (verify-application-db-connection!)
+    (finish-db-setup!)))
 
 (defn app-db
   "The Application database. A record, but use accessors [[db-type]], [[data-source]], etc to access. Also
@@ -139,10 +153,10 @@
   `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
   this."
   [f]
-  (let [f* (memoize (fn [_application-db-id & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (unique-identifier) args))))
+  (memoize/memo
+   (vary-meta
+    (fn [& args] (apply f args))
+    assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as

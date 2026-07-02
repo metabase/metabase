@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -399,9 +400,9 @@
 (deftest ^:synchronized csv-upload-and-sync-test
   (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
     (mt/test-driver :clickhouse
-      (with-redefs [clickhouse-version/dbms-version (constantly {:cloud true
-                                                                 :version "24.8.1"
-                                                                 :semantic-version {:major 24 :minor 8}})]
+      (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true
+                                                                               :version "24.8.1"
+                                                                               :semantic-version {:major 24 :minor 8}})]
         (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
                             (assoc :enable-multiple-db false))
               conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
@@ -486,6 +487,24 @@
                        (lib/filter (lib/= val-col "abc"))
                        (qp/process-query)
                        (mt/rows))))))))))
+
+(deftest ^:parallel recursive-cte-native-query-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a native query with a recursive CTE (#73161)"
+      (is (= [[1] [2] [3]]
+             (->> "WITH RECURSIVE t AS ( SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < 3 ) SELECT * FROM t;"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/formatted-rows [int])))))))
+
+(deftest ^:parallel query-with-boolean-setting-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a query with settings set to a boolean (#73431)"
+      (is (= [[2]]
+             (->> "select 2 SETTINGS use_query_cache = true"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))
 
 (defn- check-legacy-dbname [dbname exp-name]
   (let [details (assoc (:details (mt/db)) :dbname dbname)

@@ -6,7 +6,7 @@ import {
   useGetTimelineQuery,
   useUpdateTimelineEventMutation,
 } from "metabase/api";
-import { useSetArchive } from "metabase/common/hooks";
+import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/redux";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
@@ -15,7 +15,7 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
-function EditEventModalContainer({ params }: ModalComponentProps) {
+function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
   const archive = useSetArchive();
   const timelineId = Urls.extractEntityId(params.timelineId);
@@ -61,6 +61,7 @@ function EditEventModalContainer({ params }: ModalComponentProps) {
       timeline={timeline}
       onSubmit={onSubmit}
       onArchive={onArchive}
+      onClose={onClose}
     />
   );
 }

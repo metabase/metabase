@@ -4,7 +4,6 @@
       "name": "Querying Platform",
       "label": ".Team/QueryingPlatform",
       "members": [
-        "bshepherdson",
         "metamben",
         "rileythomp",
         "camsaul",
@@ -89,7 +88,7 @@
         "npfitz",
         "johnswanson",
         "nvoxland",
-        "edpaget",
+        "bshepherdson",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
@@ -120,7 +119,8 @@
         "iethree",
         "bpander",
         "gantoreno",
-        "losrebellos"
+        "losrebellos",
+        "tmashara"
       ]
     }
   ]

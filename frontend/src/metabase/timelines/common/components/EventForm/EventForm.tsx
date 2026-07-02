@@ -17,19 +17,12 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import {
-  Button,
-  Flex,
-  Group,
-  Icon,
-  type IconName,
-  Stack,
-  TimeInput,
-} from "metabase/ui";
+import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {
   FormattingSettings,
+  IconName,
   Timeline,
   TimelineEventData,
 } from "metabase-types/api";
@@ -118,7 +111,7 @@ const EventForm = ({
               name="name"
               label={t`Event name`}
               placeholder={t`Product launch`}
-              autoFocus
+              data-autofocus
             />
             <Flex align="end" gap="md">
               <FormDateInput

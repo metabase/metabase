@@ -2,6 +2,7 @@
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
@@ -50,7 +51,9 @@
         (let [cnt->ids (group-by-frequency ids)
               lock-name (view-count-lock model)]
           (log/debugf "Writing %d items to %s view counts with lock %s" (count ids) model lock-name)
-          (cluster-lock/with-cluster-lock lock-name
+          ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+          ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+          (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
             ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
             ;; specifically search-index enqueues on after-update.
             (t2/query {:update (t2/table-name model)
@@ -64,11 +67,13 @@
 
 (def ^:private increment-view-count-interval-seconds 20)
 
+(def ^:private increment-view-count-queue-capacity 500)
+
 (defonce ^:private
   increase-view-count-queue
   (delay (grouper/start!
           #'increment-view-counts!*
-          :capacity 500
+          :capacity increment-view-count-queue-capacity
           :interval (* increment-view-count-interval-seconds 1000))))
 
 (defn increment-view-counts!
@@ -76,13 +81,36 @@
   [model model-id]
   (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
+(def ^:private record-view-interval-seconds 20)
+
+(def ^:private record-view-queue-capacity 500)
+
+(defn- record-views!* [views]
+  (log/debugf "Recording %d views" (count views))
+  (try
+    (t2/insert! :model/ViewLog views)
+    (catch Exception e
+      (log/error e "Failed to record views"))))
+
+(defonce ^:private record-view-queue
+  (delay (grouper/start!
+          #'record-views!*
+          :capacity record-view-queue-capacity
+          :interval (* record-view-interval-seconds 1000))))
+
 (mu/defn record-views!
-  "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
+  "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`. Views are batched
+  and inserted asynchronously, so they may not be visible in the view log for up
+  to [[record-view-interval-seconds]] (plus they are lost on non-graceful shutdown); we consider that an acceptable
+  trade for not paying for a synchronous INSERT on every read/query request."
   [view-or-views :- [:or :map [:sequential :map]]]
   (span/with-span!
     {:name "record-view!"}
     (when (premium-features/log-enabled?)
-      (t2/insert! :model/ViewLog view-or-views))))
+      (doseq [view (u/one-or-many view-or-views)]
+        (grouper/submit! @record-view-queue (-> view
+                                                (assoc :timestamp (t/offset-date-time))
+                                                analytics/include-sdk-info))))))
 
 (defn generate-view
   "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
@@ -116,6 +144,8 @@
 
 (def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
 
+(def ^:private update-dashboard-last-viewed-at-queue-capacity 500)
+
 (defn- update-dashboard-last-viewed-at!* [dashboard-id-timestamps]
   (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
                                              (fn [xs] (apply t/max (map :timestamp xs))))]
@@ -124,7 +154,9 @@
       ;; (specifically :hook/search-index after-update). The search index can tolerate staleness on this field: the
       ;; index will catch up on the next re-index cycle or when the dashboard is edited. This matches the pattern used
       ;; in increment-view-counts!*
-      (cluster-lock/with-cluster-lock dashboard-statistics-lock
+      ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+      ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+      (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
         (t2/query {:update (t2/table-name :model/Dashboard)
                    :set    {:last_viewed_at (into [:case]
                                                   (mapcat (fn [[id timestamp]]
@@ -138,7 +170,7 @@
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
           #'update-dashboard-last-viewed-at!*
-          :capacity 500
+          :capacity update-dashboard-last-viewed-at-queue-capacity
           :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
 
 (defn- update-dashboard-last-viewed-at!

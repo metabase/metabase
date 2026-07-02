@@ -20,8 +20,8 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
 **Properties that ARE style props** (use these, not CSS modules):
 
 - `display` → `display` prop
-- `color` → `c` prop (`c="brand"`, `c="text-primary"`)
-- `background-color` → `bg` prop (`bg="background-primary"`)
+- `color` → `c` prop (`c="core-brand"`, `c="text-primary"`)
+- `background-color` → `bg` prop (`bg="background_page-primary"`)
 - `font-size` → `fz` prop (`fz="md"`)
 - `font-weight` → `fw` prop (`fw="bold"`)
 - `line-height` → `lh` prop (`lh="md"`)
@@ -57,7 +57,7 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
   align="center"            /* style prop */
   gap="sm"                  /* style prop */
   p="md"                    /* style prop */
-  bg="background-primary"   /* style prop */
+  bg="background_page-primary"   /* style prop */
 >
 ```
 
@@ -149,19 +149,19 @@ Read the `.styled.tsx` file AND every component that imports from it. Understand
 
 For each styled component, apply the Mantine-First Decision Gate above. Then determine the migration target:
 
-| Emotion Pattern                                              | Migration Target                                                                                                                                                           |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `styled.div` with only layout/spacing/color                  | `Box`, `Flex`, `Stack`, or `Group` with style props. **NO CSS module needed.**                                                                                             |
-| `styled.div` with flexbox column                             | `Stack` component with style props                                                                                                                                         |
-| `styled.div` with flexbox row                                | `Flex` or `Group` component with style props                                                                                                                               |
-| `styled.span` / `styled.p` with color/weight/size            | **`Text component="span"` with style props** (`c`, `fw`, `fz`). NO CSS module.                                                                                             |
-| `styled.div` with hover/focus/pseudo-selectors               | **Hybrid**: Mantine component with style props for expressible properties + CSS module class for pseudo-selectors only                                                     |
-| `styled.div` with media queries (simple spacing/sizing)      | **Responsive style props**: `p={{ base: "md", lg: "xl" }}`. NO CSS module.                                                                                                 |
-| `styled.div` with media queries (complex/non-spacing)        | CSS module for the media query parts, style props for the rest                                                                                                             |
-| `styled.div` with animations/keyframes                       | CSS module for animation, style props for layout                                                                                                                           |
-| `styled(SomeComponent)` with only color/spacing/flex         | **Wrap in Mantine component** with style props: `<Box c="brand" flex="0 0 auto"><Icon /></Box>`, or pass style props if the component accepts them                         |
-| `styled(SomeComponent)` with pseudo-selectors/complex styles | CSS module `className` on the component                                                                                                                                    |
-| Dynamic props `styled.div<{ isActive: boolean }>`            | Mantine style props for simple toggles (`c={active ? "brand" : "text-primary"}`), `cx()` with CSS module classes for complex state combinations involving pseudo-selectors |
+| Emotion Pattern                                              | Migration Target                                                                                                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `styled.div` with only layout/spacing/color                  | `Box`, `Flex`, `Stack`, or `Group` with style props. **NO CSS module needed.**                                                                                                  |
+| `styled.div` with flexbox column                             | `Stack` component with style props                                                                                                                                              |
+| `styled.div` with flexbox row                                | `Flex` or `Group` component with style props                                                                                                                                    |
+| `styled.span` / `styled.p` with color/weight/size            | **`Text component="span"` with style props** (`c`, `fw`, `fz`). NO CSS module.                                                                                                  |
+| `styled.div` with hover/focus/pseudo-selectors               | **Hybrid**: Mantine component with style props for expressible properties + CSS module class for pseudo-selectors only                                                          |
+| `styled.div` with media queries (simple spacing/sizing)      | **Responsive style props**: `p={{ base: "md", lg: "xl" }}`. NO CSS module.                                                                                                      |
+| `styled.div` with media queries (complex/non-spacing)        | CSS module for the media query parts, style props for the rest                                                                                                                  |
+| `styled.div` with animations/keyframes                       | CSS module for animation, style props for layout                                                                                                                                |
+| `styled(SomeComponent)` with only color/spacing/flex         | **Wrap in Mantine component** with style props: `<Box c="core-brand" flex="0 0 auto"><Icon /></Box>`, or pass style props if the component accepts them                         |
+| `styled(SomeComponent)` with pseudo-selectors/complex styles | CSS module `className` on the component                                                                                                                                         |
+| Dynamic props `styled.div<{ isActive: boolean }>`            | Mantine style props for simple toggles (`c={active ? "core-brand" : "text-primary"}`), `cx()` with CSS module classes for complex state combinations involving pseudo-selectors |
 
 ### Step 3: Create CSS Module (if needed)
 
@@ -170,19 +170,19 @@ Create `ComponentName.module.css` alongside the component file:
 ```css
 /* Use design system tokens — NEVER raw color/spacing values */
 .root {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 /* Conditional states as separate classes, combined with cx() */
 .active {
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
   color: var(--mb-color-text-primary-inverse);
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   pointer-events: none;
 }
 
@@ -191,8 +191,8 @@ Create `ComponentName.module.css` alongside the component file:
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -255,9 +255,9 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** (`c`, `bg`):
 
-- Text: `"text-primary"`, `"text-secondary"`, `"text-tertiary"`
-- Background: `"background-primary"`, `"background-secondary"`, `"background-hover"`
-- Brand: `"brand"`, `"error"`, `"success"`, `"warning"`
+- Text: `"text-primary"`, `"text-secondary"`, `"text-disabled"`
+- Background: `"background_page-primary"`, `"background_page-secondary"`, `"background_surface-hover"`
+- Brand: `"core-brand"`, `"error"`, `"success"`, `"warning"`
 
 **Typography** (`fz`, `fw`, `lh`, `ta`, `ff`):
 
@@ -279,10 +279,10 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** — `var(--mb-color-<name>)`:
 
-- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-tertiary`
-- `--mb-color-background-primary`, `--mb-color-background-secondary`, `--mb-color-background-hover`
+- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-disabled`
+- `--mb-color-background_page-primary`, `--mb-color-background_page-secondary`, `--mb-color-background_surface-hover`
 - `--mb-color-border`, `--mb-color-border-strong`, `--mb-color-border-subtle`
-- `--mb-color-brand`, `--mb-color-brand-hover`
+- `--mb-color-core-brand`, `--mb-color-core-brand-hover`
 - `--mb-color-error`, `--mb-color-success`, `--mb-color-warning`
 - `--mb-color-shadow`, `--mb-color-focus`
 - `--mb-color-accent0` through `--mb-color-accent7`
@@ -398,13 +398,13 @@ export const Wrapper = styled.div`
 ```tsx
 export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
   color: ${(props) =>
-    props.disabled ? color("text-tertiary") : color("text-primary")};
+    props.disabled ? color("text-disabled") : color("text-primary")};
   background-color: ${(props) =>
-    props.isSelected ? color("brand") : "transparent"};
+    props.isSelected ? color("core-brand") : "transparent"};
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
 
   &:hover {
-    color: ${(props) => !props.disabled && color("brand")};
+    color: ${(props) => !props.disabled && color("core-brand")};
   }
 `;
 ```
@@ -418,20 +418,20 @@ export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
 .selected {
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   cursor: default;
 
   &:hover {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 }
 ```
@@ -457,7 +457,7 @@ When a styled component wraps another component, first check if the styles can b
 export const CardIcon = styled(Icon)`
   display: block;
   flex: 0 0 auto;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const CardTitle = styled(Ellipsified)`
@@ -471,7 +471,7 @@ export const CardTitle = styled(Ellipsified)`
 **After — style props on Mantine wrapper (preferred when ALL properties are expressible):**
 
 ```tsx
-<Box display="block" flex="0 0 auto" c="brand">
+<Box display="block" flex="0 0 auto" c="core-brand">
   <Icon {...icon} />
 </Box>
 <Box c="text-primary" fz="md" fw="bold" ml="md">
@@ -483,13 +483,13 @@ export const CardTitle = styled(Ellipsified)`
 
 ```css
 .icon {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   width: 1.5rem;
   height: 1.5rem;
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand-hover);
+    color: var(--mb-color-core-brand-hover);
   }
 }
 ```
@@ -570,12 +570,12 @@ export const Spinner = styled.div`
 
 ### Pattern 6: color() Function → CSS Variables
 
-| Emotion (JS)            | CSS Module                                                   | Mantine Style Prop          |
-| ----------------------- | ------------------------------------------------------------ | --------------------------- |
-| `color("brand")`        | `var(--mb-color-brand)`                                      | `c="brand"` or `bg="brand"` |
-| `color("text-primary")` | `var(--mb-color-text-primary)`                               | `c="text-primary"`          |
-| `color("border")`       | `var(--mb-color-border)`                                     | N/A (use CSS module)        |
-| `alpha("brand", 0.2)`   | `color-mix(in srgb, var(--mb-color-brand), transparent 80%)` | N/A (use CSS module)        |
+| Emotion (JS)               | CSS Module                                                        | Mantine Style Prop                    |
+| -------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
+| `color("core-brand")`      | `var(--mb-color-core-brand)`                                      | `c="core-brand"` or `bg="core-brand"` |
+| `color("text-primary")`    | `var(--mb-color-text-primary)`                                    | `c="text-primary"`                    |
+| `color("border-neutral")`          | `var(--mb-color-border-neutral)`                                          | N/A (use CSS module)                  |
+| `alpha("core-brand", 0.2)` | `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)` | N/A (use CSS module)                  |
 
 ### Pattern 7: Responsive Spacing/Sizing → Responsive Style Props (NOT CSS Media Queries)
 
@@ -627,13 +627,13 @@ export const Bar = styled.div<{ width: number }>`
 
 If existing code already uses `CS` classes and you're not migrating that specific code, leave them alone. But when migrating Emotion → Mantine, replace with the proper alternative:
 
-| Instead of `CS.*`   | Use                                                     |
-| ------------------- | ------------------------------------------------------- |
-| `CS.overflowHidden` | CSS module: `overflow: hidden`                          |
-| `CS.cursorPointer`  | CSS module: `cursor: pointer`                           |
-| `CS.flex1`          | Style prop: `flex={1}`                                  |
-| `CS.flexNoShrink`   | Style prop: `flex="0 0 auto"`                           |
-| `CS.textBrandHover` | CSS module: `&:hover { color: var(--mb-color-brand); }` |
+| Instead of `CS.*`   | Use                                                          |
+| ------------------- | ------------------------------------------------------------ |
+| `CS.overflowHidden` | CSS module: `overflow: hidden`                               |
+| `CS.cursorPointer`  | CSS module: `cursor: pointer`                                |
+| `CS.flex1`          | Style prop: `flex={1}`                                       |
+| `CS.flexNoShrink`   | Style prop: `flex="0 0 auto"`                                |
+| `CS.textBrandHover` | CSS module: `&:hover { color: var(--mb-color-core-brand); }` |
 
 ### Pattern 10: Shared Emotion Styles Across Files → Shared CSS Module + cx()
 
@@ -759,7 +759,7 @@ import S from "./ComponentName.module.css"; // only if CSS module is needed
 - [ ] The `.styled.tsx` file is deleted
 - [ ] All imports of the deleted styled file are updated
 - [ ] No static inline styles — `style={{ }}` used only for truly dynamic runtime values
-- [ ] All colors use design tokens (`c="brand"`, `var(--mb-color-brand)`), not raw hex/rgb
+- [ ] All colors use design tokens (`c="core-brand"`, `var(--mb-color-core-brand)`), not raw hex/rgb
 - [ ] All spacing uses design tokens (`p="md"`, `var(--mantine-spacing-md)`), not arbitrary px values — hardcoded `rem`/`px` literals snapped to the nearest token (see mapping table above)
 - [ ] All border-radius values use radius tokens (`var(--mantine-radius-md)`), not hardcoded `0.5rem`
 - [ ] All font sizes use font-size tokens (`fz="md"`, `var(--mantine-font-size-md)`), not hardcoded `1rem`

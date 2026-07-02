@@ -20,11 +20,10 @@ import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/d
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { createSnowplowTracker } from "metabase/analytics";
-import api from "metabase/api/legacy-client";
+import type { OnBeforeRequestHandler } from "metabase/api/client";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserId } from "metabase/selectors/user";
@@ -35,7 +34,9 @@ import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-b
 import type { SdkIframeEmbedSettings } from "../types/embed";
 import { stripInternalIframeQueryParameters } from "../utils/strip-internal-iframe-query-parameters";
 
+import { DashboardParametersBridge } from "./DashboardParametersBridge";
 import { MetabaseBrowser } from "./MetabaseBrowser";
+import { QuestionParametersBridge } from "./QuestionParametersBridge";
 import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
   SdkIframeApiKeyInProductionError,
@@ -45,28 +46,22 @@ import {
 
 let _embedReferrer: string | undefined;
 
-const embedReferrerHandler = async (
-  config: OnBeforeRequestHandlerConfig,
-): Promise<OnBeforeRequestHandlerConfig | void> => {
+const embedReferrerHandler: OnBeforeRequestHandler = async (config) => {
   if (_embedReferrer) {
     return {
       ...config,
-      options: {
-        ...config.options,
-        headers: {
-          ...config.options.headers,
-          // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-          "X-Metabase-Embed-Referrer": _embedReferrer,
-        },
+      headers: {
+        ...config.headers,
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+        "X-Metabase-Embed-Referrer": _embedReferrer,
       },
     };
   }
 };
 
-// Register once — uses a named function ref so it can't be pushed twice
-if (!api.beforeRequestHandlers.includes(embedReferrerHandler)) {
-  api.beforeRequestHandlers.push(embedReferrerHandler);
-}
+// Install the iframe embed-referrer handler into its plugin slot.
+PLUGIN_EMBEDDING_IFRAME_SDK.onBeforeRequestHandlers.embedReferrer =
+  embedReferrerHandler;
 
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.
@@ -217,16 +212,22 @@ const SdkIframeEmbedView = ({
               };
 
           return (
-            <StaticDashboard
-              key={rerenderKey}
-              className={SdkIframeEmbedRouteS.Dashboard}
-              {...entityProps}
-              autoRefreshInterval={settings.autoRefreshInterval}
-              withTitle={settings.withTitle}
-              withDownloads={settings.withDownloads}
-              initialParameters={settings.initialParameters}
-              hiddenParameters={settings.hiddenParameters}
-            />
+            <DashboardParametersBridge>
+              {({ onParametersChange }) => (
+                <StaticDashboard
+                  key={rerenderKey}
+                  className={SdkIframeEmbedRouteS.Dashboard}
+                  {...entityProps}
+                  autoRefreshInterval={settings.autoRefreshInterval}
+                  withTitle={settings.withTitle}
+                  withDownloads={settings.withDownloads}
+                  initialParameters={settings.initialParameters}
+                  parameters={settings.parameters}
+                  onParametersChange={onParametersChange}
+                  hiddenParameters={settings.hiddenParameters}
+                />
+              )}
+            </DashboardParametersBridge>
           );
         },
       )
@@ -238,21 +239,27 @@ const SdkIframeEmbedView = ({
           drills: P.optional(true),
         },
         (settings) => (
-          <InteractiveDashboard
-            key={rerenderKey}
-            className={SdkIframeEmbedRouteS.Dashboard}
-            dashboardId={settings.dashboardId ?? null}
-            token={settings.token}
-            autoRefreshInterval={settings.autoRefreshInterval}
-            withTitle={settings.withTitle}
-            withDownloads={settings.withDownloads}
-            withSubscriptions={settings.withSubscriptions}
-            initialParameters={settings.initialParameters}
-            hiddenParameters={settings.hiddenParameters}
-            enableEntityNavigation={settings.enableEntityNavigation}
-            drillThroughQuestionHeight="100%"
-            drillThroughQuestionProps={{ isSaveEnabled: false }}
-          />
+          <DashboardParametersBridge>
+            {({ onParametersChange }) => (
+              <InteractiveDashboard
+                key={rerenderKey}
+                className={SdkIframeEmbedRouteS.Dashboard}
+                dashboardId={settings.dashboardId ?? null}
+                token={settings.token}
+                autoRefreshInterval={settings.autoRefreshInterval}
+                withTitle={settings.withTitle}
+                withDownloads={settings.withDownloads}
+                withSubscriptions={settings.withSubscriptions}
+                initialParameters={settings.initialParameters}
+                parameters={settings.parameters}
+                onParametersChange={onParametersChange}
+                hiddenParameters={settings.hiddenParameters}
+                enableEntityNavigation={settings.enableEntityNavigation}
+                drillThroughQuestionHeight="100%"
+                drillThroughQuestionProps={{ isSaveEnabled: false }}
+              />
+            )}
+          </DashboardParametersBridge>
         ),
       )
       // Exists solely to discriminate type from the pattern below when matching `guestEmbedProviderUri: P.nonNullable`
@@ -298,16 +305,22 @@ const SdkIframeEmbedView = ({
               };
 
           return (
-            <StaticQuestion
-              key={rerenderKey}
-              {...entityProps}
-              withDownloads={settings.withDownloads}
-              withAlerts={settings.withAlerts}
-              height="100%"
-              initialSqlParameters={settings.initialSqlParameters}
-              hiddenParameters={settings.hiddenParameters}
-              title={settings.withTitle ?? true}
-            />
+            <QuestionParametersBridge>
+              {({ onSqlParametersChange }) => (
+                <StaticQuestion
+                  key={rerenderKey}
+                  {...entityProps}
+                  withDownloads={settings.withDownloads}
+                  withAlerts={settings.withAlerts}
+                  height="100%"
+                  initialSqlParameters={settings.initialSqlParameters}
+                  sqlParameters={settings.sqlParameters}
+                  onSqlParametersChange={onSqlParametersChange}
+                  hiddenParameters={settings.hiddenParameters}
+                  title={settings.withTitle ?? true}
+                />
+              )}
+            </QuestionParametersBridge>
           );
         },
       )
@@ -319,20 +332,26 @@ const SdkIframeEmbedView = ({
           questionId: P.nonNullable,
         },
         (settings) => (
-          <SdkQuestion
-            key={rerenderKey}
-            questionId={settings.questionId ?? null}
-            token={settings.token}
-            withDownloads={settings.withDownloads}
-            withAlerts={settings.withAlerts}
-            height="100%"
-            initialSqlParameters={settings.initialSqlParameters}
-            hiddenParameters={settings.hiddenParameters}
-            title={settings.withTitle ?? true}
-            isSaveEnabled={settings.isSaveEnabled ?? false}
-            targetCollection={settings.targetCollection}
-            entityTypes={settings.entityTypes}
-          />
+          <QuestionParametersBridge>
+            {({ onSqlParametersChange }) => (
+              <SdkQuestion
+                key={rerenderKey}
+                questionId={settings.questionId ?? null}
+                token={settings.token}
+                withDownloads={settings.withDownloads}
+                withAlerts={settings.withAlerts}
+                height="100%"
+                initialSqlParameters={settings.initialSqlParameters}
+                sqlParameters={settings.sqlParameters}
+                onSqlParametersChange={onSqlParametersChange}
+                hiddenParameters={settings.hiddenParameters}
+                title={settings.withTitle ?? true}
+                isSaveEnabled={settings.isSaveEnabled ?? false}
+                targetCollection={settings.targetCollection}
+                entityTypes={settings.entityTypes}
+              />
+            )}
+          </QuestionParametersBridge>
         ),
       )
       .with(

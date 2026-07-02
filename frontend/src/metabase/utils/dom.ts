@@ -198,6 +198,13 @@ export const getEventTarget = (
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
+    // This node is the virtual anchor a Mantine Popover attaches to. Position it
+    // as a tiny, click-through box at the cursor (left/top set below from the
+    // event's viewport coords) so the popover opens at the pointer location.
+    target.style.position = "fixed";
+    target.style.width = "6px";
+    target.style.height = "6px";
+    target.style.pointerEvents = "none";
     document.body.appendChild(target);
   }
 

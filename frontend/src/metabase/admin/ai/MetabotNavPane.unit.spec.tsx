@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -14,11 +15,13 @@ const setup = ({
   aiControlsEnabled = false,
   auditAppEnabled = false,
   isConfigured = true,
+  initialRoute = "/admin/metabot",
 }: {
   aiFeaturesEnabled?: boolean;
   aiControlsEnabled?: boolean;
   auditAppEnabled?: boolean;
   isConfigured?: boolean;
+  initialRoute?: string;
 } = {}) => {
   mockSettings({
     "ai-features-enabled?": aiFeaturesEnabled,
@@ -34,7 +37,7 @@ const setup = ({
     <Route path="/admin/metabot*" component={MetabotNavPane} />,
     {
       withRouter: true,
-      initialRoute: "/admin/metabot",
+      initialRoute,
       storeInitialState: {
         settings: createMockSettingsState({
           "ai-features-enabled?": aiFeaturesEnabled,
@@ -50,7 +53,7 @@ describe("MetabotNavPane", () => {
     reinitialize();
   });
 
-  it("hides the ai controls items when all AI features are disabled", () => {
+  it("hides the ai controls items and disables MCP when all AI features are disabled", () => {
     setup({
       aiControlsEnabled: true,
       aiFeaturesEnabled: false,
@@ -58,6 +61,9 @@ describe("MetabotNavPane", () => {
     });
 
     expect(screen.getByText("AI Settings")).toBeInTheDocument();
+    expect(
+      screen.getByText("MCP", { selector: '[data-disabled="true"] *' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Usage controls")).not.toBeInTheDocument();
     expect(screen.queryByText("Customization")).not.toBeInTheDocument();
     expect(screen.queryByText("System prompts")).not.toBeInTheDocument();
@@ -67,15 +73,24 @@ describe("MetabotNavPane", () => {
     setup({ aiControlsEnabled: true, isConfigured: false });
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(
+      screen.queryByText("MCP", { selector: '[data-disabled="true"] *' }),
+    ).not.toBeInTheDocument();
 
     expect(
-      screen.getByText("Usage controls").closest('[data-disabled="true"]'),
+      screen.getByText("Usage controls", {
+        selector: '[data-disabled="true"] *',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Customization").closest('[data-disabled="true"]'),
+      screen.getByText("Customization", {
+        selector: '[data-disabled="true"] *',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("System prompts").closest('[data-disabled="true"]'),
+      screen.getByText("System prompts", {
+        selector: '[data-disabled="true"] *',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -83,20 +98,30 @@ describe("MetabotNavPane", () => {
     setup({ aiControlsEnabled: false, aiFeaturesEnabled: true });
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
+    expect(screen.getByText("MCP")).toBeInTheDocument();
 
     expect(
       screen.getByRole("link", { name: /Usage controls/ }),
     ).toHaveAttribute(
       "href",
-      "/admin/metabot/1/usage-controls/ai-feature-access",
+      "/admin/metabot/usage-controls/ai-feature-access",
     );
     expect(screen.getByRole("link", { name: /Customization/ })).toHaveAttribute(
       "href",
-      "/admin/metabot/1/customization",
+      "/admin/metabot/customization",
     );
     expect(
       screen.getByRole("link", { name: /System prompts/ }),
-    ).toHaveAttribute("href", "/admin/metabot/1/system-prompts/metabot-chat");
+    ).toHaveAttribute("href", "/admin/metabot/system-prompts/metabot-chat");
+
+    await userEvent.click(await screen.findByText("MCP"));
+
+    expect(
+      await screen.findByRole("link", { name: "Settings" }),
+    ).toHaveAttribute("href", "/admin/metabot/mcp");
+    expect(
+      screen.getByRole("link", { name: "Authorizations" }),
+    ).toHaveAttribute("href", "/admin/metabot/mcp/authorizations");
   });
 
   it("displays the usage auditing upsell link when audit app is available and ai controls is unavailable", async () => {

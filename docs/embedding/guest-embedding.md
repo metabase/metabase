@@ -106,7 +106,8 @@ You can set different attributes to enable/disable UI. Here are some example att
 | `token`                 | Required. The signed JWT token from your server.                                                                                                                                                                                                                                 |
 | `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                                                                                                                                                                                                           |
 | `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                                                                                                                                                                                                      |
-| `initial-parameters`    | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`.                                                                                                                                                                                                            |
+| `initial-parameters`    | JSON string of initial parameter values (uncontrolled). Example: `'{"category":["Gizmo"]}'`. See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).                                                                                   |
+| `parameters`            | JSON string of parameter values (controlled). Example: `'{"category":["Gizmo"]}'`. See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).                                                                                             |
 | `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                                                                                                                                                                                               |
 | `custom-context`        | Forwarded to your [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) endpoint as `customContext`. Either a string (e.g., `"gadgets-tab"`), or a JSON-stringified object like `initial-parameters` (e.g., `'{"tab":"gadgets","region":"us-east"}'`). |
 
@@ -189,6 +190,8 @@ Fetch the JWT token from your backend and programmatically pass it to the 'metab
 >
 </metabase-dashboard>
 ```
+
+See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components) for controlled parameters documentation.
 
 ### Locked parameters
 
@@ -508,7 +511,7 @@ For interactive filters, you can pass initial parameter values via the `initial-
 
 The signed JWT is generated using your [Metabase secret key](#regenerating-the-embedding-secret-key). The secret key tells Metabase that the request can be trusted. Note that this secret key is shared for all guest embeds, so whoever has access to that key will have access to all embedded artifacts.
 
-If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
+If you want to embed charts with additional interactive features, like [drill-down](../questions/visualizations/drill-through.md) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
 
 ## Using guest embeds with the SDK
 
@@ -524,7 +527,7 @@ Guest embeds can't take advantage of:
 
 - [Row and column security](../permissions/row-and-column-security.md)
 - [Database routing](../permissions/database-routing.md)
-- [Drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through)
+- [Drill-through](../questions/visualizations/drill-through.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
 - [AI chat](./sdk/ai-chat.md)

@@ -473,7 +473,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").uncheck();
             });
 
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Save").click();
             });
 
@@ -532,7 +532,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").check();
             });
 
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Update").click();
             });
 
@@ -1345,13 +1345,11 @@ function createDashboardWithActionButton({
     cy.findByRole("dialog").within(() => {
       cy.findByText(/has no parameters to map/i).should("not.exist");
       cy.findByText(/Where should the values/i);
-      cy.findAllByText(/ask the user/i)
+      cy.findAllByDisplayValue(/ask the user/i)
         .first()
         .click();
     });
-    H.popover().within(() => {
-      cy.findByText("ID").click();
-    });
+    cy.findByRole("listbox").findByText("ID").click();
   }
 
   cy.findByRole("dialog").within(() => {

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.serialization.v2.load-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.serialization.v2.load-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -18,16 +19,18 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log.capture :as log.capture]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
-;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
+;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
+;; and re-enable H2 in the extract (production keeps it filtered).
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
+                        (binding [models.database/*include-h2-in-extract?* true]
+                          (thunk)))))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -70,7 +73,6 @@
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Collection") (= id eid1)))
                       @serialized))))
-
         (testing "loading into an empty database succeeds"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -79,7 +81,6 @@
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
-
         (testing "loading again into the same database does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -87,6 +88,57 @@
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
+
+(deftest escape-continue-on-error-roundtrip-test
+  (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
+    (let [serialized  (atom nil)
+          coll-eid    (atom nil)
+          clean-eid   (atom nil)
+          dash-eid    (atom nil)
+          escaped-eid (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db      (ts/create! :model/Database :name "rt-db")
+                table   (ts/create! :model/Table :name "t" :db_id (:id db))
+                user    (ts/create! :model/User :first_name "A" :last_name "B" :email "a@b.example")
+                target  (ts/create! :model/Collection :name "Target")
+                outside (ts/create! :model/Collection :name "Outside (not exported)")
+                q       {:type :query :database (:id db) :query {:source-table (:id table)}}
+                clean   (ts/create! :model/Card :name "Clean" :collection_id (:id target)
+                                    :database_id (:id db) :table_id (:id table)
+                                    :query_type :query :dataset_query q :creator_id (:id user))
+                ;; lives outside the target collection, so it "escapes"
+                escaped (ts/create! :model/Card :name "Escaped" :collection_id (:id outside)
+                                    :database_id (:id db) :table_id (:id table)
+                                    :query_type :query :dataset_query q :creator_id (:id user))
+                dash    (ts/create! :model/Dashboard :name "Dash" :collection_id (:id target) :creator_id (:id user))]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id clean))
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id escaped))
+            (reset! coll-eid (:entity_id target))
+            (reset! clean-eid (:entity_id clean))
+            (reset! dash-eid (:entity_id dash))
+            (reset! escaped-eid (:entity_id escaped))
+            (reset! serialized
+                    (into [] (serdes.extract/extract {:targets           [["Collection" (:id target)]]
+                                                      :no-settings       true
+                                                      :continue-on-error true})))))
+        (testing "export keeps the collection, clean card and dashboard, leaves the escaped card out"
+          (is (contains? (ids-by-model @serialized "Collection") @coll-eid))
+          (is (contains? (ids-by-model @serialized "Card") @clean-eid))
+          (is (not (contains? (ids-by-model @serialized "Card") @escaped-eid)))
+          (is (contains? (ids-by-model @serialized "Dashboard") @dash-eid)))
+        ;; The dashboard carries a dashcard pointing at the escaped card, which isn't in the archive. Under
+        ;; continue-on-error the import skips that dashboard (load-metabase! wraps each entity in try/catch)
+        ;; rather than aborting, and everything else lands. We do NOT promise a strict (default) import works.
+        (testing "import under continue-on-error doesn't crash; the dangling dashboard is skipped, the rest lands"
+          (ts/with-db dest-db
+            (let [report (serdes.load/load-metabase! (ingestion-in-memory @serialized) {:continue-on-error true})]
+              (is (some? (t2/select-one :model/Collection :entity_id @coll-eid)) "target collection imported")
+              (is (some? (t2/select-one :model/Card :entity_id @clean-eid)) "clean card imported")
+              (is (nil? (t2/select-one :model/Card :entity_id @escaped-eid)) "escaped card not imported")
+              (is (nil? (t2/select-one :model/Dashboard :entity_id @dash-eid))
+                  "the dashboard that needs the escaped card is skipped, not imported with a dangling ref")
+              (is (seq (:errors report)) "the skipped dashboard is recorded as an import error"))))))))
 
 (deftest deserialization-nested-collections-test
   (testing "with a three-level nesting of collections"
@@ -105,7 +157,6 @@
                                            :name "Grandchild Collection"
                                            :location (format "/%d/%d/" (:id @parent) (:id @child))))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "deserialization into a database that already has the parent, but with a different ID"
           (ts/with-db dest-db
             (ts/create! :model/Collection :name "Unrelated Collection")
@@ -149,38 +200,32 @@
             (reset! f2s  (ts/create! :model/Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
             (reset! f3s  (ts/create! :model/Field    :name "Nested Field"   :table_id (:id @t1s) :parent_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "serialization of databases is based on the :name"
           (is (= #{(:name @db1s) (:name @db2s) "test-data (h2)"} ; TODO I'm not sure where the `test-data` one comes from.
                  (ids-by-model @serialized "Database"))))
-
         (testing "tables reference their databases by name"
           (is (= #{(:name @db1s) (:name @db2s) "test-data (h2)"}
                  (->> @serialized
                       (filter #(-> % :serdes/meta last :model (= "Table")))
                       (map :db_id)
                       set))))
-
         (testing "foreign key references are serialized as a field path"
           (is (= ["db1" nil "posts" "Target Field"]
                  (->> @serialized
                       (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
                                     (-> % :name (= "Foreign Key"))))
                       :fk_target_field_id))))
-
         (testing "Parent field references are serialized as a field path"
           (is (= ["db1" nil "posts" "Target Field"]
                  (->> @serialized
                       (u/seek #(and (-> % :serdes/meta last :model (= "Field"))
                                     (-> % :name (= "Nested Field"))))
                       :parent_id))))
-
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (reset! db1d (t2/select-one :model/Database :name (:name @db1s)))
             (reset! db2d (t2/select-one :model/Database :name (:name @db2s)))
-
             (is (= 3 (t2/count :model/Database)))
             (is (every? #(= "complete" (:initial_sync_status %)) (t2/select :model/Database)))
             (is (= #{"db1" "db2" "test-data (h2)"}
@@ -215,7 +260,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field2d    (atom nil)]
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
@@ -238,7 +282,6 @@
                                                         :database (:id @db1s)}
                                         :display        :line))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "the serialized form is as desired"
           (let [card (first (by-model @serialized "Card"))]
             (is (=? {:lib/type :mbql/query
@@ -247,7 +290,6 @@
                                  :aggregation  [[:count {}]]}]
                      :database "my-db"}
                     (:dataset_query card)))))
-
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
@@ -255,21 +297,17 @@
             (reset! table2d (ts/create! :model/Table    :name "orders" :db_id (:id @db2d)))
             (reset! field2d (ts/create! :model/Field    :name "subtotal" :table_id (:id @table2d)))
             (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             ;; Fetch the relevant bits
             (reset! db1d    (t2/select-one :model/Database :name "my-db"))
             (reset! table1d (t2/select-one :model/Table :name "customers"))
             (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "age"))
             (reset! card1d  (t2/select-one :model/Card  :name "Example Card"))
-
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
               (is (not= (:id @table1s) (:id @table1d)))
               (is (not= (:id @field1s) (:id @field1d))))
-
             (is (not= (:dataset_query @card1s)
                       (:dataset_query @card1d)))
             (testing "the Card's query is based on the new Database, Table, and Field IDs"
@@ -281,6 +319,100 @@
                                    :aggregation  [[:count {}]]}]
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
+
+(deftest model-result-metadata-id-roundtrips-test
+  (testing "GHY-3946: deserializing a model re-derives its result_metadata :id from the query when the underlying Fields are already present, so a filter mapped to the model column keeps its value dropdown; overrides are preserved"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "serialize a model whose CATEGORY column carries a user override"
+          (ts/with-db source-db
+            (let [coll  (ts/create! :model/Collection :name "models")
+                  db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (ts/create! :model/Card
+                          :type            :model
+                          :name            "Products Model"
+                          :collection_id   (:id coll)
+                          :database_id     (:id db)
+                          :table_id        (:id table)
+                          :query_type      :query
+                          :dataset_query   {:type     :query
+                                            :query    {:source-table (:id table)}
+                                            :database (:id db)}
+                          :result_metadata [{:name "category" :display_name "Custom Category"
+                                             :base_type :type/Text :semantic_type :type/Category
+                                             :id (:id field) :field_ref [:field (:id field) nil]
+                                             :table_id (:id table)}])
+              (reset! serialized (into [] (serdes.extract/extract {}))))))
+        (testing "the serialized model column keeps its user override"
+          (let [card (first (filter #(= "Products Model" (:name %)) (by-model @serialized "Card")))
+                cat  (first (filter #(= "category" (:name %)) (:result_metadata card)))]
+            (is (some? cat))
+            (is (= "Custom Category" (:display_name cat)))))
+        (testing "loading re-derives the local :id when the data model already exists on the destination"
+          (ts/with-db dest-db
+            ;; the data model is already present on the destination (and at different IDs than the source)
+            (ts/create! :model/Database :name "decoy")
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              (let [dest-card (t2/select-one :model/Card :name "Products Model")
+                    cat       (first (filter #(= "category" (:name %)) (:result_metadata dest-card)))]
+                (is (number? (:id cat))
+                    "model column kept a numeric :id link after the round-trip")
+                (is (= (:id field) (:id cat))
+                    "model column :id points at the dest Field id")
+                (is (= "Custom Category" (:display_name cat))
+                    "user override on the column survived the round-trip")))))))))
+
+(deftest card-with-unexported-table-and-field-test
+  (testing "a Card referencing a Table/Field absent from the bundle still loads by synthesizing inactive rows"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "serializing a database, table, field and a card that references them"
+          (ts/with-db source-db
+            (let [coll  (ts/create! :model/Collection :name "pop! minis")
+                  db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  field (ts/create! :model/Field :name "age" :table_id (:id table) :base_type :type/Integer)
+                  _user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                  mp    (lib-be/application-database-metadata-provider (:id db))
+                  query (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                            (lib/filter (lib/>= (lib.metadata/field mp (:id field)) 18))
+                            (lib/aggregate (lib/count)))]
+              (ts/create! :model/Card
+                          :database_id   (:id db)
+                          :table_id      (:id table)
+                          :collection_id (:id coll)
+                          :query_type    :query
+                          :name          "Example Card"
+                          :dataset_query query
+                          :display       :line)
+              (reset! serialized (into [] (remove #(#{"Table" "Field"} (-> % :serdes/meta last :model))
+                                                  (serdes.extract/extract {})))))))
+        (testing "the bundle has the Card but no Table/Field"
+          (is (seq (by-model @serialized "Card")))
+          (is (empty? (by-model @serialized "Table")))
+          (is (empty? (by-model @serialized "Field"))))
+        (testing "deserializing synthesizes inactive Table and Field for the dangling references"
+          (ts/with-db dest-db
+            (ts/create! :model/Database :name "my-db")
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [db    (t2/select-one :model/Database :name "my-db")
+                  table (t2/select-one :model/Table :name "customers" :db_id (:id db))
+                  field (and table (t2/select-one :model/Field :name "age" :table_id (:id table)))
+                  card  (t2/select-one :model/Card :name "Example Card")
+                  query (:dataset_query card)]
+              (is (=? {:active false} table))
+              (is (=? {:active false} field))
+              (is (= (:id db) (lib/database-id query)))
+              (is (= (:id table) (lib/primary-source-table-id query))))))))))
 
 (deftest segment-test
   ;; Segment.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
@@ -303,7 +435,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field2d    (atom nil)]
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
@@ -317,7 +448,6 @@
                                                      :filter       [:< [:field (:id @field1s) nil] 18]}
                                         :creator_id (:id @user1s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "exported form is properly converted"
           (is (=? {:database "my-db"
                    :stages   [{:filters      [[:< {} [:field {} ["my-db" nil "customers" "age"]] 18]]
@@ -327,7 +457,6 @@
                       (by-model "Segment")
                       first
                       :definition))))
-
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
@@ -335,21 +464,17 @@
             (reset! table2d (ts/create! :model/Table    :name "orders" :db_id (:id @db2d)))
             (reset! field2d (ts/create! :model/Field    :name "subtotal" :table_id (:id @table2d)))
             (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             ;; Fetch the relevant bits
             (reset! db1d    (t2/select-one :model/Database :name "my-db"))
             (reset! table1d (t2/select-one :model/Table :name "customers"))
             (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "age"))
             (reset! seg1d   (t2/select-one :model/Segment :name "Minors"))
-
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
               (is (not= (:id @table1s) (:id @table1d)))
               (is (not= (:id @field1s) (:id @field1d))))
-
             (is (not= (:definition @seg1s)
                       (:definition @seg1d)))
             (testing "the Segment's definition is based on the new Database, Table, and Field IDs"
@@ -483,7 +608,6 @@
             (is (=? {:definition {:stages [{:aggregation [[:* {} [:measure {} (:entity_id @msr1s)] 2]]}]}}
                     derived-measure))
             (is (= #{[{:id "my-db", :model "Database"}]
-                     [{:id "my-db", :model "Database"} {:id "sales", :model "Table"}]
                      [{:id (:entity_id @msr1s), :model "Measure"}]}
                    (serdes/mbql-deps (:definition derived-measure))))))
         (testing "deserializing adjusts the measure IDs properly"
@@ -523,7 +647,6 @@
           field1d    (atom nil)
           seg1d      (atom nil)
           msr1d      (atom nil)]
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing measure that references a segment"
           (ts/with-db source-db
@@ -546,30 +669,24 @@
                                         :definition measure-definition
                                         :creator_id (:id @user1s))))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "exported form has segment reference with entity_id"
           (let [measure (first (by-model @serialized "Measure"))]
             (is (=? {:definition {:stages [{:aggregation [[:count-where {} [:segment {} (:entity_id @seg1s)]]]}]}}
                     measure))))
-
         (testing "deserializing adjusts the segment IDs properly"
           (ts/with-db dest-db
             (reset! user1s (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
             ;; Load the serialized content
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             ;; Fetch the relevant bits
             (reset! db1d    (t2/select-one :model/Database :name "my-db"))
             (reset! table1d (t2/select-one :model/Table :name "products"))
             (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "price"))
             (reset! seg1d   (t2/select-one :model/Segment :name "Expensive"))
             (reset! msr1d   (t2/select-one :model/Measure :name "Expensive Count"))
-
             (testing "segment and measure were loaded"
               (is (some? @seg1d))
               (is (some? @msr1d)))
-
             (testing "the measure's definition references the segment by new ID"
               (is (=? {:lib/type :mbql/query
                        :stages   [{:source-table (:id @table1d)
@@ -611,7 +728,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field3d    (atom nil)]
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
@@ -690,7 +806,6 @@
                                              :parameter_mappings [{:parameter_id "deadbeef"
                                                                    :card_id      (:id @card1s)
                                                                    :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}])))
-
             (reset! serialized (into [] (serdes.extract/extract {})))
             (let [card (-> @serialized (by-model "Card") first)
                   dash (-> @serialized (by-model "Dashboard") first)]
@@ -704,7 +819,6 @@
                                                 :target       [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                                                            {:source-field ["my-db" nil "orders" "invoice"]}]]}]}]
                         (:dashcards dash))))
-
               (testing "exported :visualization_settings are properly converted"
                 (let [exp-card     {:table.pivot_column "SOURCE"
                                     :table.cell_column  "sum"
@@ -767,7 +881,6 @@
                          (:visualization_settings card)))
                   (is (= exp-dashcard
                          (-> dash :dashcards first :visualization_settings))))))))
-
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
@@ -777,10 +890,8 @@
             (ts/create! :model/Field :name "name" :table_id (:id @table2d))
             (ts/create! :model/Field :name "address" :table_id (:id @table2d))
             (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             ;; Fetch the relevant bits
             (reset! db1d       (t2/select-one :model/Database :name "my-db"))
             (reset! table1d    (t2/select-one :model/Table :name "orders"))
@@ -790,13 +901,11 @@
             (reset! tab2d      (t2/select-one :model/DashboardTab :name "Tab for dash2"))
             (reset! card1d     (t2/select-one :model/Card :name "The Card"))
             (reset! dashcard1d (t2/select-one :model/DashboardCard :card_id (:id @card1d) :dashboard_id (:id @dash1d)))
-
             (testing "the main Database, Table, and Field have different IDs now"
               (is (not= (:id @db1s) (:id @db1d)))
               (is (not= (:id @table1s) (:id @table1d)))
               (is (not= (:id @field1s) (:id @field1d)))
               (is (not= (:id @field2s) (:id @field2d))))
-
             (is (not= (:parameter_mappings @dashcard1s)
                       (:parameter_mappings @dashcard1d)))
             (is (not= (:parameter_mappings @card1s)
@@ -834,7 +943,6 @@
           timeline2d (atom nil)
           eventsT1   (atom nil)
           eventsT2   (atom nil)]
-
       (ts/with-dbs [source-db dest-db]
         (testing "serialize correctly"
           (ts/with-db source-db
@@ -853,12 +961,9 @@
             (reset! event3s    (ts/create! :model/TimelineEvent :name "Different event"  :timeline_id (:id @timeline2s)
                                            :creator_id (:id @user1s) :timezone "America/New_York"
                                            :time_matters true :timestamp (t/offset-date-time 2022 10 31 19 00 00)))
-
             (testing "expecting 3 events"
               (is (= 3 (t2/count :model/TimelineEvent))))
-
             (reset! serialized (into [] (serdes.extract/extract {})))
-
             (let [timelines (by-model @serialized "Timeline")
                   timeline1 (first (filter #(= (:entity_id %) (:entity_id @timeline1s)) timelines))
                   timeline2 (first (filter #(= (:entity_id %) (:entity_id @timeline2s)) timelines))]
@@ -888,7 +993,6 @@
                             timeline1))
                 (is (= 2 (-> timeline1 :events count)))
                 (is (= 1 (-> timeline2 :events count)))))))
-
         (testing "deserializing merges events properly"
           (ts/with-db dest-db
             ;; The collection, timeline 1 and event 2 already exist. Event 1, plus timeline 2 and its event 3, are new.
@@ -900,28 +1004,22 @@
             (ts/create! :model/TimelineEvent :name "Second thing with different name" :timeline_id (:id @timeline1s)
                         :timestamp  (:timestamp @event2s)
                         :creator_id (:id @user1s) :timezone "America/New_York")
-
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             ;; Fetch the relevant bits
             (reset! timeline2d (t2/select-one :model/Timeline :entity_id (:entity_id @timeline2s)))
             (reset! eventsT1   (t2/select :model/TimelineEvent :timeline_id (:id @timeline1d)))
             (reset! eventsT2   (t2/select :model/TimelineEvent :timeline_id (:id @timeline2d)))
-
             (testing "no duplication - there are two timelines with the right event counts"
               (is (some? @timeline2d))
               (is (= 2 (count @eventsT1)))
               (is (= 1 (count @eventsT2))))
-
             (testing "resulting events match up"
               (let [[event1 event2] (sort-by :timestamp @eventsT1)]
                 (is (= (:timestamp @event1s) (:timestamp event1)))
                 (is (= (:timestamp @event2s) (:timestamp event2)))
-
                 (is (= (:timestamp @event3s)
                        (:timestamp (first @eventsT2))))
-
                 (is (= (:name @event2s)
                        (:name event2))
                     "existing event name should be updated")))))))))
@@ -938,7 +1036,6 @@
           user1d     (atom nil)
           dash1d     (atom nil)
           dash2d     (atom nil)]
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original entities"
           (ts/with-db source-db
@@ -947,7 +1044,6 @@
             (reset! dash1s     (ts/create! :model/Dashboard :name "My Dashboard" :creator_id (:id @user1s)))
             (reset! dash2s     (ts/create! :model/Dashboard :name "Linked dashboard" :creator_id (:id @user2s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "deserializing finds the matching user and synthesizes the missing one"
           (ts/with-db dest-db
             ;; Create another random user to change the user IDs.
@@ -957,18 +1053,14 @@
             (ts/create! :model/Dashboard :name "Other dashboard B")
             (ts/create! :model/Dashboard :name "Other dashboard C")
             (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
             ;; Load the serialized content.
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             (reset! dash1d (t2/select-one :model/Dashboard :name "My Dashboard"))
             (reset! dash2d (t2/select-one :model/Dashboard :name "Linked dashboard"))
-
             (testing "the Dashboards and Users have different IDs now"
               (is (not= (:id @dash1s) (:id @dash1d)))
               (is (not= (:id @dash2s) (:id @dash2d)))
               (is (not= (:id @user1s) (:id @user1d))))
-
             (testing "both existing User and the new one are set up properly"
               (is (= (:id @user1d) (:creator_id @dash1d)))
               (let [user2d-id (:creator_id @dash2d)
@@ -1002,7 +1094,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field3d    (atom nil)]
-
       (testing "serializing the original database, table, field and fieldvalues"
         (mt/with-empty-h2-app-db!
           (reset! db1s     (ts/create! :model/Database :name "my-db"))
@@ -1012,9 +1103,7 @@
           (reset! fv1s     (ts/create! :model/FieldValues :field_id (:id @field1s) :values ["AZ" "CA" "NY" "TX"]))
           (reset! fv2s     (ts/create! :model/FieldValues :field_id (:id @field2s)
                                        :values ["CONSTRUCTION" "DAYLIGHTING" "DELIVERY" "HAULING"]))
-
           (reset! serialized (into [] (serdes.extract/extract {:include-field-values true})))
-
           (testing "the expected fields are serialized"
             (is (= 1
                    (->> @serialized
@@ -1024,7 +1113,6 @@
                                      {:model "Table"    :id "VENUES"}
                                      {:model "Field"    :id "NAME"}]))
                         count))))
-
           (testing "FieldValues are serialized under their fields, with their own ID always 0"
             (let [fvs (by-model @serialized "FieldValues")]
               (is (= #{[{:model "Database"    :id "my-db"}
@@ -1039,7 +1127,6 @@
                           (map serdes/path)
                           (filter #(-> % first :id (= "my-db")))
                           set)))))))
-
       (testing "deserializing finds existing FieldValues properly"
         (mt/with-empty-h2-app-db!
           ;; A different database and tables, so the IDs don't match.
@@ -1048,7 +1135,6 @@
           (reset! field3d (ts/create! :model/Field    :name "SUBTOTAL" :table_id (:id @table2d)))
           (ts/create! :model/Field :name "DISCOUNT" :table_id (:id @table2d))
           (ts/create! :model/Field :name "UNITS"    :table_id (:id @table2d))
-
           ;; Now the database, table, fields and *one* of the FieldValues from the src side.
           (reset! db1d     (ts/create! :model/Database :name "my-db"))
           (reset! table1d  (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1d)))
@@ -1056,24 +1142,19 @@
           (reset! field2d  (ts/create! :model/Field :name "CATEGORY" :table_id (:id @table1d)))
           ;; The :values are different here; they should get overwritten by the update.
           (reset! fv1d     (ts/create! :model/FieldValues :field_id (:id @field1d) :values ["WA" "NC" "NM" "WI"]))
-
           ;; Load the serialized content.
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
           ;; Fetch the relevant bits
           (reset! fv1d (t2/select-one :model/FieldValues :field_id (:id @field1d)))
           (reset! fv2d (t2/select-one :model/FieldValues :field_id (:id @field2d)))
-
           (testing "the main Database, Table, and Field have different IDs now"
             (is (not= (:id @db1s)    (:id @db1d)))
             (is (not= (:id @table1s) (:id @table1d)))
             (is (not= (:id @field1s) (:id @field1d)))
             (is (not= (:id @field2s) (:id @field2d))))
-
           (testing "there are 2 FieldValues defined under fields of table1d"
             (let [fields (t2/select-pks-set :model/Field :table_id (:id @table1d))]
               (is (= 2 (t2/count :model/FieldValues :field_id [:in fields])))))
-
           (testing "existing FieldValues are properly found and updated"
             (is (= (set (:values @fv1s)) (set (:values @fv1d)))))
           (testing "new FieldValues are properly added"
@@ -1094,7 +1175,6 @@
           table1d    (atom nil)
           coll1d     (atom nil)
           table2d    (atom nil)]
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing published tables"
           (ts/with-db source-db
@@ -1105,7 +1185,6 @@
             (reset! table2s (ts/create! :model/Table :name "unpublished_table" :db_id (:id @db1s)
                                         :is_published false))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "serialized form has collection entity_id, not DB id"
           (let [pub-table (->> @serialized
                                (filter #(and (-> % :serdes/meta last :model (= "Table"))
@@ -1113,22 +1192,18 @@
                                first)]
             (is (true? (:is_published pub-table)))
             (is (= (:entity_id @coll1s) (:collection_id pub-table)))))
-
         (testing "deserializing restores collection_id correctly"
           (ts/with-db dest-db
             ;; Load the serialized content
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             ;; Fetch the relevant bits
             (reset! db1d    (t2/select-one :model/Database :name "my-db"))
             (reset! coll1d  (t2/select-one :model/Collection :name "Publishing Collection"))
             (reset! table1d (t2/select-one :model/Table :name "published_table" :db_id (:id @db1d)))
             (reset! table2d (t2/select-one :model/Table :name "unpublished_table" :db_id (:id @db1d)))
-
             (testing "published table has correct is_published and collection_id"
               (is (true? (:is_published @table1d)))
               (is (= (:id @coll1d) (:collection_id @table1d))))
-
             (testing "unpublished table has is_published=false and no collection"
               (is (false? (:is_published @table2d)))
               (is (nil? (:collection_id @table2d))))))))))
@@ -1139,14 +1214,12 @@
   ;; either location.
   (let [db1s       (atom nil)
         table1s    (atom nil)]
-
     (testing "loading a bare card"
       (mt/with-empty-h2-app-db!
         (reset! db1s    (ts/create! :model/Database :name "my-db"))
         (reset! table1s (ts/create! :model/Table :name "CUSTOMERS" :db_id (:id @db1s)))
         (ts/create! :model/Field :name "STATE" :table_id (:id @table1s))
         (ts/create! :model/User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
-
         (testing "depending on existing values works"
           (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
                                                  :created_at    (t/instant)
@@ -1161,7 +1234,6 @@
                                                  :table_id      ["my-db" nil "CUSTOMERS"]
                                                  :visualization_settings {}}])]
             (is (some? (serdes.load/load-metabase! ingestion)))))
-
         (testing "depending on nonexisting values fails"
           (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
                                                  :created_at    (t/instant)
@@ -1203,7 +1275,6 @@
                                                                                   :snippet-id   (:id @snippet1s)}}
                                                                  :query         "SELECT 1;"}}))
         (ts/create! :model/User :first_name "Geddy" :last_name "Lee" :email "glee@rush.yyz")
-
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
           (is (=? {:stages [{:lib/type      :mbql.stage/native
@@ -1229,11 +1300,9 @@
             id2         (u/generate-nano-id)
             load!       #(serdes.load/load-metabase!
                           (ingestion-in-memory [(serdes/extract-one "NativeQuerySnippet" {} %)]))]
-
         (testing "setup is correct"
           (is (= (:entity_id snippet)
                  (t2/select-one-fn :entity_id :model/NativeQuerySnippet :name unique-name))))
-
         (testing "loading snippet with same name will get it renamed"
           (load! (assoc snippet :entity_id id1))
           (testing "old snippet is in place"
@@ -1242,12 +1311,10 @@
           (testing "new one got new name"
             (is (= (str unique-name " (copy)")
                    (t2/select-one-fn :name :model/NativeQuerySnippet :entity_id id1)))))
-
         (testing "can handle multiple name conflicts"
           (load! (assoc snippet :entity_id id2))
           (is (= (str unique-name " (copy) (copy)")
                  (t2/select-one-fn :name :model/NativeQuerySnippet :entity_id id2))))
-
         (testing "will still update original one"
           (load! (assoc snippet :content "11 = 11"))
           (is (=? {:name unique-name
@@ -1256,7 +1323,6 @@
 
 (deftest snippet-template-tags-import-test
   (testing "Template tags import preserves nil, empty, and populated values"
-
     (testing "Missing template_tags field -> {} when selected"
       (mt/with-empty-h2-app-db!
         (let [snippet-data {:serdes/meta [{:model "NativeQuerySnippet"
@@ -1274,7 +1340,6 @@
                            :display-name "ID"
                            :name         "id"}}
                     template-tags))))))
-
     (testing "Empty map template_tags -> preserved as empty map"
       (mt/with-empty-h2-app-db!
         (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
@@ -1289,7 +1354,6 @@
           (serdes.load/load-metabase! ingestion)
           (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :entity_id "test-entity-2")]
             (is (= {} template-tags))))))
-
     (testing "Snippet template tags get preserved rather than recalculated"
       (mt/with-empty-h2-app-db!
         (let [snippet-data {:serdes/meta   [{:model "NativeQuerySnippet"
@@ -1363,23 +1427,18 @@
           (reset! dash1s (ts/create! :model/Dashboard :name "My Dashboard"))
           (reset! tab1s (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id @dash1s)))
           (reset! dashcard1s (ts/create! :model/DashboardCard :dashboard_id (:id @dash1s) :dashboard_tab_id (:id tab1s)))
-
           (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
-
       (testing "New dashcard will be removed on load"
         (ts/with-db dest-db
           (reset! dash1d (ts/create! :model/Dashboard :name "Weird Name" :entity_id (:entity_id @dash1s)))
           ;; A dashcard to be removed since it does not exist in serialized data
           (reset! dashcard2d (ts/create! :model/DashboardCard :dashboard_id (:id @dash1d)))
           (reset! tab2d (ts/create! :model/DashboardTab :name "Tab 2" :dashboard_id (:id @dash1d)))
-
           ;; Load the serialized content.
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
           (reset! dash1d (-> (t2/select-one :model/Dashboard :name "My Dashboard")
                              (t2/hydrate :dashcards)
                              (t2/hydrate :tabs)))
-
           (testing "Dashboard has correct number of dashcards"
             (is (= 1
                    (count (:dashcards @dash1d))))
@@ -1387,7 +1446,6 @@
                    (get-in @dash1d [:dashcards 0 :entity_id])))
             (is (not= (:entity_id @dashcard1s)
                       (:entity_id @dashcard2d))))
-
           (testing "Dashboard has correct number of tabs"
             (is (= 1
                    (count (:tabs @dash1d))))
@@ -1414,7 +1472,7 @@
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory extract1))
             (ts/with-db source-db
-             ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
+              ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
               (t2/delete! :model/DashboardCardSeries (:id series1s))
               (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
               (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
@@ -1422,7 +1480,7 @@
                 (ts/with-db dest-db
                   (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
                         series-card3d        (t2/select-one :model/Card :entity_id (:entity_id series-card3s))
-                       ;; we deleted the card that corresponds to `series1s`, so a shortcut is to get the one with position=0
+                        ;; we deleted the card that corresponds to `series1s`, so a shortcut is to get the one with position=0
                         series-to-be-deleted (t2/select-one :model/DashboardCardSeries :position 0)]
                     (testing "Sense check: there are 3 series for the dashboard card initially"
                       (is (= 3
@@ -1512,19 +1570,90 @@
         (is (serdes.load/load-metabase! (ingestion-in-memory @serialized)))
         (is (= (:name card)
                (t2/select-one-fn :name :model/Card :id (:id card)))))
-
-      (testing "Partial load does not change the database"
+      (testing "Partial load commits successful entities; failed entity does not persist"
         (t2/update! :model/Collection {:id (:id coll)} {:name (str "qwe_" (:name coll))})
+        (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
         (let [load-update! serdes/load-update!]
           (with-redefs [serdes/load-update! (fn [model adjusted local]
-                                              ;; Collection is loaded first
+                                              ;; Collection is loaded first, Card fails
                                               (if (= model "Card")
                                                 (throw (ex-info "oops, error" {}))
                                                 (load-update! model adjusted local)))]
             (is (thrown? clojure.lang.ExceptionInfo
                          (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
-            (is (= (str "qwe_" (:name coll))
-                   (t2/select-one-fn :name :model/Collection :id (:id coll))))))))))
+            ;; Collection loaded successfully in its own transaction — committed despite Card failure
+            (is (= (:name coll)
+                   (t2/select-one-fn :name :model/Collection :id (:id coll))))
+            ;; Card failed — retains its pre-load value
+            (is (= (str "qwe_" (:name card))
+                   (t2/select-one-fn :name :model/Card :id (:id card))))))))))
+
+(deftest transient-db-error-retry-test
+  (testing "Import survives a transient deadlock on a single entity (issue #74412)"
+    (mt/with-empty-h2-app-db!
+      (let [coll       (ts/create! :model/Collection :name "coll")
+            card       (ts/create! :model/Card :name "card" :collection_id (:id coll))
+            serialized (atom {})]
+        (reset! serialized (->> (serdes.extract/extract {:no-settings   true
+                                                         :no-data-model true
+                                                         :targets       [["Collection" (:id coll)]]})
+                                vec))
+        (testing "A transient deadlock on one entity is retried and the import succeeds"
+          (t2/update! :model/Card {:id (:id card)} {:name "pre-retry"})
+          (let [call-count   (atom 0)
+                load-update! serdes/load-update!]
+            (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                                (when (= model "Card")
+                                                  (swap! call-count inc)
+                                                  (when (= 1 @call-count)
+                                                    ;; Simulate a deadlock: H2 error code 40001, PG SQL state 40P01.
+                                                    ;; Use H2 codes since tests run against H2 appdb.
+                                                    (throw (ex-info "load-update! failed"
+                                                                    {}
+                                                                    (java.sql.SQLException.
+                                                                     "Deadlock detected"
+                                                                     "40001"  ; SQL state
+                                                                     40001))))) ; H2 error code
+                                                (load-update! model adjusted local))]
+              (is (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+                  "Import should succeed after retrying the deadlocked entity")
+              (is (= (:name card)
+                     (t2/select-one-fn :name :model/Card :id (:id card)))
+                  "Card should be updated to the serialized value after retry")
+              (is (= 2 @call-count)
+                  "Card load-update! should have been called twice (first attempt deadlocked, second succeeded)"))))
+        (testing "Non-transient errors propagate immediately without retry"
+          (let [call-count   (atom 0)
+                load-update! serdes/load-update!]
+            (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                                (when (= model "Card")
+                                                  (swap! call-count inc)
+                                                  (throw (ex-info "constraint violation" {})))
+                                                (load-update! model adjusted local))]
+              (is (thrown? clojure.lang.ExceptionInfo
+                           (serdes.load/load-metabase! (ingestion-in-memory @serialized)))
+                  "Non-transient error should propagate")
+              (is (= 1 @call-count)
+                  "Should not retry non-transient errors"))))
+        (testing "Successful entities are committed even when a later entity fails"
+          (t2/update! :model/Collection {:id (:id coll)} {:name "pre-import"})
+          (t2/update! :model/Card {:id (:id card)} {:name "pre-import"})
+          (let [load-update! serdes/load-update!]
+            (with-redefs [serdes/load-update! (fn [model adjusted local]
+                                                ;; Collection loads first and succeeds; Card fails
+                                                (if (= model "Card")
+                                                  (throw (ex-info "oops" {}))
+                                                  (load-update! model adjusted local)))]
+              (is (thrown? clojure.lang.ExceptionInfo
+                           (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
+              ;; With per-entity transactions, the Collection commit survives the Card failure.
+              ;; On master (single transaction), the Collection update is rolled back.
+              (is (= (:name coll)
+                     (t2/select-one-fn :name :model/Collection :id (:id coll)))
+                  "Collection should be committed despite later Card failure")
+              (is (= "pre-import"
+                     (t2/select-one-fn :name :model/Card :id (:id card)))
+                  "Card should retain its pre-import value"))))))))
 
 (deftest path-error-data-handles-lookup-failure-test
   (testing "path-error-data returns a well-formed map even when serdes/load-find-local throws
@@ -1591,6 +1720,94 @@
             (is (= (t2/select-one-fn :id :model/Dashboard :entity_id (:entity_id dash1))
                    (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2))))))))))
 
+(defn- card-sourced-param
+  "A category parameter whose dropdown values come from `card-id`'s results."
+  [card-id]
+  {:id                   "abc"
+   :type                 "category"
+   :name                 "CATEGORY"
+   :slug                 "category"
+   :values_source_type   "card"
+   :values_source_config {:card_id card-id}})
+
+(deftest self-referencing-parameter-card-test
+  (testing "a card whose parameter sources dropdown values from the card itself can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll (ts/create! :model/Collection :name "coll")
+              card (ts/create! :model/Card :name "self-ref card" :collection_id (:id coll))
+              _    (t2/update! :model/Card (:id card)
+                               {:parameters [(card-sourced-param (:id card))]})
+              ser  (into [] (serdes.extract/extract {:no-settings   true
+                                                     :no-data-model false}))]
+          (testing "loading on top of the existing card"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-card (t2/select-one :model/Card :entity_id (:entity_id card))]
+                (is (= (:id new-card)
+                       (-> new-card :parameters first :values_source_config :card_id)))))))))))
+
+(deftest mutually-referencing-parameter-cards-test
+  (testing "two cards whose parameters source dropdown values from each other can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll   (ts/create! :model/Collection :name "coll")
+              card-a (ts/create! :model/Card :name "card a" :collection_id (:id coll))
+              card-b (ts/create! :model/Card :name "card b" :collection_id (:id coll))
+              _      (t2/update! :model/Card (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
+              _      (t2/update! :model/Card (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
+              ser    (into [] (serdes.extract/extract {:no-settings   true
+                                                       :no-data-model false}))]
+          (testing "loading on top of the existing cards"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card-b)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card-a))
+                       :parameters first :values_source_config :card_id)))
+            (is (= (:id card-a)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card-b))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-a (t2/select-one :model/Card :entity_id (:entity_id card-a))
+                    new-b (t2/select-one :model/Card :entity_id (:entity_id card-b))]
+                (is (= (:id new-b)
+                       (-> new-a :parameters first :values_source_config :card_id)))
+                (is (= (:id new-a)
+                       (-> new-b :parameters first :values_source_config :card_id)))))))))))
+
+(deftest dashboard-parameter-sourcing-own-dashboard-question-test
+  (testing "a dashboard whose parameter sources dropdown values from a dashboard question on that same dashboard can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll (ts/create! :model/Collection :name "coll")
+              dash (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
+              card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
+              _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
+              _    (t2/update! :model/Dashboard (:id dash)
+                               {:parameters [(card-sourced-param (:id card))]})
+              ser  (into [] (serdes.extract/extract {:no-settings   true
+                                                     :no-data-model false}))]
+          (testing "loading on top of the existing dashboard"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card)
+                   (-> (t2/select-one :model/Dashboard :entity_id (:entity_id dash))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-dash (t2/select-one :model/Dashboard :entity_id (:entity_id dash))
+                    new-card (t2/select-one :model/Card :entity_id (:entity_id card))]
+                (is (= (:id new-card)
+                       (-> new-dash :parameters first :values_source_config :card_id)))
+                (is (= (:id new-dash)
+                       (:dashboard_id new-card)))))))))))
+
 (deftest continue-on-error-test
   (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed
                        (vec (for [entity ser]
@@ -1604,11 +1821,11 @@
                      :model/Card       c2   {:name "card2" :collection_id (:id coll)}
                      :model/Card       _c3  {:name "card3" :collection_id (:id coll)}]
         (testing "It's possible to skip a few errors during extract"
-          (let [extract-one serdes/extract-one]
-            (with-redefs [serdes/extract-one (fn [model-name opts instance]
-                                               (if (= (:entity_id instance) (:entity_id c1))
-                                                 (throw (ex-info "Skip me" {}))
-                                                 (extract-one model-name opts instance)))]
+          (let [extract-one (mt/original-fn #'serdes/extract-one)]
+            (mt/with-dynamic-fn-redefs [serdes/extract-one (fn [model-name opts instance]
+                                                             (if (= (:entity_id instance) (:entity_id c1))
+                                                               (throw (ex-info "Skip me" {}))
+                                                               (extract-one model-name opts instance)))]
               (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                 (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                    :no-data-model     true
@@ -1665,7 +1882,6 @@
                   (serdes.load/load-metabase! (ingestion-in-memory extracted))
                   (is (= {:other "secret"}
                          (t2/select-one-fn :details :model/Database)))))))))
-
       (mt/with-temp [:model/Database   _ {:name    "My Database"
                                           :details {:some "secret"}}]
         (testing "with :include-database-secrets"
@@ -1713,16 +1929,13 @@
                         (vec
                          (for [[_name e] {:coll coll :dash dash :c1 c1 :dc1 dc1}]
                            [(t2/model e) (:id (t2/select-one (t2/model e) :entity_id (:entity_id e)))]))))))
-
           (testing "Convert everything to using identity hashes"
             (t2/update! :model/Collection :id (:id coll) {:entity_id (serdes/identity-hash coll)})
             (t2/update! :model/Dashboard :id (:id dash) {:entity_id (serdes/identity-hash dash)})
             (t2/update! :model/Card :id (:id c1) {:entity_id (serdes/identity-hash c1)})
             (t2/update! :model/DashboardCard :id (:id dc1) {:entity_id (serdes/identity-hash dc1)}))
-
           (is (= 8 (count (serdes/entity-id "Card"
                                             (t2/select-one [:model/Card :entity_id] :id (:id c1))))))
-
           (testing "Identity hashes end up in target db in place of entity ids"
             (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true :no-transforms true}))]
               (testing "\nWe exported identity hashes"
@@ -1749,14 +1962,12 @@
                          :description "desc")
 
           ser (into [] (serdes.extract/extract {}))]
-
       (is (=? {:parent_id   ["mydb" nil "table" "field"]
                :serdes/meta [{:model "Database" :id "mydb"}
                              {:model "Table" :id "table"}
                              {:model "Field" :id "field"}
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f2))))
-
       (is (=? {:parent_id   ["mydb" nil "table" "field" "field"]
                :serdes/meta [{:model "Database" :id "mydb"}
                              {:model "Table" :id "table"}
@@ -1764,11 +1975,8 @@
                              {:model "Field" :id "field"}
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f3))))
-
       (t2/update! :model/Field (:id f3) {:description "some new one"})
-
       (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
-
       (is (= "desc"
              (t2/select-one-fn :description :model/Field (:id f3)))))))
 
@@ -1785,25 +1993,6 @@
       (testing "absent :entity_id also works"
         (serdes.load/load-metabase! (ingestion-in-memory [(dissoc coll-ser :entity_id)]))
         (is (= 4 (coll-count)))))))
-
-(deftest warn-if-version-mismatch-test
-  (ts/with-dbs [source-db dest-db dest-db2]
-    (ts/with-db source-db
-      (mt/with-temp [:model/Collection _ {:name "col-1"}]
-        (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
-          (ts/with-db dest-db
-            (testing "logs a warning when version in serdes/meta differs from current version"
-              (let [old-version-extract (map #(assoc % :metabase_version "v1.0.0 (oldcommit)") extract)]
-                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
-                  (serdes.load/load-metabase! (ingestion-in-memory old-version-extract))
-                  (is (some #(str/includes? % "Version mismatch loading") (messages)))
-                  (is (= 1 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
-                      "Should log a version mismatch warning only once per load")))))
-          (ts/with-db dest-db2
-            (testing "No warnings when version in serdes/meta matches current version"
-              (log.capture/with-log-messages-for-level [messages :warn]
-                (serdes.load/load-metabase! (ingestion-in-memory extract))
-                (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages)))))))))))))
 
 (deftest import-published-table-with-existing-database-test
   (testing "Importing a published table works when database already exists on target"
@@ -1827,11 +2016,9 @@
                                 {:targets       [["Collection" (:id coll)]]
                                  :no-data-model true
                                  :no-settings   true}))))))
-
         (testing "serialized data contains table but not database"
           (is (some #(= "Table" (-> % :serdes/meta last :model)) @serialized))
           (is (not-any? #(= "Database" (-> % :serdes/meta last :model)) @serialized)))
-
         ;; Import to destination (where database already exists)
         (testing "import succeeds when database exists on target"
           (ts/with-db dest-db
@@ -1839,7 +2026,6 @@
             (let [target-db (ts/create! :model/Database :name "shared-db")]
               ;; Load the serialized content
               (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
               ;; Verify the table was imported correctly
               (let [imported-table (t2/select-one :model/Table :name "published_table")
                     imported-coll  (t2/select-one :model/Collection :entity_id @coll-eid)]
@@ -1870,7 +2056,6 @@
                                 {:targets       [["Collection" (:id coll)]]
                                  :no-data-model true
                                  :no-settings   true}))))))
-
         (testing "import fails when database doesn't exist"
           (ts/with-db dest-db
             ;; Don't create the database - import should fail
@@ -1892,7 +2077,6 @@
                                      :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (let [minimal (mapv (fn [entity]
                               (if (= "Segment" (-> entity :serdes/meta last :model))
                                 (select-keys entity [:serdes/meta :entity_id :name :definition :creator_id])
@@ -1919,7 +2103,6 @@
                                      :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (let [minimal (mapv (fn [entity]
                               (if (= "Measure" (-> entity :serdes/meta last :model))
                                 (select-keys entity [:serdes/meta :entity_id :name :definition :creator_id])
@@ -1948,7 +2131,6 @@
                                   :dataset_query (mbql5-query (:id db) (:id table))
                                   :display       :line)]
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (let [minimal (mapv (fn [entity]
                               (if (= "Card" (-> entity :serdes/meta last :model))
                                 (select-keys entity [:serdes/meta :entity_id :name :display :dataset_query
@@ -1988,7 +2170,6 @@
                                                   :schema "public"
                                                   :name "target_table"})]
               (reset! serialized (into [] (serdes.extract/extract {})))))
-
           (let [minimal (mapv (fn [entity]
                                 (if (= "Transform" (-> entity :serdes/meta last :model))
                                   (select-keys entity [:serdes/meta :entity_id :name
@@ -2003,6 +2184,88 @@
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))))))))))
 
+(deftest transform-with-deleted-source-database-load-test
+  (testing "An orphaned transform (source database was deleted before export) round-trips through serdes as a tombstone (GDGT-2447)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "soon-to-be-deleted")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  coll  (ts/create! :model/Collection :name "Transform Collection" :namespace :transforms)
+                  _     (ts/create! :model/Transform
+                                    :name "Orphan Transform"
+                                    :description "Transform whose source DB will be deleted"
+                                    :collection_id (:id coll)
+                                    :source {:query (mbql5-query (:id db) (:id table))
+                                             :type "query"}
+                                    :target {:database (:id db)
+                                             :type "table"
+                                             :schema "public"
+                                             :name "orphan_target"})]
+              ;; Deleting the database cascade-SET-NULLs source_database_id (FK action)
+              ;; AND cascade-deletes the Table (Field FKs) — the transform survives as a tombstone.
+              (t2/delete! :model/Database :name "soon-to-be-deleted")
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (let [minimal (mapv (fn [entity]
+                                (if (= "Transform" (-> entity :serdes/meta last :model))
+                                  (select-keys entity [:serdes/meta :entity_id :name
+                                                       :source :target])
+                                  entity))
+                              @serialized)]
+            (testing "the extracted transform carries the :serdes/unresolved flag and verbatim body"
+              (let [extracted (first (filter #(= "Transform" (-> % :serdes/meta last :model)) minimal))]
+                (is (some? extracted))
+                (is (true? (get-in extracted [:source :serdes/unresolved])))
+                ;; native query text is preserved verbatim
+                (is (some? (get-in extracted [:source :query])))))
+            (ts/with-db dest-db
+              (t2/delete! :model/TransformTag)
+              (serdes.load/load-metabase! (ingestion-in-memory minimal))
+              (let [transform (t2/select-one :model/Transform :name "Orphan Transform")]
+                (testing "transform round-trips and ends up as a tombstone in the destination instance"
+                  (is (some? transform))
+                  (is (nil? (:source_database_id transform))
+                      "source_database_id should be nil — there's no DB to bind to")
+                  (is (not (contains? (:source transform) :serdes/unresolved))
+                      "the :serdes/unresolved marker should have been stripped on import")
+                  (is (some? (get-in transform [:source :query]))
+                      "the query body should be preserved as a breadcrumb"))))))))))
+
+(deftest table-created-by-transform-load-test
+  (testing "Table created by a Transform can be imported via serialization (GDGT-2444)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db        (ts/create! :model/Database :name "my-db")
+                  transform (ts/create! :model/Transform
+                                        :name "Hello Transform"
+                                        :source {:query {:database (:id db)
+                                                         :type "native"
+                                                         :native {:query "select 'hello' message"}}
+                                                 :type "query"}
+                                        :target {:database (:id db)
+                                                 :type "table"
+                                                 :schema "public"
+                                                 :name "hello_transforms_world"})]
+              (ts/create! :model/Table
+                          :name "hello_transforms_world"
+                          :db_id (:id db)
+                          :schema "public"
+                          :transform_id (:id transform))
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (ts/with-db dest-db
+            (t2/delete! :model/TransformTag)
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [transform (t2/select-one :model/Transform :name "Hello Transform")
+                  table     (t2/select-one :model/Table :name "hello_transforms_world")]
+              (is (some? transform))
+              (is (some? table))
+              (is (= (:id transform) (:transform_id table))))))))))
+
 (deftest dashboard-minimal-required-properties-test
   (testing "Dashboard deserialized with only: serdes/meta, entity_id, name, creator_id"
     (let [serialized (atom nil)]
@@ -2010,7 +2273,6 @@
         (ts/with-db source-db
           (let [_dash (ts/create! :model/Dashboard :name "Test Dashboard")]
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (let [minimal (mapv (fn [entity]
                               (if (= "Dashboard" (-> entity :serdes/meta last :model))
                                 (select-keys entity [:serdes/meta :entity_id :name :creator_id])
@@ -2029,7 +2291,6 @@
           (let [dash (ts/create! :model/Dashboard :name "Test Dashboard")
                 _dc  (ts/create! :model/DashboardCard :dashboard_id (:id dash))]
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (let [minimal (mapv (fn [entity]
                               (let [model (-> entity :serdes/meta last :model)]
                                 (case model
@@ -2061,7 +2322,6 @@
                 _series      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dc)
                                          :card_id (:id series-card) :position 0)]
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (let [minimal (mapv (fn [entity]
                               (let [model (-> entity :serdes/meta last :model)]
                                 (case model
@@ -2103,7 +2363,6 @@
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Channel") (= id "Test Email Channel")))
                       @serialized))))
-
         (testing "loading into an empty database succeeds"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -2112,7 +2371,6 @@
               (is (= "Test Email Channel" (:name (first channels))))
               (is (= :channel/email (:type (first channels))))
               (is (= "A test email channel" (:description (first channels)))))))
-
         (testing "loading again does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -2133,7 +2391,6 @@
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Metabot") (= id @metabot-eid)))
                       @serialized))))
-
         (testing "loading into an empty database succeeds"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -2141,7 +2398,6 @@
               (is (= 1 (count metabots)))
               (is (= "Test Bot" (:name (first metabots))))
               (is (= "A test metabot" (:description (first metabots)))))))
-
         (testing "loading again does not duplicate"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -2157,7 +2413,6 @@
                       :details {:host "smtp.example.com" :port 587}
                       :description "Some description")
           (reset! serialized (into [] (serdes.extract/extract {}))))
-
         (let [minimal (mapv (fn [entity]
                               (if (= "Channel" (-> entity :serdes/meta last :model))
                                 (select-keys entity [:serdes/meta :name :type :details])
@@ -2178,7 +2433,6 @@
                       :description "Some description"
                       :use_verified_content false)
           (reset! serialized (into [] (serdes.extract/extract {:include-metabot true}))))
-
         (let [minimal (mapv (fn [entity]
                               (if (= "Metabot" (-> entity :serdes/meta last :model))
                                 (select-keys entity [:serdes/meta :entity_id :name])
@@ -2189,6 +2443,147 @@
             (let [metabot (t2/select-one :model/Metabot :name "Minimal Bot")]
               (is (some? metabot))
               (is (= "Minimal Bot" (:name metabot))))))))))
+
+;;; ===========================================================================
+;;; Round-trip tests for stripped fields
+;;;
+;;; Export now omits table_id, database_id, query_type, source_card_id from
+;;; Cards, and table_id from Segments/Measures. These tests verify the full
+;;; export → import round-trip backfills the fields correctly.
+;;; ===========================================================================
+
+(deftest card-stripped-fields-round-trip-test
+  (testing "Card round-trip: stripped fields (table_id, database_id, query_type) are backfilled on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "orders" :db_id (:id db))
+                _     (ts/create! :model/Field :name "id" :table_id (:id table))
+                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _card (ts/create! :model/Card
+                                  :collection_id nil
+                                  :creator_id    (:id user)
+                                  :name          "Round Trip Card"
+                                  :dataset_query (mbql5-query (:id db) (:id table))
+                                  :display       :table)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            ;; Verify the fields are actually stripped from export
+            (let [card-ser (first (filter #(= "Card" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? card-ser :table_id)) "table_id should be stripped from export")
+              (is (not (contains? card-ser :database_id)) "database_id should be stripped from export")
+              (is (not (contains? card-ser :query_type)) "query_type should be stripped from export"))))
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [card  (t2/select-one :model/Card :name "Round Trip Card")
+                db    (t2/select-one :model/Database :name "my-db")
+                table (t2/select-one :model/Table :name "orders")]
+            (is (some? card))
+            (is (= (:id db) (:database_id card)) "database_id backfilled from query")
+            (is (= (:id table) (:table_id card)) "table_id backfilled from query")
+            (is (= :query (:query_type card)) "query_type backfilled from query")
+            (is (nil? (:source_card_id card)) "source_card_id nil for table-based query")))))))
+
+(deftest segment-stripped-fields-round-trip-test
+  (testing "Segment round-trip: stripped table_id is backfilled from definition on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+                field    (ts/create! :model/Field :name "age" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                                     :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [seg-ser (first (filter #(= "Segment" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? seg-ser :table_id)) "table_id should be stripped from export"))))
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [segment (t2/select-one :model/Segment :name "Minors")
+                table   (t2/select-one :model/Table :name "customers")]
+            (is (some? segment))
+            (is (= (:id table) (:table_id segment)) "table_id backfilled from definition")))))))
+
+(deftest measure-stripped-fields-round-trip-test
+  (testing "Measure round-trip: stripped table_id is backfilled from definition on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "sales" :db_id (:id db))
+                field    (ts/create! :model/Field :name "amount" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                                     :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [msr-ser (first (filter #(= "Measure" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? msr-ser :table_id)) "table_id should be stripped from export"))))
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [measure (t2/select-one :model/Measure :name "Total Sales")
+                table   (t2/select-one :model/Table :name "sales")]
+            (is (some? measure))
+            (is (= (:id table) (:table_id measure)) "table_id backfilled from definition")))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Keep-side round-trips: fields that cannot be derived are exported and then
+;;; correctly resolved on import.
+;;; ---------------------------------------------------------------------------
+
+(deftest card-kept-fields-round-trip-test
+  (testing "Card round-trip: database_id is exported and resolved when dataset_query is empty"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db   (ts/create! :model/Database :name "my-db")
+                user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                ;; Empty dataset_query — populate-query-fields does not run, so database_id
+                ;; comes only from the explicit field we pass.
+                _card (ts/create! :model/Card
+                                  :collection_id nil
+                                  :creator_id    (:id user)
+                                  :name          "Empty Query Card"
+                                  :database_id   (:id db)
+                                  :dataset_query {}
+                                  :display       :table)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [card-ser (first (filter #(= "Card" (-> % :serdes/meta last :model)) @serialized))]
+              (is (contains? card-ser :database_id) "database_id exported — not derivable from empty query"))))
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [card (t2/select-one :model/Card :name "Empty Query Card")
+                db   (t2/select-one :model/Database :name "my-db")]
+            (is (some? card))
+            (is (= (:id db) (:database_id card)) "database_id resolved from exported portable ref")))))))
+
+(deftest card-broken-query-exports-kept-fields-test
+  (testing "Card with a non-empty but broken dataset_query still exports database_id"
+    (ts/with-dbs [source-db _dest-db]
+      (ts/with-db source-db
+        (let [db   (ts/create! :model/Database :name "my-db")
+              user (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+              card (ts/create! :model/Card
+                               :creator_id    (:id user)
+                               :name          "Broken Query Card"
+                               :database_id   (:id db)
+                               :dataset_query {}
+                               :display       :table)]
+          ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
+          ;; model hooks. This simulates a card whose query became malformed after migrations.
+          (t2/query {:update :report_card
+                     :set    {:dataset_query (json/encode {:broken true})}
+                     :where  [:= :id (:id card)]})
+          (let [serialized (into [] (serdes.extract/extract {}))
+                card-ser   (first (filter #(= "Card" (-> % :serdes/meta last :model)) serialized))]
+            (is (not (contains? card-ser :table_id))    "table_id always skipped for cards — re-derived on import")
+            (is (contains? card-ser :database_id) "database_id exported — not derivable from broken query")))))))
 
 (deftest library-subcollection-round-trip-test
   (testing "Library subcollection structure and types are preserved through serdes round-trip"
@@ -2223,7 +2618,6 @@
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
                         (and (= model "Collection") (= id (:entity_id @library))))
                       @serialized))))
-
         (testing "loading into destination preserves library structure"
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
@@ -2266,7 +2660,6 @@
                                         :location (format "/%d/" (:id data-coll))
                                         :entity_id eid-sub)]
               (reset! serialized (into [] (serdes.extract/extract {}))))))
-
         (testing "pre-populate dest with same collections and custom permissions"
           (ts/with-db dest-db
             (let [data-dest (ts/create! :model/Collection
@@ -2287,9 +2680,7 @@
                                                       :object [:like (format "/collection/%d/%%" (:id data-dest))])))]
                 (testing "custom permissions exist before import"
                   (is (seq perms-before)))
-
                 (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
                 (let [data-after (t2/select-one :model/Collection :entity_id eid-data)
                       perms-after (set (map #(select-keys % [:group_id :object])
                                             (t2/select :model/Permissions

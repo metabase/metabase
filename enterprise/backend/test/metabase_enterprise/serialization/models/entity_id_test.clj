@@ -24,6 +24,9 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
+    ;; serdes path nests under that entity, so it has no generated entity_id.
+    :model/OsiAiContext
     ;; Settings have human-selected unique names.
     :model/Setting
     ;; Glossary items have unique `term` key
@@ -60,6 +63,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpQueryHandle
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback
@@ -68,6 +72,7 @@
     :model/MetabotMessage
     :model/MetabotPermissions
     :model/MetabotSourceFeedback
+    :model/MetabotUsedTable
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -79,6 +84,7 @@
     :model/OAuthAccessToken
     :model/OAuthAuthorizationCode
     :model/OAuthClient
+    :model/OAuthClientEvent
     :model/OAuthRefreshToken
     :model/ParameterCard
     :model/Permissions
@@ -103,8 +109,18 @@
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
+    ;; Workspace remappings are runtime-only; they redirect QP queries against canonical
+    ;; tables to workspace-isolated copies. They aren't portable across instances and
+    ;; aren't included in serdes export/import.
+    :model/TableRemapping
     :model/Secret
     :model/Session
+    :model/SourceDimensionDaily
+    :model/SourceDimensionProfileDaily
+    :model/SourceMetricDaily
+    :model/SourceSegmentCompositeDaily
+    :model/SourceSegmentDaily
+    :model/SsoRelayState
     :model/SupportAccessGrantLog
     :model/TaskHistory
     :model/TaskRun
@@ -126,7 +142,12 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction})
+    :model/CommentReaction
+    ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
+    ;; provisioning state, not portable content. Same rationale as TableRemapping above.
+    :model/Workspace
+    :model/WorkspaceDatabase
+    :model/WorkspaceInstance})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)

@@ -1,5 +1,9 @@
-import type { IconName } from "metabase/ui";
-import type { Collection, Transform, TransformOwner } from "metabase-types/api";
+import type {
+  Collection,
+  IconName,
+  Transform,
+  TransformOwner,
+} from "metabase-types/api";
 
 export type TreeNodeType = "folder" | "transform" | "library";
 
@@ -16,7 +20,7 @@ export type TreeNode = {
   transformId?: number;
   collection?: Collection;
   url?: string;
-  source_readable?: boolean;
+  can_read?: boolean;
   warningTooltip?: string;
 };
 

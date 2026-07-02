@@ -1,7 +1,7 @@
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { getSchemaId } from "./bulk-selection.utils";
-import { UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
   DatabaseNode,
   ExpandedState,
@@ -135,6 +135,7 @@ export function getFiltersCount(filters: FilterState): number {
     filters.dataLayer != null,
     filters.ownerEmail != null || filters.ownerUserId != null,
     filters.unusedOnly === true,
+    filters.publishedOnly === true,
   ].filter(Boolean).length;
 }
 

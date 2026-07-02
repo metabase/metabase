@@ -5,7 +5,7 @@ import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -92,7 +92,7 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
         size={24}
-        c="brand"
+        c="core-brand"
         collection={collection}
         entity="collection"
       />
@@ -101,18 +101,18 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
 
   if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
     // external users should see the normal icon, they should not know about what synced collections are
-    return <Icon name="synced_collection" size={24} c="brand" />;
+    return <Icon name="synced_collection" size={24} c="core-brand" />;
   }
 
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} c="text-tertiary" />;
+    return <Icon name="trash" size={24} c="text-disabled" />;
   }
 
   if (
     collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
-    return <Icon name="folder" size={24} c="text-tertiary" />;
+    return <Icon name="folder" size={24} c="text-disabled" />;
   }
 
   return (

@@ -1,0 +1,24 @@
+# Finding data: navigate first, search when lost
+
+You have two ways to find data, with different strengths:
+
+- **`read_resource`** navigates the instance by URI and returns *exactly* what exists within a scope you name — a database's schemas, a schema's tables, a collection's items, a table's fields and sample values. When you can name where to look, prefer it: it's complete and never silently "misses" the way a ranked search can.
+- **`search`** finds entities by topic when you *don't* know where they live. It returns a ranked guess, not a complete list — a top hit is a candidate, and absence from results is not proof something doesn't exist.
+
+So: when you can name the scope (a database, schema, or collection), navigate. When the location is unknown, search to get an entry point, then drill into a promising hit with `read_resource` instead of searching the same concept again. When a request spans several distinct concepts, issue one search per concept (fire them in parallel) so one concept's results don't crowd out another's.
+
+## Read a source before you build on it
+
+Finding a candidate table, model, or metric is not the same as confirming it fits. Before you commit a source to a query, read its metadata with `read_resource` — its description, fields, and relationships — and weigh:
+
+- **Caveats in the description** — freshness/ETL lag, retention windows, scope ("last 30 days only", "excludes today", "aggregated nightly"). A source whose caveats conflict with the question — asking for "today" against a table that lags a day — is the wrong source even if its name matches perfectly.
+- **Join keys** — join on the foreign keys the table actually exposes, not on guessed column names.
+- **Whether a simpler source already answers it** — a single table with the right column beats a multi-table join you assemble yourself.
+
+Never pick a source on its name alone. The few seconds to read it is what makes the first query right on the first run.
+
+## Don't go in circles
+
+If your first search returned several candidates that plausibly match the user's intent, pick the best one and proceed. Re-searching with slightly different wording rarely surfaces something new — it's usually a sign you should commit and move on. Widen the search only when the first call returned zero useful hits.
+
+If a metric you were pursuing doesn't expose a dimension you need, pivot immediately to a table or model that does. Don't re-read the metric hoping the dimension appears; it won't.

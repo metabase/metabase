@@ -1,4 +1,5 @@
 (ns metabase.app-db.query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.app-db.query-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -96,7 +97,6 @@
           (try
             ;; ensure there is no database detritus to trip us up
             (t2/delete! :model/Setting search-col search-value)
-
             (let [threads 5
                   latch   (CountDownLatch. threads)
                   thunk   (fn []
@@ -109,15 +109,12 @@
                   results (set (mt/repeat-concurrently threads thunk))
                   n       (count results)
                   latest  (t2/select-one :model/Setting search-col search-value)]
-
               (case search-col
                 :key
                 (do (testing "every call returns the same row"
                       (is (= #{latest} results)))
-
                     (testing "we never insert any duplicates"
                       (is (= 1 (t2/count :model/Setting search-col search-value))))
-
                     (testing "later calls just return the existing row as well"
                       (is (= latest (thunk)))
                       (is (= 1 (t2/count :model/Setting search-col search-value)))))
@@ -126,14 +123,11 @@
                 (do
                   (testing "there may be race conditions, but we insert at least once"
                     (is (pos? n)))
-
                   (testing "we returned the same values that were inserted into the database"
                     (is (= results (set (t2/select :model/Setting search-col search-value)))))
-
                   (testing "later calls just return an existing row as well"
                     (is (contains? results (thunk)))
                     (is (= results (set (t2/select :model/Setting search-col search-value))))))))
-
             ;; Since we couldn't use with-temp, we need to clean up manually.
             (finally
               (t2/delete! :model/Setting search-col search-value))))))))
@@ -152,10 +146,8 @@
             (try
               ;; ensure there is no database detritus to trip us up
               (t2/delete! :model/Setting search-col search-value)
-
               (when already-exists?
                 (t2/insert! :model/Setting search-col search-value other-col other-value))
-
               (let [threads    5
                     latch      (CountDownLatch. threads)
                     thunk      (fn []
@@ -168,25 +160,20 @@
                                                                   {other-col <>}))))
                     values-set (set (mt/repeat-concurrently threads thunk))
                     latest     (get (t2/select-one :model/Setting search-col search-value) other-col)]
-
                 (testing "each update tried to set a different value"
                   (is (= threads (count values-set))))
-
                 ;; Unfortunately updates are not serialized, but we cannot show that without using a model with more
                 ;; than 2 fields.
                 (testing "the row is updated to match the last update call that resolved"
                   (is (not= other-value latest))
                   (is (contains? values-set latest)))
-
                 (when (or (= :key search-col) already-exists?)
                   (is (= 1 (count (t2/select :model/Setting search-col search-value)))))
-
                 (testing "After the database is created, it does not create further duplicates"
                   (let [count (t2/count :model/Setting search-col search-value)]
                     (is (pos? count))
                     (is (empty? (set/intersection values-set (set (mt/repeat-concurrently threads thunk)))))
                     (is (= count (t2/count :model/Setting search-col search-value))))))
-
               ;; Since we couldn't use with-temp, we need to clean up manually.
               (finally
                 (t2/delete! :model/Setting search-col search-value)))))))))

@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.entity-details
   (:require
    [medley.core :as m]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
@@ -8,22 +9,50 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(defn- entity-id-for-measure-or-segment
+  "Look up the portable `entity_id` for a measure or segment by numeric id. The lib metadata
+  view of measures and segments doesn't carry `:entity-id`, so we hit the app DB directly.
+  `model-key` is `:model/Measure` or `:model/Segment`."
+  [model-key id]
+  (when id
+    (t2/select-one-fn :entity_id model-key :id id)))
+
 (defn- convert-measure-or-segment
   "Convert a measure or segment metadata object to the format expected by the API.
-   `definition-key` is `:aggregation` for measures and `:filters` for segments."
+   `definition-key` is `:aggregation` for measures and `:filters` for segments.
+
+   `:definition` on the result is the portable representations form of the relevant inner
+   clause array (a vector of one aggregation clause for measures, a vector of one or more
+   filter clauses for segments). `:portable-entity-id` is the 21-char NanoID the agent can
+   paste verbatim into a `[measure, {}, <pid>]` / `[segment, {}, <pid>]` clause — this is
+   the preferred form when the agent wants to use the measure/segment as-is. The
+   `:definition` array remains useful when the agent wants to compose on top of it (e.g.
+   add an extra filter that the segment doesn't include). See
+   `resources/metabot/prompts/tools/construct_notebook_query.md`."
   [metadata definition-key]
-  (let [definition (:definition metadata)]
+  (let [definition  (:definition metadata)
+        model-key   (case definition-key
+                      :aggregation :model/Measure
+                      :filters     :model/Segment)
+        ;; Lib-metadata maps reject snake_case lookups (snake-hating-map). Try kebab first;
+        ;; fall back to a direct t2 lookup since the lib metadata view doesn't include
+        ;; `:entity-id` for measures/segments (verified via REPL — only cards include it).
+        entity-id   (or (:entity-id metadata)
+                        (entity-id-for-measure-or-segment model-key (:id metadata)))]
     (-> (select-keys metadata [:id :name :display-name :description])
+        (assoc :portable-entity-id entity-id)
         (assoc :definition-description
                (when definition
                  (try
@@ -32,8 +61,13 @@
         (assoc :definition
                (when definition
                  (try
-                   (lib/prepare-for-serialization definition)
-                   (catch Exception _ nil)))))))
+                   (let [mp       (lib-be/application-database-metadata-provider (:database definition))
+                         exported (repr.resolve/export-query mp definition shared.content-store/default-store)]
+                     (get-in exported ["stages" 0 (name definition-key)]))
+                   (catch Exception e
+                     (log/warn e "Failed to export measure/segment definition to portable form"
+                               {:id (:id metadata) :key definition-key})
+                     nil)))))))
 
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
@@ -120,6 +154,32 @@
                                    with-queryable-dimensions?      true
                                    with-segments?                  false}}]
    (let [id (:id card)
+         ;; Database metadata so the LLM can build portable FKs — metrics are always
+         ;; referenced from a query targeting a specific database, and the LLM needs the
+         ;; human-readable database name for `source-table:` / field FKs in the same stage.
+         database (lib.metadata/database metadata-provider)
+         database-id (:id database)
+         database-name (:name database)
+         ;; Base table of the metric — the metric is an aggregation defined on top of a
+         ;; specific table. To use the metric, the LLM has to put that table in
+         ;; `source-table:` and reference the metric in `aggregation:`.
+         ;;
+         ;; This arity is called with two shapes of `card`:
+         ;;   1. The t2 row from `get-card` (via the single-arg `metric-details`) —
+         ;;      snake_case, so `:table_id`.
+         ;;   2. A `lib.metadata/card` map forwarded by `convert-metric` (called from
+         ;;      `table-details` while listing available metrics) — that map is a
+         ;;      `SnakeHatingMap`, so the only valid key is kebab-case `:table-id`; reading
+         ;;      `:table_id` on it throws a deprecation-error that would surface to the LLM
+         ;;      as an empty `<resource>` with just `**Error: ...**`.
+         ;; We accept both. `report_card.table_id` / metadata `:table-id` already points
+         ;; to the metric's base table and is kept in sync, so we use it verbatim instead
+         ;; of digging through `:dataset_query`.
+         source-table-id (or (:table-id card) (:table_id card))
+         source-table (when source-table-id
+                        (lib.metadata/table metadata-provider source-table-id))
+         base-table-portable-fk (when (and database-name source-table)
+                                  [database-name (:schema source-table) (:name source-table)])
          query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
@@ -138,6 +198,19 @@
               :type :metric
               :name (:name card)
               :description (:description card)
+              ;; Database identity — same shape as in `table-details` / `card-details`.
+              :database_id database-id
+              :database_name database-name
+              ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
+              ;; verbatim as `source-table:` in the query that consumes the metric.
+              :base_table_id source-table-id
+              :base_table_name (:name source-table)
+              :base_table_portable_fk base-table-portable-fk
+              ;; Portable entity id — the string the LLM must copy verbatim into a
+              ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
+              ;; Accept both shapes (see `source-table-id` note above): t2 rows use
+              ;; `:entity_id`, `lib.metadata/card` maps use `:entity-id`.
+              :portable_entity_id (or (:entity-id card) (:entity_id card))
               :default_time_dimension_field_id (some-> default-temporal-breakout
                                                        (->> (metabot.tools.u/->result-column metric-query))
                                                        :field_id)
@@ -160,9 +233,29 @@
   ([db-metric metadata-provider options]
    (-> db-metric
        (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
-       (select-keys  [:id :type :name :description :default_time_dimension_field_id]))))
+       ;; Keep the DB-name / base-table-fk / portable_entity_id fields so callers (incl.
+       ;; `metric->xml`) can surface them to the LLM without a second round-trip.
+       (select-keys [:id :type :name :description :default_time_dimension_field_id
+                     :database_id :database_name :portable_entity_id
+                     :base_table_id :base_table_name :base_table_portable_fk]))))
 
-(declare related-tables)
+(declare ^:private related-tables)
+
+(def ^:private max-related-tables-with-fields
+  "Maximum number of related-tables to expand with their full column set.
+
+  Each expanded table fetches and formats all of its columns. On a highly-connected schema with wide tables, this can
+  exhaust the heap (metabase#76493). We fetch only this many related tables with column metadata; the rest (up
+  to [[max-related-tables]]) are surfaced without columns."
+  10)
+
+(def ^:private max-related-tables
+  "Maximum number of related-tables to surface at all.
+
+  The first [[max-related-tables-with-fields]] of these carry their columns; the remainder are surfaced by identity
+  only (id/name/description/FK/FQN, no column fetch) so the LLM still knows they exist and can look them up
+  individually. Any related-tables beyond this are dropped with a note presented to the LLM in rendering."
+  50)
 
 (defn- table-details
   ([id] (table-details id nil))
@@ -180,10 +273,14 @@
                      (metabot.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
-           db-engine (some-> (if metadata-provider
-                               (lib.metadata/database metadata-provider)
-                               (metabot.tools.u/get-database db-id :engine))
-                             :engine name)
+           ;; Database metadata including :name so LLM can build portable FK paths
+           ;; [db-name, schema, table] / [db-name, schema, table, field] that the
+           ;; representations-format construct_notebook_query expects.
+           db (if metadata-provider
+                (lib.metadata/database metadata-provider)
+                (metabot.tools.u/get-database db-id :engine :name))
+           db-engine (some-> db :engine name)
+           db-name (:name db)
            mp (when query-needed?
                 (or metadata-provider
                     (lib-be/application-database-metadata-provider db-id)))
@@ -193,8 +290,8 @@
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        field-values-fn
                        (map #(metabot.tools.u/add-table-reference table-query %))))
-           related-tables (when with-related-tables?
-                            (related-tables table-query with-fields? field-values-fn))]
+           related (when with-related-tables?
+                     (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id
             :type :table
             :fields (mapv #(metabot.tools.u/->result-column table-query %) cols)
@@ -203,10 +300,13 @@
             :display_name (some->> (:name base)
                                    (u.humanization/name->human-readable-name :simple))
             :database_id db-id
+            :database_name db-name
             :database_engine db-engine
-            :database_schema (:schema base)}
+            :database_schema (:schema base)
+            ;; Portable table FK path matching the representations-format expectation:
+            ;; [db-name, schema-or-null, table-name]. LLM uses this as `source-table`.
+            :portable_fk (when db-name [db-name (:schema base) (:name base)])}
            (m/assoc-some :description (:description base)
-                         :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))
@@ -215,27 +315,80 @@
                                                       (lib/available-measures table-query))))
                          :segments (when with-segments?
                                      (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                                      (lib/available-segments table-query))))))))))
+                                                      (lib/available-segments table-query)))))
+           (merge related))))))
 
-(defn related-tables
+(defn- fk-related-table-groups
+  "Sorted `[target-table-id fk-field-id fk-field-name]` tuples for every direct FK from `query`'s source table.
+
+  The FK paths that become [[related-tables]]. Each tuple means \"`fk-field-id` (named `fk-field-name`) points at
+  `target-table-id`\", so a table reachable through several FKs appears once per FK.
+
+  This deliberately does NOT `:include-implicitly-joinable?` when calling `lib/visible-columns` to find related
+  tables: that fetches and caches the full column set of every FK-target table, even though we only
+  expand [[max-related-tables]] of them (metabase#76493). Instead we read the source table's own FK columns and do a
+  single bulk lookup of just the target fields (not their sibling columns) to map each FK to its table."
+  [query]
+  (let [source-cols        (lib/visible-columns query -1 {:include-implicitly-joinable? false})
+        existing-table-ids (into #{} (keep :table-id) source-cols)
+        fk-cols            (filter (every-pred :fk-target-field-id (comp number? :id)) source-cols)
+        id->target-field   (m/index-by :id (lib.metadata/bulk-metadata
+                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-cols)))]
+    (->> fk-cols
+         (keep (fn [{fk-field-id :id, fk-field-name :name, :keys [fk-target-field-id]}]
+                 ;; the target field might not exist; skip self/already-joined tables
+                 (when-let [target (id->target-field fk-target-field-id)]
+                   (when-not (contains? existing-table-ids (:table-id target))
+                     [(:table-id target) fk-field-id fk-field-name]))))
+         distinct
+         ;; sort for a deterministic selection when we cap, so the same tables are kept
+         sort)))
+
+(defn- related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
-   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
+  Creates separate entries for each FK path when the same table is reachable through multiple foreign keys. We surface
+  up to [[max-related-tables]] FK paths; only the first [[max-related-tables-with-fields]] carry their column set to
+  keep memory usage bounded (metabase#76493), even when `with-fields?` is true. Returns nil when the query has no
+  FK-related tables, otherwise a map:
+
+    :related_tables                vector of related-table maps, one per FK path. When `with-fields?` is true they
+                                   carry their column set and the list is capped at [[max-related-tables-with-fields]];
+                                   when `with-fields?` is false they carry no columns and the list holds the whole
+                                   surfaced set (capped at [[max-related-tables]]).
+    :related_tables_without_fields (optional) the remaining surfaced FK paths, built the same way but without
+                                   columns. Present only when `with-fields?` is true and there are more FK paths
+                                   than [[max-related-tables-with-fields]], capped so the two lists together hold at
+                                   most [[max-related-tables]]. Omitted entirely when `with-fields?` is false, since
+                                   without columns there is no distinction between the two lists.
+    :related_tables_total          (optional) total number of related-tables before capping. Present only when
+                                   that total exceeds [[max-related-tables]] (i.e. some were dropped entirely), so
+                                   the LLM knows the surfaced set is truncated."
   [query with-fields? field-values-fn]
-  (let [all-main-cols (lib/visible-columns query)
-        fk-cols       (filter :fk-field-id all-main-cols)
-        grouped-fks   (group-by (juxt :table-id :fk-field-id) fk-cols)]
-    (when (seq grouped-fks)
-      (mapv
-       (fn [[[table-id fk-field-id] _]]
-         (let [base-details   (table-details table-id
-                                             {:with-fields?         with-fields?
-                                              :field-values-fn      field-values-fn
-                                              :with-related-tables? false
-                                              :with-metrics?        false})
-               base-table-col (lib.metadata/field query fk-field-id)
-               fk-field-name  (:name base-table-col)]
-           (assoc base-details :related_by fk-field-name)))
-       grouped-fks))))
+  (let [fk-groups (fk-related-table-groups query)
+        total     (count fk-groups)]
+    (when (pos? total)
+      (when (and with-fields? (> total max-related-tables-with-fields))
+        (log/infof "Capping related-tables column expansion to %d of %d." max-related-tables-with-fields total))
+      (when (> total max-related-tables)
+        (log/infof "Capping related-tables to %d of %d." max-related-tables total))
+      (let [capped (take max-related-tables fk-groups)
+            ;; Only split into a with-fields/without-fields pair when the caller actually asked for columns.
+            [with-groups without-groups] (if with-fields?
+                                           (split-at max-related-tables-with-fields capped)
+                                           [capped nil])
+            build (fn [include-fields? [table-id fk-field-id fk-field-name]]
+                    (-> (table-details table-id
+                                       {:metadata-provider    query
+                                        :field-values-fn      field-values-fn
+                                        :with-fields?         include-fields?
+                                        :with-related-tables? false
+                                        :with-metrics?        false})
+                        (assoc :related_by {:id fk-field-id :name fk-field-name})))
+            maybe-with-fields (mapv #(build (boolean with-fields?) %) with-groups)
+            without-fields    (mapv #(build false %) without-groups)]
+        (cond-> {:related_tables maybe-with-fields}
+          (seq without-fields)         (assoc :related_tables_without_fields without-fields)
+          (> total max-related-tables) (assoc :related_tables_total total))))))
 
 (defn- card-details
   "Get details for a card."
@@ -254,7 +407,9 @@
                             :as   options}]
    (let [id (:id base)
          database-id (:database_id base)
-         database-engine (some-> (lib.metadata/database metadata-provider) :engine name)
+         database (lib.metadata/database metadata-provider)
+         database-engine (some-> database :engine name)
+         database-name (:name database)
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
          query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
@@ -269,8 +424,8 @@
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
-         related-tables (when with-related-tables?
-                          (related-tables card-query with-fields? field-values-fn))]
+         related (when with-related-tables?
+                   (related-tables card-query with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
           :fields (mapv #(metabot.tools.u/->result-column card-query %) returned-fields)
@@ -278,11 +433,38 @@
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
           :database_id database-id
+          :database_name database-name
           :database_engine database-engine
+          ;; Portable entity id matching the representations-format expectation: LLM uses this
+          ;; string as the value of `source-card:` in a representations query stage.
+          :portable_entity_id (:entity_id base)
           :verified (verified-review? id "card")}
          (m/assoc-some
           :description (:description base)
-          :related_tables related-tables
+          ;; Portable representations JSON for the card's **own** saved query body.
+          ;;
+          ;; We deliberately export `dataset-query` (the real, normalised MBQL/legacy body
+          ;; of the card) rather than `card-query`. `lib/query metadata-provider
+          ;; card-metadata` wraps the card as `{source-card: <eid>}` for downstream
+          ;; querying, which is the right thing for column resolution / metrics, but the
+          ;; wrong thing for showing the LLM what the card *actually does*: it would just
+          ;; round-trip back to a one-stage `source-card:` reference.
+          ;;
+          ;; Surfaces the **same** form the LLM writes into `construct_notebook_query`
+          ;; (and gets back in that tool's result), so existing-card payloads and
+          ;; freshly-built-query payloads share one shape. Works for both structured
+          ;; (`mbql.stage/mbql`) and native (`mbql.stage/native`) cards - the latter
+          ;; preserves portable `card-id` / `snippet-id` references inside
+          ;; `template-tags`.
+          ;;
+          ;; Returns `nil` (so `m/assoc-some` drops the key) for cards whose
+          ;; `dataset_query` can't be exported, e.g. unusual / partially-broken legacy
+          ;; queries; the rest of the payload is still useful.
+          :query_json (when dataset-query
+                        (repr.resolve/try-export-query
+                         metadata-provider
+                         (lib/query metadata-provider (lib-be/normalize-query dataset-query))
+                         shared.content-store/default-store))
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
                                       (lib/available-metrics card-query))))
@@ -291,7 +473,8 @@
                                        (lib/available-measures card-query))))
           :segments (when with-segments?
                       (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                       (lib/available-segments card-query)))))))))
+                                       (lib/available-segments card-query)))))
+         (merge related)))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
@@ -390,6 +573,78 @@
         {:output (ex-message e) :status-code 404}
         (metabot.tools.u/handle-agent-error e)))))
 
+(def ^:private measure-or-segment-dispatch
+  "Per-`kind` config for `measure-or-segment-details`: the app-DB model, the lib-metadata fetcher,
+  and the `convert-measure-or-segment` definition key."
+  {:measure {:model :model/Measure, :lookup-fn lib.metadata/measure, :definition-key :aggregation}
+   :segment {:model :model/Segment, :lookup-fn lib.metadata/segment, :definition-key :filters}})
+
+(mu/defn- measure-or-segment-details
+  "Build drill-in detail for a single measure or segment by numeric `id`.
+  Layers parent-table context onto the `convert-measure-or-segment` payload — `database_id` /
+  `database_name`, the base table id/name/schema, and the portable `[db-name schema table]` FK — so the
+  shape matches the nested measures/segments `table-details` already emits."
+  [kind :- [:enum :measure :segment]
+   id   :- :int]
+  (let [{:keys [model lookup-fn definition-key]} (measure-or-segment-dispatch kind)
+        row (t2/select-one [model :id :table_id] :id id)]
+    (when-not row
+      (throw (ex-info (format "%s %s not found" (name kind) id)
+                      {:agent-error? true :status-code 404})))
+    ;; Measure/segment perms delegate to the parent Table, so read-checking it gates access.
+    (let [table     (api/read-check :model/Table (:table_id row))
+          db-id     (:db_id table)
+          mp        (lib-be/application-database-metadata-provider db-id)
+          database  (lib.metadata/database mp)
+          metadata  (lookup-fn mp id)
+          db-name   (:name database)
+          schema    (:schema table)
+          tbl-name  (:name table)]
+      (-> (convert-measure-or-segment metadata definition-key)
+          (assoc :type kind
+                 :database_id db-id
+                 :database_name db-name
+                 :base_table_id (:id table)
+                 :base_table_name tbl-name
+                 :base_table_schema schema
+                 ;; The portable FK the agent puts in `source-table:` to query against the base table —
+                 ;; same `[db-name schema table]` shape metrics carry as `:base_table_portable_fk`.
+                 :base_table_portable_fk (when db-name [db-name schema tbl-name]))))))
+
+(defn get-measure-details
+  "Get information about the measure with ID `measure-id`."
+  [{:keys [measure-id]}]
+  (try
+    (lib-be/with-metadata-provider-cache
+      (when-not (int? measure-id)
+        (throw (ex-info "Invalid measure_id format" {:agent-error? true :status-code 400})))
+      {:structured-output (assoc (measure-or-segment-details :measure measure-id) :result-type :entity)})
+    (catch Exception e
+      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+        ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
+        (when-not agent-error?
+          (log/error e "Failed to fetch measure details" data))
+        (if (= status-code 404)
+          {:output (ex-message e) :status-code 404}
+          (metabot.tools.u/handle-agent-error e))))))
+
+(defn get-segment-details
+  "Get information about the segment with ID `segment-id`."
+  [{:keys [segment-id]}]
+  (try
+    (lib-be/with-metadata-provider-cache
+      (when-not (int? segment-id)
+        (throw (ex-info "Invalid segment_id format" {:agent-error? true :status-code 400})))
+      {:structured-output (assoc (measure-or-segment-details :segment segment-id) :result-type :entity)})
+    (catch Exception e
+      (let [{:keys [status-code agent-error?] :as data} (ex-data e)]
+        ;; Agent-facing errors (bad input, not-found) are expected; only log genuine failures.
+        (when-not agent-error?
+          (log/error e "Failed to fetch segment details" data))
+        (if (= status-code 404)
+          {:output (ex-message e) :status-code 404}
+          (metabot.tools.u/handle-agent-error e))))))
+
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id] :as arguments}]
@@ -403,7 +658,11 @@
                             mp      (lib-be/application-database-metadata-provider (:database_id card))
                             details (card-details card mp options)]
                         (-> details
-                            (select-keys [:id :type :description :name :verified])
+                            ;; `:query_json` is intentionally part of the slim payload here:
+                            ;; it's what `question->xml` renders inside `<metabase_question>`
+                            ;; so the LLM sees the saved card's body in the same portable
+                            ;; representations JSON form `construct_notebook_query` consumes.
+                            (select-keys [:id :type :description :name :verified :query_json])
                             (assoc :result-columns (:fields details))
                             (m/assoc-some :average_query_time (:average_query_time card)
                                           :display (:display card))))

@@ -1,21 +1,9 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import type { ExportFormat } from "metabase/common/types/export";
-import {
-  Anchor,
-  Box,
-  Group,
-  Stack,
-  Text,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
-
-import {
-  PublicLinkCopyButton,
-  RemoveLinkAnchor,
-} from "./PublicLinkCopyPanel.styled";
+import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -39,65 +27,58 @@ export const PublicLinkCopyPanel = ({
   onCopy?: () => void;
 }) => (
   <Stack gap={0}>
-    <TextInput
-      readOnly
+    <CopyTextInput
       data-testid="public-link-input"
       placeholder={loading ? t`Loading…` : undefined}
       value={url ?? ""}
-      inputWrapperOrder={["label", "input", "error", "description"]}
-      rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
+      onCopied={onCopy}
     />
-    <Box pos="relative">
-      <Group
-        mt="sm"
-        pos="absolute"
-        w="100%"
-        justify="space-between"
-        align="center"
-      >
-        <Box>
-          {onRemoveLink && (
-            // The container is needed to center the tooltip on the anchor
-            <Tooltip
-              label={
-                <Text fw={700} c="inherit">
-                  {removeTooltipLabel}
-                </Text>
+    <Group mt="sm" justify="space-between" align="center">
+      <Group gap="sm">
+        {extensions &&
+          extensions.length > 0 &&
+          extensions.map((extension) => (
+            <Anchor
+              data-testid="extension-option"
+              key={extension}
+              tt="uppercase"
+              c={
+                extension === selectedExtension ? "core-brand" : "text-disabled"
+              }
+              fw={700}
+              onClick={() =>
+                onChangeExtension?.(
+                  extension === selectedExtension ? null : extension,
+                )
               }
             >
-              <RemoveLinkAnchor
-                component="button"
-                fz="sm"
-                c="error"
-                fw={700}
-                onClick={onRemoveLink}
-              >
-                {removeButtonLabel}
-              </RemoveLinkAnchor>
-            </Tooltip>
-          )}
-        </Box>
-        <Group gap="sm" justify="flex-end">
-          {extensions &&
-            extensions.length > 0 &&
-            extensions.map((extension) => (
-              <Anchor
-                data-testid="extension-option"
-                key={extension}
-                tt="uppercase"
-                c={extension === selectedExtension ? "brand" : "text-tertiary"}
-                fw={700}
-                onClick={() =>
-                  onChangeExtension?.(
-                    extension === selectedExtension ? null : extension,
-                  )
-                }
-              >
-                {extension}
-              </Anchor>
-            ))}
-        </Group>
+              {extension}
+            </Anchor>
+          ))}
       </Group>
-    </Box>
+      <Box>
+        {onRemoveLink && (
+          // The container is needed to center the tooltip on the anchor
+          <Tooltip
+            label={
+              <Text fw={700} c="inherit">
+                {removeTooltipLabel}
+              </Text>
+            }
+          >
+            <Anchor
+              component="button"
+              style={{ whiteSpace: "nowrap" }}
+              fz="sm"
+              c="error"
+              fw={700}
+              onClick={onRemoveLink}
+            >
+              {removeButtonLabel}
+            </Anchor>
+          </Tooltip>
+        )}
+      </Box>
+    </Group>
   </Stack>
 );

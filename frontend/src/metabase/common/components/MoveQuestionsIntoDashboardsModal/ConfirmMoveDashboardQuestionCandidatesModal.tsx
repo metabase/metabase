@@ -80,13 +80,13 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         <div className={S.tableRow}>
           <div className={S.column}>
             <Flex gap="sm" align="center">
-              <Icon name="folder" c="brand" />
+              <Icon name="folder" c="core-brand" />
               {t`Question`}
             </Flex>
           </div>
           <div className={S.column}>
             <Flex gap="sm" align="center">
-              <Icon name="dashboard" c="brand" />
+              <Icon name="dashboard" c="core-brand" />
               {t`Dashboard it'll be moved to`}
             </Flex>
           </div>
@@ -112,7 +112,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           })
           .with({ rows: [] }, () => (
             <Flex justify="center" py="19rem">
-              <Text size="1.25rem" px="md" color="text-tertiary">
+              <Text size="1.25rem" px="md" color="text-disabled">
                 {t`There aren't any questions to move into dashboards. Looks like everything is in its place.`}
               </Text>
             </Flex>
@@ -150,7 +150,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "error" : "brand"}
+            color={mutationError ? "error" : "core-brand"}
           >
             {t`Move these questions`}
           </Button>

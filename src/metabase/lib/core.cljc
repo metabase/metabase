@@ -94,11 +94,13 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
-   [metabase.lib.parameters.parse :as lib.parameters.parse]
+   [metabase.lib.parameters.parse]
+   [metabase.lib.parameters.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.referenced-columns :as lib.referenced-columns]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -203,10 +205,13 @@
          lib.options/keep-me
          lib.order-by/keep-me
          metabase.lib.parameters/keep-me
+         metabase.lib.parameters.parse/keep-me
+         metabase.lib.parameters.parse.types/keep-me
          lib.parse/keep-me
          lib.query/keep-me
          lib.query.test-spec/keep-me
          lib.ref/keep-me
+         lib.referenced-columns/keep-me
          lib.remove-replace/keep-me
          lib.schema/keep-me
          metabase.lib.schema.util/keep-me
@@ -668,6 +673,17 @@
     stage-number :- :int]
    (lib.filter/filters a-query stage-number)))
 
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]].
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (atomic-filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/atomic-filters a-query stage-number)))
+
 (mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
 
@@ -792,6 +808,14 @@
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.join/joins a-query stage-number)))
+
+(mu/defn joined-thing :- [:maybe ::lib.join/joinable]
+  "Return metadata about the origin of `a-join` (the joined Table or Card).
+
+  **Code Health:** Healthy. This is a core API."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   a-join                :- ::lib.join.util/partial-join]
+  (lib.join/joined-thing metadata-providerable a-join))
 
 ;;; ### Join Strategies
 
@@ -1014,6 +1038,20 @@
   [a-join :- ::lib.join.util/partial-join
    fields :- [:maybe [:or [:enum :all :none] [:sequential some?]]]] ;; TODO: More precise schema.
   (lib.join/with-join-fields a-join fields))
+
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
+
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]].
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column]
+  (lib.join/with-join-source-fields a-join cols))
 
 (mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Returns the list of column metadata for the columns which are *visible* on the RHS of `a-joinable`, such as a table,
@@ -1372,6 +1410,7 @@
   binning
   with-binning]
  [metabase.lib.card
+  ->card-metadata-columns
   card->underlying-query
   model-preserved-keys]
  [lib.column-group
@@ -1403,7 +1442,6 @@
  [lib.equality
   find-column-for-legacy-ref
   find-matching-column]
-
  [lib.extraction
   column-extractions
   extract
@@ -1445,6 +1483,7 @@
  [lib.metric
   available-metrics]
  [lib.limit
+  aggregated-output?
   current-limit
   disable-default-limit
   limit
@@ -1514,7 +1553,7 @@
   parameter-target-template-tag-name
   update-parameter-target-dimension-options
   update-parameter-target-field-ref]
- [lib.parameters.parse
+ [metabase.lib.parameters.parse
   match-and-normalize-tag-name]
  [lib.parse
   parse]
@@ -1522,7 +1561,7 @@
   ->query
   can-preview
   can-run
-  can-save
+  can-save?
   check-card-overwrite
   native?
   preview-query
@@ -1541,6 +1580,8 @@
   field-ref-id
   field-ref-name
   ref]
+ [lib.referenced-columns
+  referenced-columns]
  [lib.remove-replace
   remove-clause
   remove-join
@@ -1601,8 +1642,10 @@
   duplicate-column-error
   find-bad-refs
   find-bad-refs-with-source
+  missing-card-error
   missing-column-error
   missing-table-alias-error
+  missing-table-error
   syntax-error
   validation-exception-error]
  [metabase.lib.walk.util
@@ -1674,3 +1717,37 @@
   Prefer this over setting the `:case-sensitive false` option directly."
   [boolean-expression :- ::lib.schema.expression/boolean]
   (lib.options/update-options boolean-expression assoc :case-sensitive false))
+
+;;; Parameter Parsing
+;;;
+;;; **Code Health:** Healthy.
+
+(shared.ns/import-fn metabase.lib.parameters.parse/parse                           parse-parameters)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/field-filter              parsed-field-filter-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/field-filter?             parsed-field-filter-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/temporal-unit             parsed-temporal-unit-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/temporal-unit?            parsed-temporal-unit-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query     parsed-referenced-card-query-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-card-query?    parsed-referenced-card-query-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query    parsed-referenced-table-query-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-table-query?   parsed-referenced-table-query-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet  parsed-referenced-query-snippet-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/referenced-query-snippet? parsed-referenced-query-snippet-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date                      parsed-date-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date?                     parsed-date-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-range                parsed-date-range-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-range?               parsed-date-range-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-time-range           parsed-date-time-range-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/date-time-range?          parsed-date-time-range-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/param                     parsed-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/param?                    parsed-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/function-param?           parsed-function-param?)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/optional                  parsed-optional-param)
+(shared.ns/import-fn metabase.lib.parameters.parse.types/optional?                 parsed-optional-param?)
+
+(def parsed-param-no-value-placeholder
+  "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
+  values.
+
+  **Code Health:** Healthy."
+  metabase.lib.parameters.parse.types/no-value)

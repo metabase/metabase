@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
-   [metabase.metabot.tools :as metabot.tools]))
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -11,7 +12,7 @@
 ;; the API integration test.
 
 (defn- with-stubbed-tables! [tables thunk]
-  (with-redefs [analytics.queries/referenced-table-names (fn [_db _sql] tables)]
+  (mt/with-dynamic-fn-redefs [analytics.queries/referenced-table-names (fn [_db _sql] tables)]
     (thunk)))
 
 ;;; ------------------------- happy paths -------------------------
@@ -232,7 +233,7 @@
           (is (= [] rows)))))))
 
 (deftest slackbot-native-shape-blocks-are-extracted-test
-  (testing "going-forward slackbot rows are persisted via store-native-parts!, so they carry
+  (testing "going-forward slackbot rows are persisted via finalize-assistant-turn!, so they carry
             the same :type 'tool-input'/'tool-output' block shape as in-app rows and the
             analytics extractor handles them identically"
     (with-stubbed-tables! ["orders"]

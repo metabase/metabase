@@ -62,7 +62,6 @@
   (testing "invalid order-bys do not conform to schema"
     (binding [lib.schema.expression/*suppress-expression-type-check?* nil]
       (is (mr/explain ::lib.schema.order-by/order-bys invalid-order-bys))))
-
   (testing "non-distinct order-bys do not conform to schema"
     (is (mr/explain ::lib.schema.order-by/order-bys (conj valid-order-bys (first valid-order-bys))))))
 
