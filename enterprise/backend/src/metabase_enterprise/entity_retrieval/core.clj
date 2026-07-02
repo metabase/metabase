@@ -32,7 +32,7 @@
 (defn pgvector-configured?
   "True when a pgvector store is configured (read once at boot from MB_PGVECTOR_DB_URL).
   The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
-  even when the semantic-search feature is turned on after startup (a common onboarding flow)."
+  even when the library-retrieval feature is turned on after startup (a common onboarding flow)."
   []
   (string? (not-empty semantic.db.datasource/db-url)))
 
