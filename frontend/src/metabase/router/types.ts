@@ -1,5 +1,5 @@
 /**
- * A partial path, mirroring react-router v7's `Path`.
+ * The pathname, search, and hash values of a URL.
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.Path.html
  */
@@ -10,14 +10,16 @@ export interface Path {
 }
 
 /**
- * A destination, mirroring react-router v7's `To`.
+ * Describes a location that is the destination of some navigation, used in
+ * Link, useNavigate, etc.
  *
  * @see https://api.reactrouter.com/v7/types/react-router.To.html
  */
 export type To = string | Partial<Path>;
 
 /**
- * A location, mirroring react-router v7's `Location`.
+ * An entry in a history stack. A location contains information about the URL
+ * path, as well as possibly some arbitrary state and a key.
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.Location.html
  */
@@ -30,7 +32,8 @@ export interface Location<State = unknown> {
 }
 
 /**
- * Navigation options, mirroring react-router v7's `NavigateOptions`.
+ * Options for the `navigate` function, mirroring react-router v7's
+ * `NavigateOptions`.
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.NavigateOptions.html
  */
@@ -40,8 +43,7 @@ export interface NavigateOptions {
 }
 
 /**
- * The function returned by `useNavigate`, mirroring react-router v7's
- * `NavigateFunction`.
+ * The interface for the `navigate` function returned from `useNavigate`.
  *
  * @see https://api.reactrouter.com/v7/interfaces/react-router.NavigateFunction.html
  */
@@ -51,7 +53,7 @@ export interface NavigateFunction {
 }
 
 /**
- * Parsed route params, mirroring react-router v7's `Params`.
+ * The parameters that were parsed from the URL path.
  *
  * @see https://api.reactrouter.com/v7/types/react-router.Params.html
  */
@@ -72,8 +74,7 @@ export type URLSearchParamsInit =
   | Record<string, string | string[]>;
 
 /**
- * The setter returned by `useSearchParams`, mirroring react-router v7's
- * `SetURLSearchParams`.
+ * Sets new search params and causes a navigation when called.
  *
  * @see https://api.reactrouter.com/v7/types/react-router.SetURLSearchParams.html
  */
