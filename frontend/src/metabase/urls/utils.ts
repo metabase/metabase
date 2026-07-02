@@ -1,4 +1,4 @@
-import { api } from "metabase/api/client";
+import { getBasename } from "metabase/utils/basename";
 
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);
@@ -32,11 +32,11 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
 }
 
 export function getSubpathSafeUrl(url: string) {
-  const basename = api.basename;
+  const basename = getBasename();
   const normalizedUrl =
     !basename || !url || url.startsWith("/") ? url : `/${url}`;
 
-  return `${api.basename}${normalizedUrl}`;
+  return `${basename}${normalizedUrl}`;
 }
 
 /**

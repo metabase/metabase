@@ -89,6 +89,8 @@ const testPlan = createTestPlan({
   sharedSourcesTouched: process.env.SHARED_SOURCES_TOUCHED === "true",
   feFilesChanged: csvToList(process.env.FE_CHANGED_FILES).length,
   beFilesChanged: csvToList(process.env.BE_CHANGED_FILES).length,
+  feFilesTotal: listFiles(["frontend", "enterprise/frontend"]).length,
+  beFilesTotal: listFiles(["src", "enterprise/backend"]).length,
 });
 
 process.stdout.write(JSON.stringify(testPlan) + "\n");
