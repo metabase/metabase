@@ -38,6 +38,7 @@ import {
   Stack,
   Tabs,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import type {
   Exploration,
@@ -64,6 +65,7 @@ interface ExplorationSidebarProps {
   exploration: Exploration;
   explorationSidebarTabsInfo: ExplorationSidebarTabsInfo;
   selectedSidebarTab: ExplorationSidebarTab;
+  tabsWithNewContent?: ReadonlySet<ExplorationSidebarTab>;
   getSelectedSidebarTabUrl: (tab: ExplorationSidebarTab) => string;
   tree: ITreeNodeItem<ExplorationTreeNode>[];
   selectedEntityId: SelectedEntityId | null;
@@ -76,6 +78,7 @@ export function ExplorationSidebar({
   exploration,
   explorationSidebarTabsInfo,
   selectedSidebarTab,
+  tabsWithNewContent,
   getSelectedSidebarTabUrl,
   tree,
   selectedEntityId,
@@ -232,6 +235,9 @@ export function ExplorationSidebar({
             <Tabs.Tab
               key={value}
               value={value}
+              rightSection={
+                tabsWithNewContent?.has(value) ? <NewContentDot /> : undefined
+              }
               renderRoot={(props) => (
                 <ForwardRefLink
                   {...props}
@@ -254,6 +260,22 @@ export function ExplorationSidebar({
         </Center>
       )}
     </Stack>
+  );
+}
+
+function NewContentDot() {
+  return (
+    <Tooltip label={t`New research to look at`}>
+      <Box
+        aria-label={t`New research to look at`}
+        data-testid="exploration-tab-new-content-dot"
+        bg="brand"
+        w="0.375rem"
+        h="0.375rem"
+        bdrs="50%"
+        flex="none"
+      />
+    </Tooltip>
   );
 }
 

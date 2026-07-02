@@ -7,7 +7,10 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListCommentsQuery } from "metabase/api";
 import { explorationApi } from "metabase/api/exploration";
 import { Comments } from "metabase/comments/components/Comments";
-import { getCommentNodeId, getListCommentsQuery } from "metabase/comments/utils";
+import {
+  getCommentNodeId,
+  getListCommentsQuery,
+} from "metabase/comments/utils";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -44,10 +47,11 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
+import { ChartClickPopover, type ChartClickTarget } from "./ChartClickPopover";
 import {
-  ChartClickPopover,
-  type ChartClickTarget,
-} from "./ChartClickPopover";
+  ChartCommentAvatars,
+  type SegmentComment,
+} from "./ChartCommentAvatars";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
@@ -168,22 +172,25 @@ function ExplorationGroupVisualizationChart({
 
   const [clickTarget, setClickTarget] = useState<ChartClickTarget | null>(null);
 
-  const handleVisualizationClick = useCallback((clicked: ClickObject | null) => {
-    if (!clicked?.event) {
-      return;
-    }
-    const segment = getClickedSegmentValue(clicked);
-    if (segment == null || segment.value == null) {
-      return;
-    }
-    setClickTarget({
-      value: segment.value,
-      label: String(segment.value),
-      columnName: segment.column?.display_name,
-      x: clicked.event.clientX,
-      y: clicked.event.clientY,
-    });
-  }, []);
+  const handleVisualizationClick = useCallback(
+    (clicked: ClickObject | null) => {
+      if (!clicked?.event) {
+        return;
+      }
+      const segment = getClickedSegmentValue(clicked);
+      if (segment == null || segment.value == null) {
+        return;
+      }
+      setClickTarget({
+        value: segment.value,
+        label: String(segment.value),
+        columnName: segment.column?.display_name,
+        x: clicked.event.clientX,
+        y: clicked.event.clientY,
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     const subscriptions = queryIds.map((id) =>
@@ -237,7 +244,9 @@ function ExplorationGroupVisualizationChart({
   }, [highlightValue, seriesGroup]);
 
   const toggleHighlight = useCallback((value: RowValue) => {
-    setHighlightValue((prev) => (String(prev) === String(value) ? null : value));
+    setHighlightValue((prev) =>
+      String(prev) === String(value) ? null : value,
+    );
   }, []);
 
   // When arriving via a deep-link to a comment that captured a chart point
@@ -268,6 +277,35 @@ function ExplorationGroupVisualizationChart({
       setHighlightValue(value as RowValue);
     }
   }, [location.hash, commentsData, page.id]);
+
+  // Open, element-scoped comments grouped by the segment value they're about, so each point can
+  // float its commenters' avatars. Non-anchorable charts (maps, tables) resolve to no point and
+  // the overlay simply stays empty.
+  const segmentComments = useMemo<SegmentComment[]>(() => {
+    const comments = commentsData?.comments;
+    if (!comments) {
+      return [];
+    }
+    const byValue = new Map<string, SegmentComment>();
+    for (const comment of comments) {
+      const isPageComment = String(comment.child_target_id) === String(page.id);
+      const value = comment.context?.segment_value as RowValue | undefined;
+      const hasSegment = value != null && value !== "";
+      if (
+        !isPageComment ||
+        comment.deleted_at ||
+        comment.is_resolved ||
+        !hasSegment
+      ) {
+        continue;
+      }
+      const key = String(value);
+      const entry = byValue.get(key) ?? { value, comments: [] };
+      entry.comments.push(comment);
+      byValue.set(key, entry);
+    }
+    return [...byValue.values()];
+  }, [commentsData, page.id]);
 
   const renderCommentExtra = useCallback(
     (comment: Comment) => {
@@ -327,7 +365,9 @@ function ExplorationGroupVisualizationChart({
               c={isHighlighted ? "brand" : "text-secondary"}
               className={S.commentTimelineBadge}
               aria-pressed={isHighlighted}
-              onClick={() => segmentValue != null && toggleHighlight(segmentValue)}
+              onClick={() =>
+                segmentValue != null && toggleHighlight(segmentValue)
+              }
             >
               <Group gap={4} wrap="nowrap">
                 <Icon name="filter" size={12} />
@@ -393,6 +433,7 @@ function ExplorationGroupVisualizationChart({
               stackCount={stackCount}
               onVisualizationClick={handleVisualizationClick}
               hovered={hoveredObject}
+              segmentComments={segmentComments}
             />
           ) : series[0].card.display === "table" ? (
             <ExplorationHeatMap
@@ -461,12 +502,14 @@ interface ExplorationCartesianChartProps {
   stackCount?: number;
   onVisualizationClick?: (clicked: ClickObject | null) => void;
   hovered?: HoveredObject | null;
+  segmentComments?: SegmentComment[];
 }
 
 function ExplorationCartesianChart({
   series,
   onVisualizationClick,
   hovered,
+  segmentComments,
 }: ExplorationCartesianChartProps) {
   return (
     <ExplorationVisualization
@@ -474,6 +517,7 @@ function ExplorationCartesianChart({
       className={S.chart}
       onVisualizationClick={onVisualizationClick}
       hovered={hovered}
+      segmentComments={segmentComments}
     />
   );
 }
@@ -590,6 +634,7 @@ interface ExplorationVisualizationProps {
   className?: string;
   onVisualizationClick?: (clicked: ClickObject | null) => void;
   hovered?: HoveredObject | null;
+  segmentComments?: SegmentComment[];
 }
 
 export function ExplorationVisualization({
@@ -597,11 +642,13 @@ export function ExplorationVisualization({
   className,
   onVisualizationClick,
   hovered,
+  segmentComments,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <Box w="100%" h="100%" pos="relative">
+    <Box w="100%" h="100%" pos="relative" ref={containerRef}>
       <Warnings warnings={warnings} className={S.warnings} size={18} />
       <Visualization
         rawSeries={rawSeries}
@@ -611,6 +658,13 @@ export function ExplorationVisualization({
         handleVisualizationClick={onVisualizationClick}
         hovered={hovered}
       />
+      {segmentComments && segmentComments.length > 0 && (
+        <ChartCommentAvatars
+          containerRef={containerRef}
+          series={rawSeries}
+          segmentComments={segmentComments}
+        />
+      )}
     </Box>
   );
 }

@@ -169,11 +169,7 @@ interface MenuRowProps {
 
 function MenuRow({ icon, label, disabled, onClick }: MenuRowProps) {
   return (
-    <UnstyledButton
-      className={S.menuRow}
-      disabled={disabled}
-      onClick={onClick}
-    >
+    <UnstyledButton className={S.menuRow} disabled={disabled} onClick={onClick}>
       <Group gap="sm" wrap="nowrap">
         <Icon name={icon} size={16} />
         <Text fw="bold" size="sm" c="inherit">

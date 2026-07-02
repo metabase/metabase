@@ -110,6 +110,15 @@ interface SelectedPageId {
 
 export type SelectedEntityId = SelectedDocumentId | SelectedPageId;
 
+function getFirstThreadPageId(thread: ExplorationThread): string | null {
+  for (const block of thread.blocks ?? []) {
+    for (const page of block.pages ?? []) {
+      return String(page.id);
+    }
+  }
+  return null;
+}
+
 export function ExplorationPage({
   params,
   route,
@@ -155,6 +164,9 @@ export function ExplorationPage({
   const [shouldPoll, setShouldPoll] = useState(true);
   const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // A new turn (e.g. "Explore further") started while a filtered tab is active lands in "All" but
+  // is hidden by the current filter — flag it so the "All" tab shows a dot until the user visits it.
+  const [hasUnviewedTurnInAll, setHasUnviewedTurnInAll] = useState(false);
 
   const {
     data: exploration,
@@ -303,6 +315,71 @@ export function ExplorationPage({
       });
     }
   }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
+
+  // Navigate to a freshly-started thread on the "All" tab (where it's always visible), landing on
+  // its first page.
+  const goToTurnInAll = useCallback(
+    (thread: ExplorationThread) => {
+      const firstPageId = getFirstThreadPageId(thread);
+      const nextSearchParams = new URLSearchParams(location.search);
+      nextSearchParams.set("tab", "all");
+      const base = Urls.exploration(Number(params.id));
+      const url =
+        firstPageId != null
+          ? `${base}/page/${encodeURIComponent(firstPageId)}?${nextSearchParams.toString()}`
+          : `${base}?${nextSearchParams.toString()}`;
+      dispatch(push(url));
+    },
+    [dispatch, location.search, params.id],
+  );
+
+  // Detect turns (threads) added since we last saw the exploration. A turn started from a filtered
+  // tab (Stars/Discussions) is hidden by that filter, so flag the "All" tab with a dot and offer a
+  // toast that jumps there. On the "All" tab it's already visible — no dot, no toast.
+  const seenThreadIdsRef = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    const threads = exploration?.threads;
+    if (!threads) {
+      return;
+    }
+    if (seenThreadIdsRef.current == null) {
+      // First load: remember existing threads so we don't announce them as new.
+      seenThreadIdsRef.current = new Set(threads.map((thread) => thread.id));
+      return;
+    }
+    const seen = seenThreadIdsRef.current;
+    const newThreads = threads.filter((thread) => !seen.has(thread.id));
+    if (newThreads.length === 0) {
+      return;
+    }
+    newThreads.forEach((thread) => seen.add(thread.id));
+    if (selectedSidebarTab === "all") {
+      return;
+    }
+    setHasUnviewedTurnInAll(true);
+    const newestTurn = newThreads[newThreads.length - 1];
+    sendToast({
+      icon: "bolt",
+      message: newestTurn.name
+        ? c("{0} is the name of a new research thread")
+            .t`${newestTurn.name} added to All`
+        : t`New research added to All`,
+      actionLabel: t`View`,
+      action: () => goToTurnInAll(newestTurn),
+    });
+  }, [exploration, selectedSidebarTab, sendToast, goToTurnInAll]);
+
+  // Once the user is on the "All" tab the new turn is visible, so drop the dot.
+  useEffect(() => {
+    if (selectedSidebarTab === "all") {
+      setHasUnviewedTurnInAll(false);
+    }
+  }, [selectedSidebarTab]);
+
+  const tabsWithNewContent = useMemo<ReadonlySet<ExplorationSidebarTab>>(
+    () => (hasUnviewedTurnInAll ? new Set(["all"]) : new Set()),
+    [hasUnviewedTurnInAll],
+  );
 
   const pageIdToPageAndQueries: Map<
     ExplorationPageNodeId,
@@ -460,6 +537,7 @@ export function ExplorationPage({
             exploration={exploration}
             explorationSidebarTabsInfo={explorationSidebarTabsInfo}
             selectedSidebarTab={selectedSidebarTab}
+            tabsWithNewContent={tabsWithNewContent}
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
             selectedEntityId={selectedEntityId}
