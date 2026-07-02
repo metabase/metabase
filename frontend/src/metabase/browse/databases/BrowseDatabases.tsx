@@ -84,7 +84,7 @@ export const BrowseDatabases = () => {
 const CardImageWrapper = ({ database }: { database: string }) => {
   return (
     <Box
-      bg="white"
+      bg="core-white"
       h="xl"
       w="xl"
       className={CS.rounded}

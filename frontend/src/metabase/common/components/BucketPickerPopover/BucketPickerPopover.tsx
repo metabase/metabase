@@ -100,7 +100,7 @@ export function BucketPickerPopover({
           h="auto"
           py={0}
           variant="subtle"
-          color="white"
+          color="core-white"
           classNames={{ label: S.triggerButtonLabel }}
         >
           <Ellipsified>{triggerLabel}</Ellipsified>

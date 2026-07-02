@@ -100,7 +100,7 @@ export const SidebarHeader = ({
               </Menu.Item>
               {notification?.active && (
                 <Menu.Item
-                  c="danger"
+                  c="feedback-negative"
                   leftSection={<Icon name="trash" />}
                   onClick={() => onDelete(notification)}
                 >

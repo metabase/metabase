@@ -252,7 +252,7 @@ export function EditorPanel({
           <Button
             mt="lg"
             variant="subtle"
-            color="error"
+            color="feedback-negative"
             px={0}
             leftSection={<Icon name="trash" size={16} />}
             onClick={onDelete}

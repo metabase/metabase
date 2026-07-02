@@ -310,13 +310,16 @@ export const getSubmitButtonColor = (
   action: WritebackAction,
 ): ButtonProps["color"] => {
   if (isImplicitDeleteAction(action)) {
-    return "error";
+    return "feedback-negative";
   }
 
+  // The match keys are persisted `submitButtonColor` setting values, not tokens;
+  // only the returned color tokens are migrated to the new names.
   return match(action.visualization_settings?.submitButtonColor)
     .returnType<ButtonProps["color"]>()
-    .with("danger", () => "error")
-    .with("success", "warning", (color) => color)
+    .with("danger", () => "feedback-negative")
+    .with("success", () => "feedback-positive")
+    .with("warning", () => "feedback-warning")
     .otherwise(() => "brand");
 };
 

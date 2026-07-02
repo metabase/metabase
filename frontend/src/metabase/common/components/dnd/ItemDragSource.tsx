@@ -154,7 +154,7 @@ export function ItemDragSource(props: ItemDragSourceProps) {
     sendToast({
       message: getErrorMessage(error),
       icon: "warning_triangle_filled",
-      iconColor: "warning",
+      iconColor: "feedback-warning",
     });
   return (
     <DragSourceComponent

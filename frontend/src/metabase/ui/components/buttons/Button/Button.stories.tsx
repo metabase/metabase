@@ -152,7 +152,7 @@ export const DefaultSizeCustomColor = {
   render: GridTemplate,
   name: "Default size, custom color",
   args: {
-    color: "error",
+    color: "feedback-negative",
   },
 };
 
@@ -210,7 +210,7 @@ export const CompactSizeCustomColor = {
   render: GridTemplate,
   name: "Compact size, custom color",
   args: {
-    color: "error",
+    color: "feedback-negative",
     size: "compact-md",
   },
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
