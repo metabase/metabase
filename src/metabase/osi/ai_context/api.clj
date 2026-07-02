@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -33,6 +34,16 @@
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
+
+(def ^:private AiContextInput
+  "Accepted write shape for `ai_context` — the OSI `AIContext` oneOf.
+
+  It is either an [[AiContext]] object or the bare-string shorthand. `:decode/api` folds the string into
+  `{:instructions s}` before validation, so:
+
+    - a string is length-capped as the `:instructions` it becomes, and
+    - validation (and every read) only ever sees the object form."
+  (into [:map {:decode/api osi-ai-context/->ai-context}] (rest AiContext)))
 
 (def ^:private Entry
   "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's
@@ -96,7 +107,7 @@
   upsert keep two concurrent writers from racing in a duplicate row."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
-   {:keys [ai_context]} :- [:map [:ai_context AiContext]]]
+   {:keys [ai_context]} :- [:map [:ai_context AiContextInput]]]
   (api/check-superuser)
   (api/check-400 (contains? writable-entity-types entity-type)
                  "entity_type must be one of: measure, metric, model, segment, table")
