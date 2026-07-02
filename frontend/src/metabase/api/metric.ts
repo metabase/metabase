@@ -16,6 +16,7 @@ import type {
   MetricId,
   RemoveMetricDimensionsRequest,
   SearchMetricDimensionValuesRequest,
+  SetDefaultMetricDimensionRequest,
   UpdateMetricDimensionRequest,
 } from "metabase-types/api";
 
@@ -29,6 +30,12 @@ import {
   provideMetricTags,
 } from "./tags/utils";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
+
+// Curation edits change the dimensions embedded in the metric card itself,
+// so consumers of `getMetric` (tabs, overview grid) must refetch too.
+function metricDimensionInvalidationTags(metricId: MetricId) {
+  return [idTag("metric-dimension", metricId), idTag("card", metricId)];
+}
 
 export const metricApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -105,7 +112,7 @@ export const metricApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { metricId }) =>
-        invalidateTags(error, [idTag("metric-dimension", metricId)]),
+        invalidateTags(error, metricDimensionInvalidationTags(metricId)),
     }),
     removeMetricDimensions: builder.mutation<
       MetricDimension[],
@@ -117,7 +124,19 @@ export const metricApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { metricId }) =>
-        invalidateTags(error, [idTag("metric-dimension", metricId)]),
+        invalidateTags(error, metricDimensionInvalidationTags(metricId)),
+    }),
+    setDefaultMetricDimension: builder.mutation<
+      MetricDimension[],
+      SetDefaultMetricDimensionRequest
+    >({
+      query: ({ metricId, ...body }) => ({
+        method: "POST",
+        url: `/api/metric/${metricId}/dimension/set-default`,
+        body,
+      }),
+      invalidatesTags: (_, error, { metricId }) =>
+        invalidateTags(error, metricDimensionInvalidationTags(metricId)),
     }),
     updateMetricDimension: builder.mutation<
       MetricDimension,
@@ -129,7 +148,7 @@ export const metricApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { metricId }) =>
-        invalidateTags(error, [idTag("metric-dimension", metricId)]),
+        invalidateTags(error, metricDimensionInvalidationTags(metricId)),
     }),
     getMetricBreakoutValues: builder.query<
       MetricBreakoutValuesResponse,
@@ -163,6 +182,7 @@ export const {
   useListMetricDimensionsQuery,
   useAddMetricDimensionsMutation,
   useRemoveMetricDimensionsMutation,
+  useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
   useGetMetricBreakoutValuesQuery,
   useGetMetricDatasetQuery,

@@ -20,25 +20,59 @@ import { MetricDimensions } from "./MetricDimensions";
 
 const METRIC_ID = 1;
 
+const CREATED_AT_ID = "11111111-1111-4111-8111-111111111111";
+const COUNTRY_ID = "22222222-2222-4222-8222-222222222222";
+const SUSPEND_AT_ID = "33333333-3333-4333-8333-333333333333";
+
+const MAIN_GROUP = createMockMetricDimensionGroup({
+  id: "main",
+  type: "main",
+  display_name: "The main table",
+});
+
 const CREATED_AT = createMockMetricDimension({
-  id: "created-at",
+  id: CREATED_AT_ID,
   display_name: "Created At",
   effective_type: "type/DateTime",
   semantic_type: "type/CreationTimestamp",
+  status: "status/active",
+  default: true,
+  group: MAIN_GROUP,
+  sources: [{ type: "field", "field-id": 101 }],
 });
 
 const COUNTRY = createMockMetricDimension({
-  id: "country",
+  id: COUNTRY_ID,
   display_name: "Country",
   effective_type: "type/Text",
   semantic_type: "type/Country",
+  status: "status/active",
+  sources: [{ type: "field", "field-id": 102 }],
+});
+
+const SUSPEND_AT = createMockMetricDimension({
+  id: SUSPEND_AT_ID,
+  display_name: "Suspend At",
+  effective_type: "type/DateTime",
+  semantic_type: null,
+  status: "status/orphaned",
+  sources: [{ type: "field", "field-id": 103 }],
 });
 
 const BILLED_AT = createMockMetricDimension({
-  id: "billed-at",
+  id: "44444444-4444-4444-8444-444444444444",
   display_name: "Billed At",
   effective_type: "type/DateTime",
   semantic_type: null,
+  sources: [{ type: "field", "field-id": 201 }],
+});
+
+const PLAN_NAME = createMockMetricDimension({
+  id: "55555555-5555-4555-8555-555555555555",
+  display_name: "Plan Name",
+  effective_type: "type/Text",
+  semantic_type: null,
+  sources: [{ type: "field", "field-id": 202 }],
 });
 
 const ADDABLE_GROUP = createMockAddableDimensionGroup({
@@ -47,13 +81,30 @@ const ADDABLE_GROUP = createMockAddableDimensionGroup({
     type: "connection",
     display_name: "Some FK-linked table",
   }),
-  dimensions: [BILLED_AT],
+  dimensions: [BILLED_AT, PLAN_NAME],
+});
+
+const SELF_ADDABLE_COLUMN = createMockMetricDimension({
+  id: "66666666-6666-4666-8666-666666666666",
+  display_name: "Plan Updated At",
+  effective_type: "type/DateTime",
+  semantic_type: null,
+  sources: [{ type: "field", "field-id": 104 }],
+});
+
+const SELF_ADDABLE_GROUP = createMockAddableDimensionGroup({
+  group: createMockMetricDimensionGroup({
+    id: "main",
+    type: "main",
+    display_name: "The main table",
+  }),
+  dimensions: [SELF_ADDABLE_COLUMN],
 });
 
 function setup(response?: Partial<ListMetricDimensionsResponse>) {
   const fullResponse: ListMetricDimensionsResponse = {
-    added: [CREATED_AT, COUNTRY],
-    addable: [ADDABLE_GROUP],
+    added: [CREATED_AT, COUNTRY, SUSPEND_AT],
+    addable: [SELF_ADDABLE_GROUP, ADDABLE_GROUP],
     ...response,
   };
   setupMetricDimensionsEndpoints(METRIC_ID, fullResponse);
@@ -62,6 +113,15 @@ function setup(response?: Partial<ListMetricDimensionsResponse>) {
 
 function getListPanel() {
   return within(screen.getByTestId("metric-dimension-list"));
+}
+
+function getDimensionRow(name: string) {
+  return within(screen.getByTestId(`dimension-row-${name}`));
+}
+
+async function openSettings(name: RegExp) {
+  await userEvent.click(getListPanel().getByRole("button", { name }));
+  return screen.findByTestId("dimension-settings-panel");
 }
 
 async function getPostBody(path: string) {
@@ -98,6 +158,30 @@ describe("MetricDimensions", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("marks the default dimension with a badge", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      getDimensionRow("Created At").getByText("Default"),
+    ).toBeInTheDocument();
+    expect(
+      getDimensionRow("Country").queryByText("Default"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("marks orphaned dimensions with a warning", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      getDimensionRow("Suspend At").getByLabelText("warning icon"),
+    ).toBeInTheDocument();
+    expect(
+      getDimensionRow("Created At").queryByLabelText("warning icon"),
+    ).not.toBeInTheDocument();
+  });
+
   it("removes selected dimensions", async () => {
     setup();
     await waitForLoaderToBeRemoved();
@@ -110,11 +194,11 @@ describe("MetricDimensions", () => {
     await waitFor(async () => {
       expect(
         await getPostBody(`path:/api/metric/${METRIC_ID}/dimension/remove`),
-      ).toEqual({ dimension_ids: ["created-at"] });
+      ).toEqual({ dimension_ids: [CREATED_AT_ID] });
     });
   });
 
-  it("adds a dimension from the addable list", async () => {
+  it("adds a joined-table dimension with a table-prefixed title", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -133,7 +217,29 @@ describe("MetricDimensions", () => {
     await waitFor(async () => {
       expect(
         await getPostBody(`path:/api/metric/${METRIC_ID}/dimension/add`),
-      ).toEqual({ dimensions: [BILLED_AT] });
+      ).toEqual({
+        dimensions: [
+          { ...BILLED_AT, display_name: "Some FK-linked table - Billed At" },
+        ],
+      });
+    });
+  });
+
+  it("keeps the plain title for a self-table dimension", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    const addPanel = within(await screen.findByTestId("add-dimensions-panel"));
+    await userEvent.click(
+      await addPanel.findByRole("button", { name: /Plan Updated At/ }),
+    );
+
+    await waitFor(async () => {
+      expect(
+        await getPostBody(`path:/api/metric/${METRIC_ID}/dimension/add`),
+      ).toEqual({ dimensions: [SELF_ADDABLE_COLUMN] });
     });
   });
 
@@ -141,13 +247,7 @@ describe("MetricDimensions", () => {
     setup();
     await waitForLoaderToBeRemoved();
 
-    await userEvent.click(
-      getListPanel().getByRole("button", { name: /Created At/ }),
-    );
-
-    const settings = within(
-      await screen.findByTestId("dimension-settings-panel"),
-    );
+    const settings = within(await openSettings(/Created At/));
     expect(settings.getByText("Settings for Created At")).toBeInTheDocument();
 
     const nameInput = settings.getByLabelText("Display name");
@@ -157,10 +257,75 @@ describe("MetricDimensions", () => {
 
     await waitFor(async () => {
       const body = await getPostBody(
-        `path:/api/metric/${METRIC_ID}/dimension/created-at`,
+        `path:/api/metric/${METRIC_ID}/dimension/${CREATED_AT_ID}`,
       );
       expect(body.display_name).toBe("Creation date");
     });
+  });
+
+  it("sets a dimension as the default", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Country/));
+    await userEvent.click(
+      settings.getByRole("button", { name: "Set as default dimension" }),
+    );
+
+    await waitFor(async () => {
+      expect(
+        await getPostBody(
+          `path:/api/metric/${METRIC_ID}/dimension/set-default`,
+        ),
+      ).toEqual({ dimension_id: COUNTRY_ID });
+    });
+  });
+
+  it("does not offer set-default for the current default dimension", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    expect(settings.getByText("Default dimension")).toBeInTheDocument();
+    expect(
+      settings.queryByRole("button", { name: "Set as default dimension" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not offer set-default for orphaned dimensions", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Suspend At/));
+    expect(
+      settings.queryByRole("button", { name: "Set as default dimension" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("displays the dimension type", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    const typeField = within(settings.getByTestId("dimension-type"));
+    expect(typeField.getByText("Dimension type")).toBeInTheDocument();
+    expect(typeField.getByText("Date")).toBeInTheDocument();
+  });
+
+  it("displays the source column read-only as table.column", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    const sourceField = within(settings.getByTestId("dimension-source"));
+
+    expect(sourceField.getByText("Source column")).toBeInTheDocument();
+    expect(
+      sourceField.getByText("The main table.Created At"),
+    ).toBeInTheDocument();
+    expect(
+      settings.queryByRole("textbox", { name: "Source column" }),
+    ).not.toBeInTheDocument();
   });
 
   it("searches the added dimensions", async () => {

@@ -56,3 +56,45 @@
 .addableRow:hover {
   background-color: var(--mb-color-background-hover);
 }
+
+.accordion .item,
+.accordion .item[data-active] {
+  border: none;
+  border-radius: var(--mantine-radius-md);
+}
+
+.accordion .item + .item {
+  margin-top: var(--mantine-spacing-sm);
+}
+
+.accordion .control {
+  padding: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background-secondary);
+}
+
+.accordion .control:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.accordion .label {
+  padding: 0;
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  font-size: var(--mantine-font-size-md);
+  line-height: normal;
+}
+
+.accordion .chevron {
+  width: auto;
+  height: auto;
+  margin-left: var(--mantine-spacing-sm);
+  border: none;
+  border-radius: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.accordion .content {
+  padding: var(--mantine-spacing-sm) 0 0 var(--mantine-spacing-lg);
+  border-top: none;
+}

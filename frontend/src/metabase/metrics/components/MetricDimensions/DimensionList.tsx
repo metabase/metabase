@@ -51,11 +51,13 @@ export function DimensionList({
     <Stack gap="md" className={S.column} data-testid="metric-dimension-list">
       <Group justify="space-between" wrap="nowrap" align="center">
         <Title order={4}>{t`Add, remove, edit, or reorder dimensions`}</Title>
-        <Group gap="sm" wrap="nowrap">
+        <Group gap="md" wrap="nowrap" align="center">
           {hasChecked && (
             <ActionIcon
               aria-label={t`Remove`}
-              variant="subtle"
+              variant="viewHeader"
+              bd="1px solid border"
+              size="lg"
               onClick={onRemove}
             >
               <Icon name="trash" />
@@ -76,7 +78,7 @@ export function DimensionList({
         onChange={(event) => onSearchChange(event.currentTarget.value)}
       />
 
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <ScrollArea className={S.scrollArea}>
           <Stack gap="sm">
             {dimensions.map((dimension) => (

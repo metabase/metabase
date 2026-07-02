@@ -40,6 +40,11 @@ export function setupMetricDimensionsEndpoints(
     response.added,
     { name: `metric-${metricId}-dimensions-remove` },
   );
+  fetchMock.post(
+    `path:/api/metric/${metricId}/dimension/set-default`,
+    response.added,
+    { name: `metric-${metricId}-dimensions-set-default` },
+  );
   response.added.forEach((dimension) => {
     fetchMock.post(
       `path:/api/metric/${metricId}/dimension/${encodeURIComponent(dimension.id)}`,

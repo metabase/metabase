@@ -1,9 +1,21 @@
+import { t } from "ttag";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
+import { COORDINATE, LOCATION } from "metabase-lib/v1/types/constants";
+import {
+  isBoolean,
+  isCategory,
+  isDate,
+  isFieldType,
+  isNumeric,
+  isString,
+  isStringLike,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   IconName,
   MetricDimension,
-  MetricDimensionSource,
+  MetricDimensionGroup,
 } from "metabase-types/api";
 
 export function getDimensionIcon(dimension: MetricDimension): IconName {
@@ -15,20 +27,70 @@ export function getDimensionIcon(dimension: MetricDimension): IconName {
   );
 }
 
-export interface DimensionSourceOption {
-  value: string;
-  label: string;
-  source: MetricDimensionSource;
+export type DimensionTypeKey =
+  | "date"
+  | "geolocation"
+  | "category"
+  | "number"
+  | "other";
+
+export function getDimensionTypeKey(
+  dimension: MetricDimension,
+): DimensionTypeKey {
+  if (isDate(dimension)) {
+    return "date";
+  }
+  if (isFieldType(LOCATION, dimension) || isFieldType(COORDINATE, dimension)) {
+    return "geolocation";
+  }
+  if (
+    isCategory(dimension) ||
+    isString(dimension) ||
+    isStringLike(dimension) ||
+    isBoolean(dimension)
+  ) {
+    return "category";
+  }
+  if (isNumeric(dimension)) {
+    return "number";
+  }
+  return "other";
 }
 
-// Source columns currently lack a backend-provided display label, so we fall
-// back to the field id until that lands.
-export function getDimensionSourceOptions(
+export function getDimensionTypeLabel(dimension: MetricDimension): string {
+  switch (getDimensionTypeKey(dimension)) {
+    case "date":
+      return t`Date`;
+    case "geolocation":
+      return t`Location`;
+    case "category":
+      return t`Category`;
+    case "number":
+      return t`Number`;
+    case "other":
+      return t`Other`;
+  }
+}
+
+export function isOrphaned(dimension: MetricDimension): boolean {
+  return dimension.status === "status/orphaned";
+}
+
+export function getNewDimensionTitle(
+  group: MetricDimensionGroup,
   dimension: MetricDimension,
-): DimensionSourceOption[] {
-  return (dimension.sources ?? []).map((source) => ({
-    value: String(source["field-id"]),
-    label: String(source["field-id"]),
-    source,
-  }));
+): string {
+  return group.type === "connection"
+    ? `${group.display_name} - ${dimension.display_name}`
+    : dimension.display_name;
+}
+
+export function getSourceColumnLabel(
+  dimension: MetricDimension,
+): string | null {
+  if (!dimension.sources?.length) {
+    return null;
+  }
+  const table = dimension.group?.display_name;
+  return table ? `${table}.${dimension.display_name}` : dimension.display_name;
 }

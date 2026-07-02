@@ -6,9 +6,11 @@ import {
   useListMetricDimensionsQuery,
   useRemoveMetricDimensionsMutation,
 } from "metabase/api/metric";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Divider, Flex, Paper } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { DimensionId, MetricId } from "metabase-types/api";
 
 import { AddDimensionsPanel } from "./AddDimensionsPanel";
@@ -31,9 +33,10 @@ export function MetricDimensions({ metricId }: MetricDimensionsProps) {
   const [checkedIds, setCheckedIds] = useState<Set<DimensionId>>(new Set());
   const [mode, setMode] = useState<DetailMode>({ type: "idle" });
 
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
   const { data, isLoading, error } = useListMetricDimensionsQuery({
     metricId,
-    query: search || undefined,
+    query: debouncedSearch || undefined,
   });
   const [removeDimensions] = useRemoveMetricDimensionsMutation();
 

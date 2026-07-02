@@ -14,6 +14,7 @@ export type {
   MetricDimension,
   MetricDimensionGroup,
   MetricDimensionSource,
+  MetricDimensionStatus,
 } from "./measure";
 
 export type MetricId = number;
@@ -141,6 +142,11 @@ export type AddMetricDimensionsRequest = {
 export type RemoveMetricDimensionsRequest = {
   metricId: MetricId;
   dimension_ids: DimensionId[];
+};
+
+export type SetDefaultMetricDimensionRequest = {
+  metricId: MetricId;
+  dimension_id: DimensionId;
 };
 
 export type UpdateMetricDimensionRequest = {

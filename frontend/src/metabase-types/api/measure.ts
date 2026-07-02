@@ -17,12 +17,16 @@ export type MetricDimensionSource = {
   "field-id": number;
 };
 
+export type MetricDimensionStatus = "status/active" | "status/orphaned";
+
 export type MetricDimension = {
   id: DimensionId;
   display_name: string;
   description?: string | null;
   effective_type: string;
   semantic_type: string | null;
+  default?: boolean;
+  status?: MetricDimensionStatus;
   group?: MetricDimensionGroup;
   sources?: MetricDimensionSource[];
 };

@@ -14,6 +14,7 @@ export const createMockMetricDimension = (
   description: null,
   effective_type: "type/Text",
   semantic_type: null,
+  default: false,
   ...opts,
 });
 

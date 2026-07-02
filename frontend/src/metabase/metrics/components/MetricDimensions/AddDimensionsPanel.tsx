@@ -6,6 +6,7 @@ import {
   useListMetricDimensionsQuery,
 } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -21,10 +22,15 @@ import {
   Title,
   UnstyledButton,
 } from "metabase/ui";
-import type { MetricDimension, MetricId } from "metabase-types/api";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import type {
+  MetricDimension,
+  MetricDimensionGroup,
+  MetricId,
+} from "metabase-types/api";
 
 import S from "./MetricDimensions.module.css";
-import { getDimensionIcon } from "./utils";
+import { getDimensionIcon, getNewDimensionTitle } from "./utils";
 
 interface AddDimensionsPanelProps {
   metricId: MetricId;
@@ -36,22 +42,31 @@ export function AddDimensionsPanel({
   onDone,
 }: AddDimensionsPanelProps) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
   const dispatch = useDispatch();
   const { data, isLoading, error } = useListMetricDimensionsQuery({
     metricId,
     with_addable: true,
-    query: search || undefined,
+    query: debouncedSearch || undefined,
   });
   const [addDimensions] = useAddMetricDimensionsMutation();
 
   const groups = data?.addable ?? [];
   const groupIds = groups.map(({ group }) => group.id);
 
-  const handleAdd = async (dimension: MetricDimension) => {
+  const handleAdd = async (
+    group: MetricDimensionGroup,
+    dimension: MetricDimension,
+  ) => {
     try {
       await addDimensions({
         metricId,
-        dimensions: [dimension],
+        dimensions: [
+          {
+            ...dimension,
+            display_name: getNewDimensionTitle(group, dimension),
+          },
+        ],
       }).unwrap();
     } catch {
       dispatch(addUndo({ message: t`Couldn't add ${dimension.display_name}` }));
@@ -78,12 +93,26 @@ export function AddDimensionsPanel({
         onChange={(event) => setSearch(event.currentTarget.value)}
       />
 
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <ScrollArea className={S.scrollArea}>
-          <Accordion key={groupIds.join(",")} multiple defaultValue={groupIds}>
+          <Accordion
+            key={groupIds.join(",")}
+            className={S.accordion}
+            classNames={{
+              item: S.item,
+              control: S.control,
+              label: S.label,
+              chevron: S.chevron,
+              content: S.content,
+            }}
+            multiple
+            defaultValue={groupIds}
+          >
             {groups.map(({ group, dimensions }) => (
               <Accordion.Item key={group.id} value={group.id}>
-                <Accordion.Control icon={<Icon name="table" />}>
+                <Accordion.Control
+                  icon={<Icon name="table" c="text-secondary" />}
+                >
                   {group.display_name}
                 </Accordion.Control>
                 <Accordion.Panel>
@@ -92,7 +121,7 @@ export function AddDimensionsPanel({
                       <UnstyledButton
                         key={dimension.id}
                         className={S.addableRow}
-                        onClick={() => handleAdd(dimension)}
+                        onClick={() => handleAdd(group, dimension)}
                       >
                         <Group gap="sm" wrap="nowrap">
                           <Icon

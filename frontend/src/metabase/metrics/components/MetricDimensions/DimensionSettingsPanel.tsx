@@ -1,10 +1,23 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateMetricDimensionMutation } from "metabase/api/metric";
+import {
+  useSetDefaultMetricDimensionMutation,
+  useUpdateMetricDimensionMutation,
+} from "metabase/api/metric";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Select, Stack, TextInput, Textarea, Title } from "metabase/ui";
+import {
+  Button,
+  Group,
+  Icon,
+  Input,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
+} from "metabase/ui";
 import type {
   MetricDimension,
   MetricId,
@@ -12,7 +25,12 @@ import type {
 } from "metabase-types/api";
 
 import S from "./MetricDimensions.module.css";
-import { getDimensionSourceOptions } from "./utils";
+import {
+  getDimensionIcon,
+  getDimensionTypeLabel,
+  getSourceColumnLabel,
+  isOrphaned,
+} from "./utils";
 
 type DimensionChanges = Omit<
   UpdateMetricDimensionRequest,
@@ -30,14 +48,12 @@ export function DimensionSettingsPanel({
 }: DimensionSettingsPanelProps) {
   const dispatch = useDispatch();
   const [updateDimension] = useUpdateMetricDimensionMutation();
+  const [setDefaultDimension] = useSetDefaultMetricDimensionMutation();
 
   const [displayName, setDisplayName] = useState(dimension.display_name);
   const [description, setDescription] = useState(dimension.description ?? "");
 
-  const sourceOptions = getDimensionSourceOptions(dimension);
-  const [sourceValue, setSourceValue] = useState<string | null>(
-    sourceOptions[0]?.value ?? null,
-  );
+  const sourceColumnLabel = getSourceColumnLabel(dimension);
 
   const persist = async (changes: DimensionChanges) => {
     try {
@@ -65,11 +81,18 @@ export function DimensionSettingsPanel({
     }
   };
 
-  const handleSourceChange = (value: string | null) => {
-    setSourceValue(value);
-    const option = sourceOptions.find((candidate) => candidate.value === value);
-    if (option) {
-      persist({ source: option.source });
+  const handleSetDefault = async () => {
+    try {
+      await setDefaultDimension({
+        metricId,
+        dimension_id: dimension.id,
+      }).unwrap();
+    } catch {
+      dispatch(
+        addUndo({
+          message: t`Couldn't make ${dimension.display_name} the default`,
+        }),
+      );
     }
   };
 
@@ -94,13 +117,30 @@ export function DimensionSettingsPanel({
         onBlur={handleDescriptionBlur}
       />
 
-      {sourceOptions.length > 0 && (
-        <Select
-          label={t`Source column`}
-          data={sourceOptions.map(({ value, label }) => ({ value, label }))}
-          value={sourceValue}
-          onChange={handleSourceChange}
-        />
+      <Input.Wrapper label={t`Dimension type`} data-testid="dimension-type">
+        <Group gap="sm">
+          <Icon name={getDimensionIcon(dimension)} c="text-secondary" />
+          <Text>{getDimensionTypeLabel(dimension)}</Text>
+        </Group>
+      </Input.Wrapper>
+
+      {sourceColumnLabel && (
+        <Input.Wrapper label={t`Source column`} data-testid="dimension-source">
+          <Text>{sourceColumnLabel}</Text>
+        </Input.Wrapper>
+      )}
+
+      {dimension.default ? (
+        <Group gap="xs">
+          <Icon name="star_filled" c="brand" />
+          <Text fw="bold">{t`Default dimension`}</Text>
+        </Group>
+      ) : (
+        !isOrphaned(dimension) && (
+          <Button variant="default" onClick={handleSetDefault}>
+            {t`Set as default dimension`}
+          </Button>
+        )
       )}
     </Stack>
   );
