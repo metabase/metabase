@@ -141,6 +141,10 @@
         (let [frame-src (csp-directive-for uri "frame-src")]
           (is (str/includes? frame-src "'self'") uri)
           (is (str/includes? frame-src "https://example.com") uri)))))
+  (testing "with no allowed_hosts, frame-src stays the base iframe-hosts list (no app hosts added)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= (csp-directive-for "/embed/data-app/sales" "frame-src")
+             (csp-directive-for "/embed/dashboard/abc" "frame-src")))))
   (testing "non-data-app documents don't get app hosts in frame-src"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
       (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "frame-src")
@@ -151,6 +155,10 @@
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
       (is (str/includes? (csp-directive-for "/embed/data-app/sales" "connect-src")
                          "https://api.example.com"))))
+  (testing "with no allowed_hosts, the iframe connect-src has no app hosts (same as any doc)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= (csp-directive-for "/embed/data-app/sales" "connect-src")
+             (csp-directive-for "/embed/dashboard/abc" "connect-src")))))
   (testing "non-data-app documents don't get app hosts in connect-src"
     (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
       (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "connect-src")
