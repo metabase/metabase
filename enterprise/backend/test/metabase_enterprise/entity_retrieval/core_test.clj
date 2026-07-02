@@ -40,11 +40,17 @@
                 :model-name        "all-MiniLM-L6-v2"
                 :vector-dimensions 384}
                (#'entity-retrieval.core/configured-model))))
-      (mt/with-temporary-setting-values [ee-library-embedding-model "text-embedding-3-small"]
+      (mt/with-temporary-setting-values [ee-library-embedding-model      "text-embedding-3-small"
+                                         ee-library-embedding-model-dimensions 1536]
         (is (= {:provider          "ai-service"
                 :model-name        "text-embedding-3-small"
-                :vector-dimensions 1024}
+                :vector-dimensions 1536}
                (#'entity-retrieval.core/configured-model)))))
+    (testing "overriding the model without its dimensions fails loudly instead of poisoning the index"
+      (mt/with-temporary-setting-values [ee-library-embedding-model "all-MiniLM-L6-v2"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"ee-library-embedding-model-dimensions"
+                              (#'entity-retrieval.core/configured-model)))))
     (testing "the provider override validates like the global setting"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid embedding provider"
