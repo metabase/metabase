@@ -8,7 +8,6 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import { api } from "metabase/api/client";
 import { datasetApi } from "metabase/api/dataset";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
@@ -17,6 +16,7 @@ import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getTokenFeature } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
+import { getBasename } from "metabase/utils/basename";
 import { openSaveDialog } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import { isJWT } from "metabase/utils/jwt";
@@ -580,7 +580,10 @@ export function getDatasetDownloadUrl(
   url: string,
   params?: URLSearchParams | string,
 ) {
-  url = url.replace(api.basename, ""); // make url relative if it's not
+  const basename = getBasename();
+  if (basename && url.startsWith(basename)) {
+    url = url.slice(basename.length); // make url relative if it's not
+  }
   if (params) {
     url += `?${params.toString()}`;
   }

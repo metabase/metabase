@@ -1,6 +1,8 @@
 import fetchMock from "fetch-mock";
 
+import { setupBasename } from "__support__/basename";
 import { PLUGIN_API, reinitialize } from "metabase/plugins";
+import { setBasename } from "metabase/utils/basename";
 
 import { ApiClient } from "./client";
 
@@ -280,6 +282,8 @@ describe("api", () => {
   describe("status-code event emit", () => {
     let apiInstance: ApiClient;
 
+    setupBasename();
+
     beforeEach(() => {
       apiInstance = new ApiClient();
     });
@@ -304,7 +308,7 @@ describe("api", () => {
     });
 
     it("strips a subpath basename so listeners see the relative path", async () => {
-      apiInstance.basename = "/metabase";
+      setBasename("/metabase");
       fetchMock.get("path:/metabase/api/session", { status: 401 });
       const listener = jest.fn();
       apiInstance.on(401, listener);
@@ -317,7 +321,7 @@ describe("api", () => {
     });
 
     it("emits the relative path when basename is a full URL (SDK case)", async () => {
-      apiInstance.basename = "https://metabase.example.com";
+      setBasename("https://metabase.example.com");
       fetchMock.get("https://metabase.example.com/api/session", {
         status: 401,
       });
@@ -332,7 +336,7 @@ describe("api", () => {
     });
 
     it("strips the subpath when basename is a full URL with a subpath", async () => {
-      apiInstance.basename = "http://localhost/mb";
+      setBasename("http://localhost/mb");
       fetchMock.get("http://localhost/mb/api/session", { status: 401 });
       const listener = jest.fn();
       apiInstance.on(401, listener);
