@@ -207,3 +207,33 @@
               (extract-aborts! opts)
               (is (some #(re-find #"Segment .* is missing from the source database" %) (map :message (messages)))
                   "the warning reports the unsatisfied Segment reference"))))))))
+
+(deftest dependency-validation-viz-settings-field-ref-test
+  (testing "Export aborts when a field referenced only in visualization_settings is deleted (GHY-4010)"
+    ;; column-setting keys are JSON-encoded field refs (parsed via mb.viz) — a reference the query walkers don't see.
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
+                         :model/Database   {db-id :id}    {:engine :postgres}
+                         :model/Table      {table-id :id} {:db_id db-id :name "T"}
+                         :model/Field      {field-id :id} {:table_id table-id :name "F" :base_type :type/Integer}
+                         :model/Collection {coll-id :id}  {:name "Target Collection"}
+                         :model/Card        _             {:name          "Viz Card"
+                                                           :collection_id coll-id
+                                                           :database_id   db-id
+                                                           :table_id      table-id
+                                                           :query_type    :query
+                                                           :dataset_query {:database db-id
+                                                                           :type     :query
+                                                                           :query    {:source-table table-id}}
+                                                           :visualization_settings
+                                                           {:column_settings {(str "[\"ref\",[\"field\"," field-id ",null]]")
+                                                                              {:column_title "X"}}}}]
+        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
+          (testing "with the field present, the export succeeds"
+            (is (seq (into [] (extract/extract opts)))))
+          (t2/delete! :model/Field field-id)
+          (testing "after the field is deleted, the export aborts on the viz-settings reference"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (extract-aborts! opts)
+              (is (some #(re-find #"Field .* is missing from the source database" %) (map :message (messages)))
+                  "the warning reports the unsatisfied Field reference from visualization_settings"))))))))

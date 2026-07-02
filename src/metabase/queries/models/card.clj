@@ -28,6 +28,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -1450,20 +1451,30 @@
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 (defmethod serdes/serialization-dependencies "Card" [_model-name card]
-  (let [query     (not-empty (:dataset_query card))
-        field-ids (when query
-                    (into (lib/all-field-ids query)
-                          (lib/all-template-tag-field-ids query)))]
+  (let [{:keys [dataset_query database_id result_metadata visualization_settings]} card
+        query           (not-empty dataset_query)
+        query-field-ids (when query
+                          (into (lib/all-field-ids query)
+                                (lib/all-template-tag-field-ids query)))
+        ;; result_metadata columns carry the id of the field they were derived from
+        rmeta-field-ids (filter pos-int? (map :id result_metadata))
+        ;; visualization_settings column-setting keys are JSON-encoded field refs; mb.viz parses them
+        viz-field-ids   (some->> visualization_settings
+                                 mb.viz/db->norm
+                                 ::mb.viz/column-settings
+                                 keys
+                                 (keep ::mb.viz/field-id))
+        field-ids       (into #{} (concat query-field-ids rmeta-field-ids viz-field-ids))]
     (concat
      ;; content deps: derived from descendants so the two can't drift
      (for [[[model id] _] (serdes/descendants "Card" (:id card) nil)]
        {:model model :id id})
      ;; data-model deps: omitted by descendants (import creates tables/fields on the fly), but at export time a missing
-     ;; row can't be turned into a portable reference, so they're existence-checked. All references living in the query
-     ;; are covered here; refs embedded in parameter_mappings / visualization_settings / result_metadata are not yet
-     ;; (see the serialization/deserialization dep-walker unification).
-     (when-let [db-id (:database_id card)]
-       [{:model "Database" :id db-id}])
+     ;; row can't be turned into a portable reference, so they're existence-checked. Field refs are gathered from the
+     ;; query, result_metadata and visualization_settings; refs embedded in parameter_mappings / parameters value
+     ;; fields remain (see the serialization/deserialization dep-walker unification).
+     (when database_id
+       [{:model "Database" :id database_id}])
      (for [table-id (some-> query lib/all-source-table-ids)]
        {:model "Table" :id table-id})
      (for [field-id field-ids]
