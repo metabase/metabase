@@ -1397,21 +1397,6 @@ describe("admin > custom visualizations", () => {
     const pluginSrcPath = `${projectDir}/src/index.tsx`;
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
     let devServerPid: number | null = null;
-    let pristineSrc: string | null = null;
-
-    beforeEach(() => {
-      H.restore("postgres-writable");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.updateSetting("csp-img-enabled", true);
-      H.updateSetting("custom-viz-enabled", true);
-
-      cy.task<{ pid: number }>("startCustomVizDevServer", {
-        cwd: projectDir,
-      }).then(({ pid }) => {
-        devServerPid = pid;
-      });
-    });
 
     before(() => {
       cy.exec(`mkdir -p ${tmpDir}`);
@@ -1422,8 +1407,15 @@ describe("admin > custom visualizations", () => {
           timeout: TIMEOUT,
         },
       );
+    });
 
-      // Scaffold the boilerplate plugin using the init CLI command.
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
+      H.updateSetting("custom-viz-enabled", true);
+
       cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
       cy.exec(
         `cd "${tmpDir}" && node "${cliPath}" init "${CUSTOM_VIZ_DEV_PROJECT_NAME}"`,
@@ -1474,8 +1466,10 @@ describe("admin > custom visualizations", () => {
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
 
-      cy.readFile(pluginSrcPath).then((src) => {
-        pristineSrc = src;
+      cy.task<{ pid: number }>("startCustomVizDevServer", {
+        cwd: projectDir,
+      }).then(({ pid }) => {
+        devServerPid = pid;
       });
     });
 
@@ -1483,11 +1477,6 @@ describe("admin > custom visualizations", () => {
       if (devServerPid != null) {
         cy.task("stopCustomVizDevServer", devServerPid);
         devServerPid = null;
-      }
-
-      // Restore the source the test mutated, so a retry starts from the default.
-      if (pristineSrc != null) {
-        cy.writeFile(pluginSrcPath, pristineSrc);
       }
     });
 
