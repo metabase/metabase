@@ -56,8 +56,8 @@ const failedPluginHashes = new Map<
 
 // Monotonic per-plugin load counters for latest-wins ordering of overlapping
 // dev reloads.
-const loadStartedSeq = new Map<CustomVizPluginId, number>();
-const loadAppliedSeq = new Map<CustomVizPluginId, number>();
+const loadStartedSeqByPluginId = new Map<CustomVizPluginId, number>();
+const loadAppliedSeqByPluginId = new Map<CustomVizPluginId, number>();
 
 /**
  * Remove a previously-loaded custom-viz display from the global
@@ -74,8 +74,8 @@ export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
         PLUGIN_CUSTOM_VIZ.releaseCustomVizAsset(id);
         loadedPlugins.delete(id);
         failedPluginHashes.delete(id);
-        loadStartedSeq.delete(id);
-        loadAppliedSeq.delete(id);
+        loadStartedSeqByPluginId.delete(id);
+        loadAppliedSeqByPluginId.delete(id);
       }
     }
   }
@@ -326,8 +326,8 @@ export async function loadCustomVizPlugin(
 
   ensureVizApi();
 
-  const loadSeq = (loadStartedSeq.get(plugin.id) ?? 0) + 1;
-  loadStartedSeq.set(plugin.id, loadSeq);
+  const loadSeq = (loadStartedSeqByPluginId.get(plugin.id) ?? 0) + 1;
+  loadStartedSeqByPluginId.set(plugin.id, loadSeq);
 
   try {
     const params: Record<string, string> = {};
@@ -349,7 +349,7 @@ export async function loadCustomVizPlugin(
       }
       return res;
     };
-    const isLatest = () => loadStartedSeq.get(plugin.id) === loadSeq;
+    const isLatest = () => loadStartedSeqByPluginId.get(plugin.id) === loadSeq;
 
     const res = await retry(fetchBundle, {
       maxRetries: plugin.dev_bundle_url ? 4 : 0,
@@ -440,15 +440,15 @@ export async function loadCustomVizPlugin(
       identifier,
       hash: currentHash,
     });
-    loadAppliedSeq.set(plugin.id, loadSeq);
+    loadAppliedSeqByPluginId.set(plugin.id, loadSeq);
     failedPluginHashes.delete(plugin.id);
 
     return identifier;
   } catch (error) {
     // Suppress the failure if a newer load has superseded this one
     const superseded =
-      (loadAppliedSeq.get(plugin.id) ?? 0) > loadSeq ||
-      (loadStartedSeq.get(plugin.id) ?? 0) > loadSeq;
+      (loadAppliedSeqByPluginId.get(plugin.id) ?? 0) > loadSeq ||
+      (loadStartedSeqByPluginId.get(plugin.id) ?? 0) > loadSeq;
     if (superseded) {
       return null;
     }
