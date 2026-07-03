@@ -114,6 +114,19 @@
   :parent client
   :show-in-embeds? true)
 
+(deferror timed-out-acquiring-connection
+  "We were unable to acquire a connection to the query's database before the checkout timeout elapsed because the
+  connection pool is saturated. Equivalent of an HTTP 503 (Service Unavailable); this is a transient condition the
+  client may retry. Unlike `unable-to-acquire-connection` it is not a `client` error (the query itself is fine), and
+  unlike a generic `server` error it is expected under load rather than a bug."
+  :parent :error
+  :show-in-embeds? true)
+
+(defn timed-out-acquiring-connection?
+  "Is `error-type` a connection-pool-saturation error, the equivalent of an HTTP 503 status code?"
+  [error-type]
+  (isa? hierarchy error-type timed-out-acquiring-connection))
+
 ;;;; ### Server-Side Errors
 
 (deferror server
