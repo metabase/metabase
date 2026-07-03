@@ -145,9 +145,11 @@ export function MetricExpressionPill({
                     if (typeof segment === "number") {
                       return (
                         <Badge
-                          key={i}
                           circle
-                          c="text-brand-hover"
+                          color="brand"
+                          key={i}
+                          variant="light"
+                          size="sm"
                           style={{ marginInlineStart: "0.2em" }}
                         >
                           {segment}
