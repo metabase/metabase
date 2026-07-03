@@ -25,7 +25,9 @@ export function parsePath(path: string): Path {
   return { pathname, search, hash };
 }
 
-/** Build a `URLSearchParams`, mirroring react-router v7's `createSearchParams`. */
+/**
+ * Build a `URLSearchParams`, mirroring react-router v7's `createSearchParams`.
+ */
 export function createSearchParams(
   init: URLSearchParamsInit = "",
 ): URLSearchParams {
