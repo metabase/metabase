@@ -195,19 +195,8 @@ export function getAvailableDimensionsForPicker(
     }
   }
 
-  result.shared.sort((first, second) =>
-    first.dimensionBreakoutInfo.label.localeCompare(
-      second.dimensionBreakoutInfo.label,
-    ),
-  );
-  for (const sourceId of sourceOrder) {
-    result.bySource[sourceId]?.sort((first, second) =>
-      first.dimensionBreakoutInfo.label.localeCompare(
-        second.dimensionBreakoutInfo.label,
-      ),
-    );
-  }
-
+  // No sorting: entries keep the metric's curated dimension order (shared
+  // entries follow the first source's curation).
   return result;
 }
 
@@ -264,7 +253,9 @@ export function getComparableDimensionKey(item: DimensionPickerItem) {
     return "type:geo:country";
   }
 
-  return [type, item.group?.id ?? "", item.name].join(":");
+  // Dimensions with the same name across dimensions are treated as compatible.
+  // TODO: Alternatively, we can do this by dimension type instead.
+  return [type, item.name].join(":");
 }
 
 function getDimensionPickerItemByDimensionId(
@@ -350,6 +341,30 @@ export function getComparableDimensionMapping({
   for (const comparableItem of comparableItems) {
     for (const [slotIndex, dimensionId] of Object.entries(
       comparableItem.dimensionBreakoutInfo.dimensionMapping,
+    )) {
+      const numericSlotIndex = Number(slotIndex);
+      if (slotIndices.has(numericSlotIndex)) {
+        mapping[numericSlotIndex] ??= dimensionId;
+      }
+    }
+  }
+
+  // Slots without a comparable dimension fall back to their first same-type
+  // dimension (in curated order), so a pick applies to every metric instance
+  // that has a dimension of that type at all.
+  const sameTypeItems = sections
+    .flatMap((section) => section.items)
+    .filter(
+      (sectionItem) =>
+        sectionItem !== item &&
+        sectionItem.dimensionBreakoutInfo.type ===
+          item.dimensionBreakoutInfo.type &&
+        getComparableDimensionKey(sectionItem) !== comparableKey,
+    );
+
+  for (const sameTypeItem of sameTypeItems) {
+    for (const [slotIndex, dimensionId] of Object.entries(
+      sameTypeItem.dimensionBreakoutInfo.dimensionMapping,
     )) {
       const numericSlotIndex = Number(slotIndex);
       if (slotIndices.has(numericSlotIndex)) {

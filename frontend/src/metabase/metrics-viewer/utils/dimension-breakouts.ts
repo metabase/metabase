@@ -831,10 +831,11 @@ function resolveSubtypeFallback(
 }
 
 /**
- * Resolve a stored breakout to a dimension in `dimensions` by exact identity:
- * first by dimension id, then by matching an already-mapped slot's reference
- * and requiring a shared underlying source (same physical column/table) via
- * `LibMetric.isSameSource`.
+ * Resolve a stored breakout to a dimension in `dimensions`: first by dimension
+ * id, then from an already-mapped slot's reference via the shared-source →
+ * curated-name → compatible-type ladder. The fallbacks let metrics pair
+ * dimensions of the same type even without a shared physical column (e.g.
+ * across databases).
  */
 function findExactColumnMatch(
   dimensions: Map<string, DimensionDescriptor>,
@@ -854,29 +855,9 @@ function findExactColumnMatch(
     slotIndexToSourceId,
   );
   if (reference) {
-    return findStrictExactColumnMatch(dimensions, reference)?.id ?? null;
-  }
-
-  return null;
-}
-
-function findStrictExactColumnMatch(
-  dimensions: Map<string, DimensionDescriptor>,
-  reference: DimensionDescriptor,
-): DimensionDescriptor | null {
-  for (const [, info] of dimensions) {
-    if (info.dimensionType !== reference.dimensionType) {
-      continue;
-    }
-
-    if (
-      LibMetric.isSameSource(
-        info.dimensionMetadata,
-        reference.dimensionMetadata,
-      )
-    ) {
-      return info;
-    }
+    return (
+      findSourceMatch(dimensions, dimensionBreakout.type, reference)?.id ?? null
+    );
   }
 
   return null;

@@ -331,7 +331,7 @@ describe("useDimensionPickerSidebarCategories", () => {
     ]);
   });
 
-  it("does not show same-named category fields from different tables as shared", () => {
+  it("groups same-named category fields from different tables as shared", () => {
     const { result } = setup({
       availableDimensions: {
         shared: [],
@@ -373,7 +373,16 @@ describe("useDimensionPickerSidebarCategories", () => {
       ],
     });
 
-    expect(result.current).toEqual([]);
+    expect(result.current).toEqual([
+      expect.objectContaining({
+        name: "Name",
+        dimensionBreakoutInfo: expect.objectContaining({
+          type: "category",
+          label: "Name",
+          dimensionMapping: { 0: "dim-user-name", 1: "dim-product-name" },
+        }),
+      }),
+    ]);
   });
 
   it("shows exact same table and column category fields across all metrics", () => {

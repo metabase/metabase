@@ -1,3 +1,4 @@
+import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -10,6 +11,7 @@ import {
   within,
 } from "__support__/ui";
 import { metricApi } from "metabase/api/metric";
+import type { State } from "metabase/redux/store";
 import type { ListMetricDimensionsResponse } from "metabase-types/api";
 import {
   createMockAddableDimensionGroup,
@@ -109,7 +111,14 @@ function setup(response?: Partial<ListMetricDimensionsResponse>) {
     ...response,
   };
   setupMetricDimensionsEndpoints(METRIC_ID, fullResponse);
-  return renderWithProviders(<MetricDimensions metricId={METRIC_ID} />);
+  const { store } = renderWithProviders(
+    <MetricDimensions metricId={METRIC_ID} />,
+  );
+  return {
+    store: store as Omit<typeof store, "dispatch"> & {
+      dispatch: ThunkDispatch<State, void, AnyAction>;
+    },
+  };
 }
 
 function getListPanel() {

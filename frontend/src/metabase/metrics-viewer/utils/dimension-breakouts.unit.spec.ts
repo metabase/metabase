@@ -205,7 +205,7 @@ describe("findMatchingDimensionForBreakout", () => {
     MATCHING_SHARED_SOURCE_METRIC.id,
   );
 
-  it("does not match exact-column dimensions without the same table group", () => {
+  it("matches exact-column dimensions by curated name across sources", () => {
     expect(
       findMatchingDimensionForBreakout(
         secondDefinition,
@@ -218,7 +218,38 @@ describe("findMatchingDimensionForBreakout", () => {
         { [firstSourceId]: firstDefinition },
         new Map([[0, firstSourceId]]),
       ),
-    ).toBeNull();
+    ).toBe("dim-second-last-name");
+  });
+
+  it("falls back to a same-type dimension when neither source nor name match", () => {
+    const TIER_METRIC = createMockNormalizedMetric({
+      id: 205,
+      name: "Tier Metric",
+      dimensions: [
+        createMockMetricDimension({
+          id: "dim-tier",
+          display_name: "Tier",
+          effective_type: "type/Text",
+          semantic_type: "type/Category",
+        }),
+      ],
+    });
+    const tierMetadata = createMetricMetadata([FIRST_METRIC, TIER_METRIC]);
+    const tierDefinition = setupDefinition(tierMetadata, TIER_METRIC.id);
+
+    expect(
+      findMatchingDimensionForBreakout(
+        tierDefinition,
+        {
+          id: "dim-first-last-name",
+          type: "category",
+          label: "Last Name",
+          dimensionBySlotIndex: { 0: "dim-first-last-name" },
+        },
+        { [firstSourceId]: setupDefinition(tierMetadata, FIRST_METRIC.id) },
+        new Map([[0, firstSourceId]]),
+      ),
+    ).toBe("dim-tier");
   });
 
   it("matches the exact dimension id when available", () => {

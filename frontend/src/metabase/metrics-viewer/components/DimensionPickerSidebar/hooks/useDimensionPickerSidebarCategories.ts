@@ -108,19 +108,16 @@ const SIDEBAR_CATEGORY_ORDER: MetricsViewerDimensionBreakoutType[] = [
   "scalar",
 ];
 
+// Rank by breakout type only; the sort is stable, so categories of the same
+// type keep the metric's curated dimension order.
 function sortSidebarCategories(
   first: DimensionPickerSidebarCategory,
   second: DimensionPickerSidebarCategory,
 ) {
-  const typeDiff =
+  return (
     SIDEBAR_CATEGORY_ORDER.indexOf(first.dimensionBreakoutInfo.type) -
-    SIDEBAR_CATEGORY_ORDER.indexOf(second.dimensionBreakoutInfo.type);
-
-  if (typeDiff !== 0) {
-    return typeDiff;
-  }
-
-  return first.name.localeCompare(second.name);
+    SIDEBAR_CATEGORY_ORDER.indexOf(second.dimensionBreakoutInfo.type)
+  );
 }
 
 function getSidebarCategoryName(item: DimensionPickerItem) {

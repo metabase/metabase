@@ -77,6 +77,14 @@ function getSlotIndices(slotIndex: number) {
   return new Set([slotIndex]);
 }
 
+// TODO: we can do this in the place where we calculate these section names
+function stripRedundantSectionName(sections: DimensionPickerSection[]) {
+  if (sections.length !== 1 || sections[0].isShared) {
+    return sections;
+  }
+  return sections.map((section) => ({ ...section, name: undefined }));
+}
+
 function scopeItemToSlotIndices(
   item: DimensionPickerItem,
   slotIndices: Set<number>,
@@ -152,7 +160,9 @@ export function buildAllFieldsMetricGroups({
           ...(slot.occurrenceCount != null
             ? { occurrenceCount: slot.occurrenceCount }
             : {}),
-          sections: mergeSectionsByName(scopedSections),
+          sections: stripRedundantSectionName(
+            mergeSectionsByName(scopedSections),
+          ),
         };
       })
       .filter((group) => group.sections.length > 0);
@@ -183,7 +193,9 @@ export function buildAllFieldsMetricGroups({
         isExpressionToken: sourceSlots.every(
           (slot) => slot.tokenPosition != null,
         ),
-        sections: mergeSectionsByName(scopedSections),
+        sections: stripRedundantSectionName(
+          mergeSectionsByName(scopedSections),
+        ),
       };
     })
     .filter((group) => group.sections.length > 0);
