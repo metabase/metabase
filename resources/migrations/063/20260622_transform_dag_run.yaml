@@ -1,0 +1,150 @@
+## Extend transform_job_run to also track DAG-reprocess runs triggered from a single transform.
+## A DAG run has source_transform_id + direction set and job_id = NULL.
+## A scheduled job run has job_id set and source_transform_id = NULL (unchanged from before).
+## job_id is made nullable to accommodate DAG runs.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-22T00:00:00
+      author: bronsa
+      comment: >-
+        Make transform_job_run.job_id nullable so DAG-reprocess runs (which have no parent job)
+        can be stored in the same table. Existing job runs are unaffected.
+      changes:
+        - dropNotNullConstraint:
+            tableName: transform_job_run
+            columnName: job_id
+            columnDataType: bigint
+      rollback:
+        - addNotNullConstraint:
+            tableName: transform_job_run
+            columnName: job_id
+
+  - changeSet:
+      id: v63.2026-06-22T00:00:01
+      author: bronsa
+      comment: >-
+        Add source_transform_id to transform_job_run. Set when the run is a DAG-reprocess
+        triggered from a single seed transform; NULL for scheduled job runs.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: source_transform_id
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
+              - column:
+                  name: source_transform_id
+                  type: int
+                  remarks: FK to transform.id; the seed transform for a DAG-reprocess run. NULL for scheduled job runs.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: source_transform_id
+
+  - changeSet:
+      id: v63.2026-06-22T00:00:02
+      author: bronsa
+      comment: >-
+        Add direction to transform_job_run. Records the DAG traversal direction for a DAG-reprocess
+        run (upstream/downstream/full). NULL for scheduled job runs.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: direction
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
+              - column:
+                  name: direction
+                  type: varchar(20)
+                  remarks: DAG traversal direction (upstream/downstream/full); NULL for scheduled job runs.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: direction
+
+  - changeSet:
+      id: v63.2026-06-22T00:00:03
+      author: bronsa
+      comment: >-
+        Add user_id to transform_job_run to record who triggered a DAG-reprocess run.
+        NULL for scheduled job runs (where the job's own credentials apply).
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: user_id
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
+              - column:
+                  name: user_id
+                  type: integer
+                  remarks: FK to core_user.id; the user who triggered the run. NULL for scheduled job runs.
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_transform_job_run_user_id
+                    references: core_user(id)
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: user_id
+
+  - changeSet:
+      id: v63.2026-06-22T00:00:04
+      author: bronsa
+      comment: Index transform_job_run on source_transform_id for DAG run history lookups
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_job_run
+                indexName: idx_transform_job_run_source_transform_id
+      changes:
+        - createIndex:
+            tableName: transform_job_run
+            indexName: idx_transform_job_run_source_transform_id
+            columns:
+              - column:
+                  name: source_transform_id
+      rollback:
+        - dropIndex:
+            tableName: transform_job_run
+            indexName: idx_transform_job_run_source_transform_id
+
+  - changeSet:
+      id: v63.2026-06-22T00:00:05
+      author: bronsa
+      comment: >-
+        Add the source_transform_id foreign key
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyTableName: transform_job_run
+                foreignKeyName: fk_transform_job_run_source_transform_id
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_job_run_source_transform_id
+            baseTableName: transform_job_run
+            baseColumnNames: source_transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_run
+            constraintName: fk_transform_job_run_source_transform_id
