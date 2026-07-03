@@ -206,6 +206,7 @@
 (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
 (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
 (p/import-def qp.error-type/qp qp.error-type.qp)
+(p/import-def qp.error-type/timed-out-acquiring-connection qp.error-type.timed-out-acquiring-connection)
 (p/import-def qp.error-type/unable-to-acquire-connection qp.error-type.unable-to-acquire-connection)
 (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
 
