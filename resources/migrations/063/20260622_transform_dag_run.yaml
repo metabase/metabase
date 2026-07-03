@@ -103,8 +103,34 @@ databaseChangeLog:
         - dropTable:
             tableName: transform_dag_run
 
+  ## The source_transform_id index is created BEFORE its FK on purpose: MySQL/MariaDB require an
+  ## index backing a foreign key, and Liquibase rolls back in reverse changeset order. Creating the
+  ## index first means that on rollback the FK is dropped before the index, so dropping the index
+  ## never fails with "needed in a foreign key constraint".
   - changeSet:
       id: v63.2026-07-03T00:00:01
+      author: bronsa
+      comment: Index transform_dag_run on source_transform_id for per-transform DAG run history lookups (also backs the FK below)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_dag_run
+                indexName: idx_transform_dag_run_source_transform_id
+      changes:
+        - createIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_source_transform_id
+            columns:
+              - column:
+                  name: source_transform_id
+      rollback:
+        - dropIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_source_transform_id
+
+  - changeSet:
+      id: v63.2026-07-03T00:00:02
       author: bronsa
       comment: FK from transform_dag_run.source_transform_id to transform; cascade-delete a transform's DAG run history with it
       preConditions:
@@ -127,7 +153,7 @@ databaseChangeLog:
             constraintName: fk_transform_dag_run_source_transform_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:02
+      id: v63.2026-07-03T00:00:03
       author: bronsa
       comment: FK from transform_dag_run.user_id to core_user; null it out when the user is deleted so run history survives
       preConditions:
@@ -150,7 +176,7 @@ databaseChangeLog:
             constraintName: fk_transform_dag_run_user_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:03
+      id: v63.2026-07-03T00:00:04
       author: bronsa
       comment: Index transform_dag_run on (is_active, last_heartbeat) so the every-minute reaper scan is O(active rows)
       preConditions:
@@ -172,28 +198,6 @@ databaseChangeLog:
         - dropIndex:
             tableName: transform_dag_run
             indexName: idx_transform_dag_run_active_runs
-
-  - changeSet:
-      id: v63.2026-07-03T00:00:04
-      author: bronsa
-      comment: Index transform_dag_run on source_transform_id for per-transform DAG run history lookups
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: transform_dag_run
-                indexName: idx_transform_dag_run_source_transform_id
-      changes:
-        - createIndex:
-            tableName: transform_dag_run
-            indexName: idx_transform_dag_run_source_transform_id
-            columns:
-              - column:
-                  name: source_transform_id
-      rollback:
-        - dropIndex:
-            tableName: transform_dag_run
-            indexName: idx_transform_dag_run_source_transform_id
 
   - changeSet:
       id: v63.2026-07-03T00:00:05
