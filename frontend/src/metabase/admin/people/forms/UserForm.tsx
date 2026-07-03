@@ -87,12 +87,28 @@ const FormGroupsWidget = ({
     );
   };
 
+  const managerGroupIds = memberships
+    .filter((membership) => membership.is_group_manager)
+    .map((membership) => membership.id);
+
+  const handleToggleManager = (groupId: GroupId) => {
+    setValue(
+      memberships.map((membership) =>
+        membership.id === groupId
+          ? { ...membership, is_group_manager: !membership.is_group_manager }
+          : membership,
+      ),
+    );
+  };
+
   return (
     <FormField className={className} style={style} title={title}>
       <GroupsMultiSelect
         groups={groups}
         value={memberships.map((membership) => membership.id)}
         onChange={handleChange}
+        managerGroupIds={managerGroupIds}
+        onToggleManager={handleToggleManager}
       />
     </FormField>
   );

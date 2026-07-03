@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useState } from "react";
+import { Fragment, type KeyboardEvent, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -6,10 +6,15 @@ import {
   getGroupNameLocalized,
   getGroupSortOrder,
   isAdminGroup,
+  isDataAnalystGroup,
+  isDefaultGroup,
 } from "metabase/admin/utils/groups";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import {
+  Box,
   Checkbox,
   Combobox,
+  Divider,
   Flex,
   Pill,
   PillsInput,
@@ -24,6 +29,8 @@ interface GroupsMultiSelectProps {
   groups: GroupInfo[];
   value: GroupId[];
   onChange: (groupIds: GroupId[]) => void;
+  managerGroupIds?: GroupId[];
+  onToggleManager?: (groupId: GroupId) => void;
   isCurrentUser?: boolean;
   placeholder?: string;
   "aria-label"?: string;
@@ -33,6 +40,8 @@ export const GroupsMultiSelect = ({
   groups,
   value,
   onChange,
+  managerGroupIds,
+  onToggleManager,
   isCurrentUser = false,
   placeholder,
   "aria-label": ariaLabel = t`Groups`,
@@ -45,6 +54,27 @@ export const GroupsMultiSelect = ({
   // All Users (or the tenant default) can't be removed, and admins can't leave Administrators.
   const isGroupLocked = (group: GroupInfo) =>
     !canEditMembership(group) || (isAdminGroup(group) && isCurrentUser);
+
+  const adminGroup = groups.find(isAdminGroup);
+  const isUserAdmin = adminGroup ? value.includes(adminGroup.id) : false;
+
+  const isManager = (groupId: GroupId) =>
+    managerGroupIds?.includes(groupId) ?? false;
+
+  // The member/manager toggle applies only to regular groups a non-admin user belongs to.
+  const canEditManager = (group: GroupInfo) =>
+    value.includes(group.id) &&
+    !isUserAdmin &&
+    !isGroupLocked(group) &&
+    !isAdminGroup(group) &&
+    !PLUGIN_TENANTS.isTenantGroup(group);
+
+  // Built-in "magic" groups sit above custom groups, matching the People table picker.
+  const isPinnedGroup = (group: GroupInfo) =>
+    isDefaultGroup(group) ||
+    isAdminGroup(group) ||
+    isDataAnalystGroup(group) ||
+    PLUGIN_TENANTS.isExternalUsersGroup(group);
 
   const selectedGroups = value
     .map((id) => groupsById.get(id))
@@ -85,7 +115,7 @@ export const GroupsMultiSelect = ({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Backspace" && search.trim() === "") {
+    if (event.key === "Backspace" && search === "") {
       const removable = selectedGroups.filter((group) => !isGroupLocked(group));
       const last = removable[removable.length - 1];
       if (last) {
@@ -104,12 +134,8 @@ export const GroupsMultiSelect = ({
       <Combobox.DropdownTarget>
         <PillsInput
           onClick={() => combobox.openDropdown()}
-          rightSection={
-            <Combobox.Chevron
-              className={S.chevron}
-              data-expanded={combobox.dropdownOpened || undefined}
-            />
-          }
+          rightSectionPointerEvents="none"
+          rightSection={<Combobox.Chevron />}
         >
           <Pill.Group role="list">
             {selectedGroups.map((group) => (
@@ -128,6 +154,7 @@ export const GroupsMultiSelect = ({
                 onRemove={() => handleRemove(group)}
               >
                 {getGroupNameLocalized(group)}
+                {isManager(group.id) && ` ${t`(Manager)`}`}
               </Pill>
             ))}
             <Combobox.EventsTarget>
@@ -155,27 +182,44 @@ export const GroupsMultiSelect = ({
           {visibleGroups.length === 0 ? (
             <Combobox.Empty>{t`No groups found`}</Combobox.Empty>
           ) : (
-            visibleGroups.map((group) => {
+            visibleGroups.map((group, index) => {
               const isSelected = value.includes(group.id);
+              const previousGroup = visibleGroups[index - 1];
+              const showDivider =
+                previousGroup != null &&
+                isPinnedGroup(previousGroup) &&
+                !isPinnedGroup(group);
               return (
-                <Combobox.Option
-                  key={group.id}
-                  value={String(group.id)}
-                  aria-label={getGroupNameLocalized(group)}
-                  active={isSelected}
-                  disabled={isGroupLocked(group)}
-                >
-                  <Flex align="center" gap="sm">
-                    <Checkbox
-                      checked={isSelected}
-                      readOnly
-                      aria-hidden
-                      tabIndex={-1}
-                      style={{ pointerEvents: "none" }}
-                    />
-                    <span>{getGroupNameLocalized(group)}</span>
-                  </Flex>
-                </Combobox.Option>
+                <Fragment key={group.id}>
+                  {showDivider && <Divider my="sm" />}
+                  <Combobox.Option
+                    value={String(group.id)}
+                    aria-label={getGroupNameLocalized(group)}
+                    active={isSelected}
+                    disabled={isGroupLocked(group)}
+                  >
+                    <Flex align="center" justify="space-between" gap="sm">
+                      <Flex align="center" gap="sm">
+                        <Checkbox
+                          checked={isSelected}
+                          readOnly
+                          aria-hidden
+                          tabIndex={-1}
+                          style={{ pointerEvents: "none" }}
+                        />
+                        <span>{getGroupNameLocalized(group)}</span>
+                      </Flex>
+                      {canEditManager(group) && (
+                        <Box onMouseDown={(event) => event.preventDefault()}>
+                          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+                            isManager={isManager(group.id)}
+                            onChange={() => onToggleManager?.(group.id)}
+                          />
+                        </Box>
+                      )}
+                    </Flex>
+                  </Combobox.Option>
+                </Fragment>
               );
             })
           )}

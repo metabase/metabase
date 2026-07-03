@@ -12,11 +12,6 @@
   }
 }
 
-/* Rotate the chevron while the dropdown is open. */
-.chevron[data-expanded] {
-  transform: rotate(180deg);
-}
-
 /* Drop Mantine's default side margins so `gap` is the only inner spacing.
    translateY seats the X on the lowercase text: flex centers it on the line
    box, which sits ~1px above the text's optical center. */
