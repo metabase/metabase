@@ -5,8 +5,10 @@
    [metabase.transforms-base.util]
    [metabase.transforms.canceling]
    [metabase.transforms.crud]
+   [metabase.transforms.dag]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
+   [metabase.transforms.models.dag-run]
    [metabase.transforms.models.job-run]
    [metabase.transforms.models.transform]
    [metabase.transforms.models.transform-job]
@@ -57,7 +59,8 @@
   get-transform-cycle]
  [metabase.transforms.jobs
   run-job!
-  job-transforms
+  job-transforms]
+ [metabase.transforms.dag
   run-dag!
   cancel-dag-run!
   dag-run-transforms]
@@ -76,9 +79,11 @@
   running-run-for-transform-id]
  [metabase.transforms.models.job-run
   paged-job-runs
+  transform-runs-for-job-run]
+ [metabase.transforms.models.dag-run
   paged-dag-runs
   paged-all-dag-runs
-  transform-runs-for-job-run
+  transform-runs-for-dag-run
   running-run-for-source-transform-id]
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]

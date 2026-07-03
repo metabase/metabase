@@ -68,6 +68,7 @@
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
    [:job_run_id {:optional true} [:maybe pos-int?]]
+   [:dag_run_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
@@ -122,6 +123,7 @@
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
    [:job_run_id {:optional true} [:maybe pos-int?]]
+   [:dag_run_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
@@ -322,51 +324,43 @@
                     [:id ms/PositiveInt]]]
   (run-transform! (api/read-check :model/Transform id)))
 
-(def ^:private dag-directions [:upstream :downstream])
+(api.macros/defendpoint :post "/:id/run-dag" :- [:map
+                                                 [:status [:= 202]]
+                                                 [:body [:map {:closed true}
+                                                         [:message :any]
+                                                         [:dag_run_id [:maybe pos-int?]]]]]
+  "Trigger a DAG-reprocess run starting from a single transform: runs the transform and every
+  transform in its transitive dependency closure. Returns a 202 with the created `dag_run_id`, or a
+  nil `dag_run_id` when nothing was run (a DAG run for this transform is already in progress, or the
+  closure is empty).
 
-(def ^:private DagRunResponse
-  [:map {:closed true}
-   [:id pos-int?]
-   ;; rows live in the shared `transform_job_run` table; `job_id` is nil for DAG runs.
-   [:job_id [:maybe pos-int?]]
-   [:source_transform_id [:maybe pos-int?]]
-   [:direction [:maybe :keyword]]
-   [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled]]
-   [:is_active [:maybe :boolean]]
-   [:start_time :any]
-   [:end_time {:optional true} [:maybe :any]]
-   [:message [:maybe :string]]
-   [:user_id [:maybe pos-int?]]
-   [:created_at :any]
-   [:updated_at :any]])
-
-(api.macros/defendpoint :post "/:id/run-dag" :- [:map {:closed true}
-                                                 [:job_run_id [:maybe pos-int?]]
-                                                 [:message :any]]
-  "Trigger a DAG reprocess run starting from a single transform. Runs the transform and all
-  transforms in its transitive dependency closure (direction controls which side of the DAG).
-
-  `direction` controls which transforms are included:
+  `direction` selects which transforms are included:
   - `upstream`   — the seed transform plus all transforms it depends on
   - `downstream` — the seed transform plus all transforms that depend on it"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [direction skip_fresh_deps]} :- [:map
-                                           [:direction (ms/enum-decode-keyword dag-directions)]
+                                           [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]
                                            [:skip_fresh_deps {:default false} :boolean]]]
   (let [transform (api/write-check :model/Transform id)]
     (transforms.core/check-feature-enabled! transform)
     (api/check (not (transforms.core/transform-locked? transform))
                [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
                      :error-code "metabase_transforms_locked"}])
-    (u.jvm/in-virtual-thread*
-     (transforms.core/run-dag! id {:run-method       :manual
-                                   :direction        direction
-                                   :user-id          api/*current-user-id*
-                                   :skip-fresh-deps? skip_fresh_deps}))
-    {:job_run_id nil
-     :message    (deferred-tru "DAG run started")}))
+    (let [start-promise (promise)]
+      (u.jvm/in-virtual-thread*
+       (transforms.core/run-dag! id {:direction        direction
+                                     :user-id          api/*current-user-id*
+                                     :skip-fresh-deps? skip_fresh_deps
+                                     :start-promise    start-promise}))
+      (when (instance? Throwable @start-promise)
+        (throw @start-promise))
+      (let [result     @start-promise
+            dag-run-id (when (and (vector? result) (= (first result) :started))
+                         (second result))]
+        (-> (response/response {:message    (deferred-tru "DAG run started")
+                                :dag_run_id dag-run-id})
+            (assoc :status 202))))))
 
 (api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
                                                                     [:id pos-int?]
@@ -374,18 +368,18 @@
   "Preview the transforms a DAG reprocess from this transform would run, in execution order.
   Used to populate the confirmation dialog before triggering [[run-dag!]] via `POST /:id/run-dag`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword dag-directions)]]]
+   {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (api/read-check :model/Transform id)
   (mapv (fn [{xform-id :id, xform-name :name}]
           {:id xform-id, :name xform-name})
         (transforms.core/dag-run-transforms id direction)))
 
 (api.macros/defendpoint :get "/:id/dag-runs" :- [:map {:closed true}
-                                                 [:data [:sequential DagRunResponse]]
+                                                 [:data [:sequential transforms.dag-run/DagRunResponse]]
                                                  [:limit pos-int?]
                                                  [:offset :int]
                                                  [:total :int]]
-  "Get paginated DAG run history for a transform."
+  "Get paginated DAG-reprocess run history for a transform."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    query-params :- [:map
                     [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
@@ -398,37 +392,15 @@
                                              :limit  (request/limit)))
       (update :data #(map transforms-base.u/present-run %))))
 
-(def ^:private DagRunTransformRunResponse
-  ;; A DAG run reuses `transform_job_run`, so its member transform runs are the same shape as a
-  ;; scheduled job run's (see `transform-job`'s `TransformRunForJobRunResponse`), linked via `job_run_id`.
-  [:map {:closed true}
-   [:id pos-int?]
-   [:transform_id [:maybe pos-int?]]
-   [:job_run_id [:maybe pos-int?]]
-   [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
-   [:is_active [:maybe :boolean]]
-   [:start_time :any]
-   [:end_time {:optional true} [:maybe :any]]
-   [:message [:maybe :string]]
-   [:user_id [:maybe pos-int?]]
-   [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]
-   [:transform {:optional true} [:maybe :map]]
-   [:metered_as {:optional true} [:maybe :string]]
-   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
-   [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
-
-(api.macros/defendpoint :get "/:id/dag-runs/:dag-run-id/transform-runs" :- [:sequential DagRunTransformRunResponse]
+(api.macros/defendpoint :get "/:id/dag-runs/:dag-run-id/transform-runs" :- [:sequential transforms.dag-run/DagRunTransformRunResponse]
   "Get the transform runs that made up a specific DAG run."
   [{:keys [id dag-run-id]} :- [:map
                                [:id ms/PositiveInt]
                                [:dag-run-id ms/PositiveInt]]
    _query-params]
   (api/read-check :model/Transform id)
-  (api/check-404 (t2/select-one :model/TransformJobRun :id dag-run-id :source_transform_id id))
-  (let [runs (transforms.core/transform-runs-for-job-run dag-run-id)]
+  (api/check-404 (t2/select-one :model/TransformDagRun :id dag-run-id :source_transform_id id))
+  (let [runs (transforms.core/transform-runs-for-dag-run dag-run-id)]
     (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
          (map transforms-base.u/present-run))))
 
@@ -436,6 +408,10 @@
   "`/api/transform` routes."
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)))
+
+(def ^{:arglists '([request respond raise])} transform-dag-run-routes
+  "`/api/transform-dag-run` routes."
+  (api.macros/ns-handler 'metabase.transforms-rest.api.transform-dag-run +auth))
 
 (def ^{:arglists '([request respond raise])} transform-tag-routes
   "`/api/transform-tag` routes."

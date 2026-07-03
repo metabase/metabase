@@ -364,7 +364,7 @@
   Returns `{::status :succeeded}`, `{::status :failed ::failures [...]}`, or `{::status :aborted}`
   when the coordinating run was terminated externally (e.g. reaped) while this coordinator was still running."
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id skip-fresh-deps?
-                                        parent-run-type active-runs-atom add-run-activity! precomputed-plan]
+                                       parent-run-type active-runs-atom add-run-activity! precomputed-plan]
                                 :or   {skip-fresh-deps?  true
                                        parent-run-type   :job
                                        active-runs-atom  active-runs
@@ -563,5 +563,5 @@
 
 (defmethod task/init! ::TransformJobRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transforms.jobs.reaper-job"
-                        :label   "transform job/DAG run"
+                        :label   "transform job run"
                         :reap-fn #'reap-orphaned-runs!}))
