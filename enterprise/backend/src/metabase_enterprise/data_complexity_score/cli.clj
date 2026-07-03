@@ -201,9 +201,11 @@
   ran and can't shadow scores produced with the configured embedder."
   [override]
   (when override
+    ;; Derived from the override map, not the constants it was built from, so the persisted row's
+    ;; metadata and this fragment can't drift apart.
     {:synonym-source  :cli-embedder-override
      :embedding-model (:embedding-model-meta override)
-     :text-variant    embedders/default-text-variant}))
+     :text-variant    (:text-variant override)}))
 
 (defn- run-appdb-mode!
   "Score against the live appdb; optionally persist the row.

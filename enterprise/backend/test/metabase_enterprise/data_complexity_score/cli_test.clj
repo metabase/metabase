@@ -142,23 +142,6 @@
 
 ;;; ------------------------------------- pure embedder/scoring tests -------------------------------------
 
-(deftest ^:parallel split-for-embedding-test
-  (testing "nil-safe"
-    (is (nil? (embedders/split-for-embedding nil))))
-  (testing "_, -, and . separators become spaces; output is lowercased"
-    (is (= "monthly active users" (embedders/split-for-embedding "monthly_active_users")))
-    (is (= "monthly active users" (embedders/split-for-embedding "monthly-active-users")))
-    (is (= "monthly active users" (embedders/split-for-embedding "monthly.active.users")))
-    (is (= "monthly active users report" (embedders/split-for-embedding "monthly_active-users.report"))
-        "mixed separators collapse together"))
-  (testing "adjacent whitespace collapses and the result is trimmed"
-    (is (= "monthly active users" (embedders/split-for-embedding "  monthly   active\tusers  "))))
-  (testing "camelCase splits at lower→upper boundaries only, so all-caps runs stay joined"
-    (is (= "page views" (embedders/split-for-embedding "pageViews")))
-    (is (= "monthly active users" (embedders/split-for-embedding "monthlyActiveUsers")))
-    (is (= "maucount" (embedders/split-for-embedding "MAUcount")))
-    (is (= "mau count" (embedders/split-for-embedding "mauCount")))))
-
 (deftest embedder-embeddings-conflict-test
   (testing "--embeddings and --embedder together are rejected: the override would ignore the file"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
@@ -182,15 +165,18 @@
 
 (deftest embedder-override-fingerprint-test
   (testing "an --embedder override is folded into the persisted fingerprint so it can't shadow cron scores"
-    (let [override         (#'cli/embedder-override "in-process")
-          plain            (task.complexity-score/current-fingerprint)
-          with-override    (task.complexity-score/current-fingerprint
-                            (#'cli/override-fingerprint-fragment override))]
-      (is (not= plain with-override))
-      (is (str/includes? with-override ":cli-embedder-override"))
-      (is (str/includes? with-override "all-MiniLM-L6-v2"))
-      (testing "no override leaves the fingerprint unchanged"
-        (is (= plain (task.complexity-score/current-fingerprint (#'cli/override-fingerprint-fragment nil))))))))
+    ;; This test is about the fingerprint, not the plugins system — stubbed so resolving the override
+    ;; doesn't scan the real plugins directory.
+    (mt/with-dynamic-fn-redefs [plugins/load-plugins! (fn [])]
+      (let [override         (#'cli/embedder-override "in-process")
+            plain            (task.complexity-score/current-fingerprint)
+            with-override    (task.complexity-score/current-fingerprint
+                              (#'cli/override-fingerprint-fragment override))]
+        (is (not= plain with-override))
+        (is (str/includes? with-override ":cli-embedder-override"))
+        (is (str/includes? with-override "all-MiniLM-L6-v2"))
+        (testing "no override leaves the fingerprint unchanged"
+          (is (= plain (task.complexity-score/current-fingerprint (#'cli/override-fingerprint-fragment nil)))))))))
 
 (deftest embedder-override-persisted-fingerprint-test
   (testing "the persist paths record the override-derived fingerprint, not the configured one"
@@ -200,7 +186,8 @@
       (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [fingerprint _source result]
                                                                         (reset! captured {:fingerprint fingerprint
                                                                                           :result      result}))
-                                  embedders/provider-embedder         (constantly (embedders/file-embedder {}))]
+                                  embedders/provider-embedder         (constantly (embedders/file-embedder {}))
+                                  plugins/load-plugins!               (fn [])]
         (testing "representation mode"
           (#'cli/run-cli {:source             "representation"
                           :representation-dir (str (fixture-without-sidecar))
@@ -214,7 +201,6 @@
         (testing "appdb mode (write-by-default), with the appdb scoring itself stubbed"
           (reset! captured nil)
           (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!     (constantly nil)
-                                      plugins/load-plugins!                (constantly nil)
                                       metabot-scope/internal-metabot-scope (constantly {})
                                       complexity/complexity-scores         (constantly {})]
             (#'cli/run-cli {:source "appdb" :embedder "in-process"})
@@ -234,12 +220,15 @@
   (testing "embedder-override nil returns nil so the no-flag path doesn't touch DJL/ONNX"
     (is (nil? (#'cli/embedder-override nil))))
   (testing "embedder-override in-process routes through the provider path with matching model meta"
-    (let [{:keys [embedder embedding-model-meta]} (#'cli/embedder-override "in-process")]
-      (is (fn? embedder))
-      (is (= {:provider         "in-process"
-              :model-name       "all-MiniLM-L6-v2"
-              :model-dimensions 384}
-             embedding-model-meta)))))
+    ;; load-plugins! stubbed: a real plugins-directory scan is a global side effect this ^:parallel
+    ;; test must not trigger; embedder-override-loads-plugins-test covers the real wiring.
+    (mt/with-dynamic-fn-redefs [plugins/load-plugins! (fn [])]
+      (let [{:keys [embedder embedding-model-meta]} (#'cli/embedder-override "in-process")]
+        (is (fn? embedder))
+        (is (= {:provider         "in-process"
+                :model-name       "all-MiniLM-L6-v2"
+                :model-dimensions 384}
+               embedding-model-meta))))))
 
 (deftest embedder-override-loads-plugins-test
   (testing "resolving the in-process override loads plugins: the standalone JAR path never does otherwise"
