@@ -292,7 +292,8 @@
 (def ^:private supported-models
   "Anthropic chat models offered in the Metabot model picker.
   `list-models` returns the intersection of this set with the account's `/v1/models` catalog."
-  #{"claude-opus-4-8"
+  #{"claude-fable-5"
+    "claude-opus-4-8"
     "claude-opus-4-7"
     "claude-opus-4-6"
     "claude-opus-4-5-20251101"

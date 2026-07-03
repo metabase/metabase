@@ -184,7 +184,8 @@
   "Bedrock models offered in the Metabot model picker.
   `list-models` returns the intersection of this set with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes."
-  #{"anthropic.claude-opus-4-8"
+  #{"anthropic.claude-fable-5"
+    "anthropic.claude-opus-4-8"
     "anthropic.claude-opus-4-7"
     "anthropic.claude-sonnet-5"
     "anthropic.claude-haiku-4-5"
