@@ -19,14 +19,16 @@ export interface NavigateProps {
 export function Navigate({ to, replace = false, state }: NavigateProps): null {
   const navigate = useNavigate();
 
-  // Key the effect on the serialized target so an equal object literal recreated
-  // each render does not re-navigate (matching v7's `jsonPath` dependency).
-  const target = JSON.stringify({ to, replace, state });
+  // Key the effect on the serialized path (always string-valued, so safe to
+  // stringify) so an equal `to` object recreated each render does not
+  // re-navigate. `state` stays raw in the deps and is passed by reference, both
+  // matching v7's <Navigate>.
+  const jsonTo = JSON.stringify(to);
 
   useEffect(() => {
-    const { to, replace, state } = JSON.parse(target) as NavigateProps;
     navigate(to, { replace, state });
-  }, [navigate, target]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, jsonTo, replace, state]);
 
   return null;
 }

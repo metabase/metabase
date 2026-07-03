@@ -6,6 +6,11 @@ import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { Navigate } from "./Navigate";
 
+// Stable references: `<Navigate>` keeps `state` raw in its effect deps (like v7),
+// so a fresh object literal each render would re-navigate and loop.
+const HOME_STATE = { from: "home" };
+const RICH_STATE = { when: new Date(0), n: NaN };
+
 describe("router/Navigate", () => {
   it("pushes to the destination on mount, keeping the previous entry", async () => {
     const Host = () => <Navigate to="/dest" />;
@@ -27,7 +32,7 @@ describe("router/Navigate", () => {
   });
 
   it("replaces the current entry and carries state when asked", async () => {
-    const Host = () => <Navigate to="/dest" replace state={{ from: "home" }} />;
+    const Host = () => <Navigate to="/dest" replace state={HOME_STATE} />;
     const { history } = renderWithProviders(
       <Route path="*" component={Host} />,
       {
@@ -74,5 +79,25 @@ describe("router/Navigate", () => {
     await waitFor(() =>
       expect(history?.getCurrentLocation().pathname).toBe("/second"),
     );
+  });
+
+  it("passes state through by reference without serializing it", async () => {
+    const Host = () => <Navigate to="/dest" state={RICH_STATE} />;
+    const { history } = renderWithProviders(
+      <Route path="*" component={Host} />,
+      {
+        withRouter: true,
+        initialRoute: "/home",
+      },
+    );
+
+    await waitFor(() =>
+      expect(history?.getCurrentLocation().pathname).toBe("/dest"),
+    );
+
+    const state = history?.getCurrentLocation().state as typeof RICH_STATE;
+    // Serializing would turn the Date into a string and NaN into null.
+    expect(state.when).toBe(RICH_STATE.when);
+    expect(Number.isNaN(state.n)).toBe(true);
   });
 });

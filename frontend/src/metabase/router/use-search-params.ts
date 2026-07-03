@@ -27,7 +27,11 @@ export function useSearchParams(): readonly [
   const setSearchParams = useCallback<SetURLSearchParams>(
     (nextInit, navigateOptions) => {
       const params = createSearchParams(
-        typeof nextInit === "function" ? nextInit(searchParams) : nextInit,
+        typeof nextInit === "function"
+          ? // Hand the updater a clone so it cannot mutate the instance the
+            // component currently holds (matching v7).
+            nextInit(new URLSearchParams(searchParams))
+          : nextInit,
       );
       const search = params.toString();
       navigate(

@@ -102,4 +102,34 @@ describe("router/useSearchParams", () => {
     expect(screen.getByTestId("x")).toBeEmptyDOMElement();
     expect(history?.getCurrentLocation().search).toBe("");
   });
+
+  it("gives the functional updater a clone, not the held instance", async () => {
+    let held: URLSearchParams | undefined;
+    const MutatingProbe = () => {
+      const [searchParams, setSearchParams] = useSearchParams();
+      held = searchParams;
+      return (
+        <button
+          onClick={() =>
+            setSearchParams((prev) => {
+              prev.set("x", "mutated");
+              return prev;
+            })
+          }
+        >
+          mutate
+        </button>
+      );
+    };
+    renderWithProviders(<Route path="foo" component={MutatingProbe} />, {
+      withRouter: true,
+      initialRoute: "/foo?x=1",
+    });
+
+    const before = held;
+    await userEvent.click(screen.getByRole("button", { name: "mutate" }));
+
+    // The instance the component held is untouched: the updater mutated a clone.
+    expect(before?.get("x")).toBe("1");
+  });
 });
