@@ -16,8 +16,9 @@
 (set! *warn-on-reflection* true)
 
 (def openapi-file-path
-  "Path to the local OpenAPI specification file."
-  "resources/openapi/openapi.json")
+  "Path to the local OpenAPI specification file. Lives under .tmp/ (gitignored,
+  outside resources/) so it is never committed nor baked into locally-built jars."
+  ".tmp/openapi/openapi.json")
 
 (defn- sort-keys
   "Sort maps and sets alphabetically to reduce diff noise on openapi.json"

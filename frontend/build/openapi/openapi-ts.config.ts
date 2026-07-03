@@ -2,7 +2,7 @@ import { defineConfig } from "@hey-api/openapi-ts";
 
 // eslint-disable-next-line import/no-default-export -- this library requires a default export
 export default defineConfig({
-  input: "./resources/openapi/openapi.json",
+  input: "./.tmp/openapi/openapi.json",
   output: {
     path: "frontend/src/metabase-types/openapi",
     clean: false,

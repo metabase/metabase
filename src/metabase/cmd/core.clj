@@ -145,7 +145,7 @@
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
 (defn ^:command generate-openapi-spec
-  "Generate OpenAPI specification file from Malli schema definitions. This is written to `resources/openapi/openapi.json`."
+  "Generate OpenAPI specification file from Malli schema definitions. This is written to `.tmp/openapi/openapi.json`."
   []
   (classloader/require 'metabase.api-routes.cmd)
   ((resolve 'metabase.api-routes.cmd/generate-openapi-spec!)))
