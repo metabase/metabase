@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
+import type { SavedEntityLocation } from "metabase/api/ai-streaming/schemas";
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
@@ -48,6 +49,12 @@ export const getSavedChartCardId = createSelector(
   (metabotState, entityId): number | undefined =>
     metabotState.savedChartCardIds[entityId],
 );
+
+export const getSavedChartLocation = (
+  state: State,
+  entityId: string,
+): SavedEntityLocation | undefined =>
+  getMetabotState(state).savedChartLocations[entityId];
 
 export const getMetabotReactionsState = createSelector(
   getMetabotState,

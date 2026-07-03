@@ -40,6 +40,7 @@ export const knownDataPartTypes = [
   "data-code_edit",
   "data-transform_suggestion",
   "data-generated_entity",
+  "data-entity_saved",
   "data-adhoc_viz",
   "data-static_viz",
 ] as const satisfies readonly KnownDataPart["type"][];
@@ -71,6 +72,19 @@ export type GeneratedCard = {
 
 export type GeneratedEntity = GeneratedCard;
 
+export type SavedEntityLocation = {
+  type: "collection" | "dashboard";
+  id: number | null;
+  name: string;
+  url: string;
+};
+
+export type EntitySavedValue = {
+  entity_id: string;
+  card_id: number;
+  location: SavedEntityLocation;
+};
+
 export type KnownDataPart =
   | { type: "data-navigate_to"; data: string }
   | { type: "data-state"; data: Record<string, unknown> }
@@ -78,6 +92,7 @@ export type KnownDataPart =
   | { type: "data-transform_suggestion"; data: SuggestedTransform }
   | { type: "data-code_edit"; data: MetabotCodeEdit }
   | { type: "data-generated_entity"; data: GeneratedEntity }
+  | { type: "data-entity_saved"; data: EntitySavedValue }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue };
 

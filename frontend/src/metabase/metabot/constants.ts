@@ -110,6 +110,9 @@ export const TOOL_CALL_MESSAGES: Record<string, string | undefined> = {
   get analyze_chart() {
     return t`Inspecting the visualization`;
   },
+  get save_entity() {
+    return t`Saving`;
+  },
   get list_available_fields() {
     return undefined;
   },
