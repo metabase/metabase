@@ -38,13 +38,14 @@ Keep the semantic layer and presentation layer separate.
 
 If the schema file already exists, use it. If it is missing or stale, treat schema generation as semantic-layer curation for this data app, not a mechanical export.
 
-Before generating, make sure the user has explicitly chosen the table scope the app needs:
+Before generating, make sure the user has explicitly chosen the library scope the app needs:
 
 - `includeDataLibrary=true` for the whole `Library / Data` tree.
-- `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data Library subcollections.
+- `includeMetricLibrary=true` for the whole `Library / Metrics` tree.
+- `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or Metrics library subcollections.
 - `database=<name-or-id>` when the app should use tables from one database.
 
-If the user did not already choose a table scope, stop and ask what they want. Warn before exporting the whole instance: including everything is noisy, bloats context, and makes agents more likely to pick irrelevant entities.
+If the user did not already choose a library scope, stop and ask what they want. Warn before exporting the whole instance: including everything is noisy, bloats context, and makes agents more likely to pick irrelevant entities.
 
 The Metabase URL and API key live in the **repo-root** `.env.local` as
 `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` (one file per repo, usually two levels up
@@ -81,7 +82,7 @@ fi
     -o src/metabase.data.ts \
     -H "x-api-key: $DATA_APP_MB_API_KEY" \
     -H "Accept: text/typescript" \
-    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true"
+    "$DATA_APP_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true"
 )
 ```
 
