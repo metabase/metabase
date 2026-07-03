@@ -347,6 +347,48 @@
                                 (str "metric/" (:id metric) "/dimension/set-default")
                                 {:dimension_id fake-dimension-id})))))
 
+(deftest reorder-dimensions-test
+  (testing "POST /api/metric/:id/dimension/reorder persists the given order"
+    (with-seeded-metric [metric]
+      (let [ids       (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                           :added (mapv :id))
+            new-order (vec (reverse ids))
+            resp      (mt/user-http-request :crowberto :post 200
+                                            (str "metric/" (:id metric) "/dimension/reorder")
+                                            {:dimension_ids new-order})]
+        (is (= new-order (mapv :id resp))
+            "response reflects the new order")
+        (is (= new-order
+               (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                    :added (mapv :id)))
+            "the order is persisted")))))
+
+(deftest reorder-dimensions-partial-list-test
+  (testing "dimensions missing from the posted order keep their relative order after the listed ones"
+    (with-seeded-metric [metric]
+      (let [ids            (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                                :added (mapv :id))
+            [listed unlisted] [(vec (reverse (take 2 ids))) (vec (drop 2 ids))]
+            resp           (mt/user-http-request :crowberto :post 200
+                                                 (str "metric/" (:id metric) "/dimension/reorder")
+                                                 {:dimension_ids listed})]
+        (is (= (into listed unlisted) (mapv :id resp)))))))
+
+(deftest reorder-dimensions-permission-test
+  (testing "POST /api/metric/:id/dimension/reorder requires write permission"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       metric {:name          "Protected Metric"
+                                               :type          :metric
+                                               :collection_id (:id collection)
+                                               :database_id   (mt/id)
+                                               :table_id      (mt/id :venues)
+                                               :dataset_query (metric-query)}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (str "metric/" (:id metric) "/dimension/reorder")
+                                     {:dimension_ids [fake-dimension-id]})))))))
+
 (deftest update-dimension-preserves-other-mappings-test
   (testing "updating one dimension leaves every dimension mapping intact"
     (with-seeded-metric [metric]

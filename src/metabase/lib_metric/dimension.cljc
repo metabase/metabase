@@ -261,6 +261,16 @@
                  (dissoc dim :default)))
              persisted-dims))
 
+(defn reorder-dimensions
+  "Sort `persisted-dims` into the order given by `ids`. Dimensions not listed keep their relative
+   order after the listed ones (a permission-filtered client may not see every dimension).
+   Returns the reordered dimensions vector."
+  [persisted-dims ids]
+  (let [position (into {} (map-indexed (fn [i id] [id i])) ids)
+        missing  (count ids)]
+    ;; sort-by is stable, so unlisted dimensions (all sharing the `missing` index) keep their order.
+    (vec (sort-by #(get position (:id %) missing) persisted-dims))))
+
 (def ^:private persisted-dimension-keys
   [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group :default])
 

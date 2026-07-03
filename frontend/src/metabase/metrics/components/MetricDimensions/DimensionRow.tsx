@@ -1,8 +1,10 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { Sortable } from "metabase/common/components/Sortable";
 import {
   Badge,
+  Box,
   Checkbox,
   Group,
   Icon,
@@ -18,6 +20,7 @@ interface DimensionRowProps {
   dimension: MetricDimension;
   checked: boolean;
   active: boolean;
+  canReorder: boolean;
   onToggle: (checked: boolean) => void;
   onEdit: () => void;
 }
@@ -26,38 +29,58 @@ export function DimensionRow({
   dimension,
   checked,
   active,
+  canReorder,
   onToggle,
   onEdit,
 }: DimensionRowProps) {
   return (
-    <Group
-      gap="sm"
-      wrap="nowrap"
-      className={cx(S.row, { [S.rowActive]: active })}
-      data-testid={`dimension-row-${dimension.display_name}`}
+    <Sortable
+      id={dimension.id}
+      disabled={!canReorder}
+      draggingStyle={{ opacity: 0.5 }}
+      role="listitem"
     >
-      <Checkbox
-        aria-label={dimension.display_name}
-        checked={checked}
-        onChange={(event) => onToggle(event.currentTarget.checked)}
-      />
-      <UnstyledButton className={S.rowButton} onClick={onEdit}>
-        <Group gap="sm" wrap="nowrap">
-          <Icon name={getDimensionIcon(dimension)} c="text-secondary" />
-          <Text flex={1} truncate="end">
-            {dimension.display_name}
-          </Text>
-          {dimension.default && <Badge variant="light">{t`Default`}</Badge>}
-          {isOrphaned(dimension) && (
-            <Icon
-              name="warning"
-              c="warning"
-              tooltip={t`This column is no longer available in the metric's data`}
-            />
+      {({ dragHandleRef, dragHandleListeners }) => (
+        <Group
+          gap="sm"
+          wrap="nowrap"
+          className={cx(S.row, { [S.rowActive]: active })}
+          data-testid={`dimension-row-${dimension.display_name}`}
+        >
+          {canReorder && (
+            <Box
+              component="span"
+              ref={dragHandleRef}
+              className={S.grabber}
+              {...dragHandleListeners}
+            >
+              <Icon name="grabber" c="text-secondary" />
+            </Box>
           )}
-          <Icon name="chevronright" c="text-secondary" />
+          <Checkbox
+            aria-label={dimension.display_name}
+            checked={checked}
+            onChange={(event) => onToggle(event.currentTarget.checked)}
+          />
+          <UnstyledButton className={S.rowButton} onClick={onEdit}>
+            <Group gap="sm" wrap="nowrap">
+              <Icon name={getDimensionIcon(dimension)} c="text-secondary" />
+              <Text flex={1} truncate="end">
+                {dimension.display_name}
+              </Text>
+              {dimension.default && <Badge variant="light">{t`Default`}</Badge>}
+              {isOrphaned(dimension) && (
+                <Icon
+                  name="warning"
+                  c="warning"
+                  tooltip={t`This column is no longer available in the metric's data`}
+                />
+              )}
+              <Icon name="chevronright" c="text-secondary" />
+            </Group>
+          </UnstyledButton>
         </Group>
-      </UnstyledButton>
-    </Group>
+      )}
+    </Sortable>
   );
 }

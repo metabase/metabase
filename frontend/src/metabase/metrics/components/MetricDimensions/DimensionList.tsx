@@ -1,6 +1,11 @@
+import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  type DragEndEvent,
+  SortableList,
+} from "metabase/common/components/Sortable";
 import {
   ActionIcon,
   Button,
@@ -29,6 +34,7 @@ interface DimensionListProps {
   onAdd: () => void;
   onRemove: () => void;
   onEdit: (id: DimensionId) => void;
+  onReorder: (ids: DimensionId[]) => void;
 }
 
 export function DimensionList({
@@ -44,8 +50,20 @@ export function DimensionList({
   onAdd,
   onRemove,
   onEdit,
+  onReorder,
 }: DimensionListProps) {
   const hasChecked = checkedIds.size > 0;
+  // Reordering a search-filtered subset is ambiguous, so dragging is
+  // only available on the full list.
+  const canReorder = search === "" && dimensions.length > 1;
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 10 },
+  });
+
+  const handleSortEnd = ({ itemIds }: DragEndEvent) => {
+    onReorder(itemIds as DimensionId[]);
+  };
 
   return (
     <Stack gap="md" className={S.column} data-testid="metric-dimension-list">
@@ -81,16 +99,23 @@ export function DimensionList({
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <ScrollArea className={S.scrollArea}>
           <Stack gap="sm">
-            {dimensions.map((dimension) => (
-              <DimensionRow
-                key={dimension.id}
-                dimension={dimension}
-                checked={checkedIds.has(dimension.id)}
-                active={dimension.id === activeId}
-                onToggle={(checked) => onToggle(dimension.id, checked)}
-                onEdit={() => onEdit(dimension.id)}
-              />
-            ))}
+            <SortableList
+              items={dimensions}
+              getId={(dimension) => dimension.id}
+              sensors={[pointerSensor]}
+              onSortEnd={handleSortEnd}
+              renderItem={({ item: dimension }) => (
+                <DimensionRow
+                  key={dimension.id}
+                  dimension={dimension}
+                  checked={checkedIds.has(dimension.id)}
+                  active={dimension.id === activeId}
+                  canReorder={canReorder}
+                  onToggle={(checked) => onToggle(dimension.id, checked)}
+                  onEdit={() => onEdit(dimension.id)}
+                />
+              )}
+            />
           </Stack>
         </ScrollArea>
       </LoadingAndErrorWrapper>

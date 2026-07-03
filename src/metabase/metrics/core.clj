@@ -235,6 +235,18 @@
     (save-dimensions! entity dimensions dimension-mappings)
     (added-dimensions dimensions dimension-mappings)))
 
+(defn reorder-dimensions!
+  "Persist a new ordering for a metric/measure's dimensions. `dimension-ids` is the desired order;
+   dimensions not listed keep their relative order after the listed ones. Mappings are untouched.
+   Returns the updated `:added` list."
+  [metadata-type id dimension-ids]
+  (let [entity             (dimension-entity metadata-type id)
+        persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
+        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
+        dimensions         (lib-metric/reorder-dimensions persisted-dims dimension-ids)]
+    (save-dimensions! entity dimensions persisted-mappings)
+    (added-dimensions dimensions persisted-mappings)))
+
 (defn update-dimension!
   "Update a single dimension's `display_name`, `description`, and/or source column (`source` is a
    `{:type :field-id}`). Changing the source column is only allowed to a column of the same effective

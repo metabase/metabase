@@ -5,6 +5,7 @@ import { t } from "ttag";
 import {
   useListMetricDimensionsQuery,
   useRemoveMetricDimensionsMutation,
+  useReorderMetricDimensionsMutation,
 } from "metabase/api/metric";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDispatch } from "metabase/redux";
@@ -39,6 +40,7 @@ export function MetricDimensions({ metricId }: MetricDimensionsProps) {
     query: debouncedSearch || undefined,
   });
   const [removeDimensions] = useRemoveMetricDimensionsMutation();
+  const [reorderDimensions] = useReorderMetricDimensionsMutation();
 
   const dimensions = data?.added ?? [];
 
@@ -71,6 +73,14 @@ export function MetricDimensions({ metricId }: MetricDimensionsProps) {
     }
   };
 
+  const handleReorder = async (ids: DimensionId[]) => {
+    try {
+      await reorderDimensions({ metricId, dimension_ids: ids }).unwrap();
+    } catch {
+      dispatch(addUndo({ message: t`Couldn't reorder the dimensions` }));
+    }
+  };
+
   const activeId = mode.type === "edit" ? mode.dimensionId : null;
 
   return (
@@ -94,6 +104,7 @@ export function MetricDimensions({ metricId }: MetricDimensionsProps) {
           onAdd={() => setMode({ type: "add" })}
           onRemove={handleRemove}
           onEdit={(dimensionId) => setMode({ type: "edit", dimensionId })}
+          onReorder={handleReorder}
         />
 
         <Divider orientation="vertical" />

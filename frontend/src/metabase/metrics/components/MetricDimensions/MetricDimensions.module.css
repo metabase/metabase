@@ -47,6 +47,13 @@
   min-width: 0;
 }
 
+.grabber {
+  display: flex;
+  align-items: center;
+  cursor: grab;
+  touch-action: none;
+}
+
 .addableRow {
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);

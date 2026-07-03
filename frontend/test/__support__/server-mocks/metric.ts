@@ -19,16 +19,19 @@ export function setupMetricDimensionsEndpoints(
   metricId: MetricId,
   response: ListMetricDimensionsResponse,
 ) {
+  // Reorder mutates this so subsequent GETs reflect the persisted order.
+  let added = [...response.added];
+
   fetchMock.get(
     `path:/api/metric/${metricId}/dimension`,
     (call) => {
       const query = new URL(call.url).searchParams.get("query")?.toLowerCase();
-      const added = query
-        ? response.added.filter((dimension) =>
+      const filtered = query
+        ? added.filter((dimension) =>
             dimension.display_name.toLowerCase().includes(query),
           )
-        : response.added;
-      return { added, addable: response.addable };
+        : added;
+      return { added: filtered, addable: response.addable };
     },
     { name: `metric-${metricId}-dimensions-list` },
   );
@@ -39,6 +42,24 @@ export function setupMetricDimensionsEndpoints(
     `path:/api/metric/${metricId}/dimension/remove`,
     response.added,
     { name: `metric-${metricId}-dimensions-remove` },
+  );
+  fetchMock.post(
+    `path:/api/metric/${metricId}/dimension/reorder`,
+    async (call) => {
+      const body = JSON.parse((await call.request?.text()) ?? "{}");
+      const position = new Map<string, number>(
+        (body.dimension_ids ?? []).map((id: string, index: number) => [
+          id,
+          index,
+        ]),
+      );
+      added = [...added].sort(
+        (a, b) =>
+          (position.get(a.id) ?? Infinity) - (position.get(b.id) ?? Infinity),
+      );
+      return added;
+    },
+    { name: `metric-${metricId}-dimensions-reorder` },
   );
   fetchMock.post(
     `path:/api/metric/${metricId}/dimension/set-default`,

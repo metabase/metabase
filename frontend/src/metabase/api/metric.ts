@@ -15,6 +15,7 @@ import type {
   MetricDimension,
   MetricId,
   RemoveMetricDimensionsRequest,
+  ReorderMetricDimensionsRequest,
   SearchMetricDimensionValuesRequest,
   SetDefaultMetricDimensionRequest,
   UpdateMetricDimensionRequest,
@@ -126,6 +127,45 @@ export const metricApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { metricId }) =>
         invalidateTags(error, metricDimensionInvalidationTags(metricId)),
     }),
+    reorderMetricDimensions: builder.mutation<
+      MetricDimension[],
+      ReorderMetricDimensionsRequest
+    >({
+      query: ({ metricId, ...body }) => ({
+        method: "POST",
+        url: `/api/metric/${metricId}/dimension/reorder`,
+        body,
+      }),
+      onQueryStarted: async (
+        { metricId, dimension_ids },
+        { dispatch, queryFulfilled },
+      ) => {
+        // Reflect the drop immediately; the invalidation refetch confirms it.
+        const patch = dispatch(
+          metricApi.util.updateQueryData(
+            "listMetricDimensions",
+            { metricId, query: undefined },
+            (draft) => {
+              const position = new Map(
+                dimension_ids.map((id, index) => [id, index]),
+              );
+              draft.added.sort(
+                (a, b) =>
+                  (position.get(a.id) ?? Infinity) -
+                  (position.get(b.id) ?? Infinity),
+              );
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+        }
+      },
+      invalidatesTags: (_, error, { metricId }) =>
+        invalidateTags(error, metricDimensionInvalidationTags(metricId)),
+    }),
     setDefaultMetricDimension: builder.mutation<
       MetricDimension[],
       SetDefaultMetricDimensionRequest
@@ -182,6 +222,7 @@ export const {
   useListMetricDimensionsQuery,
   useAddMetricDimensionsMutation,
   useRemoveMetricDimensionsMutation,
+  useReorderMetricDimensionsMutation,
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
   useGetMetricBreakoutValuesQuery,

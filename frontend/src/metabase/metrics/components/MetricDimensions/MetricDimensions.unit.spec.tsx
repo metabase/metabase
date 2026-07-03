@@ -9,6 +9,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { metricApi } from "metabase/api/metric";
 import type { ListMetricDimensionsResponse } from "metabase-types/api";
 import {
   createMockAddableDimensionGroup,
@@ -108,7 +109,7 @@ function setup(response?: Partial<ListMetricDimensionsResponse>) {
     ...response,
   };
   setupMetricDimensionsEndpoints(METRIC_ID, fullResponse);
-  renderWithProviders(<MetricDimensions metricId={METRIC_ID} />);
+  return renderWithProviders(<MetricDimensions metricId={METRIC_ID} />);
 }
 
 function getListPanel() {
@@ -326,6 +327,63 @@ describe("MetricDimensions", () => {
     expect(
       settings.queryByRole("textbox", { name: "Source column" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a drag handle on every row", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      getDimensionRow("Created At").getByLabelText("grabber icon"),
+    ).toBeInTheDocument();
+    expect(
+      getDimensionRow("Country").getByLabelText("grabber icon"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides drag handles while searching", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    await userEvent.type(
+      getListPanel().getByPlaceholderText("Search…"),
+      "Country",
+    );
+
+    await waitFor(() => {
+      expect(getListPanel().queryByText("Created At")).not.toBeInTheDocument();
+    });
+    expect(
+      getDimensionRow("Country").queryByLabelText("grabber icon"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reordering posts the new order and reorders the list optimistically", async () => {
+    const { store } = setup();
+    await waitForLoaderToBeRemoved();
+
+    const newOrder = [COUNTRY_ID, SUSPEND_AT_ID, CREATED_AT_ID];
+    store.dispatch(
+      metricApi.endpoints.reorderMetricDimensions.initiate({
+        metricId: METRIC_ID,
+        dimension_ids: newOrder,
+      }),
+    );
+
+    await waitFor(() => {
+      const names = getListPanel()
+        .getAllByTestId(/^dimension-row-/)
+        .map((row) => row.getAttribute("data-testid"));
+      expect(names).toEqual([
+        "dimension-row-Country",
+        "dimension-row-Suspend At",
+        "dimension-row-Created At",
+      ]);
+    });
+
+    expect(
+      await getPostBody(`path:/api/metric/${METRIC_ID}/dimension/reorder`),
+    ).toEqual({ dimension_ids: newOrder });
   });
 
   it("searches the added dimensions", async () => {

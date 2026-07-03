@@ -149,6 +149,11 @@ export type SetDefaultMetricDimensionRequest = {
   dimension_id: DimensionId;
 };
 
+export type ReorderMetricDimensionsRequest = {
+  metricId: MetricId;
+  dimension_ids: DimensionId[];
+};
+
 export type UpdateMetricDimensionRequest = {
   metricId: MetricId;
   dimensionId: DimensionId;

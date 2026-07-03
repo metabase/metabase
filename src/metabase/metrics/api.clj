@@ -382,6 +382,17 @@
   (write-check-metric! id)
   (metrics/set-default-dimension! :metadata/metric id dimension_id))
 
+(api.macros/defendpoint :post "/:id/dimension/reorder"
+  :- [:sequential :map]
+  "Persist a new ordering for a metric's dimensions. `dimension_ids` is the desired order; dimensions
+  not listed keep their relative order after the listed ones. Returns the updated list of added
+  dimensions."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [dimension_ids]} :- [:map [:dimension_ids [:sequential ms/NonBlankString]]]]
+  (write-check-metric! id)
+  (metrics/reorder-dimensions! :metadata/metric id dimension_ids))
+
 (api.macros/defendpoint :post "/:id/dimension/:dimension-key"
   :- :map
   "Update a metric dimension's `display_name`, `description`, and/or source column.
