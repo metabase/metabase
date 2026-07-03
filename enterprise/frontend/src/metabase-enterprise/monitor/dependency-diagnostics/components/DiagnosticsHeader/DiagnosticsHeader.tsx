@@ -1,12 +1,12 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
-  PaneHeader,
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
@@ -24,12 +24,9 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   ];
 
   return (
-    <PaneHeader
-      breadcrumbs={
-        <DataStudioBreadcrumbs>{t`Dependency diagnostics`}</DataStudioBreadcrumbs>
-      }
-      tabs={<PaneHeaderTabs tabs={tabs} />}
-      py={0}
-    />
+    <Stack gap="md">
+      <MonitorHeaderTitle>{t`Dependency diagnostics`}</MonitorHeaderTitle>
+      <PaneHeaderTabs tabs={tabs} />
+    </Stack>
   );
 });

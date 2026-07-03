@@ -9,6 +9,7 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import {
   Anchor,
   Box,
@@ -18,7 +19,6 @@ import {
   Loader,
   Stack,
   Text,
-  Title,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -62,7 +62,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to={Urls.adminToolsTasksList()}>
+        <Link to={Urls.monitorTasksList()}>
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Tasks`}
@@ -71,7 +71,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
       </Flex>
 
       <Stack gap="sm">
-        <Title order={3}>{t`Task details`}</Title>
+        <MonitorHeaderTitle>{t`Task details`}</MonitorHeaderTitle>
         <Flex gap="md">
           <Text fw="bold" w={120}>{t`ID`}</Text>
           <Text>{task.id}</Text>
@@ -89,7 +89,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             <Text fw="bold" w={120}>{t`Task run`}</Text>
             <Anchor
               component={Link}
-              to={Urls.adminToolsTaskRunDetails(task.run_id)}
+              to={Urls.monitorTaskRunDetails(task.run_id)}
             >
               {t`Go to the corresponding run`}
             </Anchor>
@@ -150,7 +150,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           <Text>{task.duration}</Text>
         </Flex>
         <Flex justify="space-between" align="flex-end">
-          <Title order={3}>{t`JSON details`}</Title>
+          <MonitorHeaderTitle>{t`JSON details`}</MonitorHeaderTitle>
           <Button
             leftSection={<Icon name="download" />}
             variant="filled"
@@ -176,7 +176,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           </Box>
         </Box>
 
-        <Title order={3}>{t`Logs`}</Title>
+        <MonitorHeaderTitle>{t`Logs`}</MonitorHeaderTitle>
         {hasLogs ? (
           <Box className={S.codeContainer}>
             <LogsViewer

@@ -4,6 +4,7 @@ import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-studio/analytics";
+import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Center, Flex, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import {
@@ -172,7 +173,7 @@ export function DependencyDiagnostics({
       h="100%"
       wrap="nowrap"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+      <Stack className={S.main} flex={1} gap="md">
         <DiagnosticsHeader />
         <DiagnosticsFilterBar
           mode={mode}
@@ -207,14 +208,16 @@ export function DependencyDiagnostics({
         )}
       </Stack>
       {selectedNode != null && (
-        <DiagnosticsSidebar
-          node={selectedNode}
-          mode={mode}
-          containerWidth={containerWidth}
-          onResizeStart={startResizing}
-          onResizeStop={stopResizing}
-          onClose={() => setSelectedEntry(undefined)}
-        />
+        <Sidebar>
+          <DiagnosticsSidebar
+            node={selectedNode}
+            mode={mode}
+            containerWidth={containerWidth}
+            onResizeStart={startResizing}
+            onResizeStop={stopResizing}
+            onClose={() => setSelectedEntry(undefined)}
+          />
+        </Sidebar>
       )}
     </Flex>
   );

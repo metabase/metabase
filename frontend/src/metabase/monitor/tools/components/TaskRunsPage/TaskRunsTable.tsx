@@ -30,7 +30,7 @@ export const TaskRunsTable = ({
   const dispatch = useDispatch();
 
   const onClickTaskRun = (taskRun: TaskRun) => {
-    dispatch(push(Urls.adminToolsTaskRunDetails(taskRun.id)));
+    dispatch(push(Urls.monitorTaskRunDetails(taskRun.id)));
   };
 
   return (

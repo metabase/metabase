@@ -4,10 +4,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useListPersistedInfoQuery,
   useRefreshModelCacheMutation,
@@ -20,7 +17,8 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon, Tooltip } from "metabase/ui";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
@@ -61,7 +59,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
     }
     if (job.state === "error") {
       return (
-        <Link to={`/admin/tools/model-caching/${job.id}`}>
+        <Link to={Urls.monitorModelCacheRefreshJob(job.id)}>
           <ErrorBox>{job.error}</ErrorBox>
         </Link>
       );
@@ -180,11 +178,12 @@ export function ModelCacheRefreshJobs() {
 
 export function ModelCachePage({ children }: { children?: React.ReactNode }) {
   return (
-    <SettingsPageWrapper title={t`Model cache log`}>
+    <Stack gap="lg">
+      <MonitorHeaderTitle>{t`Model cache log`}</MonitorHeaderTitle>
       <SettingsSection>
         <ModelCacheRefreshJobs />
       </SettingsSection>
       {children /* refresh modal */}
-    </SettingsPageWrapper>
+    </Stack>
   );
 }

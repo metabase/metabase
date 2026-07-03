@@ -1,6 +1,7 @@
 import { memo } from "react";
 
 import { Stack } from "metabase/ui";
+import { SidebarResizableBox } from "metabase-enterprise/monitor/components";
 import type { DependencyNode } from "metabase-types/api";
 
 import type { DependencyDiagnosticsMode } from "../types";
@@ -12,7 +13,6 @@ import { FieldsSection } from "./FieldsSection";
 import { InfoSection } from "./InfoSection";
 import { LocationSection } from "./LocationSection";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarResizableBox } from "./SidebarResizableBox";
 
 type DiagnosticsSidebarProps = {
   node: DependencyNode;

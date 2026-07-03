@@ -4,7 +4,6 @@ import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
@@ -18,9 +17,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Flex, type SelectionState, Title } from "metabase/ui";
+import { Flex, type SelectionState, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   AdminNotification,
@@ -30,7 +31,6 @@ import type {
 
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
-import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
 import { NotificationsFilters } from "../NotificationsFilters";
 import { NotificationsSearchInput } from "../NotificationsSearchInput";
 import { NotificationsTable } from "../NotificationsTable";
@@ -187,7 +187,7 @@ export const NotificationsAdminPage = ({
 
   const handleRowClick = (id: NotificationId) => {
     trackAlertsManagementAlertOpened(id, "table_row");
-    dispatch(push(Urls.adminToolsNotificationDetail(id)));
+    dispatch(push(Urls.monitorNotificationDetail(id)));
   };
 
   const handleSearchChange = (query: string) => {
@@ -197,9 +197,9 @@ export const NotificationsAdminPage = ({
     patchUrlState({ query, page: 0 });
   };
 
-  const handleSidebarClose = () => {
-    dispatch(push(Urls.adminToolsNotifications()));
-  };
+  const handleSidebarClose = useCallback(() => {
+    dispatch(push(Urls.monitorNotifications()));
+  }, [dispatch]);
 
   const deleteNotifications = useCallback(
     async (
@@ -224,7 +224,7 @@ export const NotificationsAdminPage = ({
           notificationId !== undefined &&
           notificationIds.includes(notificationId)
         ) {
-          dispatch(push(Urls.adminToolsNotifications()));
+          dispatch(push(Urls.monitorNotifications()));
         }
       } catch {
         trackAlertsManagementAlertsDeleted(triggeredFrom, "failure", count);
@@ -302,13 +302,10 @@ export const NotificationsAdminPage = ({
   );
 
   const isSidebarOpen = notificationId !== undefined;
-
-  if (isLoading || isFailingLoading || isOwnerlessLoading) {
-    return <LoadingAndErrorWrapper loading />;
-  }
+  const isPageLoading = isLoading || isFailingLoading || isOwnerlessLoading;
 
   const { prevNotificationId, nextNotificationId, notificationSummary } =
-    (() => {
+    useMemo(() => {
       if (notificationId === undefined) {
         return {
           prevNotificationId: undefined,
@@ -332,12 +329,16 @@ export const NotificationsAdminPage = ({
             : undefined,
         notificationSummary: notifications[index],
       };
-    })();
+    }, [notificationId, notifications]);
+
+  if (isPageLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   return (
-    <SettingsPageWrapper pr={isSidebarOpen ? `${SIDEBAR_WIDTH}px` : 0}>
+    <Stack gap="lg">
       <Flex align="center" gap="sm">
-        <Title order={1}>{t`Alerts management`}</Title>
+        <MonitorHeaderTitle>{t`Alerts management`}</MonitorHeaderTitle>
       </Flex>
 
       <NotificationsTabs
@@ -385,18 +386,6 @@ export const NotificationsAdminPage = ({
         />
       </Flex>
 
-      {isSidebarOpen && (
-        <NotificationDetailSidebar
-          notificationId={notificationId}
-          notificationSummary={notificationSummary}
-          isBulkLoading={isBulkLoading}
-          prevNotificationId={prevNotificationId}
-          nextNotificationId={nextNotificationId}
-          onClose={handleSidebarClose}
-          onDelete={(notification) => handleSidebarDelete(notification.id)}
-        />
-      )}
-
       <BulkActionBar
         opened={selectedCount > 0}
         message={
@@ -429,7 +418,21 @@ export const NotificationsAdminPage = ({
         onConfirm={handleChangeOwnerConfirm}
       />
 
+      {isSidebarOpen && (
+        <Sidebar>
+          <NotificationDetailSidebar
+            notificationId={notificationId}
+            notificationSummary={notificationSummary}
+            isBulkLoading={isBulkLoading}
+            prevNotificationId={prevNotificationId}
+            nextNotificationId={nextNotificationId}
+            onClose={handleSidebarClose}
+            onDelete={(notification) => handleSidebarDelete(notification.id)}
+          />
+        </Sidebar>
+      )}
+
       {confirmContent}
-    </SettingsPageWrapper>
+    </Stack>
   );
 };

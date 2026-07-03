@@ -10,6 +10,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { useDispatch } from "metabase/redux";
 import {
   Anchor,
@@ -19,7 +20,6 @@ import {
   Icon,
   Stack,
   Text,
-  Title,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -44,7 +44,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
+    dispatch(push(Urls.monitorTaskDetails(task.id)));
   };
 
   if (!taskRun || error || isLoading) {
@@ -54,7 +54,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to={Urls.adminToolsTasksRuns()}>
+        <Link to={Urls.monitorTasksRuns()}>
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Runs`}
@@ -64,7 +64,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
 
       <Grid>
         <Grid.Col span={{ base: 12, lg: "content" }} maw="50%">
-          <Title order={3} mb="md">{t`Run details`}</Title>
+          <MonitorHeaderTitle mb="md">{t`Run details`}</MonitorHeaderTitle>
           <Stack gap="sm">
             <Flex gap="md">
               <Text fw="bold" w={120}>{t`ID`}</Text>
@@ -131,7 +131,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, lg: "auto" }}>
-          <Title order={3} mb="md">{t`Associated tasks`}</Title>
+          <MonitorHeaderTitle mb="md">{t`Associated tasks`}</MonitorHeaderTitle>
           <table
             className={cx(AdminS.ContentTable)}
             data-testid="task-run-tasks-table"

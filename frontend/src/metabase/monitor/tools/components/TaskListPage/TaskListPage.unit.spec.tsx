@@ -31,7 +31,7 @@ interface SetupOpts {
   tasksResponse?: ListTasksResponse;
 }
 
-const PATHNAME = Urls.adminToolsTasksList();
+const PATHNAME = Urls.monitorTasksList();
 
 const setup = ({
   error,
