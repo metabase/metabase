@@ -117,19 +117,22 @@
   "Start a transform run. Throws ex-info with {:error :already-running} if another
    run is already active (duplicate key violation). Other errors are rethrown.
    If `user-id` is provided, it will be stored with the run for attribution purposes.
-   If `job-run-id` is provided, it will be stored with the run to link it to its parent job run."
-  [id run-method user-id & {:keys [job-run-id]}]
-  (try
-    (transform-run/start-run! id (cond-> {:run_method run-method}
-                                   user-id    (assoc :user_id user-id)
-                                   job-run-id (assoc :job_run_id job-run-id)))
-    (catch Exception e
-      (if (duplicate-key-violation? e)
-        (throw (ex-info "Transform is already running"
-                        {:error        :already-running
-                         :transform-id id}
-                        e))
-        (throw e)))))
+   `parent-run`, when provided, links the run to its coordinating run as a `[type id]` tuple:
+   `[:job id]` is stored in `job_run_id`, `[:dag id]` in `dag_run_id`."
+  [id run-method user-id & {:keys [parent-run]}]
+  (let [[parent-type parent-id] parent-run]
+    (try
+      (transform-run/start-run! id (cond-> {:run_method run-method}
+                                     user-id                (assoc :user_id user-id)
+                                     (= parent-type :job)   (assoc :job_run_id parent-id)
+                                     (= parent-type :dag)   (assoc :dag_run_id parent-id)))
+      (catch Exception e
+        (if (duplicate-key-violation? e)
+          (throw (ex-info "Transform is already running"
+                          {:error        :already-running
+                           :transform-id id}
+                          e))
+          (throw e))))))
 
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
