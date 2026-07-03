@@ -66,7 +66,6 @@
             (is (nil? (dag-run/running-run-for-source-transform-id tid))))
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))
-
     (testing "cancel-started-run! cancels an active run but is a no-op once terminal"
       (let [{run-id :id} (dag-run/start-dag-run! tid :downstream nil)]
         (try
@@ -76,7 +75,6 @@
               "a finished run is never resurrected into a canceled state")
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))
-
     (testing "fail-started-run! records the failure message"
       (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil)]
         (try
