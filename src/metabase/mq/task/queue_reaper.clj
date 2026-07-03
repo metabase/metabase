@@ -46,15 +46,19 @@
 
 (defn- orphaned-trigger-rows
   "Queue message triggers in `sched-name`'s store that have sat `WAITING` — never acquired by any node —
-  since before `threshold` (epoch ms). Returns rows of `{:trigger_name :job_name}`."
+  since before `threshold` (epoch ms). Returns rows of `{:trigger_name :job_name}`.
+
+  The table is referenced as the unquoted, upper-case `QRTZ_TRIGGERS` on purpose: Metabase creates the
+  Quartz tables upper-case on MySQL/MariaDB (where table names are case-sensitive on Linux) but
+  lower-case on Postgres. An unquoted upper-case identifier resolves on every backend — Postgres folds
+  it to lower-case, MySQL/H2 match the stored upper-case name — whereas Toucan's default *quoted
+  lower-case* reference (`:qrtz_triggers`) fails on case-sensitive MySQL/MariaDB. (Quartz's own SQL
+  references these tables the same unquoted upper-case way.)"
   [sched-name threshold]
-  (t2/query {:select [:trigger_name :job_name]
-             :from   [:qrtz_triggers]
-             :where  [:and
-                      [:= :sched_name sched-name]
-                      [:= :trigger_group quartz-affinity/queue-job-group]
-                      [:= :trigger_state "WAITING"]
-                      [:< :start_time threshold]]}))
+  (t2/query [(str "SELECT trigger_name, job_name FROM QRTZ_TRIGGERS"
+                  " WHERE sched_name = ? AND trigger_group = ? AND trigger_state = 'WAITING'"
+                  " AND start_time < ?")
+             sched-name quartz-affinity/queue-job-group threshold]))
 
 (defn- drop-orphaned-triggers!
   "Drops queue message triggers that have sat `WAITING` — never acquired by any node — for longer than

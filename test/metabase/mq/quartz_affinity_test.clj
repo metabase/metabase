@@ -74,15 +74,15 @@
 (defn- seed! [sched rows]
   (let [now (epoch-ms)]
     (doseq [[jn jg] rows]
-      (t2/query (str "INSERT INTO qrtz_job_details (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
+      (t2/query (str "INSERT INTO QRTZ_JOB_DETAILS (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
                      " VALUES ('" sched "','" jn "','" jg "','x.Job',true,false,false,false)"))
-      (t2/query (str "INSERT INTO qrtz_triggers (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
+      (t2/query (str "INSERT INTO QRTZ_TRIGGERS (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
                      " VALUES ('" sched "','" jn "','" jg "','" jn "','" jg "'," (- now 60000)
                      ",5,'WAITING','SIMPLE'," (- now 120000) ",-1)")))))
 
 (defn- cleanup! [sched]
-  (t2/query (str "DELETE FROM qrtz_triggers WHERE sched_name='" sched "'"))
-  (t2/query (str "DELETE FROM qrtz_job_details WHERE sched_name='" sched "'")))
+  (t2/query (str "DELETE FROM QRTZ_TRIGGERS WHERE sched_name='" sched "'"))
+  (t2/query (str "DELETE FROM QRTZ_JOB_DETAILS WHERE sched_name='" sched "'")))
 
 ;; Stand in for the delegate's protected `rtp`: substitute {0}=table prefix, {1}=sched-name literal for
 ;; this test's isolated sched, using Quartz's own (MessageFormat-based) helper — so the query is exactly

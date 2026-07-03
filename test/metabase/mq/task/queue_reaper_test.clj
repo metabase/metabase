@@ -18,14 +18,14 @@
   "Inserts a queue job + trigger row directly into the app-db QRTZ_* tables under `sched`."
   [sched jn state start]
   (let [jg quartz-affinity/queue-job-group]
-    (t2/query (str "INSERT INTO qrtz_job_details (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
+    (t2/query (str "INSERT INTO QRTZ_JOB_DETAILS (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
                    " VALUES ('" sched "','" jn "','" jg "','x.Job',true,false,false,false)"))
-    (t2/query (str "INSERT INTO qrtz_triggers (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
+    (t2/query (str "INSERT INTO QRTZ_TRIGGERS (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
                    " VALUES ('" sched "','t-" jn "','" jg "','" jn "','" jg "'," start ",5,'" state "','SIMPLE'," start ",-1)"))))
 
 (defn- cleanup-sched! [sched]
-  (t2/query (str "DELETE FROM qrtz_triggers WHERE sched_name='" sched "'"))
-  (t2/query (str "DELETE FROM qrtz_job_details WHERE sched_name='" sched "'")))
+  (t2/query (str "DELETE FROM QRTZ_TRIGGERS WHERE sched_name='" sched "'"))
+  (t2/query (str "DELETE FROM QRTZ_JOB_DETAILS WHERE sched_name='" sched "'")))
 
 (deftest orphaned-trigger-rows-selects-only-stuck-queue-triggers-test
   (testing "orphaned-trigger-rows selects only queue-group WAITING triggers older than the threshold"
@@ -38,9 +38,9 @@
         (insert-trigger! sched "fresh"        "WAITING"  recent)   ; too recent
         (insert-trigger! sched "old-acquired" "ACQUIRED" old)      ; not WAITING (being delivered)
         ;; a non-queue trigger (e.g. sync) in a different group
-        (t2/query (str "INSERT INTO qrtz_job_details (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
+        (t2/query (str "INSERT INTO QRTZ_JOB_DETAILS (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
                        " VALUES ('" sched "','other-group','DEFAULT','x.Job',true,false,false,false)"))
-        (t2/query (str "INSERT INTO qrtz_triggers (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
+        (t2/query (str "INSERT INTO QRTZ_TRIGGERS (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
                        " VALUES ('" sched "','t-other-group','DEFAULT','other-group','DEFAULT'," old ",5,'WAITING','SIMPLE'," old ",-1)"))
         (let [threshold (- now (* 24 60 60 1000)) ; 1 day
               rows      (#'queue-reaper/orphaned-trigger-rows sched threshold)]
