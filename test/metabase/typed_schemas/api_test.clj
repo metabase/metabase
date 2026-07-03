@@ -362,7 +362,7 @@
     (is (str/includes? body "databaseId: 1"))
     (is (str/includes? body "sourceTableId: 10"))
     (is (str/includes? body "sourceCardId: 42"))
-    (is (str/includes? body "createdAt: {\n        type: \"column\""))
+    (is (str/includes? body "fields: {\n        createdAt: {\n          type: \"column\""))
     (is (str/includes? body "\"source-name\": \"orders\""))
     (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
     (is (str/includes? body "function pickFields"))
@@ -370,7 +370,8 @@
     (is (str/includes? body "franchises: pickFields(tables.franchises.fields, [ \"name\", \"ownerName\" ], { sourceFieldId: 42 })"))
     (is (= 1 (count (re-seq #"sourceFieldId: 42" body))))
     (is (not (str/includes? body "dimensionIds")))
-    (is (not (str/includes? body "metricId: 5")))))
+    (is (not (str/includes? body "metricId: 5")))
+    (is (not (str/includes? body "metricId: 6")))))
 
 (deftest json-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/json")]

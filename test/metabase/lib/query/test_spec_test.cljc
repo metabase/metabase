@@ -408,7 +408,17 @@
                                                     :right {:type :column
                                                             :name "USER_ID"}}]}]}]})]
       (is (=? [{:strategy :left-join}]
-              (-> query lib/joins))))))
+              (-> query lib/joins)))))
+  (testing "test-query rejects joins with metric sources"
+    (is (thrown?
+         #?(:clj Exception :cljs js/Error)
+         (lib.query.test-spec/test-query
+          lib.tu/metadata-provider-with-metric
+          {:stages [{:source {:type :table
+                              :id   (meta/id :venues)}
+                     :joins  [{:source   {:type :metric
+                                          :id   1}
+                               :strategy :left-join}]}]})))))
 
 (deftest ^:parallel test-query-with-join-conditions-with-bin-width-test
   (testing "test-query adds joins with bin-width binned conditions"

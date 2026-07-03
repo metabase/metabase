@@ -33,6 +33,11 @@
    [:card ::test-card-source-spec]
    [:metric ::test-metric-source-spec]])
 
+(mr/def ::test-join-target-source-spec
+  [:multi {:dispatch (comp keyword :type)}
+   [:table ::test-table-source-spec]
+   [:card ::test-card-source-spec]])
+
 (mr/def ::test-column-spec
   [:map
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
@@ -110,7 +115,7 @@
 
 (mr/def ::test-join-spec
   [:map
-   [:source     [:ref ::test-source-spec]]
+   [:source     [:ref ::test-join-target-source-spec]]
    [:strategy   ::lib.schema.join/strategy]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 

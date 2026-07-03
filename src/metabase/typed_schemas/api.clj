@@ -955,7 +955,9 @@
         (= kind "measure") :measure
         (= kind "metric") :metric
         (= (last (butlast path)) :fields) :field
-        (= (last (butlast path)) :dimensions) :metric-dimension
+        (and (= kind "column")
+             (or (= (last (butlast path)) :dimensions)
+                 (= (last (drop-last 2 path)) :dimensions))) :metric-dimension
         (= (last (butlast path)) :columns) :column
         :else nil))))
 
@@ -1168,6 +1170,15 @@
                  dimension-key)))
        set))
 
+(defn- raw-metric-dimension-fields
+  [dimensions compact-keys compact-fields]
+  (when-let [raw-fields (not-empty (update-vals (apply dissoc dimensions compact-keys)
+                                                #(dissoc % :metricId)))]
+    (let [group-key (if (contains? compact-fields "fields")
+                      "metricFields"
+                      "fields")]
+      {group-key raw-fields})))
+
 (defn- compact-metric-dimensions
   [schema]
   (let [fields-reference-by-table      (table-fields-reference-lookup schema)
@@ -1183,7 +1194,7 @@
                                    compact-keys   (compact-metric-dimension-keys fields-reference-by-table
                                                                                  field-key-by-table-and-field
                                                                                  dimensions)
-                                   raw-fields     (not-empty (apply dissoc dimensions compact-keys))
+                                   raw-fields     (raw-metric-dimension-fields dimensions compact-keys compact-fields)
                                    compact-dimensions (not-empty (merge raw-fields compact-fields))]
                                (cond-> (dissoc metric :dimensions)
                                  compact-dimensions (assoc :dimensions compact-dimensions)))))))))

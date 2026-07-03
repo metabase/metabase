@@ -462,6 +462,8 @@ export type TestSourceSpec =
   | TestCardSourceSpec
   | TestMetricSourceSpec;
 
+export type TestJoinTargetSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
+
 export type TestColumnSpec = {
   type: "column";
   name: string;
@@ -534,7 +536,7 @@ export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
 export type TestBreakoutSpec = TestColumnWithBinningSpec;
 
 export type TestJoinSpec = {
-  source: TestSourceSpec;
+  source: TestJoinTargetSourceSpec;
   strategy: JoinStrategy;
 
   // If not set we will use the suggested join conditions
