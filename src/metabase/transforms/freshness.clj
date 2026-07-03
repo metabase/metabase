@@ -26,22 +26,22 @@
       false)))
 
 (defn schedule-fresh-transform-ids
-  "IDs of transforms covered by ≥1 active scheduled job where no schedule fire time has elapsed
-  since the transform's most recent run (any status) as of `now`. Such transforms are merely
-  between fires of their schedule - e.g. a six-month cadence whose last run was two months ago -
-  and should not be treated as inactive by recency checks like staleness. Transforms that have
-  never run are never schedule-fresh."
+  "IDs of transforms that are between fires of an active job schedule as of `now`.
+  Covered transforms have ≥1 active scheduled job and no schedule fire time has elapsed since
+  their most recent run (any status) - e.g. a six-month cadence whose last run was two months
+  ago - and should not be treated as inactive by recency checks like staleness. Transforms that
+  have never run are never schedule-fresh."
   [now]
   (let [schedules-by-id (transform-tag/schedules-for-transforms)
         last-starts     (transform-run/last-run-start-times (keys schedules-by-id))
         now-date        (Date/from (t/instant now))]
     (into #{}
-          (keep (fn [[id schedules]]
-                  (when-let [ran (last-starts id)]
-                    (let [ran-date (Date/from (t/instant ran))]
-                      (when (not-any? #(fired-since? % ran-date now-date) schedules)
-                        id)))))
-          schedules-by-id)))
+          (for [[id schedules] schedules-by-id
+                :let  [ran (last-starts id)]
+                :when ran
+                :let  [ran-date (Date/from (t/instant ran))]
+                :when (not-any? #(fired-since? % ran-date now-date) schedules)]
+            id))))
 
 (defn fresh-dep-ids
   "Subset of `dep-ids` safe to skip as of `now`: a dep that has never succeeded is never fresh; a
