@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAsyncFn } from "react-use";
 
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
@@ -153,6 +154,11 @@ export type UseMetabaseQueryObjectResult = {
   query: DatasetQuery | null;
   error: unknown;
   isLoading: boolean;
+};
+
+type QueryObjectState = {
+  query: DatasetQuery;
+  queryKey: string;
 };
 
 export function filter<
@@ -363,74 +369,55 @@ export function useMetabaseQueryObject(
     },
   } = useMetabaseProviderPropsStore();
 
-  const [queryState, setQueryState] = useState<
-    UseMetabaseQueryObjectResult & { queryKey: string | null }
-  >({
-    query: null,
-    error: null,
-    isLoading: true,
-    queryKey: null,
-  });
-
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
+  const pendingQueryKeyRef = useRef<string | null>(null);
 
   queryRef.current = query;
 
-  useEffect(() => {
-    let isActive = true;
-
-    async function resolveQueryObject() {
+  const [{ value, error, loading }, resolveQueryObject] =
+    useAsyncFn(async (): Promise<QueryObjectState | null> => {
       const resolveDatasetQuery = getResolveDatasetQueryFromBundle();
 
-      if (
-        !reduxStore ||
-        !resolveDatasetQuery ||
-        loginStatus?.status !== "success"
-      ) {
-        setQueryState({
-          query: null,
-          error: null,
-          isLoading: true,
-          queryKey: null,
-        });
-
-        return;
+      if (!reduxStore || !resolveDatasetQuery) {
+        return null;
       }
 
-      try {
-        const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
+      const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
 
-        if (isActive) {
-          setQueryState({
-            query: result,
-            error: null,
-            isLoading: false,
-            queryKey,
-          });
-        }
-      } catch (error) {
-        if (isActive) {
-          setQueryState({ query: null, error, isLoading: false, queryKey });
-        }
-      }
+      return { query: result, queryKey };
+    }, [queryKey, reduxStore]);
+
+  useEffect(() => {
+    if (
+      !reduxStore ||
+      !getResolveDatasetQueryFromBundle() ||
+      loginStatus?.status !== "success"
+    ) {
+      return;
     }
 
-    setQueryState({ query: null, error: null, isLoading: true, queryKey });
+    pendingQueryKeyRef.current = queryKey;
     resolveQueryObject();
+  }, [
+    loadingState,
+    loginStatus?.status,
+    queryKey,
+    reduxStore,
+    resolveQueryObject,
+  ]);
 
-    return () => {
-      isActive = false;
-    };
-  }, [loadingState, loginStatus?.status, queryKey, reduxStore]);
+  if (error && !loading && pendingQueryKeyRef.current === queryKey) {
+    return { query: null, error, isLoading: false };
+  }
 
-  if (queryState.queryKey !== queryKey) {
+  if (loginStatus?.status !== "success" || value?.queryKey !== queryKey) {
     return { query: null, error: null, isLoading: true };
   }
 
   return {
-    query: queryState.query,
-    error: queryState.error,
-    isLoading: queryState.isLoading,
+    query: value.query,
+    error: error ?? null,
+    isLoading: loading,
   };
 }
