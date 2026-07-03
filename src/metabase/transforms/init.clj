@@ -1,6 +1,7 @@
 (ns metabase.transforms.init
   (:require
    [metabase.transforms.canceling]
+   [metabase.transforms.dependency-warming]
    [metabase.transforms.jobs]
    [metabase.transforms.models.job-run]
    [metabase.transforms.models.transform]
