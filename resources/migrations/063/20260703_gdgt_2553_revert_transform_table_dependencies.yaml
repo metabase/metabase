@@ -1,0 +1,23 @@
+## Revert of GDGT-2553 (migrations/063/20260624_gdgt_2553_transform_table_dependencies.yaml).
+## The precomputed table_dependencies caching was reverted, so drop the now-unused column.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-07-03T00:00:00
+      author: bronsa
+      comment: Drop table_dependencies column from transform table (revert GDGT-2553)
+      changes:
+        - dropColumn:
+            tableName: transform
+            columnName: table_dependencies
+      rollback:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: table_dependencies
+                  type: ${text.type}
+                  remarks: Precomputed table dependencies (JSON) used for execution ordering and cycle detection. Null means not yet computed.
+                  constraints:
+                    nullable: true
