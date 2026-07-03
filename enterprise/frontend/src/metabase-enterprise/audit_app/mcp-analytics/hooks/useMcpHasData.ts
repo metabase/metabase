@@ -37,6 +37,7 @@ export function useMcpHasData({
   dateFilter,
   userId,
   groupId,
+  tenantId,
   errorsOnly = false,
 }: DataSources & McpFilters & { errorsOnly?: boolean }): Result {
   const query = useMemo(
@@ -49,6 +50,7 @@ export function useMcpHasData({
             dateFilter,
             userId,
             groupId,
+            tenantId,
             errorsOnly,
           })
         : null,
@@ -59,6 +61,7 @@ export function useMcpHasData({
       dateFilter,
       userId,
       groupId,
+      tenantId,
       errorsOnly,
     ],
   );

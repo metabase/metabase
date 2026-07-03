@@ -149,6 +149,7 @@ function setup({ dataset }: { dataset?: object } = {}) {
       storeInitialState: createMockState({
         settings: mockSettings({
           "token-features": createMockTokenFeatures({ audit_app: true }),
+          "mcp-enabled?": true,
         }),
       }),
     },

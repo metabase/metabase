@@ -75,6 +75,17 @@ describe("buildEventsRawSeries", () => {
     ).toBeNull();
   });
 
+  it("fails closed: returns null when no curated column is present (no all-columns leak)", () => {
+    const foreign = [
+      col("WEIRD_A", "Weird A"),
+      col("USER_AGENT", "User Agent"),
+    ];
+    const data = {
+      data: { cols: foreign, rows: [[]] },
+    } as unknown as EventsData;
+    expect(buildEventsRawSeries(data, jsQuery, true, true)).toBeNull();
+  });
+
   it("surfaces only the curated columns, in order (ID first, Tenant + IP after User)", () => {
     expect(enabledNames(surfacedTableColumns())).toEqual([
       "TOOL_CALL_ID",
@@ -108,6 +119,19 @@ describe("buildEventsRawSeries", () => {
     expect(
       enabledNames(surfacedTableColumns(ALL_COLS, true, false)),
     ).not.toContain("IP_ADDRESS");
+  });
+
+  it("includes the Error message column only when PII retention is on", () => {
+    // error_message is gated PII (written only when retention is on), like ip_address; error_type
+    // (non-PII) is always surfaced.
+    expect(enabledNames(surfacedTableColumns(ALL_COLS, true, true))).toContain(
+      "ERROR_MESSAGE",
+    );
+    const withoutPii = enabledNames(
+      surfacedTableColumns(ALL_COLS, true, false),
+    );
+    expect(withoutPii).not.toContain("ERROR_MESSAGE");
+    expect(withoutPii).toContain("ERROR_TYPE");
   });
 
   it("explicitly hides the extraneous columns (incl. raw tenant_id) so they don't leak", () => {

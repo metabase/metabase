@@ -33,7 +33,9 @@ function eventColumns(hasTenants: boolean, hasPii: boolean): string[] {
     "status",
     "duration_ms",
     "error_type",
-    "error_message",
+    // error_message is gated PII (the backend only writes it when retention is on), so hide it
+    // alongside ip_address rather than show a permanently-blank column.
+    ...(hasPii ? ["error_message"] : []),
   ];
 }
 
@@ -102,12 +104,11 @@ export function buildEventsRawSeries(
     return title ? { ...col, display_name: title } : col;
   });
 
-  // Guard against an all-hidden table: if none of the curated columns are present (e.g. an
-  // unexpected schema), fall back to the default table rather than disabling everything.
+  // Fail closed: if none of the curated columns are present (e.g. an unexpected schema), render
+  // nothing rather than the default table — the default would surface every column, including
+  // user_agent, raw ids, and gated PII.
   if (shown.length === 0) {
-    return [
-      { card: { display: "table", dataset_query: jsQuery }, data: data.data },
-    ];
+    return null;
   }
 
   // `table.columns` must enumerate EVERY column — the surfaced ones (ordered, enabled) followed

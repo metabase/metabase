@@ -20,6 +20,7 @@ export function getMetabotAnalyticsNavItems() {
 function MetabotAnalyticsNavItems() {
   const isConfigured = useSetting("llm-metabot-configured?");
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
+  const mcpEnabled = useSetting("mcp-enabled?");
 
   if (!areAiFeaturesEnabled) {
     return null;
@@ -54,7 +55,7 @@ function MetabotAnalyticsNavItems() {
           rightSection={<UpsellGem.New size={14} />}
         />
       )}
-      {getMcpAnalyticsNavItem()}
+      {getMcpAnalyticsNavItem(mcpEnabled)}
     </AdminNavItem>
   );
 }

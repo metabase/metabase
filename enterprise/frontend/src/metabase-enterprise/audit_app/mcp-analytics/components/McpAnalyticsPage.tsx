@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { WithRouterProps } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -29,7 +30,7 @@ import { McpEventsTable } from "./McpEventsTable";
  * across two tabs (Charts and a row-level Events table), sharing URL-state date/user/group
  * filters. Shows a single empty state (no tabs) when the filtered view has no activity.
  */
-export function McpAnalyticsPage({ location }: WithRouterProps) {
+export function McpAnalyticsPage({ location, router }: WithRouterProps) {
   const [{ date, user, group, tenant, tab }, { patchUrlState }] = useUrlState(
     location,
     mcpUrlStateConfig,
@@ -49,6 +50,9 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
 
   // IP is PII (null unless retention is on), so only surface its column when it's collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
+  // The MCP server can be turned off while its historical analytics still exist; when it's off the
+  // page is inaccessible (the nav item greys out — this also blocks direct URL access).
+  const mcpEnabled = useSetting("mcp-enabled?");
 
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
@@ -77,6 +81,18 @@ export function McpAnalyticsPage({ location }: WithRouterProps) {
     ...chartFilters,
     errorsOnly: true,
   });
+
+  // The MCP server can be off while its historical analytics still exist; when it's off the page
+  // is inaccessible — redirect away so it can't be reached by URL (the nav item also greys out).
+  useEffect(() => {
+    if (!mcpEnabled) {
+      router.replace("/admin/metabot/usage-auditing");
+    }
+  }, [mcpEnabled, router]);
+
+  if (!mcpEnabled) {
+    return null;
+  }
 
   return (
     <MetabotAdminLayout fullWidth>
