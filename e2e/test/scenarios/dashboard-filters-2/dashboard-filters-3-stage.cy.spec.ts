@@ -412,7 +412,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
               .click();
           });
 
-          H.saveDashboard({ waitMs: 250 });
+          H.saveDashboard();
 
           H.filterWidget().eq(0).click();
           H.popover().within(() => {

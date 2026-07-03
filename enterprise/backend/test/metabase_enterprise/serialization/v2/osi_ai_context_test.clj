@@ -121,6 +121,17 @@
         (is (=? {:ai_context {:instructions "v2"}}
                 (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))
 
+(deftest string-ai-context-import-coerces-to-instructions-test
+  (testing "an OSI string-shorthand ai_context imports as {:instructions s} — serdes copies it verbatim and
+           the model transform normalizes it on write, so no read path sees a naked string"
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                          :ai_context {:instructions "object form"}}]
+      (let [extracted (assoc (extract-for "card" card-id) :ai_context "just the instructions")]
+        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+        (is (=? {:ai_context {:instructions "just the instructions"}}
+                (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))))
+
 (deftest disk-round-trip-card-context-test
   (testing "a card-backed ai_context survives a real on-disk store/ingest/load (storage-path handles a non-table parent)"
     (mt/with-temp [:model/Card {card-id :id} {}
