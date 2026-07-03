@@ -112,8 +112,9 @@
    ;;
    ;; Without this, once the pool hits maxPoolSize every additional query blocks forever waiting for a free
    ;; connection, so a backlog can grow without bound under load. With it, an over-loaded instance sheds load: the
-   ;; checkout fails fast and the QP turns the resulting timeout into an HTTP 429 (see
-   ;; [[metabase.driver.sql-jdbc.execute/do-with-resolved-connection]]).
+   ;; checkout fails fast and the QP turns the resulting timeout into an HTTP 503 (see
+   ;; [[metabase.driver.sql-jdbc.execute/do-with-resolved-connection]]). The number of queries allowed to wait at once
+   ;; is separately bounded by [[driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts]].
    "checkoutTimeout"                      (driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,

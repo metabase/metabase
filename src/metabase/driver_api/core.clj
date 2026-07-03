@@ -193,13 +193,14 @@
 
 (p/import-fn lib/unique-name-generator-with-options unique-name-generator)
 
+(p/import-def qp.error-type/connection-pool-checkout-queue-full qp.error-type.connection-pool-checkout-queue-full)
+(p/import-def qp.error-type/connection-pool-checkout-timeout qp.error-type.connection-pool-checkout-timeout)
 (p/import-def qp.error-type/db qp.error-type.db)
 (p/import-def qp.error-type/driver qp.error-type.driver)
 (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
 (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
 (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
 (p/import-def qp.error-type/qp qp.error-type.qp)
-(p/import-def qp.error-type/timed-out-acquiring-connection qp.error-type.timed-out-acquiring-connection)
 (p/import-def qp.error-type/unable-to-acquire-connection qp.error-type.unable-to-acquire-connection)
 (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
 
