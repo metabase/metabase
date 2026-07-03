@@ -82,10 +82,12 @@ export function AppView({ params }: AppViewProps) {
     if (!iframeEl || !validName) {
       return undefined;
     }
+
     let detach: (() => void) | null = null;
 
     const onLoad = () => {
       setIframeLoaded(true);
+
       // The iframe can navigate cross-origin — a form submitting to an allowed
       // external host, or the chrome-error page from a blocked navigation — and a
       // cross-origin `contentWindow` throws on access. Mirroring only works
@@ -93,11 +95,14 @@ export function AppView({ params }: AppViewProps) {
       try {
         detach?.();
         detach = null;
+
         const win = iframeEl.contentWindow;
+
         if (win) {
           detach = attachIframeUrlMirror(win, name);
         }
       } catch (error) {
+
         detach = null;
         // Expected only for a cross-origin frame; rethrow anything else so mirror
         // bugs surface.
@@ -108,6 +113,7 @@ export function AppView({ params }: AppViewProps) {
     };
 
     iframeEl.addEventListener("load", onLoad);
+
     // If the iframe already loaded before the effect ran, attach now.
     if (iframeEl.contentWindow?.document.readyState === "complete") {
       onLoad();
@@ -141,7 +147,9 @@ export function AppView({ params }: AppViewProps) {
         });
       }
     };
+
     window.addEventListener("message", onMessage);
+
     return () => window.removeEventListener("message", onMessage);
   }, [iframeEl]);
 

@@ -130,20 +130,24 @@ export function createDataAppSandbox({
     evaluate(code: string): DataAppFactory {
       try {
         env.evaluate(code);
-      } catch (e) {
+      } catch (error) {
         let message: string;
+
         try {
-          message = String((e as { message?: unknown })?.message ?? e);
+          message = String((error as { message?: unknown })?.message ?? error);
         } catch {
           message = "Unknown error inside data-app sandbox";
         }
+
         throw new Error(message);
       }
+
       if (typeof captured !== "function") {
         throw new Error(
           "Bundle did not assign a function to __dataAppFactory__",
         );
       }
+
       return captured as DataAppFactory;
     },
   };

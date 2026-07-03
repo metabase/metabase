@@ -34,20 +34,23 @@ export interface FetchedDataAppBundle {
 // eslint-disable-next-line metabase/no-literal-metabase-strings -- HTTP response header name, not user-facing
 const ALLOWED_HOSTS_HEADER = "X-Metabase-Data-App-Allowed-Hosts";
 
-function parseAllowedHostsHeader(res: Response): string[] {
+const parseAllowedHostsHeader = (res: Response): string[] => {
   const raw = res.headers.get(ALLOWED_HOSTS_HEADER);
+
   if (!raw) {
     return [];
   }
+
   try {
     const parsed: unknown = JSON.parse(raw);
+
     return Array.isArray(parsed)
       ? parsed.filter((h): h is string => typeof h === "string")
       : [];
   } catch {
     return [];
   }
-}
+};
 
 /**
  * Error thrown when a data-app bundle can't be fetched. `status` carries the
@@ -56,8 +59,10 @@ function parseAllowedHostsHeader(res: Response): string[] {
  */
 export class DataAppBundleError extends Error {
   status?: number;
+
   constructor(message: string, status?: number) {
     super(message);
+
     this.name = "DataAppBundleError";
     this.status = status;
   }
@@ -69,9 +74,9 @@ export class DataAppBundleError extends Error {
  * URL. Throws a [[DataAppBundleError]] on a transport failure or non-2xx
  * response.
  */
-export async function fetchDataAppBundleCode(
+export const fetchDataAppBundleCode = async (
   name: string,
-): Promise<FetchedDataAppBundle> {
+): Promise<FetchedDataAppBundle> => {
   const url = getSubpathSafeUrl(
     `/api/data-app/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
@@ -95,7 +100,7 @@ export async function fetchDataAppBundleCode(
   }
 
   return { code: await res.text(), allowedHosts: parseAllowedHostsHeader(res) };
-}
+};
 
 /**
  * Build a Near Membrane sandbox bound to `targetWindow` and evaluate the
@@ -103,12 +108,12 @@ export async function fetchDataAppBundleCode(
  * the iframe's own `window` — same realm as the React tree rendering the
  * factory's component, so no cross-document mounting.
  */
-export function instantiateDataAppBundle(
+export const instantiateDataAppBundle = (
   code: string,
   label: string,
   targetWindow: Window,
   allowedHosts: string[] = [],
-): LoadedDataApp {
+): LoadedDataApp => {
   const sandbox = createDataAppSandbox({
     label,
     targetWindow,
@@ -139,4 +144,4 @@ export function instantiateDataAppBundle(
   );
 
   return { component: def.component, providerProps };
-}
+};
