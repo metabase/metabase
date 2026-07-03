@@ -12,7 +12,11 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { useSetting } from "metabase/common/hooks";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
+import {
+  getSavedChartCardId,
+  getSavedChartLocation,
+  markChartSaved,
+} from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { push } from "metabase/router";
@@ -165,6 +169,9 @@ function SaveChartAction({
   const savedCardId = useSelector((state) =>
     getSavedChartCardId(state, entityId),
   );
+  const savedLocation = useSelector((state) =>
+    getSavedChartLocation(state, entityId),
+  );
 
   const handleCreate = async (
     newQuestion: Question,
@@ -195,14 +202,18 @@ function SaveChartAction({
         .with({ savedCardId: P.number }, ({ savedCardId }) => (
           <Button
             component={ForwardRefLink}
-            to={Urls.question(question.setId(savedCardId))}
+            to={
+              savedLocation
+                ? savedLocation.url
+                : Urls.question(question.setId(savedCardId))
+            }
             target="_blank"
             variant="subtle"
             color="text-secondary"
             size="compact-xs"
             leftSection={<Icon name="check" size={14} />}
           >
-            {t`Saved`}
+            {savedLocation ? t`Saved in ${savedLocation.name}` : t`Saved`}
           </Button>
         ))
         .with({ readonly: true }, () => null)

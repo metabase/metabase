@@ -8,10 +8,17 @@ import {
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { parseChartClipboard } from "metabase/common/utils/chart-clipboard";
+import { markChartSaved } from "metabase/metabot/state";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
@@ -222,6 +229,32 @@ describe("MetabotInlineChart", () => {
         ).not.toBeInTheDocument();
       });
       expect(await screen.findByText("Saved")).toBeInTheDocument();
+    });
+
+    it("shows a 'Saved in <folder>' link once the agent saves it", async () => {
+      const { store } = setup();
+
+      act(() => {
+        store.dispatch(
+          markChartSaved({
+            entityId: "card-1",
+            cardId: 99,
+            location: {
+              type: "collection",
+              id: 5,
+              name: "Sales analytics",
+              url: "/collection/5",
+            },
+          }),
+        );
+      });
+
+      expect(
+        await screen.findByText("Saved in Sales analytics"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
     });
   });
 

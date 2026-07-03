@@ -205,5 +205,6 @@ export const getMetabotInitialState = (): MetabotState => {
     },
     debugMode: false,
     savedChartCardIds: {},
+    savedChartLocations: {},
   };
 };

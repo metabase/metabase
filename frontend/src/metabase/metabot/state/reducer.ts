@@ -2,6 +2,7 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
+import type { SavedEntityLocation } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -64,9 +65,17 @@ export const metabot = createSlice({
     },
     markChartSaved: (
       state,
-      action: PayloadAction<{ entityId: string; cardId: number }>,
+      action: PayloadAction<{
+        entityId: string;
+        cardId: number;
+        location?: SavedEntityLocation;
+      }>,
     ) => {
-      state.savedChartCardIds[action.payload.entityId] = action.payload.cardId;
+      const { entityId, cardId, location } = action.payload;
+      state.savedChartCardIds[entityId] = cardId;
+      if (location) {
+        state.savedChartLocations[entityId] = location;
+      }
     },
     // CONVERSATION REDUCERS
     addDeveloperMessage: convoReducer(

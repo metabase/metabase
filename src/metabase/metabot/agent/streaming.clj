@@ -19,18 +19,21 @@
 (def code-edit-type "AI-SDK data type for code edits." "code_edit")
 (def transform-suggestion-type "AI-SDK data type for transform suggestions." "transform_suggestion")
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
+(def entity-saved-type "AI-SDK data type for saved-entity annotations." "entity_saved")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
   skipped because their value is diffed separately into MetabotMessage.state;
-  duplicating the full blob in the message data would bloat storage. Non-data
+  duplicating the full blob in the message data would bloat storage. `entity_saved`
+  parts are skipped too — they annotate a live inline chart with its saved location
+  and are only meaningful within the session that created the chart. Non-data
   parts are always persistable here; the caller is responsible for filtering
   stream-level metadata (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
-            (= state-type (:data-type part)))))
+            (contains? #{state-type entity-saved-type} (:data-type part)))))
 
 ;;; Query URL Encoding
 
@@ -140,6 +143,17 @@
   {:type :data
    :data-type generated-entity-type
    :data entity})
+
+(defn entity-saved-part
+  "Create an ENTITY_SAVED data part for streaming. `value` is a map describing where a
+  previously-generated inline chart was persisted: `{:entity_id <chart-id>, :card_id
+  <saved card id>, :location {:type :id :name :url}}`. The FE uses `entity_id` to match
+  the annotation to the inline chart and flips it to a \"Saved in <name>\" link."
+  [value]
+  {:type :data
+   :data-type entity-saved-type
+   :version 1
+   :data value})
 
 (defn viz-part
   "Return the data part used to surface a query/chart result to the frontend.
