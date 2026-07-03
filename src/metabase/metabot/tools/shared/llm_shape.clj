@@ -12,9 +12,12 @@
    Matches Python AI Service patterns exactly for consistency."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -932,3 +935,28 @@
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) ">"
            (escape-xml description) "</" tag ">")
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) "/>"))))
+
+(defn export-query-for-llm
+  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
+  map with a `:database` is normalized and exported to the portable representations form
+  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
+  sources pass through; a `pprint`'d map is the last-resort fallback."
+  [query]
+  (cond
+    (string? query) query
+    (string? (:query-content query)) (:query-content query)
+    (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            database-id (:database normalized)
+            mp (when database-id
+                 (lib-be/application-database-metadata-provider database-id))
+            exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
+        (if exported
+          (str "```json\n" (json/encode exported {:pretty true}) "\n```")
+          (u/pprint-to-str normalized)))
+      (catch Exception _
+        (u/pprint-to-str query)))
+    (string? (get-in query [:native :query])) (get-in query [:native :query])
+    (map? query) (u/pprint-to-str query)
+    :else (some-> query str)))

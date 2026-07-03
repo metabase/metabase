@@ -183,7 +183,8 @@
     (is (contains? @#'agent-tools/state-dependent-tools "document_construct_model_chart"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
-    (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))))
+    (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
+    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
 
 (deftest wrap-tools-with-state-test
   (testing "wraps state-dependent tools with state injection"
