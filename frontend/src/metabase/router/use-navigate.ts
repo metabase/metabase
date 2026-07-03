@@ -1,14 +1,23 @@
+import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
-import { go, push, replace } from "react-router-redux";
 
-import { useDispatch } from "metabase/redux";
+import { useHistory } from "metabase/history";
 
 import type { NavigateFunction, NavigateOptions, To } from "./types";
 import { parsePath } from "./utils";
 
+function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
+  if (typeof to === "string" && state === undefined) {
+    return to;
+  }
+  if (typeof to === "string") {
+    return { ...parsePath(to), state };
+  }
+  return { ...to, state };
+}
+
 /**
- * react-router v7's `useNavigate`, implemented over react-router v3 via
- * `dispatch(push/replace/go)`.
+ * react-router v7's `useNavigate`, implemented over the react-router v3 history.
  *
  * - `navigate(to, { replace?, state? })` pushes (or replaces) the location.
  * - `navigate(delta)` moves through the history stack (e.g. `navigate(-1)`).
@@ -16,28 +25,22 @@ import { parsePath } from "./utils";
  * @see https://reactrouter.com/7.18.1/api/hooks/useNavigate
  */
 export function useNavigate(): NavigateFunction {
-  const dispatch = useDispatch();
+  const { history } = useHistory();
 
   return useCallback(
     (to: To | number, options: NavigateOptions = {}) => {
       if (typeof to === "number") {
-        dispatch(go(to));
+        history.go(to);
         return;
       }
 
-      const navigate = options.replace ? replace : push;
-
-      if (typeof to === "string" && options.state === undefined) {
-        dispatch(navigate(to));
-        return;
+      const location = toLocationDescriptor(to, options.state);
+      if (options.replace) {
+        history.replace(location);
+      } else {
+        history.push(location);
       }
-
-      const location =
-        typeof to === "string"
-          ? { ...parsePath(to), state: options.state }
-          : { ...to, state: options.state };
-      dispatch(navigate(location));
     },
-    [dispatch],
+    [history],
   ) as NavigateFunction;
 }
