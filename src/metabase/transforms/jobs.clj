@@ -17,6 +17,7 @@
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
@@ -54,6 +55,32 @@
                                      transform-id-2])))
           ordering)))
 
+(defn- dependencies->plan
+  "Build an execution plan from a `dependencies` map (transform-id -> #{dep-ids}, as returned by
+  `transform-ordering`) and the transforms it covers. Returns `{:order [...transforms in execution
+  order] :deps dependencies}`. Throws if the dependency graph contains a cycle.
+
+  This is the pure, in-memory part of planning — no DB or `table-dependencies` work — so callers
+  that already hold a dependency map (e.g. a DAG reprocess that computed the whole graph once) can
+  build a plan without recomputing it."
+  [dependencies all-transforms]
+  (let [transforms-by-id (into {}
+                               (keep (fn [{:keys [id] :as transform}]
+                                       (when (contains? dependencies id)
+                                         [id transform])))
+                               all-transforms)
+        sorted-ord       (sorted-ordering dependencies transforms-by-id)]
+    (when-let [cycle (transforms-base.ordering/find-cycle sorted-ord)]
+      (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
+        (throw (ex-info (str "Cyclic transform definitions detected: "
+                             (str/join " → " (map id->name cycle)))
+                        {:cycle cycle}))))
+    (loop [complete (ordered-set/ordered-set)]
+      (if-let [current-transform (next-transform sorted-ord transforms-by-id complete)]
+        (recur (conj complete (:id current-transform)))
+        {:order (map transforms-by-id complete)
+         :deps  dependencies}))))
+
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
     (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
@@ -73,20 +100,10 @@
       ;; Lazily backfill the table_dependencies column for any closure transform we had to compute live.
       (transforms-base.ordering/persist-table-dependencies! uncached)
       ;; Fetch full rows only for the closure, which is what callers actually consume.
-      (let [transforms-by-id (if (seq dependencies)
-                               (u/index-by :id (t2/select :model/Transform :id [:in (keys dependencies)]))
-                               {})
-            sorted-ord       (sorted-ordering dependencies transforms-by-id)]
-        (when-let [cycle (transforms-base.ordering/find-cycle sorted-ord)]
-          (let [id->name (into {} (map (juxt :id :name)) (vals transforms-by-id))]
-            (throw (ex-info (str "Cyclic transform definitions detected: "
-                                 (str/join " → " (map id->name cycle)))
-                            {:cycle cycle}))))
-        (loop [complete (ordered-set/ordered-set)]
-          (if-let [current-transform (next-transform sorted-ord transforms-by-id complete)]
-            (recur (conj complete (:id current-transform)))
-            {:order (map transforms-by-id complete)
-             :deps  dependencies}))))))
+      (let [closure-transforms (if (seq dependencies)
+                                 (t2/select :model/Transform :id [:in (keys dependencies)])
+                                 [])]
+        (dependencies->plan dependencies closure-transforms)))))
 
 (defn- wait-for-transform-slot!
   "Poll until no active run exists for `transform-id`, up to `timeout-ms`."
@@ -97,7 +114,12 @@
       (>= (u/since-ms timer) timeout-ms)                              false
       :else (do (Thread/sleep 2000) (recur)))))
 
-(defn- run-transform! [run-id run-method user-id started-run-id {transform-id :id :as transform}]
+(defn- run-transform!
+  "Execute a single transform as part of a coordinated run.
+  `run-key` is `:job-run-id`, linking the created `transform_run` row to its coordinating
+  `transform_job_run`. `add-run-activity!` is a zero-arg fn called after successful execution
+  to touch the coordinating run's updated_at."
+  [run-id run-key run-method user-id started-run-id add-run-activity! {transform-id :id :as transform}]
   (cond
     (not (transforms.u/check-feature-enabled transform))
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
@@ -118,10 +140,10 @@
                                     (pr-str transform-id) (transforms.settings/transform-timeout))
                             {:transform-id transform-id :error :already-running-timeout}))
             (let [result (try
-                           (log/info "Executing job transform" (pr-str transform-id))
+                           (log/info "Executing transform" (pr-str transform-id))
                            (transforms.execute/execute! transform {:run-method run-method
                                                                    :user-id    user-id
-                                                                   :job-run-id run-id
+                                                                   run-key     run-id
                                                                    ;; lets the coordinator cancel exactly the run
                                                                    ;; this worker started (see [[cancel-worker!]])
                                                                    :on-start   #(deliver started-run-id %)})
@@ -133,7 +155,7 @@
                                (throw e))))]
               (when (= :already-running result)
                 (recur))))))
-      (transforms.job-run/add-run-activity! run-id))))
+      (add-run-activity!))))
 
 (defn- lane-for
   "Lane a transform runs in: `:py` for python transforms (single-slot), `:sql` otherwise."
@@ -149,11 +171,12 @@
   "Run `transform` on its own thread; returns a future yielding a `::status` completion map.
   `started-run-id` is a promise the worker delivers its transform run id to once `execute!` has
   created it — at most once, since the `:already-running` retry only re-enters after a failed
-  start — so [[cancel-worker!]] can target exactly that run."
-  [run-id run-method user-id started-run-id transform]
+  start — so [[cancel-worker!]] can target exactly that run.
+  `run-key` and `add-run-activity!` are forwarded to [[run-transform!]]."
+  [run-id run-key run-method user-id started-run-id add-run-activity! transform]
   (future
     (try
-      (run-transform! run-id run-method user-id started-run-id transform)
+      (run-transform! run-id run-key run-method user-id started-run-id add-run-activity! transform)
       {::status :succeeded ::transform transform}
       (catch Throwable t
         (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
@@ -173,7 +196,7 @@
 (defn- dispatch-ready!
   "Submit every transform whose deps have all succeeded and whose lane has a free slot, recording the
   transitive cascade of dep-failures along the way. Returns the updated state."
-  [st {:keys [plan deps lanes run-id run-method user-id]}]
+  [st {:keys [plan deps lanes run-id run-key run-method user-id add-run-activity!]}]
   (reduce
    (fn [{:keys [succeeded failed in-flight-targets] :as st} t]
      (let [id            (:id t)
@@ -203,7 +226,7 @@
          (and (every? succeeded dep-ids)
               (< (count in-flight-now) (lanes lane-key)))
          (let [started-run-id (promise)
-               fut            (submit-transform! run-id run-method user-id started-run-id t)]
+               fut            (submit-transform! run-id run-key run-method user-id started-run-id add-run-activity! t)]
            (cond-> (assoc-in st [:in-flight lane-key id]
                              {:future         fut
                               :timer          (u/start-timer)
@@ -270,12 +293,13 @@
         (log/warnf t "Error canceling in-flight worker for transform %s" (pr-str id))))))
 
 (defonce ^:private active-runs
-  ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped)
+  ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped).
+  ;; Covers both scheduled job runs and DAG-reprocess runs — all coordinated runs use TransformJobRun.
   (atom {}))
 
 (defn- heartbeat-and-reconcile-runs!
-  "Stamp a heartbeat on every job run this process is coordinating, then deliver the `gone` promise
-  of any that another path (reaper, force-fail) already terminated, so its coordinator aborts."
+  "Stamp a heartbeat on every active coordinated run this process owns, then deliver the `gone`
+  promise of any that were terminated externally so their coordinator aborts."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformJobRun
                                 :active     [:= :is_active true]
@@ -327,15 +351,28 @@
   Transforms pulled into the plan only as dependencies (not directly requested) are skipped while
   still fresh, unless `skip-fresh-deps?` is false.
 
+  `:run-key` determines which FK column on `transform_run` the coordinating run id is stored in.
+  Both job-triggered and DAG-triggered runs use `:job-run-id` (stored in `transform_run.job_run_id`).
+  `:active-runs-atom` (default `active-runs`) is the atom that tracks coordinator liveness for heartbeating.
+  `:add-run-activity!` is a zero-arg fn called after each successful transform execution to touch the
+  coordinating run's `updated_at`.
+  `:precomputed-plan` is an optional `{:order ... :deps ...}` plan (as returned by [[get-plan]]). When
+  supplied it is used as-is instead of computing one from `transform-ids-to-run` — callers that already
+  built the dependency graph (e.g. DAG reprocess) pass it to avoid recomputing `table-dependencies`.
+
   Returns `{::status :succeeded}`, `{::status :failed ::failures [...]}`, or `{::status :aborted}`
-  when the job run was terminated externally (e.g. reaped) while this coordinator was still running."
-  [run-id transform-ids-to-run {:keys [run-method start-promise user-id skip-fresh-deps?]
-                                :or   {skip-fresh-deps? true}}]
+  when the coordinating run was terminated externally (e.g. reaped) while this coordinator was still running."
+  [run-id transform-ids-to-run {:keys [run-method start-promise user-id skip-fresh-deps?
+                                        run-key active-runs-atom add-run-activity! precomputed-plan]
+                                :or   {skip-fresh-deps?  true
+                                       run-key           :job-run-id
+                                       active-runs-atom  active-runs
+                                       add-run-activity! (constantly nil)}}]
   (let [gone (promise)
-        _    (swap! active-runs assoc run-id gone)
+        _    (swap! active-runs-atom assoc run-id gone)
         final-state
         (try
-          (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
+          (let [{plan :order deps :deps} (or precomputed-plan (get-plan transform-ids-to-run))
                 requested  (set transform-ids-to-run)
                 closure    (into #{} (map :id) plan)
                 ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
@@ -350,23 +387,25 @@
                             :in-flight         {:sql {} :py {}}
                             ;; target tables currently being written by an in-flight transform
                             :in-flight-targets #{}}
-                ctx        {:plan       plan
-                            :deps       deps
-                            :run-id     run-id
-                            :run-gone?  #(realized? gone)
-                            :run-method run-method
-                            :user-id    user-id
+                ctx        {:plan               plan
+                            :deps               deps
+                            :run-id             run-id
+                            :run-key            run-key
+                            :run-gone?          #(realized? gone)
+                            :run-method         run-method
+                            :user-id            user-id
+                            :add-run-activity!  add-run-activity!
                             ;; lane -> max concurrent workers
-                            :lanes      {:sql (max 1 (transforms.settings/transform-run-job-sql-concurrency))
-                                         :py  1}
-                            :timeout-ms (+ (u/minutes->ms (transforms.settings/transform-timeout))
-                                           transform-worker-grace-ms)}]
+                            :lanes              {:sql (max 1 (transforms.settings/transform-run-job-sql-concurrency))
+                                                 :py  1}
+                            :timeout-ms         (+ (u/minutes->ms (transforms.settings/transform-timeout))
+                                                   transform-worker-grace-ms)}]
             (when (seq skip)
               (log/infof "Skipping %d fresh pulled-in dependency transform(s): %s" (count skip) (pr-str skip)))
             (when start-promise (deliver start-promise :started))
             (run-coordinator-loop! init-state ctx))
           (finally
-            (swap! active-runs dissoc run-id)))]
+            (swap! active-runs-atom dissoc run-id)))]
     (cond
       (:aborted? final-state)       {::status :aborted}
       (seq (:failures final-state)) {::status :failed ::failures (:failures final-state)}
@@ -480,7 +519,11 @@
                                                               :transform.job/count      (count transforms)}
             (transforms.instrumentation/with-job-timing [job-id run-method]
               (try ;; catch any catastrophic problems
-                (let [result (run-transforms! run-id transforms opts)]
+                (let [result (run-transforms! run-id transforms
+                                              (assoc opts
+                                                     :run-key           :job-run-id
+                                                     :active-runs-atom  active-runs
+                                                     :add-run-activity! #(transforms.job-run/add-run-activity! run-id)))]
                   (case (::status result)
                     :succeeded (transforms.job-run/succeed-started-run! run-id)
                     ;; terminated externally (e.g. reaped): the row is already terminal and the
@@ -505,8 +548,135 @@
                   (throw t)))))
           run-id)))))
 
+;;; ------------------------------------------- DAG reprocess runs -------------------------------------------
+
+(defn- dependents-graph
+  "Reverse a forward dependency map (id -> #{deps it reads}) into a dependents map
+  (id -> #{transforms that read it})."
+  [forward-deps]
+  (reduce-kv (fn [acc id deps]
+               (reduce #(update %1 %2 (fnil conj #{}) id) acc deps))
+             {} forward-deps))
+
+(defn- reachable
+  "Set of nodes reachable from `start` in `graph` (id -> #{neighbor-ids}), including `start`."
+  [graph start]
+  (loop [queue [start] seen #{}]
+    (if-let [node (first queue)]
+      (if (seen node)
+        (recur (rest queue) seen)
+        (recur (into (rest queue) (get graph node)) (conj seen node)))
+      seen)))
+
+(defn- dag-run-plan
+  "Compute, from a single dependency-graph walk, both the set of transform-ids a DAG reprocess
+  should run and the execution plan to run them. Returns `{:transform-ids #{...} :plan {:order ...
+  :deps ...}}`.
+
+  `:upstream`   — seed + all transforms the seed transitively depends on. This is exactly the
+                  closure `transform-ordering` already walks from the seed, so the walk's
+                  `:dependencies` map is both the id set (its keys) and the plan input — one walk,
+                  no full graph. The whole closure runs.
+  `:downstream` — seed + all transforms that transitively depend on the seed. The ordering code only
+                  walks toward dependencies, so we build the full forward graph once and reverse it
+                  to find dependents. Only the downstream set runs — the dependents' *other* upstream
+                  inputs are already-materialized tables and must NOT be reprocessed, so we keep only
+                  the dependency edges that stay within the downstream set. Dropping the external
+                  edges preserves ordering (the seed still runs before anything that depends on it)
+                  while leaving those inputs untouched."
+  [seed-id direction]
+  (let [all-transforms (t2/select :model/Transform)]
+    (case direction
+      :upstream
+      (let [{deps :dependencies} (transforms-base.ordering/transform-ordering #{seed-id} all-transforms)]
+        {:transform-ids (set (keys deps))
+         :plan          (dependencies->plan deps all-transforms)})
+
+      :downstream
+      (let [{full-deps :dependencies} (transforms-base.ordering/transform-ordering
+                                       (into #{} (map :id) all-transforms) all-transforms)
+            downstream-ids (reachable (dependents-graph full-deps) seed-id)
+            deps           (into {}
+                                 (map (fn [id]
+                                        [id (set/intersection (get full-deps id #{}) downstream-ids)]))
+                                 downstream-ids)]
+        {:transform-ids downstream-ids
+         :plan          (dependencies->plan deps all-transforms)}))))
+
+(defn run-dag!
+  "Run all transforms in the dependency DAG rooted at `transform-id`.
+
+  `direction` controls which transforms are included:
+  - `:upstream`   — seed + all transforms it transitively depends on
+  - `:downstream` — seed + all transforms that transitively depend on it
+
+  Progress is tracked in a `transform_job_run` record (with `source_transform_id` and `direction` set)
+  linked to each individual `transform_run` via `job_run_id`. Returns the job-run-id, or nil if
+  nothing was executed."
+  [transform-id {:keys [run-method direction user-id skip-fresh-deps?]
+                 :or   {skip-fresh-deps? false}}]
+  (if (transforms.job-run/running-run-for-source-transform-id transform-id)
+    (log/info "Not executing DAG run for transform" (pr-str transform-id) "because one is already running")
+    (let [{:keys [transform-ids plan]} (dag-run-plan transform-id direction)]
+      (if (empty? transform-ids)
+        (log/info "Skipping DAG run for transform" (pr-str transform-id) "because no transforms found in closure")
+        (let [{run-id :id} (transforms.job-run/start-dag-run! transform-id direction run-method user-id)]
+          (tracing/with-span :tasks "task.transform.run-dag" {:transform/id         transform-id
+                                                              :transform/direction  (name direction)
+                                                              :transform/run-method (name run-method)
+                                                              :transform/count      (count transform-ids)}
+            (try
+              (let [result (run-transforms! run-id transform-ids
+                                            {:run-method        run-method
+                                             :user-id           user-id
+                                             :skip-fresh-deps?  skip-fresh-deps?
+                                             :run-key           :job-run-id
+                                             :active-runs-atom  active-runs
+                                             :precomputed-plan  plan
+                                             :add-run-activity! #(transforms.job-run/add-run-activity! run-id)})]
+                (case (::status result)
+                  :succeeded (transforms.job-run/succeed-started-run! run-id)
+                  :aborted   (log/warnf "DAG run %s for transform %s was terminated externally; coordinator aborted."
+                                        (pr-str run-id) (pr-str transform-id))
+                  :failed    (try
+                               (transforms.job-run/fail-started-run! run-id
+                                                                     {:message (compile-transform-failure-messages (::failures result))})
+                               (catch Exception e
+                                 (log/error e "Error when failing a DAG run.")))))
+              (catch Throwable t
+                (try
+                  (transforms.job-run/fail-started-run! run-id {:message (ex-message t)})
+                  (catch Exception e
+                    (log/error e "Error when failing a DAG run.")))
+                (throw t))))
+          run-id)))))
+
+(defn cancel-dag-run!
+  "Cancel an in-progress DAG run. Marks the coordinating run canceled (so its coordinator stops
+  dispatching once it observes the run is no longer active) and requests cancellation of each
+  still-running member transform run — signalling the in-process cancel channel for promptness and
+  recording a cancelation row so the cancel-runs task finalizes it cluster-wide. Returns true if the
+  run was active and is now canceled, false if it had already finished."
+  [run-id]
+  (boolean
+   (when (pos? (transforms.job-run/cancel-started-run! run-id))
+     (doseq [member-run-id (transforms.job-run/active-transform-run-ids-for-job-run run-id)]
+       (transform-run-cancelation/mark-cancel-started-run! member-run-id)
+       (canceling/chan-signal-cancel! member-run-id))
+     true)))
+
+(defn dag-run-transforms
+  "Return the transforms that would be included in a DAG reprocess starting from `transform-id`,
+  in planned execution order. Useful for UI previewing before committing to the run.
+
+  `direction` controls which transforms are included (same as [[run-dag!]])."
+  [transform-id direction]
+  (-> (dag-run-plan transform-id direction) :plan :order vec))
+
+;;; ------------------------------------------- Orphan reaping -------------------------------------------
+
 (defn- reap-orphaned-runs!
-  "Reap job runs whose coordinator process died (stale heartbeat)."
+  "Reap coordinated runs whose coordinator process died (stale heartbeat)."
   []
   (transforms.job-run/reap-orphaned-runs! transform-job-heartbeat-stale-minutes))
 
@@ -515,5 +685,5 @@
 
 (defmethod task/init! ::TransformJobRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transforms.jobs.reaper-job"
-                        :label   "transform job run"
+                        :label   "transform job/DAG run"
                         :reap-fn #'reap-orphaned-runs!}))

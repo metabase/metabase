@@ -318,6 +318,116 @@
                     [:id ms/PositiveInt]]]
   (run-transform! (api/read-check :model/Transform id)))
 
+(def ^:private dag-directions [:upstream :downstream])
+
+(def ^:private DagRunResponse
+  [:map {:closed true}
+   [:id pos-int?]
+   ;; rows live in the shared `transform_job_run` table; `job_id` is nil for DAG runs.
+   [:job_id [:maybe pos-int?]]
+   [:source_transform_id [:maybe pos-int?]]
+   [:direction [:maybe :keyword]]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout :canceled]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]
+   [:created_at :any]
+   [:updated_at :any]])
+
+(api.macros/defendpoint :post "/:id/run-dag" :- [:map {:closed true}
+                                                 [:job_run_id [:maybe pos-int?]]
+                                                 [:message :any]]
+  "Trigger a DAG reprocess run starting from a single transform. Runs the transform and all
+  transforms in its transitive dependency closure (direction controls which side of the DAG).
+
+  `direction` controls which transforms are included:
+  - `upstream`   — the seed transform plus all transforms it depends on
+  - `downstream` — the seed transform plus all transforms that depend on it"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [direction skip_fresh_deps]} :- [:map
+                                           [:direction (ms/enum-decode-keyword dag-directions)]
+                                           [:skip_fresh_deps {:default false} :boolean]]]
+  (let [transform (api/write-check :model/Transform id)]
+    (transforms.core/check-feature-enabled! transform)
+    (api/check (not (transforms.core/transform-locked? transform))
+               [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
+                     :error-code "metabase_transforms_locked"}])
+    (u.jvm/in-virtual-thread*
+     (transforms.core/run-dag! id {:run-method       :manual
+                                   :direction        direction
+                                   :user-id          api/*current-user-id*
+                                   :skip-fresh-deps? skip_fresh_deps}))
+    {:job_run_id nil
+     :message    (deferred-tru "DAG run started")}))
+
+(api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
+                                                                    [:id pos-int?]
+                                                                    [:name :string]]]
+  "Preview the transforms a DAG reprocess from this transform would run, in execution order.
+  Used to populate the confirmation dialog before triggering [[run-dag!]] via `POST /:id/run-dag`."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword dag-directions)]]]
+  (api/read-check :model/Transform id)
+  (mapv (fn [{xform-id :id, xform-name :name}]
+          {:id xform-id, :name xform-name})
+        (transforms.core/dag-run-transforms id direction)))
+
+(api.macros/defendpoint :get "/:id/dag-runs" :- [:map {:closed true}
+                                                 [:data [:sequential DagRunResponse]]
+                                                 [:limit pos-int?]
+                                                 [:offset :int]
+                                                 [:total :int]]
+  "Get paginated DAG run history for a transform."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   query-params :- [:map
+                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
+                    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
+                    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
+  (api/read-check :model/Transform id)
+  (-> (transforms.core/paged-dag-runs (assoc query-params
+                                             :source-transform-id id
+                                             :offset (request/offset)
+                                             :limit  (request/limit)))
+      (update :data #(map transforms-base.u/present-run %))))
+
+(def ^:private DagRunTransformRunResponse
+  ;; A DAG run reuses `transform_job_run`, so its member transform runs are the same shape as a
+  ;; scheduled job run's (see `transform-job`'s `TransformRunForJobRunResponse`), linked via `job_run_id`.
+  [:map {:closed true}
+   [:id pos-int?]
+   [:transform_id [:maybe pos-int?]]
+   [:job_run_id [:maybe pos-int?]]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:transform {:optional true} [:maybe :map]]
+   [:metered_as {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+
+(api.macros/defendpoint :get "/:id/dag-runs/:dag-run-id/transform-runs" :- [:sequential DagRunTransformRunResponse]
+  "Get the transform runs that made up a specific DAG run."
+  [{:keys [id dag-run-id]} :- [:map
+                               [:id ms/PositiveInt]
+                               [:dag-run-id ms/PositiveInt]]
+   _query-params]
+  (api/read-check :model/Transform id)
+  (api/check-404 (t2/select-one :model/TransformJobRun :id dag-run-id :source_transform_id id))
+  (let [runs (transforms.core/transform-runs-for-job-run dag-run-id)]
+    (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
+         (map transforms-base.u/present-run))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
   (handlers/routes

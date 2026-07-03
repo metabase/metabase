@@ -57,7 +57,10 @@
   get-transform-cycle]
  [metabase.transforms.jobs
   run-job!
-  job-transforms]
+  job-transforms
+  run-dag!
+  cancel-dag-run!
+  dag-run-transforms]
  [metabase.transforms.schedule
   validate-cron-expression
   initialize-job!
@@ -73,7 +76,10 @@
   running-run-for-transform-id]
  [metabase.transforms.models.job-run
   paged-job-runs
-  transform-runs-for-job-run]
+  paged-dag-runs
+  paged-all-dag-runs
+  transform-runs-for-job-run
+  running-run-for-source-transform-id]
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.transforms.models.transform-job
