@@ -51,14 +51,9 @@ export type CreateTestPlanInput = {
   // Parsed dependency-cruiser edges, or null to fall back to the rules graph.
   fileDependencies: FileDependency[] | null;
   testFilesBySuite: { unit: string[]; loki: string[]; e2e: string[] };
-  // Coverage manifest: e2e spec -> repo-relative source files it exercised at
-  // runtime (baseline-subtracted). null when no ancestor manifest was resolved,
-  // which forces e2e to run in full. Built nightly; see e2e/coverage/.
   e2eSpecFiles: Record<string, string[]> | null;
   unitInfraTouched: boolean;
   lokiInfraTouched: boolean;
-  // e2e harness/support changed (e2e/support, e2e/runner, ...). Forces a full
-  // e2e run — that code isn't in the bundle, so it maps to no covered module.
   e2eInfraTouched: boolean;
   sharedSourcesTouched: boolean;
   feFilesChanged: number;
@@ -116,11 +111,7 @@ export function specFeatureModules(
 }
 
 // A spec runs if any feature module it covers is affected. A spec that maps to
-// NO feature module always runs — its scope is unknown, whether because it's
-// absent from the manifest (newly added), its coverage was fully
-// baseline-subtracted, or it only exercised non-feature tiers. (e2e tests drive
-// feature pages, so "no feature" almost always means baseline overlap, e.g. a
-// home/auth spec whose feature the baseline already covers.)
+// NO feature module always runs because it's scope is unknown
 export function filterAffectedE2eSpecs(
   specFeatures: Map<string, Set<string>>,
   affected: Set<string>,
@@ -201,7 +192,9 @@ export function createTestPlan({
     if (specFeatures === null) {
       return e2e;
     }
-    const narrowed = new Set(filterAffectedE2eSpecs(specFeatures, affected, e2e));
+    const narrowed = new Set(
+      filterAffectedE2eSpecs(specFeatures, affected, e2e),
+    );
     return e2e.filter((spec) => narrowed.has(spec) || changedSet.has(spec));
   };
   const e2eRules = selectE2e(rulesAffected);

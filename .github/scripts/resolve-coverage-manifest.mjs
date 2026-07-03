@@ -33,8 +33,7 @@ export async function resolveCoverageManifest({
 }) {
   try {
     // Every retained manifest artifact, newest first. Each carries its
-    // nightly's head_sha — the commit it was built from (== builtAt). Paginate
-    // so an old PR's only ancestor isn't missed past a single-page cap.
+    // nightly's head_sha — the commit it was built from (== builtAt)
     const artifacts = await github.paginate(
       github.rest.actions.listArtifactsForRepo,
       { owner, repo, name, per_page: 100 },

@@ -70,7 +70,7 @@ function readFileDependencies(): FileDependency[] | null {
 
 // Reads the nightly coverage manifest (E2E_SPEC_MANIFEST): { builtAt, specs:
 // { spec -> files } }. Returns the specs map, or null so e2e falls back to a
-// full run when the manifest is missing/unparseable (same safety as the graph).
+// full run when the manifest is missing/unparseable
 function readE2eSpecFiles(): Record<string, string[]> | null {
   const path = process.env.E2E_SPEC_MANIFEST;
   if (path && existsSync(path)) {
@@ -86,9 +86,7 @@ function readE2eSpecFiles(): Record<string, string[]> | null {
       );
     }
   } else {
-    process.stderr.write(
-      "No E2E_SPEC_MANIFEST found; e2e will run in full.\n",
-    );
+    process.stderr.write("No E2E_SPEC_MANIFEST found; e2e will run in full.\n");
   }
   return null;
 }

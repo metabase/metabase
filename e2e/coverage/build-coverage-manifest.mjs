@@ -1,27 +1,21 @@
 /**
  * Aggregates per-spec raw coverage written by the after:spec hook in
- * e2e/support/config.js into a single spec → files manifest used for
+ * e2e/support/config.js into a single spec -> files manifest used for
  * selective e2e runs.
  *
  * For each spec, includes only files whose function counters strictly
- * exceeded the baseline spec's (file-level greater-delta). This strips
- * boot noise — files where every function fired the same count in baseline
+ * exceeded the baseline spec's.
+ * This strips boot noise. Files where every function fired the same count in baseline
  * and spec are treated as "loaded but not exercised by this spec."
  *
- * The manifest stores FILES, not modules: a file's module identity is a
- * derived view that any PR can redraw (by moving files or editing
- * module-boundaries.mjs), so we defer that collapse to selection time, where it
- * runs against the PR's own partition (.github/scripts/affected-tests.ts).
+ * The manifest stores files, not modules, the test planner can map to modules later.
  *
  * `builtAt` records the commit the instrumented run was built from, so an old
  * PR can pick the manifest closest to its own point in history rather than a
  * newer one whose file tree has since drifted.
  *
  * Backfill: a spec missing from today's coverage (its shard failed or flaked)
- * keeps its entry from the previous manifest (PREV_MANIFEST) rather than
- * dropping to "always run", as long as the spec still exists. This is a naive
- * carry-over — a spec whose shard fails repeatedly can silently go stale across
- * nightlies until it runs again.
+ * keeps its entry from the previous manifest
  *
  * Run after a full instrumented e2e pass:
  *   INSTRUMENT_COVERAGE=true bun run build-release:js
@@ -41,7 +35,10 @@ import { discriminatingFiles } from "./baseline.mjs";
 import { REPO_ROOT } from "./file-to-module.mjs";
 
 const PER_SPEC_DIR = path.join(REPO_ROOT, "e2e/coverage-manifest-raw");
-const OUTPUT_FILE = path.join(REPO_ROOT, "e2e/coverage/spec-file-manifest.json");
+const OUTPUT_FILE = path.join(
+  REPO_ROOT,
+  "e2e/coverage/spec-file-manifest.json",
+);
 const BASELINE_SPEC = "e2e/test/scenarios/coverage-baseline.cy.spec.js";
 
 function readEntry(file) {

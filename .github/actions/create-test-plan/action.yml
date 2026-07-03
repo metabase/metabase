@@ -43,10 +43,6 @@ runs:
   steps:
     - name: Prepare Node + Bun
       uses: ./.github/actions/prepare-node-bun
-    # Resolve the nightly e2e coverage manifest closest to this PR's history
-    # (resolve-coverage-manifest.mjs: list artifacts -> compare API -> download
-    # -> unzip, no deep clone). Sets `path` when found; create-test-plan.ts maps
-    # its spec->files to modules and narrows the e2e run. Absent => e2e in full.
     - name: Resolve closest-ancestor e2e coverage manifest
       id: manifest
       uses: actions/github-script@v9
@@ -96,7 +92,6 @@ runs:
         echo "loki_stories_to_run=$(jq -c '.loki_stories_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
         echo "e2e_specs_to_run=$(jq -c '.e2e_specs_to_run' test-plan.json)" >> "$GITHUB_OUTPUT"
 
-    # A scannable "what will run" summary, to the console and the job summary.
     - name: Report test plan
       shell: bash
       run: |

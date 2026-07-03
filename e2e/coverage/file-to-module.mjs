@@ -11,9 +11,7 @@ const REPO_ROOT = path.resolve(
 );
 
 // Precompiled once, in element order (precedence: e.g. mlv1 before mlv2, with
-// the catch-all shared/other last). Same matcher as the affected-tests planner
-// (micromatch.makeRe with dot:true), so module identity is consistent across
-// both tools. dot:true so files in dot-directories (e.g. .storybook) still map.
+// the catch-all shared/other last). dot:true so files in dot-directories (e.g. .storybook) still map.
 const NODES = elements.map((el) => ({
   type: el.type,
   regex: micromatch.makeRe(el.pattern, { dot: true }),

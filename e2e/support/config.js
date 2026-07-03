@@ -274,7 +274,7 @@ const defaultConfig = {
       }
 
       if (isInstrumented) {
-        // Never let a bad/partial coverage file abort the nightly shard — at
+        // Don't let a bad/partial coverage file abort the nightly shard - at
         // worst we lose this spec's entry, not the whole run.
         try {
           writeSpecCoverageEntry(spec);

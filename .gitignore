@@ -57,19 +57,16 @@ cypress.env.json
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
 /e2e/support/assets/example_custom_viz_plugin*.tgz
-# Coverage artifacts — per-spec intermediates from the after:spec hook, the
-# aggregated spec->files manifest, and local analysis output. All generated or
-# downloaded in CI; none are committed.
+# Coverage artifacts
 /e2e/coverage-manifest-raw
 /e2e/coverage-manifest
 /e2e/coverage/analysis
 /e2e/coverage/spec-file-manifest.json
-# @cypress/code-coverage writes report dirs cwd-relative, which in cypress
-# resolves to e2e/support/ because the config file lives there.
 /e2e/support/.nyc_output
 /e2e/support/coverage
 /e2e/support/e2e
 /.nyc_output
+
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot

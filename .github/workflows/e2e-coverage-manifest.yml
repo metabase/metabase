@@ -4,7 +4,7 @@ name: E2E Coverage Manifest
 # record which source files each spec exercises, and publishes a spec -> files
 # manifest used for selective e2e runs on PRs.
 #
-# Isolated from the PR e2e path on purpose — the per-shard worker
+# Isolated from the PR e2e path on purpose - the per-shard worker
 # (e2e-coverage-shard.yml) is a dedicated, trimmed copy so coverage runs can
 # never affect PR test results.
 
