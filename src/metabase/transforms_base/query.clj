@@ -131,7 +131,8 @@
                              ;; the CTAS table name. See
                              ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
                              :output-db (:db target)
-                             :output-table (transforms-base.u/qualified-table-name driver target)}
+                             :output-table (transforms-base.u/qualified-table-name driver target)
+                             :indexes (:indexes target)}
           opts (transform-opts effective-transform-type transform)
           features (transforms-base.u/required-database-features transform)]
       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)

@@ -170,7 +170,7 @@
   (let [db-id   (:id db)
         staging (transforms-base.u/temp-table-name driver (namespace table-name))]
     (transforms-base.u/validate-merge-unique-key! unique-key (mapv :name (:fields metadata)))
-    (create-table-and-insert-data! driver db-id (table-schema staging metadata) data-source)
+    (create-table-and-insert-data! driver db-id (table-schema staging metadata nil) data-source)
     (try
       (let [[sql & params] (sql.qp/format-honeysql driver {:select [:*], :from [staging]})
             select     {:query sql, :params (vec params)}
@@ -203,13 +203,16 @@
         (not table-exists?)
         (do
           (log/info "New table")
-          (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
+          (create-table-and-insert-data! driver db-id
+                                         (table-schema table-name metadata (:indexes target))
+                                         data-source))
 
         unique-key
         (upsert-with-merge-strategy! driver db table-name metadata data-source unique-key)
 
         :else
-        (insert-data! driver db-id (table-schema table-name metadata) data-source)))))
+        ;; Append into an existing table: no create, so no inline indexes to apply.
+        (insert-data! driver db-id (table-schema table-name metadata nil) data-source)))))
 
 (defmethod transfer-file-to-db :table
   [driver {db-id :id :as db}
