@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { createContext, useContext } from "react";
 
 import type { State } from "metabase/redux/store";
+import type { MentionCacheItem } from "metabase/redux/store/documents";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -122,12 +123,11 @@ export interface EditorViewportHost {
 
 /** Mention / smart-link suggestions. */
 export interface EditorMentionsHost {
+  selectors: {
+    getMentionsCache: Selector<Record<string, MentionCacheItem>>;
+  };
   actions: {
-    updateMentionsCache: (payload: {
-      entityId: string;
-      model: string;
-      name: string;
-    }) => DispatchableAction;
+    updateMentionsCache: (payload: MentionCacheItem) => DispatchableAction;
   };
 }
 
@@ -156,6 +156,8 @@ export type EditorHost = EditorDocumentHost &
 
 const noop = () => undefined;
 
+const EMPTY_MENTIONS_CACHE: Record<string, MentionCacheItem> = {};
+
 /**
  * Inert host used when no provider is configured (e.g. the comments and metabot
  * editors). State selectors resolve to empty, operations are no-ops, and the
@@ -169,6 +171,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     getChildTargetId: () => undefined,
     getHoveredChildTargetId: () => undefined,
     getHasUnsavedChanges: () => false,
+    getMentionsCache: () => EMPTY_MENTIONS_CACHE,
   },
   actions: {
     createDraftCard: () => ({ type: "@@editor-host/noop" }),

@@ -17,9 +17,11 @@
                       :context {}})]
     (binding [shared/*memory-atom* memory
               shared/*profile-id* profile-id]
-      (charts/create-chart-tool {:data_source  {:query_id "q-1"}
-                                 :viz_settings {:chart_type "bar"}
-                                 :title        "Orders by month"}))))
+      (charts/create-chart-tool {:chart_name        "Orders by month"
+                                 :chart_description "Order counts bucketed by month"
+                                 :data_source       {:query_id "q-1"}
+                                 :viz_settings      {:chart_type "bar"}
+                                 :title             "Orders by month"}))))
 
 (deftest create-chart-inline-viz-test
   (testing "emits a single generated_entity card part in the NLQ profile"

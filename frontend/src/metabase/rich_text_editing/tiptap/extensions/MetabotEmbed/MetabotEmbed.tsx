@@ -13,17 +13,6 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { trackDocumentAskMetabot } from "metabase/documents/analytics";
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
-import {
-  getCurrentDocument,
-  getMentionsCache,
-} from "metabase/documents/selectors";
-import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
 import { AIMarkdown } from "metabase/metabot/components/AIMarkdown/AIMarkdown";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
@@ -34,7 +23,12 @@ import {
 } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
+import {
+  type EditorHost,
+  useEditorHost,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import { getMentionsCacheKey } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/mentionsUtils";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type {
   Card,
@@ -54,7 +48,7 @@ declare module "@tiptap/core" {
 }
 
 const getMetabotPromptSerializer =
-  (getState: () => State): PromptSerializer =>
+  (getState: () => State, host: EditorHost): PromptSerializer =>
   (node) => {
     const payload: ReturnType<PromptSerializer> = { instructions: "" };
     return node.content.content.reduce((acc, child) => {
@@ -62,7 +56,7 @@ const getMetabotPromptSerializer =
       if (child.type.name === SmartLink.name) {
         const { model, entityId } = child.attrs;
         const key = getMentionsCacheKey({ model, entityId });
-        const value = getMentionsCache(getState())[key];
+        const value = host.selectors.getMentionsCache(getState())[key];
         if (!value) {
           return acc;
         }
@@ -264,7 +258,8 @@ MetabotComponentUneditable.displayName = "MetabotComponentUneditable";
 export const MetabotComponent = memo(
   ({ editor, getPos, deleteNode, node, extension }: NodeViewProps) => {
     const dispatch = useDispatch();
-    const document = useSelector(getCurrentDocument);
+    const host = useEditorHost();
+    const document = useSelector(host.selectors.getCurrentDocument);
     const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
     const metabotName = useMetabotName();
 
@@ -301,7 +296,7 @@ export const MetabotComponent = memo(
 
     const handleRunMetabot = async () => {
       const serializePrompt = extension?.options?.getState
-        ? getMetabotPromptSerializer(extension.options.getState)
+        ? getMetabotPromptSerializer(extension.options.getState, host)
         : serializePromptDefault;
       const payload = serializePrompt(node);
 
@@ -338,7 +333,7 @@ export const MetabotComponent = memo(
       const cards = await Promise.all(
         chartAndQuery.map(async ({ chart, query }) => {
           const description = chart.chart_description;
-          const newCardId = generateDraftCardId();
+          const newCardId = host.actions.generateDraftCardId();
           const card: Card = {
             display: chart.visualization_settings.chart_type,
             dataset_query: query,
@@ -372,11 +367,11 @@ export const MetabotComponent = memo(
             archived: false,
           };
 
-          trackDocumentAskMetabot(document);
-          await dispatch(loadMetadataForDocumentCard(card));
+          host.analytics.trackAskMetabot(document);
+          await dispatch(host.actions.loadMetadataForDocumentCard(card));
 
           dispatch(
-            createDraftCard({
+            host.actions.createDraftCard({
               originalCard: card,
               modifiedData: {},
               draftId: newCardId,

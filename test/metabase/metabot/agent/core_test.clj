@@ -255,7 +255,6 @@
               :queries [query]
               :visualization_settings {:chart_type :bar}}
              (get-in (memory/get-state updated) [:charts "c-456"])))))
-
   (testing "ignores parts without chart-id"
     (let [parts [{:type :tool-output
                   :id "t1"
