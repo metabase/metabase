@@ -44,6 +44,12 @@ export type DataAppFactory = () => {
 export interface DataAppSandboxEndowments {
   /** Endowed as the `React` global the bundle externalizes `react` to. */
   React: unknown;
+  /** Endowed as `__react_dom__` (the `react-dom` external). */
+  reactDom: unknown;
+  /** Endowed as `__react_dom_client__` (the `react-dom/client` external). */
+  reactDomClient: unknown;
+  /** Endowed as `__react_dom_server__` (the `react-dom/server` external). */
+  reactDomServer: unknown;
   /** Endowed as `__react_jsx_runtime__` (the `react/jsx-runtime` external). */
   reactJsxRuntime: unknown;
   /**
@@ -94,6 +100,9 @@ export function createDataAppSandbox({
       // externals (defined by the SDK build) and these endowments can't drift.
       endowments: Object.getOwnPropertyDescriptors({
         [DATA_APP_GLOBAL_NAMES.react]: endowments.React,
+        [DATA_APP_GLOBAL_NAMES.reactDom]: endowments.reactDom,
+        [DATA_APP_GLOBAL_NAMES.reactDomClient]: endowments.reactDomClient,
+        [DATA_APP_GLOBAL_NAMES.reactDomServer]: endowments.reactDomServer,
         [DATA_APP_GLOBAL_NAMES.reactJsxRuntime]: endowments.reactJsxRuntime,
         ...(!!endowments.reactJsxDevRuntime && {
           [DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime]:
