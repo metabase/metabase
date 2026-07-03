@@ -26,14 +26,13 @@
 
 (defn run-order-by
   "Standard `:order-by` clause for a paged listing of coordinated runs (job runs, DAG runs).
-  Sorts by `sort-column` (`:start_time` or `:end_time`; anything else falls back to start_time then
-  end_time) in `sort-direction` (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows
-  (null `end_time`) always ordered last."
+  Sorts by `sort-column` (`:start_time` or `:end_time`; anything else — including nil — falls back to
+  ordering by start_time then end_time) in `sort-direction` (`:asc`/`:desc`, defaulting to `:desc`),
+  with in-progress rows (null `end_time`) always ordered last."
   [sort-column sort-direction]
   (let [sort-direction (or (keyword sort-direction) :desc)
-        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)
-        sort-column    (keyword (or sort-column :start_time))]
-    (case sort-column
+        nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]
+    (case (keyword sort-column)
       :start_time [[:start_time sort-direction]]
       :end_time   [[:end_time sort-direction nulls-sort]]
       [[:start_time sort-direction]
