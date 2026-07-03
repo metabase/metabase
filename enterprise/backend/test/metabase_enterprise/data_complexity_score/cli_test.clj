@@ -166,6 +166,21 @@
       (testing "no override leaves the fingerprint unchanged"
         (is (= plain (task.complexity-score/current-fingerprint (#'cli/override-fingerprint-fragment nil))))))))
 
+(deftest embedder-override-persisted-fingerprint-test
+  (testing "the persist path records the override-derived fingerprint, not the configured one"
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [fingerprint _source _result]
+                                                                        (reset! captured fingerprint))
+                                  ;; Stub the embedder so the persist wiring is exercised without the
+                                  ;; plugin (or its model) on the classpath.
+                                  embedders/provider-embedder         (constantly (embedders/file-embedder {}))]
+        (#'cli/run-cli {:source             "representation"
+                        :representation-dir representation-fixture-dir
+                        :embedder           "in-process"
+                        :write-to-appdb     true})
+        (is (some? @captured))
+        (is (str/includes? @captured ":cli-embedder-override"))))))
+
 (deftest ^:parallel cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"
     (testing "valid: --embedder in-process parses through to :options"
