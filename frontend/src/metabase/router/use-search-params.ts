@@ -1,9 +1,9 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
-import type { SetURLSearchParams } from "./types";
+import type { SetURLSearchParams, URLSearchParamsInit } from "./types";
 import { useLocation } from "./use-location";
 import { useNavigate } from "./use-navigate";
-import { createSearchParams } from "./utils";
+import { createSearchParams, getSearchParamsForLocation } from "./utils";
 
 /**
  * react-router v7's `useSearchParams`, implemented over the v3 location's query
@@ -14,17 +14,27 @@ import { createSearchParams } from "./utils";
  * v7 does this by navigating to `"?" + params`, which resolves to the current
  * path with an empty hash.
  *
+ * `defaultInit` fills in keys the current URL is missing, matching v7. As in v7,
+ * the defaults are captured once and stop being merged once `setSearchParams`
+ * has been called, so a value can then be removed with `setSearchParams({})`.
+ *
  * @see https://reactrouter.com/7.18.1/api/hooks/useSearchParams
  */
-export function useSearchParams(): readonly [
-  URLSearchParams,
-  SetURLSearchParams,
-] {
+export function useSearchParams(
+  defaultInit?: URLSearchParamsInit,
+): readonly [URLSearchParams, SetURLSearchParams] {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const defaultSearchParamsRef = useRef(createSearchParams(defaultInit));
+  const hasSetSearchParamsRef = useRef(false);
+
   const searchParams = useMemo(
-    () => new URLSearchParams(location.search),
+    () =>
+      getSearchParamsForLocation(
+        location.search,
+        hasSetSearchParamsRef.current ? null : defaultSearchParamsRef.current,
+      ),
     [location.search],
   );
 
@@ -37,6 +47,7 @@ export function useSearchParams(): readonly [
             nextInit(new URLSearchParams(searchParams))
           : nextInit,
       );
+      hasSetSearchParamsRef.current = true;
       const search = params.toString();
       navigate(
         {

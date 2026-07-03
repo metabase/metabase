@@ -49,3 +49,27 @@ export function createSearchParams(
   });
   return params;
 }
+
+/**
+ * Build the search params for a location, filling in any default key the
+ * location does not already carry, mirroring react-router v7's
+ * `getSearchParamsForLocation`.
+ */
+export function getSearchParamsForLocation(
+  locationSearch: string,
+  defaultSearchParams: URLSearchParams | null,
+): URLSearchParams {
+  const searchParams = createSearchParams(locationSearch);
+
+  if (defaultSearchParams) {
+    defaultSearchParams.forEach((_value, key) => {
+      if (!searchParams.has(key)) {
+        defaultSearchParams.getAll(key).forEach((value) => {
+          searchParams.append(key, value);
+        });
+      }
+    });
+  }
+
+  return searchParams;
+}

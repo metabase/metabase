@@ -133,3 +133,44 @@ describe("router/useSearchParams", () => {
     expect(before?.get("x")).toBe("1");
   });
 });
+
+function DefaultProbe() {
+  const [searchParams, setSearchParams] = useSearchParams({ page: "1" });
+  return (
+    <div>
+      <span data-testid="page">{searchParams.get("page")}</span>
+      <span data-testid="q">{searchParams.get("q")}</span>
+      <button onClick={() => setSearchParams({ q: "x" })}>set-other</button>
+    </div>
+  );
+}
+
+function setupDefault(initialRoute: string) {
+  return renderWithProviders(<Route path="foo" component={DefaultProbe} />, {
+    withRouter: true,
+    initialRoute,
+  });
+}
+
+describe("router/useSearchParams defaultInit", () => {
+  it("fills in a default the URL is missing", () => {
+    setupDefault("/foo");
+    expect(screen.getByTestId("page")).toHaveTextContent("1");
+  });
+
+  it("lets the URL value win over the default", () => {
+    setupDefault("/foo?page=5");
+    expect(screen.getByTestId("page")).toHaveTextContent("5");
+  });
+
+  it("stops merging the default once params have been set", async () => {
+    setupDefault("/foo");
+    expect(screen.getByTestId("page")).toHaveTextContent("1");
+
+    await userEvent.click(screen.getByRole("button", { name: "set-other" }));
+
+    // Once set, the default no longer reappears, so it does not stick forever.
+    expect(screen.getByTestId("q")).toHaveTextContent("x");
+    expect(screen.getByTestId("page")).toBeEmptyDOMElement();
+  });
+});
