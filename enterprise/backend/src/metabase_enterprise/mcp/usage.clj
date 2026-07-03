@@ -40,11 +40,13 @@
                (not (mcp.usage/proxy-probe? (:name client-info)))
                (not (t2/exists? :model/McpSessionLog :id session-id)))
       (let [;; `pii-fields-from` returns the gated PII columns only when
-            ;; `analytics-pii-retention-enabled` is on (nil otherwise). We keep only
-            ;; user_agent / ip_address — embedding_* and sanitized_user_agent are not collected.
-            pii (-> (analytics/pii-fields-from {:user-agent user-agent
-                                                :ip-address ip-address})
-                    (dissoc :embedding_hostname :embedding_path :sanitized_user_agent))]
+            ;; `analytics-pii-retention-enabled` is on (nil otherwise). Allowlist the two columns
+            ;; `mcp_session_log` actually has — selecting explicitly (rather than dissoc-ing the
+            ;; unwanted ones) means a new field on the shared helper can't silently start
+            ;; persisting here without a deliberate change.
+            pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
+                                                         :ip-address ip-address})
+                             [:user_agent :ip_address])]
         (t2/insert! :model/McpSessionLog
                     (merge {:id             session-id
                             :user_id        user-id

@@ -350,7 +350,9 @@
     (or (map? v) (sequential? v)) (assoc :structuredContent v)))
 
 ;; JSON-RPC error codes recorded as `mcp_tool_call_log.error_code` for failed tool calls.
-;; Kept in sync with the `error_code` -> `error_type` CASE in the v_mcp_tool_calls view SQL.
+;; Kept in sync with the `error_code` -> `error_type` CASE in the v_mcp_tool_calls view SQL. The
+;; view also maps -32000 ("Server error") defensively (JSON-RPC reserves -32000..-32099), but the
+;; recorder never emits it, so there's no constant for it here.
 (def ^:private error-code-invalid-request -32600)
 (def ^:private error-code-method-not-found -32601)
 (def ^:private error-code-invalid-params -32602)
