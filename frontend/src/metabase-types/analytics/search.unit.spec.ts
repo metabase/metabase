@@ -46,22 +46,24 @@ describe("toSnowplowContext", () => {
   });
 
   it("returns a non-null context for every SearchContext", () => {
-    const contexts: SearchContext[] = [
-      "basic-actions",
-      "browse",
-      "command-palette",
-      "data-picker",
-      "dependencies",
-      "document",
-      "embedding-setup",
-      "entity-picker",
-      "library",
-      "model-migration",
-      "search-app",
-      "search-bar",
-      "type-filter",
-    ];
-    for (const context of contexts) {
+    // Record<SearchContext, true> forces this list to stay exhaustive: adding a
+    // SearchContext member without extending it fails to compile.
+    const allContexts: Record<SearchContext, true> = {
+      "basic-actions": true,
+      browse: true,
+      "command-palette": true,
+      "data-picker": true,
+      dependencies: true,
+      document: true,
+      "embedding-setup": true,
+      "entity-picker": true,
+      library: true,
+      "model-migration": true,
+      "search-app": true,
+      "search-bar": true,
+      "type-filter": true,
+    };
+    for (const context of Object.keys(allContexts) as SearchContext[]) {
       expect(toSnowplowContext(context)).toBe(context);
     }
   });
