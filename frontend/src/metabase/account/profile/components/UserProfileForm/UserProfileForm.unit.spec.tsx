@@ -79,20 +79,40 @@ describe("UserProfileForm", () => {
     expect(screen.queryByText("Metabot instructions")).not.toBeInTheDocument();
   });
 
-  it("should save the Metabot instructions field on change", async () => {
-    setup(getProps());
+  it("should save the Metabot instructions field on form submit, not on change", async () => {
+    setup(getProps({ onSubmit: jest.fn().mockResolvedValue({}) }));
 
     const textarea = await screen.findByPlaceholderText(
       "E.g. I usually ask about sales and marketing data, not engineering metrics.",
     );
     await userEvent.type(textarea, "Focus on marketing data.");
 
-    await waitFor(() => {
-      const calls = fetchMock.callHistory.calls(
+    const settingCalls = () =>
+      fetchMock.callHistory.calls(
         "path:/api/setting/metabot-user-custom-instructions",
       );
-      expect(calls.length).toBeGreaterThan(0);
+    expect(settingCalls()).toHaveLength(0);
+
+    await userEvent.click(screen.getByText("Update"));
+
+    await waitFor(() => {
+      expect(settingCalls().length).toBeGreaterThan(0);
     });
+  });
+
+  it("should not save the Metabot instructions setting when it is unchanged", async () => {
+    setup(getProps({ onSubmit: jest.fn().mockResolvedValue({}) }));
+
+    await userEvent.clear(screen.getByLabelText("First name"));
+    await userEvent.type(screen.getByLabelText("First name"), "New name");
+    await userEvent.click(screen.getByText("Update"));
+
+    expect(await screen.findByText("Success")).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(
+        "path:/api/setting/metabot-user-custom-instructions",
+      ),
+    ).toHaveLength(0);
   });
 
   it("should populate the Metabot instructions field with a pre-existing value", async () => {

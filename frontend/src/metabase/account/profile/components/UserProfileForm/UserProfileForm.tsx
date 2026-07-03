@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -13,16 +13,24 @@ import {
   FormSelect,
   FormSubmitButton,
   FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks/use-user-metabot-permissions";
-import { Box, Stack, Text, Textarea } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { LocaleData, User } from "metabase-types/api";
 
 import type { UserProfileData } from "../../types";
 
+// Must match `max-user-custom-instructions-length` in metabot/settings.clj.
+const MAX_CUSTOM_INSTRUCTIONS_LENGTH = 2000;
+
 const SSO_PROFILE_SCHEMA = Yup.object({
   locale: Yup.string().nullable().default(null),
+  "metabot-user-custom-instructions": Yup.string()
+    .nullable()
+    .default(null)
+    .max(MAX_CUSTOM_INSTRUCTIONS_LENGTH, Errors.maxLength),
 });
 
 const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
@@ -30,6 +38,10 @@ const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
   last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   email: Yup.string().ensure().required(Errors.required).email(Errors.email),
 });
+
+type ProfileFormValues = UserProfileData & {
+  "metabot-user-custom-instructions"?: string | null;
+};
 
 export interface UserProfileFormProps {
   user: User;
@@ -45,6 +57,11 @@ const UserProfileForm = ({
   onSubmit,
 }: UserProfileFormProps): JSX.Element => {
   const schema = isSsoUser ? SSO_PROFILE_SCHEMA : LOCAL_PROFILE_SCHEMA;
+  const { hasMetabotAccess } = useUserMetabotPermissions();
+  const [savedInstructions, setSavedInstructions] = useUserSetting(
+    "metabot-user-custom-instructions",
+    { shouldDebounce: false },
+  );
 
   const initialValues = useMemo(() => {
     const values = schema.cast(user, { stripUnknown: true });
@@ -52,26 +69,39 @@ const UserProfileForm = ({
     if (values.locale === null) {
       values.locale = "";
     }
-    return values;
-  }, [user, schema]);
+    return {
+      ...values,
+      "metabot-user-custom-instructions": savedInstructions ?? null,
+    };
+  }, [user, schema, savedInstructions]);
 
   const localeOptions = useMemo(() => {
     return getLocaleOptions(locales);
   }, [locales]);
 
   const handleSubmit = useCallback(
-    (values: UserProfileData) =>
-      onSubmit(user, {
-        ...values,
-        locale: values.locale === "" ? null : values.locale,
-      }),
-    [user, onSubmit],
+    (values: ProfileFormValues) => {
+      const {
+        "metabot-user-custom-instructions": instructions,
+        ...profileData
+      } = values;
+      const newInstructions = instructions ?? null;
+
+      if (newInstructions !== (savedInstructions ?? null)) {
+        setSavedInstructions(newInstructions);
+      }
+
+      return onSubmit(user, {
+        ...profileData,
+        locale: profileData.locale === "" ? null : profileData.locale,
+      });
+    },
+    [user, onSubmit, savedInstructions, setSavedInstructions],
   );
 
   return (
     <Box>
       <ColorSchemeSwitcher />
-      <MetabotCustomInstructions />
       <FormProvider
         initialValues={initialValues}
         validationSchema={schema}
@@ -117,6 +147,18 @@ const UserProfileForm = ({
                 mb="md"
               />
             </div>
+            {hasMetabotAccess && (
+              <FormTextarea
+                name="metabot-user-custom-instructions"
+                label={t`Metabot instructions`}
+                description={t`Tell Metabot what you're usually working on, so it can tailor its answers to you.`}
+                placeholder={t`E.g. I usually ask about sales and marketing data, not engineering metrics.`}
+                nullable
+                minRows={3}
+                maxLength={MAX_CUSTOM_INSTRUCTIONS_LENGTH}
+                mb="md"
+              />
+            )}
             <FormSubmitButton
               label={t`Update`}
               disabled={!dirty}
@@ -148,55 +190,6 @@ const ColorSchemeSwitcher = () => {
 
       <ColorSchemeSelect />
     </Box>
-  );
-};
-
-// Must match `max-user-custom-instructions-length` in metabot/settings.clj.
-const MAX_CUSTOM_INSTRUCTIONS_LENGTH = 2000;
-
-const MetabotCustomInstructions = () => {
-  const { hasMetabotAccess } = useUserMetabotPermissions();
-  const [savedInstructions, setSavedInstructions] = useUserSetting(
-    "metabot-user-custom-instructions",
-  );
-  const [value, setValue] = useState(savedInstructions ?? "");
-  const hasSyncedInitialValue = useRef(savedInstructions != null);
-  const hasEdited = useRef(false);
-
-  useEffect(() => {
-    if (
-      !hasSyncedInitialValue.current &&
-      !hasEdited.current &&
-      savedInstructions != null
-    ) {
-      hasSyncedInitialValue.current = true;
-      setValue(savedInstructions);
-    }
-  }, [savedInstructions]);
-
-  if (!hasMetabotAccess) {
-    return null;
-  }
-
-  return (
-    <Stack gap="xs" mb="md">
-      <Text fw="bold">{t`Metabot instructions`}</Text>
-      <Text c="text-secondary" size="sm">
-        {t`Tell Metabot what you're usually working on, so it can tailor its answers to you.`}
-      </Text>
-      <Textarea
-        value={value}
-        maxLength={MAX_CUSTOM_INSTRUCTIONS_LENGTH}
-        onChange={(event) => {
-          hasEdited.current = true;
-          const newValue = event.target.value;
-          setValue(newValue);
-          setSavedInstructions(newValue === "" ? null : newValue);
-        }}
-        minRows={3}
-        placeholder={t`E.g. I usually ask about sales and marketing data, not engineering metrics.`}
-      />
-    </Stack>
   );
 };
 
