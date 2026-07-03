@@ -7,6 +7,7 @@ import {
 } from "vite";
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
+import { getDataAppDefine } from "./config/define";
 import { buildConnectSrcCsp, readAllowedHosts } from "./config/dev-connect-src";
 import { dataAppEnvPrefix } from "./config/env-prefix";
 import { findEnvRoot } from "./config/find-env-root";
@@ -37,6 +38,7 @@ function dataAppVitePlugin(): PluginOption[] {
       // win — the bundle Metabase loads always matches what dev runs. `loadEnv`
       // needs the mode, which is only known here in the `config` hook.
       config: (_config: UserConfig, env: ConfigEnv): UserConfig => ({
+        define: getDataAppDefine(env.mode),
         envDir,
         // Dev preview only — keeps `.env.local` secrets out of prod builds. See
         // `dataAppEnvPrefix`.

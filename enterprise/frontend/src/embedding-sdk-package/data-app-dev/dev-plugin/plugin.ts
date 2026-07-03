@@ -12,6 +12,7 @@ import * as dataAppVirtualModules from "build-configs/embedding-sdk/constants/da
 
 import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
 import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
+import { getDataAppDefine } from "../config/define";
 
 // Virtual modules the dev server provides. The dev server serves a synthetic
 // `index.html` (below) that imports the dev entry; the dev entry imports the
@@ -72,6 +73,7 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
       root,
       mode,
       configFile: false,
+      define: getDataAppDefine(mode),
       logLevel: "warn",
       plugins: dataAppBuildPlugins(),
       build: {
