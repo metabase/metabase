@@ -54,9 +54,17 @@
       (throw (validation-error "Change set IDs are not distinct." {:duplicates duplicates})))))
 
 (defn- directory-based-migration-file?
-  "Returns true if the file is a directory-based migration file (e.g., `060/20260905_mq_indexes.yaml`)."
+  "Returns true if the file is a directory-based migration file. This covers both the version-numbered directories
+  (e.g., `060/20260905_mq_indexes.yaml`) and the newer year-based directories (e.g., `2026/20260905_workspaces.yaml`)."
   [file]
-  (boolean (re-matches #".*\d{3}/\d{8}_[a-z0-9_]+\.yaml$" (str file))))
+  (boolean (re-matches #".*(\d{3}|\d{4})/\d{8}_[a-z0-9_]+\.yaml$" (str file))))
+
+(defn- year-dir-migration-file?
+  "Returns true if the file lives in a year-based migration directory (e.g., `2026/20260905_workspaces.yaml`). Unlike
+  version-numbered directories, year directories are not tied to a Metabase version: their changeset IDs are
+  version-less and the version a changeset ships with is decided by which branch it is merged into."
+  [file]
+  (boolean (re-find #"[/\\]\d{4}[/\\]\d{8}_[a-z0-9_]+\.yaml$" (str file))))
 
 (defn- file-version
   "Extracts the migration version number from a file.
@@ -96,18 +104,20 @@
                                  {:out-of-order-ids out-of-order-ids}))))))
 
 (defn- require-change-set-ids-in-correct-file [change-log file]
-  (let [fv  (file-version file)
-        ids (change-set-ids change-log)
-        wrong-file-ids
-        (->> ids
-             (filter (fn [id]
-                       (let [id-version (parse-long (re-find #"\d+" id))]
-                         (if (= fv 1)
-                           (> id-version 55)
-                           (not= fv id-version))))))]
-    (when (seq wrong-file-ids)
-      (throw (validation-error "Change set IDs are in the wrong file"
-                               {:wrong-file-ids wrong-file-ids})))))
+  ;; year-based directories are not tied to a version, so their version-less IDs are not bound to any file version.
+  (when-not (year-dir-migration-file? file)
+    (let [fv  (file-version file)
+          ids (change-set-ids change-log)
+          wrong-file-ids
+          (->> ids
+               (filter (fn [id]
+                         (let [id-version (parse-long (re-find #"\d+" id))]
+                           (if (= fv 1)
+                             (> id-version 55)
+                             (not= fv id-version))))))]
+      (when (seq wrong-file-ids)
+        (throw (validation-error "Change set IDs are in the wrong file"
+                                 {:wrong-file-ids wrong-file-ids}))))))
 
 (defn- check-change-use-types?
   "Return `true` if change use any type in `types`."
@@ -189,6 +199,18 @@
   - Other per-release files: IDs must match the timestamp format"
   [change-log file]
   (cond
+    ;; year-based directories use version-less IDs (e.g. `aeiagus09e`). Disallow dashes and dots so that neither
+    ;; timestamp-style IDs (e.g. `2026-02-09T12:00:00`) nor version-prefixed IDs (e.g. `v60.aeiagus09e`) can sneak in
+    ;; -- the version must not be encoded in the ID.
+    (year-dir-migration-file? file)
+    (let [ids     (change-set-ids change-log)
+          bad-ids (filter #(or (str/includes? % "-") (str/includes? % ".")) ids)]
+      (when (seq bad-ids)
+        (throw (validation-error
+                (format "Year-based migration file contains IDs with dashes or dots (use a version-less ID, not a timestamp or version-prefixed ID): %s"
+                        (str/join ", " bad-ids))
+                {:invalid-ids (vec bad-ids)}))))
+
     (directory-based-migration-file? file)
     (let [ids     (change-set-ids change-log)
           bad-ids (remove #(re-matches directory-based-id-format-re %) ids)]
@@ -231,12 +253,18 @@
 (defn- major-version
   "Returns major version from id string, e.g. 44 from \"v44.00-034\".
   For directory-based migrations (file path matches `NNN/`), extracts
-  version from the file path. Otherwise parses from the id string."
+  version from the file path. Otherwise parses from the id string.
+  Returns nil for year-based directories, whose IDs are version-less and not tied to a version."
   [id-str file]
-  (if-let [[_ file-version] (when file (re-find #"(\d{3})[/\\]" (str file)))]
-    (Integer/parseInt file-version)
-    (when (string? id-str)
-      (some-> (re-find #"\d+" id-str) Integer/parseInt))))
+  (cond
+    (and file (year-dir-migration-file? file))
+    nil
+
+    (when file (re-find #"(\d{3})[/\\]" (str file)))
+    (Integer/parseInt (second (re-find #"(\d{3})[/\\]" (str file))))
+
+    (string? id-str)
+    (some-> (re-find #"\d+" id-str) Integer/parseInt)))
 
 (def change-types-supporting-rollback
   "This set was generated with a little grep and awk from the docs here:

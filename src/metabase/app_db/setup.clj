@@ -221,13 +221,23 @@
   (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
-      (let [latest-available (liquibase/latest-available-major-version liquibase)
-            latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
+      (let [database          (.getDatabase liquibase)
+            ;; compare against this binary's own version (for real builds this equals the bundled changelog's max major;
+            ;; for dev builds it is the synthetic version, so a dev DB doesn't look 'downgraded' against itself).
+            current-major     (liquibase/current-recorded-major)
+            ;; the version recorded for the last deployment tells us which binary last migrated this database
+            ;; (last-deployment-version lazily creates and backfills the version table for existing instances). Fall
+            ;; back to parsing the major version out of the last applied changeset id if there is no recorded version
+            ;; (e.g. a deployment whose changeset ids carry no parseable version).
+            recorded-version  (liquibase/last-deployment-version conn database)
+            recorded-major    (some-> recorded-version liquibase/version->major)
+            latest-applied    (or recorded-major
+                                  (liquibase/latest-applied-major-version conn database))]
         ;; `latest-applied` will be `nil` for fresh installs
-        (when (and latest-applied (< latest-available latest-applied))
-          (let [later-changesets (liquibase/changesets-from-later-version conn (.getDatabase liquibase) latest-available latest-applied)]
+        (when (and latest-applied current-major (< current-major latest-applied))
+          (let [later-changesets (liquibase/changesets-from-later-version conn (.getDatabase liquibase) current-major latest-applied)]
             (log/warn (u/format-color 'red "Database has migrations from v%d but this binary only knows up to v%d:"
-                                      latest-applied latest-available))
+                                      latest-applied current-major))
             (doseq [cs later-changesets]
               (log/warn (u/format-color 'red "  - %s" cs))))
           (throw (ex-info

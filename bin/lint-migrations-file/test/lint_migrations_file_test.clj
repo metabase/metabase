@@ -244,6 +244,39 @@
         #"Change set IDs are in the wrong file"
         (validate-id "v57.2024-01-01T10:30:00" "056_update_migrations.yaml"))))))
 
+(deftest ^:parallel year-dir-version-less-ids-test
+  (testing "year-based directories allow version-less changeset IDs"
+    (is (= :ok
+           (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                          (mock-change-set :id "aeiagus09e")))))
+  (testing "version-numbered directories still reject version-less changeset IDs"
+    (is (thrown?
+         clojure.lang.ExceptionInfo
+         (validate-file (io/file "migrations/060/20260616_workspaces.yaml")
+                        (mock-change-set :id "aeiagus09e"))))
+    (testing "but still accept properly prefixed IDs"
+      (is (= :ok
+             (validate-file (io/file "migrations/060/20260616_workspaces.yaml")
+                            (mock-change-set :id "v60.aeiagus09e"))))))
+  (testing "year-based directories reject IDs with dashes (timestamps) or dots (version prefixes)"
+    (doseq [bad-id ["2026-02-09T12:00:00" ; timestamp
+                    "foo-bar"             ; dash
+                    "v60.aeiagus09e"      ; version-prefixed
+                    "foo.bar"]]           ; dot
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"IDs with dashes or dots"
+           (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                          (mock-change-set :id bad-id)))
+          bad-id)))
+  (testing "year-based directory migrations still require rollback for non-auto-rollback change types"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Rollback is required but not present\."
+         (validate-file (io/file "migrations/2026/20260616_workspaces.yaml")
+                        (update (mock-change-set :id "aeiagus09e" :changes [{:sql {:sql "select 1"}}])
+                                :changeSet dissoc :rollback))))))
+
 (deftest ^:parallel prevent-text-types-test
   (testing "should allow \"${text.type}\" columns from being added"
     (is (= :ok
