@@ -143,8 +143,6 @@ export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
-  /** Maps a generated chart entity id to the card id it was saved as, so an
-   * inline chart's Save button can be replaced with a "Saved" link. Session-only. */
   savedChartCardIds: Record<string, number>;
 }
 

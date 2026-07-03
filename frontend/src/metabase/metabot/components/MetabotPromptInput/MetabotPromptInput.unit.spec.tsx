@@ -204,5 +204,18 @@ describe("MetabotPromptInput", () => {
       const lastValue = onChange.mock.calls.at(-1)?.[0];
       expect(lastValue).not.toContain("metabase://chart/");
     });
+
+    it("does not insert a chart mention when the host does not handle chart pastes", async () => {
+      const onChange = jest.fn();
+      setup({ onChange });
+
+      pasteIntoEditor(chartText);
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalled();
+      });
+      const lastValue = onChange.mock.calls.at(-1)?.[0];
+      expect(lastValue).not.toContain("metabase://chart/");
+    });
   });
 });

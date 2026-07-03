@@ -147,9 +147,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
 
   const onPasteChart = useCallback(
     (payload: ChartClipboardPayload) => {
-      if (!payload.chart_id || !payload.query_id) {
-        return;
-      }
       dispatch(
         insertPastedChartAction({
           agentId,
