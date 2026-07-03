@@ -34,7 +34,7 @@ publish.
 
 2. **Surrounding transaction must commit.** If the call is inside a `t2/with-transaction` block (directly or transitively), messages are held until the transaction commits. A rollback discards them. This means a message will never be delivered for a database change that didn't happen.
 
-3. **Batching window.** After the transaction commits, messages enter a time-windowed buffer. Rapid-fire publishes to the same channel within a sliding window are coalesced into a single batch before hitting the transport layer. This amortizes per-batch overhead during bursts.
+3. **Batching window.** After the transaction commits, messages enter a time-windowed buffer. Rapid-fire publishes to the same channel within a sliding window are coalesced into a single batch before hitting the transport layer. This amortizes per-batch overhead during bursts. If a batch can't reach the backend when the window flushes, it is handed to the durable outbox (see below) instead of being retried in memory and eventually dropped — so a non-transactional publish survives a backend outage as long as the app DB is reachable.
 
 4. **Deduplication.** Before dispatch, duplicate messages in the same batch are removed.
 
@@ -72,14 +72,31 @@ publish, the message is lost. The transactional outbox (`metabase.mq.queue.outbo
    dropped**: its `publish_attempts` is bumped and its next retry scheduled with exponential backoff
    (`next_attempt_at`, 1m doubling up to 1h), and it is retried until it publishes.
 
+A row for a queue that was later *removed* from the code isn't a special case: publishing to the backend
+doesn't check queue existence, so the row publishes normally and is deleted; the resulting trigger then
+ages out through the queue reaper (`metabase.mq.task.queue-reaper`) like any other unlistened message.
+
 The net guarantee: **a message is published if and only if the business transaction that produced it
 commits**, regardless of which backend the queue uses — the outbox table always lives in the app DB.
 Delivery stays at-least-once (a crash in the after-commit window makes the sweep republish), so
 listeners must be idempotent.
 
-`:never` skips the outbox: inside a transaction it still waits for commit (a rollback discards it)
-but is held only in memory, so it is best-effort — a crash before delivery loses it. Use it only
-where durability doesn't matter.
+`:never` skips the outbox *on the happy path*: inside a transaction it still waits for commit (a
+rollback discards it) but is held only in memory — no outbox row — so it stays cheap under load. It is
+best-effort in the sense that a *crash* before the buffer flushes loses it. It is **not** best-effort
+about backend availability: if the flush can't reach the backend, a `:never` batch falls back to the
+outbox just like `:try`, so a backend outage doesn't lose messages. Use `:never` when you want to avoid
+the per-publish outbox write, not when you're willing to drop messages.
+
+### Publish-time outbox fallback (non-transactional publishes)
+
+A publish that isn't routed through the outbox up front — `:try` outside a transaction, or any `:never`
+publish — goes through the batching buffer and then straight to the backend. If that backend write
+fails (scheduler down, momentary DB blip), the buffer does **not** manage its own retry/drop: it writes
+the batch to `queue_message_outbox` via `outbox/insert-batch!` (with `next_attempt_at` = now), and the
+same recovery sweep takes over — retrying with backoff, never dropping. The only remaining loss is if
+the outbox insert *also* fails, i.e. the app DB is down too (a total outage), which is logged and
+metered as `batches-dropped{reason=outbox-handoff-failed}`.
 
 ## Message serialization
 

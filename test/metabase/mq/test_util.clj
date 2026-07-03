@@ -40,10 +40,9 @@
   "Returns a set of the idle conditions that currently do NOT hold. Empty set == idle."
   [ctx]
   (cond-> #{}
-    (seq @publish-buffer/*publish-buffer*)        (conj :publish-buffer-nonempty)
-    (seq @publish-buffer/*publish-retry-batches*) (conj :publish-retry-batches-nonempty)
-    (seq (q.polling/busy-channels))               (conj :busy-channels)
-    (not (layer-drained? ctx))                    (conj :memory-messages-pending)))
+    (seq @publish-buffer/*publish-buffer*) (conj :publish-buffer-nonempty)
+    (seq (q.polling/busy-channels))        (conj :busy-channels)
+    (not (layer-drained? ctx))             (conj :memory-messages-pending)))
 
 (defn wait-for-idle!
   "Blocks until the MQ fixture reaches quiescence or `timeout-ms` elapses. Throws
@@ -68,14 +67,12 @@
                                  {:timeout-ms timeout-ms :unmet unmet}))))))))
 
 (defn- force-expire-publish-buffer!
-  "Marks every accumulation entry and every frozen retry batch as past its deadline so the next
-  `flush-publish-buffer!` call drains them immediately."
+  "Marks every accumulation entry as past its deadline so the next `flush-publish-buffer!` call drains
+  them immediately."
   []
   (swap! publish-buffer/*publish-buffer*
          (fn [buf]
-           (into {} (map (fn [[k v]] [k (assoc v :deadline-ms 1)])) buf)))
-  (swap! publish-buffer/*publish-retry-batches*
-         (fn [batches] (mapv #(assoc % :deadline-ms 1) batches))))
+           (into {} (map (fn [[k v]] [k (assoc v :deadline-ms 1)])) buf))))
 
 (defn flush!
   "Force-drains the publish buffer and waits until the MQ is idle. This is the
@@ -226,11 +223,10 @@
   ([f] (do-with-test-mq! {} f))
   ([opts f]
    (let [{:keys [backend listeners duplicate-delivery?] :or {backend :memory}} opts]
-     (binding [listener/*listeners*                  (atom {})
-               q.registry/*queues*                   (atom {})
-               publish-buffer/*publish-buffer*       (atom {})
-               publish-buffer/*publish-retry-batches* (atom [])
-               publish-buffer/*publish-buffer-ms*    0]
+     (binding [listener/*listeners*            (atom {})
+               q.registry/*queues*             (atom {})
+               publish-buffer/*publish-buffer* (atom {})
+               publish-buffer/*publish-buffer-ms* 0]
        (let [backends (make-fixture-backends backend)
              queue-be (cond-> (:queue-be backends)
                         duplicate-delivery? double-delivery-queue-backend!)

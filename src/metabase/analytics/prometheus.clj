@@ -789,14 +789,11 @@
    (prometheus/counter :metabase-mq/messages-received
                        {:description "Individual messages delivered to handlers."
                         :labels [:transport :channel]})
-   (prometheus/counter :metabase-mq/handler-errors
-                       {:description "Errors thrown by queue message batch handlers."
-                        :labels [:transport :channel]})
    (prometheus/counter :metabase-mq/batches-retried
-                       {:description (str "Queue batches that will be re-attempted, by `reason`")
+                       {:description "Queue batches that will be re-attempted, by `reason`"
                         :labels [:channel :reason]})
    (prometheus/counter :metabase-mq/batches-dropped
-                       {:description (str "Queue batches permanently dropped by `reason`")
+                       {:description "Queue batches permanently dropped by `reason`"
                         :labels [:channel :reason]})
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures

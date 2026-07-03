@@ -165,7 +165,7 @@
             "the drop is metered as undecodable, not deferred/mislabeled as no-listener")))))
 
 (deftest quartz-handler-failure-returns-cause-test
-  (testing "deliver! returns the failure (carrying the handler's exception as its cause) so the caller can retry/drop with the cause"
+  (testing "deliver! returns the handler's own exception so the caller can retry/drop with the cause"
     (mt/with-temp-scheduler!
       (let [queue (keyword "queue" (str "quartz-cause-" (random-uuid)))]
         (do-with-queue!
@@ -174,9 +174,9 @@
          (fn []
            (let [result (mq.impl/deliver! queue (payload/encode ["x"]))]
              (is (instance? Throwable result) "a failed delivery returns the throwable, not a boolean")
-             ;; sliced-invoke-fn wraps per-chunk failures, so the handler's exception is the cause.
-             (is (= "kaboom" (ex-message (ex-cause result)))
-                 "the handler's exception is preserved as the cause for diagnostics"))))))))
+             ;; the listener's exception is returned directly (no wrapping) for diagnostics
+             (is (= "kaboom" (ex-message result))
+                 "the handler's exception is returned as-is"))))))))
 
 (deftest deliver-batch-refires-immediately-when-handoff-fails-test
   (testing "if deliver-batch! can't durably hand off (its reschedule throws), it throws JobExecutionException with refireImmediately so Quartz re-runs the job rather than dropping the message"
@@ -201,6 +201,36 @@
                   "a failed hand-off throws a JobExecutionException")
               (is (true? (.refireImmediately ^JobExecutionException ex))
                   "with refireImmediately set, so Quartz re-runs the job immediately"))))
+        (finally
+          (listener/unlisten! queue)
+          (swap! q.registry/*queues* dissoc queue))))))
+
+(deftest deliver-batch-backs-off-before-refire-test
+  (testing "before refiring a failed hand-off, deliver-batch! pauses briefly so it retries at ~1/interval rather than hot-looping the worker thread"
+    (let [queue     (keyword "queue" (str "quartz-refire-backoff-" (random-uuid)))
+          payload   (payload/encode ["x"])
+          backed-off (atom 0)
+          ctx       (reify JobExecutionContext
+                      (getMergedJobDataMap [_]
+                        (doto (JobDataMap.)
+                          (.put "queue" (name queue))
+                          (.put "payload" payload)
+                          (.put "attempt" "0")))
+                      (getScheduler [_] nil))]
+      (q.registry/register-queue! queue {:transactional :try})
+      (listener/batch-listen! queue (fn [_msgs] (throw (ex-info "handler boom" {}))))
+      (try
+        (with-redefs-fn {#'q.quartz/schedule-message-trigger! (fn [& _] (throw (ex-info "scheduler down" {})))
+                         #'q.quartz/backoff-before-refire!     (fn [] (swap! backed-off inc))}
+          (fn []
+            (let [ex (try (#'q.quartz/deliver-batch! ctx) nil
+                          (catch JobExecutionException e e))]
+              (is (instance? JobExecutionException ex)
+                  "a failed hand-off still throws a JobExecutionException")
+              (is (true? (.refireImmediately ^JobExecutionException ex))
+                  "with refireImmediately set")
+              (is (= 1 @backed-off)
+                  "the backoff pause runs exactly once before the refire is thrown"))))
         (finally
           (listener/unlisten! queue)
           (swap! q.registry/*queues* dissoc queue))))))

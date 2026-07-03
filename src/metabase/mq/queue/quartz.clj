@@ -31,6 +31,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -61,6 +62,18 @@
   Redefable in tests that want immediate retries."
   [attempt]
   (min 60000 (* 1000 (long (Math/pow 2 (dec attempt))))))
+
+(def ^:private refire-backoff-ms
+  "Brief pause before asking Quartz to refire this job in place after a failed hand-off.
+  Refiring with no delay would hot-loop the worker thread while the DB is down"
+  10000)
+
+(defn- backoff-before-refire!
+  []
+  (try
+    (Thread/sleep refire-backoff-ms)
+    (catch InterruptedException _
+      (.interrupt (Thread/currentThread)))))
 
 (defn- queue-job-key [queue]
   (jobs/key (name queue) job-group))
@@ -130,7 +143,7 @@
 
           (instance? Throwable result)
           (let [next-attempt (inc attempt)]
-            (mq.impl/handle-batch-failure-policy!
+            (q.impl/handle-batch-failure-policy!
              queue attempt result
              #(schedule-message-trigger! (.getScheduler ctx) queue payload next-attempt
                                          (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt)))))
@@ -140,7 +153,8 @@
       nil
       (catch Throwable t
         ;; We couldn't hand the message off (couldn't schedule the retry, etc.). Don't let Quartz drop
-        ;; the fired one-shot — have it re-run this job immediately instead.
+        ;; the fired one-shot — have it re-run this job instead.
+        (backoff-before-refire!)
         (throw (doto (JobExecutionException. t) (.setRefireImmediately true)))))))
 
 (task/defjob ^{:doc "Delivers a queue batch (non-exclusive queues; runs concurrently)."}
@@ -204,12 +218,17 @@
     ;; recovery sweep, and the publish buffer relies on it to retry / loudly drop. Returning nil
     ;; here would silently lose the message.
     (if-let [scheduler (task/scheduler)]
-      (do
+      (try
         (ensure-queue-job! scheduler queue (q.registry/exclusive? queue))
-        (schedule-message-trigger! scheduler queue payload 0 (Date.)))
-      (throw (ex-info (format "Cannot publish to queue %s: the Quartz task scheduler is not running (is MB_DISABLE_SCHEDULER set?)."
-                              queue)
-                      {:queue queue :backend backend-id}))))
+        (schedule-message-trigger! scheduler queue payload 0 (Date.))
+        (catch Throwable t
+          (throw (q.backend/backend-unavailable-ex
+                  (format "Failed to publish to queue %s: the Quartz scheduler/store is unavailable." queue)
+                  {:queue queue :backend backend-id} t))))
+      (throw (q.backend/backend-unavailable-ex
+              (format "Cannot publish to queue %s: the Quartz task scheduler is not running (is MB_DISABLE_SCHEDULER set?)."
+                      queue)
+              {:queue queue :backend backend-id}))))
 
   ;; Push backend — Quartz drives everything below, so these poll-driver hooks are never invoked
   ;; (the poll loop is never started) and exist only to satisfy the protocol.

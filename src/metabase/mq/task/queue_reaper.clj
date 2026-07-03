@@ -7,6 +7,14 @@
   dropped, so a message for a queue nobody handles (e.g. a new queue whose node was rolled back before
   anyone listened) doesn't linger forever.
 
+  Age is the only signal we have: Quartz's cluster state records live *nodes* but not which queues each
+  node has a listener for (node-affinity is a runtime acquisition filter, never persisted), and the
+  durable per-queue job is created by the publisher, not the listener — so there is no cluster-wide way
+  to tell 'a listener exists for this queue' apart from 'this trigger has sat unacquired for a long
+  time'. A queue with a live but heavily backlogged listener (e.g. `:exclusive`) can therefore be
+  reaped if it stays unacquired past the max age; the generous default (1 day) plus [[startup-grace-ms]]
+  keep that from happening in normal operation.
+
   The reaper stays quiet for [[startup-grace-ms]] after the node comes up: after a cluster-wide outage
   a backlog of perfectly-deliverable messages will have piled up with old start times, and we must not
   drop them before the just-recovered cluster has had a chance to deliver them."
@@ -50,21 +58,24 @@
 
 (defn- drop-orphaned-triggers!
   "Drops queue message triggers that have sat `WAITING` — never acquired by any node — for longer than
-  [[mq.settings/queue-no-listener-max-age-ms]]. With node-affinity, a message for a queue no node in
-  the cluster has a listener for is simply never acquired (it isn't bounced), so this is the mechanism
-  that eventually gives up on it rather than letting it linger forever. A retried/requeued message
-  gets a fresh trigger with a recent start time, so only genuinely-stuck messages age out. Returns the
-  number dropped."
+  [[mq.settings/queue-no-listener-max-age-ms]]. With node-affinity, a message for a queue no node
+  handles is never acquired (it isn't bounced), so this is the mechanism that eventually gives up on it
+  rather than letting it linger forever. A retried/requeued message gets a fresh trigger with a recent
+  start time, so only genuinely-stuck messages age out.
+
+  Returns the number dropped."
   [^Scheduler scheduler]
-  (let [threshold (- (.toEpochMilli (Instant/now)) (mq.settings/queue-no-listener-max-age-ms))
-        stuck     (orphaned-trigger-rows (.getSchedulerName scheduler) threshold)]
-    (doseq [{:keys [trigger_name job_name]} stuck]
+  (let [sched-name (.getSchedulerName scheduler)
+        max-age    (mq.settings/queue-no-listener-max-age-ms)
+        threshold  (- (.toEpochMilli (Instant/now)) max-age)
+        rows       (orphaned-trigger-rows sched-name threshold)]
+    (doseq [{:keys [trigger_name job_name]} rows]
       ;; unscheduleJob removes the trigger (and its simple-trigger row); the durable job stays.
       (.unscheduleJob scheduler (TriggerKey. trigger_name quartz-affinity/queue-job-group))
       (log/warnf "Dropping queue message for %s: no node in the cluster has a listener after %d ms"
-                 job_name (mq.settings/queue-no-listener-max-age-ms))
+                 job_name max-age)
       (analytics/inc! :metabase-mq/batches-dropped {:channel job_name :reason "no-listener-expired"}))
-    (count stuck)))
+    (count rows)))
 
 (def ^:private job-key (jobs/key "metabase.mq.task.queue-reaper.job"))
 (def ^:private trigger-key (triggers/key "metabase.mq.task.queue-reaper.trigger"))

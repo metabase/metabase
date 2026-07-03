@@ -45,3 +45,17 @@
 (def ^:dynamic *backend*
   "The active `QueueBackend` instance. Set by `metabase.mq.init/start!`."
   nil)
+
+(def ^:private backend-unavailable-key ::backend-unavailable)
+
+(defn backend-unavailable-ex
+  "Build an exception marking that the *backend itself* is unreachable. `publish!` implementations
+  throw this so callers can tell the two apart."
+  ([msg data] (backend-unavailable-ex msg data nil))
+  ([msg data cause] (ex-info msg (assoc data backend-unavailable-key true) cause)))
+
+(defn backend-unavailable?
+  "True if `e` (or anything in its cause chain) was built by [[backend-unavailable-ex]]."
+  [^Throwable e]
+  (boolean (some #(get (ex-data %) backend-unavailable-key)
+                 (take-while some? (iterate ex-cause e)))))

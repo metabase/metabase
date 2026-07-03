@@ -377,3 +377,39 @@
           (outbox/recover-outbox!)
           (is (pos? (mt/metric-value system :metabase-mq/batches-retried {:channel "outbox-recover" :reason "outbox-recovery"}))
               "a failed recovery publish that will be retried increments batches-retried{reason=recovery}"))))))
+
+(deftest recover-outbox-stops-early-when-backend-unavailable-test
+  (testing "when a publish reports the backend is unavailable, the sweep stops after the first attempt instead of thrashing (and bumping) every remaining row"
+    (mq.tu/with-test-mq [_ctx]
+      (let [ids   (vec (repeatedly 3 #(insert-stale-row! (payload/encode ["x"]))))
+            calls (atom 0)]
+        (with-dynamic-fn-redefs [transport/publish-encoded!
+                                 (fn [_ _]
+                                   (swap! calls inc)
+                                   (throw (q.backend/backend-unavailable-ex "backend down" {})))]
+          (is (= 0 (outbox/recover-outbox!)) "nothing recovered while the backend is down"))
+        (is (= 1 @calls)
+            "only ONE publish is attempted — the sweep stops on the first backend-unavailable error")
+        (doseq [id ids]
+          (is (t2/exists? :queue_message_outbox :id id) "every row is retained for the next sweep")
+          (is (= 0 (:publish_attempts (t2/select-one [:queue_message_outbox :publish_attempts] :id id)))
+              "no row is bumped — a backend being down doesn't burn anyone's retry budget"))))))
+
+(deftest recover-outbox-message-specific-failure-still-continues-past-it-test
+  (testing "a message-specific (non-backend) failure is still skipped past — only backend-unavailable stops the sweep"
+    (mq.tu/with-test-mq [_ctx]
+      (with-redefs-fn {#'outbox/recovery-page-size 2}
+        (fn []
+          (let [poison  (payload/encode ["poison"])
+                good    (payload/encode ["good"])
+                _p      (insert-stale-row! poison)
+                good-id (insert-stale-row! good)
+                real-publish (dynamic-redefs/original-fn #'transport/publish-encoded!)]
+            (with-dynamic-fn-redefs [transport/publish-encoded!
+                                     (fn [channel payload]
+                                       (if (= payload poison)
+                                         (throw (ex-info "message-specific boom" {})) ; NOT backend-unavailable
+                                         (real-publish channel payload)))]
+              (is (= 1 (outbox/recover-outbox!))
+                  "the good row behind a message-specific failure is still recovered"))
+            (is (not (t2/exists? :queue_message_outbox :id good-id)) "good row published and deleted")))))))

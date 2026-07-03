@@ -4,6 +4,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.payload :as payload]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.outbox :as q.outbox]
    [metabase.mq.queue.registry :as q.registry]
@@ -96,6 +97,10 @@
       (let [result (body-fn msg-buffer)
             msgs   @buffer]
         (when (seq msgs)
+          ;; validate serializability here before any routing. A message that JSON
+          ;; can't round-trip fails here instead of being silently corrupted on the wire
+          ;; and being lost.
+          (run! payload/check-serializable! msgs)
           (publish-collected! channel msgs))
         result)
       (catch Exception e
@@ -111,3 +116,14 @@
     ~channel
     (str "Error in " (namespace ~channel) " processing")
     (fn [~binding] ~@body)))
+
+(defmacro with-queue
+  "Runs the body with the ability to add messages to the given queue.
+  Messages are buffered and only published if the body completes successfully.
+  If an exception occurs, no messages are published and the exception is rethrown.
+
+  When called inside a database transaction, messages are accumulated and published
+  as a single batch after the transaction commits successfully. This prevents consumers
+  from reading uncommitted data."
+  [queue-name [queue-binding] & body]
+  `(with-buffer ~queue-name [~queue-binding] ~@body))

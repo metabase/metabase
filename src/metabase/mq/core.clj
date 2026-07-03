@@ -54,13 +54,12 @@
   register-listeners!
   unlisten!]
  [mq.publish
-  put]
+  put
+  with-queue]
  [mq.impl
   last-activity]
  [mq.init
   start!
   stop!]
- [q.impl
-  with-queue]
  [q.registry
   def-queue!])

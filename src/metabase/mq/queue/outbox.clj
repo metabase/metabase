@@ -20,6 +20,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.mq.payload :as payload]
+   [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log]
@@ -66,11 +67,19 @@
     [:update :skip-locked]
     [:update]))
 
+(defn insert-batch!
+  "Insert one already-encoded batch `payload` for `channel` as a `queue_message_outbox` row and return
+  its primary key."
+  [channel payload]
+  (t2/insert-returning-pk! :queue_message_outbox
+                           {:queue_name (name channel)
+                            :payload    payload}))
+
 (defn insert-outbox-rows!
   "before-commit callback: for every channel buffered in `*transaction-state*`, apply the queue's
   dedup-fn, chunk by `:max-batch-messages`, encode, and insert one `queue_message_outbox` row per
-  chunk — inside the still-open business transaction. Records the inserted rows back into the
-  transaction state under `::rows` so the after-commit callback can publish and delete them."
+  chunk — inside the still-open business transaction. Records the inserted rows
+  back into the transaction state under `::rows` so the after-commit callback can publish and delete them."
   []
   (when-let [state (mdb/transaction-state)]
     (let [by-channel (::messages @state)
@@ -81,9 +90,7 @@
                       :when (seq deduped)
                       chunk (partition-all (q.registry/max-batch-messages channel) deduped)
                       :let  [payload (payload/encode (vec chunk))
-                             id      (t2/insert-returning-pk! :queue_message_outbox
-                                                              {:queue_name (name channel)
-                                                               :payload    payload})]]
+                             id      (insert-batch! channel payload)]]
                   {:id id :channel channel :payload payload}))]
       (swap! state assoc ::rows rows))))
 
@@ -143,9 +150,10 @@
 (defn- recover-page!
   "Runs one transaction of the recovery sweep over up to [[recovery-page-size]] *due* rows, in id order
   starting after `after-id` (keyset pagination). Publishes each row independently: published rows are
-  deleted; failed rows are bumped and backed off ([[bump-failed-row]]). Returns
-  `[recovered next-after-id]`, where `next-after-id` is the id to resume the next page from, or nil
-  when this page was empty (no more due rows)."
+  deleted; rows that hit a *message-specific* failure are bumped and backed off ([[bump-failed-row]]).
+
+  Returns `[recovered next-after-id]`, where `next-after-id` is the id to resume the next page from, or
+  nil when the page was empty (no more due rows) OR the backend was found unavailable (stop the sweep)."
   [after-id]
   (t2/with-transaction [_conn]
     (let [now    (Instant/now)
@@ -161,31 +169,38 @@
                           :order-by [[:id :asc]]
                           :limit    recovery-page-size
                           :for      (for-update-clause)})
-          {:keys [recover-ids bumps]}
+          {:keys [recover-ids bumps backend-down?]}
           (reduce (fn [acc {:keys [id queue_name payload] :as row}]
                     (try
                       (transport/publish-encoded! (keyword "queue" queue_name) payload)
                       (update acc :recover-ids conj id)
                       (catch Exception e
-                        (bump-failed-row acc now row e))))
-                  {:recover-ids [] :bumps []}
+                        (if (q.backend/backend-unavailable? e)
+                          ;; backend is down — stop now (leave this row untouched) rather than bumping
+                          ;; every remaining row and hammering a backend we already know is unavailable.
+                          (reduced (assoc acc :backend-down? true))
+                          (bump-failed-row acc now row e)))))
+                  {:recover-ids [] :bumps [] :backend-down? false}
                   rows)]
-      ;; published rows are removed; failed rows have their attempt count bumped and next retry scheduled.
+      ;; published rows are removed; message-specific failures have their attempt count bumped and next retry scheduled.
       (when (seq recover-ids) (t2/delete! :queue_message_outbox :id [:in recover-ids]))
       (doseq [{:keys [id next-attempt-at]} bumps]
         (t2/update! :queue_message_outbox :id id
                     {:publish_attempts [:+ :publish_attempts [:inline 1]]
                      :next_attempt_at  next-attempt-at}))
-      ;; rows are ordered by id asc, so the last row's id is where the next page resumes; nil = done.
-      [(count recover-ids) (when (seq rows) (:id (last rows)))])))
+      (when backend-down?
+        (log/info "Outbox recovery: backend unavailable, remaining rows retry next run"))
+      ;; nil next-after-id stops the sweep: no more due rows, or the backend is down.
+      [(count recover-ids) (when (and (not backend-down?) (seq rows)) (:id (last rows)))])))
 
 (defn recover-outbox!
   "Republishes outbox rows a crash left behind — rows older than [[recovery-age-ms]] (the normal
   after-commit path deletes its rows immediately).
 
-  Rows are never dropped — a publish failure should be transient and the outbox's guarantee is that a committed message
-  is eventually delivered — so a failing row is retried forever (with backoff).
-  The sweep never revisits rows within a sweep.
+  Rows that hit a message-specific failure are never dropped — the outbox's guarantee is that a
+  committed message is eventually delivered — so they are retried forever (with backoff). If the backend
+  itself is unavailable the sweep stops after the first such failure and lets the next scheduled run
+  retry, rather than thrashing the whole backlog. The sweep never revisits rows within a sweep.
 
   Returns the number of rows successfully republished."
   []

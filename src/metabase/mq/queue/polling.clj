@@ -10,6 +10,7 @@
    [metabase.mq.listener :as listener]
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.settings :as mq.settings]
    [metabase.util.log :as log])
   (:import
@@ -67,9 +68,9 @@
   diagnostic logging."
   [backend channel batch-id error]
   (when-let [failures (q.backend/failure-count backend channel batch-id)]
-    (mq.impl/handle-batch-failure-policy! channel failures error
-                                          #(q.backend/retry-batch! backend channel batch-id)
-                                          #(q.backend/fail-batch! backend channel batch-id))))
+    (q.impl/handle-batch-failure-policy! channel failures error
+                                         #(q.backend/retry-batch! backend channel batch-id)
+                                         #(q.backend/fail-batch! backend channel batch-id))))
 
 (defn- deliver-and-ack!
   "Worker-thread body for one fetched batch: run the shared delivery core, then ack or nack the stored
