@@ -5,9 +5,6 @@ import { EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION } from "build-configs/embedding-sd
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 
-jest.mock("embedding-sdk-shared/hooks/use-lazy-selector", () => ({
-  useLazySelector: jest.fn((selector) => selector()),
-}));
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
   getBuildInfo: jest.fn(),
 }));
