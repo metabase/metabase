@@ -1,6 +1,6 @@
 import type { MetabaseCard } from "embedding-sdk-bundle/types/question";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
-import type { UnsavedCard } from "metabase-types/api";
+import type { DatasetQuery, UnsavedCard } from "metabase-types/api";
 
 export function resolveCardProp(
   input: string | MetabaseCard,
@@ -22,7 +22,7 @@ export function resolveCardProp(
     input.visualization != null || input.displayIsLocked != null;
 
   return {
-    dataset_query: input.query,
+    dataset_query: input.query as DatasetQuery,
     // Public-facing `visualization` maps to the internal card `display`. When
     // omitted, mirror the legacy `query` prop and let query results pick a
     // better unlocked display later.
