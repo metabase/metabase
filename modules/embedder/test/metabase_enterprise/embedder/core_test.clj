@@ -95,16 +95,26 @@
     (testing "the bundled resource is the default, always with token types"
       (is (=? {:type :url :url #"jar:///metabase-embedder/my-model-.*\.zip" :include-token-types? true}
               (source-with {} true))))
-    (testing "HF-style qualified names resolve to the bare bundle name"
-      (mt/with-dynamic-fn-redefs [embedder.model/getenv                 (constantly nil)
-                                  embedder.model/bundled-model-resource (constantly (java.net.URL. "file:///stub"))]
-        (is (=? {:type :url :url #"jar:///metabase-embedder/all-MiniLM-L6-v2-.*\.zip"}
-                (#'embedder.model/model-source "sentence-transformers/all-MiniLM-L6-v2"))))
-      (testing "including for the zoo-download default-model gate"
-        (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
-                                    embedder.model/bundled-model-resource (constantly nil)]
-          (is (=? {:type :url :url #"djl://.*all-MiniLM-L6-v2"}
-                  (#'embedder.model/model-source "sentence-transformers/all-MiniLM-L6-v2"))))))
+    (testing "the pinned HF repo alias resolves to the bare bundle name"
+      ;; `bundle-only` answers only for the bare bundle's resource path, so these assertions also prove
+      ;; which path the qualified name was normalized to.
+      (let [bare-bundle-path (str "metabase-embedder/all-MiniLM-L6-v2-" (#'embedder.model/bundled-model-arch) ".zip")
+            bundle-only      (fn [path] (when (= path bare-bundle-path) (java.net.URL. "file:///stub")))]
+        (mt/with-dynamic-fn-redefs [embedder.model/getenv                 (constantly nil)
+                                    embedder.model/bundled-model-resource bundle-only]
+          (is (=? {:type :url :url #"jar:///metabase-embedder/all-MiniLM-L6-v2-.*\.zip"}
+                  (#'embedder.model/model-source "sentence-transformers/all-MiniLM-L6-v2"))))
+        (testing "including for the zoo-download default-model gate"
+          (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
+                                      embedder.model/bundled-model-resource (constantly nil)]
+            (is (=? {:type :url :url #"djl://.*all-MiniLM-L6-v2"}
+                    (#'embedder.model/model-source "sentence-transformers/all-MiniLM-L6-v2")))))
+        (testing "but another org's same-named model doesn't collapse to our bundle (or the zoo download)"
+          (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
+                                      embedder.model/bundled-model-resource bundle-only]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"No source for embedder model"
+                                  (#'embedder.model/model-source "other-org/all-MiniLM-L6-v2")))))))
     (testing "the zoo download gates on opt-in and applies to the default model only"
       (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
                                   embedder.model/bundled-model-resource (constantly nil)]

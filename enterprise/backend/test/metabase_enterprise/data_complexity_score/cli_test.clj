@@ -197,8 +197,9 @@
     (let [captured (atom nil)]
       ;; The embedder is stubbed so the persist wiring is exercised without the plugin (or its model)
       ;; on the classpath.
-      (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [fingerprint _source _result]
-                                                                        (reset! captured fingerprint))
+      (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [fingerprint _source result]
+                                                                        (reset! captured {:fingerprint fingerprint
+                                                                                          :result      result}))
                                   embedders/provider-embedder         (constantly (embedders/file-embedder {}))]
         (testing "representation mode"
           (#'cli/run-cli {:source             "representation"
@@ -206,15 +207,19 @@
                           :embedder           "in-process"
                           :write-to-appdb     true})
           (is (some? @captured))
-          (is (str/includes? @captured ":cli-embedder-override")))
+          (is (str/includes? (:fingerprint @captured) ":cli-embedder-override"))
+          (testing "and the persisted row's meta agrees with the fingerprint's text-variant"
+            (is (= embedders/default-text-variant
+                   (get-in @captured [:result :meta :text-variant])))))
         (testing "appdb mode (write-by-default), with the appdb scoring itself stubbed"
           (reset! captured nil)
           (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!     (constantly nil)
+                                      plugins/load-plugins!                (constantly nil)
                                       metabot-scope/internal-metabot-scope (constantly {})
                                       complexity/complexity-scores         (constantly {})]
             (#'cli/run-cli {:source "appdb" :embedder "in-process"})
             (is (some? @captured))
-            (is (str/includes? @captured ":cli-embedder-override"))))))))
+            (is (str/includes? (:fingerprint @captured) ":cli-embedder-override"))))))))
 
 (deftest ^:parallel cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"
@@ -245,6 +250,18 @@
         (testing "but the no-flag path doesn't touch the plugins system"
           (#'cli/embedder-override nil)
           (is (= 1 @calls)))))))
+
+(deftest ^:sequential run-cli-appdb-mode-loads-plugins-test
+  (testing "appdb mode loads plugins even without --embedder: the configured synonym provider may be in-process"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [plugins/load-plugins!                 (fn [] (swap! calls inc))
+                                  mdb/setup-db-without-migrations!      (fn [])
+                                  complexity/complexity-scores          (fn [& _] {:meta {}})
+                                  synonym-source/complexity-scores-opts (constantly {})
+                                  metabot-scope/internal-metabot-scope  (constantly {})
+                                  data-complexity-score/record-score!   (fn [& _])]
+        (#'cli/run-cli {:source "appdb"})
+        (is (= 1 @calls))))))
 
 (deftest ^:parallel file-embedder-test
   (testing "file-embedder converts seqs to ^floats, preserves already-typed arrays, omits absent names"
@@ -482,6 +499,7 @@
     (let [calls         (atom [])
           advance-calls (atom 0)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
+                                  plugins/load-plugins!                           (fn [])
                                   complexity/complexity-scores                    (fn [& _] {:meta {}})
                                   synonym-source/complexity-scores-opts           (constantly {})
                                   metabot-scope/internal-metabot-scope            (constantly {})
@@ -500,6 +518,7 @@
   (testing "appdb + --write-to-appdb false scores but never persists"
     (let [persisted? (atom false)]
       (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!                (fn [])
+                                  plugins/load-plugins!                           (fn [])
                                   complexity/complexity-scores                    (fn [& _] {:meta {}})
                                   synonym-source/complexity-scores-opts           (constantly {})
                                   metabot-scope/internal-metabot-scope            (constantly {})

@@ -42,7 +42,9 @@ serves them side by side:
 
 A requested model resolves, in priority order: an `MB_EMBEDDER_MODEL_SOURCES` entry, a bundle in
 the jar named `metabase-embedder/<model-name>-<arch>.zip`, or (default model only, dev only) the
-HuggingFace download behind `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true`.
+HuggingFace download behind `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true`. The pinned repo path
+`sentence-transformers/all-MiniLM-L6-v2` is an alias for the bundled `all-MiniLM-L6-v2`; other
+HF-qualified names are distinct models (repos are namespace-scoped) and need their own source entry.
 
 ### Custom model sources
 

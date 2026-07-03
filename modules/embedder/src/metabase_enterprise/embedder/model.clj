@@ -8,7 +8,6 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase.util.log :as log])
   (:import
    (ai.djl.huggingface.translator TextEmbeddingTranslatorFactory)
@@ -44,12 +43,18 @@
   [resource-path]
   (io/resource resource-path))
 
-(defn- bare-model-name
-  "The final segment of an HF-style qualified model name.
-  Consumer settings often carry the full repo path (`sentence-transformers/all-MiniLM-L6-v2`); bundles and
-  the zoo default are keyed by the bare name, so both forms must resolve to the same model."
+(def ^:private model-name-aliases
+  "Pinned HF repo paths → the bare names bundles (and the zoo default) are keyed by.
+  Consumer settings often carry the full repo path (the complexity-score synonym default is
+  `sentence-transformers/all-MiniLM-L6-v2`), so the exact pinned repo resolves to its bundled name.
+  Only pinned aliases collapse: HF repo names are namespace-scoped, so another org's
+  `<org>/all-MiniLM-L6-v2` is a different model and must fail fast rather than silently load our
+  bundle — point it at an `MB_EMBEDDER_MODEL_SOURCES` entry instead."
+  {"sentence-transformers/all-MiniLM-L6-v2" default-model-name})
+
+(defn- normalize-model-name
   [model-name]
-  (peek (str/split model-name #"/")))
+  (get model-name-aliases model-name model-name))
 
 (defn- model-source-overrides
   "Per-model source overrides from the `MB_EMBEDDER_MODEL_SOURCES` env var: an EDN map of model name →
@@ -75,18 +80,19 @@
      `MB_EE_EMBEDDING_MODEL_DIMENSIONS`), so the name/dimensions they declare must describe the model the
      entry loads.
   2. A per-arch INT8 bundle packed into this jar's resources at build time (the production default).
-     HF-style qualified names resolve by their bare final segment, so a consumer configured with
-     `sentence-transformers/all-MiniLM-L6-v2` finds the `all-MiniLM-L6-v2` bundle.
-  3. For [[default-model-name]] (by bare name) only: the DJL model-zoo URL, downloading into `~/.djl.ai/`
-     — dev-only, and only with `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can never silently
-     reach the network.
+     A pinned HF repo alias (see [[model-name-aliases]]) resolves to its bare bundled name, so a consumer
+     configured with `sentence-transformers/all-MiniLM-L6-v2` finds the `all-MiniLM-L6-v2` bundle; other
+     qualified names never collapse.
+  3. For [[default-model-name]] (or its pinned alias) only: the DJL model-zoo URL, downloading into
+     `~/.djl.ai/` — dev-only, and only with `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can
+     never silently reach the network.
 
   Each source carries `:include-token-types?`: the HF INT8 exports we bundle (and dirs prepared like them)
   have a third `token_type_ids` graph input the translator must feed, while the DJL zoo export takes two.
   Override entries default to the bundle convention; set `:include-token-types? false` for a two-input
   custom model."
   [model-name]
-  (let [resource-path   (str "metabase-embedder/" (bare-model-name model-name) "-" (bundled-model-arch) ".zip")
+  (let [resource-path   (str "metabase-embedder/" (normalize-model-name model-name) "-" (bundled-model-arch) ".zip")
         ;; `find`, not `get`: a present-but-nil entry must be treated as malformed, not as absent.
         [_ override
          :as entry]     (find (model-source-overrides) model-name)
@@ -112,7 +118,7 @@
       (bundled-model-resource resource-path)
       {:type :url :url (str "jar:///" resource-path) :include-token-types? true}
 
-      (and (= (bare-model-name model-name) default-model-name)
+      (and (= (normalize-model-name model-name) default-model-name)
            (= "true" (getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD")))
       {:type :url
        :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"

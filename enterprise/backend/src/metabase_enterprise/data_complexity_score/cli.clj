@@ -209,6 +209,11 @@
   "Score against the live appdb; optionally persist the row.
   Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
   [write? override]
+  ;; Even without --embedder, the configured synonym provider may itself be "in-process", and the
+  ;; standalone `--mode complexity-score` JAR path bypasses metabase.core.core/init!, the usual
+  ;; caller of load-plugins!. Memoized, so a no-op where plugins already loaded (server/REPL, or
+  ;; via the --embedder override path).
+  (plugins/load-plugins!)
   (mdb/setup-db-without-migrations!)
   (let [result (complexity/complexity-scores
                 (-> (synonym-source/complexity-scores-opts)

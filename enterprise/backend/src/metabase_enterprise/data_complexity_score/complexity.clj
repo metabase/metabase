@@ -539,11 +539,12 @@
      `:embedding-model-meta` — `{:provider ... :model-name ...}` map embedded into the response's
         `:meta`, or nil to omit the key. Callers that know what embedding model they used should
         pass it so benchmark consumers can pin to it.
+     `:text-variant` — preprocessing variant published into `:meta.text-variant`, or nil to omit.
      `:metabot-entities` — when non-nil, scored separately as the `:metabot` catalog. When nil
         (default), we assume this means that metabot has no additional filtering configured, and
         reuse the `:universe` score. In the fallback case the response `:meta` includes
         `:metabot-source :universe-fallback` so benchmark consumers recognise this scenario."
-  [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
+  [library-entities universe-entities embedder {:keys [embedding-model-meta text-variant metabot-entities]}]
   (let [universe-score     (score-catalog universe-entities embedder)
         metabot-fallback?  (nil? metabot-entities)]
     {:library  (score-catalog library-entities embedder)
@@ -556,6 +557,7 @@
                         :synonym-threshold synonym-similarity-threshold
                         :weights           weights}
                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
+                 text-variant         (assoc :text-variant    text-variant)
                  metabot-fallback?    (assoc :metabot-source :universe-fallback))}))
 
 (defn- time-phase!
