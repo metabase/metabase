@@ -63,3 +63,37 @@ export function isNewQuerySqlIdle(
   const { isNative } = Lib.queryDisplayInfo(question.query());
   return isNative && Lib.rawNativeQuery(question.query()).trim().length === 0;
 }
+
+// Bridge between NewQueryPage and the native editor visibility toggler.
+// The toggler lives deep inside QueryBuilder, so we use a tiny external
+// store instead of threading props through the QB tree.
+let newQuerySqlFullPage = false;
+const newQuerySqlFullPageListeners = new Set<() => void>();
+let newQuerySqlExpandListener: (() => void) | null = null;
+
+export function subscribeNewQuerySqlFullPage(listener: () => void) {
+  newQuerySqlFullPageListeners.add(listener);
+  return () => {
+    newQuerySqlFullPageListeners.delete(listener);
+  };
+}
+
+export function getNewQuerySqlFullPage() {
+  return newQuerySqlFullPage;
+}
+
+export function setNewQuerySqlFullPage(value: boolean) {
+  if (newQuerySqlFullPage === value) {
+    return;
+  }
+  newQuerySqlFullPage = value;
+  newQuerySqlFullPageListeners.forEach((listener) => listener());
+}
+
+export function setNewQuerySqlExpandListener(listener: (() => void) | null) {
+  newQuerySqlExpandListener = listener;
+}
+
+export function requestNewQuerySqlExpand() {
+  newQuerySqlExpandListener?.();
+}

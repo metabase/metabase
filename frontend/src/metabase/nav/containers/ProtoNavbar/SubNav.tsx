@@ -1,11 +1,16 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
-
-import { SidebarSection } from "../MainNavbar/MainNavbar.styled";
 
 import S from "./ProtoNavbar.module.css";
 
-export function SubNavSection({ children }: { children: ReactNode }) {
-  return <SidebarSection>{children}</SidebarSection>;
+export function SubNavSection({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cx(S.section, className)}>{children}</div>;
 }
 
 // Heading text is aligned with each nav item's icon glyph (the icon container

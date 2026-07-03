@@ -2,7 +2,6 @@ import type { Location } from "history";
 import cx from "classnames";
 import {
   type ComponentProps,
-  type FocusEvent,
   useEffect,
   useMemo,
   useRef,
@@ -20,15 +19,21 @@ import {
   newQueryUrl,
   parseNewQueryMode,
   setLastNewQueryMode,
+  setNewQuerySqlExpandListener,
+  setNewQuerySqlFullPage,
 } from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { getIsNative, getQuestion } from "metabase/query_builder/selectors";
+import {
+  getFirstQueryResult,
+  getIsNative,
+  getIsRunning,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { resetQB, setUIControls } from "metabase/redux/query-builder";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { getSetting } from "metabase/selectors/settings";
 import { SegmentedControl, Title } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { NewQueryAiPrompt } from "./NewQueryAiPrompt";
 import { NewQueryNotebookPrompt } from "./NewQueryNotebookPrompt";
@@ -56,11 +61,13 @@ const askConfig: MetabotConfig = {
 function useIsEngaged(
   mode: NewQueryMode,
   notebookStarted: boolean,
-  sqlStarted: boolean,
+  sqlExpanded: boolean,
 ): boolean {
   const { messages, isDoingScience } = useMetabotAgent("ask");
   const question = useSelector(getQuestion);
   const isNative = useSelector(getIsNative);
+  const isRunning = useSelector(getIsRunning);
+  const queryResult = useSelector(getFirstQueryResult);
 
   return useMemo(() => {
     if (mode === "ai") {
@@ -74,15 +81,9 @@ function useIsEngaged(
       );
     }
 
+    // Stay in the compact idle card until the user runs SQL or expands.
     if (mode === "sql") {
-      return (
-        sqlStarted ||
-        Boolean(
-          question &&
-            isNative &&
-            Lib.rawNativeQuery(question.query()).trim().length > 0,
-        )
-      );
+      return isNative && (sqlExpanded || isRunning || queryResult != null);
     }
 
     return false;
@@ -93,7 +94,9 @@ function useIsEngaged(
     question,
     isNative,
     notebookStarted,
-    sqlStarted,
+    sqlExpanded,
+    isRunning,
+    queryResult,
   ]);
 }
 
@@ -102,8 +105,8 @@ export function NewQueryPage(props: Props) {
   const dispatch = useDispatch();
   const mode = parseNewQueryMode(location.pathname) ?? "ai";
   const [notebookStarted, setNotebookStarted] = useState(false);
-  const [sqlStarted, setSqlStarted] = useState(false);
-  const isEngaged = useIsEngaged(mode, notebookStarted, sqlStarted);
+  const [sqlExpanded, setSqlExpanded] = useState(false);
+  const isEngaged = useIsEngaged(mode, notebookStarted, sqlExpanded);
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -126,8 +129,18 @@ export function NewQueryPage(props: Props) {
   }, [setSidebarVisible]);
 
   useEffect(() => {
+    setNewQuerySqlExpandListener(() => setSqlExpanded(true));
+    return () => setNewQuerySqlExpandListener(null);
+  }, []);
+
+  useEffect(() => {
+    setNewQuerySqlFullPage(mode === "sql" && isEngaged);
+    return () => setNewQuerySqlFullPage(false);
+  }, [mode, isEngaged]);
+
+  useEffect(() => {
     setNotebookStarted(false);
-    setSqlStarted(false);
+    setSqlExpanded(false);
     if (mode === "ai") {
       dispatch(resetConversation({ agentId: "ask" }));
     }
@@ -155,7 +168,7 @@ export function NewQueryPage(props: Props) {
   const handleModeChange = (nextMode: string) => {
     if (nextMode === "ai" || nextMode === "notebook" || nextMode === "sql") {
       setNotebookStarted(false);
-      setSqlStarted(false);
+      setSqlExpanded(false);
       setLastNewQueryMode(nextMode);
       dispatch(
         push(
@@ -170,16 +183,6 @@ export function NewQueryPage(props: Props) {
   const handleNotebookSelect = (url: string) => {
     setNotebookStarted(true);
     dispatch(push(url));
-  };
-
-  const handleSqlFocusCapture = (event: FocusEvent<HTMLDivElement>) => {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (target.closest("[data-testid='native-query-editor']")) {
-      setSqlStarted(true);
-    }
   };
 
   return (
@@ -233,7 +236,10 @@ export function NewQueryPage(props: Props) {
               isEngaged && S.notebookPromptSlotHidden,
             )}
           >
-            <NewQueryNotebookPrompt onSelect={handleNotebookSelect} />
+            <NewQueryNotebookPrompt
+              key={queryBuilderKey}
+              onSelect={handleNotebookSelect}
+            />
           </div>
           <div
             className={cx(S.notebookFull, isEngaged && S.notebookFullVisible)}
@@ -253,10 +259,7 @@ export function NewQueryPage(props: Props) {
             isSqlIdle && S.contentSqlIdle,
           )}
         >
-          <div
-            className={cx(S.sqlPrompt, isEngaged && S.sqlPromptEngaged)}
-            onFocusCapture={handleSqlFocusCapture}
-          >
+          <div className={cx(S.sqlPrompt, isEngaged && S.sqlPromptEngaged)}>
             <QueryBuilder {...props} key={queryBuilderKey} />
           </div>
         </div>

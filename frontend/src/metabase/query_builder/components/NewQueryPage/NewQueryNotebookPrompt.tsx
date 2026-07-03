@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { NotebookProvider } from "metabase/querying/notebook/components/Notebook/context";
@@ -19,11 +19,22 @@ type Props = {
 
 export function NewQueryNotebookPrompt({ onSelect }: Props) {
   const metadata = useSelector(getMetadata);
-  const [isOpened, setIsOpened] = useState(true);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isOpened, setIsOpened] = useState(false);
 
   const question = useMemo(() => Question.create({ metadata }), [metadata]);
   const query = question.query();
   const stageIndex = -1;
+
+  // Focus the Data search input after layout settles so the picker anchors to
+  // the Data box's final position (not a pre-layout spot).
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const input = rootRef.current?.querySelector("input");
+      input?.focus();
+    }, 100);
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const handleChange = (
     table: Lib.TableMetadata | Lib.CardMetadata,
@@ -42,7 +53,11 @@ export function NewQueryNotebookPrompt({ onSelect }: Props) {
   };
 
   return (
-    <div className={S.root} data-testid="new-query-notebook-prompt">
+    <div
+      ref={rootRef}
+      className={S.root}
+      data-testid="new-query-notebook-prompt"
+    >
       <Text className={S.label} fw={700} fz="md">
         {t`Data`}
       </Text>

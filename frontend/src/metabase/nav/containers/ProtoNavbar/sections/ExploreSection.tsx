@@ -85,35 +85,30 @@ export function ExploreSection({ location, onPin }: Props) {
     path === "/question/new" || path.startsWith("/question/new/");
 
   return (
-    <>
-      <SubNavSection>
-        <button
-          type="button"
-          className={`${S.navActionButton} ${S.newQueryButton}`}
-          aria-label={t`New query`}
-          aria-current={isNewQuerySelected ? "page" : undefined}
-          onClick={handleNewQuery}
+    <SubNavSection>
+      <button
+        type="button"
+        className={S.navActionButton}
+        aria-label={t`New query`}
+        aria-current={isNewQuerySelected ? "page" : undefined}
+        onClick={handleNewQuery}
+      >
+        <span className={S.navActionIconCircle}>
+          <Icon name="add" size={12} />
+        </span>
+        {t`New query`}
+      </button>
+      <SubNavHeading>{t`History`}</SubNavHeading>
+      {FAKE_HISTORY.map((item) => (
+        <SidebarLink
+          key={item.id}
+          icon={item.icon}
+          url={historyUrlFor(item.icon)}
+          onClick={onPin}
         >
-          <span className={S.navActionIconCircle}>
-            <Icon name="add" size={12} />
-          </span>
-          {t`New query`}
-        </button>
-      </SubNavSection>
-
-      <SubNavSection>
-        <SubNavHeading>{t`History`}</SubNavHeading>
-        {FAKE_HISTORY.map((item) => (
-          <SidebarLink
-            key={item.id}
-            icon={item.icon}
-            url={historyUrlFor(item.icon)}
-            onClick={onPin}
-          >
-            {item.label}
-          </SidebarLink>
-        ))}
-      </SubNavSection>
-    </>
+          {item.label}
+        </SidebarLink>
+      ))}
+    </SubNavSection>
   );
 }
