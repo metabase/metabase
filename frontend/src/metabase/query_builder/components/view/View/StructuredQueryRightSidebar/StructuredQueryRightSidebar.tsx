@@ -1,3 +1,4 @@
+import type { Dayjs } from "dayjs";
 import { match } from "ts-pattern";
 
 import { AIQuestionAnalysisSidebar } from "metabase/query_builder/components/AIQuestionAnalysisSidebar";
@@ -5,6 +6,34 @@ import { QuestionInfoSidebar } from "metabase/query_builder/components/view/side
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
 import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
+import type { QueryModalType } from "metabase/querying/constants";
+import type Question from "metabase-lib/v1/Question";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+
+interface StructuredQueryRightSidebarProps {
+  deselectTimelineEvents: () => void;
+  hideTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  isShowingQuestionInfoSidebar: boolean;
+  isShowingQuestionSettingsSidebar: boolean;
+  isShowingAIQuestionAnalysisSidebar: boolean;
+  isShowingSummarySidebar: boolean;
+  isShowingTimelineSidebar: boolean;
+  onCloseQuestionInfo: () => void;
+  onCloseSummary: () => void;
+  onCloseAIQuestionAnalysisSidebar: () => void;
+  onCloseTimelines: () => void;
+  onOpenModal: (modal: QueryModalType, modalContext?: unknown) => void;
+  onSave: (question: Question) => Promise<void>;
+  question: Question;
+  selectTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  selectedTimelineEventIds: number[];
+  showTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  timelineEvents?: TimelineEvent[];
+  timelines: Timeline[];
+  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  visibleTimelineEventIds: number[];
+  xDomain?: [Dayjs, Dayjs];
+}
 
 export const StructuredQueryRightSidebar = ({
   deselectTimelineEvents,
@@ -14,7 +43,6 @@ export const StructuredQueryRightSidebar = ({
   isShowingAIQuestionAnalysisSidebar,
   isShowingSummarySidebar,
   isShowingTimelineSidebar,
-  onCloseQuestionInfo,
   onCloseSummary,
   onCloseAIQuestionAnalysisSidebar,
   onCloseTimelines,
@@ -29,7 +57,7 @@ export const StructuredQueryRightSidebar = ({
   updateQuestion,
   visibleTimelineEventIds,
   xDomain,
-}) => {
+}: StructuredQueryRightSidebarProps) => {
   return match({
     isSaved: question.isSaved(),
     isShowingSummarySidebar,
@@ -89,13 +117,7 @@ export const StructuredQueryRightSidebar = ({
         isSaved: true,
         isShowingQuestionInfoSidebar: true,
       },
-      () => (
-        <QuestionInfoSidebar
-          question={question}
-          onSave={onSave}
-          onClose={onCloseQuestionInfo}
-        />
-      ),
+      () => <QuestionInfoSidebar question={question} onSave={onSave} />,
     )
     .with(
       {

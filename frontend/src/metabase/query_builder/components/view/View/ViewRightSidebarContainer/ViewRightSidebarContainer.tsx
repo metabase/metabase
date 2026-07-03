@@ -1,9 +1,25 @@
-/* eslint-disable react/prop-types */
+import type { ComponentProps } from "react";
+
 import { NativeQueryRightSidebar } from "metabase/query_builder/components/view/View/NativeQueryRightSidebar/NativeQueryRightSidebar";
 import { StructuredQueryRightSidebar } from "metabase/query_builder/components/view/View/StructuredQueryRightSidebar/StructuredQueryRightSidebar";
 import * as Lib from "metabase-lib";
 
-export const ViewRightSidebarContainer = (props) => {
+type ViewRightSidebarContainerProps = ComponentProps<
+  typeof NativeQueryRightSidebar
+> &
+  Pick<
+    ComponentProps<typeof StructuredQueryRightSidebar>,
+    | "isShowingSummarySidebar"
+    | "onCloseQuestionInfo"
+    | "onCloseSummary"
+    | "onOpenModal"
+    | "updateQuestion"
+    | "xDomain"
+  >;
+
+export const ViewRightSidebarContainer = (
+  props: ViewRightSidebarContainerProps,
+) => {
   const {
     question,
     deselectTimelineEvents,
