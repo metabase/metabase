@@ -137,18 +137,20 @@
 
 (def ^:private in-process-descriptor
   "Model identity for `--embedder in-process`.
-  Mirrors `metabase-enterprise.embedder.core/default-model-descriptor`; kept as a literal so parsing the flag
-  doesn't need the plugin on the classpath — the provider dispatch resolves it (and errors usefully) only
-  when embeddings are actually requested."
+  Mirrors `metabase-enterprise.embedder.core/default-model-descriptor`; [[assert-descriptor-in-sync!]]
+  keeps the two aligned."
+  ;; A literal rather than a require so parsing the flag doesn't need the plugin on the classpath — the
+  ;; provider dispatch resolves the plugin (and errors usefully) only when embeddings are requested.
   {:provider         "in-process"
    :model-name       "all-MiniLM-L6-v2"
    :model-dimensions 384})
 
 (defn- assert-descriptor-in-sync!
   "When the embedder module is loadable, fail loudly if [[in-process-descriptor]] drifted from its source
-  of truth. The module test suite also asserts this, but only runs under the :embedder alias; this check
-  runs wherever the flag is actually usable."
+  of truth."
   []
+  ;; The module suite asserts the same thing but only runs under the :embedder alias; this check runs
+  ;; wherever the flag is actually usable.
   (when-let [actual (try
                       (classloader/require 'metabase-enterprise.embedder.core)
                       (some-> (ns-resolve 'metabase-enterprise.embedder.core 'default-model-descriptor) deref)
@@ -160,7 +162,8 @@
 
 (defn- embedder-override
   "Resolve the `--embedder` flag into `{:embedder :embedding-model-meta}` to splice over the
-  default synonym embedder. `nil` when the flag wasn't passed.
+  default synonym embedder.
+  `nil` when the flag wasn't passed.
 
   `in-process` goes through [[embedders/provider-embedder]] and thus the registered `in-process` provider
   — exactly the production code path, including the guidance error when the embedder plugin jar is absent.

@@ -149,6 +149,7 @@
   REPL affordance."
   []
   (locking models*
+    ;; instance? check: tests stash stub sentinels in the registry, which have nothing to close.
     (doseq [[_ m] @models*
             :when (instance? ZooModel m)]
       (.close ^ZooModel m))

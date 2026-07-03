@@ -137,8 +137,9 @@
 
 (defn validate-provider!
   "Throw on an unknown embedding provider name; nil passes.
-  For consumer modules' setting setters — this ns is the module's public face for provider concerns."
+  Setter validation for consumer modules' provider settings."
   [provider]
+  ;; Delegates rather than living in `settings`: this ns is the module's :api face, settings is internal.
   (semantic-settings/validate-embedding-provider! provider))
 
 (defn- dispatch-provider [embedding-model & _] (:provider embedding-model))
