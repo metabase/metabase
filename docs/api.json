@@ -3751,6 +3751,91 @@
         },
         "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids" ]
       },
+      "metabase.agent-api.api.create-metric-request" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.card-display"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "query" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "visualization_settings" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name", "query" ]
+      },
+      "metabase.agent-api.api.create-metric-response" : {
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_path" : {
+            "type" : "string"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "url", "display", "collection_id", "collection_path", "description" ]
+      },
       "metabase.agent-api.api.create-question-request" : {
         "type" : "object",
         "properties" : {
@@ -4274,6 +4359,107 @@
           }
         },
         "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids" ]
+      },
+      "metabase.agent-api.api.update-metric-request" : {
+        "description" : "Patch shape for `update_metric`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer) and must still describe a valid metric.",
+        "type" : "object",
+        "properties" : {
+          "archived" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.card-display"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "query" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "visualization_settings" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.agent-api.api.update-metric-response" : {
+        "description" : "Returned by `update_metric` - the fields the LLM is most likely to want to read back\n  after an update. Excludes the full dataset_query, which the caller can re-fetch via\n  `read_resource` if needed.",
+        "type" : "object",
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_path" : {
+            "type" : "string"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "id", "name", "display", "collection_id", "collection_path", "description", "archived" ]
       },
       "metabase.agent-api.api.update-question-request" : {
         "description" : "Patch shape for `update_question`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer).",
@@ -14991,6 +15177,87 @@
             "application/json" : {
               "schema" : {
                 "$ref" : "#/components/schemas/metabase.agent-api.api.execute-sql-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/metric" : {
+      "post" : {
+        "operationId" : "post-api-agent-v1-metric",
+        "summary" : "POST /api/agent/v1/metric",
+        "description" : "Save a previously constructed query as a named metric.\n\n  A metric is a reusable aggregation (a `Card` of type `metric`): the underlying query must have\n  exactly one aggregation and at most one date/datetime grouping. The `query` parameter accepts a\n  `query_handle` (UUID) returned by `construct_query`, or a base64-encoded MBQL string. MCP callers\n  should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the metric is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.create-metric-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.create-metric-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v1/metric/{id}" : {
+      "put" : {
+        "operationId" : "put-api-agent-v1-metric-id",
+        "summary" : "PUT /api/agent/v1/metric/{id}",
+        "description" : "Update a saved metric. Patch semantics - only fields that you pass are changed.\n\n  Set `collection_id` to move the metric to a different collection. Set `archived: true` to archive.\n  Pass `query` (a query_handle from construct_query, or a base64 MBQL string) to replace the underlying\n  query; the replacement must still be a valid metric (exactly one aggregation, at most one\n  date/datetime grouping). The target card must be a metric — use `update_question` for questions.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.update-metric-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.update-metric-request"
               }
             }
           }
@@ -39244,7 +39511,7 @@
       "post" : {
         "operationId" : "post-api-osi-ai-context-reconcile",
         "summary" : "POST /api/osi/ai-context/reconcile",
-        "description" : "Force a reconcile of the library entity index against the application database, blocking until a\n  reconcile covering this call finishes.\n  Returns the index mutations (`index`) separately from execution timing (`execution`: how long the run\n  waited to start, then how long it ran).\n  This call never reuses a reconcile already in progress (it may have started before your latest change);\n  it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls\n  share.\n  Requires the semantic search feature; returns a 400 when it isn't configured.",
+        "description" : "Force a reconcile of the library entity index against the application database, blocking until a\n  reconcile covering this call finishes.\n  Returns the index mutations (`index`) separately from execution timing (`execution`: how long the run\n  waited to start, then how long it ran).\n  This call never reuses a reconcile already in progress (it may have started before your latest change);\n  it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls\n  share.\n  Requires the library entity-retrieval feature; returns a 400 when the index is unavailable (the feature\n  isn't licensed, or the pgvector store or embedding backend isn't configured).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
