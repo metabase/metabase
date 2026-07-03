@@ -133,6 +133,7 @@
   indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
   frontend as an HTTP 429 rather than letting the request queue grow without limit."
   :visibility :internal
+  :export?    false
   :type       :integer
   :default    0
   :audit      :getter
