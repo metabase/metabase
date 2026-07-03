@@ -16,6 +16,10 @@ const trackSettledDocumentSearch = _.debounce(
   DOCUMENT_SEARCH_TRACK_DEBOUNCE_MS,
 );
 
+// Responses can fulfill out of typing order; only the newest document request may schedule the
+// debounced event, so a slow stale response can't overwrite the settled query's args.
+let latestDocumentSearchRequestId: string | null = null;
+
 export const searchApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     search: builder.query<SearchResponse, SearchRequest>({
@@ -27,17 +31,24 @@ export const searchApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideSearchItemListTags(response?.data ?? [], models),
       onQueryStarted: (args, { queryFulfilled, requestId }) => {
+        const isDocumentSearch = args.context === "document";
+        if (isDocumentSearch) {
+          // Advance the marker even for query-less requests, so clearing the input supersedes any
+          // still-in-flight search whose late response would otherwise emit a stale event.
+          latestDocumentSearchRequestId = requestId;
+        }
+
         // Only track searches with an actual text query. Query-less requests are filter/available-model
         // lookups and internal existence probes, not searches the user performed.
         if (args.q?.trim()) {
           const start = Date.now();
           return handleQueryFulfilled(queryFulfilled, (data) => {
             const duration = Date.now() - start;
-            const track =
-              args.context === "document"
-                ? trackSettledDocumentSearch
-                : trackSearchRequest;
-            track(args, data, duration, requestId);
+            if (!isDocumentSearch) {
+              trackSearchRequest(args, data, duration, requestId);
+            } else if (latestDocumentSearchRequestId === requestId) {
+              trackSettledDocumentSearch(args, data, duration, requestId);
+            }
           });
         }
       },
