@@ -66,16 +66,15 @@
 
   Resolves the field by ID and checks that its base-type is numeric or temporal.
   Throws a 400 error if the field cannot be found or its type is not supported."
-  [{:keys [source]}]
-  (when-let [{:keys [checkpoint-filter-field-id] strategy-type :type}
-             (:source-incremental-strategy source)]
-    (when (= "checkpoint" strategy-type)
-      (let [field (t2/select-one :model/Field checkpoint-filter-field-id)]
-        (api/check-400 field (deferred-tru "Checkpoint field not found."))
-        (api/check-400 (transforms-base.u/supported-incremental-filter-type? (:base_type field))
-                       (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
-                                     (:name field)
-                                     (pr-str (:base_type field))))))))
+  [{:keys [source] :as transform}]
+  (when (transforms-base.u/checkpoint-source? transform)
+    (let [checkpoint-filter-field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+          field (t2/select-one :model/Field checkpoint-filter-field-id)]
+      (api/check-400 field (deferred-tru "Checkpoint field not found."))
+      (api/check-400 (transforms-base.u/supported-incremental-filter-type? (:base_type field))
+                     (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                   (:name field)
+                                   (pr-str (:base_type field)))))))
 
 (defn validate-incremental-table-tag!
   "Reject a table-incremental native-query transform whose source query has no table template tag for
@@ -84,8 +83,8 @@
   Without that table variable the incremental filter has nowhere to be injected, so the transform is
   in a broken state. This surfaces the error eagerly at create/update time instead of only when the
   transform is run."
-  [{:keys [target] :as transform}]
-  (when (and (= :table-incremental (keyword (:type target)))
+  [transform]
+  (when (and (transforms-base.u/incremental-target? transform)
              (transforms-base.u/native-query-transform? transform))
     (api/check-400 (transforms-base.u/incremental-table-tag-name transform)
                    (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))))

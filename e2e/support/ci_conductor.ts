@@ -267,7 +267,8 @@ export function extractFailedTests(
  * can read the whole job's failures from a single file. Override with
  * QUARANTINE_FAILURES_FILE. Note these are the SAME fields ci-conductor stores
  * in its quarantine list (both derived from the same Cypress title array), so
- * the gate can compare them exactly. See `check-quarantine.ts`.
+ * the gate can compare them exactly. See
+ * `release/ci-conductor/src/check-e2e-quarantine.ts`.
  */
 const QUARANTINE_FAILURES_FILE =
   process.env.QUARANTINE_FAILURES_FILE ?? "./target/quarantine-failures.jsonl";

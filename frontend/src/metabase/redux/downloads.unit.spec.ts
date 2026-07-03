@@ -1,4 +1,4 @@
-import { api } from "metabase/api/client";
+import { setupBasename } from "__support__/basename";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -34,19 +34,12 @@ describe("getDatasetResponse", () => {
     /**
      * We will assert that the result is a relative path without subpath.
      * Because this URL will be pass to `frontend/src/metabase/api/client`
-     * which already takes care of the subpath (api.basename)
+     * which already takes care of the subpath (the basename)
      */
     const origin = "http://localhost";
     const subpath = "/mb";
-    const originalBasename = api.basename;
 
-    beforeEach(() => {
-      api.basename = `${origin}${subpath}`;
-    });
-
-    afterEach(() => {
-      api.basename = originalBasename;
-    });
+    setupBasename(`${origin}${subpath}`);
 
     it("should handle absolute URLs", () => {
       const url = `${origin}${subpath}/embed/question/123.xlsx`;
