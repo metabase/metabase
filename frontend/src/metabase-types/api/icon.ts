@@ -218,6 +218,7 @@ export type IconName =
   | "sync"
   | "synced_collection"
   | "transform"
+  | "query"
   | "question"
   | "quote"
   | "redo"

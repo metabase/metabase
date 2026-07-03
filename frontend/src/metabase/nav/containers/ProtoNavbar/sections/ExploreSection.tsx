@@ -1,13 +1,17 @@
 import type { Location } from "history";
-import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/redux";
+import { resetConversation } from "metabase/metabot/state";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
+import { Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
 import { SidebarLink } from "../../MainNavbar/SidebarItems";
+import S from "../ProtoNavbar.module.css";
+import { getLastNewQueryMode, newQueryUrl } from "../newQuery";
 import { SubNavHeading, SubNavSection } from "../SubNav";
 
 type Props = {
@@ -28,7 +32,19 @@ const FAKE_HISTORY: HistoryItem[] = [
   { id: "h4", label: "Orders joined with customers", icon: "notebook" },
 ];
 
+function withFreshParam(url: string) {
+  const fresh = `fresh=${Date.now()}`;
+  const hashIndex = url.indexOf("#");
+  const pathPart = hashIndex === -1 ? url : url.slice(0, hashIndex);
+  const hashPart = hashIndex === -1 ? "" : url.slice(hashIndex);
+  const withFresh = pathPart.includes("?")
+    ? `${pathPart}&${fresh}`
+    : `${pathPart}?${fresh}`;
+  return `${withFresh}${hashPart}`;
+}
+
 export function ExploreSection({ location, onPin }: Props) {
+  const dispatch = useDispatch();
   const path = location.pathname;
 
   const lastUsedDatabaseId = useSelector((state) =>
@@ -41,73 +57,53 @@ export function ExploreSection({ location, onPin }: Props) {
     DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
   });
 
-  // Stubbed history entries added by clicking "GUI query". They live only while
-  // the Explore section is mounted, so they vanish when the user leaves it.
-  const [stubbedHistory, setStubbedHistory] = useState<HistoryItem[]>([]);
-  const handleGuiQuery = () => {
-    setStubbedHistory((prev) => [
-      { id: `gui-${Date.now()}`, label: t`New GUI query`, icon: "notebook" },
-      ...prev,
-    ]);
-  };
-
-  const history = [...stubbedHistory, ...FAKE_HISTORY];
-
-  // History entries reopen the editor that matches their type, staying within
-  // the Explore section.
   const historyUrlFor = (icon: IconName) => {
     if (icon === "sql") {
       return sqlQueryUrl;
     }
     if (icon === "notebook") {
-      return "/question/new";
+      return "/question/notebook";
     }
     return "/question/ask";
   };
 
+  const handleNewQuery = () => {
+    dispatch(resetConversation({ agentId: "ask" }));
+    dispatch(
+      push(
+        withFreshParam(
+          newQueryUrl(getLastNewQueryMode(), {
+            databaseId: lastUsedDatabaseId ?? undefined,
+          }),
+        ),
+      ),
+    );
+    onPin();
+  };
+
+  const isNewQuerySelected =
+    path === "/question/new" || path.startsWith("/question/new/");
+
   return (
     <>
       <SubNavSection>
-        <SubNavHeading>{t`AI explorations`}</SubNavHeading>
-        <SidebarLink
-          icon="sparkles"
-          url="/question/ask"
-          isSelected={path.startsWith("/question/ask")}
+        <button
+          type="button"
+          className={`${S.navActionButton} ${S.newQueryButton}`}
+          aria-label={t`New query`}
+          aria-current={isNewQuerySelected ? "page" : undefined}
+          onClick={handleNewQuery}
         >
-          {t`Ask a question`}
-        </SidebarLink>
-        <SidebarLink icon="insight" url="/metabot/research">
-          {t`Research`}
-        </SidebarLink>
-      </SubNavSection>
-
-      <SubNavSection>
-        <SubNavHeading>{t`Query`}</SubNavHeading>
-        <SidebarLink
-          icon="metric"
-          url={Urls.metricsViewer()}
-          isSelected={path.startsWith("/explore")}
-        >
-          {t`Metric explorer`}
-        </SidebarLink>
-        <SidebarLink
-          icon="notebook"
-          url="/question/new"
-          onClick={() => {
-            handleGuiQuery();
-            onPin();
-          }}
-        >
-          {t`Query builder`}
-        </SidebarLink>
-        <SidebarLink icon="sql" url={sqlQueryUrl} onClick={onPin}>
-          {t`SQL editor`}
-        </SidebarLink>
+          <span className={S.navActionIconCircle}>
+            <Icon name="add" size={12} />
+          </span>
+          {t`New query`}
+        </button>
       </SubNavSection>
 
       <SubNavSection>
         <SubNavHeading>{t`History`}</SubNavHeading>
-        {history.map((item) => (
+        {FAKE_HISTORY.map((item) => (
           <SidebarLink
             key={item.id}
             icon={item.icon}

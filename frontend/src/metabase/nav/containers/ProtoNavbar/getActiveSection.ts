@@ -30,7 +30,9 @@ export function getActiveSection(pathname: string): SectionId | null {
   if (
     pathname.startsWith("/metabot") ||
     pathname.startsWith("/explore") ||
-    pathname.startsWith("/question/ask")
+    pathname.startsWith("/question/ask") ||
+    pathname === "/question/new" ||
+    pathname.startsWith("/question/new/")
   ) {
     return "explore";
   }

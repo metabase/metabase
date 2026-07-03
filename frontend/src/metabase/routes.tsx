@@ -53,6 +53,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
+import { NewQueryPage } from "metabase/query_builder/components/NewQueryPage";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import type { State } from "metabase/redux/store";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -280,6 +281,9 @@ export const getRoutes = (store: AppStore) => {
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path="ask" component={MetabotQueryBuilder} />
+            <Route path="new" component={NewQueryPage} />
+            <Route path="new/notebook" component={NewQueryPage} />
+            <Route path="new/sql" component={NewQueryPage} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />

@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -23,6 +24,7 @@ import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepa
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
 import PC from "metabase/nav/containers/ProtoNavbar/ProtoCollections.module.css";
+import PN from "metabase/nav/containers/ProtoNavbar/ProtoNavbar.module.css";
 import { SubNavHeading } from "metabase/nav/containers/ProtoNavbar/SubNav";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
@@ -313,10 +315,10 @@ export function MainNavbarView({
                     <Menu.Target>
                       <button
                         type="button"
-                        className={PC.createButton}
+                        className={cx(PN.navActionButton, PC.createButton)}
                         aria-label={t`Create new…`}
                       >
-                        <span className={PC.createIconCircle}>
+                        <span className={PN.navActionIconCircle}>
                           <Icon name="add" size={12} />
                         </span>
                         {t`Create`}

@@ -4,5 +4,7 @@ import * as Urls from "metabase/urls";
 
 export function useIsAskPage() {
   const { pathname } = useSelector(getLocation);
-  return pathname === Urls.newQuestion({ mode: "ask" });
+  return (
+    pathname === Urls.newQuestion({ mode: "ask" }) || pathname === "/question/new"
+  );
 }

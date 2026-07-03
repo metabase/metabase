@@ -16,6 +16,7 @@ import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
+import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
@@ -33,6 +34,7 @@ import { Sidebar } from "../MainNavbar/MainNavbar.styled";
 import { NotificationsButton } from "./NotificationsButton";
 import S from "./ProtoNavbar.module.css";
 import { type SectionId, getActiveSection } from "./getActiveSection";
+import { getLastNewQueryMode, newQueryUrl } from "./newQuery";
 import { CollectionsSection } from "./sections/CollectionsSection";
 import { DataSection } from "./sections/DataSection";
 import { ExploreSection } from "./sections/ExploreSection";
@@ -61,7 +63,7 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
 
   const sections: { id: SectionId; label: string; icon: IconName }[] = [
     { id: "collections", label: t`Home`, icon: "home" },
-    { id: "explore", label: t`Explore`, icon: "compass" },
+    { id: "explore", label: t`Query`, icon: "query" },
     { id: "library", label: t`Library`, icon: "repository" },
     { id: "data", label: t`Data`, icon: "database" },
     { id: "monitor", label: t`Monitor`, icon: "gauge" },
@@ -77,6 +79,9 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
 
   const { data: databasesData } = useListDatabasesQuery();
   const firstDatabase = databasesData?.data?.[0];
+  const lastUsedDatabaseId = useSelector((state) =>
+    getSetting(state, "last-used-native-database-id"),
+  );
 
   const { data: collectionsTree = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,
@@ -90,7 +95,9 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     collections: firstDashboard
       ? `/dashboard/${firstDashboard.id}`
       : "/collection/root",
-    explore: "/question/ask",
+    explore: newQueryUrl(getLastNewQueryMode(), {
+      databaseId: lastUsedDatabaseId ?? undefined,
+    }),
     library: Urls.dataStudioLibrary({ library: "tables" }),
     data: firstDatabase
       ? Urls.dataStudioData({ databaseId: firstDatabase.id })
@@ -110,7 +117,7 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
 
   // Lets a section "pin" itself so the next route change doesn't steal the
   // selection away (e.g. launching a SQL query lands on /question, which would
-  // otherwise switch the rail back to Collections).
+  // otherwise switch the rail back to Home).
   const pinnedSectionRef = useRef<SectionId | null>(null);
   const pinSection = useCallback((section: SectionId) => {
     pinnedSectionRef.current = section;

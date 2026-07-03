@@ -1,0 +1,25 @@
+.root {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  color: var(--mb-color-core-brand);
+}
+
+.dataBox {
+  width: 100%;
+}
+
+.dataBox :global(.mantine-TextInput-root) {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.dataBox :global(.mantine-TextInput-wrapper),
+.dataBox :global(.mantine-TextInput-input) {
+  width: 100%;
+}

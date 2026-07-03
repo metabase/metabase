@@ -402,6 +402,8 @@ import published_component from "./published.svg?component";
 import published_source from "./published.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
+import query_component from "./query.svg?component";
+import query_source from "./query.svg?source";
 import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
 import quote_component from "./quote.svg?component";
@@ -1438,6 +1440,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     synced_collection: {
       component: synced_collection_component,
       source: synced_collection_source,
+    },
+    query: {
+      component: query_component,
+      source: query_source,
     },
     question: {
       component: question_component,
