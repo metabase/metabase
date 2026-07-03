@@ -1,3 +1,9 @@
+.cardButton {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
 .accordionRoot {
   display: flex;
   flex-direction: column;
