@@ -54,7 +54,7 @@ export const loadQuestionSdk =
     });
 
     const card = isNewQuestion
-      ? { ...resolvedCard, creationType: "custom_question" }
+      ? { ...resolvedCard, creationType: "custom_question" as const }
       : resolvedCard;
 
     if (!isGuestEmbed) {

@@ -1,6 +1,5 @@
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type Question from "metabase-lib/v1/Question";
-import type { NewQuestionSavedEvent } from "metabase-types/analytics";
 import type { Card } from "metabase-types/api";
 
 export const trackNewQuestionSaved = (
@@ -13,9 +12,7 @@ export const trackNewQuestionSaved = (
     question_id: createdQuestion.id(),
     database_id: createdQuestion.databaseId(),
     visualization_type: createdQuestion.display(),
-    // Card.creationType is typed as a plain string, but in the save flow it is
-    // always one of the schema's question types, so the cast is safe here.
-    type: draftQuestion.creationType() as NewQuestionSavedEvent["type"],
+    type: draftQuestion.creationType(),
     method: isBasedOnExistingQuestion ? "existing_question" : "from_scratch",
   });
 };
