@@ -8,7 +8,11 @@ import { createSearchParams } from "./utils";
 /**
  * react-router v7's `useSearchParams`, implemented over the v3 location's query
  * string. Returns a `URLSearchParams` view plus a setter that navigates to the
- * same path with the updated query string (a push by default).
+ * current path with the updated query string (a push by default).
+ *
+ * Like v7, the setter navigates to search only, so any existing hash is dropped.
+ * v7 does this by navigating to `"?" + params`, which resolves to the current
+ * path with an empty hash.
  *
  * @see https://reactrouter.com/7.18.1/api/hooks/useSearchParams
  */
@@ -37,13 +41,12 @@ export function useSearchParams(): readonly [
       navigate(
         {
           pathname: location.pathname,
-          hash: location.hash,
           search: search ? `?${search}` : "",
         },
         navigateOptions,
       );
     },
-    [navigate, location.pathname, location.hash, searchParams],
+    [navigate, location.pathname, searchParams],
   );
 
   return [searchParams, setSearchParams] as const;
