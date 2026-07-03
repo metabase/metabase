@@ -16,7 +16,6 @@
    [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.shared :as channel.shared]
-   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.notification.settings :as notification.settings]
    [metabase.test :as mt]
@@ -263,7 +262,7 @@
                                     :size_y                 1
                                     :visualization_settings {:virtual_card {:display "link"}
                                                              :link         {:url "https://example.com"}}}
-                                   []))))))
+                                   [] nil))))))
 
 (def ^:private iframe-html
   "<iframe width=\"560\" src=\"https://www.youtube.com/embed/x\" allowfullscreen></iframe>")
@@ -299,7 +298,7 @@
                                   :size_y                 3
                                   :visualization_settings {:virtual_card {:display "iframe"}
                                                            :iframe       "https://youtu.be/abc"}}
-                                 [])))))
+                                 [] nil)))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Parameter name-column sizing (min-column-width)
@@ -757,21 +756,40 @@
         (is (thrown? IllegalArgumentException
                      (render.card/detect-pulse-chart-type {:display "table" :name "t"} nil
                                                           {:cols cols :rows storage}))))
-      (testing "dashcard->cell realizes the rows into an ordinary vector"
+      (testing "dashcard->cell reuses the pre-executed part from the index, deferring realization (rows stay on disk)"
         (let [part     {:card     {:display "table"
                                    :name    "t"}
-                        :dashcard nil
+                        :dashcard {:id 99}
+                        :type     :card
                         :result   {:data {:cols cols
                                           :rows storage}}}
-              dashcard {:card_id 1
+              dashcard {:id      99
+                        :card_id 1
                         :row     0
                         :col     0
                         :size_x  6
-                        :size_y  4}]
-          (with-redefs [notification.payload/execute-dashboard-subscription-card (constantly part)]
-            (let [realized (get-in (#'pdf/dashcard->cell dashcard []) [:part :result :data :rows])]
-              (is (= rows realized))
-              (is (not (temp-storage/streaming-temp-file? realized))))))))))
+                        :size_y  4}
+              cell     (#'pdf/dashcard->cell dashcard [] {99 part})]
+          (is (= :card (:kind cell)))
+          (is (temp-storage/streaming-temp-file? (get-in cell [:part :result :data :rows]))
+              "the disk-backed handle is NOT realized in dashcard->cell -- realization is deferred to draw time")
+          (is (nil? (#'pdf/dashcard->cell dashcard [] {}))
+              "a dashcard with no part in the index (hidden-empty / failed card) is omitted")))
+      (testing "render-card-cell! realizes the disk-backed rows at draw time and draws without throwing"
+        (let [part {:card     {:display "table"
+                               :name    "t"}
+                    :dashcard nil
+                    :result   {:data {:cols cols
+                                      :rows storage}}}]
+          (with-open [doc (PDDocument.)]
+            (binding [font/*fonts* (#'font/load-fonts! doc)]
+              (let [page (PDPage. PDRectangle/A4)]
+                (.addPage doc page)
+                (with-open [cs (PDPageContentStream. doc page)]
+                  (#'pdf/render-card-cell! doc cs nil part 36.0 760.0 480.0 360.0))
+                (let [baos (ByteArrayOutputStream.)]
+                  (.save doc baos)
+                  (is (pos? (count (.toByteArray baos)))))))))))))
 
 (deftest ^:parallel too-large-result-marked-test
   (testing "maybe-realize-data-rows marks an oversized disk-spilled result :render/too-large? instead of loading it"
