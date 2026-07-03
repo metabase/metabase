@@ -18,7 +18,8 @@ export function useLocation(): Location {
       pathname: location.pathname,
       search: location.search,
       hash: location.hash,
-      state: location.state,
+      // v3 leaves state `undefined` when absent, v7 uses `null`.
+      state: location.state ?? null,
       key: location.key,
     }),
     [

@@ -22,6 +22,9 @@ function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
  * - `navigate(to, { replace?, state? })` pushes (or replaces) the location.
  * - `navigate(delta)` moves through the history stack (e.g. `navigate(-1)`).
  *
+ * Absolute paths only: v7's relative `to` (`".."`, `"child"`) is not resolved on
+ * v3, that lands with the engine swap and modal routes (Phase 1.3).
+ *
  * @see https://reactrouter.com/7.18.1/api/hooks/useNavigate
  */
 export function useNavigate(): NavigateFunction {

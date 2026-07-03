@@ -12,6 +12,7 @@ function LocationProbe() {
       <span data-testid="search">{location.search}</span>
       <span data-testid="hash">{location.hash}</span>
       <span data-testid="keys">{Object.keys(location).sort().join(",")}</span>
+      <span data-testid="state">{JSON.stringify(location.state)}</span>
     </div>
   );
 }
@@ -38,5 +39,14 @@ describe("router/useLocation", () => {
     expect(screen.getByTestId("keys")).toHaveTextContent(
       /^hash,key,pathname,search,state$/,
     );
+  });
+
+  it("defaults state to null like v7 (not v3's undefined)", () => {
+    renderWithProviders(<Route path="foo/bar" component={LocationProbe} />, {
+      withRouter: true,
+      initialRoute: "/foo/bar",
+    });
+
+    expect(screen.getByTestId("state")).toHaveTextContent(/^null$/);
   });
 });
