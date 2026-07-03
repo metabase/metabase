@@ -1,11 +1,5 @@
 import type { Row, SortingState } from "@tanstack/react-table";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -24,7 +18,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
-import { useMonitorSidebar } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, type SelectionState, Stack } from "metabase/ui";
@@ -63,7 +57,6 @@ export const NotificationsAdminPage = ({
 }: WithRouterProps<RouteParams>) => {
   const notificationId = Urls.extractEntityId(params.notificationId);
   const dispatch = useDispatch();
-  const { setSidebar } = useMonitorSidebar();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [selectedIds, setSelectedIds] = useState<Set<NotificationId>>(
     new Set(),
@@ -338,38 +331,6 @@ export const NotificationsAdminPage = ({
       };
     }, [notificationId, notifications]);
 
-  useLayoutEffect(() => {
-    if (isPageLoading || !isSidebarOpen) {
-      setSidebar(null);
-      return;
-    }
-
-    setSidebar(
-      <NotificationDetailSidebar
-        notificationId={notificationId}
-        notificationSummary={notificationSummary}
-        isBulkLoading={isBulkLoading}
-        prevNotificationId={prevNotificationId}
-        nextNotificationId={nextNotificationId}
-        onClose={handleSidebarClose}
-        onDelete={(notification) => handleSidebarDelete(notification.id)}
-      />,
-    );
-
-    return () => setSidebar(null);
-  }, [
-    isPageLoading,
-    isSidebarOpen,
-    notificationId,
-    notificationSummary,
-    isBulkLoading,
-    prevNotificationId,
-    nextNotificationId,
-    handleSidebarClose,
-    handleSidebarDelete,
-    setSidebar,
-  ]);
-
   if (isPageLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
@@ -456,6 +417,20 @@ export const NotificationsAdminPage = ({
         onClose={() => setIsChangeOwnerOpened(false)}
         onConfirm={handleChangeOwnerConfirm}
       />
+
+      {isSidebarOpen && (
+        <Sidebar>
+          <NotificationDetailSidebar
+            notificationId={notificationId}
+            notificationSummary={notificationSummary}
+            isBulkLoading={isBulkLoading}
+            prevNotificationId={prevNotificationId}
+            nextNotificationId={nextNotificationId}
+            onClose={handleSidebarClose}
+            onDelete={(notification) => handleSidebarDelete(notification.id)}
+          />
+        </Sidebar>
+      )}
 
       {confirmContent}
     </Stack>

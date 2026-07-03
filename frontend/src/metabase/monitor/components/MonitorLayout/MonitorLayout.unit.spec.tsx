@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, memo, useState } from "react";
 import { Route } from "react-router";
 
 import {
@@ -18,8 +18,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { useMonitorSidebar } from "./MonitorContent";
 import { MonitorLayout } from "./MonitorLayout";
+import { Sidebar } from "./Sidebar";
 
 interface SetupOpts {
   isNavbarOpened?: boolean;
@@ -30,29 +30,39 @@ interface SetupOpts {
 }
 
 function TestSidebarSetter() {
-  const { setSidebar } = useMonitorSidebar();
-
-  useEffect(() => {
-    setSidebar(<aside data-testid="monitor-sidebar">{"Sidebar"}</aside>);
-
-    return () => setSidebar(null);
-  }, [setSidebar]);
-
-  return <div data-testid="content">{"Content"}</div>;
+  return (
+    <>
+      <div data-testid="content">{"Content"}</div>
+      <Sidebar>
+        <aside data-testid="monitor-sidebar">{"Sidebar"}</aside>
+      </Sidebar>
+    </>
+  );
 }
 
-function TestSidebarButton({ onRender }: { onRender: () => void }) {
-  const { setSidebar } = useMonitorSidebar();
+const TestMainContent = memo(function TestMainContent({
+  onRender,
+}: {
+  onRender: () => void;
+}) {
   onRender();
 
+  return <div data-testid="content">{"Content"}</div>;
+});
+
+function TestSidebarToggle({ onRender }: { onRender: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <button
-      onClick={() =>
-        setSidebar(<aside data-testid="monitor-sidebar">{"Sidebar"}</aside>)
-      }
-    >
-      {"Open sidebar"}
-    </button>
+    <>
+      <TestMainContent onRender={onRender} />
+      <button onClick={() => setIsOpen(true)}>{"Open sidebar"}</button>
+      {isOpen && (
+        <Sidebar>
+          <aside data-testid="monitor-sidebar">{"Sidebar"}</aside>
+        </Sidebar>
+      )}
+    </>
   );
 }
 
@@ -211,9 +221,9 @@ describe("MonitorLayout", () => {
     );
   });
 
-  it("does not rerender main content when the sidebar outlet changes", async () => {
+  it("does not rerender main content when the sidebar is toggled", async () => {
     const onRender = jest.fn();
-    setup({ children: <TestSidebarButton onRender={onRender} /> });
+    setup({ children: <TestSidebarToggle onRender={onRender} /> });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
