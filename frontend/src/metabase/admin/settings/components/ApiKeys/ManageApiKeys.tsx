@@ -48,7 +48,7 @@ function EmptyState() {
           <ApiKeysEmptyIllustration aria-hidden />
         </Box>
         <Text
-          c="text-tertiary"
+          c="text-disabled"
           size="sm"
           ta="center"
         >{t`No API keys yet`}</Text>

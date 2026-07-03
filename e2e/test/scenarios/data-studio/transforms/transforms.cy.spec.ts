@@ -4207,7 +4207,7 @@ describe("scenarios > data studio > transforms > permissions", () => {
       "Ensure that transform permissions are visible when instance is hosted and transform feature is present",
     );
 
-    cy.findByRole("radio", { name: "Data" }).click({ force: true });
+    cy.findByRole("tab", { name: "Data" }).click({ force: true });
     cy.findByRole("menuitem", { name: "All Users" }).click();
 
     cy.findByRole("columnheader", { name: /Transforms/ })

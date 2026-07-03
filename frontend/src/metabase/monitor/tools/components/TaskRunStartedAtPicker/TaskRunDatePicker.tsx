@@ -157,7 +157,7 @@ export const TaskRunDatePicker = ({
           rightSectionPointerEvents="none"
         >
           {displayLabel ?? (
-            <Input.Placeholder c="text-tertiary">
+            <Input.Placeholder c="text-disabled">
               {placeholder}
             </Input.Placeholder>
           )}

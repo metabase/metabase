@@ -1172,8 +1172,6 @@
                                 {:name               name
                                  :engine             engine
                                  :details            details-with-secrets
-                                 :write_data_details write-data-details-with-secrets
-                                 :admin_details      admin-details-with-secrets
                                  :refingerprint      refingerprint
                                  :is_full_sync       full-sync?
                                  :is_on_demand       on-demand?
@@ -1184,12 +1182,16 @@
                                  :caveats            caveats
                                  :points_of_interest points_of_interest
                                  :auto_run_queries   auto_run_queries
-                                 :settings           (when (seq settings) pending-settings)
-                                 :provider_name      provider_name}
+                                 :settings           (when (seq settings) pending-settings)}
                                 :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand :is_stub
-                                           :description :caveats :points_of_interest :auto_run_queries :settings}
-                                :present #{:provider_name :write_data_details :admin_details})
-                               ;; cache_field_values_schedule can be nil
+                                           :description :caveats :points_of_interest :auto_run_queries :settings})
+                               ;; these fields can be nil
+                               (when (contains? body :provider_name)
+                                 {:provider_name provider_name})
+                               (when (contains? body :write_data_details)
+                                 {:write_data_details write-data-details-with-secrets})
+                               (when (contains? body :admin_details)
+                                 {:admin_details admin-details-with-secrets})
                                (when schedules
                                  (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db        (merge existing-database updates)]

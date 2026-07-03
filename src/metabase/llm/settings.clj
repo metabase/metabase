@@ -82,10 +82,10 @@
 ;;; -------------------------------------------------- OpenAI ---------------------------------------------------
 
 (defsetting llm-openai-model
-  (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
+  (deferred-tru "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')")
   :encryption       :no
   :visibility       :settings-manager
-  :default          "gpt-4.1-mini"
+  :default          "gpt-5.4"
   :export?          false
   :deprecated-name  :ee-openai-model
   :doc              false)

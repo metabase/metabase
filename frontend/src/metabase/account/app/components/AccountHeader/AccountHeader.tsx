@@ -2,10 +2,9 @@ import type { Path } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Radio } from "metabase/common/components/Radio";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
-import { Box, Flex, Title, rem } from "metabase/ui";
+import { Box, Flex, Tabs, Title, rem } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
 
@@ -64,12 +63,19 @@ export const AccountHeader = ({
           {user.email}
         </Title>
       </Flex>
-      <Radio
-        value={path}
-        variant="underlined"
-        options={tabs}
-        onChange={onChangeLocation}
-      />
+      <Tabs
+        listBorder={false}
+        value={path ?? null}
+        onChange={(value) => value && onChangeLocation?.(value)}
+      >
+        <Tabs.List>
+          {tabs.map((tab) => (
+            <Tabs.Tab key={tab.value} value={tab.value}>
+              {tab.name}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
     </Flex>
   );
 };

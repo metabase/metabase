@@ -389,7 +389,7 @@ describe("issue 16559", () => {
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
     cy.button("Save").click();
-    cy.wait(["@saveDashboard", "@loadDashboard"]);
+    cy.wait("@saveDashboard");
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();

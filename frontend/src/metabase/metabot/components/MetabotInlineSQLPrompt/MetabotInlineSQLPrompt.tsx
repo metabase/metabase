@@ -141,7 +141,7 @@ export const MetabotInlineSQLPrompt = ({
                 {isLoading ? (
                   <Loader
                     size="xs"
-                    color="text-tertiary"
+                    color="text-disabled"
                     data-testid="metabot-inline-sql-generating"
                   />
                 ) : (

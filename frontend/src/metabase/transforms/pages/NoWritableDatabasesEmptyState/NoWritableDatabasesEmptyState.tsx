@@ -24,7 +24,7 @@ export function NoWritableDatabasesEmptyState() {
       />
       <Center flex={1}>
         <Stack align="center" maw="30rem" gap="md">
-          <Icon name="database" size={48} c="text-tertiary" />
+          <Icon name="database" size={48} c="text-disabled" />
           <Title
             order={3}
             ta="center"

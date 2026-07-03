@@ -1,15 +1,12 @@
 import { useEffect } from "react";
 
-import {
-  EMBEDDING_SDK_SCHEMA,
-  useIsTrackingEnabled,
-} from "embedding-sdk-bundle/analytics/component-events";
+import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-events";
 import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
 import {
   getSdkAuthMethod,
   getSdkLocaleUsed,
   initSdkTracker,
-  trackSdkEvent,
+  trackSdkSimpleEvent,
 } from "embedding-sdk-bundle/analytics/snowplow";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
@@ -60,17 +57,15 @@ export function useInitSdkTracker(
     if (wasJustInitialized) {
       const sdkVersion = getSdkPackageVersion();
 
-      trackSdkEvent({
-        schema: EMBEDDING_SDK_SCHEMA,
-        data: {
-          component: null,
-          properties: null,
+      trackSdkSimpleEvent({
+        event: "embedding_sdk_initialized",
+        event_detail: JSON.stringify({
           global: {
             auth_method: getSdkAuthMethod(),
             sdk_version: sdkVersion,
             locale_used: getSdkLocaleUsed(),
           },
-        },
+        }),
       });
     }
     // isTrackingEnabled is the only dep: fire once when the opt-out gate becomes
