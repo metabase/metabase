@@ -145,6 +145,13 @@ describe("Links in documents", () => {
 
       H.addToDocument(PRODUCTS_AVERAGE_BY_CATEGORY.name.substring(0, 5), false);
 
+      cy.log("Wait for the debounced search results before selecting");
+      H.commandSuggestionDialog()
+        .findByRole("option", {
+          name: new RegExp(PRODUCTS_AVERAGE_BY_CATEGORY.name),
+        })
+        .should("exist");
+
       cy.log("Select the first item from the list");
       H.commandSuggestionDialog().findAllByRole("option").first().click();
 
