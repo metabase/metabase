@@ -13,6 +13,7 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
+   [metabase.plugins.core :as plugins]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
@@ -209,6 +210,16 @@
               :model-name       "all-MiniLM-L6-v2"
               :model-dimensions 384}
              embedding-model-meta)))))
+
+(deftest embedder-override-loads-plugins-test
+  (testing "resolving the in-process override loads plugins: the standalone JAR path never does otherwise"
+    (let [calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [plugins/load-plugins! (fn [] (swap! calls inc))]
+        (#'cli/embedder-override "in-process")
+        (is (= 1 @calls))
+        (testing "but the no-flag path doesn't touch the plugins system"
+          (#'cli/embedder-override nil)
+          (is (= 1 @calls)))))))
 
 (deftest ^:parallel file-embedder-test
   (testing "file-embedder converts seqs to ^floats, preserves already-typed arrays, omits absent names"

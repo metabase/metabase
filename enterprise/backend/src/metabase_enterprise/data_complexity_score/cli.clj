@@ -42,6 +42,7 @@
    ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
    ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
    [metabase.driver.init]
+   [metabase.plugins.core :as plugins]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -173,6 +174,11 @@
   [embedder-name]
   (case embedder-name
     "in-process" (do
+                   ;; The standalone `--mode complexity-score` JAR path bypasses metabase.core.core/init!,
+                   ;; the usual (and only) caller of load-plugins!, so without this the embedder plugin jar
+                   ;; in the plugins directory would never reach the classpath. Memoized, so a no-op in
+                   ;; server/REPL contexts where plugins already loaded.
+                   (plugins/load-plugins!)
                    (assert-descriptor-in-sync!)
                    {:embedder             (embedders/provider-embedder
                                            (assoc in-process-descriptor
