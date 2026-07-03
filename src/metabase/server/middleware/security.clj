@@ -104,11 +104,11 @@
   (re-pattern (str "^((?:" url-scheme-pattern "://)?(?:" url-host-pattern ")(?::(?:\\d+|\\*))?)(?:/.*)?$")))
 
 (defn- strip-origin-path
-  "Strips a trailing `/path` from a URL. Used both for admin-entered CORS origin entries and for deriving 
-   the map tile server origin. Origins have no path component by definition (just scheme + host + port), 
-   so a bare trailing slash pasted into an allowlist setting (e.g. `http://localhost:6274/`) shouldn't 
-   silently make that entry fail to parse and drop out of the allowlist. Entries with a real path are 
-   rejected at save time (see the setting's `:setter`); this only needs to normalize bare trailing 
+  "Strips a trailing `/path` from a URL. Used both for admin-entered CORS origin entries and for deriving
+   the map tile server origin. Origins have no path component by definition (just scheme + host + port),
+   so a bare trailing slash pasted into an allowlist setting (e.g. `http://localhost:6274/`) shouldn't
+   silently make that entry fail to parse and drop out of the allowlist. Entries with a real path are
+   rejected at save time (see the setting's `:setter`); this only needs to normalize bare trailing
    slashes and any non-trivial paths saved before that validation existed."
   [url]
   (str/replace url url-authority-pattern "$1"))
