@@ -167,19 +167,28 @@
         (is (= plain (task.complexity-score/current-fingerprint (#'cli/override-fingerprint-fragment nil))))))))
 
 (deftest embedder-override-persisted-fingerprint-test
-  (testing "the persist path records the override-derived fingerprint, not the configured one"
+  (testing "the persist paths record the override-derived fingerprint, not the configured one"
     (let [captured (atom nil)]
+      ;; The embedder is stubbed so the persist wiring is exercised without the plugin (or its model)
+      ;; on the classpath.
       (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [fingerprint _source _result]
                                                                         (reset! captured fingerprint))
-                                  ;; Stub the embedder so the persist wiring is exercised without the
-                                  ;; plugin (or its model) on the classpath.
                                   embedders/provider-embedder         (constantly (embedders/file-embedder {}))]
-        (#'cli/run-cli {:source             "representation"
-                        :representation-dir representation-fixture-dir
-                        :embedder           "in-process"
-                        :write-to-appdb     true})
-        (is (some? @captured))
-        (is (str/includes? @captured ":cli-embedder-override"))))))
+        (testing "representation mode"
+          (#'cli/run-cli {:source             "representation"
+                          :representation-dir representation-fixture-dir
+                          :embedder           "in-process"
+                          :write-to-appdb     true})
+          (is (some? @captured))
+          (is (str/includes? @captured ":cli-embedder-override")))
+        (testing "appdb mode (write-by-default), with the appdb scoring itself stubbed"
+          (reset! captured nil)
+          (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!     (constantly nil)
+                                      metabot-scope/internal-metabot-scope (constantly {})
+                                      complexity/complexity-scores         (constantly {})]
+            (#'cli/run-cli {:source "appdb" :embedder "in-process"})
+            (is (some? @captured))
+            (is (str/includes? @captured ":cli-embedder-override"))))))))
 
 (deftest ^:parallel cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"
