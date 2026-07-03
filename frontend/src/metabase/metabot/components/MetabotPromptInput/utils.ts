@@ -80,11 +80,31 @@ export const parseClipboardTextAsParagraphs = (
   return Slice.maxOpen(fragment);
 };
 
-// Matches both entity mentions (`metabase://question/123`) and generated-chart
-// mentions (`metabase://chart/<uuid>`). Broadened from the shared
-// METABSE_PROTOCOL_MD_LINK (numeric-only id) so the non-numeric chart id is
-// captured too.
-const MENTION_REGEX = /\[([^\]]+)\]\(metabase:\/\/([^/]+)\/([^)]+)\)/g;
+const MENTION_REGEX = /\[([^\]]+)\]\(metabase:\/\/([^/)]+)\/([^)]+)\)/g;
+const CHART_MENTION_ID_REGEX = /^[A-Za-z0-9_-]+$/;
+const ENTITY_MENTION_ID_REGEX = /^\d+$/;
+
+function mentionToTiptapNode(
+  label: string,
+  mbProtocolModel: string,
+  id: string,
+): JSONContent | null {
+  if (mbProtocolModel === "chart") {
+    return CHART_MENTION_ID_REGEX.test(id)
+      ? { type: "chartMention", attrs: { label, chartId: id } }
+      : null;
+  }
+  return ENTITY_MENTION_ID_REGEX.test(id)
+    ? {
+        type: "smartLink",
+        attrs: {
+          label,
+          model: mbProtocolModelToSuggestionModel(mbProtocolModel),
+          entityId: id,
+        },
+      }
+    : null;
+}
 
 export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
   // Split text by lines to handle paragraphs
@@ -94,6 +114,11 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
 
     for (const match of line.matchAll(MENTION_REGEX)) {
       const [fullMatch, label, mbProtocolModel, id] = match;
+      const mentionNode = mentionToTiptapNode(label, mbProtocolModel, id);
+
+      if (!mentionNode) {
+        continue;
+      }
 
       // Add text before the mention
       if (match.index > lastIndex) {
@@ -103,21 +128,7 @@ export function parseMetabotMessageToTiptapDoc(text: string): JSONContent {
         });
       }
 
-      if (mbProtocolModel === "chart") {
-        pContent.push({
-          type: "chartMention",
-          attrs: { label, chartId: id },
-        });
-      } else {
-        pContent.push({
-          type: "smartLink",
-          attrs: {
-            label,
-            model: mbProtocolModelToSuggestionModel(mbProtocolModel),
-            entityId: id,
-          },
-        });
-      }
+      pContent.push(mentionNode);
 
       lastIndex = match.index + fullMatch.length;
     }

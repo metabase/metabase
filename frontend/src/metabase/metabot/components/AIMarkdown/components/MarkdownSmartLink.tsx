@@ -81,7 +81,15 @@ const ChartSmartLink = ({
     model: "card",
     display: chart?.visualization_settings?.chart_type ?? "table",
   });
-  const href = (chart && conversationChartUrl(chart)) ?? "";
+  const href = chart ? conversationChartUrl(chart) : undefined;
+
+  if (!href) {
+    return (
+      <span className={S.smartLink}>
+        <SmartLinkChipContent icon={icon} name={name} />
+      </span>
+    );
+  }
 
   return (
     <SmartLinkChip
@@ -92,6 +100,19 @@ const ChartSmartLink = ({
     />
   );
 };
+
+const SmartLinkChipContent = ({
+  icon,
+  name,
+}: {
+  icon: ComponentProps<typeof EntityIcon>;
+  name: string;
+}) => (
+  <span className={S.smartLinkInner}>
+    <EntityIcon {...icon} className={S.icon} />
+    {name}
+  </span>
+);
 
 const SmartLinkChip = ({
   onInternalLinkClick,
@@ -111,9 +132,6 @@ const SmartLinkChip = ({
     rel="noreferrer"
     className={S.smartLink}
   >
-    <span className={S.smartLinkInner}>
-      <EntityIcon {...icon} className={S.icon} />
-      {name}
-    </span>
+    <SmartLinkChipContent icon={icon} name={name} />
   </InternalLink>
 );

@@ -201,6 +201,7 @@ export const MetabotComponent = memo(
         display: data.draft_card.display,
         dataset_query: data.draft_card.dataset_query,
         visualization_settings: data.draft_card.visualization_settings,
+        database_id: data.draft_card.database_id,
       });
 
       host.analytics.trackAskMetabot(document);

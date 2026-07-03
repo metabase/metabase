@@ -3,6 +3,7 @@ import type {
   CardId,
   CardType,
   DashboardId,
+  DatabaseId,
   DatasetQuery,
   DraftTransform,
   PaginationResponse,
@@ -335,7 +336,7 @@ export interface MetabotGenerateContentRequest {
 }
 
 export interface MetabotGenerateContentResponse {
-  draft_card: (UnsavedCard & { name?: string }) | null;
+  draft_card: (UnsavedCard & { name?: string; database_id: DatabaseId }) | null;
   description: string;
   error: string | null;
 }

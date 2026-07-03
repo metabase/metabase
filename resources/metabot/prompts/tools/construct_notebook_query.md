@@ -5,6 +5,7 @@ Construct a Metabase MBQL 5 query as a JSON object describing the query shape. M
 Return:
 - `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
 - `title`: required short, human-friendly title for the resulting chart, shown above it (e.g. `"Orders by month"`).
+- `description`: required concise one- or two-sentence description of what the chart shows (the metric, the grouping, and any notable filter); it is used as the saved question's description.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
 ## Minimal example — count of orders by month
