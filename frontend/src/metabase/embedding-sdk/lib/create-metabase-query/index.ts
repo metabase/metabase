@@ -43,12 +43,9 @@ function resolveQueryFromLoadedMetadata(
 
   const databaseId = getTableDatabaseId(input.source.id, metadata);
   const provider = Lib.metadataProvider(databaseId, metadata);
-  const { enabled: _enabled, source, ...stage } = input;
 
   return Lib.toJsQuery(
-    Lib.createTestQuery(provider, {
-      stages: [{ ...stage, source: { type: "table", id: source.id } }],
-    } satisfies TestQuerySpec),
+    Lib.createTestQuery(provider, { stages: [input] } satisfies TestQuerySpec),
   );
 }
 
