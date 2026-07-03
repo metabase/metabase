@@ -57,7 +57,7 @@ export const OptionItem = styled.div<OptionItemProps>`
     ${(props) =>
       !props.selected &&
       css`
-        color: var(--mb-color-text-hover);
+        color: var(--mb-color-text-brand-hover);
         background-color: var(--mb-color-background_surface-hover);
       `}
   }

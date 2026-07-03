@@ -1084,7 +1084,8 @@
 
 (defn- record-vector-instrumentation!
   "Measure and report how the resolved strategy executed the inner vector subquery: EXPLAIN ANALYZE the
-  scan and count the prefilter pool, then log a structured line and bump the analytics counters.
+  distance-limiting scan and count the prefilter pool, then log a structured line and bump the analytics
+  counters. Returns the scan metrics map (with `:prefilter-pool-size`) for the caller's time waterfall, or nil.
   Never throws -- instrumentation failures must not break search."
   [conn index embedding search-context raw-count]
   (try
@@ -1103,9 +1104,21 @@
       (analytics/inc! :metabase-search/semantic-vector-tuples-scanned {:strategy strategy} (or (:tuples-scanned scan) 0))
       (analytics/inc! :metabase-search/semantic-prefilter-pool-size {:strategy strategy} (or pool 0))
       (analytics/inc! :metabase-search/semantic-vector-scan-used-index
-                      {:strategy strategy :plan-node (or (:node-type scan) "unknown")} 1))
+                      {:strategy strategy :plan-node (or (:node-type scan) "unknown")} 1)
+      (assoc scan :prefilter-pool-size pool))
     (catch Exception e
-      (log/warn e "Failed to record vector-search instrumentation"))))
+      (log/warn e "Failed to record vector-search instrumentation")
+      nil)))
+
+(defn- time-waterfall
+  "Build a stage-by-stage time breakdown (ms + integer % of `total-ms`) for the gated instrumentation. Stages
+  is a seq of `[label ms]`; the distance-limiting scan is reported as a subset of the db-query stage (the rest
+  of db-query is the hybrid join + in-db scoring), so its % is of the whole request, not additive."
+  [total-ms stages]
+  (let [pct (fn [ms] (when (and ms total-ms (pos? total-ms)) (Math/round (double (* 100 (/ ms total-ms))))))]
+    {:total-ms (some-> total-ms double)
+     :stages   (vec (for [[label ms] stages]
+                      {:stage label :ms (some-> ms double) :pct (pct ms)}))}))
 
 (defn query-index
   "Query the index for documents similar to the search string.
@@ -1154,18 +1167,29 @@
               ;; captured before the instrumentation runs, so the EXPLAIN re-execution and prefilter count
               ;; don't inflate the latency signal they exist to analyze.
               db-query-ms* (volatile! 0.0)
-              raw-results  (run-in-vector-session!
-                            db
-                            search-context
-                            (fn [conn]
-                              (let [results (tracing/with-span :search "search.semantic.db-query"
-                                              {:search/query-length (count search-string)}
-                                              (into [] xform (reducible-search-query conn query)))]
-                                (vreset! db-query-ms* (u/since-ms db-timer))
-                                (when (explain? search-context)
-                                  (record-vector-instrumentation! conn index embedding search-context (count results)))
-                                results)))
+              instrumentation-ms* (volatile! 0.0)
+              session-result (run-in-vector-session!
+                              db
+                              search-context
+                              (fn [conn]
+                                (let [results (tracing/with-span :search "search.semantic.db-query"
+                                                {:search/query-length (count search-string)}
+                                                (into [] xform (reducible-search-query conn query)))]
+                                  (vreset! db-query-ms* (u/since-ms db-timer))
+                                  {:results results
+                                   ;; Time the gated EXPLAIN/prefilter re-run separately so it can be its own
+                                   ;; waterfall stage rather than silently inflating the other stages' shares of
+                                   ;; total-time-ms.
+                                   :scan    (when (explain? search-context)
+                                              (let [t    (u/start-timer)
+                                                    scan (record-vector-instrumentation! conn index embedding
+                                                                                         search-context (count results))]
+                                                (vreset! instrumentation-ms* (u/since-ms t))
+                                                scan))})))
+              raw-results (:results session-result)
+              vector-scan (:scan session-result)
               db-query-time-ms @db-query-ms*
+              instrumentation-time-ms @instrumentation-ms*
 
               filter-timer (u/start-timer)
               filtered-results (tracing/with-span :search "search.semantic.permission-filter"
@@ -1191,6 +1215,19 @@
                       :filter-time-ms filter-time-ms
                       :appdb-scores-time-ms appdb-scores-time-ms
                       :total-time-ms total-time-ms})
+          ;; Gated time waterfall: where the request went, with the distance-limiting scan broken out of the
+          ;; db-query stage (the rest of db-query is the hybrid join + in-db scoring). The EXPLAIN/prefilter
+          ;; instrumentation is itself a stage so its cost doesn't silently inflate the others' shares of
+          ;; total-time-ms.
+          (when (explain? search-context)
+            (log/info "Semantic search time waterfall"
+                      (time-waterfall total-time-ms
+                                      [[:embedding embedding-time-ms]
+                                       [:distance-scan (:inner-ms vector-scan)]
+                                       [:db-query db-query-time-ms]
+                                       [:perm-filter filter-time-ms]
+                                       [:appdb-scores appdb-scores-time-ms]
+                                       [:instrumentation instrumentation-time-ms]])))
           (analytics/inc! :metabase-search/semantic-embedding-ms
                           {:embedding-model (:name embedding-model)}
                           embedding-time-ms)

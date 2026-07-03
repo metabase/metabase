@@ -41,6 +41,7 @@ describe("Transform Embedding Theme Override", () => {
         "core-brand": expect.arrayContaining(["hotpink"]),
         "text-primary": expect.arrayContaining(["yellow"]),
         "text-tertiary": expect.arrayContaining(["green"]),
+        "text-disabled": expect.arrayContaining(["green"]),
         "background-primary": expect.arrayContaining(["orange"]),
         "background_page-primary": expect.arrayContaining(["orange"]),
         "background-tertiary": expect.arrayContaining(["brown"]),

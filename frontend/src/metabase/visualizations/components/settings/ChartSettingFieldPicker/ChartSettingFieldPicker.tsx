@@ -126,6 +126,7 @@ export const ChartSettingFieldPicker = ({
       align="center"
     >
       <ChartSettingSelect
+        variant="unstyled"
         pl={hasLeftSection ? "sm" : 0}
         w="100%"
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}

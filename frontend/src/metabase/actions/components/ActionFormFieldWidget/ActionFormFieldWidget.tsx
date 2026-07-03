@@ -4,12 +4,13 @@ import { forwardRef } from "react";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { FormInput as FormInputWidget } from "metabase/common/components/FormInput";
 import { FormNumericInput as FormNumericInputWidget } from "metabase/common/components/FormNumericInput";
-import { FormSelect as FormSelectWidget } from "metabase/common/components/FormSelect";
 import { FormTextArea as FormTextAreaWidget } from "metabase/common/components/FormTextArea";
 import { FormToggle as FormBooleanWidget } from "metabase/common/components/FormToggle";
 import { FormRadioGroup, type FormRadioGroupProps } from "metabase/forms";
 import { Radio, Stack } from "metabase/ui";
 import type { InputComponentType } from "metabase-types/api";
+
+import { FormSelectWidget } from "./FormSelectWidget";
 
 type RadioOption = {
   name: string;

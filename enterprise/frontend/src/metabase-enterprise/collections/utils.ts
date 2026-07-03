@@ -45,7 +45,7 @@ export function getCollectionType({
 }
 
 export function isInstanceAnalyticsCollection(
-  collection?: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type"> | null,
 ): boolean {
   return (
     !!collection && getCollectionType(collection).type === "instance-analytics"
