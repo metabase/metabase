@@ -1,5 +1,4 @@
 import type { VisualizationSettings } from "metabase-types/api/card";
-import type { DatasetQuery } from "metabase-types/api/query";
 import type { CustomVizDisplayType } from "metabase-types/api/visualization";
 
 export interface MetabaseQuestion {
@@ -182,7 +181,7 @@ export type MapVisualizationSettings = Pick<
 >;
 
 interface MetabaseCardBase {
-  query: DatasetQuery;
+  query: unknown | null;
   displayIsLocked?: boolean;
 }
 

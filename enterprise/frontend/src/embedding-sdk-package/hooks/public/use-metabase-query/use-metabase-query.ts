@@ -151,7 +151,6 @@ const isOrderableJavaScriptType = (
   value === "boolean" ||
   value === "Date";
 
-/** @internal */
 export function filter<
   TDimension,
   TOperator extends ValueFilterOperatorForDimension<TDimension>,
@@ -191,7 +190,6 @@ export function filter(
   return { dimension, operator, value };
 }
 
-/** @internal */
 export function breakout<TDimension>(dimension: TDimension): {
   dimension: TDimension;
 };

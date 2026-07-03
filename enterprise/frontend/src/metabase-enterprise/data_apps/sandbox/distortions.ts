@@ -1,6 +1,7 @@
 import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
 
 import { makeSandboxFetch, makeSandboxXhr } from "./allowed-hosts";
+import { makeCreateElementDistortion } from "./create-element";
 
 /**
  * Data-app Near Membrane distortion callback.
@@ -37,6 +38,12 @@ export function makeDistortionCallback(
   const sandboxXhr = makeSandboxXhr(targetWindow, allowedHosts, label);
 
   return function distortionCallback(value: object): object {
+    const createElementDistortion = makeCreateElementDistortion(value, shared);
+
+    if (createElementDistortion) {
+      return createElementDistortion;
+    }
+
     if (sandboxFetch && value === targetWindow.fetch) {
       return sandboxFetch;
     }

@@ -235,7 +235,7 @@ Vite bundles everything reachable from `src/index.tsx` into a single `dist/index
 
 ### 3. Import SDK values from the correct SDK entrypoint
 
-The build externalizes `@metabase/embedding-sdk-react` and `@metabase/embedding-sdk-react/data-app` to sandbox globals (`__metabase_sdk__` / `__metabase_data_app__`) in **both** production and `npm run dev` — in dev the sandbox entry endows them from the npm package, so the bundle runs identically in both. Just import from the entrypoints normally:
+The build externalizes React, the JSX runtimes, `@metabase/embedding-sdk-react`, and `@metabase/embedding-sdk-react/data-app` to sandbox globals in **both** production and `npm run dev` — in dev the sandbox entry endows them from the npm package, so the bundle runs identically in both. Just import from the entrypoints normally:
 
 ```tsx
 // ✅ correct
@@ -254,7 +254,7 @@ const { MetabaseProvider, StaticQuestion } = globalThis;
 
 ### 4. Import `react` normally too
 
-The build externalizes `react` (mapped to the `React` global), so a plain `import` resolves to React the same way in both modes — the production host and the dev sandbox both endow it as the `React` global:
+The build externalizes `react` and `react-dom`, so plain imports resolve the same way in both modes — the production host and the dev sandbox both endow them as sandbox globals:
 
 ```tsx
 import { useState, useEffect, useMemo } from "react";
@@ -287,7 +287,7 @@ import type { ComponentType, ReactNode } from "react";
 
 ## Available SDK surface
 
-The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externalizes the package at build time, so production references the host's copies at runtime (`globalThis.__metabase_sdk__`); the Vite dev server resolves to the real npm package directly.
+The bundle imports React hooks/JSX, SDK components from `@metabase/embedding-sdk-react`, and data-app-specific routing/query APIs from `@metabase/embedding-sdk-react/data-app`. `dataAppConfig()` externalizes these packages at build time, so production references the host's copies at runtime (`globalThis.__metabase_sdk__` / `globalThis.__metabase_data_app__` for SDK packages), and the Vite dev sandbox endows the same globals from the installed npm package.
 
 `<MetabaseProvider>` is **not** rendered by the bundle's `App.tsx` — the dev entry and the host wrap it for their respective modes. Bundle author only renders the **content** below.
 
@@ -295,8 +295,8 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 |---|---|
 | `React` (from `"react"`) | Hooks (`useState`, `useEffect`, etc.), JSX runtime. Externalized to the host's React via `react: "React"`. |
 | `StaticQuestion` | Non-drillable question. Props include `questionId`, `card`, `withChartTypeSelector`, `height`, `width`. |
-| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Use `card={{ query }}` for ad hoc SDK-rendered questions. Add `visualization` when the request calls for a specific chart type, and add `visualizationSettings` only for explicit setting-level presentation changes; see the `metabase-data-app-semantic-layer` skill for the type guardrails. |
-| `MetabaseCard` | Type-only import from `@metabase/embedding-sdk-react` for ad hoc SDK-rendered cards with `visualization` or `visualizationSettings`; the full contract lives in the `metabase-data-app-semantic-layer` skill. |
+| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Use `card={{ query }}` for ad hoc SDK-rendered questions. Add `visualization` when the request calls for a specific chart type, and add `visualizationSettings` only for explicit setting-level presentation changes; use skill discovery for schema-backed query and card type guardrails. |
+| `MetabaseCard` | Type-only import from `@metabase/embedding-sdk-react` for ad hoc SDK-rendered cards with `visualization` or `visualizationSettings`; use skill discovery for the full generated-query card contract before authoring data-layer code. |
 | `CreateQuestion`, `MetabotQuestion` | More question variants. |
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
@@ -317,13 +317,13 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 | **Other `navigator.*` device APIs** — `geolocation`, etc. | Not available. |
 | **Global `document`/`window` listeners** for typing/clipboard events — `keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage` | Attach the listener to your own element, or use the React handler (`onKeyDown`, `onPaste`, …) on the specific input/container. The same listener on a script-owned element still works. |
 
-**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter + `copy`) covers every routine need; anything outside it is intentionally unreachable.
+**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + React DOM + SDK components + data hooks + `useAction` + DataAppRouter + `copy`) covers every routine need; anything outside it is intentionally unreachable.
 
 ### When to use SDK charts vs `useMetabaseQuery`
 
 This is a per-rendering decision, not a project-wide one:
 
-- **`useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`** — default for ordinary dashboard charts: bar, line, area, row, pie, scalar/smartscalar, gauge, progress, pivot, map, sortable table, and other displays Metabase already renders well. Build the semantic query from generated schema objects, then pass it to the SDK component with the `query` prop, for example `<StaticQuestion query={trendQuery} ... />`.
+- **`useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`** — default for ordinary dashboard charts: bar, line, area, row, pie, scalar/smartscalar, gauge, progress, pivot, map, sortable table, and other displays Metabase already renders well. Build the semantic query from generated schema objects, then pass it to the SDK component with a card object, for example `<StaticQuestion card={{ query: trendQuery }} ... />`.
 - **`useMetabaseQuery`** — use when React genuinely needs row values: extracting KPI numbers, powering custom controls, composing bespoke summary cards, combining multiple queries into one UI element, or rendering a visualization Metabase cannot express.
 
 Generated dashboards should prefer SDK-rendered charts. Do not rebuild normal bar/line/table charts in React just to match app chrome. If you choose `useMetabaseQuery`, keep the row handling typed.
@@ -332,7 +332,7 @@ Generated dashboards should prefer SDK-rendered charts. Do not rebuild normal ba
 
 **Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
 
-(For the hook contract itself — generics, table-vs-metric variants, segments / measures / breakouts, debugging — see the `metabase-data-app-semantic-layer` skill.)
+For the hook contract itself — generics, table sources, segments, measures, breakouts, sorting, and debugging — use skill discovery before authoring schema-backed data-layer code.
 
 ## SDK component sizing
 

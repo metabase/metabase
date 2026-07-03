@@ -1,4 +1,7 @@
 import * as React from "react";
+import * as ReactDOM from "react-dom";
+import * as ReactDOMClient from "react-dom/client";
+import * as ReactDOMServer from "react-dom/server";
 import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
 import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as sdkExports from "@metabase/embedding-sdk-react";
@@ -57,6 +60,9 @@ const sandbox = createDataAppSandbox({
   allowedHosts,
   endowments: {
     React,
+    reactDom: ReactDOM,
+    reactDomClient: ReactDOMClient,
+    reactDomServer: ReactDOMServer,
     reactJsxRuntime: ReactJsxRuntime,
     reactJsxDevRuntime: ReactJsxDevRuntime,
     sdkExports,
