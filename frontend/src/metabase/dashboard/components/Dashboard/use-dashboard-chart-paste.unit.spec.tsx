@@ -39,6 +39,8 @@ const chartText = serializeChartClipboard(
     display: "bar",
     dataset_query: datasetQuery,
     visualization_settings: {},
+    chart_id: "chart-1",
+    query_id: "query-1",
   },
   "https://metabase.example",
 );
@@ -100,7 +102,12 @@ describe("useDashboardChartPaste", () => {
     fetchMock.post("path:/api/card", CREATED_CARD, {
       name: "create-card",
       matchPartialBody: true,
-      body: { display: "bar", dashboard_id: 7, dataset_query: datasetQuery },
+      body: {
+        display: "bar",
+        dashboard_id: 7,
+        dashboard_tab_id: 3,
+        dataset_query: datasetQuery,
+      },
     });
 
     const { store } = setup({ isEditing: true, selectedTabId: 3 });

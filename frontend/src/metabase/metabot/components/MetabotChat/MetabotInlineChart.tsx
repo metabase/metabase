@@ -38,6 +38,11 @@ import type { DashboardTabId } from "metabase-types/api";
 
 import S from "./MetabotInlineChart.module.css";
 
+/**
+ * Renders a Metabot-generated `card` entity as a live, read-only chart inline in
+ * the conversation: it runs the card's embedded query ad-hoc and renders the
+ * result; the title bar links out to the full question.
+ */
 export function MetabotInlineChart({
   value: { id: entityId, title, description, display, query },
   readonly = false,

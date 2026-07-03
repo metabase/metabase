@@ -49,8 +49,11 @@ export function createChartPasteExtension(dispatch: DispatchDraftCard) {
       return [
         new Plugin({
           props: {
-            handlePaste: (_view, event) => {
-              if (!editor.isEditable) {
+            handlePaste: (view, event) => {
+              const isInCodeSpecBlock = Boolean(
+                view.state.selection.$head.parent.type.spec.code,
+              );
+              if (!editor.isEditable || isInCodeSpecBlock) {
                 return false;
               }
               const node = materializePastedChart(

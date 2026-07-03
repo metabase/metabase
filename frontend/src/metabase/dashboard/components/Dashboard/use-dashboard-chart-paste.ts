@@ -21,6 +21,10 @@ export function useDashboardChartPaste() {
       if (dashboardId == null) {
         return;
       }
+      const savedTabId =
+        typeof selectedTabId === "number" && selectedTabId > 0
+          ? selectedTabId
+          : undefined;
       try {
         const card = await createCard({
           name: payload.name,
@@ -29,6 +33,7 @@ export function useDashboardChartPaste() {
           dataset_query: payload.dataset_query,
           visualization_settings: payload.visualization_settings,
           dashboard_id: dashboardId,
+          dashboard_tab_id: savedTabId,
         }).unwrap();
         await dispatch(
           addCardToDashboard({

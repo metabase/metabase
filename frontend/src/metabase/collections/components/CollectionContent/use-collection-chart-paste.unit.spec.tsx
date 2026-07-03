@@ -17,6 +17,8 @@ const chartText = serializeChartClipboard(
     display: "bar",
     dataset_query: datasetQuery,
     visualization_settings: {},
+    chart_id: "chart-1",
+    query_id: "query-1",
   },
   "https://metabase.example",
 );

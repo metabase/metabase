@@ -37,9 +37,6 @@ import {
 } from "./utils";
 
 function insertChartMention(editor: Editor, payload: ChartClipboardPayload) {
-  if (!payload.chart_id) {
-    return;
-  }
   editor
     .chain()
     .focus()
@@ -98,9 +95,9 @@ export const MetabotPromptInput = forwardRef<
     onSubmitRef.current = onSubmit;
     const onStopRef = useRef(onStop);
     onStopRef.current = onStop;
-    const onPasteChartRef = useRef<(payload: ChartClipboardPayload) => void>(
-      () => undefined,
-    );
+    const onPasteChartRef = useRef<
+      ((payload: ChartClipboardPayload) => void) | null
+    >(null);
 
     const extensions = [
       Document,
@@ -169,14 +166,18 @@ export const MetabotPromptInput = forwardRef<
               return true;
             },
             paste: (_view: EditorView, e: ClipboardEvent) => {
+              const handlePasteChart = onPasteChartRef.current;
+              if (!handlePasteChart) {
+                return false;
+              }
               const payload = parseChartClipboard(
                 e.clipboardData?.getData("text/plain"),
               );
-              if (!payload?.chart_id) {
+              if (!payload) {
                 return false;
               }
               e.preventDefault();
-              onPasteChartRef.current(payload);
+              handlePasteChart(payload);
               return true;
             },
           },
@@ -236,12 +237,14 @@ export const MetabotPromptInput = forwardRef<
       ],
     );
 
-    onPasteChartRef.current = (payload: ChartClipboardPayload) => {
-      if (editor) {
-        insertChartMention(editor, payload);
-      }
-      onPasteChart?.(payload);
-    };
+    onPasteChartRef.current = onPasteChart
+      ? (payload: ChartClipboardPayload) => {
+          if (editor) {
+            insertChartMention(editor, payload);
+          }
+          onPasteChart(payload);
+        }
+      : null;
 
     useImperativeHandle(ref, () => {
       if (!editor) {
