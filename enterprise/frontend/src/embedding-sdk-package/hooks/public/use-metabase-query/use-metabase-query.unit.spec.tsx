@@ -542,6 +542,39 @@ describe("useMetabaseQueryObject", () => {
     );
   });
 
+  it("waits for login before resolving the query", async () => {
+    const resolveDatasetQuery = jest.fn(() =>
+      jest.fn(() => Promise.resolve(TEST_DATASET_QUERY)),
+    );
+    (window as any).METABASE_EMBEDDING_SDK_BUNDLE = {
+      resolveDatasetQuery,
+    };
+    mockUseLazySelector.mockReturnValue({ status: "loading" });
+
+    const { result, rerender } = renderHook(() =>
+      useMetabaseQueryObject(query),
+    );
+
+    expect(result.current).toEqual({
+      query: null,
+      error: null,
+      isLoading: true,
+    });
+    expect(resolveDatasetQuery).not.toHaveBeenCalled();
+
+    mockUseLazySelector.mockReturnValue({ status: "success" });
+    rerender();
+
+    await waitFor(() => {
+      expect(resolveDatasetQuery).toHaveBeenCalled();
+      expect(result.current).toEqual({
+        query: TEST_DATASET_QUERY,
+        error: null,
+        isLoading: false,
+      });
+    });
+  });
+
   it("does not expose stale query results after the input changes", async () => {
     const firstDeferred = createDeferred<DatasetQuery>();
     const secondDeferred = createDeferred<DatasetQuery>();

@@ -352,11 +352,17 @@ export function useMetabaseQueryObject(
   query: TableQuery<unknown>,
 ): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
+
+  const loginStatus = useLazySelector(
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getLoginStatus,
+  );
+
   const {
     state: {
       internalProps: { reduxStore },
     },
   } = useMetabaseProviderPropsStore();
+
   const [queryState, setQueryState] = useState<
     UseMetabaseQueryObjectResult & { queryKey: string | null }
   >({
@@ -377,13 +383,18 @@ export function useMetabaseQueryObject(
     async function resolveQueryObject() {
       const resolveDatasetQuery = getResolveDatasetQueryFromBundle();
 
-      if (!reduxStore || !resolveDatasetQuery) {
+      if (
+        !reduxStore ||
+        !resolveDatasetQuery ||
+        loginStatus?.status !== "success"
+      ) {
         setQueryState({
           query: null,
           error: null,
           isLoading: true,
           queryKey: null,
         });
+
         return;
       }
 
@@ -398,37 +409,23 @@ export function useMetabaseQueryObject(
             queryKey,
           });
         }
-      } catch (err) {
+      } catch (error) {
         if (isActive) {
-          setQueryState({
-            query: null,
-            error: err,
-            isLoading: false,
-            queryKey,
-          });
+          setQueryState({ query: null, error, isLoading: false, queryKey });
         }
       }
     }
 
-    setQueryState({
-      query: null,
-      error: null,
-      isLoading: true,
-      queryKey,
-    });
+    setQueryState({ query: null, error: null, isLoading: true, queryKey });
     resolveQueryObject();
 
     return () => {
       isActive = false;
     };
-  }, [loadingState, queryKey, reduxStore]);
+  }, [loadingState, loginStatus?.status, queryKey, reduxStore]);
 
   if (queryState.queryKey !== queryKey) {
-    return {
-      query: null,
-      error: null,
-      isLoading: true,
-    };
+    return { query: null, error: null, isLoading: true };
   }
 
   return {
