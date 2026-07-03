@@ -134,7 +134,13 @@
       (when-not representation-dir
         (throw (ex-info "Missing --representation-dir option (required for --source representation)"
                         {:cli-validation true})))
-      (validate-dir! representation-dir))))
+      (validate-dir! representation-dir)
+      ;; Same hazard as the explicit flag: the export's default sidecar would be loaded then silently
+      ;; discarded by the override.
+      (when (and embedder (.exists (io/file representation-dir "embeddings.json")))
+        (throw (ex-info (str "--embedder would ignore the export's embeddings.json. Remove the file "
+                             "(or score without --embedder) so precomputed embeddings aren't silently discarded.")
+                        {:cli-validation true}))))))
 
 (def ^:private in-process-descriptor
   "Model identity for `--embedder in-process`.
@@ -170,7 +176,9 @@
   — exactly the production code path, including the guidance error when the embedder plugin jar is absent.
   The descriptor passed to the provider also carries `:vector-dimensions` so the provider's dimension
   guard protects CLI runs; the recorded `:embedding-model-meta` keeps the facade's `:model-dimensions`
-  shape."
+  shape.
+  `:text-variant` rides along so the persisted row's metadata matches the override fingerprint fragment
+  even when the configured synonym source (e.g. the search-index embedder) would carry a different one."
   [embedder-name]
   (case embedder-name
     "in-process" (do
@@ -183,7 +191,8 @@
                    {:embedder             (embedders/provider-embedder
                                            (assoc in-process-descriptor
                                                   :vector-dimensions (:model-dimensions in-process-descriptor)))
-                    :embedding-model-meta in-process-descriptor})
+                    :embedding-model-meta in-process-descriptor
+                    :text-variant         embedders/default-text-variant})
     nil))
 
 (defn- override-fingerprint-fragment
@@ -222,7 +231,7 @@
         embedder                                   (or (:embedder override) embedder)
         result                                     (complexity/score-from-entities
                                                     library universe embedder
-                                                    (select-keys override [:embedding-model-meta]))]
+                                                    (select-keys override [:embedding-model-meta :text-variant]))]
     (when write?
       (data-complexity-score/record-score! (task.complexity-score/current-fingerprint
                                             (override-fingerprint-fragment override))

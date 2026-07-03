@@ -377,15 +377,11 @@
 
 ;;;; In-process (plugin) provider
 
-(def ^:private ^Class floats-class
-  ;; `float[].class` isn't directly expressible in Clojure; resolve once, matching the sibling namespaces.
-  (Class/forName "[F"))
-
-(defn- resolve-in-process-embed-fn
-  "Resolve the embed fn from `metabase-enterprise.embedder.core`, throwing a setup-guidance error when absent.
+(defn- resolve-in-process-fn
+  "Resolve `fn-name` from `metabase-enterprise.embedder.core`, throwing a setup-guidance error when absent.
   The embedder ships separately as a plugin jar (metabase-embedder-plugin.jar) so the DJL/ONNX Runtime stack
   stays out of the core uberjar."
-  []
+  [fn-name]
   (try
     ;; classloader/require, not clojure.core/require: plugin jars are added to the classpath at runtime
     ;; and only the shared dynamic classloader can see them.
@@ -407,9 +403,10 @@
                         {:provider "in-process" :status 400}
                         e))
         (throw e))))
-  (or (ns-resolve 'metabase-enterprise.embedder.core 'embed-texts)
-      (throw (ex-info "Embedder plugin loaded but does not define embed-texts; plugin/server version mismatch?"
-                      {:provider "in-process" :ns 'metabase-enterprise.embedder.core}))))
+  (or (ns-resolve 'metabase-enterprise.embedder.core fn-name)
+      (throw (ex-info (format "Embedder plugin loaded but does not define %s; plugin/server version mismatch?"
+                              fn-name)
+                      {:provider "in-process" :ns 'metabase-enterprise.embedder.core :fn fn-name}))))
 
 (defn- check-in-process-dimensions
   "Guard against a configured dimension that doesn't match what the plugin model actually produces.
@@ -417,11 +414,8 @@
   Callers that don't declare `:vector-dimensions` (e.g. the `embeddings.client` facade) are not checked."
   [{:keys [model-name vector-dimensions]} embeddings]
   (when-let [embedding (and vector-dimensions (first embeddings))]
-    ;; Tolerate any counted representation rather than hard-casting to float[]: a mismatched plugin
-    ;; should hit the clear dimension error below, not an opaque ClassCastException here.
-    (let [actual (if (instance? floats-class embedding)
-                   (alength ^floats embedding)
-                   (count embedding))]
+    ;; `count` handles float[] (the plugin's contract) and any other counted representation alike.
+    (let [actual (count embedding)]
       (when (not= vector-dimensions actual)
         ;; Several consumers reach this with their own dimension settings, so don't prescribe one env var —
         ;; naming the wrong one would have the operator break a working configuration.
@@ -429,7 +423,8 @@
                                      "consumer is configured for %d. Set the dimensions setting of whichever "
                                      "consumer made this request to %d — MB_EE_EMBEDDING_MODEL_DIMENSIONS for "
                                      "semantic search, MB_EE_LIBRARY_EMBEDDING_MODEL_DIMENSIONS for the "
-                                     "library entity index.")
+                                     "library entity index — or, if MB_EMBEDDER_MODEL_SOURCES points this "
+                                     "model at a custom source, make the source match the declared width.")
                                 model-name actual vector-dimensions actual)
                         {:provider              "in-process"
                          :model-name            model-name
@@ -442,7 +437,7 @@
   (when (str/blank? model-name)
     (throw (ex-info "The in-process embedding provider requires a model name; set ee-embedding-model."
                     {:provider "in-process"})))
-  (let [embed-fn    (resolve-in-process-embed-fn)
+  (let [embed-fn    (resolve-in-process-fn 'embed-texts)
         embeddings  (embed-fn model-name texts)
         ;; No API usage to meter; count cl100k tokens as an approximation so the volume shows up on the
         ;; same dashboards and token-tracking rows as the HTTP providers.
@@ -459,13 +454,11 @@
   (first (get-embeddings-batch embedding-model [text] opts)))
 
 (defmethod pull-model "in-process"
-  [embedding-model]
+  [{:keys [model-name]}]
   ;; The model ships inside the plugin jar, so there is nothing to download. Instead this acts as an
   ;; explicit warm-up hook: the first embed pays the one-time DJL/ONNX Runtime native init (~430 MB RSS),
   ;; and calling this lets operators choose when that happens rather than paying it on the first index run.
-  (let [start-ms (u/start-timer)]
-    (get-embedding embedding-model "warm-up probe")
-    (log/info "In-process embedder warmed up in" (long (u/since-ms start-ms)) "ms")))
+  ((resolve-in-process-fn 'warm-up!) model-name))
 
 ;;;; Query prefixes for asymmetric retrieval models
 

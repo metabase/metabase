@@ -27,6 +27,19 @@
   (doto (java.io.File/createTempFile prefix "")
     (.delete) (.mkdirs) .deleteOnExit))
 
+(defn- fixture-without-sidecar
+  "Copy of the representation fixture minus its embeddings.json, for exercising `--embedder` paths
+  (which reject exports carrying a sidecar the override would ignore)."
+  ^java.io.File []
+  (let [src (io/file representation-fixture-dir)
+        dst (empty-tmp-dir "dcs-no-sidecar")]
+    (doseq [^java.io.File f (file-seq src)
+            :when (and (.isFile f) (not= "embeddings.json" (.getName f)))]
+      (let [out (io/file dst (str (.relativize (.toPath src) (.toPath f))))]
+        (io/make-parents out)
+        (io/copy f out)))
+    dst))
+
 ;;; ------------------------------------- on-disk fixture tests -------------------------------------
 
 (deftest ^:parallel representation-fixture-scores-deterministically-test
@@ -153,7 +166,19 @@
                           (#'cli/validate-options! {:source             "representation"
                                                     :representation-dir representation-fixture-dir
                                                     :embeddings         "precomputed.json"
-                                                    :embedder           "in-process"})))))
+                                                    :embedder           "in-process"}))))
+  (testing "an export's implicit embeddings.json conflicts with --embedder the same way"
+    (let [dir (empty-tmp-dir "dcs-sidecar-conflict")]
+      (spit (io/file dir "embeddings.json") "{}")
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"embeddings\.json"
+                            (#'cli/validate-options! {:source             "representation"
+                                                      :representation-dir (str dir)
+                                                      :embedder           "in-process"})))
+      (testing "while --embedder alone on a sidecar-less export is fine"
+        (is (nil? (#'cli/validate-options! {:source             "representation"
+                                            :representation-dir (str (fixture-without-sidecar))
+                                            :embedder           "in-process"})))))))
 
 (deftest embedder-override-fingerprint-test
   (testing "an --embedder override is folded into the persisted fingerprint so it can't shadow cron scores"
@@ -177,7 +202,7 @@
                                   embedders/provider-embedder         (constantly (embedders/file-embedder {}))]
         (testing "representation mode"
           (#'cli/run-cli {:source             "representation"
-                          :representation-dir representation-fixture-dir
+                          :representation-dir (str (fixture-without-sidecar))
                           :embedder           "in-process"
                           :write-to-appdb     true})
           (is (some? @captured))

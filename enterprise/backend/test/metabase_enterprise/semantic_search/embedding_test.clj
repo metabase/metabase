@@ -153,12 +153,12 @@
                             #"requires a model name"
                             (embedding/get-embeddings-batch (dissoc embedding-model :model-name) ["hello"]))))
     (testing "with the embed fn stubbed in"
-      (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
+      (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-fn
                                   (constantly (fn [_model-name texts] (mapv (fn [_] (float-array 384)) texts)))]
         (testing "matching dimensions pass through"
           (is (= 384 (alength ^floats (embedding/get-embedding embedding-model "hello")))))
         (testing "vectors in a non-float-array representation still get the dimension error, not a cast error"
-          (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
+          (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-fn
                                       (constantly (fn [_model-name texts] (mapv (fn [_] (vec (repeat 384 0.0))) texts)))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"produces 384-dimensional vectors but this consumer is configured for 1024"
@@ -179,17 +179,19 @@
               (is (= [["all-MiniLM-L6-v2" :query 2]] @recorded)))))
         (testing "each call forwards its own model name, so consumers can run different models"
           (let [calls (atom [])]
-            (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-embed-fn
-                                        (constantly (fn [model-name texts]
-                                                      (swap! calls conj [model-name texts])
-                                                      (mapv (fn [_] (float-array 384)) texts)))]
+            (mt/with-dynamic-fn-redefs [embedding/resolve-in-process-fn
+                                        (fn [fn-name]
+                                          (fn [& args]
+                                            (swap! calls conj (into [fn-name] args))
+                                            (when (= fn-name 'embed-texts)
+                                              (mapv (fn [_] (float-array 384)) (second args)))))]
               (embedding/get-embeddings-batch embedding-model ["a"])
               (embedding/get-embeddings-batch (assoc embedding-model :model-name "another-model") ["b"])
-              (testing "pull-model warms up through the same path"
+              (testing "and pull-model delegates to the plugin's own warm-up"
                 (embedding/pull-model embedding-model))
-              (is (= [["all-MiniLM-L6-v2" ["a"]]
-                      ["another-model" ["b"]]
-                      ["all-MiniLM-L6-v2" ["warm-up probe"]]]
+              (is (= [['embed-texts "all-MiniLM-L6-v2" ["a"]]
+                      ['embed-texts "another-model" ["b"]]
+                      ['warm-up! "all-MiniLM-L6-v2"]]
                      @calls)))))))))
 
 (deftest test-token-counting
