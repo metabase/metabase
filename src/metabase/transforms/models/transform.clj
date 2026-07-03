@@ -541,9 +541,9 @@
   ;; (a) it has never been run and was created on/before the cutoff (grace period, so a new transform
   ;; isn't flagged before anyone has had a chance to run it), or (b) its most recent run started
   ;; on/before the cutoff — regardless of that run's status (a failed run still counts as having been
-  ;; run). "Most recent run" is the row with the greatest `start_time` (the ordering the `:last_run`
-  ;; hydrate uses), captured as a portable grouped MAX(start_time) rather than the window CTE in
-  ;; `transform-run`. `start_time` is NOT NULL, so a NULL aggregate means the transform has no runs.
+  ;; run). The "most recent run" anchor comes from `transform-run/latest-run-start-times-query` (the
+  ;; same definition the schedule-freshness check realizes); `start_time` is NOT NULL, so a NULL
+  ;; aggregate means the transform has no runs.
   ;;
   ;; Exception to (b): a transform whose active job schedules haven't fired since its last run is
   ;; merely between scheduled runs — e.g. a six-month cadence with a three-month threshold — not
@@ -556,18 +556,15 @@
     {:select    [:transform.id
                  [[:inline "Transform"] :model]
                  [:transform.name :name]
-                 [:latest_run.last_used_at :last_used_at]]
+                 [:latest_run.last_start :last_used_at]]
      :from      :transform
-     :left-join [[{:select   [:transform_id [[:max :start_time] :last_used_at]]
-                   :from     :transform_run
-                   :group-by [:transform_id]}
-                  :latest_run]
+     :left-join [[(transform-run/latest-run-start-times-query) :latest_run]
                  [:= :latest_run.transform_id :transform.id]]
      :where     [:and
                  [:or
                   [:and
-                   [:= :latest_run.last_used_at nil]
+                   [:= :latest_run.last_start nil]
                    [:<= :transform.created_at (:cutoff-date args)]]
-                  [:<= :latest_run.last_used_at (:cutoff-date args)]]
+                  [:<= :latest_run.last_start (:cutoff-date args)]]
                  (when (seq schedule-fresh-ids)
                    [:not [:in :transform.id schedule-fresh-ids]])]}))

@@ -26,9 +26,9 @@
       false)))
 
 (defn schedule-fresh-transform-ids
-  "Ids of transforms covered by ≥1 active scheduled job where no schedule fire time has elapsed
+  "IDs of transforms covered by ≥1 active scheduled job where no schedule fire time has elapsed
   since the transform's most recent run (any status) as of `now`. Such transforms are merely
-  between fires of their schedule — e.g. a six-month cadence whose last run was two months ago —
+  between fires of their schedule - e.g. a six-month cadence whose last run was two months ago -
   and should not be treated as inactive by recency checks like staleness. Transforms that have
   never run are never schedule-fresh."
   [now]
