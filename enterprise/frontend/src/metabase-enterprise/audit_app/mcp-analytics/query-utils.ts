@@ -53,6 +53,26 @@ function applyScopeFilters(
   return q;
 }
 
+/**
+ * The shared prelude every builder starts from: the view query with the date + scope
+ * (user/group/tenant) filters applied. Centralizing it keeps the filter handling — notably
+ * `tenantId` — in one place so a builder can't silently drop a filter.
+ */
+function buildBaseQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  tenantId,
+}: McpFilters & McpDataSources): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
+  return q;
+}
+
 /** Order an aggregated query by the count column descending (highest counts first). */
 function orderByCountDesc(query: Query): Query {
   const countCol = findColumn(query, COUNT_COLUMN, Lib.orderableColumns);
@@ -96,9 +116,15 @@ export function buildCountBreakoutQuery({
   tenantId,
   breakoutColumn,
 }: CountBreakoutQueryOpts): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
+  let q = buildBaseQuery({
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+  });
   q = Lib.aggregateByCount(q, 0);
   q = breakoutByColumn(q, breakoutColumn);
   q = orderByCountDesc(q);
@@ -132,9 +158,15 @@ export function buildCallsByDayByClientQuery({
   groupId,
   tenantId,
 }: McpFilters & McpDataSources): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
+  let q = buildBaseQuery({
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+  });
   q = Lib.aggregateByCount(q, 0);
   q = breakoutByCreatedAtDay(q);
   q = breakoutByColumn(q, "client_display_name");
@@ -154,9 +186,15 @@ export function buildCallsByDayByStatusQuery({
   groupId,
   tenantId,
 }: McpFilters & McpDataSources): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
+  let q = buildBaseQuery({
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+  });
   q = Lib.aggregateByCount(q, 0);
   q = breakoutByCreatedAtDay(q);
   q = breakoutByColumn(q, "status");
@@ -183,9 +221,15 @@ export function buildErrorBreakoutQuery({
   tenantId,
   breakoutColumn,
 }: ErrorBreakoutQueryOpts): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
+  let q = buildBaseQuery({
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+  });
   q = applyStatusFilter(q, "error");
   q = Lib.aggregateByCount(q, 0);
   q = breakoutByColumn(q, breakoutColumn);
@@ -208,9 +252,15 @@ export function buildTotalCountQuery({
   tenantId,
   errorsOnly = false,
 }: McpFilters & McpDataSources & { errorsOnly?: boolean }): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
+  let q = buildBaseQuery({
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+  });
   q = errorsOnly ? applyStatusFilter(q, "error") : q;
   q = Lib.aggregateByCount(q, 0);
   return q;
@@ -235,9 +285,15 @@ export function buildEventsQuery({
   tenantId,
   limit,
 }: EventsQueryOpts): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
+  let q = buildBaseQuery({
+    provider,
+    table,
+    groupMembersTable,
+    dateFilter,
+    userId,
+    groupId,
+    tenantId,
+  });
 
   const createdAt = findColumn(q, "created_at", Lib.orderableColumns);
   if (createdAt) {
