@@ -55,6 +55,11 @@
         (mt/with-temporary-setting-values [ee-library-embedding-model-dimensions 384]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"overridden together"
+                                (#'entity-retrieval.core/configured-model)))))
+      (testing "and for the provider without the model — it may not serve the inherited one"
+        (mt/with-temporary-setting-values [ee-library-embedding-provider "in-process"]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"without ee-library-embedding-model"
                                 (#'entity-retrieval.core/configured-model))))))
     (testing "the provider override validates like the global setting"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo

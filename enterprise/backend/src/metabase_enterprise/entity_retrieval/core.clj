@@ -65,18 +65,31 @@
   "The embedding model for the library entity index: the global embedding settings, with any
   ee-library-embedding-* overrides applied so this index can run a different provider/model than
   semantic search.
-  Model and dimensions must be overridden together — pairing either with the global value for the
-  other would mismatch the model and its vector width, poisoning the index and failing every reconcile."
+  Model and dimensions must be overridden together, and overriding the provider requires them too —
+  pairing an override with the global value for its counterpart would mismatch the model and its vector
+  width (or ask a provider for a model it doesn't serve), poisoning the index and failing every reconcile.
+  Overriding only model+dimensions is legal: the inherited provider may serve several models.
+  Throws with `:config-error true`; [[index-ready?]] and the targeted reconcile treat that as a
+  misconfiguration to surface, not a transient failure to swallow or retry."
   []
-  (let [model      (retrieval.settings/ee-library-embedding-model)
-        dimensions (retrieval.settings/ee-library-embedding-model-dimensions)]
+  (let [provider   (retrieval.settings/ee-library-embedding-provider)
+        model      (retrieval.settings/ee-library-embedding-model)
+        dimensions (retrieval.settings/ee-library-embedding-model-dimensions)
+        fail!      (fn [msg]
+                     (throw (ex-info msg {:config-error true
+                                          :provider     provider
+                                          :model        model
+                                          :dimensions   dimensions})))]
     (when (not= (some? model) (some? dimensions))
-      (throw (ex-info (str "ee-library-embedding-model and ee-library-embedding-model-dimensions must be "
-                           "overridden together (or both left unset): pairing one with the global value for "
-                           "the other would mismatch the model and its vector width, poisoning the index.")
-                      {:model model :dimensions dimensions})))
+      (fail! (str "ee-library-embedding-model and ee-library-embedding-model-dimensions must be "
+                  "overridden together (or both left unset): pairing one with the global value for "
+                  "the other would mismatch the model and its vector width, poisoning the index.")))
+    (when (and provider (nil? model))
+      (fail! (str "ee-library-embedding-provider is overridden without ee-library-embedding-model: the "
+                  "override provider would be paired with the global model, which it may not serve. "
+                  "Set the model and dimensions overrides alongside it.")))
     (merge (embedding/get-configured-model)
-           (u/remove-nils {:provider          (retrieval.settings/ee-library-embedding-provider)
+           (u/remove-nils {:provider          provider
                            :model-name        model
                            :vector-dimensions dimensions}))))
 
@@ -94,7 +107,12 @@
      (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
        (and (index-table/index-compatible? ds (configured-model))
             (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
-     (catch Throwable _ false))))
+     (catch Throwable e
+       ;; The blanket not-ready mapping must not bury a settings misconfiguration: without this log the
+       ;; retrieval tool just silently stops being offered.
+       (when (:config-error (ex-data e))
+         (log/error e "library entity index misconfigured; treating as not ready"))
+       false))))
 
 ;; OSS-callable surface used to decide whether to OFFER the retrieve_library_entities tool: it must
 ;; be able to actually answer, so beyond config + license the index has to be built for the current model and
@@ -191,7 +209,9 @@
   the entries in place for the next run rather than dropping them. Clearing the set up front (vs after the
   loop) means a write arriving mid-run re-dirties and is picked up by the next run. A per-entity reconcile
   failure re-dirties that entity, so a later run (or the periodic backstop) retries it instead of losing
-  the write to the slow backstop."
+  the write to the slow backstop.
+  Settings misconfigurations (`:config-error`) are not re-queued: they fail every retry identically, and
+  the periodic backstop re-covers the entity once the settings are fixed."
   [_scheduled]
   (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
         dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities #{}) d))]
@@ -201,9 +221,13 @@
               diff    (reconcile/reconcile-entity! ds configured-model entity-type entity-local-id)]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
-          (log/error e "library entity index: targeted reconcile failed; re-queuing"
-                     entity-type entity-local-id)
-          (locking run-lock (swap! dirty-entities conj entity-key)))))))
+          (if (:config-error (ex-data e))
+            (log/error e "library entity index misconfigured; dropping targeted reconcile"
+                       entity-type entity-local-id)
+            (do
+              (log/error e "library entity index: targeted reconcile failed; re-queuing"
+                         entity-type entity-local-id)
+              (locking run-lock (swap! dirty-entities conj entity-key)))))))))
 
 (defn reconcile-full-coalesced!
   "Run a full reconcile through the full-reconcile schedule, blocking until a run covering this call
