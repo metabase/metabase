@@ -982,3 +982,25 @@
                    (lib/expression "diff-minutes" diff-minutes)
                    (qp/process-query)
                    (mt/rows))))))))
+
+(deftest ^:parallel compile-create-index-test
+  (testing "nonclustered renders with double-quoted identifiers; UNIQUE only when asked, ASC/DESC per column"
+    (is (= [["CREATE NONCLUSTERED INDEX \"by_cat\" ON \"t\" (\"category\")"]]
+           (driver/compile-create-index :sqlserver nil "t"
+                                        {:kind :nonclustered :name "by_cat" :columns [{:name "category"}]})))
+    (is (= [["CREATE UNIQUE NONCLUSTERED INDEX \"by_cat\" ON \"dbo\".\"t\" (\"category\" DESC, \"price\" ASC)"]]
+           (driver/compile-create-index :sqlserver "dbo" "t"
+                                        {:kind :nonclustered :name "by_cat" :unique true
+                                         :columns [{:name "category" :direction :desc} {:name "price" :direction :asc}]}))))
+  (testing "clustered renders the CLUSTERED keyword"
+    (is (= [["CREATE CLUSTERED INDEX \"by_cat\" ON \"t\" (\"category\")"]]
+           (driver/compile-create-index :sqlserver nil "t"
+                                        {:kind :clustered :name "by_cat" :columns [{:name "category"}]}))))
+  (testing "SQL Server has no CREATE INDEX IF NOT EXISTS, so :if-not-exists guards via a T-SQL IF NOT EXISTS block"
+    (let [[[stmt]] (driver/compile-create-index :sqlserver "dbo" "t"
+                                                {:kind :nonclustered :name "by_cat" :if-not-exists true
+                                                 :columns [{:name "category"}]})]
+      (is (str/starts-with? stmt "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'by_cat'")
+          "guards on the index name before creating")
+      (is (str/includes? stmt "CREATE NONCLUSTERED INDEX \"by_cat\"")
+          "still emits the create"))))
