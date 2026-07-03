@@ -34,6 +34,26 @@
       (is (= ["TIME(STRFTIME('%H:00', \"test_col\"))"]
              (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :hour expr)))))))
 
+(deftest ^:parallel default-bucketing-test
+  (testing (str "`:default` (explicit 'Don't bin') on SQLite wraps datetime columns in DATETIME(...) "
+                "so raw text storage compares equal to the QP-supplied DATETIME(literal) value")
+    (let [dt-col   (h2x/with-type-info :ts {:effective-type :type/DateTime})
+          date-col (h2x/with-type-info :d  {:effective-type :type/Date})
+          time-col (h2x/with-type-info :t  {:effective-type :type/Time})
+          dt-expr  [:datetime (h2x/literal "2022-03-15 00:20:48")]]
+      (testing "datetime columns get wrapped"
+        (is (= ["DATETIME(\"ts\")"]
+               (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :default dt-col)))))
+      (testing "date columns pass through so their type isn't widened to datetime"
+        (is (= ["\"d\""]
+               (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :default date-col)))))
+      (testing "time columns pass through so their type isn't widened to datetime"
+        (is (= ["\"t\""]
+               (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :default time-col)))))
+      (testing "an expression already wrapped in DATETIME(...) is not wrapped again"
+        (is (= ["DATETIME('2022-03-15 00:20:48')"]
+               (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :default dt-expr))))))))
+
 (deftest current-user-table-privileges-test
   (testing "SQLite table privileges normalization"
     (mt/test-driver :sqlite
