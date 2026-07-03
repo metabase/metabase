@@ -2441,6 +2441,7 @@
    :friends #{models
               enterprise/transforms-python}
    :model-exports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
@@ -2489,6 +2490,7 @@
   transforms-rest
   {:team "Gadget"
    :api  #{metabase.transforms-rest.api.transform
+           metabase.transforms-rest.api.transform-dag-run
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
@@ -2498,6 +2500,7 @@
            transforms-base
            util}
    :model-imports #{:model/Transform
+                    :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
