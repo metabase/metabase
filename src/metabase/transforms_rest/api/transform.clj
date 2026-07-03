@@ -6,6 +6,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
    [metabase.transforms.core :as transforms.core]

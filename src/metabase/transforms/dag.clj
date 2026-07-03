@@ -12,6 +12,7 @@
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.jobs :as jobs]
+   [metabase.transforms.models.coordinated-run :as coordinated-run]
    [metabase.transforms.models.dag-run :as dag-run]
    [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.util.log :as log]
@@ -142,17 +143,10 @@
                                                     :active-runs-atom  dag-active-runs
                                                     :precomputed-plan  plan
                                                     :add-run-activity! #(dag-run/add-run-activity! run-id)})]
-                  (case (::jobs/status result)
-                    :succeeded (dag-run/succeed-started-run! run-id)
-                    ;; terminated externally (e.g. reaped): the row is already terminal, just log
-                    :aborted   (log/warnf "DAG run %s for transform %s was terminated externally; coordinator aborted."
-                                          (pr-str run-id) (pr-str transform-id))
-                    :failed    (try
-                                 (dag-run/fail-started-run! run-id
-                                                            {:message (jobs/compile-transform-failure-messages
-                                                                       (::jobs/failures result))})
-                                 (catch Exception e
-                                   (log/error e "Error when failing a DAG run.")))))
+                  (jobs/finalize-coordinated-run! run-id result
+                                                  {:succeed! dag-run/succeed-started-run!
+                                                   :fail!    dag-run/fail-started-run!
+                                                   :label    (format "DAG run for transform %s" (pr-str transform-id))}))
                 (catch Throwable t
                   (try
                     (dag-run/fail-started-run! run-id {:message (ex-message t)})
@@ -186,12 +180,7 @@
   "Stamp a heartbeat on every active DAG run this process is coordinating, then deliver the `gone`
   promise of any that were terminated externally so their coordinator aborts."
   []
-  (rt/heartbeat-and-reconcile! {:model      :model/TransformDagRun
-                                :active     [:= :is_active true]
-                                :ids        (keys @dag-active-runs)
-                                :heartbeat! dag-run/heartbeat-runs!
-                                :on-gone    (fn [run-id]
-                                              (some-> (get @dag-active-runs run-id) (deliver true)))}))
+  (coordinated-run/heartbeat-and-reconcile! :model/TransformDagRun dag-active-runs))
 
 (defn- reap-orphaned-runs!
   "Reap DAG runs whose coordinator process died (stale heartbeat)."

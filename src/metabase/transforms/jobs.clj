@@ -15,6 +15,7 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.freshness :as freshness]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
+   [metabase.transforms.models.coordinated-run :as coordinated-run]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-tag :as transform-tag]
@@ -294,19 +295,13 @@
 
 (defonce ^:private active-runs
   ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped).
-  ;; Covers both scheduled job runs and DAG-reprocess runs — all coordinated runs use TransformJobRun.
   (atom {}))
 
 (defn- heartbeat-and-reconcile-runs!
-  "Stamp a heartbeat on every active coordinated run this process owns, then deliver the `gone`
-  promise of any that were terminated externally so their coordinator aborts."
+  "Stamp a heartbeat on every active job run this process owns, then deliver the `gone` promise of
+  any that were terminated externally so their coordinator aborts."
   []
-  (rt/heartbeat-and-reconcile! {:model      :model/TransformJobRun
-                                :active     [:= :is_active true]
-                                :ids        (keys @active-runs)
-                                :heartbeat! transforms.job-run/heartbeat-runs!
-                                :on-gone    (fn [run-id]
-                                              (some-> (get @active-runs run-id) (deliver true)))}))
+  (coordinated-run/heartbeat-and-reconcile! :model/TransformJobRun active-runs))
 
 (defn- run-coordinator-loop!
   "Dispatch ready transforms; then each round sweep the in-flight workers and refill freed slots —
@@ -446,6 +441,23 @@
                       (::message failure))))
        (str/join "\n\n")))
 
+(defn finalize-coordinated-run!
+  "Move the coordinating run `run-id` to its terminal state based on the `result` of
+  [[run-transforms!]], the same way for job and DAG runs. `succeed!`/`fail!` are the run-type's
+  lifecycle fns (of `run-id`, resp. `run-id`+properties); `label` names the run in logs; `on-failed`,
+  when supplied, is called with the failures after the row is failed (e.g. to notify)."
+  [run-id result {:keys [succeed! fail! label on-failed]}]
+  (case (::status result)
+    :succeeded (succeed! run-id)
+    ;; terminated externally (e.g. reaped): the row is already terminal and any terminator already
+    ;; notified, so just log
+    :aborted   (log/warnf "%s %s was terminated externally; coordinator aborted." label (pr-str run-id))
+    :failed    (try
+                 (fail! run-id {:message (compile-transform-failure-messages (::failures result))})
+                 (when on-failed (on-failed (::failures result)))
+                 (catch Exception e
+                   (log/errorf e "Error when failing %s %s." label (pr-str run-id))))))
+
 (defn- active-users-to-edit-transform
   "Return the users that edited the transform, in reverse chron.
   Only returns active users.
@@ -527,18 +539,12 @@
                                                      :parent-run-type   :job
                                                      :active-runs-atom  active-runs
                                                      :add-run-activity! #(transforms.job-run/add-run-activity! run-id)))]
-                  (case (::status result)
-                    :succeeded (transforms.job-run/succeed-started-run! run-id)
-                    ;; terminated externally (e.g. reaped): the row is already terminal and the
-                    ;; terminator already notified, so just log
-                    :aborted (log/warnf "Transform job run %s for job %s was terminated externally; coordinator aborted."
-                                        (pr-str run-id) (pr-str job-id))
-                    :failed (try
-                              (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
-                              (when (= :cron run-method)
-                                (notify-transform-failures job-id (::failures result)))
-                              (catch Exception e
-                                (log/error e "Error when failing a transform run.")))))
+                  (finalize-coordinated-run! run-id result
+                                             {:succeed!  transforms.job-run/succeed-started-run!
+                                              :fail!     transforms.job-run/fail-started-run!
+                                              :label     (format "Transform job run for job %s" (pr-str job-id))
+                                              :on-failed (when (= :cron run-method)
+                                                           #(notify-transform-failures job-id %))}))
                 (catch Throwable t
                   ;; We don't expect a catastrophic failure, but neither did the Titanic.
                   (try

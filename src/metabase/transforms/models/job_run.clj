@@ -1,7 +1,7 @@
 (ns metabase.transforms.models.job-run
   (:require
    [metabase.models.interface :as mi]
-   [metabase.run-tracking.core :as rt]
+   [metabase.transforms.models.coordinated-run :as coordinated-run]
    [metabase.transforms.models.util :as transforms.models.u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -47,54 +47,30 @@
 (defn add-run-activity!
   "Notes that a run has had activity"
   [run-id]
-  (t2/update! :model/TransformJobRun
-              :id        run-id
-              :is_active true
-              {:updated_at :%now}))
+  (coordinated-run/add-run-activity! :model/TransformJobRun run-id))
 
 (defn succeed-started-run!
   "Mark a started run as successfully completed."
   ([run-id]
    (succeed-started-run! run-id {}))
   ([run-id properties]
-   (t2/update! :model/TransformJobRun
-               :id        run-id
-               :is_active true
-               (merge {:end_time :%now}
-                      properties
-                      {:status    :succeeded
-                       :is_active nil}))))
+   (coordinated-run/succeed-started-run! :model/TransformJobRun run-id properties)))
 
 (defn fail-started-run!
   "Mark the started active run as failed and inactive."
   [run-id properties]
-  (t2/update! :model/TransformJobRun
-              :id        run-id
-              :is_active true
-              (merge {:end_time :%now}
-                     properties
-                     {:status :failed
-                      :is_active nil})))
+  (coordinated-run/fail-started-run! :model/TransformJobRun run-id properties))
 
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active job-run-ids."
   [run-ids]
-  (rt/heartbeat-ids! :model/TransformJobRun [:= :is_active true] :last_heartbeat run-ids))
+  (coordinated-run/heartbeat-runs! :model/TransformJobRun run-ids))
 
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
   process is presumed dead). Returns the rows that were timed out so callers can notify."
   [stale-minutes]
-  (rt/reap-orphaned!
-   {:model    :model/TransformJobRun
-    :active   [:= :is_active true]
-    :stale    [:< :last_heartbeat (rt/cutoff stale-minutes :minute)]
-    :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"}
-    :metrics  {:total-metric   :metabase-transforms/timeouts-total
-               :latency-metric :metabase-transforms/timeout-detection-latency-ms
-               :tags           {:type "job"}
-               :latency-column :last_heartbeat
-               :timeout-ms     (rt/unit->ms stale-minutes :minute)}}))
+  (coordinated-run/reap-orphaned-runs! :model/TransformJobRun "job" stale-minutes))
 
 (defn running-run-for-job-id
   "Return a single active job run or nil."

@@ -20,23 +20,18 @@
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 
 (def ^:private LastRunResponse
-  "Schema for a job's last run information.
-  `transform_job_run` is shared with DAG-reprocess runs, so rows carry these (nil-for-job-runs)
-  columns: `source_transform_id`, `direction`, `user_id`."
+  "Schema for a job's last run information."
   [:map {:closed true}
    [:id pos-int?]
-   [:job_id [:maybe pos-int?]]
+   [:job_id pos-int?]
    [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled]]
+   [:status [:enum :started :succeeded :failed :timeout]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
    [:end_time {:optional true} [:maybe :any]]
    [:message [:maybe :string]]
    [:created_at :any]
-   [:updated_at :any]
-   [:source_transform_id {:optional true} [:maybe pos-int?]]
-   [:direction {:optional true} [:maybe :keyword]]
-   [:user_id {:optional true} [:maybe pos-int?]]])
+   [:updated_at :any]])
 
 (def ^:private NextRunResponse
   [:map {:closed true}
@@ -294,25 +289,22 @@
 (def ^:private JobRunResponse
   [:map {:closed true}
    [:id pos-int?]
-   [:job_id [:maybe pos-int?]]
+   [:job_id pos-int?]
    [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled]]
+   [:status [:enum :started :succeeded :failed :timeout]]
    [:is_active [:maybe :boolean]]
    [:start_time :any]
    [:end_time {:optional true} [:maybe :any]]
    [:message [:maybe :string]]
    [:created_at :any]
-   [:updated_at :any]
-   ;; `transform_job_run` is shared with DAG-reprocess runs; these are nil for scheduled job runs.
-   [:source_transform_id {:optional true} [:maybe pos-int?]]
-   [:direction {:optional true} [:maybe :keyword]]
-   [:user_id {:optional true} [:maybe pos-int?]]])
+   [:updated_at :any]])
 
 (def ^:private TransformRunForJobRunResponse
   [:map {:closed true}
    [:id pos-int?]
    [:transform_id [:maybe pos-int?]]
    [:job_run_id [:maybe pos-int?]]
+   [:dag_run_id {:optional true} [:maybe pos-int?]]
    [:run_method :keyword]
    [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
    [:is_active [:maybe :boolean]]
@@ -328,61 +320,6 @@
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]])
 
-(def ^:private DagRunResponse
-  [:map {:closed true}
-   [:id pos-int?]
-   [:job_id [:maybe pos-int?]]
-   [:source_transform_id [:maybe pos-int?]]
-   [:direction [:maybe :keyword]]
-   [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled]]
-   [:is_active [:maybe :boolean]]
-   [:start_time :any]
-   [:end_time {:optional true} [:maybe :any]]
-   [:message [:maybe :string]]
-   [:user_id [:maybe pos-int?]]
-   [:created_at :any]
-   [:updated_at :any]
-   [:transform_name {:optional true} [:maybe :string]]])
-
-(api.macros/defendpoint :get "/dag-runs" :- [:map {:closed true}
-                                             [:data [:sequential DagRunResponse]]
-                                             [:limit pos-int?]
-                                             [:offset :int]
-                                             [:total :int]]
-  "Get paginated run history for all manual DAG-reprocess runs across transforms. Backs the
-  \"Manual DAG runs\" view. Each row's seed transform name is hydrated as `transform_name`."
-  [_route-params
-   query-params :- [:map
-                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
-                    [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]
-                    [:start-time {:optional true} [:maybe ms/NonBlankString]]
-                    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
-                    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
-  (api/check-data-analyst)
-  (-> (transforms.core/paged-all-dag-runs (assoc query-params
-                                                 :offset (request/offset)
-                                                 :limit  (request/limit)))
-      (update :data
-              (fn [runs]
-                (let [id->name (when-let [ids (seq (keep :source_transform_id runs))]
-                                 (t2/select-pk->fn :name :model/Transform :id [:in ids]))]
-                  (mapv (fn [run]
-                          (-> run
-                              transforms-base.u/present-run
-                              (assoc :transform_name (get id->name (:source_transform_id run)))))
-                        runs))))))
-
-(api.macros/defendpoint :post "/dag-runs/:run-id/cancel" :- :nil
-  "Cancel an in-progress manual DAG run and request cancellation of its still-running transforms."
-  [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
-  (api/check-data-analyst)
-  (let [run (api/check-404 (t2/select-one :model/TransformJobRun :id run-id))]
-    ;; only manual DAG runs (seeded from a transform) are cancelable here, not scheduled job runs
-    (api/check-404 (:source_transform_id run))
-    (api/check-400 (transforms.core/cancel-dag-run! (:id run))))
-  nil)
-
 (api.macros/defendpoint :get "/:job-id/runs" :- [:map {:closed true}
                                                  [:data [:sequential JobRunResponse]]
                                                  [:limit pos-int?]
@@ -391,7 +328,7 @@
   "Get paginated run history for a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
    query-params :- [:map
-                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
+                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout"]]]
                     [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]
                     [:start-time {:optional true} [:maybe ms/NonBlankString]]
                     [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
