@@ -1,10 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
 import { Link } from "react-router";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
   useCancelCurrentTransformRunMutation,
+  useRunTransformDagMutation,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase/api";
@@ -13,10 +15,14 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
+import { Anchor, Box, Card, Divider, Group, Menu, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type { Transform, TransformTagId } from "metabase-types/api";
+import type {
+  Transform,
+  TransformDagDirection,
+  TransformTagId,
+} from "metabase-types/api";
 
 import {
   trackTransformRunTagsUpdated,
@@ -27,6 +33,7 @@ import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 
 import { LogOutput } from "./LogOutput";
+import { RunDagConfirmModal } from "./RunDagConfirmModal";
 
 type RunSectionProps = {
   transform: Transform;
@@ -124,12 +131,15 @@ type RunButtonSectionProps = {
 
 function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
+  const [runTransformDag] = useRunTransformDagMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [
     isConfirmCancellationModalOpen,
     { close: closeConfirmModal, open: openConfirmModal },
   ] = useDisclosure(false);
+  const [pendingDirection, setPendingDirection] =
+    useState<TransformDagDirection | null>(null);
 
   const handleRun = async () => {
     trackTransformTriggerManualRun({ transformId: transform.id });
@@ -146,6 +156,36 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
     }
   };
 
+  const handleConfirmRunDag = async () => {
+    if (pendingDirection == null) {
+      return;
+    }
+    const direction = pendingDirection;
+    setPendingDirection(null);
+    const { error } = await runTransformDag({ id: transform.id, direction });
+    if (error) {
+      sendErrorToast(t`Failed to start reprocessing`);
+    } else {
+      sendSuccessToast(
+        direction === "upstream"
+          ? t`Reprocessing this transform and everything it depends on`
+          : t`Reprocessing this transform and everything that depends on it`,
+      );
+    }
+  };
+
+  const menuItems = !readOnly && (
+    <>
+      <Menu.Item onClick={handleRun}>{t`Run this transform`}</Menu.Item>
+      <Menu.Item
+        onClick={() => setPendingDirection("upstream")}
+      >{t`Run with upstream`}</Menu.Item>
+      <Menu.Item
+        onClick={() => setPendingDirection("downstream")}
+      >{t`Run with downstream`}</Menu.Item>
+    </>
+  );
+
   return (
     <>
       <RunButton
@@ -155,6 +195,7 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
         onRun={handleRun}
         onCancel={openConfirmModal}
         isDisabled={readOnly}
+        menuItems={menuItems}
       />
       <ConfirmModal
         title={t`Cancel this run?`}
@@ -165,6 +206,12 @@ function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
           closeConfirmModal();
         }}
         closeButtonText={t`No`}
+      />
+      <RunDagConfirmModal
+        transformId={transform.id}
+        direction={pendingDirection}
+        onClose={() => setPendingDirection(null)}
+        onConfirm={handleConfirmRunDag}
       />
     </>
   );

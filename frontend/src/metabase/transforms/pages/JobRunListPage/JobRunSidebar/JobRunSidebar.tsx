@@ -1,7 +1,11 @@
 import { memo, useState } from "react";
 import { t } from "ttag";
 
-import { useListJobRunTransformRunsQuery } from "metabase/api";
+import {
+  skipToken,
+  useListDagRunTransformRunsQuery,
+  useListJobRunTransformRunsQuery,
+} from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
@@ -10,6 +14,7 @@ import {
   ActionIcon,
   Badge,
   Box,
+  Button,
   Card,
   FixedSizeIcon,
   Flex,
@@ -18,8 +23,9 @@ import {
   Title,
 } from "metabase/ui";
 import type {
+  TransformBatchRun,
+  TransformId,
   TransformJobId,
-  TransformJobRun,
   TransformRunForJobRun,
 } from "metabase-types/api";
 
@@ -28,31 +34,51 @@ import S from "./JobRunSidebar.module.css";
 import { TransformRunItem } from "./TransformRunItem";
 
 type JobRunSidebarProps = {
-  jobId: TransformJobId;
-  run: TransformJobRun;
+  // Provide `jobId` for scheduled job runs, or `sourceTransformId` for manual DAG runs —
+  // each selects the matching transform-run drilldown query.
+  jobId?: TransformJobId;
+  sourceTransformId?: TransformId | null;
+  run: TransformBatchRun;
   containerWidth: number;
   onResizeStart: () => void;
   onResizeStop: () => void;
   onClose: () => void;
+  // When provided, a Cancel button is shown while the run is in progress.
+  onCancel?: () => void;
 };
 
 export const JobRunSidebar = memo(function JobRunSidebar({
   jobId,
+  sourceTransformId,
   run,
   containerWidth,
   onResizeStart,
   onResizeStop,
   onClose,
+  onCancel,
 }: JobRunSidebarProps) {
   const [isPolling, setIsPolling] = useState(false);
+  const pollingOption = {
+    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+  };
+  const isDagRun = jobId == null;
+
+  const jobResult = useListJobRunTransformRunsQuery(
+    jobId != null ? { jobId, runId: run.id } : skipToken,
+    pollingOption,
+  );
+  const dagResult = useListDagRunTransformRunsQuery(
+    isDagRun && sourceTransformId != null
+      ? { transformId: sourceTransformId, dagRunId: run.id }
+      : skipToken,
+    pollingOption,
+  );
+
   const {
     data: transformRuns = [],
     isLoading,
     error,
-  } = useListJobRunTransformRunsQuery(
-    { jobId, runId: run.id },
-    { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
-  );
+  } = isDagRun ? dagResult : jobResult;
 
   const shouldPoll =
     run.status === "started" ||
@@ -80,7 +106,15 @@ export const JobRunSidebar = memo(function JobRunSidebar({
         data-testid="job-run-list-sidebar"
       >
         <Box className={S.header} p="lg">
-          <JobRunSidebarHeader onClose={onClose} />
+          <JobRunSidebarHeader
+            title={isDagRun ? t`DAG run` : t`Job run`}
+            onCancel={
+              onCancel != null && run.status === "started"
+                ? onCancel
+                : undefined
+            }
+            onClose={onClose}
+          />
         </Box>
         <Box className={S.scrollArea} flex={1} mih={0} p="lg">
           <Stack gap="xl">
@@ -134,10 +168,16 @@ function TransformRunList({
 }
 
 type JobRunSidebarHeaderProps = {
+  title: string;
+  onCancel?: () => void;
   onClose: () => void;
 };
 
-function JobRunSidebarHeader({ onClose }: JobRunSidebarHeaderProps) {
+function JobRunSidebarHeader({
+  title,
+  onCancel,
+  onClose,
+}: JobRunSidebarHeaderProps) {
   return (
     <Group
       justify="space-between"
@@ -145,10 +185,17 @@ function JobRunSidebarHeader({ onClose }: JobRunSidebarHeaderProps) {
       wrap="nowrap"
       data-testid="job-run-list-sidebar-header"
     >
-      <Title order={3}>{t`Job run`}</Title>
-      <ActionIcon aria-label={t`Close`} onClick={onClose}>
-        <FixedSizeIcon name="close" />
-      </ActionIcon>
+      <Title order={3}>{title}</Title>
+      <Group gap="sm" wrap="nowrap">
+        {onCancel != null && (
+          <Button size="xs" color="error" variant="subtle" onClick={onCancel}>
+            {t`Cancel run`}
+          </Button>
+        )}
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <FixedSizeIcon name="close" />
+        </ActionIcon>
+      </Group>
     </Group>
   );
 }

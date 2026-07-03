@@ -217,12 +217,15 @@ export const TRANSFORM_JOB_RUN_STATUSES = [
   "succeeded",
   "failed",
   "timeout",
+  "canceled",
 ] as const;
 export type TransformJobRunStatus = (typeof TRANSFORM_JOB_RUN_STATUSES)[number];
 
-export type TransformJobRun = {
+// Fields shared by every coordinated multi-transform run, regardless of whether it was
+// triggered by a scheduled job or a manual DAG reprocess. Both kinds are stored in the same
+// `transform_job_run` table, so the run-history table/sidebar can be rendered generically.
+export type TransformBatchRun = {
   id: TransformJobRunId;
-  job_id: TransformJobId;
   status: TransformJobRunStatus;
   run_method: TransformRunMethod;
   start_time: string;
@@ -231,6 +234,10 @@ export type TransformJobRun = {
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
+};
+
+export type TransformJobRun = TransformBatchRun & {
+  job_id: TransformJobId;
 };
 
 export const TRANSFORM_JOB_RUN_SORT_COLUMNS = [
@@ -376,6 +383,72 @@ export type ListJobRunTransformRunsRequest = {
   jobId: TransformJobId;
   runId: TransformJobRunId;
 };
+
+export const TRANSFORM_DAG_DIRECTIONS = ["upstream", "downstream"] as const;
+export type TransformDagDirection = (typeof TRANSFORM_DAG_DIRECTIONS)[number];
+
+// A DAG-reprocess run, seeded from a single transform. These share the
+// `transform_job_run` storage with scheduled job runs, but instead of a `job_id`
+// they carry the `source_transform_id` they were started from and the `direction`
+// of the DAG traversal.
+export type TransformDagRun = TransformBatchRun & {
+  job_id: TransformJobId | null;
+  source_transform_id: TransformId | null;
+  direction: TransformDagDirection | null;
+  user_id?: UserId | null;
+  // hydrated name of the seed transform
+  transform_name?: string | null;
+};
+
+export type RunTransformDagRequest = {
+  id: TransformId;
+  direction: TransformDagDirection;
+  skip_fresh_deps?: boolean;
+};
+
+export type ListDagTransformsRequest = {
+  transformId: TransformId;
+  direction: TransformDagDirection;
+};
+
+// The ordered transforms a DAG reprocess would run, used to preview the plan
+// before confirming.
+export type DagTransform = Pick<Transform, "id" | "name">;
+
+export type RunTransformDagResponse = {
+  job_run_id: TransformJobRunId | null;
+  message: string;
+};
+
+export type ListTransformDagRunsRequest = {
+  transformId: TransformId;
+  status?: TransformJobRunStatus;
+  "sort-column"?: TransformJobRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformDagRunsResponse = {
+  data: TransformDagRun[];
+} & PaginationResponse;
+
+export type ListDagRunTransformRunsRequest = {
+  transformId: TransformId;
+  dagRunId: TransformJobRunId;
+};
+
+// History of all manual DAG runs across every transform — backs the synthetic
+// "Manual DAG runs" entry in the jobs list.
+export type ListAllDagRunsRequest = {
+  status?: TransformJobRunStatus;
+  "run-method"?: TransformRunMethod;
+  "start-time"?: string;
+  "sort-column"?: TransformJobRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListAllDagRunsResponse = {
+  data: TransformDagRun[];
+} & PaginationResponse;
 
 export type TestPythonTransformRequest = {
   code: string;

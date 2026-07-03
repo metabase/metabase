@@ -15,13 +15,13 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting/time";
 import {
   TRANSFORM_JOB_RUN_SORT_COLUMNS,
-  type TransformJobRun,
+  type TransformBatchRun,
   type TransformJobRunSortColumn,
 } from "metabase-types/api";
 
 import type { JobRunSortOptions } from "../types";
 
-function getStatusColumn(): TreeTableColumnDef<TransformJobRun> {
+function getStatusColumn<T extends TransformBatchRun>(): TreeTableColumnDef<T> {
   return {
     id: "status",
     header: t`Status`,
@@ -38,7 +38,9 @@ function getStatusColumn(): TreeTableColumnDef<TransformJobRun> {
   };
 }
 
-function getRunMethodColumn(): TreeTableColumnDef<TransformJobRun> {
+function getRunMethodColumn<
+  T extends TransformBatchRun,
+>(): TreeTableColumnDef<T> {
   return {
     id: "run-method",
     header: t`Trigger`,
@@ -48,9 +50,9 @@ function getRunMethodColumn(): TreeTableColumnDef<TransformJobRun> {
   };
 }
 
-function getStartedAtColumn(
+function getStartedAtColumn<T extends TransformBatchRun>(
   systemTimezone: string | undefined,
-): TreeTableColumnDef<TransformJobRun> {
+): TreeTableColumnDef<T> {
   return {
     id: "start_time" satisfies TransformJobRunSortColumn,
     header: ({ header }) => (
@@ -70,9 +72,9 @@ function getStartedAtColumn(
   };
 }
 
-function getEndedAtColumn(
+function getEndedAtColumn<T extends TransformBatchRun>(
   systemTimezone: string | undefined,
-): TreeTableColumnDef<TransformJobRun> {
+): TreeTableColumnDef<T> {
   return {
     id: "end_time" satisfies TransformJobRunSortColumn,
     header: ({ header }) => (
@@ -100,7 +102,9 @@ function getEndedAtColumn(
   };
 }
 
-function getDurationColumn(): TreeTableColumnDef<TransformJobRun> {
+function getDurationColumn<
+  T extends TransformBatchRun,
+>(): TreeTableColumnDef<T> {
   return {
     id: "duration",
     header: t`Duration`,
@@ -116,15 +120,15 @@ function getDurationColumn(): TreeTableColumnDef<TransformJobRun> {
   };
 }
 
-export function getColumns(
+export function getColumns<T extends TransformBatchRun>(
   systemTimezone: string | undefined,
-): TreeTableColumnDef<TransformJobRun>[] {
+): TreeTableColumnDef<T>[] {
   return [
-    getStatusColumn(),
-    getRunMethodColumn(),
-    getStartedAtColumn(systemTimezone),
-    getEndedAtColumn(systemTimezone),
-    getDurationColumn(),
+    getStatusColumn<T>(),
+    getRunMethodColumn<T>(),
+    getStartedAtColumn<T>(systemTimezone),
+    getEndedAtColumn<T>(systemTimezone),
+    getDurationColumn<T>(),
   ];
 }
 

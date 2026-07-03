@@ -2,23 +2,17 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetTransformJobQuery,
-  useListTransformJobRunsQuery,
-} from "metabase/api";
+import { useCancelDagRunMutation, useListAllDagRunsQuery } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
-import {
-  PaneHeader,
-  PanelHeaderTitle,
-} from "metabase/common/data-studio/components/PaneHeader";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch } from "metabase/redux";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
@@ -27,31 +21,30 @@ import * as Urls from "metabase/urls";
 import {
   TRANSFORM_JOB_RUN_STATUSES,
   TRANSFORM_RUN_METHODS,
-  type TransformJobRun,
+  type TransformDagRun,
   type TransformJobRunId,
   type TransformJobRunStatus,
   type TransformRunMethod,
 } from "metabase-types/api";
 
-import { JobTabs } from "../../components/JobTabs";
+import { isPollingNeeded } from "../JobRunListPage/JobRunListPage";
+import { JobRunSidebar } from "../JobRunListPage/JobRunSidebar";
+import { JobRunTable } from "../JobRunListPage/JobRunTable";
+import { PAGE_SIZE } from "../JobRunListPage/constants";
+import type { JobRunSortOptions } from "../JobRunListPage/types";
+import { getParsedParams, getSortOptions } from "../JobRunListPage/utils";
 
-import S from "./JobRunListPage.module.css";
-import { JobRunSidebar } from "./JobRunSidebar";
-import { JobRunTable } from "./JobRunTable";
-import { PAGE_SIZE } from "./constants";
-import type { JobRunSortOptions } from "./types";
-import { getParsedParams, getSortOptions } from "./utils";
+import S from "./DagRunListPage.module.css";
+import { getDagRunLeadingColumns } from "./columns";
 
-const EMPTY_RUNS: TransformJobRun[] = [];
+const EMPTY_RUNS: TransformDagRun[] = [];
 
-type JobRunListPageProps = {
-  params: { jobId: string };
+type DagRunListPageProps = {
   location: Location;
 };
 
-export function JobRunListPage({ params, location }: JobRunListPageProps) {
-  usePageTitle(t`Run history`);
-  const jobId = Urls.extractEntityId(params.jobId);
+export function DagRunListPage({ location }: DagRunListPageProps) {
+  usePageTitle(t`Manual DAG runs`);
   const parsedParams = getParsedParams(location);
   const { page = 0 } = parsedParams;
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -61,26 +54,25 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
     TransformJobRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
+  const [
+    isCancelModalOpen,
+    { open: openCancelModal, close: closeCancelModal },
+  ] = useDisclosure();
   const dispatch = useDispatch();
+  const [cancelDagRun] = useCancelDagRunMutation();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const { data: job } = useGetTransformJobQuery(jobId ?? skipToken);
-
-  const { data, isLoading, error } = useListTransformJobRunsQuery(
-    jobId != null
-      ? {
-          jobId,
-          offset: page * PAGE_SIZE,
-          limit: PAGE_SIZE,
-          status: parsedParams.status,
-          "run-method": parsedParams.runMethod,
-          "start-time": parsedParams.startTime,
-          "sort-column": parsedParams.sortColumn,
-          "sort-direction": parsedParams.sortDirection,
-        }
-      : skipToken,
+  const { data, isLoading, error } = useListAllDagRunsQuery(
     {
-      pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+      status: parsedParams.status,
+      "run-method": parsedParams.runMethod,
+      "start-time": parsedParams.startTime,
+      "sort-column": parsedParams.sortColumn,
+      "sort-direction": parsedParams.sortDirection,
     },
+    { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
   );
 
   if (isPolling !== isPollingNeeded(data?.data)) {
@@ -88,6 +80,7 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
   }
 
   const runs = data?.data ?? EMPTY_RUNS;
+  const leadingColumns = useMemo(() => getDagRunLeadingColumns(), []);
 
   const selectedRun = useMemo(
     () =>
@@ -105,11 +98,9 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformJobRunListParams) => {
-      if (jobId != null) {
-        dispatch(replace(Urls.transformJobRuns(jobId, newParams)));
-      }
+      dispatch(replace(Urls.transformManualDagRuns(newParams)));
     },
-    [dispatch, jobId],
+    [dispatch],
   );
 
   const handleStatusChange = useCallback(
@@ -156,23 +147,31 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
     setSelectedRunId(runId);
   }, []);
 
+  const handleCancelRun = async () => {
+    closeCancelModal();
+    if (selectedRun == null) {
+      return;
+    }
+    const { error } = await cancelDagRun(selectedRun.id);
+    if (error) {
+      sendErrorToast(t`Failed to cancel run`);
+    } else {
+      sendSuccessToast(t`Canceling run`);
+    }
+  };
+
   return (
     <Flex
       className={cx({ [S.resizing]: isResizing })}
       ref={containerRef}
       h="100%"
       wrap="nowrap"
-      data-testid="job-run-list"
+      data-testid="dag-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
         <PaneHeader
-          title={job != null && <PanelHeaderTitle>{job.name}</PanelHeaderTitle>}
-          tabs={jobId != null && <JobTabs jobId={jobId} />}
           breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link to={Urls.transformJobList()}>{t`Jobs`}</Link>
-              {job?.name ?? t`Run history`}
-            </DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{t`Manual DAG runs`}</DataStudioBreadcrumbs>
           }
           py={0}
           showMetabotButton
@@ -220,8 +219,10 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
                 onChange={(value) => handleStartTimeChange(value ?? undefined)}
               />
             </Group>
-            <JobRunTable
+            <JobRunTable<TransformDagRun>
               runs={runs}
+              leadingColumns={leadingColumns}
+              ariaLabel={t`Manual DAG runs`}
               hasFilters={
                 parsedParams.status != null ||
                 parsedParams.runMethod != null ||
@@ -247,16 +248,26 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
           </Stack>
         )}
       </Stack>
-      {jobId != null && selectedRun != null && (
+      {selectedRun != null && (
         <JobRunSidebar
-          jobId={jobId}
+          sourceTransformId={selectedRun.source_transform_id}
           run={selectedRun}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
           onClose={() => setSelectedRunId(undefined)}
+          onCancel={openCancelModal}
         />
       )}
+      <ConfirmModal
+        title={t`Cancel this run?`}
+        message={t`This stops the run and cancels any transforms still in progress. Transforms that already finished keep their results.`}
+        opened={isCancelModalOpen}
+        onClose={closeCancelModal}
+        onConfirm={handleCancelRun}
+        confirmButtonText={t`Cancel run`}
+        closeButtonText={t`Keep running`}
+      />
     </Flex>
   );
 }
@@ -286,8 +297,4 @@ function getStartTimeOptions() {
     { value: "past3months", label: t`Previous 3 months` },
     { value: "past12months", label: t`Previous 12 months` },
   ];
-}
-
-export function isPollingNeeded(runs: Pick<TransformJobRun, "status">[] = []) {
-  return runs.some((run) => run.status === "started");
 }

@@ -6,6 +6,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
+import { DagRunListPage } from "./pages/DagRunListPage";
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { JobRunListPage } from "./pages/JobRunListPage";
@@ -32,6 +33,7 @@ export function getDataStudioTransformRoutes() {
         <Route path="jobs" component={JobSectionLayout}>
           <IndexRoute component={JobListPage} />
           <Route path="new" component={NewJobPage} />
+          <Route path="manual-dag-runs" component={DagRunListPage} />
           <Route path=":jobId" component={JobPage} />
           <Route path=":jobId/runs" component={JobRunListPage} />
         </Route>

@@ -231,6 +231,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
+          {canAccessTransforms && (
+            <DataStudioTab
+              label={t`Manual DAG runs`}
+              icon="revert"
+              to={Urls.transformManualDagRuns()}
+              isSelected={currentTab === "manual-dag-runs"}
+              showLabel={isNavbarOpened}
+            />
+          )}
         </Stack>
         <PLUGIN_REMOTE_SYNC.GitSettingsModal
           isOpen={isGitSettingsOpen}

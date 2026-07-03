@@ -140,6 +140,41 @@ export function transformJobRuns(
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
+export const MANUAL_DAG_RUNS_SLUG = "manual-dag-runs";
+
+export function transformManualDagRuns({
+  page,
+  status,
+  runMethod,
+  startTime,
+  sortColumn,
+  sortDirection,
+}: TransformJobRunListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  if (status != null) {
+    searchParams.set("status", status);
+  }
+  if (runMethod != null) {
+    searchParams.set("run-method", runMethod);
+  }
+  if (startTime != null) {
+    searchParams.set("start-time", startTime);
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  const baseUrl = `${JOBS_ROOT_URL}/${MANUAL_DAG_RUNS_SLUG}`;
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+}
+
 export type TransformRunListParams = {
   page?: number;
   statuses?: TransformRunStatus[];

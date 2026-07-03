@@ -1,17 +1,25 @@
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   CreateTransformRequest,
+  DagTransform,
   Dataset,
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
+  ListDagRunTransformRunsRequest,
+  ListDagTransformsRequest,
+  ListTransformDagRunsRequest,
+  ListTransformDagRunsResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
   RunInspectorQueryRequest,
+  RunTransformDagRequest,
+  RunTransformDagResponse,
   RunTransformResponse,
   Transform,
   TransformId,
+  TransformRunForJobRun,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
@@ -98,6 +106,61 @@ export const transformApi = Api.injectEndpoints({
           patchResult.undo();
         }
       },
+    }),
+    runTransformDag: builder.mutation<
+      RunTransformDagResponse,
+      RunTransformDagRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/transform/${id}/run-dag`,
+        body,
+      }),
+      // A DAG run touches many transforms, so invalidate all transform/run state
+      // rather than only the seed transform.
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          idTag("transform", id),
+          tag("transform"),
+          tag("table"),
+          listTag("table-remapping"),
+          listTag("transform-run"),
+        ]),
+    }),
+    listDagTransforms: builder.query<DagTransform[], ListDagTransformsRequest>({
+      query: ({ transformId, direction }) => ({
+        method: "GET",
+        url: `/api/transform/${transformId}/dag-transforms`,
+        params: { direction },
+      }),
+      providesTags: (_response, _error, { transformId }) => [
+        idTag("transform", transformId),
+      ],
+    }),
+    listTransformDagRuns: builder.query<
+      ListTransformDagRunsResponse,
+      ListTransformDagRunsRequest
+    >({
+      query: ({ transformId, ...params }) => ({
+        method: "GET",
+        url: `/api/transform/${transformId}/dag-runs`,
+        params,
+      }),
+      providesTags: (_response, _error, { transformId }) => [
+        idTag("transform", transformId),
+      ],
+    }),
+    listDagRunTransformRuns: builder.query<
+      TransformRunForJobRun[],
+      ListDagRunTransformRunsRequest
+    >({
+      query: ({ transformId, dagRunId }) => ({
+        method: "GET",
+        url: `/api/transform/${transformId}/dag-runs/${dagRunId}/transform-runs`,
+      }),
+      providesTags: (_response, _error, { transformId }) => [
+        idTag("transform", transformId),
+      ],
     }),
     cancelCurrentTransformRun: builder.mutation<void, TransformId>({
       query: (id) => ({
@@ -244,6 +307,10 @@ export const {
   useGetInspectorLensQuery,
   useLazyGetInspectorLensQuery,
   useRunTransformMutation,
+  useRunTransformDagMutation,
+  useListDagTransformsQuery,
+  useListTransformDagRunsQuery,
+  useListDagRunTransformRunsQuery,
   useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,
   useUpdateTransformMutation,

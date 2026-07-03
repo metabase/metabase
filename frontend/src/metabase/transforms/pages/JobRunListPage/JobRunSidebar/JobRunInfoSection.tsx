@@ -11,10 +11,10 @@ import {
 import { Box, Card } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatDurationLong } from "metabase/utils/formatting/time";
-import type { TransformJobRun } from "metabase-types/api";
+import type { TransformBatchRun } from "metabase-types/api";
 
 type JobRunInfoSectionProps = {
-  run: TransformJobRun;
+  run: TransformBatchRun;
 };
 
 export function JobRunInfoSection({ run }: JobRunInfoSectionProps) {

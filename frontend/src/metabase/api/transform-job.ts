@@ -1,5 +1,7 @@
 import type {
   CreateTransformJobRequest,
+  ListAllDagRunsRequest,
+  ListAllDagRunsResponse,
   ListJobRunTransformRunsRequest,
   ListTransformJobRunsRequest,
   ListTransformJobRunsResponse,
@@ -7,6 +9,7 @@ import type {
   Transform,
   TransformJob,
   TransformJobId,
+  TransformJobRunId,
   TransformRunForJobRun,
   UpdateTransformJobRequest,
 } from "metabase-types/api";
@@ -48,6 +51,27 @@ export const transformJobApi = Api.injectEndpoints({
         idTag("transform-job", id),
         ...provideTransformListTags(transforms),
       ],
+    }),
+    listAllDagRuns: builder.query<
+      ListAllDagRunsResponse,
+      ListAllDagRunsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/transform-job/dag-runs",
+        params,
+      }),
+      // DAG runs live in the same store as job runs and are seeded from transforms,
+      // so invalidate this list whenever any transform or transform-run changes.
+      providesTags: () => [listTag("transform"), listTag("transform-run")],
+    }),
+    cancelDagRun: builder.mutation<void, TransformJobRunId>({
+      query: (runId) => ({
+        method: "POST",
+        url: `/api/transform-job/dag-runs/${runId}/cancel`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("transform"), listTag("transform-run")]),
     }),
     listTransformJobRuns: builder.query<
       ListTransformJobRunsResponse,
@@ -183,6 +207,8 @@ export const transformJobApi = Api.injectEndpoints({
 export const {
   useListTransformJobsQuery,
   useListTransformJobTransformsQuery,
+  useListAllDagRunsQuery,
+  useCancelDagRunMutation,
   useListTransformJobRunsQuery,
   useListJobRunTransformRunsQuery,
   useGetTransformJobQuery,

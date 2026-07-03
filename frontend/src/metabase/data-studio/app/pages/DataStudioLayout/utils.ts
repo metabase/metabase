@@ -5,6 +5,7 @@ type TabName =
   | "library"
   | "transforms"
   | "jobs"
+  | "manual-dag-runs"
   | "runs"
   | "dependencies"
   | "dependency-diagnostics"
@@ -21,6 +22,8 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "git-sync";
     case pathname.startsWith(Urls.workspaces()):
       return "workspaces";
+    case pathname.startsWith(Urls.transformManualDagRuns()):
+      return "manual-dag-runs";
     case pathname.startsWith(Urls.transformJobList()):
       return "jobs";
     case pathname.startsWith(Urls.dependencyGraph()):
