@@ -538,18 +538,9 @@
 
 (defmethod staleness/find-stale-query :model/Transform
   [_model args]
-  ;; Transform staleness is run-based: there is no `last_used_at` column. A transform is stale when
-  ;; (a) it has never been run and was created on/before the cutoff (grace period, so a new transform
-  ;; isn't flagged before anyone has had a chance to run it), or (b) its most recent run started
-  ;; on/before the cutoff — regardless of that run's status (a failed run still counts as having been
-  ;; run). The "most recent run" anchor comes from `transform-run/latest-run-start-times-query` (the
-  ;; same definition the schedule-freshness check realizes); `start_time` is NOT NULL, so a NULL
-  ;; aggregate means the transform has no runs.
-  ;;
-  ;; Exception to (b): a transform whose active job schedules haven't fired since its last run is
-  ;; merely between scheduled runs — e.g. a six-month cadence with a three-month threshold — not
-  ;; stale. Cron math can't run in SQL, so that set is computed here at query-build time and excluded
-  ;; below (build-time state reads have precedent in the Card/Dashboard methods' settings checks).
+  ;; Run-based: a transform is stale when it has never run and was created on/before the cutoff,
+  ;; or when its most recent run started on/before the cutoff (failed runs still count). Transforms
+  ;; between fires of a slower-than-threshold schedule are not stale.
   (let [schedule-fresh-ids (freshness/schedule-fresh-transform-ids (java.time.Instant/now))]
     {:select    [:transform.id
                  [[:inline "Transform"] :model]
