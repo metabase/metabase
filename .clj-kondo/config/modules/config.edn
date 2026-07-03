@@ -814,6 +814,8 @@
            query-processor
            revisions
            search
+           settings
+           staleness
            util
            view-log}
    :model-exports #{:model/Document}
