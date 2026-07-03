@@ -1,9 +1,8 @@
 import type { LocationDescriptor } from "history";
 import { useCallback } from "react";
 
-import { useHistory } from "metabase/history";
-
 import type { NavigateFunction, NavigateOptions, To } from "./types";
+import { useRouter } from "./use-router";
 import { parsePath } from "./utils";
 
 function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
@@ -17,7 +16,8 @@ function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
 }
 
 /**
- * react-router v7's `useNavigate`, implemented over the react-router v3 history.
+ * react-router v7's `useNavigate`, implemented over react-router v3's imperative
+ * router (`router.push/replace/go`).
  *
  * - `navigate(to, { replace?, state? })` pushes (or replaces) the location.
  * - `navigate(delta)` moves through the history stack (e.g. `navigate(-1)`).
@@ -25,22 +25,22 @@ function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
  * @see https://reactrouter.com/7.18.1/api/hooks/useNavigate
  */
 export function useNavigate(): NavigateFunction {
-  const { history } = useHistory();
+  const { router } = useRouter();
 
   return useCallback(
     (to: To | number, options: NavigateOptions = {}) => {
       if (typeof to === "number") {
-        history.go(to);
+        router.go(to);
         return;
       }
 
       const location = toLocationDescriptor(to, options.state);
       if (options.replace) {
-        history.replace(location);
+        router.replace(location);
       } else {
-        history.push(location);
+        router.push(location);
       }
     },
-    [history],
+    [router],
   ) as NavigateFunction;
 }
