@@ -39,11 +39,11 @@
 (deftest warm-all-table-dependencies-test
   (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})
     (mt/with-temp [:model/Transform {t1 :id} (make-transform {:database (mt/id)
-                                                             :type     "query"
-                                                             :query    {:source-table (mt/id :orders)}})
+                                                              :type     "query"
+                                                              :query    {:source-table (mt/id :orders)}})
                    :model/Transform {t2 :id} (make-transform {:database (mt/id)
-                                                             :type     "query"
-                                                             :query    {:source-table (mt/id :products)}})]
+                                                              :type     "query"
+                                                              :query    {:source-table (mt/id :products)}})]
       (uncache! t1)
       (uncache! t2)
       (mt/with-metadata-provider (mt/id)
