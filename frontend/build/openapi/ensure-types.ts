@@ -7,7 +7,7 @@
  *   1. Running backend (GET /api/docs/openapi.json)  -> fresh spec in ~2s
  *   2. Existing generated types on disk              -> keep, warn (stale ok locally; CI is the accurate gate)
  *   3. Existing spec file on disk                    -> regenerate types from it, warn
- *   4. Cold start: generate spec via Clojure CLI     -> ~40s, once per fresh checkout
+ *   4. Cold start: generate spec via Clojure CLI     -> ~40s, once per fresh checkout; skipped in --tolerant mode
  *   5. No JVM toolchain available:
  *        default    -> exit 1
  *        --tolerant -> warn, exit 0 (postinstall must not fail in JVM-less contexts)
@@ -82,6 +82,13 @@ if (existsSync(SPEC_PATH)) {
     "⚠ backend not running — generating types from existing spec file (may be stale)",
   );
   process.exit(runScript("types:generate"));
+}
+
+if (tolerant) {
+  log(
+    "⚠ no generated API types yet — skipping the ~40s cold-start generation in tolerant mode. They will be generated on the first `bun run dev` / `bun run type-check` (or run `bun run types:ensure` manually).",
+  );
+  process.exit(0);
 }
 
 const clojureAvailable =
