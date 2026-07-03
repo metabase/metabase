@@ -6,7 +6,7 @@
   (:require
    [java-time.api :as t]
    [metabase.transforms.models.transform-run :as transform-run]
-   [metabase.transforms.models.transform-tag :as transform-tag]
+   [metabase.transforms.models.transform-schedule :as transform-schedule]
    [metabase.util.log :as log])
   (:import
    (java.util Date)
@@ -32,7 +32,7 @@
   ago - and should not be treated as inactive by recency checks like staleness. Transforms that
   have never run are never schedule-fresh."
   [now]
-  (let [schedules-by-id (transform-tag/schedules-for-transforms)
+  (let [schedules-by-id (transform-schedule/schedules-for-transforms)
         last-starts     (transform-run/last-run-start-times (keys schedules-by-id))
         now-date        (Date/from (t/instant now))]
     (into #{}
@@ -49,7 +49,7 @@
   one is fresh once it has succeeded."
   [now dep-ids]
   (when (seq dep-ids)
-    (let [schedules-by-id (transform-tag/schedules-for-transforms dep-ids)
+    (let [schedules-by-id (transform-schedule/schedules-for-transforms dep-ids)
           last-success    (transform-run/last-successful-run-times dep-ids)
           now-date        (Date/from (t/instant now))]
       (into #{}

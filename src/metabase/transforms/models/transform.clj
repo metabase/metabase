@@ -17,6 +17,7 @@
    [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -549,10 +550,7 @@
   ;; merely between scheduled runs — e.g. a six-month cadence with a three-month threshold — not
   ;; stale. Cron math can't run in SQL, so that set is computed here at query-build time and excluded
   ;; below (build-time state reads have precedent in the Card/Dashboard methods' settings checks).
-  ;; `requiring-resolve` because statically requiring the freshness namespace would create a load
-  ;; cycle: freshness → transform-tag → this namespace.
-  (let [schedule-fresh-ids ((requiring-resolve 'metabase.transforms.freshness/schedule-fresh-transform-ids)
-                            (java.time.Instant/now))]
+  (let [schedule-fresh-ids (freshness/schedule-fresh-transform-ids (java.time.Instant/now))]
     {:select    [:transform.id
                  [[:inline "Transform"] :model]
                  [:transform.name :name]
