@@ -70,7 +70,7 @@ export type Params<Key extends string = string> = {
 export type URLSearchParamsInit =
   | string
   | URLSearchParams
-  | string[][]
+  | [string, string][]
   | Record<string, string | string[]>;
 
 /**
