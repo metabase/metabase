@@ -7,7 +7,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v63.2026-07-03T00:00:00
+      id: v63.oxRKX6
       author: bronsa
       comment: Create transform_dag_run table to track manual DAG-reprocess runs seeded from a single transform
       preConditions:
@@ -108,7 +108,7 @@ databaseChangeLog:
   ## index first means that on rollback the FK is dropped before the index, so dropping the index
   ## never fails with "needed in a foreign key constraint".
   - changeSet:
-      id: v63.2026-07-03T00:00:01
+      id: v63.btfmlX
       author: bronsa
       comment: Index transform_dag_run on source_transform_id for per-transform DAG run history lookups (also backs the FK below)
       preConditions:
@@ -130,7 +130,7 @@ databaseChangeLog:
             indexName: idx_transform_dag_run_source_transform_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:02
+      id: v63.dQGhvK
       author: bronsa
       comment: FK from transform_dag_run.source_transform_id to transform; cascade-delete a transform's DAG run history with it
       preConditions:
@@ -154,7 +154,7 @@ databaseChangeLog:
 
   ## Index before the FK, same MySQL/MariaDB rollback reasoning as source_transform_id above.
   - changeSet:
-      id: v63.2026-07-03T00:00:03
+      id: v63.yY6UC9
       author: bronsa
       comment: Index transform_dag_run on user_id (backs the FK below and covers per-user run history lookups)
       preConditions:
@@ -176,7 +176,7 @@ databaseChangeLog:
             indexName: idx_transform_dag_run_user_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:04
+      id: v63.BTINKo
       author: bronsa
       comment: FK from transform_dag_run.user_id to core_user; null it out when the user is deleted so run history survives
       preConditions:
@@ -199,7 +199,7 @@ databaseChangeLog:
             constraintName: fk_transform_dag_run_user_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:05
+      id: v63.ohN51V
       author: bronsa
       comment: Index transform_dag_run on (is_active, last_heartbeat) so the every-minute reaper scan is O(active rows)
       preConditions:
@@ -223,7 +223,7 @@ databaseChangeLog:
             indexName: idx_transform_dag_run_active_runs
 
   - changeSet:
-      id: v63.2026-07-03T00:00:06
+      id: v63.HUpfDD
       author: bronsa
       comment: >-
         Add dag_run_id to transform_run to link each transform execution to its coordinating DAG run
@@ -251,7 +251,7 @@ databaseChangeLog:
             columnName: dag_run_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:07
+      id: v63.tOY28l
       author: bronsa
       comment: Index transform_run on dag_run_id for efficient drill-down of a DAG run's member transform runs
       preConditions:
