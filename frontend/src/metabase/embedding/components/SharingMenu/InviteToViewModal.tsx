@@ -3,9 +3,12 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { UserForm } from "metabase/admin/people/forms/UserForm";
-import { trackInviteToViewOpened, trackUserInvited } from "metabase/analytics";
 import { useCreateUserMutation } from "metabase/api";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
+import {
+  trackInviteToViewOpened,
+  trackUserInvited,
+} from "metabase/common/analytics";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useSetting, useToast } from "metabase/common/hooks";

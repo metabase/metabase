@@ -4,7 +4,7 @@ import type { InviteInfo, State } from "metabase/redux/store";
 
 import { submitUserInvite } from "./actions";
 
-const { trackUserInvited } = jest.requireMock("metabase/analytics");
+const { trackUserInvited } = jest.requireMock("metabase/common/analytics");
 const mockCreateUser = jest.fn();
 userApi.endpoints.createUser.initiate = mockCreateUser;
 
@@ -67,5 +67,6 @@ describe("submitUserInvite", () => {
       result: "success",
       eventDetail: "new_user",
     });
+    expect(trackUserInvited).toHaveBeenCalledTimes(1);
   });
 });

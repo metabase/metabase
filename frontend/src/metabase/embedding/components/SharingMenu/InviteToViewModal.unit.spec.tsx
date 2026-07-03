@@ -9,10 +9,11 @@ import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { InviteToViewModal } from "./InviteToViewModal";
 
-// metabase/analytics is auto-mocked globally (frontend/test/__support__/mocks.js),
+// metabase/common/analytics is auto-mocked globally (frontend/test/__support__/mocks.js),
 // so the trackers are jest.fns we can assert on.
-const { trackUserInvited, trackInviteToViewOpened } =
-  jest.requireMock("metabase/analytics");
+const { trackUserInvited, trackInviteToViewOpened } = jest.requireMock(
+  "metabase/common/analytics",
+);
 
 const GROUPS = [
   createMockGroup({ id: 1, magic_group_type: "all-internal-users" }),
@@ -197,6 +198,7 @@ describe("InviteToViewModal", () => {
       triggeredFrom: "dashboard",
       targetId: 1,
     });
+    expect(trackInviteToViewOpened).toHaveBeenCalledTimes(1);
   });
 
   it("tracks user_invited success/new_user on a successful invite", async () => {
@@ -211,6 +213,7 @@ describe("InviteToViewModal", () => {
       result: "success",
       eventDetail: "new_user",
     });
+    expect(trackUserInvited).toHaveBeenCalledTimes(1);
   });
 
   it("tracks user_invited failure/existing_user when the email is already in use", async () => {
@@ -225,6 +228,7 @@ describe("InviteToViewModal", () => {
       result: "failure",
       eventDetail: "existing_user",
     });
+    expect(trackUserInvited).toHaveBeenCalledTimes(1);
   });
 
   it("never sends the invitee email to analytics", async () => {

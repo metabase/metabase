@@ -1,9 +1,9 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { trackUserInvited } from "metabase/analytics";
 import { useCreateUserMutation } from "metabase/api";
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
+import { trackUserInvited } from "metabase/common/analytics";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";

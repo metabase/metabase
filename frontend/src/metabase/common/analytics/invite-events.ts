@@ -1,9 +1,8 @@
+import { trackSimpleEvent } from "metabase/analytics";
 import type {
   InviteToViewOpenedEvent,
   UserInvitedEvent,
 } from "metabase-types/analytics";
-
-import { trackSimpleEvent } from "./event";
 
 export const trackUserInvited = (params: {
   triggeredFrom: UserInvitedEvent["triggered_from"];
