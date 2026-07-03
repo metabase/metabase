@@ -280,8 +280,8 @@
                                                     {:id "o3"                     :created 15}
                                                     {:id "text-embedding-3-small" :created 8}
                                                     {:id "whisper-1"              :created 7}]}})]
-        (is (= [{:id "gpt-5" :display_name "gpt-5"}
-                {:id "gpt-5.4" :display_name "gpt-5.4"}]
+        (is (= [{:id "gpt-5" :display_name "GPT-5"}
+                {:id "gpt-5.4" :display_name "GPT-5.4"}]
                (:models (openai/list-models))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────

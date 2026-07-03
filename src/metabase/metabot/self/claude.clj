@@ -290,18 +290,18 @@
       (tru "Anthropic API error (HTTP {0})" status))))
 
 (def ^:private supported-models
-  "Anthropic chat models offered in the Metabot model picker.
-  `list-models` returns the intersection of this set with the account's `/v1/models` catalog."
-  #{"claude-fable-5"
-    "claude-opus-4-8"
-    "claude-opus-4-7"
-    "claude-opus-4-6"
-    "claude-opus-4-5-20251101"
-    "claude-opus-4-1-20250805"
-    "claude-sonnet-5"
-    "claude-sonnet-4-6"
-    "claude-sonnet-4-5-20250929"
-    "claude-haiku-4-5-20251001"})
+  "Anthropic chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"claude-fable-5"             "Claude Fable 5"
+   "claude-opus-4-8"            "Claude Opus 4.8"
+   "claude-opus-4-7"            "Claude Opus 4.7"
+   "claude-opus-4-6"            "Claude Opus 4.6"
+   "claude-opus-4-5-20251101"   "Claude Opus 4.5"
+   "claude-opus-4-1-20250805"   "Claude Opus 4.1"
+   "claude-sonnet-5"            "Claude Sonnet 5"
+   "claude-sonnet-4-6"          "Claude Sonnet 4.6"
+   "claude-sonnet-4-5-20250929" "Claude Sonnet 4.5"
+   "claude-haiku-4-5-20251001"  "Claude Haiku 4.5"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -336,7 +336,8 @@
    {:models (->> (list-all-models opts)
                  (filter supported-model?)
                  (sort-by :id)
-                 (mapv #(select-keys % [:id :display_name])))}))
+                 (mapv (fn [{:keys [id display_name]}]
+                         {:id id :display_name (or display_name (supported-models id))})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.

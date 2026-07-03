@@ -39,11 +39,11 @@
 (deftest list-models-filters-to-whitelist-test
   (mt/with-dynamic-fn-redefs [bedrock/list-all-models (constantly fake-catalog)]
     (testing "only whitelisted models survive sorted by id"
-      (is (= {:models [{:id "anthropic.claude-fable-5" :display_name "anthropic.claude-fable-5"}
-                       {:id "anthropic.claude-haiku-4-5" :display_name "anthropic.claude-haiku-4-5"}
-                       {:id "anthropic.claude-opus-4-8" :display_name "anthropic.claude-opus-4-8"}
-                       {:id "openai.gpt-5.4" :display_name "openai.gpt-5.4"}
-                       {:id "openai.gpt-5.5" :display_name "openai.gpt-5.5"}]}
+      (is (= {:models [{:id "anthropic.claude-fable-5" :display_name "Claude Fable 5"}
+                       {:id "anthropic.claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
+                       {:id "anthropic.claude-opus-4-8" :display_name "Claude Opus 4.8"}
+                       {:id "openai.gpt-5.4" :display_name "GPT-5.4"}
+                       {:id "openai.gpt-5.5" :display_name "GPT-5.5"}]}
              (bedrock/list-models))))))
 
 (deftest list-models-missing-credentials-test
