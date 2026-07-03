@@ -25,10 +25,17 @@ function toLocationDescriptor(to: To, state: unknown): LocationDescriptor {
  * Absolute paths only: v7's relative `to` (`".."`, `"child"`) is not resolved on
  * v3, that lands with the engine swap and modal routes (Phase 1.3).
  *
+ * The returned function gets a new identity whenever the pathname changes, like
+ * v7 (whose callback depends on the current pathname). Keeping it stable would
+ * be nicer, but it would diverge: a mounted `<Navigate>` would stop re-asserting
+ * its target, and effects keyed on `navigate` would run a different number of
+ * times, so code written against the facade would behave differently after the
+ * swap.
+ *
  * @see https://reactrouter.com/7.18.1/api/hooks/useNavigate
  */
 export function useNavigate(): NavigateFunction {
-  const { router } = useRouter();
+  const { router, location } = useRouter();
 
   return useCallback(
     (to: To | number, options: NavigateOptions = {}) => {
@@ -37,13 +44,16 @@ export function useNavigate(): NavigateFunction {
         return;
       }
 
-      const location = toLocationDescriptor(to, options.state);
+      const descriptor = toLocationDescriptor(to, options.state);
       if (options.replace) {
-        router.replace(location);
+        router.replace(descriptor);
       } else {
-        router.push(location);
+        router.push(descriptor);
       }
     },
-    [router],
+    // location.pathname does not affect a single call, it is here to give
+    // `navigate` a new identity per navigation, matching v7.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [router, location.pathname],
   ) as NavigateFunction;
 }

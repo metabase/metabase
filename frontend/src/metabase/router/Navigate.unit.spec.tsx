@@ -12,7 +12,7 @@ const HOME_STATE = { from: "home" };
 const RICH_STATE = { when: new Date(0), n: NaN };
 
 describe("router/Navigate", () => {
-  it("pushes to the destination on mount, keeping the previous entry", async () => {
+  it("pushes to the destination on mount, re-asserting it on back", async () => {
     const Host = () => <Navigate to="/dest" />;
     const { history } = renderWithProviders(
       <Route path="*" component={Host} />,
@@ -26,9 +26,12 @@ describe("router/Navigate", () => {
       expect(history?.getCurrentLocation().pathname).toBe("/dest"),
     );
 
-    // v7's <Navigate> pushes by default, so /home is still on the stack.
+    // Like v7: `navigate`'s identity changes with each navigation, so a mounted
+    // <Navigate> re-fires on the way back and snaps forward to its target again.
     act(() => history?.goBack());
-    expect(history?.getCurrentLocation().pathname).toBe("/home");
+    await waitFor(() =>
+      expect(history?.getCurrentLocation().pathname).toBe("/dest"),
+    );
   });
 
   it("replaces the current entry and carries state when asked", async () => {
