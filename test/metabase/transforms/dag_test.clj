@@ -92,8 +92,8 @@
                  :model/Transform {tid-b :id} {:name "member-b"}]
     (let [{run-id :id} (dag-run/start-dag-run! seed :upstream nil)]
       (try
-        (let [{active-run :id} (transform-run/start-run! tid-a {:dag_run_id run-id})
-              {done-run :id}   (transform-run/start-run! tid-b {:dag_run_id run-id})]
+        (let [{active-run :id} (transform-run/start-run! tid-a {:dag_run_id run-id :run_method :manual})
+              {done-run :id}   (transform-run/start-run! tid-b {:dag_run_id run-id :run_method :manual})]
           (transform-run/succeed-started-run! done-run)
           (testing "active-transform-run-ids-for-dag-run returns only still-active member runs"
             (is (= [active-run] (dag-run/active-transform-run-ids-for-dag-run run-id))))

@@ -2490,7 +2490,6 @@
   transforms-rest
   {:team "Gadget"
    :api  #{metabase.transforms-rest.api.transform
-           metabase.transforms-rest.api.transform-dag-run
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
