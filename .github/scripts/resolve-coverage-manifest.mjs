@@ -27,41 +27,42 @@ export async function resolveCoverageManifest({
   repo,
   headSha,
   log = console.log,
-  name = ARTIFACT_NAME,
-  extractDir = EXTRACT_DIR,
-  manifestPath = MANIFEST_PATH,
 }) {
   try {
     // Every retained manifest artifact, newest first. Each carries its
-    // nightly's head_sha — the commit it was built from (== builtAt)
+    // nightly's head_sha — the commit it was built from (== builtAt).
     const artifacts = await github.paginate(
       github.rest.actions.listArtifactsForRepo,
-      { owner, repo, name, per_page: 100 },
+      { owner, repo, name: ARTIFACT_NAME, per_page: 100 },
     );
     const candidates = artifacts
-      .filter((a) => !a.expired && a.workflow_run?.head_sha)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      .filter((artifact) => !artifact.expired && artifact.workflow_run?.head_sha)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
 
     // First candidate that is an ancestor of head is the closest in history
     // (master is linear, candidates are chronological). compare base...head:
     // behind_by === 0 ⇒ base is an ancestor of head; ahead_by is the distance.
     let chosen = null;
-    for (const art of candidates) {
-      const base = art.workflow_run.head_sha;
+    for (const artifact of candidates) {
+      const base = artifact.workflow_run.head_sha;
       // A stale candidate (force-pushed/GC'd commit) makes compare 404 — skip
       // it rather than lose the optimization for everyone.
-      let cmp;
+      let comparison;
       try {
-        ({ data: cmp } = await github.rest.repos.compareCommitsWithBasehead({
-          owner,
-          repo,
-          basehead: `${base}...${headSha}`,
-        }));
+        ({ data: comparison } =
+          await github.rest.repos.compareCommitsWithBasehead({
+            owner,
+            repo,
+            basehead: `${base}...${headSha}`,
+          }));
       } catch {
         continue;
       }
-      if (cmp.behind_by === 0) {
-        chosen = { art, base, behindBy: cmp.ahead_by };
+      if (comparison.behind_by === 0) {
+        chosen = { artifact, base, behindBy: comparison.ahead_by };
         break;
       }
     }
@@ -71,21 +72,21 @@ export async function resolveCoverageManifest({
       return null;
     }
 
-    const dl = await github.rest.actions.downloadArtifact({
+    const download = await github.rest.actions.downloadArtifact({
       owner,
       repo,
-      artifact_id: chosen.art.id,
+      artifact_id: chosen.artifact.id,
       archive_format: "zip",
     });
-    fs.writeFileSync(`${name}.zip`, Buffer.from(dl.data));
-    execFileSync("unzip", ["-o", `${name}.zip`, "-d", extractDir]);
+    fs.writeFileSync(`${ARTIFACT_NAME}.zip`, Buffer.from(download.data));
+    execFileSync("unzip", ["-o", `${ARTIFACT_NAME}.zip`, "-d", EXTRACT_DIR]);
 
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
     log(
       `Using coverage manifest ${chosen.base.slice(0, 12)} ` +
         `(${chosen.behindBy} commits behind HEAD).`,
     );
-    return { ...manifest, path: manifestPath, behindBy: chosen.behindBy };
+    return { ...manifest, path: MANIFEST_PATH, behindBy: chosen.behindBy };
   } catch (error) {
     log(`Coverage manifest resolution failed; e2e will run in full: ${error}`);
     return null;

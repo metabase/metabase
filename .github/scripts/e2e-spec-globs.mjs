@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 
 // Canonical glob set identifying e2e scenario specs — the "universe" the test
 // planner selects from (create-test-plan.ts) and the coverage manifest builder
-// reconciles against for backfill (build-coverage-manifest.mjs)
+// reconciles against for backfill (build-coverage-manifest.mjs).
 export const E2E_SPEC_GLOBS = [
   "e2e/test/scenarios/**/*.cy.spec.js",
   "e2e/test/scenarios/**/*.cy.spec.jsx",

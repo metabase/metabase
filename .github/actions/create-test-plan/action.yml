@@ -95,7 +95,7 @@ runs:
     - name: Report test plan
       shell: bash
       run: |
-        p=test-plan.json
+        plan=test-plan.json
         row() { # name, selected, total
           if [ "$2" -eq "$3" ]; then echo "| $1 | all ($3) | $3 |"; else echo "| $1 | $2 | $3 |"; fi
         }
@@ -104,20 +104,20 @@ runs:
           echo
           echo "| Suite | Selected | Total |"
           echo "|---|---:|---:|"
-          row "Unit" "$(jq '.stats.unit_specs_to_run_usage' $p)" "$(jq '.stats.unit_specs_all' $p)"
-          row "Loki" "$(jq '.stats.loki_stories_to_run_usage' $p)" "$(jq '.stats.loki_stories_all' $p)"
-          row "E2E"  "$(jq '.stats.e2e_specs_to_run_usage' $p)"  "$(jq '.stats.e2e_specs_all' $p)"
+          row "Unit" "$(jq '.stats.unit_specs_to_run_usage' "$plan")" "$(jq '.stats.unit_specs_all' "$plan")"
+          row "Loki" "$(jq '.stats.loki_stories_to_run_usage' "$plan")" "$(jq '.stats.loki_stories_all' "$plan")"
+          row "E2E"  "$(jq '.stats.e2e_specs_to_run_usage' "$plan")"  "$(jq '.stats.e2e_specs_all' "$plan")"
           echo
-          echo "Changed: $(jq '.stats.fe_files_changed' $p) FE / $(jq '.stats.be_files_changed' $p) BE file(s) · $(jq '.stats.fe_modules_affected_usage' $p) FE module(s) affected"
+          echo "Changed: $(jq '.stats.fe_files_changed' "$plan") FE / $(jq '.stats.be_files_changed' "$plan") BE file(s) · $(jq '.stats.fe_modules_affected_usage' "$plan") FE module(s) affected"
           echo
-          e2e_run=$(jq '.stats.e2e_specs_to_run_usage' $p)
-          e2e_all=$(jq '.stats.e2e_specs_all' $p)
+          e2e_run=$(jq '.stats.e2e_specs_to_run_usage' "$plan")
+          e2e_all=$(jq '.stats.e2e_specs_all' "$plan")
           if [ "$e2e_run" -eq "$e2e_all" ]; then
             echo "**E2E: full run** — no manifest, or a change the coverage manifest can't scope (backend, e2e infra, cljc/cljs)."
           else
             echo "<details><summary><b>E2E specs to run ($e2e_run)</b></summary>"
             echo
-            jq -r '.e2e_specs_to_run[]' $p | sed 's/^/- /'
+            jq -r '.e2e_specs_to_run[]' "$plan" | sed 's/^/- /'
             echo
             echo "</details>"
           fi
@@ -125,7 +125,7 @@ runs:
           echo "<details><summary>Full stats (rules vs usage graph)</summary>"
           echo
           echo '```json'
-          jq '.stats' $p
+          jq '.stats' "$plan"
           echo '```'
           echo "</details>"
         } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
