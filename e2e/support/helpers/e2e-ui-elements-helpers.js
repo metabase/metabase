@@ -31,7 +31,7 @@ export function menu() {
 }
 
 export function modal() {
-  return cy.findByRole("dialog");
+  return cy.findAllByRole("dialog").filter("[aria-modal='true']");
 }
 
 export function tooltip() {
