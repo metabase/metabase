@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import { useGetTableSelectionInfoQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
+import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,

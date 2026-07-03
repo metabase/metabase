@@ -100,7 +100,7 @@
 (deftest analytics-permissions-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
-                   :model/Database         {database-id :id} {}
+                   :model/Database         {database-id :id} {:is_audit true}
                    :model/Table            view-table        {:db_id database-id :name "v_users"}
                    :model/Collection       collection        {:namespace "analytics"}]
       (with-redefs [audit/audit-db-id                 database-id

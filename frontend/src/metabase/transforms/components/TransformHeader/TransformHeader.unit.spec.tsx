@@ -61,25 +61,23 @@ describe("TransformHeader", () => {
       setup({ isEditMode: false });
 
       expect(
-        screen.getByRole("link", { name: "Definition" }),
+        screen.getByRole("tab", { name: "Definition" }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Run" })).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Settings" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Run" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Settings" })).toBeInTheDocument();
     });
 
     it("should not render tabs when isEditMode is true", () => {
       setup({ isEditMode: true });
 
       expect(
-        screen.queryByRole("link", { name: "Definition" }),
+        screen.queryByRole("tab", { name: "Definition" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("link", { name: "Run" }),
+        screen.queryByRole("tab", { name: "Run" }),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("link", { name: "Target" }),
+        screen.queryByRole("tab", { name: "Target" }),
       ).not.toBeInTheDocument();
     });
   });
@@ -95,7 +93,7 @@ describe("TransformHeader", () => {
       setupEnterprisePlugins();
       setup();
 
-      const inspectLink = screen.getByRole("link", { name: /Inspect/ });
+      const inspectLink = screen.getByRole("tab", { name: /Inspect/ });
       expect(inspectLink).toBeInTheDocument();
 
       expect(within(inspectLink).getByTestId("upsell-gem")).toBeInTheDocument();
@@ -107,7 +105,7 @@ describe("TransformHeader", () => {
 
       setup();
 
-      const inspectLink = screen.getByRole("link", { name: "Inspect" });
+      const inspectLink = screen.getByRole("tab", { name: "Inspect" });
       expect(inspectLink).toBeInTheDocument();
 
       expect(

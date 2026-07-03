@@ -208,11 +208,15 @@ describe("Auth Flow - JWT", () => {
       fetchRequestToken: customFetchFunction,
     });
 
-    setup({ authConfig });
+    const { getLastUserApiCall } = setup({ authConfig });
 
     expect(
       screen.queryByTestId("sdk-usage-problem-indicator"),
     ).not.toBeInTheDocument();
+
+    // Let the auth flow settle so its in-flight requests don't leak into the
+    // next test (the strict afterEach fails on unmocked routes).
+    await waitForRequest(() => getLastUserApiCall());
   });
 
   it("should include the subpath when requesting the SSO endpoint", async () => {

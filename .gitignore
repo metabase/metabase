@@ -191,3 +191,6 @@ __pycache__/
 .claude/scheduled_tasks.lock
 .playwright-mcp
 .ci_reports/
+
+# dependency-cruiser output
+dependency-graph.json

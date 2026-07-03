@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
+import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,

@@ -79,7 +79,7 @@ export const fetchTableMetadataAndForeignKeys =
     await dispatch(fetchTableMetadata({ id }, options));
 
     const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
-    await Promise.all([
+    await Promise.allSettled([
       ...getTableForeignKeyTableIds(table).map((tableId) =>
         dispatch(fetchTableMetadata({ id: tableId }, options)),
       ),

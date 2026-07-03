@@ -23,9 +23,18 @@
      {:field-name "no_comment", :base-type :type/Text}]
     [["foo" "bar"]]]])
 
+(defmethod driver/database-supports? [::driver/driver ::field-comments-sync]
+  [_driver _feature _database]
+  false)
+
+(doseq [driver [:h2 :postgres :starburst]]
+  (defmethod driver/database-supports? [driver ::field-comments-sync]
+    [_driver _feature _database]
+    true))
+
 (deftest ^:parallel basic-field-comments-test
   (testing "test basic field comments sync"
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset basic-field-comments
         (is (= #{{:name (mt/format-name "id"), :description nil}
                  {:name (mt/format-name "with_comment"), :description "comment"}
@@ -40,7 +49,7 @@
 (deftest comment-should-not-overwrite-custom-description-test
   (testing (str "test changing the description in metabase db so we can check it is not overwritten by comment in "
                 "source db when resyncing")
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset update-desc
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
@@ -58,7 +67,7 @@
 
 (deftest sync-comment-on-existing-field-test
   (testing "test adding a comment to the source data that was initially empty, so we can check that the resync picks it up"
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       ;; modify the source DB to add the comment and resync. The easiest way to do this is just destroy the entire DB
       ;; and re-create a modified version. As such, let the SQL JDBC driver know the DB is being "modified" so it can
       ;; destroy its current connection pool
@@ -90,30 +99,46 @@
 (defn- db->tables [db]
   (set (map (partial into {}) (t2/select [:model/Table :name :description] :db_id (u/the-id db)))))
 
+(defmethod driver/database-supports? [::driver/driver ::table-comments-sync]
+  [_driver _feature _database]
+  false)
+
+(doseq [driver [:h2 :postgres :starburst]]
+  (defmethod driver/database-supports? [driver ::table-comments-sync]
+    [_driver _feature _database]
+    true))
+
+(defn- get-table-name [driver table-name]
+  (-> (sql.tx/qualified-name-components driver (str table-name "_db") table-name)
+      last
+      mt/format-name))
+
 (deftest ^:parallel table-comments-test
   (testing "test basic comments on table"
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers (mt/normal-driver-select {:+features [::table-comments-sync]})
       (mt/dataset (basic-table "table_with_comment" "table comment")
-        (is (= #{{:name (mt/format-name "table_with_comment"), :description "table comment"}}
+        (is (= #{{:name (get-table-name driver/*driver* "table_with_comment")
+                  :description "table comment"}}
                (db->tables (mt/db))))))))
 
 (deftest dont-overwrite-table-custom-description-test
   (testing (str "test changing the description in metabase on table to check it is not overwritten by comment in "
                 "source db when resyncing")
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers (mt/normal-driver-select {:+features [::table-comments-sync]})
       (mt/dataset (basic-table "table_with_updated_desc" "table comment")
         (mt/with-temp-copy-of-db
           ;; change the description in metabase while the source table comment remains the same
           (t2/update! :model/Table {:id (mt/id "table_with_updated_desc")} {:description "updated table description"})
           ;; now sync the DB again, this should NOT overwrite the manually updated description
           (sync-tables/sync-tables-and-database! (mt/db))
-          (is (= #{{:name (mt/format-name "table_with_updated_desc") :description "updated table description"}}
+          (is (= #{{:name (get-table-name driver/*driver* "table_with_updated_desc")
+                    :description "updated table description"}}
                  (db->tables (mt/db)))))))))
 
 (deftest sync-existing-table-comment-test
   (testing "test adding a comment to the source table that was initially empty, so we can check that the resync picks it up"
-    (mt/test-drivers #{:h2 :postgres :redshift}
-      (let [table-name (apply str (take 10 (mt/random-name)))
+    (mt/test-drivers (mt/normal-driver-select {:+features [::table-comments-sync]})
+      (let [table-name (u/lower-case-en (apply str (take 10 (mt/random-name))))
             added-comment (mt/random-name)
             dbdef (basic-table table-name nil)]
         (mt/dataset dbdef
@@ -123,6 +148,7 @@
                            driver/*driver*
                            dbdef
                            (tx/map->TableDefinition {:table-name table-name
-                                                     :table-comment added-comment}))])
+                                                     :table-comment added-comment}))]
+                         {:transaction? false}) ;; trino needs transactions off
           (sync-tables/sync-tables-and-database! (mt/db))
           (is (true? (t2/exists? :model/Table :db_id (mt/id) :description added-comment))))))))

@@ -4,7 +4,7 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useLocale } from "metabase/common/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";

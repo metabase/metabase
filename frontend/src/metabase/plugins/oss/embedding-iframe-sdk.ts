@@ -1,5 +1,12 @@
+import type { OnBeforeRequestHandler } from "metabase/api/client";
+
+const noop: OnBeforeRequestHandler = async () => {};
+
 const getDefaultPluginEmbeddingIframeSdk = () => ({
   isEnabled: () => false,
+  onBeforeRequestHandlers: {
+    embedReferrer: noop,
+  },
 });
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = getDefaultPluginEmbeddingIframeSdk();

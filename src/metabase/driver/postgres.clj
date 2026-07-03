@@ -1667,13 +1667,12 @@
           (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
                        (format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
-                       ;; grant schema access (CREATE to create tables, USAGE to access them)
-                       ;; GRANT is idempotent in PostgreSQL
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                       ;; grant all privileges on future tables created in this schema (by admin)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
-                               quoted-schema quoted-user)
-                       ;; grant role membership to admin so DROP OWNED BY works during cleanup
+                       ;; Schema-level grant only (Postgres' two schema privileges):
+                       ;;   USAGE  - access the schema
+                       ;;   CREATE - create tables in it
+                       ;; Table DML comes from ownership (the user owns the tables it creates).
+                       (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)
+                       ;; role membership to admin so DROP OWNED BY works during cleanup
                        (format "GRANT %s TO CURRENT_USER" quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try

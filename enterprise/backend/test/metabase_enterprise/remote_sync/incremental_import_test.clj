@@ -96,7 +96,7 @@
         path (atom :fallback)]
     (with-redefs [impl/incremental-load-snapshot!
                   (fn [& args] (let [r (apply real args)]
-                                 (reset! path (if (= r @#'impl/incremental-not-possible) :fallback :incremental))
+                                 (reset! path (if (= r :remote-sync/incremental-not-possible) :fallback :incremental))
                                  r))]
       [(import-at! src "v1" :force? false) @path])))
 

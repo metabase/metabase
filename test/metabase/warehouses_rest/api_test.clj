@@ -833,7 +833,8 @@
 
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
-    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc)
+                             (mt/normal-drivers-with-feature :actions :test/dynamic-dataset-loading))
       (let [;; 1. create a database and sync
             database-name      (u.random/random-name)
             empty-dbdef        {:database-name database-name}
@@ -3051,6 +3052,24 @@
                                                     :details {:host "localhost"}}]
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
                                 {:admin_details {:host "admin-host"}}))))))
+
+(deftest update-database-preserves-overlay-details-test
+  (testing "PUT /api/database/:id without write_data_details/admin_details/provider_name keys"
+    (testing "preserves nullable fields instead of nil-ing them out"
+      (mt/with-premium-features #{:writable-connection :workspaces}
+        (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
+                                                    :details            {:host "localhost"}
+                                                    :write_data_details {:host "write-host"}
+                                                    :admin_details      {:host "admin-host"}
+                                                    :provider_name      "AWS RDS"}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:name "Renamed DB"})
+            (is (=? {:name               "Renamed DB"
+                     :write_data_details {:host "write-host"}
+                     :admin_details      {:host "admin-host"}
+                     :provider_name      "AWS RDS"}
+                    (t2/select-one :model/Database :id db-id)))))))))
 
 (deftest put-validates-admin-details-connection-test
   (when config/ee-available?

@@ -991,11 +991,15 @@
                        (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
                        (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          ;; Schema-level grant only (Redshift's two schema privileges):
+          ;;   USAGE  - access the schema
+          ;;   CREATE - create tables in it
+          ;; Table DML comes from ownership (the user owns the tables it creates), so we skip
+          ;; `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES` (that only covers tables created
+          ;; by the admin connection, which never happens on the transform path).
           (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
-                               quoted-schema quoted-user)]]
+                       (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)

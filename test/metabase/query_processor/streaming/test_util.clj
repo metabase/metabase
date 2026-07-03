@@ -33,7 +33,7 @@
 (defmethod parse-result* :csv
   [_ ^InputStream is _]
   (with-open [reader (InputStreamReader. is)]
-    (doall (csv/read-csv reader))))
+    (doall (csv/read-csv (u/strip-bom (slurp reader))))))
 
 (defmethod parse-result* :xlsx
   [_ ^InputStream is column-names]
