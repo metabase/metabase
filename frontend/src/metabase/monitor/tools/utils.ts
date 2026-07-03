@@ -63,11 +63,11 @@ export const getTaskRunStatusColor = (status: TaskRunStatus): BadgeColor =>
     .with("abandoned", () => "warning" as const)
     .otherwise(() => "neutral" as const);
 
-export const getTaskStatusColor = (status: TaskStatus) =>
+export const getTaskStatusColor = (status: TaskStatus): BadgeColor =>
   match(status)
-    .with("success", () => "success" as const)
-    .with("failed", () => "error" as const)
-    .otherwise(() => "text-primary" as const);
+    .with("success", () => "positive" as const)
+    .with("failed", () => "negative" as const)
+    .otherwise(() => "neutral" as const);
 
 export const getFilename = (task: Task | undefined) =>
   task ? `task-${task.id}.json` : "task.json";
