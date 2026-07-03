@@ -859,7 +859,7 @@
 
 (def ^:private item-attr-keys
   "Attributes rendered as XML attrs on each <item> element. Order matters for stable output."
-  [:type :id :name :uri :database_id :collection_id :table_id
+  [:type :id :dashcard_id :card_type :card_id :name :uri :database_id :collection_id :table_id
    :schema :display_name :authority_level :is_personal :path :location
    :engine :timestamp])
 

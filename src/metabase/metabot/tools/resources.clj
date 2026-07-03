@@ -56,7 +56,10 @@
   - metabase://transform/{id}/sources - tables/databases this transform reads from
   - metabase://transform/{id}/target - table this transform writes to
   - metabase://dashboard/{id} - dashboard details
-  - metabase://dashboard/{id}/items - cards on the dashboard"
+  - metabase://dashboard/{id}/items - all of the dashboard's dashcards, one item per dashcard
+    with its dashcard_id; card_type says what the slot holds (question/model/metric with the
+    underlying card's card_id + uri, text/heading with the text as the item body, link/iframe/
+    action, or restricted when the underlying card isn't readable)"
   (:require
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
@@ -569,22 +572,58 @@
       {:structured-output (assoc dashboard :result-type :entity)}
       {:status-code 404 :output (:output result)})))
 
-(defn- fetch-dashboard-items [id-str query-params]
+(defn- virtual-display
+  "The virtual-card display of a cardless dashcard (\"text\", \"heading\", \"link\", \"iframe\")
+  as a string, or nil for question dashcards. `name` tolerates both the string the JSON
+  round-trip produces and a keyword from an in-process write."
+  [dashcard]
+  (some-> (get-in dashcard [:visualization_settings :virtual_card :display]) name))
+
+(defn- present-dashcard
+  "One list item per dashcard (a card's slot on the dashboard). Every dashcard is returned —
+  layout operations (remove/move/edit) need each slot to be addressable by `:dashcard_id`
+  even when its content can't be shown. `:card_type` says what the slot holds:
+
+  - question / model / metric — a saved card, flattened in: its id under `:card_id`, plus
+    `:name`, `:description`, and a `:uri` to drill into. Becomes `restricted` (no card
+    details) when the current user can't read the underlying card.
+  - text / heading — virtual content living on the dashcard itself; the text rides in
+    `:description` (the item body).
+  - link / iframe / action — other virtual dashcard types; links carry their URL."
+  [{dashcard-id :id :keys [card card_id action_id visualization_settings] :as dashcard}]
+  (let [base {:type "dashcard" :dashcard_id dashcard-id}]
+    (cond
+      card_id
+      (if (and card (mi/can-read? card))
+        (let [{card-type :type :as presented} (present-card card)]
+          (-> presented
+              (dissoc :id)
+              (merge base)
+              (assoc :card_type card-type
+                     :card_id   card_id)))
+        (assoc base :card_type "restricted"))
+
+      action_id
+      (assoc base :card_type "action")
+
+      :else
+      (let [display (or (virtual-display dashcard) "unknown")]
+        (cond-> (assoc base :card_type display)
+          (#{"text" "heading"} display) (assoc :description (:text visualization_settings))
+          (= "link" display)            (assoc :description (get-in visualization_settings [:link :url])))))))
+
+(defn- fetch-dashboard-items
+  "The dashboard's dashcards in grid reading order (top-to-bottom, left-to-right), with each
+  dashcard's underlying Card hydrated and presented per [[present-dashcard]]."
+  [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
-        cards        (->> (t2/select [:model/Card :id :name :type :description :card_schema
-                                      :collection_id :database_id :table_id]
-                                     {:where    [:and
-                                                 [:= :archived false]
-                                                 [:exists {:select 1
-                                                           :from   [[:report_dashboardcard :dc]]
-                                                           :where  [:and
-                                                                    [:= :dc.card_id :report_card.id]
-                                                                    [:= :dc.dashboard_id dashboard-id]]}]]
-                                      :order-by [[:%lower.name :asc]]})
-                          (filter mi/can-read?)
-                          (mapv present-card))]
-    (list-result :dashboard-items cards query-params)))
+        items        (-> (t2/select :model/DashboardCard
+                                    :dashboard_id dashboard-id
+                                    {:order-by [[:row :asc] [:col :asc]]})
+                         (t2/hydrate :card)
+                         (->> (mapv present-dashcard)))]
+    (list-result :dashboard-items items query-params)))
 
 ;; ----- Dispatch -----
 

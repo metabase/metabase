@@ -140,14 +140,14 @@ You can request multiple resources in one call by providing a list of URIs (max 
 ## Dashboard resources
 
 - `metabase://dashboard/{id}` — dashboard details
-- `metabase://dashboard/{id}/items` — cards on the dashboard (each rendered as a `metabase://question/{id}` URI you can drill into)
+- `metabase://dashboard/{id}/items` — all of the dashboard's dashcards in grid reading order (top-to-bottom, left-to-right). Each item is a dashcard: a card's slot on this dashboard, identified by `dashcard_id` — the id dashboard-editing tools use to reference it. `card_type` says what the slot holds. For saved cards (`question`/`model`/`metric`) the item carries the underlying card's `card_id`, `name`, and a `uri` you can drill into for details — or `restricted` when you can't read that card. For `text`/`heading` the content is the item body; `link` carries its URL; `iframe` and `action` appear by type only. A question placed twice on a dashboard appears as two dashcards with distinct `dashcard_id`s but the same `card_id`.
 
 **Examples:**
 - Want to understand what a dashboard contains before recommending it? → `metabase://dashboard/158`
 - User asks "what's on this dashboard?" → `metabase://dashboard/158/items`
 
 **Best Practices:**
-- Treat dashboards as containers — when search returns a dashboard hit (`is_container="true"`), use `/items` to list its cards instead of re-searching for the same concept.
+- Treat dashboards as containers — when search returns a dashboard hit (`is_container="true"`), use `/items` to list its contents instead of re-searching for the same concept.
 - Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
 - Prefer verified dashboards when they match the user's request.
 

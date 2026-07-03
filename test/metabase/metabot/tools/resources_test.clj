@@ -414,14 +414,72 @@
               (is (not (str/includes? output "HIDDEN-TBL"))
                   "unreadable table must not appear in the database tables list"))))))))
 
+(deftest read-dashboard-items-dashcards-test
+  (testing "metabase://dashboard/{id}/items returns one item per dashcard, with dashcard_id"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard     {dash-id :id}    {}
+                     :model/Card          {card-id :id}    {:name "DASH-QUESTION"}
+                     :model/DashboardCard {heading-dc :id} {:dashboard_id dash-id
+                                                            :row 0 :col 0 :size_x 24 :size_y 1
+                                                            :visualization_settings
+                                                            {:virtual_card {:display "heading"}
+                                                             :text         "Q3 RESULTS"}}
+                     :model/DashboardCard {text-dc :id}    {:dashboard_id dash-id
+                                                            :row 1 :col 0 :size_x 12 :size_y 3
+                                                            :visualization_settings
+                                                            {:virtual_card {:display "text"}
+                                                             :text         "NARRATIVE-BODY"}}
+                     :model/DashboardCard {q-dc :id}       {:dashboard_id dash-id :card_id card-id
+                                                            :row 4 :col 0 :size_x 12 :size_y 6}
+                     ;; Other virtual types are returned too, so their slot stays addressable.
+                     :model/DashboardCard {link-dc :id}    {:dashboard_id dash-id
+                                                            :row 1 :col 12 :size_x 8 :size_y 1
+                                                            :visualization_settings
+                                                            {:virtual_card {:display "link"}
+                                                             :link         {:url "https://link-card.example.com"}}}]
+        (let [{:keys [resources output]} (read-resource/read-resource
+                                          {:uris [(str "metabase://dashboard/" dash-id "/items")]})
+              items (get-in (first resources) [:content :structured-output :items])]
+          ;; Grid reading order: heading (row 0), text then link (row 1), question (row 4).
+          (is (=? [{:type "dashcard" :dashcard_id heading-dc :card_type "heading"
+                    :description "Q3 RESULTS"}
+                   {:type "dashcard" :dashcard_id text-dc :card_type "text"
+                    :description "NARRATIVE-BODY"}
+                   {:type "dashcard" :dashcard_id link-dc :card_type "link"
+                    :description "https://link-card.example.com"}
+                   {:type "dashcard" :dashcard_id q-dc :card_type "question" :card_id card-id
+                    :name "DASH-QUESTION" :uri (str "metabase://question/" card-id)}]
+                  items))
+          (is (= 4 (count items)))
+          ;; dashcard_id, the card pointer, and text content must survive into the LLM-facing XML.
+          (is (str/includes? output (str "dashcard_id=\"" text-dc "\"")))
+          (is (str/includes? output (str "dashcard_id=\"" q-dc "\" card_type=\"question\" card_id=\"" card-id "\"")))
+          (is (str/includes? output "NARRATIVE-BODY"))
+          (is (str/includes? output "link-card.example.com")))))))
+
+(deftest read-dashboard-items-duplicate-card-test
+  (testing "a card appearing twice on a dashboard yields two items with distinct dashcard_ids"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard     {dash-id :id} {}
+                     :model/Card          {card-id :id} {:name "TWICE-ON-DASH"}
+                     :model/DashboardCard {dc1 :id}     {:dashboard_id dash-id :card_id card-id
+                                                         :row 0 :col 0 :size_x 12 :size_y 6}
+                     :model/DashboardCard {dc2 :id}     {:dashboard_id dash-id :card_id card-id
+                                                         :row 0 :col 12 :size_x 12 :size_y 6}]
+        (let [{:keys [resources]} (read-resource/read-resource
+                                   {:uris [(str "metabase://dashboard/" dash-id "/items")]})
+              items (get-in (first resources) [:content :structured-output :items])]
+          (is (= [[card-id dc1] [card-id dc2]]
+                 (map (juxt :card_id :dashcard_id) items))))))))
+
 (deftest list-filters-dashboard-items-by-can-read-test
-  (testing "metabase://dashboard/{id}/items hides cards the user can't read"
+  (testing "metabase://dashboard/{id}/items presents unreadable cards as restricted dashcards"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Dashboard     {dash-id :id}      {}
                      :model/Card          {visible-card :id} {:name "VISIBLE-DASHCARD"}
                      :model/Card          {hidden-card :id}  {:name "HIDDEN-DASHCARD"}
                      :model/DashboardCard _                  {:dashboard_id dash-id :card_id visible-card}
-                     :model/DashboardCard _                  {:dashboard_id dash-id :card_id hidden-card}]
+                     :model/DashboardCard {hidden-dc :id}    {:dashboard_id dash-id :card_id hidden-card}]
         (let [orig mi/can-read?]
           (with-redefs [mi/can-read? (fn
                                        ([instance]
@@ -433,8 +491,10 @@
             (let [{:keys [output]} (read-resource/read-resource
                                     {:uris [(str "metabase://dashboard/" dash-id "/items")]})]
               (is (str/includes? output "VISIBLE-DASHCARD"))
+              ;; The slot stays addressable, but no card details leak.
+              (is (str/includes? output (str "dashcard_id=\"" hidden-dc "\" card_type=\"restricted\"")))
               (is (not (str/includes? output "HIDDEN-DASHCARD"))
-                  "unreadable card must not appear in dashboard items"))))))))
+                  "unreadable card's details must not appear in dashboard items"))))))))
 
 (deftest read-transform-target-authorization-test
   (testing "fetch-transform-target gates the target table by mi/can-read?"
