@@ -86,7 +86,7 @@
 
   Other types (pie, gauge, funnel, progress, scalar, table, ...) have a fixed size when rendered, and resized to fit
   their grid cell, preserving aspect ratio."
-  #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row})
+  #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row :treemap})
 
 ;; --------------------------------------------------------------------------------------------
 ;; Page geometry
