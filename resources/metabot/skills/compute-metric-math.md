@@ -1,7 +1,7 @@
 ---
 id: compute-metric-math
 title: Metric math — combine metrics with arithmetic
-description: Combining saved metrics/measures with +, -, *, / into one visualization (optionally broken out by a shared dimension) using compute_metric_math — load before building a metric-math formula so you get the expression shape, the breakout rules, and the cross-table limits right.
+description: Combining two or more saved metrics/measures into one visualization — ratios, rates, percentages, differences, variance, share-of-total — with compute_metric_math instead of a separate chart per metric. Load before building a metric-math formula for the expression shape, breakout rules, and limits.
 tools: [compute_metric_math]
 priority: 60
 ---

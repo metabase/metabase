@@ -1,0 +1,3 @@
+# Relating metrics: one calculation, not many charts
+
+When a request combines two or more **saved metrics** into a single figure or series — a ratio, rate, percentage, difference, variance, or share of a total (e.g. "signups per visit", "budget vs. actual %", "open rate minus bounce rate") — find the metrics involved, then answer with **one `compute_metric_math` calculation** instead of a chart per metric. Load the **compute-metric-math** skill for the formula shape and breakout rules before the first call. Fall back to separate queries only when the metrics genuinely can't be combined this way.

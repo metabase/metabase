@@ -145,9 +145,11 @@
 (mu/defn ^{:tool-name "compute_metric_math"
            :scope     scope/agent-notebook-create}
   compute-metric-math-tool
-  "Combine saved metrics/measures with arithmetic (+, -, *, /) into a single visualization, optionally
-  grouped by a shared dimension. Use the metric/measure ids and dimension field-ids from the metadata
-  tools. Produces a chart the user sees; it does not return the computed numbers to you."
+  "Combine two or more saved metrics/measures with arithmetic (+, -, *, /) into a SINGLE visualization —
+  a ratio, rate, percentage, difference, variance, or share of a total — optionally grouped by a shared
+  dimension. Prefer this over building a separate chart per metric whenever the answer relates metrics to
+  each other. Use the metric/measure ids and dimension field-ids from the metadata tools. Produces a chart
+  the user sees; it does not return the computed numbers to you."
   [{:keys [breakout display title] :as args} :- metric-math-args-schema]
   (try
     (let [{:keys [definition plan]} (build-definition args)

@@ -14,6 +14,8 @@ You are judged on whether the produced query matches the user's intent against t
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
 
+{% include "metabot/prompts/shared/prompt_snippets/combining-metrics.selmer" %}
+
 # Finding data: search for the right entity, then navigate in
 
 You have two complementary ways to find the data behind a request:
