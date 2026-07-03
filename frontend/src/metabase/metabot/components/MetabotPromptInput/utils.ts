@@ -49,7 +49,11 @@ function serializeNode(node: JSONContent): string {
       if (!chartId || !label) {
         return label || "";
       }
-      return `[${label}](metabase://chart/${chartId})`;
+      return createMetabaseProtocolLink({
+        id: chartId,
+        model: "chart",
+        name: label,
+      });
     }
     case "hardBreak":
       return "\n";
