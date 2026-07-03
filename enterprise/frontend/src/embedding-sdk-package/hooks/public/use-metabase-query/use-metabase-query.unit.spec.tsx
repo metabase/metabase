@@ -19,9 +19,11 @@ import type {
   UseMetabaseQueryObjectResult,
 } from "./use-metabase-query";
 import {
+  avg,
   breakout,
   count,
   filter,
+  orderBy,
   sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -86,6 +88,7 @@ const TEST_SCHEMA = {
           fieldId: 100,
           tableId: 1,
           name: "ID",
+          "source-name": "orders",
           displayName: "ID",
           jsType: "number",
         },
@@ -94,6 +97,7 @@ const TEST_SCHEMA = {
           fieldId: 103,
           tableId: 1,
           name: "CREATED_AT",
+          "source-name": "orders",
           displayName: "Created At",
           jsType: "Date",
           baseType: "type/DateTime",
@@ -103,6 +107,7 @@ const TEST_SCHEMA = {
           fieldId: 102,
           tableId: 1,
           name: "AMOUNT",
+          "source-name": "orders",
           displayName: "Amount",
           jsType: "number",
         },
@@ -111,6 +116,7 @@ const TEST_SCHEMA = {
           fieldId: 101,
           tableId: 1,
           name: "STATUS",
+          "source-name": "orders",
           displayName: "Status",
           jsType: "string",
         },
@@ -152,6 +158,7 @@ const TEST_SCHEMA = {
           fieldId: 201,
           tableId: 2,
           name: "PRICE",
+          "source-name": "products",
           displayName: "Price",
           jsType: "number",
         },
@@ -193,6 +200,7 @@ const TEST_SCHEMA = {
             fieldId: 102,
             tableId: 1,
             name: "AMOUNT",
+            "source-name": "orders",
             displayName: "Amount",
             jsType: "number",
           },
@@ -201,6 +209,7 @@ const TEST_SCHEMA = {
             fieldId: 103,
             tableId: 1,
             name: "CREATED_AT",
+            "source-name": "orders",
             displayName: "Created At",
             jsType: "Date",
             baseType: "type/DateTime",
@@ -210,6 +219,46 @@ const TEST_SCHEMA = {
             fieldId: 101,
             tableId: 1,
             name: "STATUS",
+            "source-name": "orders",
+            displayName: "Status",
+            jsType: "string",
+          },
+          product: {
+            type: "column",
+            fieldId: 202,
+            tableId: 2,
+            sourceFieldId: 104,
+            name: "NAME",
+            displayName: "Name",
+            jsType: "string",
+          },
+        },
+      },
+    },
+    sourceCardMetric: {
+      type: "metric",
+      id: 32,
+      name: "Stores with over 5 employees",
+      databaseId: 1,
+      sourceCardId: 1,
+      mappedTableIds: [1],
+      columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+      dimensions: {
+        fields: {
+          count: {
+            type: "column",
+            name: "count",
+            displayName: "Count",
+            jsType: "number",
+          },
+        },
+        orders: {
+          status: {
+            type: "column",
+            fieldId: 101,
+            tableId: 1,
+            name: "STATUS",
+            "source-name": "orders",
             displayName: "Status",
             jsType: "string",
           },
@@ -477,6 +526,11 @@ const _validTableQuery = {
   breakouts: [
     breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { unit: "month" }),
   ],
+  orderBys: [
+    orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", {
+      unit: "month",
+    }),
+  ],
   limit: 100,
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
@@ -517,6 +571,11 @@ const _validTableQueryWithMetricAggregation = {
   ],
   breakouts: [
     breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+      unit: "month",
+    }),
+  ],
+  orderBys: [
+    orderBy(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, "desc", {
       unit: "month",
     }),
   ],
@@ -577,10 +636,30 @@ const _invalidMetricSourceQuery = {
 } satisfies MetabaseQueryOptions;
 
 function TypeFixtures() {
-  useMetabaseQuery<OrdersTable>({
+  const selectedFieldsResult = useMetabaseQuery({
     source: TEST_SCHEMA.tables.orders,
     fields: [TEST_SCHEMA.tables.orders.fields.id],
   });
+
+  const selectedFieldValue: number | null | undefined =
+    selectedFieldsResult.data?.rows[0]?.ID;
+
+  void selectedFieldValue;
+
+  const selectedFieldsQuery = {
+    source: TEST_SCHEMA.tables.orders,
+    fields: [
+      TEST_SCHEMA.tables.orders.fields.id,
+      TEST_SCHEMA.tables.orders.fields.status,
+    ],
+  } satisfies MetabaseQueryOptions<OrdersTable>;
+
+  const selectedFieldsQueryResult = useMetabaseQuery(selectedFieldsQuery);
+
+  const selectedQueryFieldValue: string | null | undefined =
+    selectedFieldsQueryResult.data?.rows[0]?.STATUS;
+
+  void selectedQueryFieldValue;
 
   const scalarAggregationResult = useMetabaseQuery<OrdersTable>({
     source: TEST_SCHEMA.tables.orders,
@@ -627,6 +706,21 @@ function TypeFixtures() {
   // @ts-expect-error result row keys use returned column names, not schema object keys
   void groupedMetricResult.data?.rows[0]?.createdAt;
 
+  const sortKey = "createdAt" as "amount" | "createdAt";
+
+  type OrdersField =
+    (typeof TEST_SCHEMA.tables.orders.fields)[keyof typeof TEST_SCHEMA.tables.orders.fields];
+
+  const sortFields = {
+    amount: TEST_SCHEMA.tables.orders.fields.amount,
+    createdAt: TEST_SCHEMA.tables.orders.fields.createdAt,
+  } satisfies Record<string, OrdersField>;
+
+  useMetabaseQuery({
+    source: TEST_SCHEMA.tables.orders,
+    orderBys: [orderBy(sortFields[sortKey], "desc")],
+  });
+
   // @ts-expect-error grouped queries must include an explicit aggregation
   useMetabaseQuery<OrdersTable>({
     source: TEST_SCHEMA.tables.orders,
@@ -670,6 +764,7 @@ describe("resolveDatasetQuery", () => {
       },
       breakout: expect.any(Function),
       filter: expect.any(Function),
+      orderBy: expect.any(Function),
       useMetabaseQuery: expect.any(Function),
       useMetabaseQueryObject: expect.any(Function),
     });
@@ -694,6 +789,11 @@ describe("resolveDatasetQuery", () => {
       aggregations: [count(), sum(TEST_SCHEMA.tables.orders.fields.amount)],
       breakouts: [
         breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { unit: "month" }),
+      ],
+      orderBys: [
+        orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", {
+          unit: "month",
+        }),
       ],
       limit: 100,
     });
@@ -731,6 +831,17 @@ describe("resolveDatasetQuery", () => {
               "field",
               expect.objectContaining({ "temporal-unit": "month" }),
               103,
+            ],
+          ],
+          "order-by": [
+            [
+              "desc",
+              expect.anything(),
+              [
+                "field",
+                expect.objectContaining({ "temporal-unit": "month" }),
+                103,
+              ],
             ],
           ],
           limit: 100,
@@ -865,6 +976,119 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("passes generated metric dimension orderBys through Lib.createTestQuery", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+          unit: "month",
+        }),
+      ],
+      orderBys: [
+        orderBy(
+          TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt,
+          "desc",
+          { unit: "month" },
+        ),
+      ],
+      limit: 12,
+    });
+
+    expect(datasetQuery).toMatchObject({
+      stages: [
+        {
+          "source-table": 1,
+          aggregation: [["metric", expect.anything(), 31]],
+          breakout: [
+            [
+              "field",
+              expect.objectContaining({ "temporal-unit": "month" }),
+              103,
+            ],
+          ],
+          "order-by": [
+            [
+              "desc",
+              expect.anything(),
+              [
+                "field",
+                expect.objectContaining({ "temporal-unit": "month" }),
+                103,
+              ],
+            ],
+          ],
+          limit: 12,
+        },
+      ],
+    });
+  });
+
+  it("passes aggregation result orderBys through Lib.createTestQuery", async () => {
+    const avgAmount = avg(TEST_SCHEMA.tables.orders.fields.amount);
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [avgAmount],
+      breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+      orderBys: [orderBy(avgAmount, "desc")],
+      limit: 15,
+    });
+
+    expect(datasetQuery).toMatchObject({
+      stages: [
+        {
+          aggregation: [
+            ["avg", expect.anything(), ["field", expect.anything(), 102]],
+          ],
+          breakout: [["field", expect.anything(), 101]],
+          "order-by": [
+            [
+              "desc",
+              expect.anything(),
+              ["aggregation", expect.anything(), expect.anything()],
+            ],
+          ],
+          limit: 15,
+        },
+      ],
+    });
+  });
+
+  it("passes metric aggregation result orderBys through Lib.createTestQuery", async () => {
+    const avgAmount = avg(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount);
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue, avgAmount],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.status),
+      ],
+      orderBys: [orderBy(avgAmount, "desc")],
+      limit: 15,
+    });
+
+    expect(datasetQuery).toMatchObject({
+      stages: [
+        {
+          aggregation: [
+            ["metric", expect.anything(), 31],
+            ["avg", expect.anything(), ["field", expect.anything(), 102]],
+          ],
+          breakout: [["field", expect.anything(), 101]],
+          "order-by": [
+            [
+              "desc",
+              expect.anything(),
+              ["aggregation", expect.anything(), expect.anything()],
+            ],
+          ],
+          limit: 15,
+        },
+      ],
+    });
+  });
+
   it("rejects invalid limits with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
@@ -909,6 +1133,26 @@ describe("resolveDatasetQuery", () => {
       }),
     ).rejects.toThrow(
       "Table query breakouts must belong to source table 1, but received table id 2.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.tables.orders,
+        orderBys: [orderBy(TEST_SCHEMA.tables.products.fields.price, "desc")],
+      }),
+    ).rejects.toThrow(
+      "Table query orderBys must belong to source table 1, but received table id 2.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.tables.orders,
+        aggregations: [avg(TEST_SCHEMA.tables.orders.fields.amount)],
+        breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        orderBys: [orderBy(TEST_SCHEMA.tables.orders.fields.amount, "desc")],
+      }),
+    ).rejects.toThrow(
+      "Table query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
     );
   });
 

@@ -324,6 +324,24 @@ export type MetabaseBreakout<TTable = unknown> =
   | FieldReference<TTable>
   | MetabaseBreakoutObjectForDimension<FieldReference<TTable>>;
 
+export type OrderByDirection = "asc" | "desc";
+
+type MetabaseOrderByObjectForDimension<TDimension> =
+  MetabaseBreakoutObjectForDimension<TDimension> & {
+    direction?: OrderByDirection;
+  };
+
+export type MetabaseOrderBy<TTable = unknown> =
+  | (FieldReference<TTable> & { direction?: OrderByDirection })
+  | MetabaseOrderByObjectForDimension<FieldReference<TTable>>
+  | AggregationResultOrderBy;
+
+type AggregationResultOrderBy = {
+  type: "column";
+  name: string;
+  direction?: OrderByDirection;
+};
+
 type BinningOptionsInput =
   | { bins?: number | "auto"; binWidth?: never }
   | { binWidth?: number | "auto"; bins?: never };
@@ -340,6 +358,7 @@ type TableQueryBase<TTable> = {
     | SegmentReference<TTable>
     | MetabaseDimensionFilterForDimension<FieldReference<TTable>>
   )[];
+  orderBys?: readonly MetabaseOrderBy<TTable>[];
   limit?: number;
   enabled?: boolean;
 } & (
