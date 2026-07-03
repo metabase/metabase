@@ -75,7 +75,7 @@ publish, the message is lost. The transactional outbox (`metabase.mq.queue.outbo
    with `FOR UPDATE SKIP LOCKED`, so concurrent sweeps on different nodes pick up disjoint rows. A
    publish failure is almost always transient (backend/DB connectivity), so a failing row is **never
    dropped**: its `publish_attempts` is bumped and its next retry scheduled with exponential backoff
-   (`next_attempt_at`, 1m doubling up to 1h), and it is retried until it publishes.
+   (`next_attempt_at`, 1m doubling up to 10m), and it is retried until it publishes.
 
 A row for a queue that was later *removed* from the code isn't a special case: publishing to the backend
 doesn't check queue existence, so the row publishes normally and is deleted; the resulting trigger then

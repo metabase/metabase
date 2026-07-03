@@ -124,8 +124,9 @@
 (def ^:private driver-delegate-property "org.quartz.jobStore.driverDelegateClass")
 
 (defn- class-loadable? [^String class-name]
-  (try (Class/forName class-name false (classloader/the-classloader)) true
-       (catch ClassNotFoundException _ false)))
+  (try
+    (boolean (Class/forName class-name false (classloader/the-classloader)))
+    (catch ClassNotFoundException _ false)))
 
 (defn- compile-delegate! [ns-sym]
   ;; compile into a temp dir added to the (dynamic) classpath, so the gen-class is loadable by name
