@@ -1,6 +1,8 @@
 (ns metabase.transforms.freshness
-  "Decides which transforms pulled into a job's plan only as dependencies are already fresh — no
-  scheduled fire time has passed since their last successful run — and can be skipped."
+  "Schedule-aware freshness checks. Decides which transforms pulled into a job's plan only as
+  dependencies are already fresh — no scheduled fire time has passed since their last successful
+  run — and can be skipped ([[fresh-dep-ids]]); also which transforms are simply between fires of
+  a slow schedule and so should not be treated as inactive ([[schedule-fresh-transform-ids]])."
   (:require
    [java-time.api :as t]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -22,6 +24,24 @@
     (catch Exception e
       (log/warnf e "Ignoring unparseable transform job schedule %s" (pr-str cron))
       false)))
+
+(defn schedule-fresh-transform-ids
+  "Ids of transforms covered by ≥1 active scheduled job where no schedule fire time has elapsed
+  since the transform's most recent run (any status) as of `now`. Such transforms are merely
+  between fires of their schedule — e.g. a six-month cadence whose last run was two months ago —
+  and should not be treated as inactive by recency checks like staleness. Transforms that have
+  never run are never schedule-fresh."
+  [now]
+  (let [schedules-by-id (transform-tag/schedules-for-transforms)
+        last-starts     (transform-run/last-run-start-times (keys schedules-by-id))
+        now-date        (Date/from (t/instant now))]
+    (into #{}
+          (keep (fn [[id schedules]]
+                  (when-let [ran (last-starts id)]
+                    (let [ran-date (Date/from (t/instant ran))]
+                      (when (not-any? #(fired-since? % ran-date now-date) schedules)
+                        id)))))
+          schedules-by-id)))
 
 (defn fresh-dep-ids
   "Subset of `dep-ids` safe to skip as of `now`: a dep that has never succeeded is never fresh; a

@@ -537,22 +537,37 @@
 
 (defmethod staleness/find-stale-query :model/Transform
   [_model args]
-  ;; Transform staleness is run-based: there is no `last_used_at` column. A transform is stale when it has
-  ;; never been run, or when its most recent run started on/before the cutoff — regardless of that run's
-  ;; status (a failed run still counts as having been run). "Most recent run" is the row with the greatest
-  ;; `start_time` (the ordering the `:last_run` hydrate uses), captured as a portable grouped MAX(start_time)
-  ;; rather than the window CTE in `transform-run`. `start_time` is NOT NULL, so a NULL aggregate means the
-  ;; transform has no runs at all — i.e. never run.
-  {:select    [:transform.id
-               [[:inline "Transform"] :model]
-               [:transform.name :name]
-               [:latest_run.last_used_at :last_used_at]]
-   :from      :transform
-   :left-join [[{:select   [:transform_id [[:max :start_time] :last_used_at]]
-                 :from     :transform_run
-                 :group-by [:transform_id]}
-                :latest_run]
-               [:= :latest_run.transform_id :transform.id]]
-   :where     [:or
-               [:= :latest_run.last_used_at nil]
-               [:<= :latest_run.last_used_at (:cutoff-date args)]]})
+  ;; Transform staleness is run-based: there is no `last_used_at` column. A transform is stale when
+  ;; (a) it has never been run and was created on/before the cutoff (grace period, so a new transform
+  ;; isn't flagged before anyone has had a chance to run it), or (b) its most recent run started
+  ;; on/before the cutoff — regardless of that run's status (a failed run still counts as having been
+  ;; run). "Most recent run" is the row with the greatest `start_time` (the ordering the `:last_run`
+  ;; hydrate uses), captured as a portable grouped MAX(start_time) rather than the window CTE in
+  ;; `transform-run`. `start_time` is NOT NULL, so a NULL aggregate means the transform has no runs.
+  ;;
+  ;; Exception to (b): a transform whose active job schedules haven't fired since its last run is
+  ;; merely between scheduled runs — e.g. a six-month cadence with a three-month threshold — not
+  ;; stale. Cron math can't run in SQL, so that set is computed here at query-build time and excluded
+  ;; below (build-time state reads have precedent in the Card/Dashboard methods' settings checks).
+  ;; `requiring-resolve` because statically requiring the freshness namespace would create a load
+  ;; cycle: freshness → transform-tag → this namespace.
+  (let [schedule-fresh-ids ((requiring-resolve 'metabase.transforms.freshness/schedule-fresh-transform-ids)
+                            (java.time.Instant/now))]
+    {:select    [:transform.id
+                 [[:inline "Transform"] :model]
+                 [:transform.name :name]
+                 [:latest_run.last_used_at :last_used_at]]
+     :from      :transform
+     :left-join [[{:select   [:transform_id [[:max :start_time] :last_used_at]]
+                   :from     :transform_run
+                   :group-by [:transform_id]}
+                  :latest_run]
+                 [:= :latest_run.transform_id :transform.id]]
+     :where     [:and
+                 [:or
+                  [:and
+                   [:= :latest_run.last_used_at nil]
+                   [:<= :transform.created_at (:cutoff-date args)]]
+                  [:<= :latest_run.last_used_at (:cutoff-date args)]]
+                 (when (seq schedule-fresh-ids)
+                   [:not [:in :transform.id schedule-fresh-ids]])]}))

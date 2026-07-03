@@ -247,6 +247,16 @@
                                  [:= :status [:inline "succeeded"]]]
                       :group-by [:transform_id]}))))
 
+(defn last-run-start-times
+  "Map each id in `transform-ids` to its most recent run's `start_time`, regardless of run status.
+  Ids with no runs are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (t2/select-fn->fn :transform_id :last_start :model/TransformRun
+                      {:select   [:transform_id [[:max :start_time] :last_start]]
+                       :where    [:in :transform_id transform-ids]
+                       :group-by [:transform_id]})))
+
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
   [{:keys [sort-column]}]
