@@ -278,6 +278,11 @@
   [f coll]
   (unreduced (reduce #(if (f %2) true (reduced false)) true coll)))
 
+(defn every-key?
+  "Efficiently check if every key in map `m` matched predicate `f`."
+  [f m]
+  (reduce-kv (fn [_ k _] (if (f k) true (reduced false))) true m))
+
 (defn concat
   "Like `clojure.core/concat` but accumulates the result into a vector. NOT a drop-in replacement."
   ([a b]
