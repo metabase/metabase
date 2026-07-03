@@ -105,21 +105,8 @@ const trackSearchRequest = (
   dispatchTrackSearchQuery();
 };
 
-// The document editor's entity typeahead ("document" context) searches on every keystroke (it has no
-// request-level debounce), so its analytics are debounced: one search_query per settled query rather
-// than one per character. Other surfaces already debounce their requests, so they track instantly.
-// A fulfillment may schedule the event only while its request is still the newest (out-of-order
-// responses must not overwrite the settled query), and the guard re-runs when the debounce fires
-// (a newer request invalidates an already-queued event).
-//
-// Known, accepted approximations of "settled":
-// - Two settled document searches fulfilling within the debounce window collapse into the later one.
-// - Cache hits don't restart the query lifecycle, so re-settling on an already-cached query emits
-//   nothing new and the last network fulfillment's query wins.
-// - Clearing the input issues no request (the typeahead switches back to recents), so a late
-//   response for the abandoned query may still emit; conversely, a query whose request is
-//   superseded and whose successor never fulfills emits nothing.
-// - A pending event is lost if the page unloads within the debounce window.
+// The document typeahead has no request-level debounce (it searches per keystroke), unlike every
+// other search surface, so its analytics settle here instead.
 const DOCUMENT_SEARCH_TRACK_DEBOUNCE_MS = 300;
 
 let latestDocumentSearchRequestId: string | null = null;
@@ -128,6 +115,7 @@ const trackSettledDocumentSearch = _.debounce(
   (
     ...[args, data, duration, requestId]: Parameters<typeof trackSearchRequest>
   ) => {
+    // Re-checked at fire time: a newer request may have started while this event sat queued.
     if (latestDocumentSearchRequestId === requestId) {
       trackSearchRequest(args, data, duration, requestId);
     }
@@ -135,6 +123,10 @@ const trackSettledDocumentSearch = _.debounce(
   DOCUMENT_SEARCH_TRACK_DEBOUNCE_MS,
 );
 
+/**
+ * Record that a search request started, before any response arrives.
+ * Call it for every request so newer document searches supersede pending analytics for older ones.
+ */
 export const registerSearchStarted = (
   args: SearchRequest,
   requestId: string,
@@ -144,14 +136,23 @@ export const registerSearchStarted = (
   }
 };
 
+/**
+ * Publish the search_query event for a fulfilled search request.
+ *
+ * Query-less requests are not tracked; they are filter/available-model lookups and existence
+ * probes, not searches the user performed.
+ * Document-context events are debounced to one per settled query, where "settled" is approximate:
+ * two document searches fulfilling within the debounce window collapse into the later one; a query
+ * re-settled from cache emits nothing new; an abandoned query's late response may still emit while
+ * a superseded query whose successor never fulfills emits nothing; and a pending event is lost if
+ * the page unloads within the window.
+ */
 export const trackFulfilledSearch = (
   args: SearchRequest,
   data: SearchResponse,
   duration: number,
   requestId: string,
 ) => {
-  // Only track searches with an actual text query. Query-less requests are filter/available-model
-  // lookups and internal existence probes, not searches the user performed.
   if (!args.q?.trim()) {
     return;
   }
@@ -159,6 +160,7 @@ export const trackFulfilledSearch = (
   if (args.context !== "document") {
     trackSearchRequest(args, data, duration, requestId);
   } else if (latestDocumentSearchRequestId === requestId) {
+    // Checked at schedule time too, so a stale out-of-order response can't overwrite the queued args.
     trackSettledDocumentSearch(args, data, duration, requestId);
   }
 };
