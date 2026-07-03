@@ -188,35 +188,31 @@
                                                                                           :result      result}))
                                   embedders/provider-embedder         (constantly (embedders/file-embedder {}))
                                   plugins/load-plugins!               (fn [])]
-        (testing "representation mode"
+        (testing "representation mode, with the persisted row's meta agreeing on the text-variant"
           (#'cli/run-cli {:source             "representation"
                           :representation-dir (str (fixture-without-sidecar))
                           :embedder           "in-process"
                           :write-to-appdb     true})
-          (is (some? @captured))
-          (is (str/includes? (:fingerprint @captured) ":cli-embedder-override"))
-          (testing "and the persisted row's meta agrees with the fingerprint's text-variant"
-            (is (= embedders/default-text-variant
-                   (get-in @captured [:result :meta :text-variant])))))
+          (is (=? {:fingerprint #".*:cli-embedder-override.*"
+                   :result      {:meta {:text-variant embedders/default-text-variant}}}
+                  @captured)))
         (testing "appdb mode (write-by-default), with the appdb scoring itself stubbed"
           (reset! captured nil)
           (mt/with-dynamic-fn-redefs [mdb/setup-db-without-migrations!     (constantly nil)
                                       metabot-scope/internal-metabot-scope (constantly {})
                                       complexity/complexity-scores         (constantly {})]
             (#'cli/run-cli {:source "appdb" :embedder "in-process"})
-            (is (some? @captured))
-            (is (str/includes? (:fingerprint @captured) ":cli-embedder-override"))))))))
+            (is (=? {:fingerprint #".*:cli-embedder-override.*"} @captured))))))))
 
 (deftest ^:parallel cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"
     (testing "valid: --embedder in-process parses through to :options"
-      (let [{:keys [options errors]} (tools.cli/parse-opts ["--embedder" "in-process"] @#'cli/cli-options)]
-        (is (empty? errors))
-        (is (= "in-process" (:embedder options)))))
-    (testing "invalid: --embedder foo produces a validation error and no :embedder in options"
-      (let [{:keys [errors]} (tools.cli/parse-opts ["--embedder" "foo"] @#'cli/cli-options)]
-        (is (seq errors))
-        (is (re-find #"--embedder currently only supports" (first errors))))))
+      (is (=? {:errors  empty?
+               :options {:embedder "in-process"}}
+              (tools.cli/parse-opts ["--embedder" "in-process"] @#'cli/cli-options))))
+    (testing "invalid: --embedder foo produces exactly one validation error"
+      (is (=? {:errors [#".*--embedder currently only supports.*"]}
+              (tools.cli/parse-opts ["--embedder" "foo"] @#'cli/cli-options)))))
   (testing "embedder-override nil returns nil so the no-flag path doesn't touch DJL/ONNX"
     (is (nil? (#'cli/embedder-override nil))))
   (testing "embedder-override in-process routes through the provider path with matching model meta"
