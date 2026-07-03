@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useMount } from "react-use";
 
 import type { To } from "./types";
 import { useNavigate } from "./use-navigate";
@@ -18,11 +18,10 @@ export interface NavigateProps {
 export function Navigate({ to, replace = false, state }: NavigateProps): null {
   const navigate = useNavigate();
 
-  useEffect(() => {
+  // Navigate once on mount, mirroring react-router v7's <Navigate>.
+  useMount(() => {
     navigate(to, { replace, state });
-    // Navigate once on mount, mirroring react-router v7's <Navigate>.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   return null;
 }
