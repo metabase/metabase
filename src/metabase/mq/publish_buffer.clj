@@ -39,7 +39,9 @@
    The buffered path appends to the buffer and, if buffering pushes the channel's queued
    count to or past `:max-batch-messages`, trips the channel's deadline so the next tick
    of the background flush executor drains it. The actual flush stays on the executor
-   thread — publisher threads never block on backend writes."
+   thread — publisher threads never block on backend writes.
+
+   `:max-batch-messages` is a soft target here, not a hard cap, a fuller over-the-wire batch is cheaper than several small ones."
   [channel messages]
   (let [max-size (max-batch-size channel)]
     (if (zero? *publish-buffer-ms*)

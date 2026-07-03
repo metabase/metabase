@@ -84,11 +84,11 @@
 
    Examples:
 
-       (mq/def-queue! :queue/simple-task)
+       (mq/def-queue! :queue/simple-task {:transactional :try})
        (mq/def-listener! :queue/simple-task [messages]
          (doseq [msg messages] (process msg)))
 
-       (mq/def-queue! :queue/search-reindex {:exclusive true :max-batch-messages 50})
+       (mq/def-queue! :queue/search-reindex {:transactional :require :exclusive true :max-batch-messages 50})
        (mq/def-listener! :queue/search-reindex [messages]
          (process-batch messages))"
   {:arglists '([channel bindings & body])}

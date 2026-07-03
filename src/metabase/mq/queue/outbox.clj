@@ -22,6 +22,7 @@
    [metabase.mq.payload :as payload]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
+   [metabase.mq.transaction :as mq.tx]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -121,18 +122,14 @@
   before-commit callback and [[publish-outbox-rows!]] as an after-commit callback. Must be called
   inside a transaction."
   [channel msgs]
-  (let [state (mdb/transaction-state)
-        old   (first (swap-vals! state
-                                 (fn [s]
-                                   (-> s
-                                       (update-in [::messages channel] (fnil into []) msgs)
-                                       (assoc ::registered? true)))))]
-    (when-not (::registered? old)
-      ;; capture `state` in the after-commit closure — it runs after the transaction bindings unwind,
-      ;; when the dynamic transaction-state is no longer bound (the before-commit insert still runs while
-      ;; the transaction is open, so it reads the dynamic var directly).
-      (mdb/do-before-commit insert-outbox-rows!)
-      (mdb/do-after-commit #(publish-outbox-rows! state)))))
+  (mq.tx/accumulate-and-register!
+   ::messages ::registered? channel msgs
+   (fn [state]
+     ;; capture `state` in the after-commit closure — it runs after the transaction bindings unwind,
+     ;; when the dynamic transaction-state is no longer bound (the before-commit insert still runs while
+     ;; the transaction is open, so it reads the dynamic var directly).
+     (mdb/do-before-commit insert-outbox-rows!)
+     (mdb/do-after-commit #(publish-outbox-rows! state)))))
 
 (defn- bump-failed-row
   "Records one failed recovery publish into `acc`: bump the row's `publish_attempts` and schedule its

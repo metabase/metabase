@@ -8,6 +8,7 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.outbox :as q.outbox]
    [metabase.mq.queue.registry :as q.registry]
+   [metabase.mq.transaction :as mq.tx]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -53,16 +54,11 @@
   "Accumulates msgs in *transaction-state* under [::deferred-messages channel].
    Registers flush-deferred-messages! as an after-commit callback once per transaction."
   [channel msgs]
-  (let [state     (mdb/transaction-state)
-        old-state (first (swap-vals! state
-                                     (fn [s]
-                                       (-> s
-                                           (update-in [::deferred-messages channel] (fnil into []) msgs)
-                                           (assoc ::flush-registered? true)))))]
-    (when-not (::flush-registered? old-state)
-      ;; capture `state` — the after-commit callback runs after the transaction bindings unwind, when
-      ;; the dynamic transaction-state is no longer bound.
-      (mdb/do-after-commit #(flush-deferred-messages! state)))))
+  (mq.tx/accumulate-and-register!
+   ::deferred-messages ::flush-registered? channel msgs
+   ;; capture `state` — the after-commit callback runs after the transaction bindings unwind, when
+   ;; the dynamic transaction-state is no longer bound.
+   (fn [state] (mdb/do-after-commit #(flush-deferred-messages! state)))))
 
 (defn- publish-collected!
   "Routes the messages collected by [[run-with-buffer]] for `channel` according to the queue's

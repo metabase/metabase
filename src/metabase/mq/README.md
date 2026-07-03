@@ -43,11 +43,16 @@ publish.
 Every queue declares a `:transactional` mode that controls how a publish relates to the surrounding
 DB transaction. The routing (see `metabase.mq.publish/publish-collected!`):
 
-| Mode       | In a transaction                                                  | Outside a transaction                   |
-|------------|-------------------------------------------------------------------|-----------------------------------------|
-| `:require` | Routed through the outbox                                         | **Throws** — a transaction is mandatory |
-| `:try`     | Routed through the outbox                                         | Published immediately                   |
-| `:never`   | Deferred to after-commit, but held only in memory (no outbox row) | Published immediately                   |
+| Mode       | In a transaction                                                  | Outside a transaction                     |
+|------------|-------------------------------------------------------------------|-------------------------------------------|
+| `:require` | Routed through the outbox                                         | **Throws** — a transaction is mandatory   |
+| `:try`     | Routed through the outbox                                         | Published immediately\*                   |
+| `:never`   | Deferred to after-commit, but held only in memory (no outbox row) | Published immediately\*                   |
+
+\* "Immediately" means handed to the publish pipeline right away — which still passes through the
+~100ms coalescing buffer (see step 3 above), so it is buffered in memory briefly rather than written to
+the backend synchronously. A crash within that window loses a non-transactional publish; use `:require`
+or `:try`-in-a-transaction if that matters.
 
 ### Why an outbox?
 
@@ -93,10 +98,12 @@ the per-publish outbox write, not when you're willing to drop messages.
 A publish that isn't routed through the outbox up front — `:try` outside a transaction, or any `:never`
 publish — goes through the batching buffer and then straight to the backend. If that backend write
 fails (scheduler down, momentary DB blip), the buffer does **not** manage its own retry/drop: it writes
-the batch to `queue_message_outbox` via `outbox/insert-batch!` (with `next_attempt_at` = now), and the
-same recovery sweep takes over — retrying with backoff, never dropping. The only remaining loss is if
-the outbox insert *also* fails, i.e. the app DB is down too (a total outage), which is logged and
-metered as `batches-dropped{reason=outbox-handoff-failed}`.
+the batch to `queue_message_outbox` via `outbox/insert-batch!` (leaving `next_attempt_at` null, like a
+crash-orphaned row), and the same recovery sweep takes over — it picks the row up once it has aged past
+`recovery-age-ms` (~1 minute), then retries with backoff, never dropping. So a handed-off batch is
+delayed by up to that recovery window plus the sweep interval, not published instantly — but it is not
+lost. The only remaining loss is if the outbox insert *also* fails, i.e. the app DB is down too (a total
+outage), which is logged and metered as `batches-dropped{reason=outbox-handoff-failed}`.
 
 ## Message serialization
 

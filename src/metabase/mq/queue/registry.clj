@@ -6,14 +6,17 @@
   in the cluster. Backends use this registry at startup to pre-arrange broker-side resources
   (e.g. RabbitMQ queue declarations) for the full set of known queues."
   (:require
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
 (def default-max-batch-messages
-  "Default `:max-batch-messages` for a queue that doesn't declare one. Bounds both the
-  publish-time batch size (how many messages are coalesced into one stored batch) and the
-  consumer-side slice size (how many messages the handler receives per invocation)."
+  "Default `:max-batch-messages` for a queue that doesn't declare one. This is a *soft* target for how
+  many messages are coalesced into one stored batch (and handed to the handler per invocation), not a
+  hard cap: the async coalescing buffer will happily exceed it under load, since we'd rather send one
+  fuller over-the-wire batch than several small ones. Listeners must therefore not assume a batch is
+  no larger than this."
   100)
 
 (def transactional-modes
@@ -58,18 +61,20 @@
   []
   (keys @*queues*))
 
+(defn- validate-config!
+  [queue-name config]
+  (when-let [error (mr/explain :metabase.mq.queue/queue-config config)]
+    (throw (ex-info (str "Invalid config for queue " queue-name ": " (mu.humanize/humanize error))
+                    {:queue queue-name :config config :errors (mu.humanize/humanize error)}))))
+
 (defn register-queue!
   "Atomically registers `config` for `queue-name`. Re-registering with identical config is
   a no-op (handy for repeated `register-queues!` calls in tests); mismatched config throws.
 
-  `config` must include `:transactional` (one of [[transactional-modes]]). Other keys (e.g.
-  `:exclusive`) are optional."
+  `config` must satisfy [[:metabase.mq.queue/queue-config]]. Invalid config throws."
   [queue-name config]
   (let [config (or config {})]
-    (when-not (contains? transactional-modes (:transactional config))
-      (throw (ex-info (str "Queue " queue-name " must declare a valid `:transactional` mode "
-                           "(one of " transactional-modes "); got " (pr-str (:transactional config)) ".")
-                      {:queue queue-name :config config :valid transactional-modes})))
+    (validate-config! queue-name config)
     (let [[old _] (swap-vals! *queues*
                               (fn [m] (if (contains? m queue-name)
                                         m
@@ -132,8 +137,9 @@
 
   Optional config keys:
     `:exclusive`          — when true, at most one batch for this queue is in-flight cluster-wide.
-    `:max-batch-messages` — batch size for this queue (defaults to [[default-max-batch-messages]]).
-                            Used at publish time (coalescing) and consume time (slicing).
+    `:max-batch-messages` — soft target batch size for this queue (defaults to
+                            [[default-max-batch-messages]]). Used at publish time (coalescing) and
+                            consume time (slicing).
     `:dedup-fn`           — `messages -> messages` applied at publish time to drop duplicates
                             from a batch before it is buffered.
 

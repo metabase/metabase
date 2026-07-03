@@ -63,7 +63,7 @@
   [attempt]
   (min 60000 (* 1000 (long (Math/pow 2 (dec attempt))))))
 
-(def ^:private refire-backoff-ms
+(def ^:private ^Long refire-backoff-ms
   "Brief pause before asking Quartz to refire this job in place after a failed hand-off.
   Refiring with no delay would hot-loop the worker thread while the DB is down"
   10000)
@@ -123,7 +123,7 @@
   been delivered or its retry/requeue is *durably committed*. If instead our own hand-off fails —
   the reschedule can't be written because the scheduler's DB is momentarily unavailable — we throw a
   `JobExecutionException` with `refireImmediately`, so Quartz re-runs this exact job now rather than treating
-  the one-shot as done and dropping the batch. The goal is to elave no window where Quartz considers the job finished
+  the one-shot as done and dropping the batch. The goal is to leave no window where Quartz considers the job finished
   but the message hasn't been handed off. A refire re-runs with the same job data, so `attempt` is
   unchanged — a refire doesn't burn the retry budget.
 

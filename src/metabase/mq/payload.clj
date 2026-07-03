@@ -58,7 +58,7 @@
 (defn check-serializable!
   "Throws if `message` contains a value that would not JSON-round-trip to something
   meaningful. Called at publish time so such mistakes fail at the
-  call site, rather than being silently corrupted on the wire and be undeliverable"
+  call site, rather than being silently corrupted on the wire and becoming undeliverable."
   [message]
   (check-value! [] message))
 

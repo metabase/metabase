@@ -90,7 +90,7 @@
                      (.setBigDecimal 3 (BigDecimal. (str no-earlier))))
                 rs (.executeQuery ^PreparedStatement ps)]
       (loop [acc []]
-        (if (and (.next ^ResultSet rs) (<= (count acc) max-count))
+        (if (and (.next ^ResultSet rs) (< (count acc) max-count))
           (recur (conj acc (TriggerKey. (.getString ^ResultSet rs Constants/COL_TRIGGER_NAME)
                                         (.getString ^ResultSet rs Constants/COL_TRIGGER_GROUP))))
           acc)))))

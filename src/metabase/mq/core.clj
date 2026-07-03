@@ -11,12 +11,12 @@
   queues declared anywhere and listeners can live on any node, with queue config taking
   effect at publish time on every node regardless of where listeners are registered.
 
-      (mq/def-queue! :queue/simple-task)
+      (mq/def-queue! :queue/simple-task {:transactional :try})
       (mq/def-listener! :queue/simple-task [messages]
         (doseq [msg messages] (process msg)))
 
   Queue-level config:
-       (mq/def-queue! :queue/search-reindex {:exclusive true :max-batch-messages 50})
+       (mq/def-queue! :queue/search-reindex {:transactional :require :exclusive true :max-batch-messages 50})
        (mq/def-listener! :queue/search-reindex [messages]
          (process-batch messages))
 
