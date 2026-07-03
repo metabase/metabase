@@ -13,8 +13,6 @@ const ALERT_BACKGROUND_COLORS: Record<string, ColorName> = {
   success: "background_surface-success",
 };
 
-// The `color` prop is a semantic variant key (not a raw token); map it to the
-// foreground token explicitly so it doesn't depend on the legacy token names.
 const ALERT_TEXT_COLORS: Record<string, ColorName> = {
   "core-brand": "core-brand",
   warning: "feedback-warning",

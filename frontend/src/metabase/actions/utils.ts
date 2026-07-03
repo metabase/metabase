@@ -313,14 +313,12 @@ export const getSubmitButtonColor = (
     return "feedback-negative";
   }
 
-  // The match keys are persisted `submitButtonColor` setting values, not tokens;
-  // only the returned color tokens are migrated to the new names.
   return match(action.visualization_settings?.submitButtonColor)
     .returnType<ButtonProps["color"]>()
     .with("danger", () => "feedback-negative")
     .with("success", () => "feedback-positive")
     .with("warning", () => "feedback-warning")
-    .otherwise(() => "brand");
+    .otherwise(() => "core-brand");
 };
 
 export const getSubmitButtonLabel = (action: WritebackAction): string => {
