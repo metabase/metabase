@@ -106,13 +106,21 @@ describe("UserProfileForm", () => {
     });
   });
 
-  it("should save the Metabot instructions before submitting the profile", async () => {
-    let settingSavedBeforeSubmit = false;
-    const onSubmit = jest.fn().mockImplementation(() => {
-      settingSavedBeforeSubmit = settingCalls().length > 0;
-      return Promise.resolve({});
-    });
+  it("should not submit the profile until the Metabot instructions save resolves", async () => {
+    const onSubmit = jest.fn().mockResolvedValue({});
     setup(getProps({ onSubmit }));
+
+    // Replace the instant setting mock with one we resolve manually, so a
+    // fire-and-forget save (started but not awaited) fails this test.
+    let resolveSettingUpdate = () => {};
+    fetchMock.removeRoute("update-setting");
+    fetchMock.put(
+      new RegExp("/api/setting/"),
+      new Promise<number>((resolve) => {
+        resolveSettingUpdate = () => resolve(204);
+      }),
+      { name: "update-setting" },
+    );
 
     const textarea = await screen.findByPlaceholderText(
       INSTRUCTIONS_PLACEHOLDER,
@@ -120,8 +128,17 @@ describe("UserProfileForm", () => {
     await userEvent.type(textarea, "Focus on marketing data.");
     await userEvent.click(screen.getByText("Update"));
 
+    await waitFor(() => {
+      expect(settingCalls().length).toBeGreaterThan(0);
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    resolveSettingUpdate();
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalled();
+    });
     expect(await screen.findByText("Success")).toBeInTheDocument();
-    expect(settingSavedBeforeSubmit).toBe(true);
   });
 
   it("should not show success or submit the profile when saving the Metabot instructions fails", async () => {
