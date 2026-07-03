@@ -152,8 +152,31 @@ databaseChangeLog:
             baseTableName: transform_dag_run
             constraintName: fk_transform_dag_run_source_transform_id
 
+  ## Index before the FK, same MySQL/MariaDB rollback reasoning as source_transform_id above.
   - changeSet:
       id: v63.2026-07-03T00:00:03
+      author: bronsa
+      comment: Index transform_dag_run on user_id (backs the FK below and covers per-user run history lookups)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_dag_run
+                indexName: idx_transform_dag_run_user_id
+      changes:
+        - createIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_user_id
+
+  - changeSet:
+      id: v63.2026-07-03T00:00:04
       author: bronsa
       comment: FK from transform_dag_run.user_id to core_user; null it out when the user is deleted so run history survives
       preConditions:
@@ -176,7 +199,7 @@ databaseChangeLog:
             constraintName: fk_transform_dag_run_user_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:04
+      id: v63.2026-07-03T00:00:05
       author: bronsa
       comment: Index transform_dag_run on (is_active, last_heartbeat) so the every-minute reaper scan is O(active rows)
       preConditions:
@@ -200,7 +223,7 @@ databaseChangeLog:
             indexName: idx_transform_dag_run_active_runs
 
   - changeSet:
-      id: v63.2026-07-03T00:00:05
+      id: v63.2026-07-03T00:00:06
       author: bronsa
       comment: >-
         Add dag_run_id to transform_run to link each transform execution to its coordinating DAG run
@@ -228,7 +251,7 @@ databaseChangeLog:
             columnName: dag_run_id
 
   - changeSet:
-      id: v63.2026-07-03T00:00:06
+      id: v63.2026-07-03T00:00:07
       author: bronsa
       comment: Index transform_run on dag_run_id for efficient drill-down of a DAG run's member transform runs
       preConditions:
