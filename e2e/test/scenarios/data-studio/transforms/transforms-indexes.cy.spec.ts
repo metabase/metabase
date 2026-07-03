@@ -28,26 +28,6 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
     cy.intercept({ method: "GET", pathname: "/api/index" }).as("listIndexes");
   });
 
-  it("shows the empty state for a transform with no indexes", () => {
-    H.createMbqlTransform({
-      sourceTable: SOURCE_TABLE,
-      targetTable: "indexes_empty_table",
-      targetSchema: TARGET_SCHEMA,
-      name: "Empty indexes transform",
-      visitTransform: true,
-    });
-
-    H.DataStudio.Transforms.indexesTab().click();
-    cy.wait("@listIndexes");
-
-    cy.findByTestId("transforms-indexes-content")
-      .should("contain", "Indexes")
-      .and(
-        "contain",
-        "Index the key columns of your transforms to make them faster and more efficient.",
-      );
-  });
-
   it("lists managed index requests with pending and removing statuses and sorts by column", () => {
     H.createMbqlTransform({
       sourceTable: SOURCE_TABLE,
@@ -126,10 +106,32 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
     });
     cy.wait("@listIndexes");
 
+    cy.log("the empty state renders for a transform with no indexes");
+    cy.findByTestId("transforms-indexes-content")
+      .should("contain", "Indexes")
+      .and(
+        "contain",
+        "Index the key columns of your transforms to make them faster and more efficient.",
+      );
+
     cy.log("create an index via the form");
     cy.findByTestId("transforms-indexes-content")
       .findByRole("button", { name: "Create index" })
       .click();
+
+    cy.log("form fields render in the backend-defined order, name first");
+    H.modal()
+      .find("label")
+      .should((labels) => {
+        const labelTexts = labels.toArray().map((label) => label.textContent);
+        expect(labelTexts).to.deep.equal([
+          "Give your index a name",
+          "Index type",
+          "Enforce uniqueness across rows for indexed columns.",
+          "Columns",
+        ]);
+      });
+
     H.modal().within(() => {
       cy.findByLabelText("Give your index a name").type("idx_lifecycle_name");
       cy.findByPlaceholderText("Select columns").click();
