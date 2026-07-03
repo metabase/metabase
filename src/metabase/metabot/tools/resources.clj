@@ -56,7 +56,11 @@
   - metabase://transform/{id}/sources - tables/databases this transform reads from
   - metabase://transform/{id}/target - table this transform writes to
   - metabase://dashboard/{id} - dashboard details
-  - metabase://dashboard/{id}/items - cards on the dashboard"
+  - metabase://dashboard/{id}/items - cards on the dashboard
+
+  Conversation state (agent-memory charts/queries, e.g. pasted chart mentions):
+  - metabase://chart/{chart_id} - chart type + query of a conversation chart
+  - metabase://query/{query_id} - a query from this conversation's state"
   (:require
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
@@ -64,6 +68,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
@@ -682,6 +687,41 @@
     (cond-> (list-result :dashboard-items items query-params)
       (seq tabs) (update :structured-output assoc :tabs (mapv #(select-keys % [:id :name]) tabs)))))
 
+(defn- fetch-conversation-query
+  "Present a query stored in this conversation's agent state (created by tools or pasted
+  as a chart mention). Read-checks the query's database before exporting it with resolved
+  table/field names."
+  [query-id]
+  (if-let [query (get (shared/current-queries-state) query-id)]
+    (do
+      (when-let [database-id (and (map? query) (:database query))]
+        (api/read-check :model/Database database-id))
+      (entity-result
+       {:type        "conversation-query"
+        :id          query-id
+        :description (llm-shape/export-query-for-llm query)}))
+    {:status-code 404
+     :output (str "No chart or query with id '" query-id "' exists in this conversation. "
+                  "It may belong to another conversation; ask the user to paste or recreate it here.")}))
+
+(defn- fetch-conversation-chart
+  "Present a chart stored in this conversation's agent state (created by chart tools or
+  pasted as a mention). Falls back to the queries state when the id is actually a query id."
+  [chart-id]
+  (if-let [chart (get (shared/current-charts-state) chart-id)]
+    (let [query (first (:queries chart))]
+      (when-let [database-id (and (map? query) (:database query))]
+        (api/read-check :model/Database database-id))
+      (entity-result
+       {:type        "conversation-chart"
+        :id          chart-id
+        :description (str "Chart type: "
+                          (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
+                              "table")
+                          "\nQuery:\n"
+                          (llm-shape/export-query-for-llm query))}))
+    (fetch-conversation-query chart-id)))
+
 ;; ----- Dispatch -----
 
 (def ^:private numeric-id-uri-types
@@ -763,6 +803,10 @@
       ;; Dashboard
       ["dashboard" id]                                 (fetch-dashboard id)
       ["dashboard" id "items"]                         (fetch-dashboard-items id query-params)
+
+      ;; Conversation state
+      ["chart" id]                                     (fetch-conversation-chart id)
+      ["query" id]                                     (fetch-conversation-query id)
 
       ;; Default — required to make match non-recursive
       _ (throw (ex-info (str "Unsupported URI: " uri)
@@ -888,7 +932,12 @@
   - metabase://measure/{id}
   - metabase://segment/{id}
   - metabase://transform/{id}[/sources|/target]
-  - metabase://dashboard/{id}[/items]"
+  - metabase://dashboard/{id}[/items]
+
+  CONVERSATION STATE (charts and queries generated in or pasted into this conversation,
+  e.g. referenced in a user message as [name](metabase://chart/{id})):
+  - metabase://chart/{chart_id} - the chart's type and its query
+  - metabase://query/{query_id} - the query definition"
   [{:keys [uris]} :- [:map {:closed true}
                       [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try
