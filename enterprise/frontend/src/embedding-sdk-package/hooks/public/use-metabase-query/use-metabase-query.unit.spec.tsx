@@ -6,6 +6,7 @@ import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-s
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query";
+import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import type { DatasetQuery } from "metabase-types/api";
@@ -13,7 +14,10 @@ import { createMockCard } from "metabase-types/api/mocks";
 
 import * as DataApp from "../../../data-app";
 
-import type { MetabaseQueryOptions } from "./use-metabase-query";
+import type {
+  MetabaseQueryOptions,
+  UseMetabaseQueryObjectResult,
+} from "./use-metabase-query";
 import {
   breakout,
   count,
@@ -381,6 +385,24 @@ const _validMetricQuery = {
   limit: 100,
 } satisfies MetabaseQueryOptions<RevenueMetric>;
 
+const _validCardQuery = {
+  query: {
+    "lib/type": "mbql/query",
+    database: 1,
+    stages: [],
+  },
+} satisfies MetabaseCard;
+
+const hookResult = {} as UseMetabaseQueryObjectResult;
+const _validHookResultCard = {
+  query: hookResult.query,
+} satisfies MetabaseCard;
+
+const _invalidHookResultCard = {
+  // @ts-expect-error pass useMetabaseQueryObject(...).query, not the whole hook result
+  query: hookResult,
+} satisfies MetabaseCard;
+
 const _invalidMetricCrossTableSegmentQuery = {
   source: TEST_SCHEMA.metrics.revenue,
   filters: [
@@ -468,6 +490,7 @@ describe("resolveDatasetQuery", () => {
 
   it("loads table metadata and passes the public source DSL through Lib.createTestQuery", async () => {
     const store = createMockStore();
+
     const datasetQuery = await resolveDatasetQueryInBundle(store)({
       source: TEST_SCHEMA.tables.orders,
       fields: [
@@ -486,11 +509,14 @@ describe("resolveDatasetQuery", () => {
     });
 
     expect(mockFetchTableMetadata).toHaveBeenCalledWith({ id: 1 });
+
     expect(store.dispatch).toHaveBeenCalledWith({
       type: "fetchTableMetadata",
       payload: 1,
     });
+
     expect(mockGetMetadataUnfiltered).toHaveBeenCalledWith({});
+
     expect(datasetQuery).toMatchObject({
       "lib/type": "mbql/query",
       database: 1,
@@ -553,6 +579,7 @@ describe("resolveDatasetQuery", () => {
 
   it("loads metric metadata and passes the public source DSL through Lib.createTestQuery", async () => {
     const store = createMockStore();
+
     const datasetQuery = await resolveDatasetQueryInBundle(store)({
       source: TEST_SCHEMA.metrics.revenue,
       filters: [
@@ -577,6 +604,7 @@ describe("resolveDatasetQuery", () => {
     });
 
     expect(mockFetchTableMetadata).not.toHaveBeenCalled();
+
     expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
       1,
       { id: 31 },
@@ -584,6 +612,7 @@ describe("resolveDatasetQuery", () => {
       cardApi.endpoints.getCard,
       { forceRefetch: false },
     );
+
     expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
       2,
       31,
@@ -591,6 +620,7 @@ describe("resolveDatasetQuery", () => {
       cardApi.endpoints.getCardQueryMetadata,
       { forceRefetch: false },
     );
+
     expect(datasetQuery).toMatchObject({
       "lib/type": "mbql/query",
       database: 1,

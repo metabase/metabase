@@ -9,7 +9,7 @@ import {
   isUnaryOperator,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import type { DatasetQuery } from "metabase-types/api";
+import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
 
 import type {
   MetricSchema,
@@ -39,6 +39,7 @@ import type {
   UseMetabaseQueryResult,
   ValueFilterOperatorForDimension,
 } from "./types";
+export type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
 export type {
   CountAggregation,
   CountAggregationSchema,
@@ -163,13 +164,13 @@ type ResolveDatasetQueryInput = Parameters<
 >[0];
 
 export type UseMetabaseQueryObjectResult = {
-  query: DatasetQuery | null;
+  query: MetabaseQueryObject | null;
   error: unknown;
   isLoading: boolean;
 };
 
 type QueryObjectState = {
-  query: DatasetQuery;
+  query: MetabaseQueryObject;
   queryKey: string;
 };
 
@@ -398,7 +399,7 @@ export function useMetabaseQueryObject(
 
       const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
 
-      return { query: result, queryKey };
+      return { query: result as MetabaseQueryObject, queryKey };
     }, [queryKey, reduxStore]);
 
   useEffect(() => {
