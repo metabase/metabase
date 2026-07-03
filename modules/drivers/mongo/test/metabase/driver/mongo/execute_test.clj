@@ -33,16 +33,21 @@
 
 (deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
-    (let [now (str (java.time.Instant/now))]
+    (let [now (str (java.time.Instant/now))
+          captured-stages (volatile! nil)]
       (binding [mongo.execute/*aggregate*
-                (fn [& _] (make-mongo-aggregate-iterable
-                           [{"_id" 0
-                             "name" "Crowberto"
-                             "alias" "the Brave"}
-                            {"_id" 1
-                             "name" "Rasta"
-                             "last_login" now
-                             "nickname" "Blue"}]))]
+                (fn [& args]
+                  ;; `*aggregate*` is invoked as (db coll session stages timeout-ms); capture the executed
+                  ;; pipeline so we can assert on remark injection below.
+                  (vreset! captured-stages (nth args 3))
+                  (make-mongo-aggregate-iterable
+                   [{"_id" 0
+                     "name" "Crowberto"
+                     "alias" "the Brave"}
+                    {"_id" 1
+                     "name" "Rasta"
+                     "last_login" now
+                     "nickname" "Blue"}]))]
         (testing "Projected and first-row fields are returned"
           (let [query {:database (mt/id)
                        :native
@@ -65,7 +70,29 @@
             (is (= {:rows [[0 "Crowberto" nil "the Brave"]
                            [1 "Rasta"     now nil]]
                     :columns ["_id" "name" "last_login" "alias"]}
-                   (mt/rows+column-names (qp/process-query query))))))))))
+                   (mt/rows+column-names (qp/process-query query))))))
+        (testing "A $comment stage carrying the query remark is prepended to the pipeline (#9514)"
+          ;; The last query above is captured. Its pipeline does not open with `$documents`, so the remark is
+          ;; spliced in front. The remark defaults to "Metabase" because these queries carry no `:info`.
+          (let [stages (some-> (deref captured-stages) vec)]
+            (is (= "$comment" (ffirst stages)))
+            (is (re-find #"^Metabase" (-> stages first (get "$comment"))))))
+        (testing "inject-remark honors the $documents-first rule and is a no-op without a remark (#9514)"
+          (is (= [{"$comment" "r"} {"$match" {}}]
+                 (#'mongo.execute/inject-remark [{"$match" {}}] "r")))
+          (is (= [{"$documents" []} {"$comment" "r"} {"$match" {}}]
+                 (#'mongo.execute/inject-remark [{"$documents" []} {"$match" {}}] "r")))
+          (is (= [{"$match" {}}]
+                 (#'mongo.execute/inject-remark [{"$match" {}}] nil)))
+          (is (= [{"$match" {}}]
+                 (#'mongo.execute/inject-remark [{"$match" {}}] "   ")))
+          (is (= [{"$comment" "r"}]
+                 (#'mongo.execute/inject-remark nil "r"))))
+        (testing "include-user-id-and-hash? defaults to true and honors the detail (#9514)"
+          (is (true? (#'mongo.execute/include-user-id-and-hash? nil)))
+          (is (true? (#'mongo.execute/include-user-id-and-hash? {})))
+          (is (true? (#'mongo.execute/include-user-id-and-hash? {:include-user-id-and-hash true})))
+          (is (false? (#'mongo.execute/include-user-id-and-hash? {:include-user-id-and-hash false}))))))))
 
 (deftest kill-an-in-flight-query-test
   (mt/test-driver
