@@ -145,14 +145,8 @@ describe("Links in documents", () => {
 
       H.addToDocument(PRODUCTS_AVERAGE_BY_CATEGORY.name.substring(0, 5), false);
 
-      // Click the matching option directly: findByRole waits out the debounced search, and
-      // targeting by name avoids selecting a stale/differently-ordered first result.
-      cy.log("Select the matching item once the debounced results load");
-      H.commandSuggestionDialog()
-        .findByRole("option", {
-          name: new RegExp(PRODUCTS_AVERAGE_BY_CATEGORY.name),
-        })
-        .click();
+      cy.log("Select the first item from the list");
+      H.commandSuggestionDialog().findAllByRole("option").first().click();
 
       cy.log("Verify smart link was added");
       H.documentContent()

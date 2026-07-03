@@ -17,8 +17,10 @@ export const searchApi = Api.injectEndpoints({
         provideSearchItemListTags(response?.data ?? [], models),
       onQueryStarted: (args, { queryFulfilled, requestId }) => {
         // Only track searches with an actual text query. Query-less requests are filter/available-model
-        // lookups and internal existence probes, not searches the user performed.
-        if (args.q?.trim()) {
+        // lookups and internal existence probes, not searches the user performed. The document editor's
+        // entity typeahead ("document" context) fires an un-debounced request per keystroke, which would
+        // flood analytics with keystroke-level events, so skip it.
+        if (args.q?.trim() && args.context !== "document") {
           const start = Date.now();
           return handleQueryFulfilled(queryFulfilled, (data) => {
             const duration = Date.now() - start;

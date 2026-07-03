@@ -5,7 +5,6 @@ import {
   useListRecentsQuery,
   useSearchQuery,
 } from "metabase/api";
-import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type {
   MentionableUser,
@@ -27,11 +26,6 @@ import {
   useBuildSearchMenuItems,
 } from "./suggestionHooks";
 import { buildUserMenuItems, filterRecents } from "./suggestionUtils";
-
-// This search previously had no debouncing, so start relaxed at 200ms — shorter than the shared
-// SEARCH_DEBOUNCE_DURATION (500ms) used by the command palette / search bar — to minimize the change
-// in experience. Revisit lengthening toward 500ms for consistency once the shorter delay proves enough.
-const ENTITY_SEARCH_DEBOUNCE_MS = 200;
 
 export type EntitySearchOptions = Omit<
   SearchRequest,
@@ -67,10 +61,6 @@ export function useEntitySearch({
 }: UseEntitySearchOptions): UseEntitySearchResult {
   const buildSearchMenuItems = useBuildSearchMenuItems();
   const buildRecentsMenuItems = useBuildRecentsMenuItems();
-
-  // Debounce the server search so typing an @-mention fires one request when the query settles,
-  // not one per keystroke. Client-side recents/user filtering stays on the raw query for responsiveness.
-  const debouncedQuery = useDebouncedValue(query, ENTITY_SEARCH_DEBOUNCE_MS);
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
       refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
@@ -89,7 +79,7 @@ export function useEntitySearch({
 
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
     {
-      q: debouncedQuery,
+      q: query,
       models: searchModels.filter(
         (model): model is SearchModel => model !== "user",
       ),
