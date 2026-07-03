@@ -11,7 +11,11 @@ import {
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import { createMockState } from "metabase/redux/store/mocks";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks/settings";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { QuestionAlertsButton } from "./QuestionAlertsButton";
 
@@ -50,15 +54,13 @@ function setup({ isGuestEmbed }: { isGuestEmbed: boolean }) {
       is_superuser: true,
       permissions: { can_access_subscription: true },
     }),
-    settings: {
-      values: {
-        ...createMockSettings({ "enable-embedding-sdk": true }),
-        "token-features": {
-          embedding_sdk: true,
-          advanced_permissions: false,
-        },
-      } as any,
-    },
+    settings: createMockSettingsState({
+      "enable-embedding-sdk": true,
+      "token-features": createMockTokenFeatures({
+        embedding_sdk: true,
+        advanced_permissions: false,
+      }),
+    }),
     sdk: createMockSdkState({
       isGuestEmbed,
       initStatus: createMockLoginStatusState({ status: "success" }),
