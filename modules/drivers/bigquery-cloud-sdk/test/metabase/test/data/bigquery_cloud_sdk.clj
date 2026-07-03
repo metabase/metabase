@@ -1,9 +1,9 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -66,8 +66,7 @@
         database-name
         ;; releases get their own isolated datasets
         (tx/on-master-or-release-branch?)
-        (str "sha_" (config/current-major-version) "_"
-             (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
         :else
         (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
@@ -417,9 +416,16 @@
     [(test-dataset-id db-def)])
    ffirst))
 
+(defn- get-existing-tables [dataset-id]
+  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
+                    (project-id) dataset-id)]
+    (set (map first (execute! sql)))))
+
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (database-exists?! db-def))
+  (and (database-exists?! db-def)
+       (set/subset? (set (map :table-name (:table-definitions db-def)))
+                    (set (get-existing-tables (test-dataset-id db-def))))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
@@ -434,11 +440,6 @@
      [(tx/hash-dataset db-def)
       (test-dataset-id db-def)
       (tx/tracking-access-note)])))
-
-(defn- get-existing-tables [dataset-id]
-  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
-                    (project-id) dataset-id)]
-    (set (map :table_name (execute! sql)))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
