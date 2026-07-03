@@ -30,8 +30,8 @@ export function menu() {
   return cy.findByRole("menu");
 }
 
-export function modal(options = {}) {
-  return cy.get(".mb-mantine-Modal-content[role='dialog']", options);
+export function modal() {
+  return cy.findByRole("dialog");
 }
 
 export function tooltip() {
