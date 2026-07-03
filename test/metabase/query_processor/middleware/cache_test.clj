@@ -246,6 +246,24 @@
       (testing "an abandoned lease (older than the caller's tolerance) can be taken over"
         (is (true? (backend.db/try-acquire-refresh-lease! query-hash -1)))))))
 
+(deftest refresh-lease-does-not-bump-updated-at-test
+  (testing (str "try-acquire-refresh-lease! must not touch updated_at (regression for #76856). "
+                "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
+                "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
+                "written, so the stale row is treated as fresh for a full additional cache window.")
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
+      (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
+                                                                 :results    (byte-array [0])
+                                                                 :updated_at original-updated-at}]
+        (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5))))
+        (let [{:keys [updated_at refresh_started_at]}
+              (t2/select-one :model/QueryCache :query_hash query-hash)]
+          (testing "the lease was claimed"
+            (is (some? refresh_started_at)))
+          (testing "updated_at was left alone -- results have not actually been rewritten yet"
+            (is (= (t/instant original-updated-at) (t/instant updated_at)))))))))
+
 (deftest stale-while-revalidate-test
   (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
             recomputed, so concurrent requests don't stampede the data warehouse"
