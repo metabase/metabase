@@ -8,14 +8,21 @@ import { useRouter } from "./use-router";
  *
  * @see https://reactrouter.com/7.18.1/api/hooks/useParams
  */
-export function useParams<T extends Params = Params>(): T {
+export function useParams<
+  ParamsOrKey extends string | Record<string, string | undefined> = string,
+>(): Readonly<
+  [ParamsOrKey] extends [string] ? Params<ParamsOrKey> : Partial<ParamsOrKey>
+> {
+  type Result = Readonly<
+    [ParamsOrKey] extends [string] ? Params<ParamsOrKey> : Partial<ParamsOrKey>
+  >;
   const params = useRouter().params;
 
   if (!("splat" in params)) {
-    return params as T;
+    return params as Result;
   }
 
   const { splat, ...rest } = params;
   const remapped: typeof params = { ...rest, "*": splat };
-  return remapped as T;
+  return remapped as Result;
 }
