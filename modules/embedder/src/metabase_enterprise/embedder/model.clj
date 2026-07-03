@@ -8,6 +8,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase.util.log :as log])
   (:import
    (ai.djl.huggingface.translator TextEmbeddingTranslatorFactory)
@@ -43,6 +44,13 @@
   [resource-path]
   (io/resource resource-path))
 
+(defn- bare-model-name
+  "The final segment of an HF-style qualified model name.
+  Consumer settings often carry the full repo path (`sentence-transformers/all-MiniLM-L6-v2`); bundles and
+  the zoo default are keyed by the bare name, so both forms must resolve to the same model."
+  [model-name]
+  (peek (str/split model-name #"/")))
+
 (defn- model-source-overrides
   "Per-model source overrides from the `MB_EMBEDDER_MODEL_SOURCES` env var: an EDN map of model name →
   `{:path \"/dir\"}` or `{:url \"...\"}`, with optional `:model-file-name` (weights file minus `.onnx`,
@@ -67,19 +75,27 @@
      `MB_EE_EMBEDDING_MODEL_DIMENSIONS`), so the name/dimensions they declare must describe the model the
      entry loads.
   2. A per-arch INT8 bundle packed into this jar's resources at build time (the production default).
-  3. For [[default-model-name]] only: the DJL model-zoo URL, downloading into `~/.djl.ai/` — dev-only,
-     and only with `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can never silently reach the
-     network.
+     HF-style qualified names resolve by their bare final segment, so a consumer configured with
+     `sentence-transformers/all-MiniLM-L6-v2` finds the `all-MiniLM-L6-v2` bundle.
+  3. For [[default-model-name]] (by bare name) only: the DJL model-zoo URL, downloading into `~/.djl.ai/`
+     — dev-only, and only with `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true` so production can never silently
+     reach the network.
 
   Each source carries `:include-token-types?`: the HF INT8 exports we bundle (and dirs prepared like them)
   have a third `token_type_ids` graph input the translator must feed, while the DJL zoo export takes two.
   Override entries default to the bundle convention; set `:include-token-types? false` for a two-input
   custom model."
   [model-name]
-  (let [resource-path   (str "metabase-embedder/" model-name "-" (bundled-model-arch) ".zip")
+  (let [resource-path   (str "metabase-embedder/" (bare-model-name model-name) "-" (bundled-model-arch) ".zip")
         ;; `find`, not `get`: a present-but-nil entry must be treated as malformed, not as absent.
         [_ override
-         :as entry]     (find (model-source-overrides) model-name)]
+         :as entry]     (find (model-source-overrides) model-name)
+        ;; Only the recognized keys, so a stray key in the entry (e.g. :type) can't clobber the internal
+        ;; source-map discriminator and surface as a cryptic downstream error.
+        override-source (fn [type-key]
+                          (merge {:include-token-types? true}
+                                 (select-keys override [:model-file-name :include-token-types?])
+                                 {:type type-key, type-key (str (get override type-key))}))]
     ;; A malformed entry must fail loudly here: falling through to the bundled/zoo branches would either
     ;; claim no entry exists or silently load a different model than the one the entry meant to select.
     (when (and entry (not (or (:path override) (:url override))))
@@ -88,15 +104,15 @@
                       {:model-name model-name :entry override})))
     (cond
       (:path override)
-      (merge {:type :path :include-token-types? true} (assoc override :path (str (:path override))))
+      (override-source :path)
 
       (:url override)
-      (merge {:type :url :include-token-types? true} (assoc override :url (str (:url override))))
+      (override-source :url)
 
       (bundled-model-resource resource-path)
       {:type :url :url (str "jar:///" resource-path) :include-token-types? true}
 
-      (and (= model-name default-model-name)
+      (and (= (bare-model-name model-name) default-model-name)
            (= "true" (getenv "MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD")))
       {:type :url
        :url "djl://ai.djl.huggingface.onnxruntime/sentence-transformers/all-MiniLM-L6-v2"

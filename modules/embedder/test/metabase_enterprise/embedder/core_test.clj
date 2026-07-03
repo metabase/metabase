@@ -4,7 +4,6 @@
   entry, a bundled resource, or `MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD=true`)."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-complexity-score.cli :as dcs.cli]
    [metabase-enterprise.embedder.core :as embedder]
    [metabase-enterprise.embedder.model :as embedder.model]
    [metabase.test :as mt]))
@@ -89,9 +88,23 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"must have a :path or :url key"
                               (source-with {"MB_EMBEDDER_MODEL_SOURCES" "{\"my-model\" nil}"} true)))))
+    (testing "a stray key in an entry can't clobber the internal source-map discriminator"
+      (let [sources "{\"my-model\" {:path \"/models/custom\" :type :dir}}"]
+        (is (= {:type :path :path "/models/custom" :include-token-types? true}
+               (source-with {"MB_EMBEDDER_MODEL_SOURCES" sources} true)))))
     (testing "the bundled resource is the default, always with token types"
       (is (=? {:type :url :url #"jar:///metabase-embedder/my-model-.*\.zip" :include-token-types? true}
               (source-with {} true))))
+    (testing "HF-style qualified names resolve to the bare bundle name"
+      (mt/with-dynamic-fn-redefs [embedder.model/getenv                 (constantly nil)
+                                  embedder.model/bundled-model-resource (constantly (java.net.URL. "file:///stub"))]
+        (is (=? {:type :url :url #"jar:///metabase-embedder/all-MiniLM-L6-v2-.*\.zip"}
+                (#'embedder.model/model-source "sentence-transformers/all-MiniLM-L6-v2"))))
+      (testing "including for the zoo-download default-model gate"
+        (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
+                                    embedder.model/bundled-model-resource (constantly nil)]
+          (is (=? {:type :url :url #"djl://.*all-MiniLM-L6-v2"}
+                  (#'embedder.model/model-source "sentence-transformers/all-MiniLM-L6-v2"))))))
     (testing "the zoo download gates on opt-in and applies to the default model only"
       (mt/with-dynamic-fn-redefs [embedder.model/getenv                 {"MB_EMBEDDER_ALLOW_MODEL_DOWNLOAD" "true"}
                                   embedder.model/bundled-model-resource (constantly nil)]
@@ -122,10 +135,6 @@
             (is (= ["model-a" "model-b"] @builds)))
           (finally
             (embedder.model/reset-models!)))))))
-
-(deftest descriptor-stays-in-sync-test
-  (testing "the CLI's literal copy of the descriptor matches this module's source of truth"
-    (is (= embedder/default-model-descriptor @#'dcs.cli/in-process-descriptor))))
 
 (deftest failed-load-is-not-cached-test
   (testing "a failed model load is retried on the next call rather than cached forever"

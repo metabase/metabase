@@ -35,8 +35,9 @@ serves them side by side:
 - Semantic search: `MB_EE_EMBEDDING_PROVIDER` / `MB_EE_EMBEDDING_MODEL` / `..._DIMENSIONS`.
 - Library entity index: `MB_EE_LIBRARY_EMBEDDING_PROVIDER` / `MB_EE_LIBRARY_EMBEDDING_MODEL` /
   `..._DIMENSIONS` — each falls back to the corresponding global `MB_EE_EMBEDDING_*` value when
-  unset, except that overriding the model requires overriding its dimensions too (inheriting
-  another model's vector width would poison the index).
+  unset, except that model and dimensions must be overridden together, and overriding the provider
+  requires them too (inheriting the other half would poison the index or ask a provider for a model
+  it doesn't serve).
 - Complexity-score synonym axis: `MB_DATA_COMPLEXITY_SCORING_SYNONYM_EMBEDDING_*`.
 
 A requested model resolves, in priority order: an `MB_EMBEDDER_MODEL_SOURCES` entry, a bundle in
