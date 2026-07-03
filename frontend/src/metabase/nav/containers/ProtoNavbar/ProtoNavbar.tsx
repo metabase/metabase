@@ -60,7 +60,7 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
   }, [kbarQuery]);
 
   const sections: { id: SectionId; label: string; icon: IconName }[] = [
-    { id: "collections", label: t`Collections`, icon: "folder" },
+    { id: "collections", label: t`Home`, icon: "home" },
     { id: "explore", label: t`Explore`, icon: "compass" },
     { id: "library", label: t`Library`, icon: "repository" },
     { id: "data", label: t`Data`, icon: "database" },

@@ -23,6 +23,7 @@ import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepa
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
 import PC from "metabase/nav/containers/ProtoNavbar/ProtoCollections.module.css";
+import { SubNavHeading } from "metabase/nav/containers/ProtoNavbar/SubNav";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -36,7 +37,7 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
-import { ActionIcon, Button, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -307,37 +308,19 @@ export function MainNavbarView({
           {PROTO_NAV_ENABLED ? (
             <SidebarSection className={PC.collectionsSection}>
               <ErrorBoundary>
-                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-                    collections={protoCollectionsTree}
-                    selectedId={collectionItem?.id}
-                    onSelect={onItemSelect}
-                    initialExpandedIds={protoInitialExpandedIds}
-                    pinnedExpandedIds={protoPinnedExpandedIds}
-                  />
-                ) : (
-                  <Tree
-                    data={protoCollectionsTree}
-                    selectedId={collectionItem?.id}
-                    initialExpandedIds={protoInitialExpandedIds}
-                    pinnedExpandedIds={protoPinnedExpandedIds}
-                    onSelect={onItemSelect}
-                    TreeNode={SidebarCollectionLink}
-                    role="tree"
-                    aria-label="collection-tree"
-                  />
-                )}
                 {canWriteToCollections && !isTenantUser && (
                   <Menu position="bottom-start">
                     <Menu.Target>
-                      <Button
-                        variant="inverse"
-                        leftSection={<Icon name="add" size={16} />}
+                      <button
+                        type="button"
                         className={PC.createButton}
                         aria-label={t`Create new…`}
                       >
+                        <span className={PC.createIconCircle}>
+                          <Icon name="add" size={12} />
+                        </span>
                         {t`Create`}
-                      </Button>
+                      </button>
                     </Menu.Target>
                     <Menu.Dropdown>
                       <Menu.Item
@@ -364,6 +347,27 @@ export function MainNavbarView({
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
+                )}
+                <SubNavHeading>{t`Collections`}</SubNavHeading>
+                {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
+                  <PLUGIN_REMOTE_SYNC.CollectionsNavTree
+                    collections={protoCollectionsTree}
+                    selectedId={collectionItem?.id}
+                    onSelect={onItemSelect}
+                    initialExpandedIds={protoInitialExpandedIds}
+                    pinnedExpandedIds={protoPinnedExpandedIds}
+                  />
+                ) : (
+                  <Tree
+                    data={protoCollectionsTree}
+                    selectedId={collectionItem?.id}
+                    initialExpandedIds={protoInitialExpandedIds}
+                    pinnedExpandedIds={protoPinnedExpandedIds}
+                    onSelect={onItemSelect}
+                    TreeNode={SidebarCollectionLink}
+                    role="tree"
+                    aria-label="collection-tree"
+                  />
                 )}
                 {showOtherUsersCollections && (
                   <PaddedSidebarLink
