@@ -77,7 +77,7 @@ describe(
             .findByText(PARAMETER_NAME)
             .click();
         });
-        cy.findByRole("listbox").findByText(COLUMN_NAME).click();
+        H.selectDropdown().findByText(COLUMN_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -109,7 +109,7 @@ describe(
           .findByTestId("unset-click-mappings")
           .findByText(COLUMN_NAME)
           .click();
-        cy.findByRole("listbox").findByText(COLUMN_NAME).click();
+        H.selectDropdown().findByText(COLUMN_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -189,7 +189,7 @@ describe(
           .findByTestId("unset-click-mappings")
           .findByText(COLUMN_NAME)
           .click();
-        cy.findByRole("listbox").findByText(FIELD_NAME).click();
+        H.selectDropdown().findByText(FIELD_NAME).click();
         H.saveDashboard();
 
         cy.log("assert click behavior");
@@ -466,7 +466,7 @@ function setupDashboardClickBehavior({ targetName }: { targetName: string }) {
       cy.findByText(DASHBOARD_NAME).click();
     });
     H.sidebar().findByText(PARAMETER_NAME).click();
-    cy.findByRole("listbox").findByText(targetName).click();
+    H.selectDropdown().findByText(targetName).click();
     H.saveDashboard();
   });
 }

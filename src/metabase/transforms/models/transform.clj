@@ -147,6 +147,23 @@
          :target_db_id (when valid-db-id? target-db-id)
          :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
 
+(defn- resolve-merge-key-field-ids
+  "Fill `:field-id` on a merge target's unique-key columns from the synced target table's fields, once
+  the table exists and any are still by-name only."
+  [transform]
+  (let [target     (or (:target transform) (:target (t2/original transform)))
+        table-id   (or (:target_table_id transform) (:target_table_id (t2/original transform)))
+        unique-key (get-in target [:target-incremental-strategy :unique-key])]
+    (if (and (transforms-base.u/merge-target? {:target target})
+             table-id
+             (some #(nil? (:field-id %)) unique-key))
+      (let [name->id (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true)]
+        (assoc transform :target
+               (assoc-in target [:target-incremental-strategy :unique-key]
+                         (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
+                               unique-key))))
+      transform)))
+
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
@@ -179,7 +196,10 @@
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
             new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
         (and old-field-id (not= old-field-id new-field-id)))
-      (assoc :last_checkpoint_value nil))))
+      (assoc :last_checkpoint_value nil)
+
+      true
+      resolve-merge-key-field-ids)))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
