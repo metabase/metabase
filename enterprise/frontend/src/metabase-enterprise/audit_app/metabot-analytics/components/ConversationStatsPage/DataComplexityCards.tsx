@@ -105,7 +105,7 @@ function DataComplexityCard({
 
   return (
     <Card withBorder shadow="none" p="md">
-      <UnstyledButton onClick={open} className={S.cardButton}>
+      <Stack component={UnstyledButton} onClick={open} flex={1} gap={0}>
         <Flex align="center" justify="space-between" gap="sm">
           <Text fw={700}>{title}</Text>
           <Icon name="expand" c="text-disabled" />
@@ -129,7 +129,7 @@ function DataComplexityCard({
             <Text c="text-secondary">{t`Open for component details.`}</Text>
           </Stack>
         )}
-      </UnstyledButton>
+      </Stack>
 
       <Modal
         opened={isModalOpen}
