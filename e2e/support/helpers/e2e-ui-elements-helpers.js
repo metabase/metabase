@@ -30,8 +30,8 @@ export function menu() {
   return cy.findByRole("menu");
 }
 
-export function modal() {
-  return cy.get("[role='dialog'][aria-modal='true']");
+export function modal(options = {}) {
+  return cy.get("[role='dialog'][aria-modal='true']", options);
 }
 
 export function tooltip() {
