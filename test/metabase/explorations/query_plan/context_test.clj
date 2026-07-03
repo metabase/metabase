@@ -237,3 +237,68 @@
           (is (= "Revenue" (:name b)) "block name is computed from the metric Card")
           (is (string? (:metrics_md b)))
           (is (string? (:dimensions_md b))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; build-row-context — "Explore further" filter edge cases
+;;; ---------------------------------------------------------------------------
+
+(deftest build-row-context-fails-closed-on-unresolvable-explore-filter-test
+  (testing "build-row-context throws when an :explore_filters entry names a field the metric query can't resolve"
+    ;; The row's own dimension d1 resolves; the *filter*'s field_ref points at a column that isn't
+    ;; on the metric query, so the filter can't be applied. Fail closed — the runner catches and
+    ;; records a row-level error — rather than render an unfiltered chart the block title still
+    ;; prefixes with the clicked segment.
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid      (:id metric)
+            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                       :target ["field" {} (mt/id :venues :name)]}]
+            page-id  (insert-block-page-row!
+                      (:id t) cid
+                      {:metrics    [{:card_id cid
+                                     :dimension_mappings mappings
+                                     ;; a column from another table — not resolvable on this query
+                                     :explore_filters    [{:field_ref ["field" {} (mt/id :orders :total)]
+                                                           :value     10}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Name"
+                                     :effective_type "type/Text"}]}
+                      "d1")]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Could not resolve explore filter field ref"
+             (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                            :page_id page-id :params {}})))))))
+
+(deftest build-row-context-exposes-explore-filters-as-cache-key-material-test
+  (testing "the ctx exposes stable :explore-filters for the discovery cache key —"
+    (testing "it repeats across rebuilds, while the reconstructed dataset_query hash does not"
+      ;; `qp.variants/cached-discovery` keys on `:explore-filters` so two threads sharing a
+      ;; (card, dim, k) but scoped to different segments don't share top-N results. It can't key on
+      ;; the filtered `:dataset_query`: that's rebuilt per row via `lib/=`, minting fresh
+      ;; `:lib/uuid`s, so its hash differs every call and the cache would never hit.
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid      (:id metric)
+              filters  [{:field_ref ["field" {} (mt/id :venues :name)] :value "foo"}]
+              mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                         :target ["field" {} (mt/id :venues :name)]}]
+              page-id  (insert-block-page-row!
+                        (:id t) cid
+                        {:metrics    [{:card_id cid
+                                       :dimension_mappings mappings
+                                       :explore_filters    filters}]
+                         :dimensions [{:dimension_id "d1" :display_name "Name"
+                                       :effective_type "type/Text"}]}
+                        "d1")
+              build!   #(qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                       :page_id page-id :params {}})
+              c1       (build!)
+              c2       (build!)]
+          (is (= filters (:explore-filters c1))
+              "the filter chain is exposed on the ctx")
+          (is (= (:explore-filters c1) (:explore-filters c2))
+              "explore-filters is identical across rebuilds — a usable cache key")
+          (is (not= (hash (:dataset_query (:card c1)))
+                    (hash (:dataset_query (:card c2))))
+              "the filtered dataset_query hash differs per rebuild (fresh :lib/uuids) — why it can't be the key"))))))

@@ -147,14 +147,13 @@
   the discovered vector (or `[]` on failure / no rows). Both `query-name`
   and `dataset-query` go through this so the underlying QP query runs at
   most once per (card, dim, k) while the entry stays in the LRU."
-  [{:keys [mp card target dim params]}]
+  [{:keys [mp card target dim params explore-filters]}]
   (let [card-id   (:id card)
         dim-id    (or (:dimension_id dim) (:id dim))
         k         (:k params)
-        ;; Include the (possibly "Explore further"-filtered) query in the key: two threads
-        ;; sharing a (card, dim, k) but scoped to different segments must not share top-N
-        ;; discovery results.
-        cache-key [card-id dim-id k (hash (:dataset_query card))]]
+        ;; Include the "Explore further" filter chain in the key: two threads sharing a
+        ;; (card, dim, k) but scoped to different segments must not share top-N discovery results.
+        cache-key [card-id dim-id k (hash explore-filters)]]
     (cache.wrapped/lookup-or-miss
      discovery-cache cache-key
      (fn [_] (or (run-top-k-discovery mp card target dim k) [])))))

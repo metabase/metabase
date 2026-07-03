@@ -273,7 +273,7 @@
     (if (str/blank? v)
       card-name
       (let [noun (str/replace (or card-name "") leading-aggregation-prefix-re "")
-            head (str (u/upper-case-en (subs v 0 1)) (subs v 1))]
+            head (u/capitalize-first-char v)]
         (str/trim (str head " " noun))))))
 
 ;;; ----------------------------------------- schemas -----------------------------------------
@@ -592,7 +592,9 @@
   The user clicked a bar/point on the chart for `page_id`; we copy that page's block (its metric
   selection + the same dimensions) into a brand-new thread and append each `explore_filters`
   entry onto every metric selection's `:explore_filters` vector. The background planner then
-  materializes the same set of charts, but every query is scoped to those filters (see
+  materializes the same set of charts, but every query is scoped to those filters — and to any
+  filters the source block already carried, so drilling from within an already-drilled thread
+  keeps the earlier scope (see
   `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new
   thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
@@ -604,9 +606,18 @@
           block         (api/check-404 (t2/select-one :model/ExplorationBlock
                                                       :id (:exploration_block_id page)))
           src-thread-id (:exploration_thread_id block)
+          ;; The clicked page must live in *this* exploration — a page keys off a block off a
+          ;; thread off an exploration, and "Explore further" only ever drills a chart the caller
+          ;; is already viewing here. Reject anything else with a 404: without this check a caller
+          ;; could copy any page in the instance (metric selections, dimension snapshots, card ids,
+          ;; and the queries the planner then runs) into an exploration they can write (IDOR).
+          _             (api/check-404 (t2/exists? :model/ExplorationThread
+                                                   :id src-thread-id :exploration_id id))
           card-id       (:card_id (first (:metrics block)))
           card-name     (when card-id (t2/select-one-fn :name :model/Card :id card-id))
           filter-value  (:value (last explore_filters))
+          ;; Append, don't overwrite: a source block that itself came from a prior drill already
+          ;; carries `:explore_filters`; `into` keeps that earlier segment scope and adds this one.
           metrics'      (mapv #(update % :explore_filters (fnil into []) explore_filters)
                               (:metrics block))
           timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline

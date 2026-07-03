@@ -2416,3 +2416,94 @@
           (is (nil? (:limit resp)))
           (is (nil? (:offset resp)))
           (is (= 3 (count (:data resp)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                              POST /api/exploration/:id/explore-further                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- insert-explore-fixture!
+  "Directly persist an exploration -> thread -> block -> page -> query chain so the
+  explore-further endpoint has a clicked page to copy. `metrics` is the block's
+  metric-selection JSON (each entry needs at least `:card_id`). Returns a map of the
+  created ids."
+  [{:keys [creator-id collection-id card-id database-id dimension-id metrics query-type]}]
+  (let [expl   (first (t2/insert-returning-instances! :model/Exploration
+                                                      {:name "src" :creator_id creator-id
+                                                       :collection_id collection-id}))
+        thread (first (t2/insert-returning-instances! :model/ExplorationThread
+                                                      {:exploration_id (:id expl) :name "t" :position 0}))
+        block  (first (t2/insert-returning-instances! :model/ExplorationBlock
+                                                      {:exploration_thread_id (:id thread)
+                                                       :type "metric" :metrics metrics
+                                                       :dimensions [] :position 0}))
+        page   (first (t2/insert-returning-instances! :model/ExplorationPage
+                                                      {:exploration_block_id (:id block)
+                                                       :card_id card-id :dimension_id dimension-id}))]
+    (t2/insert! :model/ExplorationQuery
+                {:exploration_thread_id (:id thread) :card_id card-id :database_id database-id
+                 :dimension_id dimension-id :page_id (:id page) :query_type (or query-type "default")})
+    {:exploration-id (:id expl) :thread-id (:id thread) :block-id (:id block) :page-id (:id page)}))
+
+(deftest explore-further-rejects-page-from-another-exploration-test
+  (testing "POST /:id/explore-further 404s when page_id belongs to a different exploration —"
+    (testing "even for an admin, so a page can never be copied across explorations (IDOR)"
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card       metric {:name          "Revenue"
+                                               :type          :metric
+                                               :dataset_query (lib/->legacy-MBQL
+                                                               (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count)))))}]
+        (let [common {:creator-id   (mt/user->id :crowberto)
+                      :collection-id (:id coll)
+                      :card-id      (:id metric)
+                      :database-id  (mt/id)
+                      :dimension-id "d1"
+                      :metrics      [{:card_id (:id metric)}]}
+              a       (insert-explore-fixture! common)
+              b       (insert-explore-fixture! common)
+              body    {:explore_filters [{:field_ref ["field" {} (mt/id :venues :name)]
+                                          :value     "Texas"}]}]
+          (testing "cross-exploration page is rejected"
+            (mt/user-http-request :crowberto :post 404
+                                  (str "exploration/" (:exploration-id a) "/explore-further")
+                                  (assoc body :page_id (:page-id b))))
+          (testing "control: a page from the same exploration is accepted"
+            (mt/user-http-request :crowberto :post 200
+                                  (str "exploration/" (:exploration-id a) "/explore-further")
+                                  (assoc body :page_id (:page-id a)))))))))
+
+(deftest explore-further-preserves-prior-filter-on-compound-drill-test
+  (testing "POST /:id/explore-further keeps the source block's existing explore filters and appends the new one —"
+    (testing "so drilling within an already-drilled thread doesn't silently drop the earlier segment scope"
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card       metric {:name          "Revenue"
+                                               :type          :metric
+                                               :dataset_query (lib/->legacy-MBQL
+                                                               (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count)))))}]
+        (let [prior  {:field_ref ["field" {} (mt/id :venues :name)]  :value "Texas"}
+              new-f  {:field_ref ["field" {} (mt/id :venues :price)] :value 2}
+              src    (insert-explore-fixture!
+                      {:creator-id    (mt/user->id :crowberto)
+                       :collection-id (:id coll)
+                       :card-id       (:id metric)
+                       :database-id   (mt/id)
+                       :dimension-id  "d1"
+                       :metrics       [{:card_id (:id metric) :explore_filters [prior]}]})
+              _      (mt/user-http-request :crowberto :post 200
+                                           (str "exploration/" (:exploration-id src) "/explore-further")
+                                           {:page_id         (:page-id src)
+                                            :explore_filters [new-f]})
+              new-block (->> (t2/select :model/ExplorationBlock
+                                        {:join  [[:exploration_thread :t]
+                                                 [:= :t.id :exploration_block.exploration_thread_id]]
+                                         :where [:and
+                                                 [:= :t.exploration_id (:exploration-id src)]
+                                                 [:not= :exploration_block.exploration_thread_id (:thread-id src)]]})
+                             first)
+              filters (:explore_filters (first (:metrics new-block)))]
+          (is (= [prior new-f]
+                 (mapv #(select-keys % [:field_ref :value]) filters))
+              "both the prior (Texas) and the newly clicked (price) filter are present, in drill order"))))))

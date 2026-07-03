@@ -323,21 +323,24 @@
         dim-by-id  (u/index-by :dimension_id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]
     (when (and card block metric thread-dim)
-      (let [mp           (lib-be/application-database-metadata-provider (:database_id card))
-            mappings     (:dimension_mappings metric)
+      (let [mp              (lib-be/application-database-metadata-provider (:database_id card))
+            mappings        (:dimension_mappings metric)
+            explore-filters (:explore_filters metric)
             ;; "Explore further" drills persist their clicked segments as `:explore_filters` on
             ;; the block's metric selection; bake them into the Card query so all variants inherit.
-            card         (apply-explore-filters mp card (:explore_filters metric))
-            target       (qp.mbql/find-dimension-target dimension_id mappings)
-            segment      (when segment_id
-                           (try
-                             (let [q (lib/query mp (:dataset_query card))]
-                               (some #(when (= segment_id (:id %)) %)
-                                     (lib/available-segments q)))
-                             (catch Exception _ nil)))
-            t-dim-id     (:temporal_dimension_id params)
-            t-target     (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
-            t-thread-dim (when t-dim-id (get dim-by-id t-dim-id))]
+            ;; An unresolvable filter throws out of here — the runner records a row-level error
+            ;; rather than render an unfiltered chart the title still labels with the segment.
+            card            (apply-explore-filters mp card explore-filters)
+            target          (qp.mbql/find-dimension-target dimension_id mappings)
+            segment         (when segment_id
+                              (try
+                                (let [q (lib/query mp (:dataset_query card))]
+                                  (some #(when (= segment_id (:id %)) %)
+                                        (lib/available-segments q)))
+                                (catch Exception _ nil)))
+            t-dim-id        (:temporal_dimension_id params)
+            t-target        (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
+            t-thread-dim    (when t-dim-id (get dim-by-id t-dim-id))]
         {:mp              mp
          :card            card
          :target          target
@@ -345,6 +348,7 @@
          :dim-label       (or (:display_name thread-dim) dimension_id)
          :segment         segment
          :params          params
+         :explore-filters explore-filters
          :temporal-target t-target
          :temporal-dim    t-thread-dim}))))
 
