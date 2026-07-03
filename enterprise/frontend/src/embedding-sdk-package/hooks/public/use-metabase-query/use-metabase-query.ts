@@ -5,13 +5,17 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import {
-  isTableInput,
+  isQueryInput,
   isUnaryOperator,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { DatasetQuery } from "metabase-types/api";
 
-import type { SchemaJavaScriptType, TableSchema } from "../data-schema";
+import type {
+  MetricSchema,
+  SchemaJavaScriptType,
+  TableSchema,
+} from "../data-schema";
 
 import { mapDatasetQueryData } from "./map-dataset-query-data";
 import { stableStringifyQuery } from "./stable-query-key";
@@ -26,6 +30,7 @@ import type {
   FilterOperator,
   MetabaseDimensionFilterForOperator,
   MetabaseQueryOptions,
+  MetricQuery,
   NumericAggregationDimension,
   OrderableAggregationDimension,
   TableQuery,
@@ -150,6 +155,13 @@ const isOrderableJavaScriptType = (
 const getResolveDatasetQueryFromBundle = () =>
   getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.resolveDatasetQuery;
 
+type ResolveDatasetQueryFn = NonNullable<
+  ReturnType<typeof getResolveDatasetQueryFromBundle>
+>;
+type ResolveDatasetQueryInput = Parameters<
+  ReturnType<ResolveDatasetQueryFn>
+>[0];
+
 export type UseMetabaseQueryObjectResult = {
   query: DatasetQuery | null;
   error: unknown;
@@ -267,7 +279,7 @@ function getBinningOptions(
 }
 
 const useMetabaseQueryImpl = <
-  TEntity extends TableSchema | undefined = undefined,
+  TEntity extends MetricSchema | TableSchema | undefined = undefined,
   TSchema = unknown,
   TQuery extends MetabaseQueryOptions<TEntity, TSchema> = MetabaseQueryOptions<
     TEntity,
@@ -316,13 +328,14 @@ const useMetabaseQueryImpl = <
     setError(null);
 
     try {
-      if (isTableInput(currentQuery)) {
+      if (isQueryInput(currentQuery)) {
         if (!queryDataset || !resolveDatasetQuery) {
           return;
         }
 
-        const datasetQuery =
-          await resolveDatasetQuery(reduxStore)(currentQuery);
+        const datasetQuery = await resolveDatasetQuery(reduxStore)(
+          currentQuery as ResolveDatasetQueryInput,
+        );
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
@@ -355,7 +368,7 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
-  query: TableQuery<unknown>,
+  query: MetricQuery<unknown> | TableQuery<unknown>,
 ): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
 

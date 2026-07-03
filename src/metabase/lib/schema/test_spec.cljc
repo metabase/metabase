@@ -22,10 +22,16 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :card]]
    [:id [:ref ::lib.schema.id/card]]])
 
+(mr/def ::test-metric-source-spec
+  [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
+   [:id [:ref ::lib.schema.id/card]]])
+
 (mr/def ::test-source-spec
   [:multi {:dispatch (comp keyword :type)}
    [:table ::test-table-source-spec]
-   [:card ::test-card-source-spec]])
+   [:card ::test-card-source-spec]
+   [:metric ::test-metric-source-spec]])
 
 (mr/def ::test-column-spec
   [:map

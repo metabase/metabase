@@ -36,6 +36,20 @@
                            :source-card 1}]}
               query)))))
 
+(deftest ^:parallel test-query-with-metric-source-test
+  (testing "test-query creates a query from a metric source"
+    (let [query (lib.query.test-spec/test-query
+                 lib.tu/metadata-provider-with-metric
+                 {:stages [{:source {:type :metric
+                                     :id   1}}]})]
+      (is (=? {:lib/type :mbql/query
+               :database (meta/id)
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table (meta/id :checkins)
+                           :aggregation  [[:metric {} 1]]
+                           :breakout     [[:field {} (meta/id :checkins :user-id)]]}]}
+              query)))))
+
 (deftest ^:parallel test-query-with-fields-test
   (testing "test-query adds fields to the query"
     (let [query (lib.query.test-spec/test-query

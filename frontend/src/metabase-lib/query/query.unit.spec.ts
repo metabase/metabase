@@ -2,11 +2,13 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 import {
+  createMockCard,
   createMockMeasure,
   createMockSegment,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS,
@@ -19,6 +21,8 @@ import {
   SAMPLE_METADATA,
   SAMPLE_PROVIDER,
 } from "./test-helpers";
+
+const METRIC_ID = 42;
 
 const DEFAULT_QUERY: DatasetQuery = {
   database: SAMPLE_DATABASE.id,
@@ -92,6 +96,47 @@ describe("createTestQuery", () => {
         ],
       });
       expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
+    });
+
+    it("should create a query with a metric source", () => {
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          questions: [
+            createMockCard({
+              id: METRIC_ID,
+              name: "Revenue",
+              type: "metric",
+              dataset_query: createMockStructuredDatasetQuery({
+                database: SAMPLE_DATABASE.id,
+                query: {
+                  "source-table": ORDERS_ID,
+                  aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+                },
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "metric",
+              id: METRIC_ID,
+            },
+          },
+        ],
+      });
+
+      expect(Lib.sourceTableOrCardId(query)).toBe(ORDERS_ID);
+      expect(
+        Lib.displayInfo(query, 0, Lib.aggregations(query, 0)[0]),
+      ).toMatchObject({
+        displayName: "Revenue",
+      });
     });
   });
 

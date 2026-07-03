@@ -34,12 +34,13 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]))
 
-(mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
+(mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card ::lib.schema.metadata/metric]
   [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
    {spec-id :id spec-type :type} :- ::lib.schema.test-spec/test-source-spec]
   (case spec-type
-    :table (lib.metadata/table metadata-providerable spec-id)
-    :card  (lib.metadata/card metadata-providerable spec-id)))
+    :table  (lib.metadata/table metadata-providerable spec-id)
+    :card   (lib.metadata/card metadata-providerable spec-id)
+    :metric (lib.metadata/metric metadata-providerable spec-id)))
 
 (mu/defn- matches-column? :- :boolean
   [query                                   :- ::lib.schema/query

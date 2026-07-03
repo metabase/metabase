@@ -46,10 +46,10 @@
                       :comment [:entityId :description]}
    :measure          {:runtime [:type :id :tableId :name :columns]
                       :comment [:entityId :description]}
-   :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :sourceCardId
+   :metric           {:runtime [:type :id :name :databaseId :sourceTableId :sourceCardId
                                 :mappedTableIds :columns :dimensions]
                       :comment [:entityId :description :verified :sourceTable]}
-   :metric-dimension {:runtime [:id :fieldId :metricId :tableId :sourceFieldId
+   :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :source-name :sourceFieldId
                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
    :column           {:runtime [:name :jsType]
@@ -571,7 +571,12 @@
 (defn- dimension-schema
   ([dimension metric-id]
    (dimension-schema dimension metric-id {}))
-  ([{:keys [field_id] :as dimension} metric-id table-key-by-id]
+  ([dimension metric-id table-key-by-id]
+   (dimension-schema dimension metric-id table-key-by-id {}))
+  ([{:keys [field_id] :as dimension}
+    metric-id
+    table-key-by-id
+    table-source-name-by-id]
    (let [dimension-id (or (:id dimension) field_id)
          field-id     (or field_id (some-> dimension :sources first :field-id))
          table-id     (or (:table_id dimension) (:table-id dimension) (field-table-id field-id))
@@ -580,8 +585,11 @@
                         dimension)]
      (assoc-some
       (assoc (column-schema column)
+             :type "column"
              :key (generated-key (:name column) dimension-id)
              :id (str dimension-id))
+      :source-name (when (integer? table-id)
+                     (get table-source-name-by-id table-id))
       :fieldId (when (integer? field-id) field-id)
       :tableId (when (integer? table-id) table-id)
       :sourceFieldId (when (integer? (:source-field-id dimension))
@@ -636,6 +644,13 @@
     (->> (t2/select [:model/Table :id :name :display_name] :id [:in table-ids])
          (map (fn [{:keys [id name display_name]}]
                 [id (pascal-case (generated-key (or display_name name) id))]))
+         (into {}))))
+
+(defn- table-source-names
+  [table-ids]
+  (when (seq table-ids)
+    (->> (t2/select [:model/Table :id :name] :id [:in table-ids])
+         (map (juxt :id :name))
          (into {}))))
 
 (defn- source-table-schema
@@ -700,14 +715,16 @@
                            (filter integer?)
                            distinct)
         table-key-by-id (table-key-disambiguators table-ids)
-        dimension-schemas (mapv #(dimension-schema % id table-key-by-id) dimensions)
+        table-source-name-by-id (table-source-names table-ids)
+        dimension-schemas (mapv #(dimension-schema % id table-key-by-id table-source-name-by-id)
+                                dimensions)
         mapped-table-ids  (->> dimension-schemas
                                (keep :tableId)
                                distinct
                                sort
                                vec)]
     (assoc-some
-     {:kind       "metric"
+     {:type       "metric"
       :key        (generated-key name id)
       :id         id
       :name       name
@@ -1141,6 +1158,16 @@
                 (array-map)
                 fields-by-group))))
 
+(defn- compact-metric-dimension-keys
+  [fields-reference-by-table field-key-by-table-and-field dimensions]
+  (->> dimensions
+       (keep (fn [[dimension-key {:keys [tableId fieldId name]}]]
+               (when (and (contains? fields-reference-by-table tableId)
+                          (or (get field-key-by-table-and-field [tableId fieldId])
+                              (get field-key-by-table-and-field [tableId name])))
+                 dimension-key)))
+       set))
+
 (defn- compact-metric-dimensions
   [schema]
   (let [fields-reference-by-table      (table-fields-reference-lookup schema)
@@ -1152,9 +1179,14 @@
                              (let [dimensions     (:dimensions metric)
                                    compact-fields (compact-metric-dimension-fields fields-reference-by-table
                                                                                    field-key-by-table-and-field
-                                                                                   dimensions)]
+                                                                                   dimensions)
+                                   compact-keys   (compact-metric-dimension-keys fields-reference-by-table
+                                                                                 field-key-by-table-and-field
+                                                                                 dimensions)
+                                   raw-fields     (not-empty (apply dissoc dimensions compact-keys))
+                                   compact-dimensions (not-empty (merge raw-fields compact-fields))]
                                (cond-> (dissoc metric :dimensions)
-                                 compact-fields (assoc :dimensions compact-fields)))))))))
+                                 compact-dimensions (assoc :dimensions compact-dimensions)))))))))
 
 (defn- render-top-level-const
   [k value suffix]

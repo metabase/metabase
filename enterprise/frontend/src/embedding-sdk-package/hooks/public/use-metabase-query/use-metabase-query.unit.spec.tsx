@@ -3,10 +3,13 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import type { DatasetQuery } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import * as DataApp from "../../../data-app";
 
@@ -35,6 +38,19 @@ jest.mock("embedding-sdk-shared/hooks/use-sdk-loading-state", () => ({
   useSdkLoadingState: jest.fn(() => ({ loadingState: "loaded" })),
 }));
 
+jest.mock("metabase/api", () => ({
+  cardApi: {
+    endpoints: {
+      getCard: { name: "getCard" },
+      getCardQueryMetadata: { name: "getCardQueryMetadata" },
+    },
+  },
+}));
+
+jest.mock("metabase/api/utils/run-rtk-endpoint", () => ({
+  runRtkEndpoint: jest.fn(() => Promise.resolve(undefined)),
+}));
+
 jest.mock("metabase/redux/tables", () => ({
   fetchTableMetadata: jest.fn(({ id }) => ({
     type: "fetchTableMetadata",
@@ -48,6 +64,7 @@ jest.mock("metabase/selectors/metadata", () => ({
 
 const mockFetchTableMetadata = jest.mocked(fetchTableMetadata);
 const mockGetMetadataUnfiltered = jest.mocked(getMetadataUnfiltered);
+const mockRunRtkEndpoint = jest.mocked(runRtkEndpoint);
 const mockUseLazySelector = jest.mocked(useLazySelector);
 const mockUseMetabaseProviderPropsStore = jest.mocked(
   useMetabaseProviderPropsStore,
@@ -132,9 +149,50 @@ const TEST_SCHEMA = {
       },
     },
   },
+  metrics: {
+    revenue: {
+      type: "metric",
+      id: 31,
+      name: "Revenue",
+      databaseId: 1,
+      sourceTableId: 1,
+      mappedTableIds: [1],
+      columns: [{ name: "Revenue", displayName: "Revenue", jsType: "number" }],
+      dimensions: {
+        orders: {
+          amount: {
+            type: "column",
+            fieldId: 102,
+            tableId: 1,
+            name: "AMOUNT",
+            displayName: "Amount",
+            jsType: "number",
+          },
+          createdAt: {
+            type: "column",
+            fieldId: 103,
+            tableId: 1,
+            name: "CREATED_AT",
+            displayName: "Created At",
+            jsType: "Date",
+            baseType: "type/DateTime",
+          },
+          status: {
+            type: "column",
+            fieldId: 101,
+            tableId: 1,
+            name: "STATUS",
+            displayName: "Status",
+            jsType: "string",
+          },
+        },
+      },
+    },
+  },
 } as const;
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
+type RevenueMetric = (typeof TEST_SCHEMA)["metrics"]["revenue"];
 
 const TEST_METADATA = {
   databases: {
@@ -222,6 +280,20 @@ const TEST_METADATA = {
       },
     },
   },
+  questions: {
+    31: createMockCard({
+      id: 31,
+      name: "Revenue",
+      type: "metric",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+        },
+      },
+    }),
+  },
 };
 
 const createMockStore = () =>
@@ -291,6 +363,32 @@ const _invalidCrossTableFieldQuery = {
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
+const _validMetricQuery = {
+  source: TEST_SCHEMA.metrics.revenue,
+  filters: [
+    TEST_SCHEMA.tables.orders.segments.completed,
+    filter(TEST_SCHEMA.metrics.revenue.dimensions.orders.status, "=", "paid"),
+  ],
+  aggregations: [
+    TEST_SCHEMA.tables.orders.measures.revenue,
+    sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount),
+  ],
+  breakouts: [
+    breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+      unit: "month",
+    }),
+  ],
+  limit: 100,
+} satisfies MetabaseQueryOptions<RevenueMetric>;
+
+const _invalidMetricCrossTableSegmentQuery = {
+  source: TEST_SCHEMA.metrics.revenue,
+  filters: [
+    // @ts-expect-error segments must belong to a mapped metric table
+    TEST_SCHEMA.tables.products.segments.active,
+  ],
+} satisfies MetabaseQueryOptions<RevenueMetric>;
+
 function TypeFixtures() {
   useMetabaseQuery<OrdersTable>({
     source: TEST_SCHEMA.tables.orders,
@@ -306,6 +404,16 @@ function TypeFixtures() {
     scalarAggregationResult.data?.rows[0]?.sum;
 
   void scalarAggregationValue;
+
+  const metricResult = useMetabaseQuery<RevenueMetric>({
+    source: TEST_SCHEMA.metrics.revenue,
+    aggregations: [sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount)],
+  });
+
+  const metricAggregationValue: number | null | undefined =
+    metricResult.data?.rows[0]?.sum;
+
+  void metricAggregationValue;
 
   // @ts-expect-error grouped queries must include an explicit aggregation
   useMetabaseQuery<OrdersTable>({
@@ -323,6 +431,7 @@ void TypeFixtures;
 describe("resolveDatasetQuery", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRunRtkEndpoint.mockResolvedValue(undefined);
     mockGetMetadataUnfiltered.mockReturnValue(TEST_METADATA as any);
     mockUseLazySelector.mockReturnValue({ status: "success" });
     mockUseSdkLoadingState.mockReturnValue({ loadingState: "loaded" } as any);
@@ -442,6 +551,76 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("loads metric metadata and passes the public source DSL through Lib.createTestQuery", async () => {
+    const store = createMockStore();
+    const datasetQuery = await resolveDatasetQueryInBundle(store)({
+      source: TEST_SCHEMA.metrics.revenue,
+      filters: [
+        TEST_SCHEMA.tables.orders.segments.completed,
+        filter(
+          TEST_SCHEMA.metrics.revenue.dimensions.orders.status,
+          "=",
+          "paid",
+        ),
+      ],
+      aggregations: [
+        count(),
+        sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount),
+        TEST_SCHEMA.tables.orders.measures.revenue,
+      ],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+          unit: "month",
+        }),
+      ],
+      limit: 100,
+    });
+
+    expect(mockFetchTableMetadata).not.toHaveBeenCalled();
+    expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
+      1,
+      { id: 31 },
+      store.dispatch,
+      cardApi.endpoints.getCard,
+      { forceRefetch: false },
+    );
+    expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
+      2,
+      31,
+      store.dispatch,
+      cardApi.endpoints.getCardQueryMetadata,
+      { forceRefetch: false },
+    );
+    expect(datasetQuery).toMatchObject({
+      "lib/type": "mbql/query",
+      database: 1,
+      stages: [
+        {
+          "lib/type": "mbql.stage/mbql",
+          "source-table": 1,
+          filters: [
+            ["segment", expect.anything(), 11],
+            ["=", expect.anything(), ["field", expect.anything(), 101], "paid"],
+          ],
+          aggregation: [
+            ["metric", expect.anything(), 31],
+            ["count", expect.anything()],
+            ["sum", expect.anything(), ["field", expect.anything(), 102]],
+            ["measure", expect.anything(), 21],
+          ],
+          breakout: [
+            [
+              "field",
+              expect.objectContaining({ "temporal-unit": "month" }),
+              103,
+            ],
+          ],
+          limit: 100,
+        },
+      ],
+    });
+  });
+
   it("rejects invalid limits with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
@@ -486,6 +665,44 @@ describe("resolveDatasetQuery", () => {
       }),
     ).rejects.toThrow(
       "Table query breakouts must belong to source table 1, but received table id 2.",
+    );
+  });
+
+  it("rejects invalid metric query clauses with clear error messages", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.metrics.revenue,
+        filters: [TEST_SCHEMA.tables.products.segments.active],
+      }),
+    ).rejects.toThrow(
+      "Metric query filters must belong to one of the Metric's mapped tables. Expected table id 2 to be one of 1.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.metrics.revenue,
+        filters: [filter(TEST_SCHEMA.tables.products.fields.price, "=", 10)],
+      }),
+    ).rejects.toThrow(
+      "Metric query filters must use generated metric dimensions.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.metrics.revenue,
+        aggregations: [sum(TEST_SCHEMA.tables.products.fields.price)],
+      }),
+    ).rejects.toThrow(
+      "Metric query aggregations must use generated metric dimensions.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.metrics.revenue,
+        breakouts: [TEST_SCHEMA.tables.products.fields.price],
+      }),
+    ).rejects.toThrow(
+      "Metric query breakouts must use generated metric dimensions.",
     );
   });
 });

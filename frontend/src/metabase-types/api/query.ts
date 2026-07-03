@@ -452,7 +452,15 @@ export type TestCardSourceSpec = {
   id: CardId;
 };
 
-export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
+export type TestMetricSourceSpec = {
+  type: "metric";
+  id: CardId;
+};
+
+export type TestSourceSpec =
+  | TestTableSourceSpec
+  | TestCardSourceSpec
+  | TestMetricSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";

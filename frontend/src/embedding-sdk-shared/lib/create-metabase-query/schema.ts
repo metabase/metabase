@@ -47,3 +47,14 @@ export type TableSchema = {
   segments?: Record<string, SegmentSchema>;
   measures?: Record<string, MeasureSchema>;
 };
+
+export type MetricSchema = {
+  type: "metric";
+  id: number;
+  databaseId?: number;
+  sourceTableId?: number;
+  sourceCardId?: number;
+  mappedTableIds?: readonly number[];
+  columns?: readonly SchemaColumn[];
+  dimensions?: Record<string, Record<string, FieldSchema>>;
+};
