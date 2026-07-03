@@ -37,6 +37,17 @@ function SearchParamsProbe({ api }: { api: RouterApi }) {
   );
 }
 
+function DefaultInitProbe({ api }: { api: RouterApi }) {
+  const [searchParams, setSearchParams] = api.useSearchParams({ page: "1" });
+  return (
+    <div>
+      <span data-testid="rr-page">{searchParams.get("page")}</span>
+      <span data-testid="rr-q">{searchParams.get("q")}</span>
+      <button onClick={() => setSearchParams({ q: "x" })}>set-other</button>
+    </div>
+  );
+}
+
 const click = (name: string) =>
   userEvent.click(screen.getByRole("button", { name }));
 
@@ -99,5 +110,34 @@ describe("router/useSearchParams conformance", () => {
       interact: () => click("set"),
     });
     expect(facade).toEqual(v7);
+  });
+
+  it("matches v7 when filling in a default the URL is missing", async () => {
+    const { facade, v7 } = await runBoth(DefaultInitProbe, {
+      ...AT_FOO,
+      initialRoute: "/foo",
+    });
+    expect(facade).toEqual(v7);
+    expect(facade["rr-page"]).toBe("1");
+  });
+
+  it("matches v7 when the URL value wins over the default", async () => {
+    const { facade, v7 } = await runBoth(DefaultInitProbe, {
+      ...AT_FOO,
+      initialRoute: "/foo?page=5",
+    });
+    expect(facade).toEqual(v7);
+    expect(facade["rr-page"]).toBe("5");
+  });
+
+  it("matches v7 when a default stops being merged after a set", async () => {
+    const { facade, v7 } = await runBoth(DefaultInitProbe, {
+      ...AT_FOO,
+      initialRoute: "/foo",
+      interact: () => click("set-other"),
+    });
+    expect(facade).toEqual(v7);
+    expect(facade["rr-page"]).toBe("");
+    expect(facade["rr-q"]).toBe("x");
   });
 });
