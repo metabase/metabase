@@ -4,11 +4,6 @@ import {
 } from "@mantine/core";
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
-/**
- * Semantic color axis from the design system. Legacy Metabase color keys are
- * still accepted (as `MantineBadgeProps["color"]`) so existing call sites keep
- * compiling until they are migrated to the semantic names.
- */
 export type BadgeColor =
   | "neutral"
   | "brand"
