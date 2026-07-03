@@ -116,14 +116,14 @@
 
 (deferror timed-out-acquiring-connection
   "We were unable to acquire a connection to the query's database before the checkout timeout elapsed because the
-  connection pool is saturated. Equivalent of an HTTP 429; the client may retry after a short delay. Unlike
-  `unable-to-acquire-connection` this is a transient capacity problem, not a `client` error (the query itself is fine)
-  nor an unexpected `server` error."
+  connection pool is saturated. Equivalent of an HTTP 503 (Service Unavailable); this is a transient condition the
+  client may retry. Unlike `unable-to-acquire-connection` it is not a `client` error (the query itself is fine), and
+  unlike a generic `server` error it is expected under load rather than a bug."
   :parent :error
   :show-in-embeds? true)
 
 (defn timed-out-acquiring-connection?
-  "Is `error-type` a connection-pool-saturation error, the equivalent of an HTTP 429 status code?"
+  "Is `error-type` a connection-pool-saturation error, the equivalent of an HTTP 503 status code?"
   [error-type]
   (isa? hierarchy error-type timed-out-acquiring-connection))
 

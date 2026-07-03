@@ -233,8 +233,8 @@
               response (mt/user-http-request :crowberto :post 400 "dataset" query)]
           (is (= "unable-to-acquire-connection" (:error_type response))))))))
 
-(deftest connection-pool-checkout-timeout-returns-429-test
-  (testing "A c3p0 checkout timeout (saturated pool) surfaces to the frontend as an HTTP 429"
+(deftest connection-pool-checkout-timeout-returns-503-test
+  (testing "A c3p0 checkout timeout (saturated pool) surfaces to the frontend as a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
@@ -250,5 +250,5 @@
           (let [query    {:database (:id tmp-db)
                           :type     :native
                           :native   {:query "SELECT 1"}}
-                response (mt/user-http-request :crowberto :post 429 "dataset" query)]
+                response (mt/user-http-request :crowberto :post 503 "dataset" query)]
             (is (= "timed-out-acquiring-connection" (:error_type response)))))))))

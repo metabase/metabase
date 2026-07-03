@@ -223,9 +223,9 @@
     (:status-code err) (:status-code err)
     ;; If the error is setting its own status code use that
     (-> err :ex-data :status-code) (-> err :ex-data :status-code)
-    ;; If a resource is saturated (e.g. the connection pool is exhausted) return 429 so clients back off
+    ;; If a resource is saturated (e.g. the connection pool is exhausted) return 503 so clients retry/back off
     (-> err :error_type qp.error-type/timed-out-acquiring-connection?)
-    429
+    503
     ;; If this is a permission error return 403
     (-> err :error_type qp.error-type/permission-error?)
     403
