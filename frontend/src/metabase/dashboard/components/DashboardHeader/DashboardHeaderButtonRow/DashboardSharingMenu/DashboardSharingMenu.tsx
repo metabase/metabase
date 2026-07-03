@@ -111,6 +111,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         <InviteToViewModal
           title={t`Invite someone to view this dashboard`}
           shareUrl={`${siteUrl}${getDashboardUrl(dashboard)}`}
+          triggeredFrom="dashboard"
           inviteTarget={inviteTarget}
           onClose={closeInvite}
         />

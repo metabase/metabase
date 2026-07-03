@@ -122,6 +122,7 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
         <InviteToViewModal
           title={t`Invite someone to view this question`}
           shareUrl={shareUrl}
+          triggeredFrom="question"
           inviteTarget={{
             type: "question",
             id: question.id(),
