@@ -16,6 +16,8 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks/use-user-metabot-permissions";
+import { useDispatch } from "metabase/redux";
+import { updateUserSetting } from "metabase/redux/settings";
 import { Box, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { LocaleData, User } from "metabase-types/api";
@@ -57,10 +59,10 @@ const UserProfileForm = ({
   onSubmit,
 }: UserProfileFormProps): JSX.Element => {
   const schema = isSsoUser ? SSO_PROFILE_SCHEMA : LOCAL_PROFILE_SCHEMA;
+  const dispatch = useDispatch();
   const { hasMetabotAccess } = useUserMetabotPermissions();
-  const [savedInstructions, setSavedInstructions] = useUserSetting(
+  const [savedInstructions] = useUserSetting(
     "metabot-user-custom-instructions",
-    { shouldDebounce: false },
   );
 
   const initialValues = useMemo(() => {
@@ -80,15 +82,24 @@ const UserProfileForm = ({
   }, [locales]);
 
   const handleSubmit = useCallback(
-    (values: ProfileFormValues) => {
+    async (values: ProfileFormValues) => {
       const {
         "metabot-user-custom-instructions": instructions,
         ...profileData
       } = values;
       const newInstructions = instructions ?? null;
 
+      // Await the setting save before the profile submit: a failure must
+      // reject the submit (no false "Success"), and a locale change reloads
+      // the page from `onSubmit`, which would otherwise cut this request off.
       if (newInstructions !== (savedInstructions ?? null)) {
-        setSavedInstructions(newInstructions);
+        await dispatch(
+          updateUserSetting({
+            key: "metabot-user-custom-instructions",
+            value: newInstructions,
+            shouldRefresh: false,
+          }),
+        ).unwrap();
       }
 
       return onSubmit(user, {
@@ -96,7 +107,7 @@ const UserProfileForm = ({
         locale: profileData.locale === "" ? null : profileData.locale,
       });
     },
-    [user, onSubmit, savedInstructions, setSavedInstructions],
+    [user, onSubmit, savedInstructions, dispatch],
   );
 
   return (

@@ -23,9 +23,11 @@ const setup = (
   {
     hasMetabotAccess = true,
     metabotUserCustomInstructions = null,
+    settingUpdateStatus = 204,
   }: {
     hasMetabotAccess?: boolean;
     metabotUserCustomInstructions?: string | null;
+    settingUpdateStatus?: number;
   } = {},
 ) => {
   const settings = createMockSettings({
@@ -36,7 +38,7 @@ const setup = (
   });
 
   setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
+  setupUpdateSettingEndpoint({ status: settingUpdateStatus });
   setupUserMetabotPermissionsEndpoint(
     createMockUserMetabotPermissions({
       metabot: hasMetabotAccess ? "yes" : "no",
@@ -47,6 +49,14 @@ const setup = (
     storeInitialState: state,
   });
 };
+
+const INSTRUCTIONS_PLACEHOLDER =
+  "E.g. I usually ask about sales and marketing data, not engineering metrics.";
+
+const settingCalls = () =>
+  fetchMock.callHistory.calls(
+    "path:/api/setting/metabot-user-custom-instructions",
+  );
 
 describe("UserProfileForm", () => {
   it("should show a success message after form submit", async () => {
@@ -83,14 +93,10 @@ describe("UserProfileForm", () => {
     setup(getProps({ onSubmit: jest.fn().mockResolvedValue({}) }));
 
     const textarea = await screen.findByPlaceholderText(
-      "E.g. I usually ask about sales and marketing data, not engineering metrics.",
+      INSTRUCTIONS_PLACEHOLDER,
     );
     await userEvent.type(textarea, "Focus on marketing data.");
 
-    const settingCalls = () =>
-      fetchMock.callHistory.calls(
-        "path:/api/setting/metabot-user-custom-instructions",
-      );
     expect(settingCalls()).toHaveLength(0);
 
     await userEvent.click(screen.getByText("Update"));
@@ -98,6 +104,42 @@ describe("UserProfileForm", () => {
     await waitFor(() => {
       expect(settingCalls().length).toBeGreaterThan(0);
     });
+  });
+
+  it("should save the Metabot instructions before submitting the profile", async () => {
+    let settingSavedBeforeSubmit = false;
+    const onSubmit = jest.fn().mockImplementation(() => {
+      settingSavedBeforeSubmit = settingCalls().length > 0;
+      return Promise.resolve({});
+    });
+    setup(getProps({ onSubmit }));
+
+    const textarea = await screen.findByPlaceholderText(
+      INSTRUCTIONS_PLACEHOLDER,
+    );
+    await userEvent.type(textarea, "Focus on marketing data.");
+    await userEvent.click(screen.getByText("Update"));
+
+    expect(await screen.findByText("Success")).toBeInTheDocument();
+    expect(settingSavedBeforeSubmit).toBe(true);
+  });
+
+  it("should not show success or submit the profile when saving the Metabot instructions fails", async () => {
+    const onSubmit = jest.fn().mockResolvedValue({});
+    setup(getProps({ onSubmit }), { settingUpdateStatus: 500 });
+
+    const textarea = await screen.findByPlaceholderText(
+      INSTRUCTIONS_PLACEHOLDER,
+    );
+    await userEvent.type(textarea, "Focus on marketing data.");
+    await userEvent.click(screen.getByText("Update"));
+
+    await waitFor(() => {
+      expect(settingCalls().length).toBeGreaterThan(0);
+    });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.queryByText("Success")).not.toBeInTheDocument();
   });
 
   it("should not save the Metabot instructions setting when it is unchanged", async () => {
