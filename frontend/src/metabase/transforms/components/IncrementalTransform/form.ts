@@ -12,7 +12,9 @@ export type IncrementalSettingsFormValues = {
   incremental: boolean;
   sourceStrategy: "checkpoint";
   checkpointFilterFieldId: string | null; // String because Mantine Select requires string values
-  targetStrategy: "append";
+  // Comma-separated target column names. Empty → append. Non-empty → the target is upserted
+  // (merge/restate) on these columns instead of appended.
+  uniqueKey: string;
 };
 
 export const VALIDATION_SCHEMA = Yup.object({
@@ -27,7 +29,7 @@ export const VALIDATION_SCHEMA = Yup.object({
       then: (schema) => schema.required(Errors.required),
       otherwise: (schema) => schema.nullable().defined(),
     }),
-  targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
+  uniqueKey: Yup.string().default(""),
 });
 
 export const getInitialValues = (
@@ -36,9 +38,16 @@ export const getInitialValues = (
   incremental: false,
   sourceStrategy: "checkpoint",
   checkpointFilterFieldId: null,
-  targetStrategy: "append",
+  uniqueKey: "",
   ...defaults,
 });
+
+const parseUniqueKey = (uniqueKey: string) =>
+  uniqueKey
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+    .map((name) => ({ name }));
 
 export const getIncrementalSettingsFromTransform = (
   transform: Transform,
@@ -51,6 +60,11 @@ export const getIncrementalSettingsFromTransform = (
       ? (strategy["checkpoint-filter-field-id"] ?? null)
       : null;
 
+  const targetStrategy =
+    transform.target.type === "table-incremental"
+      ? transform.target["target-incremental-strategy"]
+      : undefined;
+
   return {
     incremental: isIncremental,
     sourceStrategy: "checkpoint",
@@ -58,7 +72,13 @@ export const getIncrementalSettingsFromTransform = (
       isIncremental && checkpointFilterFieldId != null
         ? String(checkpointFilterFieldId)
         : null,
-    targetStrategy: "append",
+    uniqueKey:
+      targetStrategy?.type === "merge"
+        ? targetStrategy["unique-key"]
+            .map((column) => column.name)
+            .filter((name): name is string => name != null)
+            .join(", ")
+        : "",
   };
 };
 
@@ -114,11 +134,13 @@ export const buildIncrementalTarget = (
   if (!values.incremental) {
     return base;
   }
+  const uniqueKey = parseUniqueKey(values.uniqueKey);
   return {
     ...base,
     type: "table-incremental",
-    "target-incremental-strategy": {
-      type: values.targetStrategy,
-    },
+    "target-incremental-strategy":
+      uniqueKey.length > 0
+        ? { type: "merge", "unique-key": uniqueKey }
+        : { type: "append" },
   };
 };
