@@ -13,6 +13,7 @@
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -289,7 +290,14 @@
                                    (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
-                  :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
+                  :frame-src    (if (some? data-app-connect-hosts)
+                                  ;; Data-app docs get a per-app framing allowlist:
+                                  ;; only `'self'` and the origins the app declared
+                                  ;; in `allowed_hosts` — NOT the instance-wide iframe
+                                  ;; hosts, so a data app can't frame those unless it
+                                  ;; lists them itself.
+                                  (into ["'self'"] data-app-connect-hosts)
+                                  (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
@@ -319,9 +327,8 @@
                                     (str "ws://*:" cljs-dev-port))]
                                  ;; Per-app `allowed_hosts` for the data-app iframe document, so its
                                  ;; sandboxed bundle can fetch/XHR the origins the app declared. Added
-                                 ;; separately from `'self'` (which stays for the host-side SDK calls)
-                                 ;; and empty for every non-data-app document.
-                                 data-app-connect-hosts)
+                                 ;; separately from `'self'` (which stays for the host-side SDK calls).
+                                 (when data-app-iframe? data-app-connect-hosts))
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
@@ -345,9 +352,20 @@
 
 (defn- content-security-policy-header-with-frame-ancestors
   [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts]
-  (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
-          "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
+  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
+                  "Content-Security-Policy"
+                  #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
+    ;; Restrict native `<form action="…">` submissions to the app's declared
+    ;; `allowed_hosts` (mirroring `connect-src`); with none declared this is
+    ;; `'none'`, blocking every native submit. `form-action` does not fall back to
+    ;; `default-src`, so it must be set explicitly. Client-side `onSubmit` handlers
+    ;; are unaffected — they `preventDefault`, so no submission is ever checked.
+    data-app-iframe? (update "Content-Security-Policy"
+                             #(str % " form-action "
+                                   (if (seq data-app-connect-hosts)
+                                     (str/join " " data-app-connect-hosts)
+                                     "'none'")
+                                   ";"))))
 
 (defn- x-frame-options-header
   "Legacy `X-Frame-Options` companion to the CSP `frame-ancestors` (for browsers
@@ -479,11 +497,39 @@
   [request]
   (str/starts-with? (:uri request) "/embed/data-app/"))
 
-(defn- data-app-iframe-slug
-  "Slug of the data-app iframe document being served, parsed from
-   `/embed/data-app/<slug>` (and any deeper sub-route), or nil."
+(defn- data-app-slug
+  "Slug of the data-app document being served, parsed from the top-level
+   `/data-app/<slug>` page or the internal `/embed/data-app/<slug>` iframe (and
+   any deeper sub-route), or nil. The top page needs it too: its `frame-src`
+   governs what the iframe below it may navigate to."
   [request]
-  (second (re-matches #"/embed/data-app/([^/]+).*" (:uri request))))
+  (second (re-matches #"/(?:embed/)?data-app/([^/]+).*" (:uri request))))
+
+(defn- site-origin
+  "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
+   `site-url`), or nil. Matches the shape [[parse-url]] returns so origins compare
+   with `=`."
+  []
+  (when-let [url (not-empty (system/site-url))]
+    (try
+      (let [^URI uri (URI. ^String url)]
+        (when-let [host (.getHost uri)]
+          {:protocol (.getScheme uri)
+           :domain   host
+           :port     (let [p (.getPort uri)] (when-not (neg? p) (str p)))}))
+      (catch Exception _ nil))))
+
+(defn- drop-instance-origin
+  "Removes any `allowed_hosts` entry that resolves to this Metabase instance's own
+   origin. A native `<form>` submit or frame to the instance would carry the
+   user's session cookies, and the SDK is the only sanctioned way to reach
+   Metabase — so we keep the instance out of the app's `form-action`/`frame-src`/
+   `connect-src` even when an app mistakenly lists it (mirroring the JS fetch/XHR
+   sandbox, which blocks the instance origin regardless)."
+  [hosts]
+  (if-let [self (site-origin)]
+    (remove #(= self (parse-url %)) hosts)
+    hosts))
 
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
@@ -500,9 +546,11 @@
                                                 :else                                              :none)
                  :allow-cache?                (request/cacheable? request)
                  :data-app-iframe?            (data-app-iframe-request? request)
-                 ;; Per-app `allowed_hosts` → `connect-src` for the data-app iframe document.
-                 :data-app-connect-hosts      (when-let [slug (data-app-iframe-slug request)]
-                                                (data-app-connect-src-hosts slug)))
+                 ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
+                 ;; doc) and `frame-src` (both the iframe doc and the top page,
+                 ;; whose `frame-src` gates the iframe's own navigations).
+                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
+                                                (drop-instance-origin (data-app-connect-src-hosts slug))))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"

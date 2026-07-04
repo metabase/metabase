@@ -148,6 +148,15 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    and written via `useAction` (the SDK handles auth), never raw `fetch`. Leave
    `allowed_hosts` out entirely when the app only talks to Metabase.
 
+   Native `<form action="…">` submissions and `<iframe src="…">`/navigations obey
+   the **same** allowlist. Prefer a client-side `<form onSubmit>` that
+   `preventDefault`s and writes via `useAction`/`fetch`: a native submit
+   *navigates the sandboxed iframe away* from the app. If you do use one, the
+   target host must be in `allowed_hosts` or it's blocked (`form-action` for
+   submits, `frame-src` for embeds/navigations). A host you navigate to or embed
+   must also permit framing (`X-Frame-Options`/`frame-ancestors`) — many public
+   sites don't.
+
 ## Step 5 — Verify the starter app
 
 At this point the data app exists. Keep this workflow focused on creating the
