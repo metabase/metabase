@@ -1,5 +1,19 @@
 import { DATA_APP_EMBED_PREFIX } from "../constants";
 
+import { isCrossOriginError } from "./is-cross-origin-error";
+
+/**
+ * The `Window` members the URL mirror touches. Narrower than `Window` so a test
+ * can pass a small typed fake without an unsafe cast — a real `Window` satisfies
+ * it.
+ */
+export interface UrlMirrorWindow {
+  readonly location: Pick<Location, "pathname">;
+  history: Pick<History, "pushState" | "replaceState">;
+  addEventListener: (type: "popstate", listener: () => void) => void;
+  removeEventListener: (type: "popstate", listener: () => void) => void;
+}
+
 /**
  * Mirrors the iframe's URL into the parent's URL bar (no page reload).
  *
@@ -13,7 +27,7 @@ import { DATA_APP_EMBED_PREFIX } from "../constants";
  * Returns a cleanup that restores the originals.
  */
 export function attachIframeUrlMirror(
-  iframeWindow: Window,
+  iframeWindow: UrlMirrorWindow,
   parentName: string,
 ): () => void {
   const iframePrefix = `${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`;
@@ -48,8 +62,17 @@ export function attachIframeUrlMirror(
   iframeWindow.addEventListener("popstate", mirror);
 
   return () => {
-    history.pushState = origPush;
-    history.replaceState = origReplace;
-    iframeWindow.removeEventListener("popstate", mirror);
+    try {
+      history.pushState = origPush;
+      history.replaceState = origReplace;
+      iframeWindow.removeEventListener("popstate", mirror);
+    } catch (error) {
+      // Expected only when the frame navigated cross-origin: its window can no
+      // longer be touched, and the patched history/listeners are gone with the old
+      // document anyway. Rethrow anything else so real bugs surface.
+      if (!isCrossOriginError(error)) {
+        throw error;
+      }
+    }
   };
 }
