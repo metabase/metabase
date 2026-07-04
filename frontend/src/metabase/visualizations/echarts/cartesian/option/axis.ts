@@ -252,6 +252,9 @@ export const buildNumericDimensionAxis = (
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "value",
     scale: true,
+    // ECharts expands non-band axes to contain bar shapes by default, but we
+    // already pad the domain and size bars to fit
+    containShape: false,
     axisLabel: {
       margin: CHART_STYLE.axisTicksMarginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
@@ -286,6 +289,9 @@ export const buildTimeSeriesDimensionAxis = (
   return {
     ...getCommonDimensionAxisOptions(chartLayout, settings, renderingContext),
     type: "time",
+    // ECharts expands non-band axes to contain bar shapes by default, but we
+    // already pad the domain and size bars to fit
+    containShape: false,
     axisLabel: {
       margin:
         CHART_STYLE.axisTicksMarginX +
