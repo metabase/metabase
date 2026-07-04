@@ -75,3 +75,20 @@ The same allowlist is enforced in both places: `npm run dev` applies it via the
 dev server's CSP, and Metabase applies it via the iframe CSP + the membrane
 sandbox. The Metabase instance itself is reached through the SDK (not listed
 here). A call to any other host fails in dev exactly as it will in production.
+
+### Forms and embeds
+
+`allowed_hosts` also governs native `<form action="…">` submissions and
+`<iframe src="…">` / navigations, not just `fetch`.
+
+Prefer a **client-side** form — `<form onSubmit={(e) => { e.preventDefault(); … }}>`
+that writes via the SDK (`useAction`) or `fetch` — over a native
+`<form action="…">`. A native submit **navigates the sandboxed iframe away** from
+your app.
+
+If you do use `<form action="https://…">` (or embed/navigate to a host via an
+`<iframe>`), the target host must be in `allowed_hosts`, or the browser blocks it
+(`form-action` for submits, `frame-src` for embeds). Note a host you embed or
+navigate to must also **allow being framed** (`X-Frame-Options` /
+`frame-ancestors`) — many public sites (e.g. `example.com`) don't, so they can't
+be shown in-frame regardless of `allowed_hosts`.
