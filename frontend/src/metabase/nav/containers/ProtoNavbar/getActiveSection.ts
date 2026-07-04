@@ -5,6 +5,20 @@ export type SectionId =
   | "data"
   | "monitor";
 
+// Lets navigations from outside ProtoNavbar (e.g. opening a table question
+// from the Data tab) keep the rail on the originating section.
+let pendingSectionPin: SectionId | null = null;
+
+export function pinProtoNavSection(section: SectionId) {
+  pendingSectionPin = section;
+}
+
+export function consumeProtoNavSectionPin(): SectionId | null {
+  const section = pendingSectionPin;
+  pendingSectionPin = null;
+  return section;
+}
+
 // Maps the current URL to the nav section that should appear selected.
 // Returns null when the route doesn't clearly belong to a section so the
 // previously selected section stays put.

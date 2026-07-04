@@ -33,7 +33,11 @@ import { Sidebar } from "../MainNavbar/MainNavbar.styled";
 
 import { NotificationsButton } from "./NotificationsButton";
 import S from "./ProtoNavbar.module.css";
-import { type SectionId, getActiveSection } from "./getActiveSection";
+import {
+  type SectionId,
+  consumeProtoNavSectionPin,
+  getActiveSection,
+} from "./getActiveSection";
 import { getLastNewQueryMode, newQueryUrl } from "./newQuery";
 import { CollectionsSection } from "./sections/CollectionsSection";
 import { DataSection } from "./sections/DataSection";
@@ -162,6 +166,12 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
 
   // Keep the selected icon in sync with the route as the user navigates.
   useEffect(() => {
+    const pendingPin = consumeProtoNavSectionPin();
+    if (pendingPin) {
+      setActiveSection(pendingPin);
+      pinnedSectionRef.current = null;
+      return;
+    }
     if (pinnedSectionRef.current) {
       setActiveSection(pinnedSectionRef.current);
       pinnedSectionRef.current = null;

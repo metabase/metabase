@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -16,8 +17,11 @@ import {
   getDataLayerLabel,
 } from "metabase/metadata/utils/data-layer";
 import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
+import { pinProtoNavSection } from "metabase/nav/containers/ProtoNavbar/getActiveSection";
+import { useDispatch } from "metabase/redux";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
+  ActionIcon,
   Box,
   Center,
   EntityNameCell,
@@ -26,6 +30,7 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { UserId } from "metabase-types/api";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -71,6 +76,18 @@ interface Props {
   reload?: (path: TreePath) => void;
 }
 
+function getTableQuestionUrl(node: TablePickerTreeNode): string | null {
+  if (node.type !== "table" || node.tableId == null || node.databaseId == null) {
+    return null;
+  }
+  return Urls.modelToUrl({
+    id: Number(node.tableId),
+    name: node.name,
+    model: "table",
+    database: { id: node.databaseId },
+  });
+}
+
 export function TablePickerTreeTable({
   tree,
   path,
@@ -80,6 +97,7 @@ export function TablePickerTreeTable({
   onChange,
   reload,
 }: Props) {
+  const dispatch = useDispatch();
   const {
     selectedTables,
     setSelectedTables,
@@ -318,8 +336,32 @@ export function TablePickerTreeTable({
       });
     }
 
+    columnDefs.push({
+      id: "actions",
+      header: "",
+      width: 40,
+      cell: ({ row }) => {
+        if (row.original.type !== "table" || row.original.isDisabled) {
+          return null;
+        }
+        return (
+          <Center w="100%">
+            <ActionIcon
+              aria-label={t`Table details`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange?.(nodeToTreePath(row.original));
+              }}
+            >
+              <Icon name="ellipsis" />
+            </ActionIcon>
+          </Center>
+        );
+      },
+    });
+
     return columnDefs;
-  }, [isLibraryEnabled, ownerNameById, formatNumber]);
+  }, [isLibraryEnabled, ownerNameById, formatNumber, onChange]);
 
   const expandedState = useMemo(
     () => Object.fromEntries([...expandedIds].map((id) => [id, true])),
@@ -361,13 +403,30 @@ export function TablePickerTreeTable({
     return null;
   }, [path, selectedItemsCount]);
 
-  const handleRowActivate = useCallback(
-    (row: Row<TablePickerTreeNode>) => {
-      if (!row.original.isDisabled) {
-        onChange?.(nodeToTreePath(row.original));
+  const openTableQuestion = useCallback(
+    (node: TablePickerTreeNode) => {
+      const url = getTableQuestionUrl(node);
+      if (url) {
+        // Keep the Data rail selected; /question would otherwise map to Home.
+        pinProtoNavSection("data");
+        dispatch(push(url));
       }
     },
-    [onChange],
+    [dispatch],
+  );
+
+  const handleRowActivate = useCallback(
+    (row: Row<TablePickerTreeNode>) => {
+      if (row.original.isDisabled) {
+        return;
+      }
+      if (row.original.type === "table") {
+        openTableQuestion(row.original);
+        return;
+      }
+      onChange?.(nodeToTreePath(row.original));
+    },
+    [onChange, openTableQuestion],
   );
 
   const instance = useTreeTableInstance({
@@ -433,10 +492,10 @@ export function TablePickerTreeTable({
           onChange?.(nodeToTreePath(row.original));
         }
       } else {
-        onChange?.(nodeToTreePath(row.original));
+        openTableQuestion(row.original);
       }
     },
-    [path, selectedItemsCount, onToggle, onChange],
+    [path, selectedItemsCount, onToggle, onChange, openTableQuestion],
   );
 
   const getRowProps = useCallback(
