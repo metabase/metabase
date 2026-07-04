@@ -100,7 +100,10 @@ function LibraryPageContent() {
           style={{ overflow: "hidden" }}
         >
           {!libraryCollection && !isLoadingCollections && !isHierarchyView ? (
-            <LibraryEmptyState />
+            <LibraryEmptyState
+              section={sectionFilter === "metrics" ? "metrics" : "tables"}
+              onPublishTable={openPublishTableModal}
+            />
           ) : (
             <>
               <Flex gap="md">
