@@ -150,8 +150,9 @@ export function MainNavbarView({
       const examplesCollection = collections.find(isExamplesCollection);
 
       const regularCollections = collections.filter((c) => {
-        const isNormalCollection =
-          !isRootTrashCollection(c) && !isExamplesCollection(c);
+        if (isRootTrashCollection(c) || isLibraryCollection(c)) {
+          return false;
+        }
         // Usage analytics moves to the Monitor section in the prototype nav.
         if (PROTO_NAV_ENABLED && isInstanceAnalyticsCollection(c)) {
           return false;
@@ -160,7 +161,12 @@ export function MainNavbarView({
         if (PROTO_NAV_ENABLED && isRootPersonalCollection(c)) {
           return false;
         }
-        return isNormalCollection && !isLibraryCollection(c);
+        // Examples lives under Our analytics in proto nav; legacy nav shows it
+        // in Getting Started instead.
+        if (!PROTO_NAV_ENABLED && isExamplesCollection(c)) {
+          return false;
+        }
+        return true;
       });
 
       const collectionsByCategory = {
@@ -326,7 +332,7 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          {shouldDisplayGettingStarted && (
+          {!PROTO_NAV_ENABLED && shouldDisplayGettingStarted && (
             <SidebarSection>
               <ErrorBoundary>
                 <GettingStartedSection
