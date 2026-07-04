@@ -8,9 +8,11 @@
  *   2. Existing generated types on disk              -> keep, warn (stale ok locally; CI is the accurate gate)
  *   3. Existing spec file on disk                    -> regenerate types from it, warn
  *   4. Cold start: generate spec via Clojure CLI     -> ~40s, once per fresh checkout
- *        --tolerant -> warn, exit 0 without generating (postinstall must not
- *        run expensive work nor fail in JVM-less contexts)
- *   5. No JVM toolchain available -> exit 1
+ *        (strict only; tolerant mode instead falls through to the
+ *        docs/api.json fallback below)
+ *   5. No JVM toolchain available -> fall back to committed docs/api.json
+ *        (nightly-generated from master, ≤1 day stale) in both modes
+ *   6. Nothing at all -> tolerant exit 0 / strict exit 1
  *
  * --tolerant also skips everything when types already exist, keeping
  * `bun install` fast; freshness is handled by dev / type-check entry points.
@@ -19,10 +21,11 @@
  * tolerant only covers a missing toolchain.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 const SPEC_PATH = ".tmp/openapi/openapi.json";
+const DOCS_SPEC_PATH = "docs/api.json";
 const TYPES_PATH = "frontend/src/metabase-types/openapi/types.gen.ts";
 const BACKEND_URL = `http://localhost:${process.env.MB_JETTY_PORT ?? 3000}/api/docs/openapi.json`;
 
@@ -59,6 +62,15 @@ async function fetchSpecFromBackend(): Promise<boolean> {
   }
 }
 
+function applyDocsSpecFallback(): never {
+  log(
+    "⚠ using the committed docs/api.json as the spec source — it is nightly-generated from master (≤1 day stale, and missing any schema changes on your branch). A running backend or `bun run types:ensure` with a JVM gives accurate types.",
+  );
+  mkdirSync(dirname(SPEC_PATH), { recursive: true });
+  copyFileSync(DOCS_SPEC_PATH, SPEC_PATH);
+  process.exit(runScript("types:generate"));
+}
+
 const typesExist = existsSync(TYPES_PATH);
 
 if (tolerant && typesExist) {
@@ -85,6 +97,9 @@ if (existsSync(SPEC_PATH)) {
 }
 
 if (tolerant) {
+  if (existsSync(DOCS_SPEC_PATH)) {
+    applyDocsSpecFallback();
+  }
   log(
     "⚠ no generated API types yet — skipping the ~40s cold-start generation in tolerant mode. They will be generated on the first `bun run dev` / `bun run type-check` (or run `bun run types:ensure` manually).",
   );
@@ -95,6 +110,9 @@ const clojureAvailable =
   spawnSync("clojure", ["--version"], { stdio: "ignore" }).status === 0;
 
 if (!clojureAvailable) {
+  if (existsSync(DOCS_SPEC_PATH)) {
+    applyDocsSpecFallback();
+  }
   log(
     "error: no running backend, no existing types, and no Clojure CLI to generate the spec",
   );

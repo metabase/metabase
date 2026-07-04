@@ -79,6 +79,7 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "frontend/src/metabase-types/openapi/**",
       "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
