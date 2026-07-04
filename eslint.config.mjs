@@ -1046,6 +1046,24 @@ const configs = [
     },
   },
   {
+    files: ["enterprise/frontend/**/*.ts", "enterprise/frontend/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^metabase-types/openapi",
+              allowTypeImports: true,
+              message:
+                "Only `import type` is allowed from metabase-types/openapi: the module is generated and gitignored, and runtime imports (e.g. generated enums) would require every jest/webpack/storybook pipeline to generate it first. See .claude/context-logs/2026-07-03-openapi-types-pipeline-design.md.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["enterprise/frontend/src/embedding-sdk-package/bin/**/*"],
     rules: {
       "metabase/no-literal-metabase-strings": "off",

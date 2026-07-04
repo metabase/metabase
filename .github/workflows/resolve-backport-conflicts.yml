@@ -118,6 +118,10 @@ jobs:
         if: steps.backport.outputs.has_conflicts == 'true'
         run: ${{ steps.pkg.outputs.mgr }} run build-pure:cljs
 
+      - name: Generate OpenAPI types for type checking
+        if: steps.backport.outputs.has_conflicts == 'true'
+        run: ${{ steps.pkg.outputs.mgr }} run types:ensure
+
       - name: Generate GitHub App Token for Claude
         if: steps.backport.outputs.has_conflicts == 'true'
         uses: actions/create-github-app-token@v1
