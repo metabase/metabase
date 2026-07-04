@@ -7,10 +7,10 @@
  *   1. Running backend (GET /api/docs/openapi.json)  -> fresh spec in ~2s
  *   2. Existing generated types on disk              -> keep, warn (stale ok locally; CI is the accurate gate)
  *   3. Existing spec file on disk                    -> regenerate types from it, warn
- *   4. Cold start: generate spec via Clojure CLI     -> ~40s, once per fresh checkout; skipped in --tolerant mode
- *   5. No JVM toolchain available:
- *        default    -> exit 1
- *        --tolerant -> warn, exit 0 (postinstall must not fail in JVM-less contexts)
+ *   4. Cold start: generate spec via Clojure CLI     -> ~40s, once per fresh checkout
+ *        --tolerant -> warn, exit 0 without generating (postinstall must not
+ *        run expensive work nor fail in JVM-less contexts)
+ *   5. No JVM toolchain available -> exit 1
  *
  * --tolerant also skips everything when types already exist, keeping
  * `bun install` fast; freshness is handled by dev / type-check entry points.
@@ -95,12 +95,6 @@ const clojureAvailable =
   spawnSync("clojure", ["--version"], { stdio: "ignore" }).status === 0;
 
 if (!clojureAvailable) {
-  if (tolerant) {
-    log(
-      "⚠ Clojure CLI not available — skipping API types generation. Code importing metabase-types/openapi will not type-check until `bun run types:ensure` runs with a JVM available.",
-    );
-    process.exit(0);
-  }
   log(
     "error: no running backend, no existing types, and no Clojure CLI to generate the spec",
   );
