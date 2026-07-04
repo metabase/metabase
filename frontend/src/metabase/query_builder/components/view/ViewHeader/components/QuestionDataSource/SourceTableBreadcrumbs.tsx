@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -53,6 +54,10 @@ export function SourceTableBreadcrumbs({
     );
   }
 
+  const collectionUrl = PROTO_NAV_ENABLED
+    ? Urls.dataStudioLibrary({ library: "tables" })
+    : Urls.collection(collection);
+
   return (
     <HeadBreadcrumbs
       className={className}
@@ -61,7 +66,7 @@ export function SourceTableBreadcrumbs({
       parts={[
         <HeadBreadcrumbs.Breadcrumb
           key="collection"
-          to={Urls.collection(collection)}
+          to={collectionUrl}
           icon="repository"
         >
           {collection.name}

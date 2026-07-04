@@ -66,7 +66,7 @@ export const PaneHeader = ({
         align="flex-start"
         wrap="nowrap"
       >
-        <Stack gap="md">
+        <Stack gap="md" flex={1} miw={0}>
           {title && (
             <Group align="center" gap="sm" wrap="nowrap">
               {icon && <FixedSizeIcon name={icon} c="core-brand" size={20} />}
