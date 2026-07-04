@@ -12,6 +12,8 @@ export default defineConfig({
     filters: {
       schemas: {
         // MetabaseLegacyMbqlSchema has circular references that break TS type checking
+        // NOTE: excluded schemas that are referenced by kept schemas get re-included by
+        // hey-api; the @ts-nocheck banner added by add-ts-nocheck.ts covers those (see types:generate).
         // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is not user facing text
         exclude: ["/^MetabaseLegacyMbqlSchema/"],
       },
