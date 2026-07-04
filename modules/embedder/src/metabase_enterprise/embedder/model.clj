@@ -46,13 +46,13 @@
 (def ^:private model-name-aliases
   "Pinned HF repo paths → the bare names bundles (and the zoo default) are keyed by.
   Consumer settings often carry the full repo path (the complexity-score synonym default is
-  `sentence-transformers/all-MiniLM-L6-v2`), so the exact pinned repo resolves to its bundled name.
-  Only pinned aliases collapse: HF repo names are namespace-scoped, so another org's
-  `<org>/all-MiniLM-L6-v2` is a different model and must fail fast rather than silently load our
-  bundle — point it at an `MB_EMBEDDER_MODEL_SOURCES` entry instead."
+  `sentence-transformers/all-MiniLM-L6-v2`). Only pinned aliases collapse: HF repo names are
+  namespace-scoped, so another org's `<org>/all-MiniLM-L6-v2` is a different model that needs its own
+  `MB_EMBEDDER_MODEL_SOURCES` entry."
   {"sentence-transformers/all-MiniLM-L6-v2" default-model-name})
 
 (defn- normalize-model-name
+  "Collapse a pinned HF repo alias to its bundled bare name; other names pass through unchanged."
   [model-name]
   (get model-name-aliases model-name model-name))
 

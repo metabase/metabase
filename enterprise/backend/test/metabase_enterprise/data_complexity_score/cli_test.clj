@@ -165,8 +165,7 @@
 
 (deftest embedder-override-fingerprint-test
   (testing "an --embedder override is folded into the persisted fingerprint so it can't shadow cron scores"
-    ;; This test is about the fingerprint, not the plugins system — stubbed so resolving the override
-    ;; doesn't scan the real plugins directory.
+    ;; load-plugins! stubbed: this test is about the fingerprint, not the plugins system.
     (mt/with-dynamic-fn-redefs [plugins/load-plugins! (fn [])]
       (let [override         (#'cli/embedder-override "in-process")
             plain            (task.complexity-score/current-fingerprint)
@@ -218,8 +217,7 @@
   (testing "embedder-override nil returns nil so the no-flag path doesn't touch DJL/ONNX"
     (is (nil? (#'cli/embedder-override nil))))
   (testing "embedder-override in-process routes through the provider path with matching model meta"
-    ;; load-plugins! stubbed: this test is about the override shape, not the plugins system;
-    ;; embedder-override-loads-plugins-test covers the real wiring.
+    ;; load-plugins! stubbed: embedder-override-loads-plugins-test covers the real wiring.
     (mt/with-dynamic-fn-redefs [plugins/load-plugins! (fn [])]
       (let [{:keys [embedder embedding-model-meta]} (#'cli/embedder-override "in-process")]
         (is (fn? embedder))

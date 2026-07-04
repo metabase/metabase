@@ -201,8 +201,7 @@
   ran and can't shadow scores produced with the configured embedder."
   [override]
   (when override
-    ;; Derived from the override map, not the constants it was built from, so the persisted row's
-    ;; metadata and this fragment can't drift apart.
+    ;; Read from the override map so this fragment can't drift from the persisted row's metadata.
     {:synonym-source  :cli-embedder-override
      :embedding-model (:embedding-model-meta override)
      :text-variant    (:text-variant override)}))
@@ -211,10 +210,8 @@
   "Score against the live appdb; optionally persist the row.
   Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
   [write? override]
-  ;; Even without --embedder, the configured synonym provider may itself be "in-process", and the
-  ;; standalone `--mode complexity-score` JAR path bypasses metabase.core.core/init!, the usual
-  ;; caller of load-plugins!. Memoized, so a no-op where plugins already loaded (server/REPL, or
-  ;; via the --embedder override path).
+  ;; The configured synonym provider can itself be "in-process" with no --embedder flag involved, and the
+  ;; standalone JAR path never loads plugins otherwise — same rationale as in [[embedder-override]].
   (plugins/load-plugins!)
   (mdb/setup-db-without-migrations!)
   (let [result (complexity/complexity-scores
