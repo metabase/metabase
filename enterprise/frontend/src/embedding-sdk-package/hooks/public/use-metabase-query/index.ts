@@ -1,17 +1,22 @@
 export {
   aggregations,
-  breakout,
-  filter,
-  orderBy,
-  useMetabaseQuery,
-  useMetabaseQueryObject,
-} from "./use-metabase-query";
+  avg,
+  count,
+  distinct,
+  max,
+  median,
+  min,
+  sum,
+} from "./aggregation-helpers";
+export { breakout, filter, orderBy } from "./query-helpers";
+export { useMetabaseQuery } from "./use-metabase-query";
+export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
   MetabaseBreakout,
   MetabaseOrderBy,
   MetabaseQueryOptions,
-  MetabaseQueryObject,
   OrderByDirection,
-  UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
-} from "./use-metabase-query";
+} from "./types";
+export type { UseMetabaseQueryObjectResult } from "./use-metabase-query-object";
+export type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
