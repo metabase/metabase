@@ -204,7 +204,9 @@
             (#'cli/run-cli {:source "appdb" :embedder "in-process"})
             (is (=? {:fingerprint #".*:cli-embedder-override.*"} @captured))))))))
 
-(deftest ^:parallel cli-options-embedder-flag-test
+;; Not ^:parallel: the validate-deftest lint bars any reference to load-plugins! in parallel tests,
+;; including the stub redef below.
+(deftest cli-options-embedder-flag-test
   (testing "tools.cli accepts --embedder in-process and rejects anything else"
     (testing "valid: --embedder in-process parses through to :options"
       (is (=? {:errors  empty?
@@ -216,8 +218,8 @@
   (testing "embedder-override nil returns nil so the no-flag path doesn't touch DJL/ONNX"
     (is (nil? (#'cli/embedder-override nil))))
   (testing "embedder-override in-process routes through the provider path with matching model meta"
-    ;; load-plugins! stubbed: a real plugins-directory scan is a global side effect this ^:parallel
-    ;; test must not trigger; embedder-override-loads-plugins-test covers the real wiring.
+    ;; load-plugins! stubbed: this test is about the override shape, not the plugins system;
+    ;; embedder-override-loads-plugins-test covers the real wiring.
     (mt/with-dynamic-fn-redefs [plugins/load-plugins! (fn [])]
       (let [{:keys [embedder embedding-model-meta]} (#'cli/embedder-override "in-process")]
         (is (fn? embedder))
