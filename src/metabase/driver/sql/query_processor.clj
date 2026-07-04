@@ -2051,8 +2051,13 @@
 
 (defn temporal-field?
   "Returns true if the field clause represents a temporal (date/time/datetime) column."
-  [[_ _id-or-name options :as _field-clause]]
-  (let [field-type (or (:effective-type options) (:base-type options))]
+  [[_ second-arg third-arg :as _field-clause]]
+  ;; Handle both MBQL5 [:field opts id] and MBQL4 [:field id opts]
+  (let [options (if (and (map? second-arg) (:lib/uuid second-arg))
+                  second-arg   ; MBQL5: opts is second
+                  third-arg)   ; MBQL4: opts is third
+        field-type (when (map? options)
+                     (or (:effective-type options) (:base-type options)))]
     (and field-type (isa? field-type :type/Temporal))))
 
 (defmulti order-by-clause

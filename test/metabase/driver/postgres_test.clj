@@ -1582,7 +1582,7 @@
           (is (= (str "SELECT attempts.date AS date, COUNT(*) AS count "
                       "FROM attempts "
                       "GROUP BY attempts.date "
-                      "ORDER BY attempts.date ASC")
+                      "ORDER BY attempts.date ASC NULLS LAST")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
@@ -2534,3 +2534,29 @@
                     (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
         (testing "only the first rows are pulled, not all ~2 billion"
           (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+
+(deftest ^:parallel order-by-temporal-nulls-last-test
+  (testing "Temporal columns get NULLS LAST in ORDER BY"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [query (mt/mbql-query orders
+                      {:order-by [[:asc $created_at]]
+                       :limit    5})]
+          (is (str/includes?
+               (-> (qp.compile/compile query) :query pretty-sql)
+               "ASC NULLS LAST")))
+        (let [query (mt/mbql-query orders
+                      {:order-by [[:desc $created_at]]
+                       :limit    5})]
+          (is (str/includes?
+               (-> (qp.compile/compile query) :query pretty-sql)
+               "DESC NULLS LAST"))))))
+  (testing "Non-temporal columns do not get NULLS LAST"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [query (mt/mbql-query orders
+                      {:order-by [[:asc $id]]
+                       :limit    5})]
+          (is (not (str/includes?
+                    (-> (qp.compile/compile query) :query pretty-sql)
+                    "NULLS LAST"))))))))

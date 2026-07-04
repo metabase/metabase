@@ -808,7 +808,7 @@
                                 SUM (CHECKINS.VENUE_ID)                                          AS sum_2]
                      :from     [CHECKINS]
                      :group-by [DATE_TRUNC ("month" CHECKINS.DATE)]
-                     :order-by [DATE_TRUNC ("month" CHECKINS.DATE) ASC]}
+                     :order-by [DATE_TRUNC ("month" CHECKINS.DATE) ASC NULLS LAST]}
                     AS __mb_source]
            :where  [__mb_source.sum > 300]
            :limit  [2]}
@@ -1452,7 +1452,7 @@
                           "    GROUP BY"
                           "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\")"
                           "    ORDER BY"
-                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") ASC"
+                          "      DATE_TRUNC('month', \"PUBLIC\".\"CHECKINS\".\"DATE\") ASC NULLS LAST"
                           "  ) AS \"__mb_source\""
                           "GROUP BY"
                           "  \"__mb_source\".\"count\""
@@ -1810,31 +1810,3 @@
   (testing "temporal-field? returns false when no type info available"
     (is (not (sql.qp/temporal-field? [:field 1 {}])))
     (is (not (sql.qp/temporal-field? [:field 1 nil])))))
-
-(deftest ^:parallel order-by-clause-temporal-nulls-last-test
-  (testing "order-by-clause adds NULLS LAST for temporal columns"
-    (driver/with-driver :h2
-      (qp.store/with-metadata-provider meta/metadata-provider
-        (let [temporal-field-clause [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithTZ}]]
-          (testing "ascending order on temporal field"
-            (let [result (sql.qp/order-by-clause :h2 :asc temporal-field-clause)]
-              (is (= 1 (count result)))
-              (is (= :asc-nulls-last (second (first result))))))
-          (testing "descending order on temporal field"
-            (let [result (sql.qp/order-by-clause :h2 :desc temporal-field-clause)]
-              (is (= 1 (count result)))
-              (is (= :desc-nulls-last (second (first result)))))))))))
-
-(deftest ^:parallel order-by-clause-non-temporal-default-test
-  (testing "order-by-clause uses default ordering for non-temporal columns"
-    (driver/with-driver :h2
-      (qp.store/with-metadata-provider meta/metadata-provider
-        (let [non-temporal-field-clause [:field (meta/id :orders :id) {:base-type :type/BigInteger}]]
-          (testing "ascending order on non-temporal field"
-            (let [result (sql.qp/order-by-clause :h2 :asc non-temporal-field-clause)]
-              (is (= 1 (count result)))
-              (is (= :asc (second (first result))))))
-          (testing "descending order on non-temporal field"
-            (let [result (sql.qp/order-by-clause :h2 :desc non-temporal-field-clause)]
-              (is (= 1 (count result)))
-              (is (= :desc (second (first result)))))))))))
