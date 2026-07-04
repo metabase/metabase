@@ -91,7 +91,13 @@ export const GroupsMultiSelect = ({
         .toLowerCase()
         .includes(search.trim().toLowerCase()),
     )
-    .sort((a, b) => getGroupSortOrder(a) - getGroupSortOrder(b));
+    // Pinned groups lead so the divider sits at the single pinned-to-custom boundary;
+    // getGroupSortOrder alone leaves the external default (rank 3) among custom groups.
+    .sort(
+      (a, b) =>
+        Number(isPinnedGroup(b)) - Number(isPinnedGroup(a)) ||
+        getGroupSortOrder(a) - getGroupSortOrder(b),
+    );
 
   const toggleGroup = (groupId: GroupId) =>
     onChange(

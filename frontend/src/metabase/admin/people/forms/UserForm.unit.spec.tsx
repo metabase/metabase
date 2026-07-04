@@ -41,6 +41,7 @@ interface SetupOpts {
   tenants?: Tenant[];
   hideNameFields?: boolean;
   hideAttributes?: boolean;
+  tokenFeatures?: Parameters<typeof createMockTokenFeatures>[0];
 }
 
 const setup = ({
@@ -50,6 +51,7 @@ const setup = ({
   tenants = [] as Tenant[],
   hideNameFields = false,
   hideAttributes = false,
+  tokenFeatures = { sandboxes: true, tenants: true },
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
@@ -60,10 +62,7 @@ const setup = ({
 
   const state = createMockState({
     settings: mockSettings({
-      "token-features": createMockTokenFeatures({
-        sandboxes: true,
-        tenants: true,
-      }),
+      "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
 
@@ -399,6 +398,87 @@ describe("UserForm", () => {
 
       expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
       expect(screen.queryByText("Attributes")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("group manager memberships (EE)", () => {
+    const eeTokenFeatures = {
+      sandboxes: true,
+      tenants: true,
+      advanced_permissions: true,
+    };
+
+    const managerUser = {
+      ...USER,
+      user_group_memberships: [
+        { id: 1, is_group_manager: false },
+        { id: 3, is_group_manager: true },
+      ],
+    };
+
+    it("preserves a group's manager flag when another group is added", async () => {
+      const { onSubmit } = setup({
+        enterprisePlugins: ["group_managers"],
+        tokenFeatures: eeTokenFeatures,
+        initialValues: managerUser,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
+
+      expect(
+        await screen.findByRole("button", { name: "Update" }),
+      ).toBeEnabled();
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          {
+            ...USER,
+            user_group_memberships: [
+              { id: 1, is_group_manager: false },
+              { id: 3, is_group_manager: true },
+              { id: 4, is_group_manager: false },
+            ],
+          },
+          expect.anything(),
+        );
+      });
+    });
+
+    it("promotes a member to manager via the dropdown toggle", async () => {
+      const { onSubmit } = setup({
+        enterprisePlugins: ["group_managers"],
+        tokenFeatures: eeTokenFeatures,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      // foo (id 3) is a selected regular group, so its dropdown row offers promotion.
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Turn into Manager" }),
+      );
+
+      expect(
+        await screen.findByRole("button", { name: "Update" }),
+      ).toBeEnabled();
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          {
+            ...USER,
+            user_group_memberships: [
+              { id: 1, is_group_manager: false },
+              { id: 3, is_group_manager: true },
+            ],
+          },
+          expect.anything(),
+        );
+      });
     });
   });
 });
