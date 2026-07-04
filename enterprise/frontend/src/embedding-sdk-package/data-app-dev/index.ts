@@ -8,7 +8,7 @@ import {
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { getDataAppDefine } from "./config/define";
-import { buildConnectSrcCsp, readAllowedHosts } from "./config/dev-connect-src";
+import { buildDevCsp, readAllowedHosts } from "./config/dev-connect-src";
 import { dataAppEnvPrefix } from "./config/env-prefix";
 import { findEnvRoot } from "./config/find-env-root";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
@@ -54,7 +54,7 @@ function dataAppVitePlugin(): PluginOption[] {
         server: {
           host: "localhost",
           headers: {
-            "Content-Security-Policy": buildConnectSrcCsp(
+            "Content-Security-Policy": buildDevCsp(
               allowedHosts,
               loadEnv(env.mode, envDir, "").DATA_APP_MB_URL,
             ),

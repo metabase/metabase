@@ -112,6 +112,88 @@
       (is (= "frame-ancestors 'none'" (frame-ancestors-for "/data-app/sales")))
       (is (= "DENY" (get (headers-for-uri "/data-app/sales") "X-Frame-Options"))))))
 
+(defn- csp-directive-for [uri directive]
+  (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % (str directive " ")))
+       first))
+
+(deftest data-app-form-action-test
+  (testing "with no allowed_hosts, native <form action> submits are blocked (client-side onSubmit still works)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= "form-action 'none'" (csp-directive-for "/embed/data-app/sales" "form-action")))
+      (is (= "form-action 'none'"
+             (csp-directive-for "/embed/data-app/sales/sub/route" "form-action")))))
+  (testing "form-action mirrors the app's allowed_hosts (like connect-src)"
+    (with-redefs [mw.security/data-app-connect-src-hosts
+                  (constantly ["https://api.example.com" "https://*.trusted.test"])]
+      (is (= "form-action https://api.example.com https://*.trusted.test"
+             (csp-directive-for "/embed/data-app/sales" "form-action")))))
+  (testing "other documents leave form-action unset (falls through to no restriction)"
+    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc" "/data-app/sales"]]
+      (is (nil? (csp-directive-for uri "form-action"))))))
+
+(deftest data-app-frame-src-test
+  (testing "a data app's frame-src is a per-app allowlist: only 'self' + its allowed_hosts"
+    ;; A global iframe host (wikipedia) is configured but must NOT leak into a data
+    ;; app's frame-src — the app can only frame what it declares.
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        ;; Both the top page and the iframe doc: the top page's `frame-src` gates
+        ;; what the iframe below it may navigate to.
+        (doseq [uri ["/data-app/sales" "/embed/data-app/sales"]]
+          (let [frame-src (csp-directive-for uri "frame-src")]
+            (is (str/includes? frame-src "'self'") uri)
+            (is (str/includes? frame-src "https://example.com") uri)
+            (is (not (str/includes? frame-src "wikipedia"))
+                (str uri " must not include the instance-wide iframe hosts")))))))
+  (testing "with no allowed_hosts, a data app can only frame 'self'"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= "frame-src 'self'" (csp-directive-for "/embed/data-app/sales" "frame-src")))))
+  (testing "non-data-app documents keep the instance-wide iframe hosts, not app hosts"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        (let [frame-src (csp-directive-for "/embed/dashboard/abc" "frame-src")]
+          (is (str/includes? frame-src "wikipedia"))
+          (is (not (str/includes? frame-src "https://example.com"))))))))
+
+(deftest data-app-instance-origin-excluded-test
+  (testing "the Metabase instance origin is dropped from a data app's allowlist even if listed"
+    (mt/with-temporary-setting-values [site-url "https://mymetabase.example"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://mymetabase.example" "https://api.allowed.test"])]
+        (let [form-action (csp-directive-for "/embed/data-app/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/data-app/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/data-app/sales" "connect-src")]
+          (testing "the genuinely-external host survives"
+            (is (str/includes? form-action "https://api.allowed.test"))
+            (is (str/includes? frame-src "https://api.allowed.test"))
+            (is (str/includes? connect-src "https://api.allowed.test")))
+          (testing "the instance origin is filtered out (no native form/frame/fetch to Metabase)"
+            (is (not (str/includes? form-action "mymetabase.example")))
+            (is (not (str/includes? frame-src "https://mymetabase.example")))
+            (is (not (str/includes? connect-src "https://mymetabase.example")))))))))
+
+(deftest data-app-connect-src-test
+  (testing "a data app's allowed_hosts are added to the iframe document's connect-src"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (str/includes? (csp-directive-for "/embed/data-app/sales" "connect-src")
+                         "https://api.example.com"))))
+  (testing "with no allowed_hosts, the iframe connect-src has no app hosts (same as any doc)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= (csp-directive-for "/embed/data-app/sales" "connect-src")
+             (csp-directive-for "/embed/dashboard/abc" "connect-src")))))
+  (testing "the top-level /data-app page keeps a tight connect-src — hosts go to the iframe doc, not here"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (not (str/includes? (csp-directive-for "/data-app/sales" "connect-src")
+                              "https://api.example.com")))
+      ;; ...but the top page still gets them in frame-src (it gates the iframe's nav).
+      (is (str/includes? (csp-directive-for "/data-app/sales" "frame-src")
+                         "https://api.example.com"))))
+  (testing "non-data-app documents don't get app hosts in connect-src"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "connect-src")
+                              "https://api.example.com"))))))
+
 (deftest nonce-test
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)

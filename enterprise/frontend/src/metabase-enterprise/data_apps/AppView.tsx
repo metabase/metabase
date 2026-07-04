@@ -18,6 +18,7 @@ import {
 } from "./constants";
 import { attachIframeUrlMirror } from "./lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "./lib/derive-iframe-src";
+import { isCrossOriginError } from "./lib/is-cross-origin-error";
 
 interface AppViewProps {
   params: { name: string };
@@ -85,12 +86,25 @@ export function AppView({ params }: AppViewProps) {
 
     const onLoad = () => {
       setIframeLoaded(true);
-      const win = iframeEl.contentWindow;
-      if (!win) {
-        return;
+      // The iframe can navigate cross-origin — a form submitting to an allowed
+      // external host, or the chrome-error page from a blocked navigation — and a
+      // cross-origin `contentWindow` throws on access. Mirroring only works
+      // same-origin, so tear down the old mirror and skip re-attaching if so.
+      try {
+        detach?.();
+        detach = null;
+        const win = iframeEl.contentWindow;
+        if (win) {
+          detach = attachIframeUrlMirror(win, name);
+        }
+      } catch (error) {
+        detach = null;
+        // Expected only for a cross-origin frame; rethrow anything else so mirror
+        // bugs surface.
+        if (!isCrossOriginError(error)) {
+          throw error;
+        }
       }
-      detach?.();
-      detach = attachIframeUrlMirror(win, name);
     };
 
     iframeEl.addEventListener("load", onLoad);
@@ -221,6 +235,13 @@ export function AppView({ params }: AppViewProps) {
         </Box>
       )}
 
+      {/*
+        `allow-forms` is enabled so native form submissions can reach the app's
+        declared `allowed_hosts`. The CSP `form-action` directive (see the data-app
+        CSP in `security.clj` / the dev server) restricts submissions to exactly
+        those hosts — with no `allowed_hosts` it is `'none'` — blocking any other
+        target. Client-side `<form onSubmit>` (preventDefault) is unaffected.
+      */}
       <iframe
         ref={setIframeEl}
         title={meta.display_name}

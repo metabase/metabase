@@ -44,6 +44,20 @@ const formatArg = (arg: unknown): string => {
   }
 };
 
+/**
+ * Format a CSP violation for the toolbar. The dev server mirrors Metabase's
+ * production CSP, so a violation here means the app would be blocked once
+ * sandboxed in Metabase too — e.g. a native `<form action="…">` hitting
+ * `form-action 'none'`, or a `fetch` to a host outside `allowed_hosts`. These
+ * never reach `console.error`, so the toolbar wouldn't see them otherwise.
+ */
+const formatCspViolation = (event: SecurityPolicyViolationEvent): string => {
+  const directive = event.effectiveDirective || event.violatedDirective;
+  const target = event.blockedURI || "inline content";
+
+  return `Content Security Policy (${directive}) blocked ${target}`;
+};
+
 const record = (level: DevDiagnosticLevel, message: string) => {
   // New array reference each time so `useSyncExternalStore` re-renders.
   entries = [...entries, { id: nextId++, time: Date.now(), level, message }];
@@ -92,5 +106,9 @@ export const installDevDiagnostics = (): void => {
 
   window.addEventListener("unhandledrejection", (event) => {
     record("error", `Unhandled rejection: ${formatArg(event.reason)}`);
+  });
+
+  window.addEventListener("securitypolicyviolation", (event) => {
+    record("error", formatCspViolation(event));
   });
 };
