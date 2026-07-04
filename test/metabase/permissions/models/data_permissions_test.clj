@@ -821,6 +821,44 @@
                                        :perm_type :perms/download-results))
               "blocked view-data must force :no downloads"))))))
 
+(deftest set-default-database-permissions!-ignores-audit-db-test
+  (testing "A database added after the audit DB does not inherit the audit DB's restrictive create-queries level.
+            The audit DB always has create-queries :no; coalescing it as the group's lowest existing level would
+            wrongly drag every later database down to :no, leaving All Users unable to query newly added DBs."
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/Database         {audit-db-id :id} {:is_audit true}
+                   :model/Database         {new-db-id :id}   {}]
+      ;; Leave the group with only the audit DB's perms, so the audit DB is its sole source of an existing level.
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
+        (data-perms/set-default-database-permissions! {:id audit-db-id :is_audit true} [group])
+        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions
+                                     :group_id group-id :db_id audit-db-id :perm_type :perms/create-queries))
+            "sanity: the audit DB grants :no create-queries")
+        (data-perms/set-default-database-permissions! {:id new-db-id} [group])
+        (is (= :query-builder-and-native
+               (t2/select-one-fn :perm_value :model/DataPermissions
+                                 :group_id group-id :db_id new-db-id :perm_type :perms/create-queries))
+            "the new DB gets the default create-queries level, unpolluted by the audit DB's :no")))))
+
+(deftest set-default-database-permissions!-coalesces-customer-db-but-not-audit-db-test
+  (testing "A new database coalesces the group's lowest level across real customer databases while still ignoring
+            the audit DB. A customer DB set to :query-builder must lower the new DB to :query-builder; the audit
+            DB's :no must not lower it further."
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {audit-db-id :id} {:is_audit true}
+                   :model/Database         {cust-db-id :id}  {}
+                   :model/Database         {new-db-id :id}   {}]
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
+        (data-perms/set-default-database-permissions! {:id audit-db-id :is_audit true} [group])
+        (data-perms/set-database-permission! group-id cust-db-id :perms/create-queries :query-builder)
+        (data-perms/set-default-database-permissions! {:id new-db-id} [group])
+        (is (= :query-builder
+               (t2/select-one-fn :perm_value :model/DataPermissions
+                                 :group_id group-id :db_id new-db-id :perm_type :perms/create-queries))
+            "new DB coalesces the customer DB's :query-builder, not the audit DB's :no")))))
+
 (deftest set-default-table-permissions!-going-granular-test
   (testing "When a group has DB-level perms but new table needs :blocked, it expands to per-table rows"
     (mt/with-temp [:model/Database         {db-id :id}      {}

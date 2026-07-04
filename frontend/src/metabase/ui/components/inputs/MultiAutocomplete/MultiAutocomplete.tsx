@@ -157,7 +157,7 @@ export function MultiAutocomplete({
         </Text>
       }
     >
-      <Icon c="text-tertiary" name="info" />
+      <Icon c="text-disabled" name="info" />
     </Tooltip>
   );
 
