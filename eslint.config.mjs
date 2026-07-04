@@ -1032,6 +1032,14 @@ const configs = [
               message: "Please use only type-only imports from 'custom-viz'.",
             },
           ],
+          patterns: [
+            {
+              regex: "^metabase-types/openapi",
+              allowTypeImports: true,
+              message:
+                "Only `import type` is allowed from metabase-types/openapi: the module is generated and gitignored, and runtime imports (e.g. generated enums) would require every jest/webpack/storybook pipeline to generate it first. See .claude/context-logs/2026-07-03-openapi-types-pipeline-design.md.",
+            },
+          ],
         },
       ],
     },
