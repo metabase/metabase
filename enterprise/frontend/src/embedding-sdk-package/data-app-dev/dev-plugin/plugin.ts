@@ -217,6 +217,17 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
             );
 
             res.statusCode = 200;
+
+            // Apply the configured `server.headers` (our CSP) to this document.
+            const configuredHeaders = server.config.server.headers;
+            if (configuredHeaders) {
+              for (const [name, value] of Object.entries(configuredHeaders)) {
+                if (value != null) {
+                  res.setHeader(name, value);
+                }
+              }
+            }
+
             res.setHeader("Content-Type", "text/html");
             res.end(html);
           } catch (error) {
