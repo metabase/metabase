@@ -796,3 +796,17 @@
                     :effective_type           :type/Integer}]
                   :rows [[14 37.65 0 1] [nil 37.65 1 1] [14 nil 2 1] [nil nil 3 1]]}}
                 (qp.pivot/run-pivot-query pivot-query)))))))
+
+(deftest ^:parallel nested-native-card-recompile-no-bson-wrappers-test
+  (mt/test-driver :mongo
+    (testing "a nested query over a converted-to-native Mongo card compiles to a Bson-wrapper-free pipeline (#38181, #40557)"
+      (let [native (:query (qp.compile/compile (mt/mbql-query venues {:fields [$price]})))]
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native   {:collection "venues"
+                                                   :query      native}}}]
+          (let [compiled (qp.compile/compile (mt/mbql-query nil {:source-table (str "card__" card-id)}))]
+            ;; match the entire `BsonXxx` wrapper-class family, not just a hand-picked subset.
+            (is (not (re-find #"Bson[A-Z]\w*"
+                              (pr-str (:query compiled)))))))))))

@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.coercion-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.coercion-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
@@ -166,3 +167,21 @@
                                                  (u.date/format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (u.date/parse s))
                                                  s))]
                                     (qp/process-query query)))))))))
+
+(deftest ^:parallel coerced-field-through-model-test
+  (testing "#22519 a field with a coercion strategy still executes through a model source"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [base-mp (lib.tu/merged-mock-metadata-provider
+                     (mt/metadata-provider)
+                     {:fields [{:id                (mt/id :reviews :rating)
+                                :coercion-strategy :Coercion/UNIXSeconds->DateTime
+                                :effective-type    :type/DateTime}]})
+            mp      (lib.tu/mock-metadata-provider
+                     base-mp
+                     {:cards [{:id            1
+                               :type          :model
+                               :database-id   (mt/id)
+                               :dataset-query (mt/mbql-query reviews)}]})
+            query   (lib/query mp (lib.metadata/card mp 1))]
+        (mt/with-native-query-testing-context query
+          (is (seq (mt/rows (qp/process-query query)))))))))

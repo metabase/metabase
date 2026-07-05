@@ -5,6 +5,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.lib.test-util :as lib.tu]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -56,3 +58,20 @@
                (qp.test-util/rows-and-cols
                 (mt/run-mbql-query users
                   {:order-by [[:asc $id]]}))))))))
+
+(deftest ^:parallel sensitive-field-hidden-in-model-query-test
+  (testing "a model whose stored result_metadata still lists a field made :sensitive after creation drops that column (#45919)"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset test-data
+        ;; the model's result-metadata is computed while PASSWORD is still visible, then the field is flipped to
+        ;; :sensitive -- reproducing a field made sensitive after the model was created
+        (qp.store/with-metadata-provider
+          (-> (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [(mt/mbql-query people)])
+              (lib.tu/merged-mock-metadata-provider
+               {:cards  [{:id 1, :type :model}]
+                :fields [{:id (mt/id :people :password), :visibility-type :sensitive}]}))
+          (let [cols (mt/cols (mt/run-mbql-query nil {:source-table "card__1"}))]
+            (testing "the sensitive PASSWORD column is dropped"
+              (is (not (some (comp #{"PASSWORD"} :name) cols))))
+            (testing "a normal column (EMAIL) is still returned"
+              (is (some (comp #{"EMAIL"} :name) cols)))))))))

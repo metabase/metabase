@@ -19,6 +19,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -319,6 +320,19 @@
                                     [[#_some? [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]
                                       [:field {} (meta/id :products :rating)]]]]]]}]}
          (adjust query)))))
+
+(deftest ^:parallel metric-defined-as-ratio-of-metrics-test
+  (testing "a metric defined as a custom-named ratio of metric refs expands both nested :metric clauses and executes (#30574)"
+    (let [base-mp  (mt/metadata-provider)
+          m1-query (-> (lib/query base-mp (lib.metadata/table base-mp (mt/id :products)))
+                       (lib/aggregate (lib/avg (lib.metadata/field base-mp (mt/id :products :rating)))))
+          [m1 mp]  (mock-metric base-mp m1-query {:name "M1", :database-id (mt/id)})
+          m2-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                       (lib/aggregate (-> (lib// (lib.metadata/metric mp (:id m1)) (lib.metadata/metric mp (:id m1)))
+                                          (lib/with-expression-name "X"))))
+          [m2 mp]  (mock-metric mp m2-query {:name "M2", :database-id (mt/id)})
+          query    (lib/query mp (lib.metadata/card mp (:id m2)))]
+      (is (= [[1.0]] (mt/rows (qp/process-query query)))))))
 
 (deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
@@ -865,6 +879,25 @@
             (mt/format-rows-by
              [u.date/temporal-str->iso8601-str int]
              (mt/rows (qp/process-query query)))))))
+
+(deftest ^:parallel metric-card-with-field-filter-parameter-test
+  (testing "a mapped field-filter parameter narrows a metric card's result via an implicit join, matching an explicit filter"
+    (let [[metric mp] (mock-metric (mt/metadata-provider)
+                                   (mt/mbql-query orders {:aggregation [[:count]]})
+                                   {:name "Orders, Count", :database-id (mt/id)})
+          metric-id   (:id metric)]
+      (qp.store/with-metadata-provider mp
+        (let [param-query  (assoc (mt/mbql-query orders {:aggregation [[:metric metric-id]]})
+                                  :parameters [{:type   :string/=
+                                                :target [:dimension [:field (mt/id :products :category)
+                                                                     {:source-field (mt/id :orders :product_id)}]]
+                                                :value  ["Gadget"]}])
+              filter-query (mt/mbql-query orders {:aggregation [[:metric metric-id]]
+                                                  :filter      [:= $product_id->products.category "Gadget"]})
+              param-rows   (mt/rows (qp/process-query param-query))]
+          (is (seq param-rows))
+          (is (= (mt/rows (qp/process-query filter-query))
+                 param-rows)))))))
 
 (deftest ^:parallel metric-in-offset-test
   (let [mp            (mt/metadata-provider)

@@ -44,6 +44,16 @@
              "2019-04-01"
              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
 
+(deftest ^:parallel date-string->filter-test-3b
+  (testing "single hour-granular value"
+    (is (=? [:=
+             {}
+             [:field {:base-type :type/DateTime, :temporal-unit :minute} "field"]
+             "2025-04-01T09:00:00"]
+            (params.dates/date-string->filter
+             "2025-04-01T09"
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
 (deftest ^:parallel date-string->filter-test-4
   (testing "single minute"
     (is (=? [:=

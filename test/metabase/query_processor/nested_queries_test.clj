@@ -1762,3 +1762,345 @@
                  (mt/rows query)))
           (is (= ""
                  (-> query :data :results_metadata :columns first :name))))))))
+
+;;; A date equality/range filter's result count must be identical whether applied to the base question or an ad-hoc
+;;; nested query, for the after/before (`>`+`<`) and on-day (`=`) variants (extends date-range-test, #15352).
+(deftest ^:parallel date-range-parity-after-before-and-on-day-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (testing "after/before and on-day date filters give the same count directly and nested (#15352)"
+      (mt/dataset test-data
+        (doseq [flt [[:and [:> [:field (mt/id :orders :created_at) nil] "2020-01-31"]
+                      [:< [:field (mt/id :orders :created_at) nil] "2020-03-01"]]
+                     [:= [:field (mt/id :orders :created_at) nil] "2020-02-01"]]]
+          (let [base   (mt/mbql-query orders {:aggregation [[:count]] :filter flt})
+                nested (mt/mbql-query nil {:source-query (:query base)})]
+            (is (= (mt/formatted-rows [int] (qp/process-query base))
+                   (mt/formatted-rows [int] (qp/process-query nested)))
+                (str "filter " (pr-str flt)))))))))
+
+;;; The Distribution drill (count + binned breakout) and Sum-over-time drill (sum by month) must build and execute
+;;; over a nested card source, matching the results of the same aggregation run directly on the table.
+(deftest ^:parallel distribution-and-sum-over-time-on-nested-question-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+    (testing "sum-over-time and distribution drills execute over a nested card source (#12568)"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query orders)])
+          (testing "sum over time (sum of total by month)"
+            (is (= (mt/formatted-rows [str 2.0]
+                                      (mt/run-mbql-query orders {:aggregation [[:sum $total]] :breakout [!month.created_at]}))
+                   (mt/formatted-rows [str 2.0]
+                                      (mt/run-mbql-query orders {:source-table "card__1"
+                                                                 :aggregation  [[:sum $total]]
+                                                                 :breakout     [!month.created_at]})))))
+          (testing "distribution (count by binned quantity)"
+            (is (= (mt/formatted-rows [1.0 int]
+                                      (mt/run-mbql-query orders
+                                        {:aggregation [[:count]]
+                                         :breakout    [[:field %quantity {:binning {:strategy :num-bins :num-bins 8}}]]}))
+                   (mt/formatted-rows [1.0 int]
+                                      (mt/run-mbql-query orders
+                                        {:source-table "card__1"
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field %quantity {:binning {:strategy :num-bins :num-bins 8}}]]}))))))))))
+
+(defn- do-with-native-source-card
+  "Compile `source-mbql-query` to native SQL per-driver (so the SQL uses the right dialect/schema/case), install a
+  metadata provider exposing it as a saved native card, probe the card's second result column, and invoke `f` with
+  that column."
+  [source-mbql-query f]
+  (let [native-query (-> source-mbql-query qp.compile/compile :query)]
+    (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                      [{:database (mt/id)
+                                        :type     :native
+                                        :native   {:query native-query}}])
+      (f (second (mt/cols (mt/run-mbql-query nil {:source-table "card__1" :limit 1})))))))
+
+;;; A nested query over a saved native question can group by / aggregate one of the native card's result columns.
+(deftest ^:parallel aggregate-over-native-card-result-column-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+                                     (descendants driver/hierarchy :sql))
+    (testing "count/avg over a saved native question's result column (#15397)"
+      ;; The native card exposes [product_id, count]; reference the count column by its actual name/type.
+      (do-with-native-source-card
+       (mt/mbql-query orders {:aggregation [[:count]] :breakout [$product_id]})
+       (fn [cnt-col]
+         (let [rows (mt/rows (mt/run-mbql-query nil
+                               {:source-table "card__1"
+                                :aggregation  [[:avg [:field (:name cnt-col) {:base-type (:base_type cnt-col)}]]]}))]
+           (is (= 1 (count rows)))
+           (is (number? (ffirst rows)))))))))
+
+;;; When a source query aggregates a count broken out by an implicit-join (source-field) FK column, an outer stage
+;;; that filters on the aggregate must retain the implicit-join breakout column.
+(deftest ^:parallel post-aggregation-filter-preserves-implicit-join-breakout-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :foreign-keys)
+    (testing "outer filter keeps the source-field breakout column (#11561)"
+      (mt/dataset test-data
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :aggregation  [[:count]]
+                                      :breakout     [$user_id->people.id]}
+                       :filter       [:= [:field "count" {:base-type :type/Integer}] 5]})]
+          (is (some #(= (mt/id :people :id) (:id %))
+                    (qp.preprocess/query->expected-cols query)))
+          (is (=? {:status :completed} (qp/process-query query))))))))
+
+;;; An integer field-literal filter over a nested native-card query returns only the matching rows.
+(deftest ^:parallel integer-filter-on-native-card-source-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
+                                     (descendants driver/hierarchy :sql))
+    (testing "RATING = 4 filter over a native card selecting reviews columns (#15808)"
+      ;; The native card exposes [id, rating]; reference the rating column (index 1) by its actual name/type.
+      (do-with-native-source-card
+       (mt/mbql-query reviews {:fields [$id $rating]})
+       (fn [rating-col]
+         (let [rows (mt/rows (mt/run-mbql-query nil
+                               {:source-table "card__1"
+                                :filter       [:= [:field (:name rating-col) {:base-type (:base_type rating-col)}] 4]}))]
+           (is (seq rows))
+           (is (every? #(= 4 (nth % 1)) rows))))))))
+
+;;; A temporal breakout over a native model whose CREATED_AT column carries a DateTime base-type buckets and executes;
+;;; the bucket counts must sum to the full order count.
+(deftest ^:parallel temporal-breakout-over-native-model-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+                                     (descendants driver/hierarchy :sql))
+    (testing "month breakout over a native card exposing CREATED_AT (#29517)"
+      ;; The native card exposes [id, created_at]; bucket the created_at column by month using its actual name/type.
+      (do-with-native-source-card
+       (mt/mbql-query orders {:fields [$id $created_at]})
+       (fn [created-col]
+         (let [rows (mt/rows (mt/run-mbql-query nil
+                               {:source-table "card__1"
+                                :aggregation  [[:count]]
+                                :breakout     [[:field (:name created-col) {:base-type     (:base_type created-col)
+                                                                            :temporal-unit :month}]]}))]
+           (is (seq rows))
+           ;; the per-month bucket counts must sum to the full orders row count
+           (is (= 18760 (reduce + (map #(nth % 1) rows))))))))))
+
+;;; A distinct aggregation over a native-model column executes.
+(deftest ^:parallel distinct-over-native-model-column-test
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+                                     (descendants driver/hierarchy :sql))
+    (testing "distinct over a native card's SOURCE column (#52465)"
+      ;; The native card exposes [id, source]; count the distinct source values by its actual name/type.
+      (do-with-native-source-card
+       (mt/mbql-query people {:fields [$id $source]})
+       (fn [source-col]
+         (is (= [[5]]
+                (mt/formatted-rows [int]
+                                   (mt/run-mbql-query nil
+                                     {:source-table "card__1"
+                                      :aggregation  [[:distinct [:field (:name source-col) {:base-type (:base_type source-col)}]]]})))))))))
+
+;;; Two same-column breakouts exposed by a saved source card must both be referenceable downstream.
+(deftest ^:parallel same-column-breakouts-from-source-card-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+    (testing "both disambiguated same-column breakout columns are referenceable through a card source (#46536)"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query orders
+                                             {:aggregation [[:count]]
+                                              :breakout    [[:field %total {:binning {:strategy :num-bins :num-bins 10}}]
+                                                            [:field %total {:binning {:strategy :num-bins :num-bins 50}}]]})])
+          (testing "the source card exposes two distinct total-derived breakout columns plus the count"
+            (is (= 3 (count (mt/cols (mt/run-mbql-query nil {:source-table "card__1"}))))))
+          (testing "a downstream filter can reference each disambiguated column"
+            (let [result (qp/process-query
+                          (mt/mbql-query nil
+                            {:source-table "card__1"
+                             :filter       [:and [:between [:field "TOTAL"   {:base-type :type/Float}] 10 50]
+                                            [:between [:field "TOTAL_2" {:base-type :type/Float}] 10 50]]}))]
+              (is (=? {:status :completed} result))
+              (is (seq (mt/rows result))))))))))
+
+;;; A boolean expression breakout inherited from a source card is sortable in a following stage.
+(deftest ^:parallel sort-by-source-card-expression-breakout-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
+    (testing "#49305 an expression breakout inherited from a source card is sortable"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query products
+                                             {:expressions {"b" [:starts-with $category "Gi"]}
+                                              :aggregation [[:count]]
+                                              :breakout    [[:expression "b"]]})])
+          (is (= [[true] [false]]
+                 (mt/formatted-rows [mt/boolish->bool]
+                                    (mt/run-mbql-query nil
+                                      {:source-table "card__1"
+                                       :fields       [*b/Boolean]
+                                       :order-by     [[:desc *b/Boolean]]})))))))))
+
+;;; A custom column that is just [:field CREATED_AT] survives nesting as a distinct column.
+(deftest ^:parallel field-only-expression-survives-nesting-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
+    (testing "#25189 a field-only expression is preserved as a distinct column when nested"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query orders
+                                             {:expressions {"Custom Created" $created_at} :limit 5})])
+          (let [cols (mt/cols (mt/run-mbql-query nil {:source-table "card__1" :limit 1}))]
+            (is (contains? (set (map :name cols)) "Custom Created"))))))))
+
+;;; An outer expression can reference two named aggregation columns (a plain agg and one that self-references
+;;; [:aggregation 0]) exposed by a source card.
+(deftest ^:parallel reference-source-card-aggregation-columns-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :expression-aggregations)
+    (testing "an outer custom column references named aggregation columns from a source card"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                          [(mt/mbql-query orders
+                                             {:aggregation [[:aggregation-options [:min $subtotal] {:name "Foo"}]
+                                                            [:aggregation-options [:+ [:aggregation 0] [:avg $tax]] {:name "Bar"}]]})])
+          (let [[[foo bar sum]] (mt/rows (mt/run-mbql-query nil
+                                           {:source-table "card__1"
+                                            :expressions  {"Sum" [:+ [:field "Foo" {:base-type :type/Float}]
+                                                                  [:field "Bar" {:base-type :type/Float}]]}}))]
+            (is (every? number? [foo bar sum]))
+            (is (< (abs (- (double sum) (+ (double foo) (double bar)))) 1e-6))))))))
+
+;;; A string-named field ref inside a later-stage expression resolves against the source-card columns and is
+;;; usable as a breakout.
+(deftest ^:parallel expression-string-named-field-ref-nested-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :expressions)
+    (testing "#18814 a string-named field ref inside a nested expression breaks out correctly"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query orders {:aggregation [[:count]] :breakout [!year.created_at]})])
+          (let [result (qp/process-query
+                        (mt/mbql-query nil
+                          {:source-table "card__1"
+                           :expressions  {"CC" [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]}
+                           :breakout     [[:expression "CC"]]
+                           :aggregation  [[:count]]}))]
+            (is (=? {:status :completed} result))
+            (is (seq (mt/rows result)))))))))
+
+;;; Value expressions exported by a source card can be referenced as filter operands against real columns.
+(deftest ^:parallel value-expression-from-source-card-as-filter-operand-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :expression-literals)
+    (testing "QUE-726 a source card's value expressions are usable as filter operands"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
+                                          [(mt/mbql-query products
+                                             {:expressions {"Rustic"   [:value "Rustic Paper Wallet" {:base_type :type/Text}]
+                                                            "MinPrice" [:value 20.0 {:base_type :type/Float}]}
+                                              :fields      [$id $title $price [:expression "Rustic"] [:expression "MinPrice"]]})])
+          (let [rows (mt/rows (mt/run-mbql-query nil
+                                {:source-table "card__1"
+                                 :filter       [:and
+                                                [:= [:field "TITLE" {:base-type :type/Text}]  [:field "Rustic" {:base-type :type/Text}]]
+                                                [:> [:field "PRICE" {:base-type :type/Float}] [:field "MinPrice" {:base-type :type/Float}]]]}))]
+            ;; TITLE column is index 1 in `select id, title, price, ...`
+            (is (seq rows))
+            (is (every? #(= "Rustic Paper Wallet" (nth % 1)) rows))))))))
+
+;;; A distinct aggregation over a nested "Average of Total" column returns the right scalar.
+(deftest ^:parallel distinct-over-nested-aggregation-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+    (testing "distinct over a nested avg aggregation column (#24839)"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                          [(mt/mbql-query orders {:aggregation [[:sum $quantity] [:avg $total]]
+                                                                  :breakout    [!month.created_at]})])
+          ;; source columns are [month, sum, avg]; distinct-count of the avg column must equal the number of
+          ;; distinct avg values produced by the source query.
+          (let [source-rows (mt/rows (mt/run-mbql-query nil {:source-table "card__1"}))
+                expected    (count (distinct (map #(nth % 2) source-rows)))
+                actual      (ffirst (mt/rows (mt/run-mbql-query nil
+                                               {:source-table "card__1"
+                                                :aggregation  [[:distinct *avg/Float]]})))]
+            (is (pos? expected))
+            (is (= expected actual))))))))
+
+;;; A two-level query with an outer filter on the outer breakout dimension returns one row.
+(deftest ^:parallel filter-by-outer-breakout-column-multi-stage-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+    (testing "filter by an outer breakout column in a multi-stage query (#25016)"
+      (mt/dataset test-data
+        (let [query (mt/mbql-query products
+                      {:source-query {:source-table $$products
+                                      :aggregation  [[:count]]
+                                      :breakout     [!month.created_at $category]}
+                       :aggregation  [[:count]]
+                       :breakout     [*CATEGORY/Text]
+                       :filter       [:= *CATEGORY/Text "Gadget"]})]
+          (is (= 1 (count (mt/rows (qp/process-query query))))))))))
+
+;;; Reducing a source card's :fields exposes only those columns to a nested query.
+(deftest ^:parallel reduced-source-fields-propagate-to-nested-query-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (testing "reducing a source card's :fields propagates to a nested query (#30610, #43216)"
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                          [(mt/mbql-query orders {:fields [$id]})])
+          (is (= ["ID"]
+                 (map :name (mt/cols (mt/run-mbql-query nil {:source-table "card__1"}))))))))))
+
+;;; Removing Products.Created At from a source card's join :fields must not shift a downstream filter on the
+;;; same-named Reviews.Created At column: the filtered count is unchanged.
+(deftest ^:parallel remove-same-named-join-field-keeps-downstream-filter-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join :foreign-keys)
+    (testing "dropping a same-named join field from the source card does not shift the downstream filter (#54920)"
+      (mt/dataset test-data
+        (letfn [(count-with-products-created-at? [include-products-created-at?]
+                  (let [card-query (mt/mbql-query orders
+                                     {:joins [{:source-table $$products :alias "Products"
+                                               :fields       (if include-products-created-at?
+                                                               [&Products.products.category &Products.products.created_at]
+                                                               [&Products.products.category])
+                                               :condition    [:= $product_id &Products.products.id]}
+                                              {:source-table $$reviews :alias "Reviews"
+                                               :fields       [&Reviews.reviews.rating &Reviews.reviews.created_at]
+                                               :condition    [:= $product_id &Reviews.reviews.product_id]}]})]
+                    (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                                      [card-query])
+                      (let [cols            (mt/cols (mt/run-mbql-query nil {:source-table "card__1" :limit 1}))
+                            reviews-created (m/find-first #(= (mt/id :reviews :created_at) (:id %)) cols)]
+                        (count (mt/rows (mt/run-mbql-query nil
+                                          {:source-table "card__1"
+                                           :filter       [:between [:field (:name reviews-created)
+                                                                    {:base-type :type/DateTimeWithLocalTZ}]
+                                                          "2019-01-01" "2020-01-01"]})))))))]
+          (is (= (count-with-products-created-at? true)
+                 (count-with-products-created-at? false))))))))
+
+;;; A filter over an aggregation-result column in an appended stage compiles and returns the right rows.
+(deftest ^:parallel filter-on-aggregation-result-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+    (mt/dataset test-data
+      (testing "starts-with filter on a max(name) aggregation-result column (#22230)"
+        (let [source-rows (mt/rows (mt/run-mbql-query people {:aggregation [[:max $name]] :breakout [$source]}))
+              expected    (count (filter (fn [[_ mx]] (str/starts-with? (str mx) "Zo")) source-rows))
+              actual      (count (mt/rows (mt/run-mbql-query people
+                                            {:source-query {:source-table $$people
+                                                            :aggregation  [[:max $name]]
+                                                            :breakout     [$source]}
+                                             :filter       [:starts-with *max/Text "Zo"]})))]
+          (is (= expected actual))))
+      (testing "between-date filter on an aggregation-result column (#25994)"
+        (let [result (qp/process-query
+                      (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :aggregation  [[:max $created_at]]
+                                        :breakout     [$user_id]}
+                         :filter       [:between *max/DateTime "2018-01-01" "2020-01-01"]}))]
+          (is (=? {:status :completed} result)))))))
+
+;;; A filter over an explicitly-joined column exposed through a nested aggregated query resolves and executes.
+(deftest ^:parallel filter-explicit-joined-col-through-nested-query-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :basic-aggregations :foreign-keys)
+    (testing "filter on an explicit-join column through a nested aggregated query (#25990)"
+      (mt/dataset test-data
+        (let [result (qp/process-query
+                      (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :joins        [{:source-table $$people :alias "P"
+                                                        :condition    [:= $user_id [:field %people.id {:join-alias "P"}]]
+                                                        :fields       :all}]
+                                        :aggregation  [[:count]]
+                                        :breakout     [!month.created_at]}
+                         :filter       [:= [:field %people.id {:join-alias "P"}] 10]}))]
+          (is (=? {:status :completed} result)))))))

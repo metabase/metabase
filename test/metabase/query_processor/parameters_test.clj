@@ -799,3 +799,74 @@
          mp
          (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))
          {:table-id (mt/id :products)})))))
+
+(deftest ^:parallel number-parameter-on-expression-column-test
+  (testing "a :number/= parameter targeting an [:expression] custom column filters the card (#18747)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (mt/dataset test-data
+        (is (= 1
+               (count (mt/rows
+                       (qp/process-query
+                        (assoc (mt/mbql-query orders
+                                 {:expressions {"Quantity_2" $quantity}})
+                               :parameters [{:type   :number/=
+                                             :target [:dimension [:expression "Quantity_2"]]
+                                             :value  [14]}]))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::field-filter-execution-test]
+  [_driver _feature _database]
+  true)
+
+;;; FIXME — Field Filters don't seem to be working correctly for SparkSQL
+(defmethod driver/database-supports? [:sparksql ::field-filter-execution-test]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel field-filter-operators-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::field-filter-execution-test)
+    ;; expected counts are constants derived from the immutable `test-data` `venues` table (100 rows). They match the
+    ;; result of running the equivalent MBQL filter: `<= 3`, `!= 1`, `between 2 3`, `ends-with "s"`,
+    ;; `does-not-contain "z"` (case-sensitive by default, so "Zeke's Smokehouse" is not contained).
+    (mt/dataset test-data
+      (doseq [[field value-type value expected]
+              [[:price :number/<=               [3]   94]
+               [:price :number/!=               [1]   78]
+               [:price :number/between          [2 3] 72]
+               [:name  :string/ends-with        ["s"] 8]
+               [:name  :string/does-not-contain ["z"] 92]]]
+        (testing (format "%s field filter with value %s" value-type (pr-str value))
+          (field-filter-param-test-is-count-= expected :venues field value-type value))))))
+
+(deftest ^:parallel field-filter-string-contains-execution-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::field-filter-execution-test)
+    (mt/dataset test-data
+      (testing "'contains' field filter resolves to the case-insensitive default count (#16181)"
+        ;; 147 = number of `test-data` `products` whose `category` contains "i" (Doohickey/Gizmo/Widget, not Gadget).
+        (field-filter-param-test-is-count-= 147 :products :category :string/contains ["i"])))))
+
+(deftest ^:parallel filter-on-joined-source-card-expression-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
+    (testing "a string param mapped to [:field \"source state\" {:join-alias …}] pointing at a source-card expression resolves and filters (#32483)"
+      (mt/dataset test-data
+        (let [mp    (lib.tu/metadata-provider-with-cards-for-queries
+                     (mt/metadata-provider)
+                     [(mt/mbql-query people
+                        {:expressions {"source state" [:concat
+                                                       [:field (mt/id :people :source) {:base-type :type/Text}]
+                                                       " "
+                                                       [:field (mt/id :people :state) {:base-type :type/Text}]]}})])
+              query (assoc (mt/mbql-query orders
+                             {:joins  [{:fields       :all
+                                        :alias        "People - User"
+                                        :condition    [:= $user_id [:field "ID" {:base-type   :type/BigInteger
+                                                                                 :join-alias  "People - User"}]]
+                                        :source-table "card__1"}]
+                              :fields [[:field "source state" {:base-type :type/Text, :join-alias "People - User"}]]
+                              :limit  10})
+                           :parameters [{:type   :string/=
+                                         :value  ["Facebook MN"]
+                                         :target [:dimension [:field "source state" {:base-type  :type/Text
+                                                                                     :join-alias "People - User"}]]}])
+              rows  (mt/rows (qp/process-query (lib/query mp query)))]
+          (is (seq rows))
+          (is (every? #(= "Facebook MN" (first %)) rows)))))))

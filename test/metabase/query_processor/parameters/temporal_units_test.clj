@@ -128,6 +128,28 @@
                      (subvec 0 2)))
               (str "Unexpected results for aliased grouping " grouping)))))))
 
+(deftest ^:parallel temporal-unit-in-optional-clause-test
+  ;; Unlike the sibling tests, this one relies on a hand-written H2 query (LIMIT + an optional `[[…]]` clause) that the
+  ;; portable `mt/arbitrary-select-query` helper can't express, so it is gated to :h2 rather than the full driver set.
+  (mt/test-driver :h2
+    (testing "a :temporal-unit template tag inside an optional [[…]] clause"
+      (let [base (mt/native-query
+                  {:query         "SELECT ID [[, {{unit}} AS unit]] FROM PEOPLE ORDER BY ID LIMIT 2"
+                   :template-tags {"unit" {:name         "unit"
+                                           :display-name "Unit"
+                                           :type         :temporal-unit
+                                           :dimension    [:field (mt/id :people :created_at) nil]
+                                           :default      "year"}}})]
+        (testing "the clause is included and bucketed when a default value is present"
+          (let [rows (mt/rows (qp/process-query base))]
+            (is (= 2 (count rows)))
+            (is (= 2 (count (first rows))))))
+        (testing "the clause is dropped entirely when the tag is unset"
+          (let [rows (mt/rows (qp/process-query
+                               (assoc-in base [:native :template-tags "unit" :default] nil)))]
+            (is (= 2 (count rows)))
+            (is (= 1 (count (first rows))))))))))
+
 (deftest ^:parallel bad-field-reference-throws-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-units-test)
     (testing "temporal unit parameters"

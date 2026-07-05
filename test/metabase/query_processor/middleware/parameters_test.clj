@@ -502,3 +502,30 @@
                                   [:expression {} "Quantity_2"]
                                   14]]}]}
             (substitute-params query)))))
+
+;;; and dashboard-filters-reproductions-2.cy.spec.js "issue 34955"
+(deftest ^:parallel temporal-expression-parameter-test
+  (testing "a temporal (date) param mapped to an [:expression] custom column compiles to a temporal filter (#17775, #34955)"
+    (let [query {:lib/metadata meta/metadata-provider
+                 :lib/type     :mbql/query
+                 :database     (meta/id)
+                 :stages       [{:lib/type     :mbql.stage/mbql
+                                 :source-table (meta/id :orders)
+                                 :expressions  [[:field
+                                                 {:base-type           :type/DateTimeWithLocalTZ
+                                                  :effective-type      :type/DateTimeWithLocalTZ
+                                                  :lib/expression-name "CC Date"
+                                                  :lib/uuid            "a9212400-3b5f-4034-b7a0-f8848579af31"}
+                                                 (meta/id :orders :created-at)]]}]
+                 :parameters   [{:id     "c77842b9"
+                                 :target [:dimension
+                                          [:expression "CC Date" {:base-type :type/DateTimeWithLocalTZ}]
+                                          {:stage-number 0}]
+                                 :type   :date/range
+                                 :value  "2026-01-01~2026-03-31"}]}]
+      (is (=? {:stages [{:filters [[:between
+                                    {}
+                                    [:expression {} "CC Date"]
+                                    "2026-01-01"
+                                    "2026-03-31"]]}]}
+              (substitute-params query))))))

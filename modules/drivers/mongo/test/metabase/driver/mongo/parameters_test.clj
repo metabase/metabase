@@ -312,6 +312,23 @@
                        {:$sort {:_id 1}}])}
             (mongo.params/substitute-native-parameters :mongo mp stage)))))
 
+(deftest ^:parallel variable-default-value-substitution-test
+  (testing "previewing a Mongo native query substitutes a plain variable tag's :default when no runtime param is supplied (#47793)"
+    (let [mp    meta/metadata-provider
+          query (lib/query mp {:database   (meta/id)
+                               :type       :native
+                               :native     {:query         (to-bson [{:$match {"quantity" (bson-literal "{{quantity}}")}}])
+                                            :collection    "orders"
+                                            :template-tags {"quantity" {:name         "quantity"
+                                                                        :display-name "Quantity"
+                                                                        :type         :number
+                                                                        :default      "10"
+                                                                        :required     false}}}})
+          stage (-> (lib/query-stage query 0)
+                    (assoc :parameters (or (:parameters query) [])))]
+      (is (=? {:native (to-bson [{:$match {"quantity" 10}}])}
+              (mongo.params/substitute-native-parameters :mongo mp stage))))))
+
 (deftest e2e-field-filter-test
   (mt/test-driver :mongo
     (mt/with-temporary-setting-values [report-timezone "UTC"]

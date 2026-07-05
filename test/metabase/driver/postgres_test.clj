@@ -1009,6 +1009,39 @@
                       :data
                       (select-keys [:rows :native_form]))))))))))
 
+(deftest enum-field-filter-test
+  (mt/test-driver :postgres
+    (do-with-enums-db!
+     (fn [db]
+       (let [table-id      (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "birds")
+             type-field-id (t2/select-one-pk :model/Field :table_id table-id :name "type")]
+         (testing "an MBQL string/= param on a postgres enum column filters correctly (#40396)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    {:database   (u/the-id db)
+                     :type       :query
+                     :query      {:source-table table-id
+                                  :filter       [:= [:field type-field-id nil] "toucan"]}
+                     :parameters [{:type   :string/=
+                                   :target [:dimension [:field type-field-id nil]]
+                                   :value  ["toucan"]}]})))))
+         (testing "a native field filter over a postgres enum column filters correctly (#63537)"
+           (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
+                  (mt/rows
+                   (qp/process-query
+                    {:database   (u/the-id db)
+                     :type       :native
+                     :native     {:query         "SELECT * FROM birds WHERE {{type}}"
+                                  :template-tags {"type" {:name         "type"
+                                                          :display-name "Type"
+                                                          :type         :dimension
+                                                          :dimension    [:field type-field-id nil]
+                                                          :widget-type  :string/=}}}
+                     :parameters [{:type   :string/=
+                                   :target [:dimension [:template-tag "type"]]
+                                   :value  ["toucan"]}]}))))))))))
+
 (deftest enums-test-3
   (mt/test-driver :postgres
     (do-with-enums-db!

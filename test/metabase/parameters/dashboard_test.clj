@@ -341,3 +341,55 @@
             (is (= products-title-field-id
                    (#'parameters.dashboard/find-common-remapping-target [orders-product-id-field-id]))
                 "Should return target for single FK with remapping")))))))
+
+(deftest ^:sequential field-values-without-create-queries-perms-test
+  (testing "a user with view-data but no create-queries permissions still gets field-values for a mapped dashboard param (#47097)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products)}
+                     :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
+                                                                        :name      "Category"
+                                                                        :slug      "p1"
+                                                                        :type      "string/="
+                                                                        :sectionId "string"}]}
+                     :model/DashboardCard {} {:dashboard_id       dashboard-id
+                                              :card_id            card-id
+                                              :parameter_mappings [{:card_id      card-id
+                                                                    :parameter_id "p1"
+                                                                    :target       ["dimension" ["field" (mt/id :products :category) nil]]}]}]
+        (perms.test-util/with-perms-for-group-and-tables!
+          (perms-group/all-users)
+          {(mt/id :products) {:perms/create-queries :no}}
+          (data-perms/disable-perms-cache
+           ;; Mimicks the API endpoint (required):
+           (binding [api/*current-user-id*         (mt/user->id :rasta)
+                     qp.perms/*param-values-query* true]
+             (let [dashboard        (t2/select-one :model/Dashboard :id dashboard-id)
+                   {:keys [values]} (parameters.dashboard/param-values dashboard "p1" {})]
+               (is (= #{["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]}
+                      (set values)))))))))))
+
+(deftest ^:sequential remapped-param-value-with-model-card-test
+  (testing "remapped id-param values work when the mapped source card is a model (#44231)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                                 :dataset_query (mt/mbql-query orders)}
+                     :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
+                                                                        :name      "Product ID"
+                                                                        :slug      "p1"
+                                                                        :type      "id"
+                                                                        :sectionId "id"
+                                                                        :default   1}]}
+                     :model/DashboardCard {} {:dashboard_id       dashboard-id
+                                              :card_id            model-id
+                                              :parameter_mappings [{:card_id      model-id
+                                                                    :parameter_id "p1"
+                                                                    :target       ["dimension" ["field" (mt/id :orders :product_id) nil]]}]}]
+        (mt/with-column-remappings [orders.product_id products.title]
+          (mt/with-full-data-perms-for-all-users!
+            (data-perms/disable-perms-cache
+             (binding [api/*current-user-id*         (mt/user->id :rasta)
+                       qp.perms/*param-values-query* true]
+               (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                     parameter (first (:parameters dashboard))]
+                 (is (= [1 "Rustic Paper Wallet"]
+                        (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))

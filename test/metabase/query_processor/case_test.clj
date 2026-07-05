@@ -149,6 +149,16 @@
                  :limit    2
                  :order-by [[:asc $id]]})))))))
 
+(deftest ^:parallel case-with-boolean-column-condition-test
+  (testing "a boolean column can be used directly as a :case condition (#16386)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
+      (mt/dataset places-cam-likes
+        (is (= [[2.0]]
+               (mt/formatted-rows
+                [1.0]
+                (mt/run-mbql-query places
+                  {:aggregation [[:sum [:case [[$liked 1]] {:default 0}]]]}))))))))
+
 (deftest ^:parallel if-test
   (testing "If should work as syntactic sugar for case"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

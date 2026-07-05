@@ -2424,3 +2424,56 @@
             (when (map? result)
               (is (re-find #"(?i)permission" (str (:message result) (:error result) (:error_type result)))
                   "Join to an unauthorized table via pivot download is blocked"))))))))
+
+(deftest query-runs-when-fk-target-table-blocked-test
+  (testing "a query on ORDERS succeeds and resolves the Product ID FK column even though the FK target PRODUCTS is blocked (#76710)"
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :products) :perms/view-data :blocked)
+        (mt/with-test-user :rasta
+          (is (seq (mt/rows (qp/process-query (mt/mbql-query orders {:order-by [[:asc $id]], :limit 5}))))))))))
+
+(deftest e2e-model-based-metric-blocked-table-passthrough-test
+  (testing "a user who cannot build ad-hoc queries can still run a metric card sourced from a model, via card-perms passthrough"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {model-id :id} {:collection_id (u/the-id collection)
+                                                       :type          :model
+                                                       :dataset_query (mt/mbql-query orders)}]
+              (mt/with-temp [:model/Card metric {:collection_id (u/the-id collection)
+                                                 :type          :metric
+                                                 :dataset_query (mt/mbql-query nil
+                                                                  {:source-table (format "card__%d" model-id)
+                                                                   :aggregation  [[:count]]})}]
+                (mt/with-test-user :rasta
+                  (binding [qp.perms/*card-id* (u/the-id metric)]
+                    (is (= [[18760]]
+                           (mt/rows (qp/process-query (:dataset_query metric)))))))))))))))
+
+(deftest post-agg-filter-over-native-model-nosql-user-test
+  (testing "a GUI/nosql user can run a multi-stage query over a native-SQL model with a post-aggregation filter (#48771)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          ;; query-builder (not query-builder-and-native): the user has no native access
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {model-id :id} {:collection_id (u/the-id collection)
+                                                       :type          :model
+                                                       :dataset_query (mt/native-query {:query "SELECT * FROM orders"})}]
+              (let [query (mt/mbql-query nil
+                            {:source-query {:source-table (format "card__%d" model-id)
+                                            :aggregation  [[:count]]
+                                            :breakout     [[:field "USER_ID" {:base-type :type/Integer}]]}
+                             :filter       [:> [:field "count" {:base-type :type/Integer}] 5]})]
+                (mt/with-test-user :rasta
+                  (is (seq (mt/rows (qp/process-query query)))))))))))))

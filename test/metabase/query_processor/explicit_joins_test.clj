@@ -1739,3 +1739,215 @@
                             :dataset-query q1b}]})]
       (is (thrown-with-msg? Exception #"Join condition refers to a column from outside this join"
                             (qp.compile/compile (lib/query mp q2)))))))
+
+;;; ----------------------------------------------- coverage-gap tests ------------------------------------------------
+
+;;; "join based on native query (29795)"
+(deftest ^:parallel join-against-native-source-card-test
+  (testing "Left-join a native source card, restrict its fields, filter, and aggregate (#37100, #29795)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                          [(mt/native-query (qp.compile/compile (mt/mbql-query products {:fields [$id $category]})))])
+          (let [prod-id    [:field (mt/format-name "id")       {:base-type :type/Integer, :join-alias "P"}]
+                category   [:field (mt/format-name "category") {:base-type :type/Text,    :join-alias "P"}]
+                join       {:source-table "card__1"
+                            :alias        "P"
+                            :fields       :all
+                            :condition    [:= (mt/$ids orders $product_id) prod-id]}]
+            (testing "aggregate grouped by a column coming from the native join card"
+              (is (= #{"Doohickey" "Gadget" "Gizmo" "Widget"}
+                     (set (map first
+                               (mt/rows
+                                (mt/run-mbql-query orders
+                                  {:joins       [join]
+                                   :aggregation [[:count]]
+                                   :breakout    [category]})))))))
+            (testing "filter on a column coming from the native join card"
+              (is (seq (mt/rows
+                        (mt/run-mbql-query orders
+                          {:joins       [join]
+                           :filter      [:= category "Gadget"]
+                           :aggregation [[:count]]})))))))))))
+
+(deftest ^:parallel order-by-joined-breakout-column-test
+  (testing "Sorting on a joined-table breakout column (#30743)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (is (= ["Doohickey" "Gadget" "Gizmo" "Widget"]
+               (map first
+                    (mt/rows
+                     (mt/run-mbql-query orders
+                       {:joins       [{:source-table $$products
+                                       :alias        "Products"
+                                       :condition    [:= $product_id &Products.products.id]
+                                       :fields       :all}]
+                        :aggregation [[:count]]
+                        :breakout    [&Products.products.category]
+                        :order-by    [[:asc &Products.products.category]]})))))))))
+
+;;; "should normally open queries with field literals in joins (metabase#18630)"
+(deftest ^:parallel join-condition-on-inner-expression-field-literal-test
+  (testing "A join whose condition operand is a field-literal referencing an inner expression executes (#18630)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :nested-queries)
+      (mt/dataset test-data
+        (let [inner (mt/$ids orders
+                      {:source-table $$orders
+                       :expressions  {"CC" [:coalesce $discount 0]}
+                       :aggregation  [[:count]]
+                       :breakout     [[:expression "CC"]]})]
+          (is (seq (mt/rows
+                    (mt/run-mbql-query orders
+                      {:source-query inner
+                       :joins        [{:source-query inner
+                                       :alias        "Q2"
+                                       :condition    [:= [:field "CC" {:base-type :type/Float}]
+                                                      [:field "CC" {:base-type :type/Float, :join-alias "Q2"}]]
+                                       :fields       :all}]
+                       :limit        5})))))))))
+
+(deftest ^:parallel post-join-filter-then-aggregate-test
+  (testing "Filter on a joined column, then aggregate grouped by another joined column (#11452, #12221, #15570)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (let [rows (mt/rows
+                    (mt/run-mbql-query orders
+                      {:joins       [{:source-table $$reviews
+                                      :alias        "Reviews"
+                                      :condition    [:= $product_id &Reviews.reviews.product_id]
+                                      :fields       :all}]
+                       :filter      [:= &Reviews.reviews.rating 2]
+                       :aggregation [[:avg &Reviews.reviews.rating]]
+                       :breakout    [&Reviews.reviews.reviewer]}))]
+          (is (seq rows))
+          (testing "avg of a column filtered to a single value equals that value for every group"
+            (is (every? (fn [[_reviewer avg]] (== 2 avg)) rows))))))))
+
+(deftest ^:parallel join-expression-condition-over-model-source-test
+  (testing "An arithmetic expression join condition over a self-joined model source executes like the table equivalent"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (-> (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                              [(mt/mbql-query orders)])
+                                             (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]}))
+          (let [card       "card__1"
+                model-rows (mt/rows
+                            (mt/run-mbql-query nil
+                              {:source-table card
+                               :joins        [{:source-table card
+                                               :alias        "m"
+                                               :condition    [:= [:+ [:field "ID" {:base-type :type/BigInteger}]
+                                                                  [:field "USER_ID" {:base-type :type/Integer}]]
+                                                              [:+ [:field "ID" {:base-type :type/BigInteger, :join-alias "m"}]
+                                                               [:field "PRODUCT_ID" {:base-type :type/Integer, :join-alias "m"}]]]
+                                               :fields       :all}]
+                               :filter       [:<= [:field "ID" {:base-type :type/BigInteger}] 5]}))
+                table-rows (mt/rows
+                            (mt/run-mbql-query orders
+                              {:joins  [{:source-table $$orders
+                                         :alias        "m"
+                                         :condition    [:= [:+ $id $user_id] [:+ &m.orders.id &m.orders.product_id]]
+                                         :fields       :all}]
+                               :filter [:<= $id 5]}))]
+            (is (seq model-rows))
+            (testing "model source yields the same number of joined rows as the equivalent table self-join"
+              (is (= (count table-rows) (count model-rows))))))))))
+
+(deftest ^:parallel join-two-models-with-same-internal-join-alias-test
+  (testing "Joining two models that each internally join PRODUCTS under the same alias resolves and executes (#47988)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset test-data
+        (let [prod-join (mt/$ids orders
+                          {:fields       :all
+                           :source-table $$products
+                           :alias        "Products"
+                           :condition    [:= $product_id &Products.products.id]})]
+          (qp.store/with-metadata-provider (-> (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                                [(mt/mbql-query orders {:joins [prod-join]})
+                                                 (mt/mbql-query orders
+                                                   {:joins [prod-join
+                                                            (mt/$ids orders
+                                                              {:fields       :all
+                                                               :source-table $$reviews
+                                                               :alias        "Reviews"
+                                                               :condition    [:= $product_id
+                                                                              &Reviews.reviews.product_id]})]})])
+                                               (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}
+                                                                                              {:id 2, :type :model}]}))
+            (is (seq (mt/rows
+                      (qp/process-query
+                       (mt/mbql-query nil
+                         {:source-table "card__1"
+                          :joins        [{:fields       :all
+                                          :source-table "card__2"
+                                          :alias        "M2"
+                                          :condition    [:= $orders.id &M2.orders.id]}]
+                          :limit        1})))))))))))
+
+;;; "join alias deduplication should not break queries with multiple nesting levels with joins (metabase#51856)"
+(deftest ^:parallel dedup-same-named-joins-across-nested-cards-test
+  (testing "Joining two cards that each join Products with the default alias \"Products\" does not collide (#51856)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset test-data
+        (let [mp    (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                     [(mt/mbql-query orders
+                        {:joins [{:source-table $$products :alias "Products" :fields :all
+                                  :condition [:= $product_id &Products.products.id]}]})
+                      (mt/mbql-query reviews
+                        {:joins [{:source-table $$products :alias "Products" :fields :all
+                                  :condition [:= $product_id &Products.products.id]}]})])
+              card2 (lib.metadata/card mp 2)
+              base  (lib/query mp (lib.metadata/card mp 1))
+              cat1  (first (filter #(= (:id %) (mt/id :products :category)) (lib/returned-columns base)))
+              cat2  (first (filter #(= (:id %) (mt/id :products :category))
+                                   (lib/join-condition-rhs-columns base card2 (lib/ref cat1) nil)))
+              query (-> base
+                        (lib/join (-> (lib/join-clause card2 [(lib/= cat1 cat2)])
+                                      (lib/with-join-alias "Q2")
+                                      (lib/with-join-fields :all)))
+                        (lib/limit 5))]
+          (mt/with-native-query-testing-context query
+            (is (seq (mt/rows (qp/process-query query))))))))))
+
+(deftest ^:parallel join-saved-card-on-fk-sourced-breakout-test
+  (testing "Join a saved card on an FK-sourced implicit-join breakout column (#48754)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :basic-aggregations :nested-queries)
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                          [(mt/mbql-query orders
+                                             {:aggregation [[:count]]
+                                              :breakout    [$product_id->products.category]})])
+          (is (= 4
+                 (count (mt/rows
+                         (mt/run-mbql-query orders
+                           {:aggregation [[:count]]
+                            :breakout    [$product_id->products.category]
+                            :joins       [{:source-table "card__1"
+                                           :alias        "Q1"
+                                           :condition    [:= $product_id->products.category
+                                                          [:field "CATEGORY" {:base-type :type/Text, :join-alias "Q1"}]]
+                                           :fields       :all}]}))))))))))
+
+;;; "should be able to use a column from a joined question with a long name (metabase#56416)"
+(deftest ^:parallel filter-on-long-named-joined-card-column-uses-inner-name-test
+  (testing "Filtering on a long-named joined-card column references the inner column, not the truncated alias (#56416)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join :basic-aggregations)
+      (mt/dataset test-data
+        (qp.store/with-metadata-provider (-> (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                              [(mt/mbql-query orders {:aggregation [[:count]]
+                                                                      :breakout    [$product_id->products.category $product_id]})])
+                                             (lib.tu/merged-mock-metadata-provider
+                                              {:cards [{:id 1, :name (apply str (repeat 65 \a))}]}))
+          (is (= [["Gadget"]]
+                 (map (fn [[category _count]] [category])
+                      (mt/rows
+                       (qp/process-query
+                        (mt/mbql-query orders
+                          {:joins       [{:source-table "card__1"
+                                          :alias        "J"
+                                          :fields       :all
+                                          :condition    [:= $product_id
+                                                         [:field "PRODUCT_ID" {:base-type :type/Integer, :join-alias "J"}]]}]
+                           :filter      [:= [:field "CATEGORY" {:base-type :type/Text, :join-alias "J"}] "Gadget"]
+                           :breakout    [[:field "CATEGORY" {:base-type :type/Text, :join-alias "J"}]]
+                           :aggregation [[:count]]})))))))))))

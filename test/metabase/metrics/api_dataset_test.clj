@@ -1281,3 +1281,28 @@
                                           :projection [[:dimension {} (:id expr-dim)]]}]})]
             (is (= "completed" (:status response)))
             (is (< 1 (:row_count response)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    Category 12: Segment and BigInteger Filters                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest dataset-segment-filter-test
+  (testing "POST /api/metric/dataset with a [:segment] filter narrows rows exactly like the underlying filter (#2004)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card    metric {:name          "Orders Count Metric"
+                                            :type          :metric
+                                            :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+                     :model/Segment {sid :id} {:table_id   (mt/id :orders)
+                                               :definition {:source-table (mt/id :orders)
+                                                            :filter       [:> [:field (mt/id :orders :total) nil] 100]}}]
+        (let [hydrated    (hydrate-metric (:id metric))
+              total-dim   (find-dimension-by-name hydrated "TOTAL")]
+          (is (some? total-dim))
+          (let [via-filter  (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
+                                                            :filters    [{:lib/uuid "a"
+                                                                          :filter   [:> {} [:dimension {} (:id total-dim)] 100]}]}))
+                via-segment (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
+                                                            :filters    [{:lib/uuid "a"
+                                                                          :filter   [:segment {} sid]}]}))]
+            (is (pos? via-filter))
+            (is (= via-filter via-segment))))))))

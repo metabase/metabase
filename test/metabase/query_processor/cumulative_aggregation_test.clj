@@ -619,3 +619,48 @@
                  (mt/formatted-rows
                   [->local-date str 2.0 2.0]
                   (qp/process-query query)))))))))
+
+(deftest ^:parallel expression-in-stage-after-cumulative-count-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (testing "an expression in the outer stage does not break a cum-count source query (#13634)"
+      (is (seq (mt/rows (mt/run-mbql-query orders
+                          {:source-query {:source-table $$orders
+                                          :aggregation  [[:cum-count]]
+                                          :breakout     [!month.created_at]}
+                           :expressions  {"Foo Bar" [:+ 57910 1]}})))))))
+
+(deftest ^:parallel cumulative-count-with-post-aggregation-filter-test
+  (testing "a cum-count + month breakout query wrapped in an outer filter stage still returns rows (#33330)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+      (let [metadata-provider (mt/metadata-provider)
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            base              (-> (lib/query metadata-provider orders)
+                                  (lib/aggregate (lib/cum-count))
+                                  (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                  lib/append-stage)
+            outer-col         (m/find-first (comp #{"Created At: Month"} :display-name)
+                                            (lib/filterable-columns base))
+            _                 (assert (some? outer-col))
+            query             (lib/filter base (lib/= outer-col "2016-05-01"))]
+        (is (seq (mt/rows (qp/process-query query))))))))
+
+(deftest ^:parallel offset-post-aggregation-expression-filter-sort-test
+  (testing "a post-aggregation custom column, filter, and sort can all reference an offset aggregation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
+      (let [metadata-provider (mt/metadata-provider)
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            total             (lib.metadata/field metadata-provider (mt/id :orders :total))
+            base              (-> (lib/query metadata-provider orders)
+                                  (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                  (lib/aggregate (lib/offset (lib/sum total) -1))
+                                  lib/append-stage)
+            ofs               (m/find-first (comp #(re-find #"(?i)offset" (or % "")) :display-name)
+                                            (lib/returned-columns base))
+            _                 (assert (some? ofs))
+            query             (-> base
+                                  (lib/expression "x2" (lib/* ofs 2))
+                                  (lib/filter (lib/> ofs 1000))
+                                  (lib/order-by ofs))]
+        (is (seq (mt/rows (qp/process-query query))))))))

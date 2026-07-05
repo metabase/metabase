@@ -7,6 +7,10 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.parameters-test :refer [card-template-tags]]
    [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
    [metabase.test :as mt])
@@ -40,6 +44,37 @@
                   metadata-provider
                   :metadata/column
                   (mt/id :venues :price)))))))
+
+(deftest native-card-ref-runs-with-card-read-only-perms-test
+  (testing "a saved native card referencing another card via a {{#id}} tag executes for a user with card-read but no table data perms"
+    (mt/dataset test-data
+      (mt/with-no-data-perms-for-all-users!
+        ;; a viewer-only user: can view data (so not blocked) but cannot build ad-hoc queries
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        ;; allowing `with-temp` here: this exercises app-DB permission enforcement (card-read perms, current user)
+        ;; via `process-query-for-card`, which a metadata provider does not model
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp
+          [:model/Card {parent-id :id} {:database_id   (mt/id)
+                                        :dataset_query (mt/native-query {:query "SELECT * FROM PEOPLE WHERE STATE = 'WA'"})}
+           :model/Card child-card (let [tag (str "#" parent-id)]
+                                    {:database_id   (mt/id)
+                                     :dataset_query (mt/native-query
+                                                     {:query         (format "SELECT COUNT(*) FROM {{%s}}" tag)
+                                                      :template-tags {tag {:id           tag
+                                                                           :name         tag
+                                                                           :display-name tag
+                                                                           :type         :card
+                                                                           :card-id      parent-id}}})})]
+          (mt/with-test-user :rasta
+            (is (= [[41]]
+                   (mt/rows
+                    (qp.card/process-query-for-card
+                     child-card :api
+                     :make-run (constantly
+                                (fn [query info]
+                                  (qp/process-query (assoc query :info (assoc info :query-hash (byte-array 0))))))))))))))))
 
 (deftest ^:parallel referenced-query-from-different-db-test
   (testing "fails on query that references a native query from a different database"

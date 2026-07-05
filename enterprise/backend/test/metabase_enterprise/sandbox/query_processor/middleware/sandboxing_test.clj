@@ -4,6 +4,7 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test]}}}}}}
   (:require
    [clojure.core.async :as a]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -11,6 +12,7 @@
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -2001,3 +2003,59 @@
                   "Price column should be coerced to a timestamp string")
               (is (str/starts-with? (last row) "1970-01-01")
                   "Price should be coerced exactly once, producing a date near the Unix epoch"))))))))
+
+(deftest regex-expression-over-sandboxed-table-test
+  (testing "a regex-match-first custom column over a sandboxed table compiles over the sandbox subquery and returns only the user's row (#14873)"
+    (mt/dataset test-data
+      (met/with-gtaps! {:gtaps      {:people {:remappings {:id [:dimension [:field (mt/id :people :id) nil]]}}}
+                        :attributes {"id" "1"}}
+        (let [q (mt/mbql-query people
+                  {:expressions {"first" [:regex-match-first $name "^[A-Za-z]+"]}
+                   :fields      [[:expression "first"]]})]
+          (is (= [["Hudson"]] (mt/rows (qp/process-query q)))))))))
+
+(deftest case-expression-else-branch-table-substitution-test
+  (testing "a :case custom column whose :default references the sandboxed table has that table-ref rewritten to the sandbox subquery (#14859)"
+    (mt/dataset test-data
+      (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension [:field (mt/id :orders :user_id) nil]]}}}
+                        :attributes {"uid" "1"}}
+        (let [baseline  (mt/mbql-query orders {:fields [$total]})
+              with-case (mt/mbql-query orders
+                          {:expressions {"cc" [:case [[[:> $discount 0] $discount]]
+                                               {:default $total}]}
+                           :fields      [[:expression "cc"]]})]
+          ;; both queries run under the same user-1 sandbox, so they must return the same number of rows: an
+          ;; unsandboxed leak would blow the baseline up to the full orders count, and a broken :default
+          ;; table-ref rewrite would make `with-case` error rather than matching the baseline count.
+          (is (= (count (mt/rows (qp/process-query baseline)))
+                 (count (mt/rows (qp/process-query with-case))))))))))
+
+(deftest sandbox-fails-closed-when-filter-column-dropped-test
+  (testing "a column-based sandbox fails closed (errors, returns no unfiltered rows) when its filter column is dropped from the DB"
+    ;; Run against a throwaway physical copy of the warehouse (products table only). The DROP COLUMN
+    ;; below is destructive DDL; `met/with-gtaps!` copies only app-DB metadata (reusing the same
+    ;; physical `:details`), so without an isolated copy this would permanently drop products.category
+    ;; from the shared test-data DB and break every later test in the JVM. `with-actions-test-data`
+    ;; loads a freshly created copy and destroys it afterwards, so the DDL can't leak.
+    (mt/with-actions-test-data-tables #{"products"}
+      (mt/with-actions-test-data
+        (met/with-gtaps! {:gtaps      {:products {:remappings {"category" [:dimension [:field (mt/id :products :category) nil]]}}}
+                          :attributes {"category" "Gizmo"}}
+          (testing "sanity check: the sandbox filters rows to the user's category"
+            (let [rows (mt/rows (mt/run-mbql-query products {:fields [$category] :limit 20}))]
+              (is (seq rows))
+              (is (every? #(= "Gizmo" (first %)) rows))))
+          (testing "after the sandbox filter column is dropped, the query fails closed rather than returning unfiltered rows"
+            (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+              (jdbc/execute! db-spec ["ALTER TABLE \"PUBLIC\".\"PRODUCTS\" DROP COLUMN \"CATEGORY\";"]))
+            ;; The consumer query selects only ID (a column that still exists). This is what makes the
+            ;; assertion distinguish fail-CLOSED from fail-OPEN: if the sandbox were silently dropped
+            ;; (fail-open), `SELECT ID FROM products` would SUCCEED and leak unfiltered rows, so the
+            ;; `thrown?` below would NOT hold and the test would fail. Because the sandbox is still
+            ;; enforced (fail-closed), its subquery references the now-missing CATEGORY column in its
+            ;; WHERE clause and the query throws. (If ID were replaced with an implicit `SELECT *`, the
+            ;; dropped CATEGORY would be selected either way and the throw would no longer prove
+            ;; enforcement.)
+            (is (thrown?
+                 Throwable
+                 (mt/rows (mt/run-mbql-query products {:fields [$id] :limit 20}))))))))))

@@ -172,6 +172,40 @@
                 [2 "williamson-domenica@yahoo.com" "yahoo" "yahoo.com"]]
                (mt/formatted-rows [int str str str] (qp/process-query query))))))))
 
+;; (metabase#13751)" and "should correctly filter custom column by 'Not equal to' (metabase#14843)"
+(deftest ^:parallel filter-on-string-expression-result-test
+  (testing "#13751 filter `=` on the result of a regex-match-first expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+      (mt/dataset test-data
+        (let [co-count (->> (mt/run-mbql-query people
+                              {:filter [:= $state "CO"] :aggregation [[:count]]})
+                            mt/rows ffirst long)]
+          (is (pos? co-count))
+          (is (= co-count
+                 (->> (mt/run-mbql-query people
+                        {:expressions {"C" [:regex-match-first $state "^C[A-Z]"]}
+                         :filter      [:= [:expression "C"] "CO"]
+                         :aggregation [[:count]]})
+                      mt/rows ffirst long)))))))
+  (testing "#14843 filter `!=` on the result of a length expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (mt/dataset test-data
+        (let [rows (mt/rows (mt/run-mbql-query people
+                              {:expressions {"L" [:length $city]}
+                               :filter      [:!= [:expression "L"] 3]
+                               :fields      [$city]
+                               :limit       200}))]
+          (is (seq rows))
+          (is (not-any? #(= 3 (count (first %))) rows)))))))
+
+;; and custom-column-reproductions-2 "should not remove backslashes from escaped characters (metabase#56596)"
+(deftest ^:parallel string-function-escape-literals-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+    (testing "#53527 a double-quote replacement literal strips the quote"
+      (is (= "ab" (test-string-extract [:replace "a\"b" "\"" ""]))))
+    (testing "#56596 a `\\s` whitespace class keeps its backslash and captures a leading space"
+      (is (= " Medicine" (test-string-extract [:regex-match-first [:field (mt/id :venues :name) nil] "\\s.*"]))))))
+
 (deftest ^:parallel url-extractions-test
   (testing "`:domain`, `:subdomain`, `:host`, and `:path` extractions from URLs should work correctly"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)

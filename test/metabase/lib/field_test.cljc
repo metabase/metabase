@@ -651,6 +651,15 @@
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-binning-strategies query)))))))
 
+(deftest ^:parallel available-binning-strategies-entity-key-test
+  (testing "PK/FK columns offer no binning strategies or temporal buckets (metabase#16787, metabase#17768)"
+    (let [query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          id      (meta/field-metadata :orders :id)
+          user-id (meta/field-metadata :orders :user-id)]
+      (is (empty? (lib/available-binning-strategies query id)))
+      (is (empty? (lib/available-binning-strategies query user-id)))
+      (is (empty? (lib/available-temporal-buckets query user-id))))))
+
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))

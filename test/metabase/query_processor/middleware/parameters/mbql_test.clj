@@ -515,3 +515,100 @@
                                          :value  :week}]})]
       (is (=? ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
               (first (mt/rows (mt/process-query query))))))))
+
+;;; "should be able to map a parameter to an explicitly joined column in the model query (metabase#43799)"
+(deftest ^:parallel param-targeting-explicit-join-column-test
+  (testing "a param with a :dimension target carrying {:join-alias …} compiles to a filter on the explicitly-joined column (#43799)"
+    (is (=? {:query {:filter [:= [:field (meta/id :products :title) {:join-alias "Products"}] "Google"]}}
+            (expand-parameters
+             (-> (lib.tu.macros/mbql-query orders
+                   {:joins [{:source-table $$products
+                             :alias        "Products"
+                             :condition    [:= $product-id &Products.products.id]
+                             :fields       :all}]})
+                 (assoc :parameters
+                        [{:type   :string/=
+                          :value  ["Google"]
+                          :target [:dimension [:field (meta/id :products :title) {:join-alias "Products"}]]}])))))))
+
+;;; "should be able to map a boolean parameter to a boolean column"
+(deftest ^:parallel boolean-mbql-parameter-test
+  (testing "a boolean/= param mapped to a boolean expression column expands to an equality filter on that expression"
+    (doseq [v [true false]]
+      (testing (format "value = %s" (pr-str v))
+        (is (=? {:query {:filter [:= [:expression "Bool"] v]}}
+                (expand-parameters
+                 (-> (lib.tu.macros/mbql-query products
+                       {:expressions {"Bool" [:= $id 1]}
+                        :fields      [$id [:expression "Bool"]]})
+                     (assoc :parameters
+                            [{:type   :boolean/=
+                              :value  [v]
+                              :target [:dimension [:expression "Bool"]]}])))))))))
+
+(deftest ^:parallel duplicate-temporal-unit-params-same-breakout-test
+  ;; NOTE: this pins CURRENT product behavior. The documented intent for #44684 is for the LAST param to take priority
+  ;; (which would yield :year here), but that is not what the product does today for two params on the *same* breakout.
+  (testing (str "two temporal-unit params on the same breakout: the FIRST matching param wins (:quarter) as a mechanical"
+                " consequence of sequential expansion — each param retargets by matching the breakout's current unit, so"
+                " once the first changes :month to :quarter the second (still targeting :month) no longer matches and is"
+                " a no-op (#44684)")
+    (let [by-unit (fn [u] [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithLocalTZ, :temporal-unit u}])]
+      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :quarter}]]}}
+              (expand-parameters
+               (-> (lib.tu.macros/mbql-query orders
+                     {:aggregation [[:count]]
+                      :breakout    [(by-unit :month)]})
+                   (assoc :parameters
+                          [{:type :temporal-unit, :target [:dimension (by-unit :month)], :value :quarter}
+                           {:type :temporal-unit, :target [:dimension (by-unit :month)], :value :year}]))))))))
+
+;;; "temporal-unit parameters with multiple temporal breakouts of a column"
+(deftest ^:parallel temporal-unit-param-disambiguates-same-column-breakouts-test
+  (testing "two temporal-unit params retarget only the breakout matching their current unit (#46536, #46776)"
+    (is (=? {:stages [{:breakout [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
+                                  [:field {:temporal-unit :week}    (meta/id :orders :created-at)]]}]}
+            (expand-parameters
+             (lib/query
+              meta/metadata-provider
+              (lib.tu.macros/mbql-5-query orders
+                {:stages [{:aggregation [[:count {}]]
+                           :breakout    [[:field {:temporal-unit :year}  %created-at]
+                                         [:field {:temporal-unit :month} %created-at]]
+                           :parameters  [{:type   :temporal-unit
+                                          :value  "quarter"
+                                          :target [:dimension [:field %created-at {:temporal-unit :year}] {}]}
+                                         {:type   :temporal-unit
+                                          :value  "week"
+                                          :target [:dimension [:field %created-at {:temporal-unit :month}] {}]}]}]})))))))
+
+(deftest ^:parallel bigint-number-operators-test
+  (testing "number operator params preserve type/BigInteger values without collapsing to a double (#5816)"
+    (let [big (biginteger "9223372036854775808")]
+      (doseq [[ptype value expected] [[:number/!= [big]     [:!= [:field (meta/id :orders :id) nil] big]]
+                                      [:number/>= [big]     [:>= [:field (meta/id :orders :id) nil] big]]
+                                      [:number/<= [big]     [:<= [:field (meta/id :orders :id) nil] big]]
+                                      [:number/between [0 big] [:between [:field (meta/id :orders :id) nil] 0 big]]]]
+        (testing (pr-str ptype)
+          (is (=? {:query {:filter expected}}
+                  (expand-parameters
+                   (-> (lib.tu.macros/mbql-query orders)
+                       (assoc :parameters
+                              [{:type   ptype
+                                :value  value
+                                :target [:dimension [:field (meta/id :orders :id) nil]]}]))))))))))
+
+(deftest ^:parallel two-params-same-column-conjunction-test
+  (testing "two params mapped to the same column AND-combine (intersection)"
+    (is (=? {:query {:filter [:and
+                              [:= [:field (meta/id :products :category) nil] "Doohickey" "Gizmo"]
+                              [:= [:field (meta/id :products :category) nil] "Gadget"]]}}
+            (expand-parameters
+             (-> (lib.tu.macros/mbql-query products {:aggregation [[:count]]})
+                 (assoc :parameters
+                        [{:type   :string/=
+                          :value  ["Doohickey" "Gizmo"]
+                          :target [:dimension [:field (meta/id :products :category) nil]]}
+                         {:type   :string/=
+                          :value  ["Gadget"]
+                          :target [:dimension [:field (meta/id :products :category) nil]]}])))))))

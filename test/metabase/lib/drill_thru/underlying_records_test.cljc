@@ -1032,3 +1032,36 @@
                          :breakout     (symbol "nil #_\"key is not present.\"")
                          :fields       (symbol "nil #_\"key is not present.\"")}]}
               result)))))
+
+(deftest ^:parallel native-card-day-breakout-drill-test
+  ;; The day bucket produces a single-day `:between` (identical bounds) - not a multi-day range - which the
+  ;; filters panel renders as "CREATED_AT is Oct 11, 2026". This is the regression #54108 guarded.
+  (testing "underlying-records drill on a day-bucketed breakout over a native card keeps the model as
+            source-card and filters the single clicked day (#54108)"
+    (let [mp         (lib.tu/metadata-provider-with-mock-cards)
+          card       (:orders/native (lib.tu/mock-cards))
+          created    (m/find-first #(= (:name %) "CREATED_AT")
+                                   (lib/breakoutable-columns (lib/query mp card)))
+          query      (-> (lib/query mp card)
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created :day)))
+          cols       (lib/returned-columns query)
+          count-col  (m/find-first #(= (:name %) "count") cols)
+          _          (is (some? count-col))
+          created-at (m/find-first #(= (:name %) "CREATED_AT") cols)
+          _          (is (some? created-at))
+          context    {:column     count-col
+                      :column-ref (lib/ref count-col)
+                      :value      6
+                      :dimensions [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2026-10-11T00:00:00Z"}]}
+          drill      (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                   (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? [{:source-card (:id card)
+                :filters     [[:between {}
+                               [:field {:temporal-unit :day} "CREATED_AT"]
+                               "2026-10-11"
+                               "2026-10-11"]]}]
+              (:stages (lib/drill-thru query drill)))))))

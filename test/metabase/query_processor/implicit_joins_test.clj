@@ -384,3 +384,36 @@
                 ;; 3 months with log counts
                 (is (= 3
                        (count (mt/rows (qp/process-query query)))))))))))))
+
+;;; "should be able to run a query with an implicit join via a join (metabase#46845)"
+(deftest ^:parallel implicit-join-filter-through-explicit-self-join-test
+  (testing "Two implicit-join filters through an explicit self-join execute and return the expected row count (#46845)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset test-data
+        ;; The two implicit joins (products via orders.product_id, and products via the O2 self-join's product_id)
+        ;; must resolve to the same rows as spelling those joins out explicitly. Wrong join resolution diverges (#46845).
+        (let [implicit (mt/formatted-rows [int]
+                                          (mt/run-mbql-query orders
+                                            {:joins       [{:source-table $$orders
+                                                            :alias        "O2"
+                                                            :condition    [:= $product_id &O2.orders.user_id]}]
+                                             :filter      [:and
+                                                           [:= $product_id->products.vendor "Alfreda Konopelski II Group"]
+                                                           [:= [:field %products.vendor {:source-field %product_id
+                                                                                         :source-field-join-alias "O2"}]
+                                                            "Aufderhar-Boehm"]]
+                                             :aggregation [[:count]]}))
+              explicit (mt/formatted-rows [int]
+                                          (mt/run-mbql-query orders
+                                            {:joins       [{:source-table $$orders   :alias "O2"
+                                                            :condition [:= $product_id &O2.orders.user_id]}
+                                                           {:source-table $$products :alias "P1"
+                                                            :condition [:= $product_id &P1.products.id]}
+                                                           {:source-table $$products :alias "P2"
+                                                            :condition [:= &O2.orders.product_id &P2.products.id]}]
+                                             :filter      [:and
+                                                           [:= &P1.products.vendor "Alfreda Konopelski II Group"]
+                                                           [:= &P2.products.vendor "Aufderhar-Boehm"]]
+                                             :aggregation [[:count]]}))]
+          (is (= implicit explicit))
+          (is (pos? (ffirst implicit))))))))
