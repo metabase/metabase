@@ -11,7 +11,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import { Toggle } from "metabase/common/components/Toggle";
 import type { ExportFormat } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
@@ -500,9 +499,9 @@ export function EmailAttachmentPicker({
                 tooltip={t`When enabled, only file attachments will be sent (no email content).`}
               />
             </Group>
-            <Toggle
+            <Switch
               aria-label={t`Send only attachments`}
-              value={isAttachmentOnly}
+              checked={isAttachmentOnly}
               onChange={onToggleAttachmentOnly}
             />
           </Group>
