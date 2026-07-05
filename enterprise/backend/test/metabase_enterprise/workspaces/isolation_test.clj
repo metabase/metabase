@@ -99,7 +99,7 @@
 
 ;;; Tests
 (deftest destroy-workspace-isolation-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (ws.tu/with-workspaces! [workspace {:name "Test destroy isolation"}]
       (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
                                    :transform nil
@@ -123,7 +123,7 @@
 ;;; check-isolation-permissions tests
 
 (deftest check-isolation-permissions-success-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (testing "returns nil when connection has all required permissions"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
@@ -133,7 +133,7 @@
                    test-table)))))))
 
 (deftest check-isolation-permissions-no-artifacts-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (testing "leaves no artifacts after check due to transaction rollback"
       (let [database       (mt/db)
             test-workspace {:id   "00000000-0000-0000-0000-000000000000"
@@ -150,7 +150,7 @@
               "No isolation resources should exist after permission check"))))))
 
 (deftest check-isolation-permissions-init-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (testing "returns error message when init fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
@@ -164,7 +164,7 @@
               "Should return error message when init fails"))))))
 
 (deftest check-isolation-permissions-grant-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (testing "returns error message when grant fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
@@ -178,7 +178,7 @@
               "Should return error message when grant fails"))))))
 
 (deftest check-isolation-permissions-destroy-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (testing "returns error message when destroy fails"
       (let [database   (mt/db)
             test-table (t2/select-one [:model/Table :schema :name] (mt/id :orders))]
@@ -192,7 +192,7 @@
               "Should return error message when destroy fails"))))))
 
 (deftest check-isolation-permissions-nil-table-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (testing "returns nil when test-table is nil (skips grant step)"
       (let [database (mt/db)]
         (is (nil? (driver/check-isolation-permissions
