@@ -357,6 +357,7 @@
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- delete-old-datasets-if-needed!
   "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
@@ -429,7 +430,11 @@
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  (delete-old-datasets-if-needed!)
+  ;; disabling this like on release-x.59.x and up: it deletes any tracked dataset not accessed in
+  ;; the last 2 hours, including datasets that other branches' CI runs are actively using (see
+  ;; #74663 and #76706 for the whole saga). If datasets change, old versions will need to be
+  ;; manually GCed.
+  ;; (delete-old-datasets-if-needed!)
   (let [dataset-id (test-dataset-id db-def)]
     (if (database-exists?! db-def)
       (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
