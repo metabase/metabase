@@ -11,7 +11,10 @@ import { deletePermanently } from "metabase/archive/actions";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Toaster } from "metabase/common/components/Toaster";
-import { useSetCollection } from "metabase/common/hooks";
+import {
+  type SetCollectionDestination,
+  useSetCollection,
+} from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import {
@@ -109,10 +112,15 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
             id: question.id(),
           }))
           .exhaustive();
-        const destination =
+        const destination: SetCollectionDestination =
           newCollection.model === "dashboard"
-            ? { model: "dashboard" as const, id: newCollection.id }
-            : { model: "collection" as const, id: newCollection.id };
+            ? { model: "dashboard", id: newCollection.id }
+            : {
+                model: "collection",
+                id: newCollection.id,
+                // preserve the Trash type so moving there still archives the question
+                type: newCollection.type === "trash" ? "trash" : undefined,
+              };
         const updated = await setCollection(item, destination);
         // keep the QB in sync with where the question now lives
         dispatch({ type: API_UPDATE_QUESTION, payload: updated });

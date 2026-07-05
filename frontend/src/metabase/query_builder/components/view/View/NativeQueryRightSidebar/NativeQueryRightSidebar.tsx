@@ -38,9 +38,9 @@ interface NativeQueryRightSidebarProps {
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   snippetCollectionId: CollectionId | null;
   setSnippetCollectionId?: (id: CollectionId | null) => void;
-  showTimelineEvents: () => void;
-  hideTimelineEvents: () => void;
-  selectTimelineEvents: () => void;
+  showTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  hideTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  selectTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
   deselectTimelineEvents: () => void;
   onCloseTimelines: () => void;
   onSave: (question: Question) => Promise<void>;
