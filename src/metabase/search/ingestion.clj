@@ -210,7 +210,7 @@
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (spec-index-query-where search-model where-clause)
-       t2/reducible-query
+       mdb/streaming-reducible-query
        (eduction (comp (map #(assoc % :model search-model))
                        (m/distinct-by (juxt :id :model))))))
 
