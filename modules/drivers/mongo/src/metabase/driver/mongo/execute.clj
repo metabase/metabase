@@ -206,27 +206,8 @@
                []
                (reducible-rows cursor first-row (post-process-row row-col-names))))))
 
-(defn- inject-remark
-  "Insert a MongoDB `{$comment}` aggregation-pipeline stage carrying `remark` into `stages`, giving DBAs visibility
-  into the Metabase query behind each operation (see #9514).
-
-  MongoDB only permits `$documents` as the *first* pipeline stage, so when `stages` opens with `$documents` the
-  comment is placed immediately after it; otherwise it is prepended, mirroring the remark placement used by the
-  SQL drivers. Returns `stages` unchanged when `remark` is nil or blank, so callers may always thread the pipeline
-  through this function."
-  [stages remark]
-  (cond
-    (str/blank? remark)
-    stages
-
-    (contains? (first stages) "$documents")
-    (into [(first stages) {"$comment" remark}] (rest stages))
-
-    :else
-    (into [{"$comment" remark}] (or stages []))))
-
 (defn- include-user-id-and-hash?
-  "Whether the connection `details` request injecting the user id and query hash into queries (the
+  "Whether the connection `details` request attaching the user id and query hash to queries (the
   `:include-user-id-and-hash` detail). Defaults to true when unspecified, matching the toggle honored by the SQL
   and BigQuery drivers; see [[metabase.driver.sql-jdbc.execute/inject-remark]] and #2386."
   [details]
@@ -235,18 +216,21 @@
 (defn execute-reducible-query
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]].
 
-  When [[include-user-id-and-hash?]] holds for the database's connection details (the default), a `{$comment}`
-  aggregation-pipeline stage carrying the query remark (see [[metabase.query-processor.util/query->remark]] and
-  #9514) is spliced into the pipeline via [[inject-remark]] so DBAs can trace each operation back to its
-  originating Metabase query."
+  When [[include-user-id-and-hash?]] holds for the database's connection details (the default), the query remark
+  (see [[metabase.query-processor.util/query->remark]] and #9514) is attached to the aggregation as its `comment`
+  option (MongoDB 4.4+) via [[com.mongodb.client.AggregateIterable/comment]], so DBAs can trace each operation
+  back to its originating Metabase query.
+
+  `$comment` is a MongoDB *query operator*, not a valid aggregation-pipeline stage — injecting it as a stage is
+  rejected by the server (error 40324) — so the remark is passed as the aggregate command's `comment` option rather
+  than spliced into the pipeline."
   [{{query :query collection-name :collection :as native-query} :native :as outer-query} respond]
   {:pre [(string? collection-name) (fn? respond)]}
   (let [query   (cond-> query
                   (string? query) mongo.qp/parse-query-string)
         database (driver-api/database (driver-api/metadata-provider))
-        query   (cond-> query
-                  (include-user-id-and-hash? (driver.conn/effective-details database))
-                  (inject-remark (driver-api/query->remark :mongo outer-query)))
+        remark   (when (include-user-id-and-hash? (driver.conn/effective-details database))
+                   (driver-api/query->remark :mongo outer-query))
         db-name (mongo.db/db-name database)
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
@@ -259,6 +243,8 @@
                                                       session
                                                       query
                                                       driver.settings/*query-timeout-ms*)]
+        (when remark
+          (.comment ^AggregateIterable aggregate ^String remark))
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
