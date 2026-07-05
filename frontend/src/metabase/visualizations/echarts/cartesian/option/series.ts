@@ -623,11 +623,13 @@ const buildEChartsLineAreaSeries = (
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
   xAxisIndex?: number,
+  seriesDotsCount?: number,
 ): LineSeriesOption => {
   const isSymbolVisible = getShowSymbol(
     chartDataDensity,
     chartWidth,
     seriesSettings,
+    seriesDotsCount ?? 2,
   );
 
   const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
@@ -711,6 +713,7 @@ function getShowSymbol(
   chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   seriesSettings: SeriesSettings,
+  seriesDotsCount: number,
 ): boolean {
   const { totalNumberOfDots } = chartDataDensity;
   const maxNumberOfDots = chartWidth / (2 * CHART_STYLE.symbolSize);
@@ -724,6 +727,12 @@ function getShowSymbol(
   }
 
   if (seriesSettings["line.marker_enabled"] === true) {
+    return true;
+  }
+
+  // A series with a single data point cannot draw a visible line, so always
+  // show its dot in Auto mode regardless of total dot count across all series.
+  if (seriesDotsCount <= 1) {
     return true;
   }
 
@@ -967,7 +976,10 @@ export const buildEChartsSeries = (
 
       switch (seriesSettings.display) {
         case "line":
-        case "area":
+        case "area": {
+          const seriesDotsCount = chartModel.dataset.filter(
+            (datum) => datum[seriesModel.dataKey] != null,
+          ).length;
           return buildEChartsLineAreaSeries(
             seriesModel,
             stackName,
@@ -981,7 +993,9 @@ export const buildEChartsSeries = (
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
             panelIndex,
+            seriesDotsCount,
           );
+        }
         case "bar":
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
