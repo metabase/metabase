@@ -4,10 +4,13 @@
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.index-state :as index-state]
+   [metabase.search.appdb.table :as search.table]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
+   [metabase.search.spec :as search.spec]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -29,6 +32,30 @@
        ;; We need ingestion to happen on the same thread so that it uses the right search index.
        (with-sync-search-indexing
          ~@body))))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-temp-real-index
+  "Run BODY against a FRESH, isolated db-backed state store plus a throwaway index `version`, so real rotation /
+  TTL-cache behavior can be exercised end to end.
+
+  Unlike [[with-temp-index-table]] (which uses a mock store and so cannot rotate), this keeps a *real* db-backed
+  store — but a brand-new instance rather than the shared global `*state-store*`. That isolation matters: a
+  rotation caches its new `:active` table for the full TTL, so rotating the *global* store would leave a
+  throwaway table cached on the node, and the cleanup below then drops it — every other (parallel) test would
+  keep reading the now-dropped table (`search_index__… does not exist`, which aborts its transaction and
+  cascades). With its own store + version, the whole rebuild is invisible to the rest of the suite.
+
+  Drops the throwaway tables + metadata on the way out."
+  [version & body]
+  `(when (search/supports-index?)
+     (binding [search.index/*state-store*                    (index-state/db-backed-store
+                                                              (:sync-fn search.index/*state-store*))
+               search.spec/*testing-only-index-version-hash* ~version]
+       (try
+         ~@body
+         (finally
+           (t2/delete! :model/SearchIndexMetadata :version ~version)
+           (#'search.table/delete-obsolete-tables!))))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-new-search-if-available*

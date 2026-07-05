@@ -49,7 +49,11 @@
           versions      (map str (repeatedly n random-uuid))
           ;; to make things interesting, we're not using the latest one
           our-version   (nth versions 3)
-          index-count   #(t2/count :model/SearchIndexMetadata)
+          ;; Start from a clean slate (rolled back at the end of the transaction): the app DB may already hold a
+          ;; real (appdb) serving index whose metadata delete-obsolete! now deliberately protects, which would
+          ;; otherwise skew the most-recent ranking and these counts.
+          _             (t2/delete! :model/SearchIndexMetadata)
+          index-count   #(t2/count :model/SearchIndexMetadata :engine engine)
           initial-count (index-count)]
       ;; create a bunch of indexes, more than we will want to keep
       (doseq [v versions]
@@ -64,12 +68,31 @@
         (is (= kept (index-count))))
       (testing "It keeps the latest versions"
         (is (= (set (take-last 3 versions))
-               (t2/select-fn-set :version :model/SearchIndexMetadata))))
+               (t2/select-fn-set :version :model/SearchIndexMetadata :engine engine))))
       (testing "After 1 day, it deletes version which are neither the latest, nor used by this instance"
         (mt/with-dynamic-fn-redefs [t/zoned-date-time (constantly (t/plus (t/zoned-date-time) (t/days 1) (t/minutes 1)))]
           (search-index-metadata/delete-obsolete! our-version)
           (is (= #{our-version (last versions)}
-                 (t2/select-fn-set :version :model/SearchIndexMetadata))))))))
+                 (t2/select-fn-set :version :model/SearchIndexMetadata :engine engine))))))))
+
+(deftest delete-obsolete!-keeps-serving-version-test
+  (testing "a version still serving an ACTIVE index is never pruned by the most-recent window, even when newer
+           (e.g. transient/test-only) versions crowd it out -- dropping its metadata would orphan its live table,
+           which then gets swept and breaks in-flight reads/writes"
+    (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
+      (let [engine  :something-futureproof
+            serving (str (random-uuid))
+            ;; four *newer* versions, created after `serving`, so `serving` (oldest updated_at + lowest id) falls
+            ;; outside the 3-most-recent window.
+            newer   (mapv (fn [_] (str (random-uuid))) (range 4))]
+        (search-index-metadata/create-pending! engine serving serving)
+        (search-index-metadata/active-pending! engine serving)        ; `serving` is now :active
+        (doseq [v newer]
+          (search-index-metadata/create-pending! engine v v))
+        ;; our-version is one of the throwaway newer versions, NOT `serving`
+        (search-index-metadata/delete-obsolete! (first newer))
+        (is (contains? (t2/select-fn-set :version :model/SearchIndexMetadata :engine engine) serving)
+            "the serving version's metadata must survive being crowded out of the most-recent window")))))
 
 (comment
   (t2/delete! :model/SearchIndexMetadata :engine :something-futureproof))

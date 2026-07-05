@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.index-state :as index-state]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
@@ -299,7 +300,7 @@
 
 (deftest old-values-removed-from-index
   (when (search/supports-index?)
-    (#'search.index/sync-tracking-atoms!)
+    (index-state/force-refresh! search.index/*state-store*)
     (let [search-term (str (random-uuid))]
       (binding [search.ingestion/*force-sync* true]
         (mt/with-temp

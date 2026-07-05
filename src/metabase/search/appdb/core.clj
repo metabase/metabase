@@ -4,12 +4,16 @@
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.index-state :as index-state]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
+   [metabase.search.appdb.table :as search.table]
+   [metabase.search.appdb.writer :as search.writer]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
@@ -28,8 +32,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)
-   (java.util Queue)))
+   (java.time OffsetDateTime)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -137,53 +140,63 @@
           (search.index/search-query search-string search-ctx select-items)
           (filter-layers search-ctx)))
 
-(defn- results
-  [{:keys [search-engine search-string] :as search-ctx}]
-  ;; Check whether there is a query-able index.
+(defn- ensure-active-table!
+  "Throw an informative error if there is no active search index table.
+   As a side effect, attempts a fresh sync and optionally triggers a background init."
+  [{:keys [search-engine]}]
   (when-not (search.index/active-table)
-    (let [index-state  @@#'search.index/*indexes*
-          ;; Sync, in case we're just out of sync with the database.
-          found-active (:active (#'search.index/sync-tracking-atoms!))
-          ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
+    (let [state-before (search.index/state-snapshot)
+          found-active (:active (index-state/force-refresh! search.index/*state-store*))
+          ;; If there is really no index and we are in prod, trigger a background init to recover.
           init-now?    (and (not found-active) config/is-prod?)]
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
-          (future
-            (search.engine/init! search-engine {:force-reset? false}))
+          (future (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
             (log/error e))))
-      ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
                        :version            (search.spec/index-version-hash)
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
-                       :index-state-before index-state
-                       :index-state-after  @@#'search.index/*indexes*
-                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
+                       :index-state-before state-before
+                       :index-state-after  (search.index/state-snapshot)
+                       :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)})))))
 
+(defn- execute-search-query
+  "Build and execute the appdb search query, returning rehydrated results."
+  [{:keys [search-string] :as search-ctx}]
+  (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
+    ;; wait for a bit for the queue to be drained
+    (let [pending-updates #(search.ingestion/pending-count)]
+      (when-not (u/poll {:thunk       pending-updates
+                         :done?       zero?
+                         :timeout-ms  2000
+                         :interval-ms 100})
+        (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
+  (let [weights (search.config/weights search-ctx)
+        scorers (search.scoring/scorers search-ctx)
+        query   (->> (base-filtered-query search-ctx search-string [:legacy_input])
+                     (search.scoring/with-scores search-ctx scorers))]
+    (->> (t2/query query)
+         (map (partial rehydrate weights (keys scorers))))))
+
+(defn- results
+  ;; Between the moment one pod drops a retired table and other pods' TTLs expire (up to 5 min),
+  ;; those pods may observe a table-not-found error on their first query. We retry once after a
+  ;; forced refresh to recover transparently.
+  [{:keys [search-string] :as search-ctx}]
+  (ensure-active-table! search-ctx)
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
-      (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        ;; wait for a bit for the queue to be drained
-        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
-            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
-      (let [weights (search.config/weights search-ctx)
-            scorers (search.scoring/scorers search-ctx)
-            query   (->> (base-filtered-query search-ctx search-string [:legacy_input])
-                         (search.scoring/with-scores search-ctx scorers))]
-        (->> (t2/query query)
-             (map (partial rehydrate weights (keys scorers)))))
+      (execute-search-query search-ctx)
       (catch Exception e
-        ;; Rule out the error coming from stale index metadata.
-        (#'search.index/sync-tracking-atoms!)
-        (throw e)))))
+        (if (and (search.table/table-not-found-exception? e) (not (::already-retried search-ctx)))
+          (do (index-state/force-refresh! search.index/*state-store*)
+              (execute-search-query (assoc search-ctx ::already-retried true)))
+          (throw e))))))
 
 (defmethod search.engine/results :search.engine/appdb
   [search-ctx]
@@ -204,6 +217,32 @@
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))
+
+(defn- populate-index! [mode]
+  (search.writer/index-docs! mode (search.ingestion/searchable-documents)))
+
+(def ^:private reindex-lock
+  "Cluster-wide lock ensuring at most one appdb index build runs across the whole cluster at a time.
+  Kept at its historical keyword name to work during rolling upgrades."
+  :metabase.search.task.search-index/search-index-lock)
+
+(defn- do-with-reindex-lock
+  "Run `thunk` while holding [[reindex-lock]]. If another node or thread already holds it, log and skip
+   (return nil) rather than queue: the in-progress build will produce a fresh index, and the periodic
+   reindex covers anything a skipped trigger would have caught. Reentrant, so a locked [[init!]] may call
+   [[reindex!]] without deadlocking."
+  [thunk]
+  (if-not (index-state/db-backed? search.index/*state-store*)
+    (thunk)
+    (try
+      (cluster-lock/with-cluster-lock reindex-lock (thunk))
+      (catch clojure.lang.ExceptionInfo e
+        ;; do-with-cluster-lock wraps a failed acquisition in an ex-info carrying :lock-names; anything else
+        ;; (a real error from the body) propagates.
+        (if (contains? (ex-data e) :lock-names)
+          (do (log/info "An appdb search index build is already running elsewhere; skipping this trigger.")
+              nil)
+          (throw e))))))
 
 (defn- restrict-to-row [model id qry]
   (sql.helpers/where qry [:and
@@ -264,38 +303,46 @@
   [search-ctx model id]
   (appdb-diagnose search-ctx model id))
 
-(defn- populate-index! [context]
-  (search.index/index-docs! context (search.ingestion/searchable-documents)))
-
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
-  (let [index-created (search.index/when-index-created)]
-    (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
-      (do
-        (log/info "Forcing early reindex because existing index is old")
-        (search.engine/reindex! :search.engine/appdb {}))
-      (let [created? (search.index/ensure-ready! opts)]
-        (when (or created? re-populate?)
-          (log/info "Populating index")
-          (populate-index! (if created? :search/reindexing :search/updating)))))))
+  (do-with-reindex-lock
+   (fn []
+     (let [index-created (search.index/when-index-created)]
+       (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
+         (do
+           (log/info "Forcing early reindex because existing index is old")
+           (search.engine/reindex! :search.engine/appdb {}))
+         (case (search.index/ensure-ready! opts)
+           ;; A replacement table was created as pending while the existing index keeps serving queries:
+           ;; populate the pending table, THEN rotate it in, so search is never blanked out mid-rebuild.
+           :pending   (do (log/info "Populating replacement index, then activating")
+                          (u/prog1 (populate-index! (search.index/background-mode))
+                            (search.index/activate-table!)))
+           ;; A fresh empty table was activated immediately (nothing was serving): just populate it so
+           ;; partial results appear as soon as possible.
+           :activated (do (log/info "Populating index")
+                          (populate-index! (search.index/background-mode)))
+           ;; No reset was needed; optionally re-populate the existing active index in place.
+           (when re-populate?
+             (log/info "Re-populating index")
+             (populate-index! (search.index/incremental-mode)))))))))
 
 (defmethod search.engine/sync-from-restored-db! :search.engine/appdb [_]
   (search.index/sync-from-restored-db!))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
-  (try
-    (search.index/ensure-ready!)
-    (if in-place?
-      (when-let [table (search.index/active-table)]
-        ;; keep the current table, just delete its contents
-        (t2/delete! table))
-      (search.index/maybe-create-pending!))
-    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-      (search.index/activate-table!))
-    (catch Throwable e
-      (log/error e "Error during reindexing")
-      (throw e))))
+  (do-with-reindex-lock
+   (fn []
+     (try
+       (let [mode (if in-place? (search.index/in-place-mode) (search.index/background-mode))]
+         (search.index/ensure-ready!)
+         (search.index/prepare! mode)
+         (u/prog1 (populate-index! mode)
+           (search.index/finish! mode)))
+       (catch Throwable e
+         (log/error e "Error during reindexing")
+         (throw e))))))
 
 (derive :event/setting-update ::settings-changed-event)
 

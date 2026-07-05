@@ -5,12 +5,13 @@
    [metabase.analytics.core :as analytics]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.table :as search.table]
    [metabase.search.engine :as search.engine]))
 
 (defn- active-index-size
   []
   (when-let [table (search.index/active-table)]
-    (when (search.index/exists? table)
+    (when (search.table/exists? table)
       (specialization/index-size-estimate table))))
 
 ;; Keep the :metabase-search/appdb-index-size product gauge up to date (per-instance). Skips the work entirely

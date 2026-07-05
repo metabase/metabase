@@ -65,6 +65,36 @@
   (let [data-source (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:mem:" (random-schema-migrations-test-db-name)))]
     (f data-source)))
 
+(defn- do-with-isolated-search-state
+  "Run `thunk` with the appdb search state store bound to a throwaway, isolated in-memory (mock) store, and with
+  search ingestion forced synchronous.
+
+  This temp app DB swaps out the JVM-global `*application-db*`, but the search index's state store
+  ([[metabase.search.appdb.index/*state-store*]]) is a separate JVM-global atom that is NOT swapped. Code run
+  against this temp DB can build/rotate a search index -- e.g. installing the audit DB triggers a serialization
+  load that fires a `(search/reindex!)` -- which would otherwise point the global state store at a table that
+  exists only in this temp DB. When the temp DB is torn down the table vanishes, but the global pointer persists
+  into the real app DB, so later ingestion upserts hit a missing relation, abort the transaction, and poison
+  pooled connections -- cascading into dozens of unrelated tests.
+
+  Binding an isolated *mock* store (rather than a db-backed one) keeps the rebuild off the global store AND off
+  the cluster reindex lock: a reindex against a non-db-backed store skips `cluster-lock/with-cluster-lock`
+  entirely. That matters because the cluster lock is a single JVM-global lock shared across every (H2) temp DB,
+  so letting these throwaway rebuilds take it serializes them and can wedge the whole partition. Forcing
+  `*force-sync*` keeps the rebuild synchronous so it finishes inside the temp DB's lifetime rather than as a
+  future that outlives it (blocking on a torn-down connection pool). Both bindings are conveyed to any future
+  spawned in the body.
+
+  No-op when the search index namespace isn't loaded (pure migration runs)."
+  [thunk]
+  (if-let [store-var (some-> (find-ns 'metabase.search.appdb.index) (ns-resolve '*state-store*))]
+    (let [mock-store     (ns-resolve (find-ns 'metabase.search.appdb.index-state) 'mock-store)
+          force-sync-var (some-> (find-ns 'metabase.search.ingestion) (ns-resolve '*force-sync*))]
+      (with-bindings (cond-> {store-var (mock-store)}
+                       force-sync-var (assoc force-sync-var true))
+        (thunk)))
+    (thunk)))
+
 (defn do-with-temp-empty-app-db
   "The function invoked by [[with-temp-empty-app-db]] to execute function `f` in a temporary, empty app DB. Use the
   macro instead: [[with-temp-empty-app-db]]."
@@ -78,7 +108,7 @@
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
                  custom-migrations.util/*allow-temp-scheduling* false]
-         (f conn))))))
+         (do-with-isolated-search-state #(f conn)))))))
 
 (defmacro with-temp-empty-app-db
   "Create a new temporary application DB of `db-type` and execute `body` with `conn-binding` bound to a
