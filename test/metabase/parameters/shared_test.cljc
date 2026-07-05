@@ -412,7 +412,13 @@
              (params/value-string (first parameters) "en"))))
     (testing "If a filter has a single default value, it is formatted appropriately"
       (is (= "Q1, 2021"
-             (params/value-string (second parameters) "en"))))))
+             (params/value-string (second parameters) "en"))))
+    (testing "Returns nil when a filter has no value (nil default — previously removed)"
+      (is (nil? (params/value-string {:name "State" :type "string/=" :default nil} "en"))))
+    (testing "Returns nil when a filter has an empty-vector default (previously set then cleared)"
+      (is (nil? (params/value-string {:name "State" :type "string/=" :default []} "en"))))
+    (testing "Returns nil for string/contains with an empty default vector"
+      (is (nil? (params/value-string {:name "State" :type "string/contains" :default []} "en"))))))
 
 (deftest param-val-or-default-test
   (let [param-val-or-default #'params/param-val-or-default]
