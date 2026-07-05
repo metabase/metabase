@@ -109,6 +109,22 @@ async function settle() {
   await act(async () => {});
 }
 
+async function renderAndCollect(
+  render: () => void,
+  interact?: () => Promise<void>,
+): Promise<Record<string, string | null>> {
+  render();
+  // Always unmount, even if a step throws, so one render's `rr-` nodes can never
+  // leak into the next.
+  try {
+    await settle();
+    await interact?.();
+    return collectReadouts();
+  } finally {
+    cleanup();
+  }
+}
+
 /**
  * Render the same probe against the facade and against real v7, running the
  * optional interaction against each, and return the `rr-` readouts from both so
@@ -123,17 +139,14 @@ export async function runBoth(
 }> {
   const { interact, ...renderOptions } = options;
 
-  renderFacade(Probe, renderOptions);
-  await settle();
-  await interact?.();
-  const facade = collectReadouts();
-  cleanup();
-
-  renderV7(Probe, renderOptions);
-  await settle();
-  await interact?.();
-  const v7 = collectReadouts();
-  cleanup();
+  const facade = await renderAndCollect(
+    () => renderFacade(Probe, renderOptions),
+    interact,
+  );
+  const v7 = await renderAndCollect(
+    () => renderV7(Probe, renderOptions),
+    interact,
+  );
 
   return { facade, v7 };
 }
