@@ -1,5 +1,4 @@
-import { useDisclosure, useElementSize } from "@mantine/hooks";
-import cx from "classnames";
+import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect, useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -58,8 +57,6 @@ export function DependencyDiagnostics({
   onParamsChange,
 }: DependencyDiagnosticsProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [isResizing, { open: startResizing, close: stopResizing }] =
-    useDisclosure();
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
 
   const useListGraphNodesQuery =
@@ -167,12 +164,7 @@ export function DependencyDiagnostics({
   };
 
   return (
-    <Flex
-      className={cx({ [S.resizing]: isResizing })}
-      ref={containerRef}
-      h="100%"
-      wrap="nowrap"
-    >
+    <Flex ref={containerRef} h="100%" wrap="nowrap">
       <Stack className={S.main} flex={1} gap="md">
         <DiagnosticsHeader />
         <DiagnosticsFilterBar
@@ -208,13 +200,10 @@ export function DependencyDiagnostics({
         )}
       </Stack>
       {selectedNode != null && (
-        <Sidebar>
+        <Sidebar containerWidth={containerWidth}>
           <DiagnosticsSidebar
             node={selectedNode}
             mode={mode}
-            containerWidth={containerWidth}
-            onResizeStart={startResizing}
-            onResizeStop={stopResizing}
             onClose={() => setSelectedEntry(undefined)}
           />
         </Sidebar>

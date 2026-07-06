@@ -18,7 +18,6 @@ import { trackAlertsManagementEditClicked } from "../analytics";
 import S from "./NotificationDetailSidebar.module.css";
 import { SidebarBody } from "./SidebarBody";
 import { SidebarHeader } from "./SidebarHeader";
-import { SIDEBAR_WIDTH } from "./constants";
 import type { SidebarProps } from "./types";
 
 export const NotificationDetailSidebar = ({
@@ -63,9 +62,9 @@ export const NotificationDetailSidebar = ({
       <Flex
         className={S.sidebar}
         direction="column"
-        w={`${SIDEBAR_WIDTH}px`}
         h="100%"
-        flex="0 0 auto"
+        flex="1 1 auto"
+        miw={0}
         style={{
           borderLeft: "1px solid var(--mb-color-border-neutral)",
         }}

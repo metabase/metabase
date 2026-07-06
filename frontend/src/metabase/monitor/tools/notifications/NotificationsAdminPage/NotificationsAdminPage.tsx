@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import type { Row, SortingState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
@@ -31,6 +32,7 @@ import type {
 
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
+import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";
 import { NotificationsFilters } from "../NotificationsFilters";
 import { NotificationsSearchInput } from "../NotificationsSearchInput";
 import { NotificationsTable } from "../NotificationsTable";
@@ -56,6 +58,7 @@ export const NotificationsAdminPage = ({
   params,
 }: WithRouterProps<RouteParams>) => {
   const notificationId = Urls.extractEntityId(params.notificationId);
+  const { ref: containerRef, width: containerWidth } = useElementSize();
   const dispatch = useDispatch();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [selectedIds, setSelectedIds] = useState<Set<NotificationId>>(
@@ -336,7 +339,7 @@ export const NotificationsAdminPage = ({
   }
 
   return (
-    <Stack gap="lg">
+    <Stack ref={containerRef} gap="lg">
       <Flex align="center" gap="sm">
         <MonitorHeaderTitle>{t`Alerts management`}</MonitorHeaderTitle>
       </Flex>
@@ -419,7 +422,7 @@ export const NotificationsAdminPage = ({
       />
 
       {isSidebarOpen && (
-        <Sidebar>
+        <Sidebar containerWidth={containerWidth} defaultWidth={SIDEBAR_WIDTH}>
           <NotificationDetailSidebar
             notificationId={notificationId}
             notificationSummary={notificationSummary}

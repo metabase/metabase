@@ -6,10 +6,11 @@ import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import S from "./SidebarResizableBox.module.css";
 
 const MIN_SIDEBAR_WIDTH = 400;
-const DEFAULT_SIDEBAR_WIDTH = 512;
 
 type SidebarResizableBoxProps = {
+  /** Width of the view's content area (excluding the sidebar itself). */
   containerWidth: number;
+  defaultWidth: number;
   children?: ReactNode;
   onResizeStart: () => void;
   onResizeStop: () => void;
@@ -17,11 +18,12 @@ type SidebarResizableBoxProps = {
 
 export function SidebarResizableBox({
   containerWidth,
+  defaultWidth,
   children,
   onResizeStart,
   onResizeStop,
 }: SidebarResizableBoxProps) {
-  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [sidebarWidth, setSidebarWidth] = useState(defaultWidth);
   const maxSidebarWidth = Math.max(
     (containerWidth + sidebarWidth) / 2,
     MIN_SIDEBAR_WIDTH,

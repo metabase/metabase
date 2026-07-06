@@ -22,6 +22,7 @@ describe("SidebarResizableBox", () => {
     const { rerender } = render(
       <SidebarResizableBox
         containerWidth={1200}
+        defaultWidth={512}
         onResizeStart={jest.fn()}
         onResizeStop={jest.fn()}
       >
@@ -41,6 +42,7 @@ describe("SidebarResizableBox", () => {
     rerender(
       <SidebarResizableBox
         containerWidth={1000}
+        defaultWidth={512}
         onResizeStart={jest.fn()}
         onResizeStop={jest.fn()}
       >
@@ -50,5 +52,20 @@ describe("SidebarResizableBox", () => {
 
     expect(latestResizableBoxProps?.width).toBe(600);
     expect(latestResizableBoxProps?.maxConstraints).toEqual([800, 0]);
+  });
+
+  it("starts at the provided default width", () => {
+    render(
+      <SidebarResizableBox
+        containerWidth={1200}
+        defaultWidth={560}
+        onResizeStart={jest.fn()}
+        onResizeStop={jest.fn()}
+      >
+        <div>{"Sidebar content"}</div>
+      </SidebarResizableBox>,
+    );
+
+    expect(latestResizableBoxProps?.width).toBe(560);
   });
 });
