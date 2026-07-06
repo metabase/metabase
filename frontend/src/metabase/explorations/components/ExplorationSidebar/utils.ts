@@ -15,6 +15,7 @@ import type {
   ExplorationThread,
 } from "metabase-types/api";
 import {
+  getExplorationPages,
   getExplorationQueryGroupInterestingness,
   getExplorationQueryGroupStatus,
 } from "metabase-types/api";
@@ -351,10 +352,7 @@ export function getExplorationSidebarTabsInfo(
   exploration?: Exploration,
   comments?: Comment[],
 ): ExplorationSidebarTabsInfo {
-  const pages =
-    exploration?.threads?.flatMap(
-      (thread) => thread.blocks?.flatMap((block) => block.pages) ?? [],
-    ) ?? [];
+  const pages = exploration ? getExplorationPages(exploration) : [];
   const starredPageIds = new Set(
     pages.filter((page) => page.starred).map((page) => String(page.id)),
   );

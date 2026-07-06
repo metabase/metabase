@@ -17,6 +17,7 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import { getExplorationPages } from "metabase-types/api/exploration";
 
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, provideMetricListTags } from "./tags";
@@ -168,8 +169,31 @@ export const explorationApi = Api.injectEndpoints({
         url: `/api/exploration/page/${pageId}/starred`,
         body: { starred },
       }),
-      invalidatesTags: (_, error, { explorationId }) =>
-        invalidateTags(error, [idTag("exploration", explorationId)]),
+      async onQueryStarted(
+        { pageId, explorationId, starred },
+        { dispatch, queryFulfilled },
+      ) {
+        const patchResult = dispatch(
+          explorationApi.util.updateQueryData(
+            "getExploration",
+            explorationId,
+            (draft) => {
+              // casting as Exploration prevents excessively deep type error
+              const page = getExplorationPages(draft as Exploration).find(
+                (page) => page.id === pageId,
+              );
+              if (page) {
+                page.starred = starred;
+              }
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });

@@ -373,3 +373,11 @@ export interface Exploration {
   threads?: ExplorationThread[];
   can_write: boolean;
 }
+
+export function getExplorationPages(
+  exploration: Exploration,
+): ExplorationPageNode[] {
+  return (exploration.threads ?? []).flatMap((thread) =>
+    (thread.blocks ?? []).flatMap((block) => block.pages ?? []),
+  );
+}
