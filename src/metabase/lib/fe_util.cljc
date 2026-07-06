@@ -825,7 +825,7 @@
       (cons {:type :native-query-snippet, :id snippet-id}
             ;; Recursively get dependencies from the snippet's own template tags
             (for [{nested-type       :type,
-                   nested-snippet-id :snippet-id} (vals (:template-tags snippet))
+                   nested-snippet-id :snippet-id} (:template-tags snippet)
                   :when (and (= nested-type :snippet)
                              (integer? nested-snippet-id)
                              (not (contains? visited-ids' nested-snippet-id)))

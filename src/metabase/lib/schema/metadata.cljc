@@ -12,7 +12,8 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [get-in]]))
+   [metabase.util.performance :refer [get-in]]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
 
 ;;; Column vs Field?
 ;;;
@@ -755,7 +756,8 @@
 (mr/def ::native-query-snippet
   [:map
    [:lib/type [:= :metadata/native-query-snippet]]
-   [:id       ::lib.schema.id/native-query-snippet]])
+   [:id       ::lib.schema.id/native-query-snippet]
+   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tags]]]])
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
