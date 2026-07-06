@@ -349,13 +349,12 @@
         (lib.walk/walk-clauses (fn [_query _path-type _path clause]
                                  (remap clause)))
         (lib.walk/walk-stages (fn [_query _path stage]
-                                (if (:template-tags stage)
-                                  (update stage :template-tags update-vals
+                                (cond-> stage
+                                  (:template-tags stage)
+                                  (update :template-tags update-vals
                                           (fn [tag]
-                                            (if (:dimension tag)
-                                              (update tag :dimension remap)
-                                              tag)))
-                                  stage))))))
+                                            (cond-> tag
+                                              (:dimension tag) (update :dimension remap))))))))))
 
 (mu/defn replace-table-ids :- ::lib.schema/query
   "Return `query` with every source Table ID remapped by `id->new-id` (a function; a map works). Covers

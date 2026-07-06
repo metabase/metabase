@@ -3,6 +3,7 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -384,7 +385,7 @@
   (if (and (vector? ref) (#{:field :field-id} (first ref)))
     (let [idx (if (map? (second ref)) 2 1)
           id  (nth ref idx nil)]
-      (if (and (pos-int? id) (field-id-remap id))
+      (if (field-id-remap id)
         (assoc ref idx (field-id-remap id))
         ref))
     ref))
@@ -394,12 +395,13 @@
    `:fk_target_field_id`, and `:field_ref` of each column — via `field-id-remap`. Result metadata is stored, not a
    Lib query, so it's handled here rather than by the Lib query helpers."
   [field-id-remap result-metadata]
-  (mapv (fn [col]
-          (cond-> col
-            (field-id-remap (:id col))                 (update :id field-id-remap)
-            (field-id-remap (:fk_target_field_id col)) (update :fk_target_field_id field-id-remap)
-            (:field_ref col)                           (update :field_ref #(remap-result-metadata-ref field-id-remap %))))
-        result-metadata))
+  (let [remap-id (fn [id] (or (field-id-remap id) id))]
+    (mapv (fn [col]
+            (-> col
+                (m/update-existing :id remap-id)
+                (m/update-existing :fk_target_field_id remap-id)
+                (m/update-existing :field_ref #(remap-result-metadata-ref field-id-remap %))))
+          result-metadata)))
 
 (defn- repoint-cards-to-survivor!
   "Move every card that references `orphan-table-id` onto `survivor-table-id` by rewriting its query and result
