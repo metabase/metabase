@@ -56,7 +56,7 @@
   (jsonrpc-response
    id
    {:protocolVersion protocol-version
-    :capabilities    {:tools {:listChanged true} :resources {}}
+    :capabilities    {:tools {:listChanged true} :resources {} :prompts {}}
     :serverInfo      server-info}))
 
 (defn- mcp-app-ui-capability?
