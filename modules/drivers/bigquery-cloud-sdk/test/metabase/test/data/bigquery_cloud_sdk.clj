@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.transforms.test-util :as transforms.test-util]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -17,6 +18,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
+   (com.google.api.client.googleapis.json
+    GoogleJsonResponseException)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
@@ -59,9 +62,14 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_" (config/current-major-version) "_"
+             (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   (if tx/*use-routing-details*
@@ -145,7 +153,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Deleting dataset: " dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-    (.printStackTrace (Exception. "This should not happen")))
+    (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
@@ -409,13 +417,11 @@
 
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  (and
-   (dataset-tracked?! db-def)
-   (database-exists?! db-def)))
+  (database-exists?! db-def))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
+  (setup-tracking-dataset!)
   ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
   (u/ignore-exceptions
     (execute-params!
@@ -436,21 +442,21 @@
   ;; manually GCed.
   ;; (delete-old-datasets-if-needed!)
   (let [dataset-id (test-dataset-id db-def)]
-    (if (database-exists?! db-def)
-      (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
+    (when-not (database-exists?! db-def)
+      (create-dataset! dataset-id))
+    ;; now create tables and load data.
+    (doseq [tabledef table-definitions]
       (try
-        (log/infof "Creating dataset %s..." (pr-str dataset-id))
-        (create-dataset! dataset-id)
-        ;; now create tables and load data.
-        (doseq [tabledef table-definitions]
-          (load-tabledef! dataset-id tabledef))
-        (doseq [native-ddl (:native-ddl options)]
-          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-        (catch Throwable e
-          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-          (log/error (u/pprint-to-str 'red (Throwable->map e)))
-          (throw e))))))
+        (load-tabledef! dataset-id tabledef)
+        (catch BigQueryException e
+          (when-not (= 409 (.getCode e))
+            (throw e)))
+        (catch GoogleJsonResponseException e
+          (when-not (= 409 (.getCode (.getDetails e)))
+            (throw e)))))
+    (doseq [native-ddl (:native-ddl options)]
+      (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
+    (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]
