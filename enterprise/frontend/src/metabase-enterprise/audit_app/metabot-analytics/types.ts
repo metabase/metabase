@@ -23,6 +23,7 @@ export type ConversationSummary = {
   user_message_count: number;
   assistant_message_count: number;
   total_tokens: number;
+  cache_read_tokens: number;
   last_message_at: string | null;
   profile_id: MetabotProfileId | null;
   search_count: number;
@@ -39,6 +40,7 @@ export const CONVERSATION_SORT_COLUMNS = [
   "created_at",
   "message_count",
   "total_tokens",
+  "cache_read_tokens",
   "user",
   "profile_id",
   "ip_address",
