@@ -55,8 +55,8 @@ export const {
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
+  setMessageExternalIds,
   setNavigateToPath,
-  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
   toolCallArgs,
@@ -243,12 +243,19 @@ export const submitInput = createAsyncThunk<
     agentId: MetabotAgentId;
     metabot_id?: string;
     profile?: MetabotProfileId;
+    retryMessageId?: string;
   }
 >(
   "metabase/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState();
-    const { agentId, message: rawPrompt, profile, ...data } = payload;
+    const {
+      agentId,
+      message: rawPrompt,
+      profile,
+      retryMessageId,
+      ...data
+    } = payload;
     const convo = getMetabotConversation(state, agentId);
 
     const prompt = rawPrompt.trim();
@@ -288,7 +295,11 @@ export const submitInput = createAsyncThunk<
 
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
-      const agentMetadata = getAgentRequestMetadata(getState(), agentId);
+      const agentMetadata = getAgentRequestMetadata(
+        getState(),
+        agentId,
+        retryMessageId,
+      );
       const messageId = createMessageId();
       const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
@@ -472,14 +483,13 @@ export const sendAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onStart: function handleStart(event) {
-            if (event.messageId) {
-              dispatch(
-                setPendingMessageExternalId({
-                  agentId,
-                  externalId: event.messageId,
-                }),
-              );
-            }
+            dispatch(
+              setMessageExternalIds({
+                agentId,
+                agentMessageId: event.messageId,
+                userMessageId: event.messageMetadata?.userMessageId,
+              }),
+            );
           },
           onTextPart: function handleTextPart(delta) {
             dispatch(addAgentTextDelta({ agentId, text: delta }));
@@ -676,6 +686,7 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
+        retryMessageId: prompt.externalId,
       }),
     ).unwrap();
   },

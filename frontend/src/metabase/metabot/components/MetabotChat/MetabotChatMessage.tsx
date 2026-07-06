@@ -423,6 +423,10 @@ export const Messages = ({
     () => (debug ? messages : messages.filter(isUserVisibleMessage)),
     [debug, messages],
   );
+  const lastUserIndex = useMemo(
+    () => visibleMessages.findLastIndex((m) => m.role === "user"),
+    [visibleMessages],
+  );
   const [sendToast] = useToast();
 
   const [feedbackState, setFeedbackState] = useState<{
@@ -470,6 +474,8 @@ export const Messages = ({
     <>
       {visibleMessages.map((message, index) => {
         const next = visibleMessages[index + 1];
+        const isLastUserMessage = index > lastUserIndex;
+
         return message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
@@ -477,7 +483,7 @@ export const Messages = ({
             message={message}
             debug={debug}
             readonly={readonly}
-            onRetry={onRetryMessage}
+            onRetry={isLastUserMessage ? onRetryMessage : undefined}
             getCopyText={() => getAgentReplyCopyText(message.id)}
             setFeedbackMessage={(data) =>
               setFeedbackState((prev) => ({ ...prev, modal: data }))

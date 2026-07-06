@@ -126,9 +126,24 @@ export const metabot = createSlice({
         convo.activeToolCalls = hasToolCalls ? [] : convo.activeToolCalls;
       },
     ),
-    setPendingMessageExternalId: convoReducer(
-      (convo, action: ConvoPayloadAction<{ externalId: string }>) => {
-        convo.pendingMessageExternalId = action.payload.externalId;
+    setMessageExternalIds: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          agentMessageId?: string;
+          userMessageId?: string;
+        }>,
+      ) => {
+        const { agentMessageId, userMessageId } = action.payload;
+        if (agentMessageId) {
+          convo.pendingMessageExternalId = agentMessageId;
+        }
+        const lastUserMessage = convo.messages.findLast(
+          (m) => m.role === "user",
+        );
+        if (userMessageId && lastUserMessage) {
+          lastUserMessage.externalId = userMessageId;
+        }
       },
     ),
     toolCallStart: convoReducer(

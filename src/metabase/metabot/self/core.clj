@@ -305,8 +305,9 @@
   non-text part (or end of stream) closes the open block first.
 
   Options:
-    :message-id - When set, force this id into the `start` event so the client
-                  sees the same id we persist as `metabot_message.external_id`.
+    :message-id       - When set, force this id into the `start` event so the client
+                        sees the same id we persist as `metabot_message.external_id`.
+    :message-metadata - When set, emitted as the `start` event's `messageMetadata`.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
@@ -321,7 +322,7 @@
     :finish           -> (ignored — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id]}]
+  ([{:keys [message-id message-metadata]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -330,6 +331,10 @@
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
            current-text-id   (volatile! nil)
+           start-event       (fn [id]
+                               (format-sse-event
+                                (cond-> {:type "start" :messageId id}
+                                  message-metadata (assoc :messageMetadata message-metadata))))
            close-text-block  (fn [result]
                                (if-let [id @current-text-id]
                                  (do (vreset! current-text-id nil)
@@ -340,8 +345,7 @@
                                  result
                                  (do (vreset! started? true)
                                      (-> result
-                                         (rf (format-sse-event {:type      "start"
-                                                                :messageId (or message-id (mkid))}))
+                                         (rf (start-event (or message-id (mkid))))
                                          (rf (format-sse-event {:type "start-step"}))))))]
        (fn
          ([] (rf))
@@ -373,8 +377,7 @@
                 (do
                   (vreset! started? true)
                   (-> result
-                      (rf (format-sse-event {:type      "start"
-                                             :messageId (or message-id (:id part) (mkid))}))
+                      (rf (start-event (or message-id (:id part) (mkid))))
                       (rf (format-sse-event {:type "start-step"})))))
 
               :text

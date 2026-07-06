@@ -865,33 +865,52 @@
                                              :metabot_id metabot.config/embedded-metabot-id
                                              :conversation_id (str (random-uuid))))))))))))
 
-(defn- streamed-message-id
-  "Parse a raw agent-streaming SSE response body and return the `start` event's messageId."
+(defn- streamed-start-event
+  "Parse a raw agent-streaming SSE response body and return the `start` event."
   [response]
   (->> (str/split-lines response)
        (filter #(str/starts-with? % "data: "))
        (remove #(= "data: [DONE]" %))
        (map #(json/decode+kw (subs % 6)))
-       (u/seek #(= "start" (:type %)))
-       :messageId))
+       (u/seek #(= "start" (:type %)))))
 
-(defn- with-mock-streaming-provider*
-  [thunk]
-  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
-    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-      (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                  (fn [_]
-                                    (mut/mock-llm-response
-                                     [{:type :start :id "msg-1"}
-                                      {:type :text :text "hi"}
-                                      {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
-                                       :model "test-model" :id "msg-1"}]))]
-        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-          (thunk))))))
+(defn- streamed-message-id
+  [response]
+  (:messageId (streamed-start-event response)))
+
+(defn- streamed-user-message-id
+  [response]
+  (get-in (streamed-start-event response) [:messageMetadata :userMessageId]))
+
+(def ^:private default-mock-parts
+  [{:type :start :id "msg-1"}
+   {:type :text :text "hi"}
+   {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
+    :model "test-model" :id "msg-1"}])
+
+(def ^:private error-mock-parts
+  [{:type :start :id "msg-1"}
+   {:type :error :error {:message "boom"}}])
+
+(defn- with-mock-streaming-provider!
+  "Runs `thunk` with the LLM provider mocked. Each provider call consumes the next
+  parts vector from `responses`, falling back to `default-mock-parts` once exhausted."
+  ([thunk] (with-mock-streaming-provider! [] thunk))
+  ([responses thunk]
+   (let [queue (atom (vec responses))]
+     (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+         (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                     (fn [_]
+                                       (let [[[parts]] (swap-vals! queue (comp vec rest))]
+                                         (mut/mock-llm-response (or parts default-mock-parts))))]
+           (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+             (thunk)
+             (is (empty? @queue) "unconsumed mock LLM responses"))))))))
 
 (deftest agent-streaming-rejects-stale-parent-message-id-test
   (testing "agent-streaming accepts nil/matching parent_message_id, rejects one that no longer matches the leaf"
-    (with-mock-streaming-provider*
+    (with-mock-streaming-provider!
       (fn []
         (let [conversation-id (str (random-uuid))
               first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
@@ -919,7 +938,7 @@
 
 (deftest agent-streaming-rejects-missing-parent-message-id-for-existing-conversation-test
   (testing "agent-streaming rejects an omitted parent_message_id once the conversation already has a leaf"
-    (with-mock-streaming-provider*
+    (with-mock-streaming-provider!
       (fn []
         (let [conversation-id (str (random-uuid))]
           (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
@@ -934,6 +953,85 @@
                                  :conversation_id conversation-id
                                  :history         []
                                  :state           {}}))))))
+
+(defn- agent-request
+  [conversation-id message & {:as extra}]
+  (merge {:message         message
+          :context         {}
+          :conversation_id conversation-id
+          :history         []
+          :state           {}}
+         extra))
+
+(defn- conversation-rows
+  [conversation-id]
+  (t2/select [:model/MetabotMessage :id :external_id :role :deleted_at :deleted_by_user_id]
+             :conversation_id conversation-id
+             {:order-by [[:created_at :asc] [:id :asc]]}))
+
+(deftest agent-streaming-start-event-carries-user-message-id-test
+  (testing "the start event's messageMetadata.userMessageId is the persisted user row's external_id"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              response        (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"))
+              user-message-id (streamed-user-message-id response)]
+          (is (string? user-message-id))
+          (is (= user-message-id
+                 (t2/select-one-fn :external_id :model/MetabotMessage
+                                   :conversation_id conversation-id :role "user"))))))))
+
+(deftest agent-streaming-replaces-trailing-failed-turn-test
+  (testing "a resubmit whose parent points before a mid-stream-errored turn replaces the failed pair"
+    (with-mock-streaming-provider!
+      [default-mock-parts error-mock-parts default-mock-parts]
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "first"))
+              parent-1        (streamed-message-id first-response)]
+          (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                (agent-request conversation-id "second (fails)"
+                                               :parent_message_id parent-1))
+          (let [third-response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     (agent-request conversation-id "third"
+                                                                    :parent_message_id parent-1))
+                rows           (conversation-rows conversation-id)
+                deleted        (filter :deleted_at rows)
+                live           (remove :deleted_at rows)]
+            (is (= [:user :assistant] (map :role deleted))
+                "the failed turn's user + assistant rows are soft-deleted")
+            (is (= #{(mt/user->id :rasta)} (into #{} (map :deleted_by_user_id) deleted)))
+            (is (= [:user :assistant :user :assistant] (map :role live)))
+            (is (= (streamed-message-id third-response)
+                   (metabot.persistence/leaf-external-id conversation-id)))))))))
+
+(deftest agent-streaming-retry-test
+  (testing "retry_message_id regenerates the response without inserting a new user row"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"))
+              user-ext-id     (streamed-user-message-id first-response)
+              retry-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "hello"
+                                                                   :retry_message_id user-ext-id))
+              rows            (conversation-rows conversation-id)]
+          (is (= 1 (count (remove :deleted_at (filter #(= :user (:role %)) rows))))
+              "retry records no new user row")
+          (is (= [:assistant] (map :role (filter :deleted_at rows)))
+              "only the superseded response is soft-deleted")
+          (is (= (streamed-message-id retry-response)
+                 (metabot.persistence/leaf-external-id conversation-id)))
+          (testing "the same prompt can be retried again"
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "hello"
+                                                 :retry_message_id user-ext-id))
+            (let [rows (conversation-rows conversation-id)]
+              (is (= 1 (count (remove :deleted_at (filter #(= :user (:role %)) rows)))))
+              (is (= 2 (count (filter :deleted_at rows)))))))))))
 
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
