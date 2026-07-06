@@ -24,8 +24,6 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
     H.activateToken("pro-self-hosted");
     H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
-
-    cy.intercept({ method: "GET", pathname: "/api/index" }).as("listIndexes");
   });
 
   it("lists managed index requests with pending and removing statuses and sorts by column", () => {
@@ -45,12 +43,10 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
       H.DataStudio.Transforms.visitIndexes(transform.id);
     });
 
-    cy.wait("@listIndexes");
-
     cy.log("all column headers render");
     indexesTable().within(() => {
       INDEX_TABLE_COLUMNS.forEach((header) => {
-        cy.findByRole("columnheader", { name: headerName(header) }).should(
+        cy.findByRole("columnheader", { name: matchHeaderName(header) }).should(
           "be.visible",
         );
       });
@@ -79,10 +75,10 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
 
     cy.log("clicking the Name header toggles the sort direction");
     indexesTable()
-      .findByRole("columnheader", { name: headerName("Name") })
+      .findByRole("columnheader", { name: matchHeaderName("Name") })
       .click();
     indexesTable()
-      .findByRole("columnheader", { name: headerName("Name") })
+      .findByRole("columnheader", { name: matchHeaderName("Name") })
       .should("have.attr", "aria-sort", "descending");
     indexesTable()
       .findAllByRole("row")
@@ -104,7 +100,6 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
       H.runTransformAndWaitForSuccess(transform.id);
       H.DataStudio.Transforms.visitIndexes(transform.id);
     });
-    cy.wait("@listIndexes");
 
     cy.log("the empty state renders for a transform with no indexes");
     cy.findByTestId("transforms-indexes-content")
@@ -164,7 +159,6 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
 
     cy.log("the applied index request shows Succeeded and a last run date");
     H.DataStudio.Transforms.indexesTab().click();
-    cy.wait("@listIndexes");
     indexesTable().findAllByRole("row").should("have.length", 2);
     indexesTable()
       .findAllByRole("row")
@@ -204,6 +198,6 @@ function indexesTable() {
   return cy.findByRole("treegrid", { name: "Transform indexes" });
 }
 
-function headerName(label: string) {
+function matchHeaderName(label: string) {
   return new RegExp(`^${label}`);
 }
