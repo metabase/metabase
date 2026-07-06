@@ -1390,6 +1390,40 @@
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
 
+(defn- pdf->text
+  "All text extracted from the rendered PDF `bytes`. Card titles/headings are drawn as native, selectable text, so a
+  card that was rendered leaves its title here and an omitted card leaves nothing."
+  ^String [^bytes pdf-bytes]
+  (with-open [doc (org.apache.pdfbox.Loader/loadPDF pdf-bytes)]
+    (.getText (org.apache.pdfbox.text.PDFTextStripper.) doc)))
+
+(deftest dashboard-pdf-hides-empty-cards-test
+  (testing "PDF export omits a dashcard with `card.hide_empty` when it has no results, leaving its grid space blank (UXW-4706)"
+    (mt/with-temp [:model/Card          {full-id :id}  {:name "Has Data Card" :dataset_query (mt/mbql-query venues)}
+                   :model/Card          {empty-id :id} {:name          "Hidden Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Hide-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id full-id  :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 8 :size_x 8 :size_y 4
+                                           :visualization_settings {:card.hide_empty true}}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Has Data Card")
+            "the card with results is rendered")
+        (is (not (str/includes? text "Hidden Empty Card"))
+            "the empty card with card.hide_empty is omitted from the PDF"))))
+  (testing "an empty card WITHOUT card.hide_empty is still rendered (shows the no-results placeholder)"
+    (mt/with-temp [:model/Card          {empty-id :id} {:name          "Shown Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Show-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Shown Empty Card")
+            "without the setting, the empty card still appears")
+        (is (str/includes? text "No results")
+            "and shows the no-results placeholder rather than being hidden")))))
+
 (deftest dashboard-sub-include-pdf-test
   (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
     (let [render-args (atom nil)]
