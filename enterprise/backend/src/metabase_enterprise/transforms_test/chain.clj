@@ -95,13 +95,13 @@
   `mapping`, writing its output to the `out-spec` scratch table.
 
   Returns the resolved artifact (with `:parser-backend`)."
-  [{:keys [transform mapping out-spec db db-id drv input-tables]}]
+  [{:keys [transform mapping out-spec db db-id driver input-tables]}]
   (let [artifact  (resolve/resolve-test-transform transform mapping out-spec
                                                   {:db db :input-tables input-tables})
         all-names (conj (mapv :table (vals mapping)) (:table out-spec))]
     (execute/assert-all-test-tables! all-names)
-    (driver/run-transform! drv
-                           (execute/build-transform-details (:compiled artifact) out-spec db-id db drv)
+    (driver/run-transform! driver
+                           (execute/build-transform-details (:compiled artifact) out-spec db-id db driver)
                            {:overwrite? true})
     artifact))
 
@@ -117,7 +117,7 @@
   mid-slice. Caller is responsible for wrapping in
   `driver.conn/with-transform-connection` and for dropping everything in those
   atoms."
-  [{:keys [order leaf-deps db db-id drv schema fixtures-by-table-id id->transform
+  [{:keys [order leaf-deps db db-id driver schema fixtures-by-table-id id->transform
            mapping* outputs*]}]
   (let [leaves      (leaf-table-infos leaf-deps)
         _           (inputs/match-fixtures leaves (set (keys fixtures-by-table-id)))
@@ -127,7 +127,7 @@
                                           (get fixtures-by-table-id id) columns)})
                           leaves)
         nonce       (scratch/new-nonce)
-        catalog     (driver.sql/db-slot-value drv db)]
+        catalog     (driver.sql/db-slot-value driver db)]
     ;; Reap orphans left by prior runs that died before cleanup (JVM kill, timeout).
     (scratch/sweep-old-test-tables! db-id db schema)
     (reset! mapping* (scratch/seed! db-id db schema seed-inputs nonce))
@@ -142,7 +142,7 @@
                                     :out-spec     out-spec
                                     :db           db
                                     :db-id        db-id
-                                    :drv          drv
+                                    :driver       driver
                                     :input-tables leaves})]
            (-> acc
                (assoc-in [:outputs node-id] out-spec)
@@ -173,7 +173,7 @@
   Native cards are rewritten; MBQL cards are compiled with scratch-qualified SQL.
 
   Throws `::errors/cannot-test-run` if any non-scratch table reference survives."
-  [card db-id drv mapping input-tables]
+  [card db-id driver mapping input-tables]
   (let [backend   (sql-tools/parser-backend)
         dataset-q (:dataset_query card)
         ;; Build the lib query to detect native vs MBQL and extract native SQL — a
@@ -185,7 +185,7 @@
           ;; Native path: rewrite the SQL string to scratch names.
           ;; Limitation: table-qualified column refs may produce dangling qualifiers
           ;; that `resolve/verify` rejects. Keep native cards free of `table.col` qualifiers.
-          (resolve/rewrite-native-sql drv (lib/raw-native-query query) mapping backend)
+          (resolve/rewrite-native-sql driver (lib/raw-native-query query) mapping backend)
           ;; MBQL path: compile under the override-provider so the compiler
           ;; emits scratch-qualified SQL without any string rewriting.
           ;; Precondition: card's source tables must be synced (have a Table id)
@@ -194,14 +194,14 @@
             (qp.store/with-metadata-provider provider
               (:query (qp.compile/compile dataset-q)))))]
     ;; verify: every SQL ref must be a scratch table; no original table token survives.
-    (resolve/verify drv mapping final-sql)
+    (resolve/verify driver mapping final-sql)
     final-sql))
 
 (defn- run-card-query!
   "Execute the compiled card SQL via the QP; return the full QP result map.
   Throws `::errors/execution-failed` on a non-completed status."
-  [db-id card-id drv card-sql]
-  (log/debug "Running card query under scratch override" {:db-id db-id :drv drv})
+  [db-id card-id driver card-sql]
+  (log/debug "Running card query under scratch override" {:db-id db-id :driver driver})
   ;; Report-TZ-shifted temporal strings would spuriously mismatch the fixtures;
   ;; keep rows as java.time objects.
   (let [result (qp/process-query (assoc (execute/native-query db-id card-sql)
@@ -225,7 +225,7 @@
   scratch table in a `finally` — including partial state from a mid-slice
   failure (see [[run-slice!]]).
 
-  `produce-actual` is called with `{:mapping :outputs :db-id :drv}` after the
+  `produce-actual` is called with `{:mapping :outputs :db-id :driver}` after the
   slice has run and must return
   `{:qp-result <QP result map> :output-sql <test_output SQL> :extra <map>}`;
   `:extra` is merged into the run record."
@@ -237,7 +237,7 @@
         assertion-defs (get opts :assertions [])
         _              (assert-single-database! slice id->transform db-id)
         db             (t2/select-one :model/Database :id db-id)
-        drv            (keyword (:engine db))
+        driver         (keyword (:engine db))
         mapping*       (atom {})
         outputs*       (atom {})]
     (driver.conn/with-transform-connection
@@ -250,14 +250,14 @@
                              :leaf-deps            leaf-deps
                              :db                   db
                              :db-id                db-id
-                             :drv                  drv
+                             :driver               driver
                              :schema               schema
                              :fixtures-by-table-id fixtures-by-table-id
                              :id->transform        id->transform
                              :mapping*             mapping*
                              :outputs*             outputs*})
                 {:keys [qp-result output-sql extra]}
-                (produce-actual {:mapping mapping :outputs outputs :db-id db-id :drv drv})
+                (produce-actual {:mapping mapping :outputs outputs :db-id db-id :driver driver})
                 actual-cols (get-in qp-result [:data :cols])
                 actual-rows (get-in qp-result [:data :rows])
                 report      (when expected-csv-file
@@ -267,7 +267,7 @@
                 ;; Run assertions while the scratch tables still exist: after
                 ;; produce-actual, before cleanup.
                 backend     (sql-tools/parser-backend)
-                assertion-results (assertions/run-assertions! db-id drv backend mapping output-sql assertion-defs)
+                assertion-results (assertions/run-assertions! db-id driver backend mapping output-sql assertion-defs)
                 overall     (assertions/overall-status (or (:status report) :passed)
                                                        assertion-results)]
             (merge {:status         overall
@@ -355,10 +355,10 @@
       :fixtures-by-table-id fixtures-by-table-id
       :expected-csv-file    expected-csv-file
       :opts                 opts}
-     (fn [{:keys [outputs db-id drv]}]
+     (fn [{:keys [outputs db-id driver]}]
        (let [target-out (get outputs target-id)]
-         {:qp-result  (execute/read-back-output db-id drv target-out)
-          :output-sql (str "SELECT * FROM " (scratch/spec->sql-ref drv target-out))
+         {:qp-result  (execute/read-back-output db-id driver target-out)
+          :output-sql (str "SELECT * FROM " (scratch/spec->sql-ref driver target-out))
           :extra      {:output-table (:table target-out)}})))))
 
 (defn run-card-chain-test!
@@ -425,12 +425,12 @@
       :fixtures-by-table-id fixtures-by-table-id
       :expected-csv-file    expected-csv-file
       :opts                 opts}
-     (fn [{:keys [mapping db-id drv]}]
+     (fn [{:keys [mapping db-id driver]}]
        (let [input-tables (card-table-infos card)
              ;; compile-card-sql produces the scratch-remapped SQL — reuse it for
              ;; both card execution and the assertion test_output binding
              ;; (avoiding a second compile call).
-             card-sql     (compile-card-sql card db-id drv mapping input-tables)]
-         {:qp-result  (run-card-query! db-id card-id drv card-sql)
+             card-sql     (compile-card-sql card db-id driver mapping input-tables)]
+         {:qp-result  (run-card-query! db-id card-id driver card-sql)
           :output-sql card-sql
           :extra      {:card-id card-id}})))))

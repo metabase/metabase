@@ -77,8 +77,7 @@
     template-tag `#N` refs). The *caller* is responsible for recursing into
     these to find their table ids.
 
-  Accepts MBQL and native queries alike; a metric is an ordinary `:type :metric`
-  card with a `dataset_query`, read no differently from a question.
+  Accepts MBQL and native queries alike.
 
   `card` must be a `:model/Card` row with a `:dataset_query` key."
   [{:keys [dataset_query] :as _card}]

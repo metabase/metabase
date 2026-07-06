@@ -9,6 +9,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-test.card-refs :as card-refs]
    [metabase-enterprise.transforms-test.test-util :as tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -69,6 +71,27 @@
       (is (= #{(mt/id :orders) (mt/id :people)}
              (card-refs/card->tables root))
           "orders from direct ref + people via inner card"))))
+
+;;; ---------------------------------------------------------------------------
+;;; Metric ref: root aggregates a metric whose definition joins another table
+;;; ---------------------------------------------------------------------------
+
+(deftest metric-ref-unwinds-test
+  (testing "A [:metric id] aggregation ref unwinds like a source card: the metric's tables surface"
+    (mt/with-temp [:model/Card metric
+                   {:type          :metric
+                    :dataset_query (let [mp (mt/metadata-provider)]
+                                     (-> (tu/table-query (mt/id :orders))
+                                         (lib/join (lib/join-clause
+                                                    (lib.metadata/table mp (mt/id :products))
+                                                    [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                            (lib.metadata/field mp (mt/id :products :id)))]))
+                                         (lib/aggregate (lib/count))))}
+                   :model/Card root {:dataset_query (-> (tu/table-query (mt/id :orders))
+                                                        (tu/aggregate-metric (:id metric)))}]
+      (is (= #{(mt/id :orders) (mt/id :products)}
+             (card-refs/card->tables root))
+          "products is reachable only through the metric's definition"))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Batching-contract test

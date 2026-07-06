@@ -46,19 +46,19 @@
   `output-target` — `{:schema :table :db}` spec from a scratch output-target builder.
   `db-id`         — integer database id.
   `db`            — `:model/Database` row.
-  `drv`           — driver keyword."
-  [compiled output-target db-id db drv]
+  `driver`        — driver keyword."
+  [compiled output-target db-id db driver]
   {:db-id          db-id
    :database       db
    :transform-id   nil
    :transform-type :table
    ;; conn-spec resolves write-data creds + the :transform pool from the active context.
-   :conn-spec      (driver/connection-spec drv db)
+   :conn-spec      (driver/connection-spec driver db)
    :query          compiled
    :output-schema  (:schema output-target)
    :output-db      (:db output-target)
    :output-table   (transforms-base.u/qualified-table-name
-                    drv
+                    driver
                     ;; qualified-table-name expects {:schema ... :name ...}
                     ;; but scratch output-targets return {:schema ... :table ...}
                     {:schema (:schema output-target) :name (:table output-target)})})
@@ -68,10 +68,10 @@
   Returns the full QP result map (status :completed + :data {:cols ... :rows ...});
   temporal cells are java.time objects, not formatted strings. Throws on QP error.
 
-  `drv` is the driver keyword; `output-target` is a `{:schema :table :db}` spec
+  `driver` is the driver keyword; `output-target` is a `{:schema :table :db}` spec
   as returned by `scratch-output-target`."
-  [db-id drv output-target]
-  (let [sql    (str "SELECT * FROM " (scratch/spec->sql-ref drv output-target))
+  [db-id driver output-target]
+  (let [sql    (str "SELECT * FROM " (scratch/spec->sql-ref driver output-target))
         ;; format-rows renders temporals as report-timezone-shifted strings, which
         ;; would spuriously mismatch the fixtures' UTC-canonicalized wall times on
         ;; any non-UTC instance. Raw java.time objects canonicalize TZ-safely.

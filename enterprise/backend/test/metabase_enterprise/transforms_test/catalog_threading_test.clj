@@ -63,8 +63,8 @@
 
 (deftest scratch-output-target-db-slot-driver-carries-catalog-test
   (testing "scratch-output-target :db is the catalog string for a db-slot driver (mysql)"
-    (let [drv     :mysql
-          catalog (driver.sql/db-slot-value drv mysql-db)
+    (let [driver  :mysql
+          catalog (driver.sql/db-slot-value driver mysql-db)
           nonce   "aabbccdd"
           target  (scratch/scratch-output-target "myschema" nonce "out" catalog)]
       (is (= "my_catalog" catalog)
@@ -74,8 +74,8 @@
 
 (deftest scratch-output-target-non-db-slot-driver-db-is-nil-test
   (testing "scratch-output-target :db is nil for a non-db-slot driver (postgres)"
-    (let [drv     :postgres
-          catalog (driver.sql/db-slot-value drv postgres-db)
+    (let [driver  :postgres
+          catalog (driver.sql/db-slot-value driver postgres-db)
           nonce   "aabbccdd"
           target  (scratch/scratch-output-target "public" nonce "out" catalog)]
       (is (nil? catalog)
@@ -97,7 +97,7 @@
 (deftest build-transform-details-output-db-set-for-db-slot-driver-test
   (testing ":output-db in transform details equals :db from output-target for a db-slot driver"
     ;; Stub connection-spec so build-transform-details doesn't hit the real app DB.
-    (with-redefs [driver/connection-spec (fn [_drv _db] {:subprotocol "stub"})]
+    (with-redefs [driver/connection-spec (fn [_driver _db] {:subprotocol "stub"})]
       (let [output-target {:schema "myschema"
                            :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
                            :db     "my_catalog"}
@@ -108,7 +108,7 @@
 
 (deftest build-transform-details-output-db-nil-for-non-db-slot-driver-test
   (testing ":output-db is nil for a non-db-slot driver"
-    (with-redefs [driver/connection-spec (fn [_drv _db] {:subprotocol "stub"})]
+    (with-redefs [driver/connection-spec (fn [_driver _db] {:subprotocol "stub"})]
       (let [output-target {:schema "public"
                            :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
                            :db     nil}
@@ -139,7 +139,7 @@
 (defn- captured-read-back-sql!
   "Run `read-back-output` for `output-target` against a temp Database of `engine`
   with QP execution stubbed; return the SQL string it submitted."
-  [engine drv output-target]
+  [engine driver output-target]
   (let [captured (atom nil)]
     (mt/with-temp [:model/Database db {:engine engine}]
       (with-redefs [qp/process-query
@@ -147,7 +147,7 @@
                       (reset! captured q)
                       {:status :completed
                        :data   {:cols [] :rows []}})]
-        (execute/read-back-output (:id db) drv output-target)))
+        (execute/read-back-output (:id db) driver output-target)))
     (lib/raw-native-query @captured)))
 
 (deftest read-back-sql-is-3-segment-for-db-slot-driver-test
@@ -182,9 +182,9 @@
   (testing "Each scratch-spec in the seed! mapping carries :db from db-slot-value"
     ;; Stub the DDL seams — what's under test is seed!'s db-row → catalog → mapping
     ;; threading, not table creation.
-    (with-redefs [driver/schema-exists?                       (fn [_drv _db-id _schema] true)
-                  transforms-base.u/create-table-from-schema! (fn [_drv _db-id _schema] nil)
-                  driver/insert-from-source!                  (fn [_drv _db-id _schema _source] nil)]
+    (with-redefs [driver/schema-exists?                       (fn [_driver _db-id _schema] true)
+                  transforms-base.u/create-table-from-schema! (fn [_driver _db-id _schema] nil)
+                  driver/insert-from-source!                  (fn [_driver _db-id _schema _source] nil)]
       (driver.conn/with-transform-connection
         (let [seed-inputs [{:table-info {:id 42 :schema "real_schema" :name "orders"
                                          :columns [{:name "id" :base-type :type/Integer :nullable? false}]}

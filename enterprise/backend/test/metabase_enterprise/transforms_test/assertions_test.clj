@@ -65,11 +65,11 @@
 
 (deftest prepare-fault-isolation-test
   (testing "prepare never throws — a rewrite failure becomes that entry's :error, others still prepare"
-    (mt/with-dynamic-fn-redefs [resolve/rewrite-native-sql (fn [_drv sql _mapping _backend]
+    (mt/with-dynamic-fn-redefs [resolve/rewrite-native-sql (fn [_driver sql _mapping _backend]
                                                              (if (str/includes? sql "boom")
                                                                (throw (ex-info "rewrite failed: parse error" {}))
                                                                (str "REWRITTEN " sql)))
-                                resolve/verify             (fn [_drv _mapping _sql _safe-aliases] nil)]
+                                resolve/verify             (fn [_driver _mapping _sql _safe-aliases] nil)]
       (let [prepared (#'assertions/prepare
                       :postgres :sqlglot {}
                       [{:name "bad_a"  :sql "SELECT boom" :severity :error}
@@ -216,7 +216,7 @@
 
 (defn- do-with-seeded-orders!
   "Seed a scratch copy of the orders table from `fixture-csv` on :postgres inside
-  a transform connection; call `f` with `{:db-id :drv :mapping :output-sql :backend}`;
+  a transform connection; call `f` with `{:db-id :driver :mapping :output-sql :backend}`;
   clean up the scratch table in a finally."
   [fixture-csv f]
   (mt/with-premium-features #{}
@@ -224,7 +224,7 @@
       (mt/dataset test-data
         (let [db-id       (mt/id)
               db          (t2/select-one :model/Database :id db-id)
-              drv         (keyword (:engine db))
+              driver      (keyword (:engine db))
               schema      "public"
               nonce       (scratch/new-nonce)
               orders-info {:id      (mt/id :orders)
@@ -236,10 +236,10 @@
                                             [{:table-info orders-info
                                               :fixture    (fixtures/parse-fixture fixture-csv orders-columns)}]
                                             nonce)
-                  output-sql (str "SELECT * FROM " (scratch/spec->sql-ref drv (-> mapping vals first)))
+                  output-sql (str "SELECT * FROM " (scratch/spec->sql-ref driver (-> mapping vals first)))
                   backend    (sql-tools/parser-backend)]
               (try
-                (f {:db-id db-id :drv drv :mapping mapping :output-sql output-sql :backend backend})
+                (f {:db-id db-id :driver driver :mapping mapping :output-sql output-sql :backend backend})
                 (finally
                   (scratch/cleanup! db-id db mapping nil))))))))))
 
@@ -251,7 +251,7 @@
   (testing "all-pass → single combined query, all assertions :passed"
     (do-with-seeded-orders!
      two-positive-orders-csv
-     (fn [{:keys [db-id drv mapping output-sql backend]}]
+     (fn [{:keys [db-id driver mapping output-sql backend]}]
        (let [qp-calls (atom 0)
              qp-orig  (mt/original-fn #'qp/process-query)
              results  (mt/with-dynamic-fn-redefs [qp/process-query
@@ -259,7 +259,7 @@
                                                     (swap! qp-calls inc)
                                                     (apply qp-orig args))]
                         (assertions/run-assertions!
-                         db-id drv backend mapping output-sql
+                         db-id driver backend mapping output-sql
                          [{:name "no_neg_total"    :sql "SELECT * FROM test_output WHERE total < 0" :severity :error}
                           {:name "has_positive_id" :sql "SELECT * FROM test_output WHERE id <= 0"   :severity :error}]))]
          (testing "one combined QP round-trip for both assertions"
@@ -289,9 +289,9 @@
                           "\n")]
       (do-with-seeded-orders!
        neg-csv
-       (fn [{:keys [db-id drv mapping output-sql backend]}]
+       (fn [{:keys [db-id driver mapping output-sql backend]}]
          (let [results (assertions/run-assertions!
-                        db-id drv backend mapping output-sql
+                        db-id driver backend mapping output-sql
                         ;; assertion 0: every row fails (total < 0) → over the sample cap
                         ;; assertion 1: no rows fail (id > 0 is always true) → pass
                         [{:name "total_positive" :sql "SELECT * FROM test_output WHERE total < 0" :severity :error}
@@ -319,9 +319,9 @@
   (testing ":warn severity firing → per-entry :warn, overall does not flip to :failed"
     (do-with-seeded-orders!
      two-positive-orders-csv
-     (fn [{:keys [db-id drv mapping output-sql backend]}]
+     (fn [{:keys [db-id driver mapping output-sql backend]}]
        (let [results (assertions/run-assertions!
-                      db-id drv backend mapping output-sql
+                      db-id driver backend mapping output-sql
                       ;; Assertion always fires (all rows pass WHERE 1=1) but severity is :warn.
                       [{:name "warn_always_fires"
                         :sql  "SELECT * FROM test_output WHERE 1=1"
@@ -356,7 +356,7 @@
     ;; the good one still executes and contributes a count.
     (do-with-seeded-orders!
      two-positive-orders-csv
-     (fn [{:keys [db-id drv mapping output-sql backend]}]
+     (fn [{:keys [db-id driver mapping output-sql backend]}]
        (let [per-assertion-calls (atom 0)
              run-one-orig        (mt/original-fn #'assertions/run-one-assertion!)
              ;; The bad assertion references an existing table but a non-existent
@@ -369,7 +369,7 @@
                           (swap! per-assertion-calls inc)
                           (apply run-one-orig args))]
                        (assertions/run-assertions!
-                        db-id drv backend mapping output-sql
+                        db-id driver backend mapping output-sql
                         [{:name "bad_column_ref" :sql bad-sql                                   :severity :error}
                          {:name "good_assertion" :sql "SELECT * FROM test_output WHERE id <= 0" :severity :error}]))]
          (testing "returns two results (fallback attributed both)"
@@ -405,12 +405,12 @@
                           {:name "subtotal_nonneg" :sql "SELECT * FROM test_output WHERE subtotal < 0" :severity :warn}]]
       (do-with-seeded-orders!
        mixed-csv
-       (fn [{:keys [db-id drv mapping output-sql backend]}]
+       (fn [{:keys [db-id driver mapping output-sql backend]}]
          (let [batched-results    (assertions/run-assertions!
-                                   db-id drv backend mapping output-sql assertion-defs)
+                                   db-id driver backend mapping output-sql assertion-defs)
                ;; Drive the private fallback directly — it is otherwise reachable
                ;; only through a combined-query failure.
-               prepared           (#'assertions/prepare drv backend mapping assertion-defs)
+               prepared           (#'assertions/prepare driver backend mapping assertion-defs)
                per-assert-raw     (#'assertions/run-per-assertion! db-id output-sql prepared)
                per-assert-results (#'assertions/interpret prepared per-assert-raw)]
            (testing "both paths return same number of results"

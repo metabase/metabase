@@ -151,8 +151,8 @@
 
   The segments are identifiers, not values — they must be driver-quoted, never
   passed as JDBC parameters."
-  ^String [drv {:keys [db schema table]}]
-  (apply sql.u/quote-name drv :table (remove nil? [db schema table])))
+  ^String [driver {:keys [db schema table]}]
+  (apply sql.u/quote-name driver :table (remove nil? [db schema table])))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Seeding
@@ -191,8 +191,8 @@
   On partial failure (some tables created, then an error): drops all already-created
   scratch tables (best-effort, logs failures) then rethrows a typed ex-info."
   [db-id db ^String schema seed-inputs nonce]
-  (let [drv     (keyword (:engine db))
-        catalog (driver.sql/db-slot-value drv db)
+  (let [driver  (keyword (:engine db))
+        catalog (driver.sql/db-slot-value driver db)
         created (atom [])
         mapping (atom {})]
     (driver.conn/ensure-connection-type! :transform)
@@ -200,26 +200,26 @@
       ;; Create the target schema if absent — some warehouses (e.g. BigQuery) don't
       ;; auto-create it, so a never-run transform's target schema may not exist yet.
       (when (and (not (str/blank? schema))
-                 (not (driver/schema-exists? drv db-id schema)))
-        (driver/create-schema-if-needed! drv (driver/connection-spec drv db) schema))
+                 (not (driver/schema-exists? driver db-id schema)))
+        (driver/create-schema-if-needed! driver (driver/connection-spec driver db) schema))
       (doseq [{:keys [table-info fixture]} seed-inputs]
         (let [real-spec    {:schema (:schema table-info) :table (:name table-info)}
               suffix       (str "in_" (:id table-info))
               scratch-name (scratch-table-name nonce suffix)
               tbl-schema   (table-schema-for-seed scratch-name schema table-info)]
-          (transforms-base.u/create-table-from-schema! drv db-id tbl-schema)
+          (transforms-base.u/create-table-from-schema! driver db-id tbl-schema)
           (swap! created conj {:schema schema :table scratch-name})
-          (driver/insert-from-source! drv db-id tbl-schema
+          (driver/insert-from-source! driver db-id tbl-schema
                                       {:type :rows
                                        :data (:rows fixture)})
           (swap! mapping assoc real-spec {:schema schema :table scratch-name :db catalog})))
       @mapping
       (catch Throwable e
         ;; Best-effort drop of already-created tables
-        (let [drv* drv]
+        (let [driver* driver]
           (doseq [{tbl-schema :schema tbl-name :table} @created]
             (try
-              (driver/drop-table! drv* db-id (keyword tbl-schema tbl-name))
+              (driver/drop-table! driver* db-id (keyword tbl-schema tbl-name))
               (catch Exception drop-e
                 (log/warn drop-e "Failed to drop scratch table during seed! failure cleanup:"
                           (keyword tbl-schema tbl-name))))))
@@ -250,16 +250,16 @@
 
   Returns nil always."
   [db-id db mapping output-spec]
-  (let [drv  (keyword (:engine db))
-        drop (fn [schema table-name]
-               (try
-                 ;; drop-table! takes the table name as a schema-qualified keyword
-                 ;; (keyword schema table-name) — not the full table-schema map used
-                 ;; by create-table-from-schema!. Passing the map causes ClassCastException.
-                 (driver/drop-table! drv db-id (keyword schema table-name))
-                 (catch Exception e
-                   (log/warn e "Failed to drop scratch table during cleanup!"
-                             (keyword schema table-name)))))]
+  (let [driver (keyword (:engine db))
+        drop   (fn [schema table-name]
+                 (try
+                   ;; drop-table! takes the table name as a schema-qualified keyword
+                   ;; (keyword schema table-name) — not the full table-schema map used
+                   ;; by create-table-from-schema!. Passing the map causes ClassCastException.
+                   (driver/drop-table! driver db-id (keyword schema table-name))
+                   (catch Exception e
+                     (log/warn e "Failed to drop scratch table during cleanup!"
+                               (keyword schema table-name)))))]
     (driver.conn/ensure-connection-type! :transform)
     (doseq [{:keys [schema table]} (vals mapping)]
       (drop schema table))
@@ -298,14 +298,14 @@
   Returns `{:dropped [...] :skipped-young [...] :non-matching-count <int>
   :drop-errors [{:table :error} ...]}`."
   [db-id db ^String schema {:keys [min-age-seconds] :or {min-age-seconds 3600}}]
-  (let [drv      (keyword (:engine db))
+  (let [driver   (keyword (:engine db))
         now-secs (quot (System/currentTimeMillis) 1000)]
     (reduce
      (fn [report tbl-name]
        (if-let [parsed (parse-scratch-table-name tbl-name)]
          (if (>= (- now-secs (:epoch-seconds parsed)) min-age-seconds)
            (try
-             (driver/drop-table! drv db-id (keyword schema tbl-name))
+             (driver/drop-table! driver db-id (keyword schema tbl-name))
              (update report :dropped conj tbl-name)
              (catch Exception e
                (log/warn e "cleanup-all-test-tables! failed to drop" (keyword schema tbl-name))

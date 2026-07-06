@@ -70,6 +70,18 @@
         (is (= #{(mt/id :orders)} tables))
         (is (= #{} cards))))))
 
+(deftest mbql-metric-ref-test
+  (testing "MBQL question aggregating a metric: the [:metric id] ref lands in :cards"
+    (mt/with-temp [:model/Card metric {:type          :metric
+                                       :dataset_query (-> (tu/table-query (mt/id :orders))
+                                                          (lib/aggregate (lib/count)))}
+                   :model/Card card   {:dataset_query (-> (tu/table-query (mt/id :orders))
+                                                          (tu/aggregate-metric (:id metric)))}]
+      (let [{:keys [tables cards]} (card-refs/card->immediate-refs card)]
+        (is (= #{(mt/id :orders)} tables))
+        (is (= #{(:id metric)} cards)
+            "metric aggregation ref must appear in :cards for the walker to unwind")))))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Native query
 ;;; ---------------------------------------------------------------------------

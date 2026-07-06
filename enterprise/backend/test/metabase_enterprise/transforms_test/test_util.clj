@@ -47,6 +47,11 @@
         rhs    (first (lib/returned-columns (lib/query mp c-meta)))]
     (lib/join query (lib/join-clause c-meta [(lib/= lhs rhs)]))))
 
+(defn aggregate-metric
+  "Aggregate metric card `metric-id` onto `query`, adding a `[:metric id]` ref."
+  [query metric-id]
+  (lib/aggregate query (lib.metadata/metric (mt/metadata-provider) metric-id)))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Temp CSV files
 ;;; ---------------------------------------------------------------------------

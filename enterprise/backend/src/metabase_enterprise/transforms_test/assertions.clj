@@ -70,12 +70,12 @@
   "Rewrite and verify one assertion's SQL. Returns
   `{:name :severity :rewritten-sql}`, or `{:name :severity :error <message>}`
   when rewrite/verify fails (excluded from execution, still reported)."
-  [drv backend mapping {:keys [name sql severity]}]
+  [driver backend mapping {:keys [name sql severity]}]
   (try
-    (let [rewritten (resolve/rewrite-native-sql drv sql mapping backend)]
+    (let [rewritten (resolve/rewrite-native-sql driver sql mapping backend)]
       ;; verify: no real-table refs survive. test_output is whitelisted — it is
       ;; bound by the combined-assertion CTE wrapper, not a real warehouse table.
-      (resolve/verify drv mapping rewritten #{"test_output"})
+      (resolve/verify driver mapping rewritten #{"test_output"})
       {:name          name
        :severity      (or severity :error)
        :rewritten-sql rewritten})
@@ -91,8 +91,8 @@
 (defn- prepare
   "Rewrite and verify every assertion via [[prepare-one]], preserving order.
   A failure in one becomes that entry's `:error`; never throws."
-  [drv backend mapping assertions]
-  (mapv #(prepare-one drv backend mapping %) assertions))
+  [driver backend mapping assertions]
+  (mapv #(prepare-one driver backend mapping %) assertions))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Execution helpers
@@ -298,7 +298,7 @@
   "Evaluate assertions against the current scratch state.
 
   - `db-id`      — database id.
-  - `drv`        — driver keyword.
+  - `driver`     — driver keyword.
   - `backend`    — parser backend keyword.
   - `mapping`    — the `{real-spec → scratch-spec}` map (leaves + node outputs).
   - `output-sql` — SQL whose result is bound as `test_output` for every assertion:
@@ -312,9 +312,9 @@
 
   Never throws; per-assertion failures are captured as result entries. All-pass
   runs as one combined query."
-  [db-id drv backend mapping output-sql assertions]
+  [db-id driver backend mapping output-sql assertions]
   (if (empty? assertions)
     []
-    (let [prepared (prepare drv backend mapping assertions)
+    (let [prepared (prepare driver backend mapping assertions)
           raw      (run-batched! db-id output-sql prepared)]
       (interpret prepared raw))))
