@@ -59,7 +59,7 @@ export const JobTriggersSidebar = ({ jobKey }: JobTriggersSidebarProps) => {
 
 function TriggerDetails({ trigger }: { trigger: Trigger }) {
   return (
-    <Stack gap="sm">
+    <Stack component="dl" gap="sm" m={0}>
       <TriggerAttribute label={t`Key`} value={trigger.key} />
       <TriggerAttribute label={t`Description`} value={trigger.description} />
       <TriggerAttribute label={t`State`} value={trigger.state} />
@@ -98,10 +98,10 @@ type TriggerAttributeProps = {
 function TriggerAttribute({ label, value }: TriggerAttributeProps) {
   return (
     <Flex gap="md">
-      <Text fw="bold" w={140} flex="0 0 auto">
+      <Text component="dt" fw="bold" w={140} flex="0 0 auto">
         {label}
       </Text>
-      <Text style={{ wordBreak: "break-word" }}>
+      <Text component="dd" m={0} style={{ wordBreak: "break-word" }}>
         {value ?? EMPTY_CELL_PLACEHOLDER}
       </Text>
     </Flex>

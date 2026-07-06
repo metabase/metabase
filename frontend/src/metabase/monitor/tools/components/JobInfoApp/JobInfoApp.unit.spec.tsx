@@ -128,6 +128,88 @@ describe("JobInfoApp", () => {
     expect(within(sidebar).getByText("PAUSED")).toBeInTheDocument();
   });
 
+  it("should open the triggers sidebar via keyboard row activation", async () => {
+    const { history } = setup({
+      taskInfo: createMockTaskInfo({
+        jobs: [
+          createMockJob({
+            key: "a-job-key",
+            triggers: [createMockTrigger({ key: "trigger-1" })],
+          }),
+        ],
+      }),
+    });
+
+    const table = await screen.findByRole("treegrid", { name: "Jobs" });
+    table.focus();
+    // ArrowDown activates the first row, Enter opens its triggers
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    expect(history?.getCurrentLocation().pathname).toBe(
+      Urls.monitorJobTriggers("a-job-key"),
+    );
+
+    const sidebar = await screen.findByTestId("job-triggers-sidebar");
+    expect(within(sidebar).getByText("trigger-1")).toBeInTheDocument();
+  });
+
+  it("should render every trigger attribute, null placeholders, and the may-fire-again No branch", async () => {
+    setup({
+      taskInfo: createMockTaskInfo({
+        jobs: [
+          createMockJob({
+            key: "a-job-key",
+            triggers: [
+              createMockTrigger({
+                key: "trigger-1",
+                "end-time": null,
+                "final-fire-time": null,
+                "may-fire-again?": false,
+              }),
+            ],
+          }),
+        ],
+      }),
+      initialRoute: Urls.monitorJobTriggers("a-job-key"),
+    });
+
+    const sidebar = await screen.findByTestId("job-triggers-sidebar");
+
+    // all 11 labelled attribute rows are present
+    [
+      "Key",
+      "Description",
+      "State",
+      "Priority",
+      "Last Fired",
+      "Next Fire Time",
+      "Start Time",
+      "End Time",
+      "Final Fire Time",
+      "May Fire Again?",
+      "Misfire Instruction",
+    ].forEach((label) => {
+      expect(within(sidebar).getByText(label)).toBeInTheDocument();
+    });
+
+    // may-fire-again? false renders as "No"
+    expect(within(sidebar).getByText("No")).toBeInTheDocument();
+    // null End Time / Final Fire Time render the empty-cell placeholder
+    expect(within(sidebar).getAllByText("—")).toHaveLength(2);
+  });
+
+  it("should show a no-triggers message when the job has no triggers", async () => {
+    setup({
+      taskInfo: createMockTaskInfo({
+        jobs: [createMockJob({ key: "a-job-key", triggers: [] })],
+      }),
+      initialRoute: Urls.monitorJobTriggers("a-job-key"),
+    });
+
+    const sidebar = await screen.findByTestId("job-triggers-sidebar");
+    expect(within(sidebar).getByText("No triggers")).toBeInTheDocument();
+  });
+
   it("should close the triggers sidebar", async () => {
     const { history } = setup({
       taskInfo: createMockTaskInfo({
