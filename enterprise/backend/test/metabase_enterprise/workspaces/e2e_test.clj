@@ -14,7 +14,7 @@
 (ws.tu/ws-fixtures!)
 
 (deftest isolation-e2e-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (transforms.tu/with-transform-cleanup! [output-table-name (str "test_table_1_" (mt/random-name))]
       (mt/with-model-cleanup [:model/Transform :model/Workspace]
         (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform 1"

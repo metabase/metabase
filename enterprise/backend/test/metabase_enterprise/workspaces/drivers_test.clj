@@ -1,11 +1,12 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.drivers-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.driver.connection.workspaces :as driver.w]
    [metabase.test :as mt]))
 
 (deftest drivers-support-workspaces-has-to-support-db-swapping-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (ws.tu/ws-test-drivers)
     (let [db-swapped? (fn []
                         (try
                           (mt/run-mbql-query venues {:limit 1})

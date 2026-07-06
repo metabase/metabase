@@ -48,9 +48,13 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" database-name)
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
   [_driver context dbdef]
@@ -269,19 +273,6 @@
               ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
     nil))
 
-(defn- dataset-tracked?!
-  [conn driver db-def]
-  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                       driver
-                                       conn
-                                       "SELECT true as tracked FROM metabase_test_tracking.PUBLIC.datasets WHERE hash = ? and name = ?"
-                                       [(tx/hash-dataset db-def) (qualified-db-name db-def)])
-              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-    (some-> rs
-            resultset-seq
-            first
-            :tracked)))
-
 (defn- database-exists?!
   [conn driver db-def]
   (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
@@ -300,10 +291,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (setup-tracking-db! conn driver)
-     (and
-      (dataset-tracked?! conn driver db-def)
-      (database-exists?! conn driver db-def)))))
+     (database-exists?! conn driver db-def))))
 
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
@@ -312,6 +300,7 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
+     (setup-tracking-db! conn driver)
      (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
                                           driver
                                           conn

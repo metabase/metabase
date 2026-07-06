@@ -323,11 +323,20 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (ws.impl/run-transform! workspace graph ws-transform)))))
 
+(defn ws-test-drivers
+  "Drivers to run workspace tests against. Excludes Snowflake: the CI Snowflake account now
+  enforces MFA (\"Multi-factor authentication is required for this account. Log in to Snowsight
+  to enroll.\"), which blocks connecting as the password-only users that workspace isolation
+  creates. This version of workspaces was rewritten in 60+ (where these tests no longer exist),
+  so there is no upstream fix to port."
+  []
+  (disj (mt/normal-drivers-with-feature :workspace) :snowflake))
+
 (defn ws-fixtures!
   "Sets up test fixtures for workspace tests. Must be called at the top level of test namespaces."
   []
   (use-fixtures :each (fn [tests]
-                        (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+                        (mt/test-drivers (ws-test-drivers)
                           (mt/with-premium-features [:workspaces :dependencies :transforms-basic :transforms-python]
                             (search.tu/with-index-disabled
                               (mt/with-model-cleanup [:model/Collection
