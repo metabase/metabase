@@ -40,7 +40,6 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
       opened={clipboard.copied}
     >
       <Button
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
         {...(props as ButtonProps)}
         aria-label={t`Copy link`}
         bd={0}

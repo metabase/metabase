@@ -21,6 +21,7 @@ import type {
   CacheStrategyType,
   CacheableModel,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { rootId } from "./constants/simple";
 
@@ -29,9 +30,8 @@ export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
   typeof error === "object" &&
   error !== null &&
   "data" in error &&
-  typeof error.data === "object" &&
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-  "message" in (error as { data: any }).data &&
+  isObject(error.data) &&
+  "message" in error.data &&
   typeof (error as { data: { message: any } }).data.message === "string";
 
 const delay = (milliseconds: number) =>

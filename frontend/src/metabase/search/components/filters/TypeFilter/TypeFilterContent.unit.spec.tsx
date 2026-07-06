@@ -104,10 +104,9 @@ const setup = async ({
 };
 
 const getCheckboxes = () => {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-  return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
-    "checkbox",
-  ) as HTMLInputElement[];
+  return within(
+    screen.getByTestId("type-filter-checkbox-group"),
+  ).getAllByRole<HTMLInputElement>("checkbox");
 };
 
 describe("TypeFilterContent", () => {

@@ -93,8 +93,7 @@ function getDiffKeys(revision: Revision): string[] {
     return [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-  const diff = revision.diff as RevisionDiffMap;
+  const diff = revision.diff;
   let keys = Object.keys(diff);
 
   if (revision.is_creation) {
@@ -112,7 +111,6 @@ function getDiffForKey(
     return undefined;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
   const revisionDiff = diff as RevisionDiffMap;
   return revisionDiff[key];
 }

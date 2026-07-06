@@ -104,7 +104,6 @@ const getRows = (hovered: HoveredObject) => {
       dimensions.push(...hovered.dimensions);
     }
     if (hovered.value !== undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
       dimensions.push({
         value: hovered.value,
         column: hovered.column,

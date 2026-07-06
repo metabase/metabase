@@ -21,7 +21,6 @@ export const CommentsButton = <C extends ElementType = "button">({
       }
       px="sm"
       size="xs"
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
       {...(props as ButtonProps)}
     >
       {unresolvedCommentsCount > 0 ? unresolvedCommentsCount : null}

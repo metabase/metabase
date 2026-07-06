@@ -65,11 +65,10 @@ export const Schedule = ({
   const [internalCronString, setInternalCronString] = useState(() =>
     formatCronExpressionForUI(initialCronString),
   );
-  const schedule = useMemo(() => {
+  const schedule = useMemo<ScheduleSettings>(() => {
     return (
       cronToScheduleSettings(initialCronString, isCustomSchedule) ?? {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-        schedule_type: "hourly" as ScheduleType,
+        schedule_type: "hourly",
         schedule_minute: 0,
       }
     );

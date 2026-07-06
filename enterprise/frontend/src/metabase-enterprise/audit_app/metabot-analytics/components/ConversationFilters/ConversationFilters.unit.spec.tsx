@@ -125,10 +125,9 @@ describe("ConversationFilters date dropdown", () => {
       retentionDays: 180,
       date: "2026-01-02~2026-03-15",
     });
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-    const input = screen.getByTestId(
+    const input = screen.getByTestId<HTMLInputElement>(
       "conversation-filters-date-select",
-    ) as HTMLInputElement;
+    );
     expect(input.value).toMatch(/January 2, 2026.*March 15, 2026/);
     expect(input.title).toMatch(/January 2, 2026.*March 15, 2026/);
   });

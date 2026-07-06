@@ -24,15 +24,13 @@ export function transformClickedDataPoint(
       : undefined,
     value: clicked.value,
     question: transformSdkQuestion(question),
-    data: clicked.data?.reduce(
-      (acc, curr) => {
-        if (curr.col) {
-          acc[curr.col.name] = curr.value;
-        }
-        return acc;
-      },
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-      {} as Record<string, string | number | null | boolean | object>,
-    ),
+    data: clicked.data?.reduce<
+      Record<string, string | number | null | boolean | object>
+    >((acc, curr) => {
+      if (curr.col) {
+        acc[curr.col.name] = curr.value;
+      }
+      return acc;
+    }, {}),
   };
 }

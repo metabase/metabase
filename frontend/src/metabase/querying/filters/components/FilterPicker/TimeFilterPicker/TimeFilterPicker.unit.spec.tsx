@@ -149,8 +149,7 @@ describe("TimeFilterPicker", () => {
     it("should add a filter with one value", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-      const input = screen.getByDisplayValue("00:00") as HTMLInputElement;
+      const input = screen.getByDisplayValue<HTMLInputElement>("00:00");
 
       await setOperator("After");
       await typeTime(input, "11:15");
@@ -169,8 +168,7 @@ describe("TimeFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("After");
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-      const input = screen.getByDisplayValue("00:00") as HTMLInputElement;
+      const input = screen.getByDisplayValue<HTMLInputElement>("00:00");
       await typeTime(input, "11:15{enter}");
 
       expect(getNextFilterParts()).toMatchObject({
@@ -186,10 +184,8 @@ describe("TimeFilterPicker", () => {
 
       await setOperator("Between");
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-      const [leftInput, rightInput] = screen.getAllByDisplayValue(
-        "00:00",
-      ) as HTMLInputElement[];
+      const [leftInput, rightInput] =
+        screen.getAllByDisplayValue<HTMLInputElement>("00:00");
       await typeTime(leftInput, "11:15");
       await typeTime(rightInput, "12:30");
       await userEvent.click(screen.getByText("Add filter"));
@@ -210,10 +206,8 @@ describe("TimeFilterPicker", () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       await setOperator("Between");
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-      const [leftInput, rightInput] = screen.getAllByDisplayValue(
-        "00:00",
-      ) as HTMLInputElement[];
+      const [leftInput, rightInput] =
+        screen.getAllByDisplayValue<HTMLInputElement>("00:00");
       await typeTime(leftInput, "11:15");
       await typeTime(rightInput, "12:30{enter}");
 
@@ -233,10 +227,8 @@ describe("TimeFilterPicker", () => {
 
       await setOperator("Between");
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-      const [leftInput, rightInput] = screen.getAllByDisplayValue(
-        "00:00",
-      ) as HTMLInputElement[];
+      const [leftInput, rightInput] =
+        screen.getAllByDisplayValue<HTMLInputElement>("00:00");
       await typeTime(leftInput, "12:30");
       await typeTime(rightInput, "11:15");
       await userEvent.click(screen.getByText("Add filter"));
@@ -506,8 +498,7 @@ describe("TimeFilterPicker", () => {
 
       // There's no particular reason why 32:66 becomes 09:06
       // We trust the TimeInput to turn it into a valid time value
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
-      const input = screen.getByDisplayValue("09:06") as HTMLInputElement;
+      const input = screen.getByDisplayValue<HTMLInputElement>("09:06");
       await typeTime(input, "11:00");
       await userEvent.click(screen.getByText("Update filter"));
 
