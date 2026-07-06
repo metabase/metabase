@@ -1,7 +1,7 @@
 (ns metabase.indexes.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
+   [metabase.driver]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.query-test-util :as query-test-util]
@@ -137,43 +137,25 @@
       (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id)))))))
 
 (deftest incremental-mutations-force-next-run-to-rebuild-test
-  ;; `:btree` is stubbed to a fixed lifecycle rather than relying on the test driver's real
-  ;; `supported-index-methods` (H2 has no override, so an unstubbed run would only ever exercise the
-  ;; "unrecognized kind" fallback, not the real :standalone/:inline distinction).
-  (testing ":standalone-kind lifecycle (e.g. a Postgres btree): a fresh create applies in place, only an
-            update/delete needs a rebuild"
-    (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)
-                                                              :last_checkpoint_value "100")]
-      (with-redefs [driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})]
-        (let [created (mt/user-http-request :crowberto :post 200 "index/request"
-                                            {:transform_id transform-id :structured btree})]
-          (testing "POST does not reset the checkpoint -- the create applies without a rebuild"
-            (is (= "100" (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
-          (testing "a pending standalone create does not force the next run to rebuild"
-            (is (false? (#'transforms-base.u/full-incremental-run?
-                         (t2/select-one :model/Transform transform-id)))))
-          (testing "PUT clears the checkpoint so the changed structure can be applied (update always rebuilds)"
-            (t2/update! :model/Transform transform-id {:last_checkpoint_value "200"})
-            (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))
-                                  {:structured (assoc btree :columns [{:name "price"}])})
-            (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
-          (testing "DELETE clears the checkpoint so the old index can be dropped by the rebuild (delete always rebuilds)"
-            (t2/update! :model/Transform transform-id {:last_checkpoint_value "300"})
-            (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
-            (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))))))
-  (testing ":inline-kind lifecycle (e.g. a Redshift sortkey): even a fresh create can only apply via a rebuild"
-    (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)
-                                                              :last_checkpoint_value "100")]
-      (with-redefs [driver/supported-index-methods (fn [& _] {:btree {:lifecycle :inline}})]
-        (let [created (mt/user-http-request :crowberto :post 200 "index/request"
-                                            {:transform_id transform-id :structured btree})]
-          (testing "POST resets the checkpoint so the create is applied by the next rebuild"
-            (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
-          (testing "a pending inline create forces the next run to rebuild"
-            (t2/update! :model/Transform transform-id {:last_checkpoint_value "400"})
-            (is (true? (#'transforms-base.u/full-incremental-run?
-                        (t2/select-one :model/Transform transform-id))))
-            (is (some? created))))))))
+  (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)
+                                                            :last_checkpoint_value "100")]
+    (testing "POST clears the checkpoint so the new index can be applied"
+      (let [created (mt/user-http-request :crowberto :post 200 "index/request"
+                                          {:transform_id transform-id :structured btree})]
+        (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id)))
+        (testing "PUT clears the checkpoint so the changed structure can be applied"
+          (t2/update! :model/Transform transform-id {:last_checkpoint_value "200"})
+          (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))
+                                {:structured (assoc btree :columns [{:name "price"}])})
+          (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
+        (testing "DELETE clears the checkpoint so the old index can be dropped by the rebuild"
+          (t2/update! :model/Transform transform-id {:last_checkpoint_value "300"})
+          (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
+          (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
+        (testing "pending index status still forces a full rebuild if an in-flight run saves a checkpoint"
+          (t2/update! :model/Transform transform-id {:last_checkpoint_value "400"})
+          (is (#'transforms-base.u/full-incremental-run?
+               (t2/select-one :model/Transform transform-id))))))))
 
 (deftest inline-kind-index-name-test
   (testing "an inline kind with no :name gets its index_name from :kind"

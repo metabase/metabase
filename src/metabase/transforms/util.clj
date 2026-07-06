@@ -178,7 +178,7 @@
                                 driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms*
                                                                           transform-timeout-ms)]
                         (run-transform! cancel-chan source-range-params)))]
-            (if full-create?
+            (when full-create?
               ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
               ;; stays a full rebuild that re-attempts the index).
               (let [running-indexes (table-index/mark-runnable-indexes-running!
@@ -194,9 +194,7 @@
                      "Index status could not be verified after the transform completed."))
                   (catch Throwable t
                     (table-index/mark-unverified-running-indexes-failed! running-indexes (ex-message t))
-                    (throw t))))
-              ;; Append run: no rebuild, but a standalone-kind create-pending index can still land in place.
-              (transforms-base.u/apply-pending-standalone-index-creates! transform))
+                    (throw t)))))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
             (transform-run/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's

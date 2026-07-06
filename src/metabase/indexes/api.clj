@@ -25,7 +25,7 @@
    [:index_name ms/NonBlankString]
    ;; The real structured schema (not a bare `:map`) so response coercion doesn't strip its keys.
    [:structured ::schema/index-structured]
-   [:status [:enum :create-pending :update-pending :delete-pending :verify-pending :running :succeeded :failed]]
+   [:status [:enum :create-pending :update-pending :delete-pending :running :succeeded :failed]]
    [:error_message [:maybe :string]]
    [:created_by [:maybe ms/PositiveInt]]
    [:created_at :any]

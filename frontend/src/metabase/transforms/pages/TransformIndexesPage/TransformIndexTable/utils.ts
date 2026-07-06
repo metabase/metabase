@@ -33,8 +33,7 @@ export function isPendingStatus(
   return (
     status === "create-pending" ||
     status === "update-pending" ||
-    status === "delete-pending" ||
-    status === "verify-pending"
+    status === "delete-pending"
   );
 }
 
@@ -46,12 +45,7 @@ export function formatStatus(
   }
 
   return match(status)
-    .with(
-      "create-pending",
-      "update-pending",
-      "verify-pending",
-      () => t`Pending`,
-    )
+    .with("create-pending", "update-pending", () => t`Pending`)
     .with("delete-pending", () => t`Removing`)
     .with("running", () => t`Running`)
     .with("succeeded", () => t`Succeeded`)

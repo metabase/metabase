@@ -96,19 +96,12 @@
 (defn full-incremental-run?
   "True when an incremental transform should drop-and-recreate the target rather than append.
   Fires when `last_checkpoint_value` is nil (first run, or after the before-update hook clears the watermark on
-  a `checkpoint-filter-field-id` change), or when a pending index change requires rebuilding the table to apply
-  physical index state (see `table-index/rebuild-required?`; a pending standalone create doesn't, so it applies
-  in place on an append run instead -- see [[apply-pending-standalone-index-creates!]]).
-  The driver/database lookup only happens when there's a pending index row to check."
+  a `checkpoint-filter-field-id` change), or when pending index changes require rebuilding the table to apply
+  physical index state."
   [{:keys [id] :as transform}]
-  (boolean
-   (and (incremental-target? transform)
-        (or (nil? (:last_checkpoint_value transform))
-            (when-let [rows (seq (table-index/select-pending-for-transform id))]
-              (when-let [db-id (transforms-base.i/target-db-id transform)]
-                (when-let [database (t2/select-one :model/Database db-id)]
-                  (let [methods (driver/supported-index-methods (:engine database) database)]
-                    (some #(table-index/rebuild-required? % methods) rows)))))))))
+  (and (incremental-target? transform)
+       (or (nil? (:last_checkpoint_value transform))
+           (table-index/pending-changes-for-transform? id))))
 
 ;;; ------------------------------------------------- Table Template Tags -------------------------------------------------
 
@@ -655,33 +648,12 @@
     (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
       (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
 
-(defn apply-pending-standalone-index-creates!
-  "On an append run (not a full-create rebuild), apply this transform's still-`:create-pending` *standalone*-kind
-  index requests in place -- `CREATE INDEX IF NOT EXISTS` lands them without touching the live table. Inline kinds
-  render only at table creation, so a pending inline request is left for the next rebuild (see
-  `metabase.indexes.models.table-index/rebuild-required?`). Marks each applied request `:succeeded` directly: by
-  the time `apply-standalone-indexes!` returns without throwing, its DDL landed for certain."
-  [transform]
-  (when-not (full-create-run? transform)
-    (let [creates (table-index/select-create-pending-for-transform (:id transform))]
-      (when (seq creates)
-        (let [database   (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
-              methods    (driver/supported-index-methods (:engine database) database)
-              standalone (filter #(= :standalone (get-in methods [(:kind (:structured %)) :lifecycle])) creates)]
-          (when (seq standalone)
-            (apply-standalone-indexes! database (assoc (:target transform)
-                                                       :indexes      (mapv :structured standalone)
-                                                       :transform-id (:id transform)))
-            (t2/update! :model/TableIndex :id [:in (map :id standalone)]
-                        {:status :succeeded :error_message nil :last_executed_at :%now})))))))
-
 (defn mark-inline-index-requests-failed!
   "On a full-create run that fails before its index-apply step even starts -- most notably, the table-creation CTAS
   itself throws, and an inline index (e.g. a Redshift sortkey) renders straight into that statement -- mark this
   run's still-unsettled *inline*-kind index requests `:failed` with `message`. Standalone-kind requests are left
-  alone: a CTAS failure can't be caused by them (they apply in a later, separate DDL step, and get their own
-  precise attribution there, or retry automatically -- see [[apply-pending-standalone-index-creates!]]); guessing
-  they're at fault here would be a real mis-attribution."
+  alone: a CTAS failure can't be caused by them, since they apply in a later, separate DDL step; guessing they're
+  at fault here would be a real mis-attribution."
   [transform index-request-ids message]
   (when (and (seq index-request-ids) (full-create-run? transform))
     (let [database   (t2/select-one :model/Database (transforms-base.i/target-db-id transform))

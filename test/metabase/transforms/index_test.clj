@@ -362,44 +362,6 @@
         (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
         (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
 
-(deftest apply-pending-standalone-index-creates!-test
-  (testing "on an append run, applies standalone create-pending requests in place and marks them succeeded;
-            inline create-pending requests are left for the next rebuild"
-    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
-                                               :source {:type "query" :query {:database (mt/id)}}
-                                               :target {:database (mt/id) :type "table-incremental"
-                                                        :schema "public" :name (mt/random-name)}}
-                   :model/TableIndex {standalone-id :id} {:transform_id tid :index_name "standalone_idx"
-                                                          :structured {:kind :btree :name "standalone_idx"
-                                                                       :columns [{:name "x"}]}}
-                   :model/TableIndex {inline-id :id} {:transform_id tid :index_name "inline_idx"
-                                                      :structured {:kind :sortkey :style :compound
-                                                                   :columns [{:name "y"}]}}]
-      (let [compiled (atom [])]
-        (with-redefs [driver/supported-index-methods (fn [& _] {:btree   {:lifecycle :standalone}
-                                                                :sortkey {:lifecycle :inline}})
-                      driver/connection-spec        (fn [& _] {})
-                      driver/compile-create-index   (fn [_ _ _ idx] (swap! compiled conj idx) ["CREATE INDEX ..."])
-                      driver/execute-raw-queries!   (fn [& _] nil)]
-          (transforms-base.u/apply-pending-standalone-index-creates!
-           {:id tid :source {:type "query" :query {:database (mt/id)}}
-            :target {:database (mt/id) :schema "public" :name "t"}})
-          (is (= [:btree] (map :kind @compiled)) "only the standalone request's DDL was compiled and executed")
-          (is (= :succeeded (t2/select-one-fn :status :model/TableIndex standalone-id)))
-          (is (= :create-pending (t2/select-one-fn :status :model/TableIndex inline-id)))))))
-  (testing "a no-op on a full-create run -- those indexes are applied by apply-target-indexes! instead"
-    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
-                                               :source {:type "query" :query {:database (mt/id)}}
-                                               :target {:database (mt/id) :type "table"
-                                                        :schema "public" :name (mt/random-name)}}
-                   :model/TableIndex {standalone-id :id} {:transform_id tid :index_name "standalone_idx"
-                                                          :structured {:kind :btree :name "standalone_idx"
-                                                                       :columns [{:name "x"}]}}]
-      (with-redefs [driver/execute-raw-queries! (fn [& _] (throw (ex-info "should not be called" {})))]
-        (transforms-base.u/apply-pending-standalone-index-creates!
-         {:id tid :target {:type "table" :database (mt/id) :schema "public" :name "t"}})
-        (is (= :create-pending (t2/select-one-fn :status :model/TableIndex standalone-id)))))))
-
 (deftest mark-inline-index-requests-failed!-test
   (testing "on a full-create run, marks only unsettled inline-kind requests failed with the message"
     (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)

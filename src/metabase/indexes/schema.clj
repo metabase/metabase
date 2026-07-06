@@ -77,10 +77,8 @@
    [:order-by ::order-by] [:skip-index ::skip-index]])
 
 (def statuses
-  "Valid lifecycle states for a table index request. `:verify-pending` marks a bystander revalidation (the owning
-  transform changed, but not necessarily this index's own definition) -- unlike the other pending statuses, it
-  never alone forces a rebuild; see `metabase.indexes.models.table-index/rebuild-required?`."
-  #{:create-pending :update-pending :delete-pending :verify-pending :running :succeeded :failed})
+  "Valid lifecycle states for a table index request."
+  #{:create-pending :update-pending :delete-pending :running :succeeded :failed})
 
 (defn keywordize-structured
   "Re-keywordize the structured map's enum-valued fields after JSON storage flattened them to strings."

@@ -3,11 +3,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
-   [metabase.driver :as driver]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
-   [metabase.transforms-base.util :as transforms-base.u]
-   [toucan2.core :as t2]))
+   [metabase.transforms-base.util :as transforms-base.u]))
 
 (set! *warn-on-reflection* true)
 
@@ -101,55 +99,6 @@
   (testing "accepts both string and keyword target types"
     (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type :table-incremental} :last_checkpoint_value nil})))))
-
-(deftest full-incremental-run?-pending-index-matrix-test
-  (testing "an incremental transform's rebuild-vs-append decision given various pending index rows"
-    (letfn [(spec []
-              {:name   (mt/random-name)
-               :source {:type "query" :query {:database (mt/id) :type "native" :native {:query "SELECT 1"}}}
-               :target {:database (mt/id) :type "table-incremental" :schema "public" :name (mt/random-name)}})
-            ;; Inserting a :model/TableIndex row can itself reset the transform's checkpoint (see
-            ;; `checkpoint-reset-required-for-insert?`); re-set a known value afterward so each case starts from a
-            ;; deterministic non-nil checkpoint, isolating the pending-row logic under test.
-            (reset-checkpoint! [tid] (t2/update! :model/Transform tid {:last_checkpoint_value "100"}))]
-      (testing "no pending index rows: appends"
-        (mt/with-temp [:model/Transform {tid :id} (spec)]
-          (reset-checkpoint! tid)
-          (is (false? (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform tid))))))
-      (testing "a :verify-pending bystander row never forces a rebuild"
-        (mt/with-temp [:model/Transform {tid :id} (spec)
-                       :model/TableIndex _ {:transform_id tid :index_name "idx" :status :verify-pending
-                                            :structured {:kind :btree :name "idx" :columns [{:name "a"}]}}]
-          (reset-checkpoint! tid)
-          (is (false? (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform tid))))))
-      (testing "a :standalone create-pending row applies in place -- appends"
-        (mt/with-temp [:model/Transform {tid :id} (spec)
-                       :model/TableIndex _ {:transform_id tid :index_name "idx" :status :create-pending
-                                            :structured {:kind :btree :name "idx" :columns [{:name "a"}]}}]
-          (reset-checkpoint! tid)
-          (with-redefs [driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})]
-            (is (false? (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform tid)))))))
-      (testing "an :inline create-pending row can only apply via a rebuild"
-        (mt/with-temp [:model/Transform {tid :id} (spec)
-                       :model/TableIndex _ {:transform_id tid :index_name "idx" :status :create-pending
-                                            :structured {:kind :sortkey :style :compound :columns [{:name "a"}]}}]
-          (reset-checkpoint! tid)
-          (with-redefs [driver/supported-index-methods (fn [& _] {:sortkey {:lifecycle :inline}})]
-            (is (true? (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform tid)))))))
-      (testing "a :standalone update-pending row still needs a rebuild -- no in-place DDL for updates"
-        (mt/with-temp [:model/Transform {tid :id} (spec)
-                       :model/TableIndex _ {:transform_id tid :index_name "idx" :status :update-pending
-                                            :structured {:kind :btree :name "idx" :columns [{:name "a"}]}}]
-          (reset-checkpoint! tid)
-          (with-redefs [driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})]
-            (is (true? (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform tid)))))))
-      (testing "an :inline update-pending row needs a rebuild"
-        (mt/with-temp [:model/Transform {tid :id} (spec)
-                       :model/TableIndex _ {:transform_id tid :index_name "idx" :status :update-pending
-                                            :structured {:kind :sortkey :style :compound :columns [{:name "a"}]}}]
-          (reset-checkpoint! tid)
-          (with-redefs [driver/supported-index-methods (fn [& _] {:sortkey {:lifecycle :inline}})]
-            (is (true? (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform tid))))))))))
 
 (deftest ^:parallel checkpoint-span-attrs-test
   (testing "nil source-range-params yields an empty attrs map"

@@ -92,7 +92,6 @@ export const TABLE_INDEX_REQUEST_STATUSES = [
   "create-pending",
   "update-pending",
   "delete-pending",
-  "verify-pending",
   "running",
   "succeeded",
   "failed",
