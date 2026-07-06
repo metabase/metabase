@@ -896,6 +896,104 @@
                                             :group_id group-id :db_id db-id
                                             :table_id table-id-3 :perm_type :perms/view-data))))))))
 
+(deftest set-default-table-permissions!-blocked-db-stays-collapsed-test
+  (testing "A :blocked DB-level row already covers a new :blocked table, so we don't go granular (#76077)"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+      (mt/with-temp [:model/Table {table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+        (t2/delete! :model/DataPermissions :group_id group-id :table_id table-id-2 :perm_type :perms/view-data)
+        (mt/with-dynamic-fn-redefs [data-perms/new-table-view-data-permission-levels
+                                    (fn [_db-id group-ids] (zipmap group-ids (repeat :blocked)))]
+          (data-perms/set-default-table-permissions!
+           {:id table-id-2 :db_id db-id :schema "PUBLIC"}
+           [{:group-id group-id :perm-type :perms/view-data :default-value :unrestricted}]))
+        (testing "the DB-level :blocked row remains and no per-table rows were written"
+          (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
+                                            :group_id group-id :db_id db-id :table_id nil
+                                            :perm_type :perms/view-data)))
+          (is (zero? (t2/count :model/DataPermissions
+                               :group_id group-id :db_id db-id :perm_type :perms/view-data
+                               :table_id [:not= nil]))))
+        (testing "effective permission for the new table is still :blocked"
+          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-2)))
+          (is (= :blocked (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id-1))))))))
+
+(deftest save-permission-changes!-collapses-blocked-view-data-test
+  (testing "Uniform :blocked view-data rows covering the whole DB collapse to a db-level row"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}
+                   :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      ;; Going granular deletes the db-level row and writes one :blocked row per table; the write funnel
+      ;; must then collapse those straight back to a single db-level :blocked row.
+      (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked
+                                                                    table-id-2 :blocked})
+      (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
+                                        :group_id group-id :db_id db-id :table_id nil
+                                        :perm_type :perms/view-data)))
+      (is (zero? (t2/count :model/DataPermissions
+                           :group_id group-id :db_id db-id :perm_type :perms/view-data
+                           :table_id [:not= nil])))))
+  (testing "Uniform rows with any other value stay granular (inactive tables must keep reading as
+            least-permissive, and a db-level row would apply to them; other perm types must keep their
+            granular graph shape per #73520)"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}
+                   :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+      (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :unrestricted
+                                                                    table-id-2 :unrestricted})
+      (is (nil? (t2/select-one :model/DataPermissions
+                               :group_id group-id :db_id db-id :table_id nil
+                               :perm_type :perms/view-data)))
+      (is (= 2 (t2/count :model/DataPermissions
+                         :group_id group-id :db_id db-id :perm_type :perms/view-data
+                         :table_id [:not= nil]))))))
+
+(deftest collapse-uniform-table-permissions!-test
+  (testing "table-level rows duplicating an equal-value db-level row are deleted"
+    (mt/with-temp [:model/Database         {db-id :id}    {}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/Table            {table-id :id} {:db_id db-id :schema "PUBLIC" :active true}]
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      ;; simulate the redundant state a crash between collapse's insert and delete would leave behind
+      (t2/insert! :model/DataPermissions {:group_id    group-id
+                                          :db_id       db-id
+                                          :table_id    table-id
+                                          :schema_name "PUBLIC"
+                                          :perm_type   :perms/view-data
+                                          :perm_value  :unrestricted})
+      (data-perms/collapse-uniform-table-permissions! [[group-id db-id :perms/view-data]])
+      (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions
+                                             :group_id group-id :db_id db-id :table_id nil
+                                             :perm_type :perms/view-data)))
+      (is (zero? (t2/count :model/DataPermissions
+                           :group_id group-id :db_id db-id :perm_type :perms/view-data
+                           :table_id [:not= nil])))))
+  (testing "partial table coverage does not collapse"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}
+                   :model/Table            {_table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
+      (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/view-data)
+      (t2/insert! :model/DataPermissions {:group_id    group-id
+                                          :db_id       db-id
+                                          :table_id    table-id-1
+                                          :schema_name "PUBLIC"
+                                          :perm_type   :perms/view-data
+                                          :perm_value  :blocked})
+      (data-perms/collapse-uniform-table-permissions! [[group-id db-id :perms/view-data]])
+      (is (nil? (t2/select-one :model/DataPermissions
+                               :group_id group-id :db_id db-id :table_id nil
+                               :perm_type :perms/view-data)))
+      (is (= 1 (t2/count :model/DataPermissions
+                         :group_id group-id :db_id db-id :perm_type :perms/view-data
+                         :table_id [:not= nil]))))))
+
 (deftest set-default-table-permissions!-simple-insert-test
   (testing "When group is already table-granular, new table gets a simple insert"
     (mt/with-temp [:model/Database         {db-id :id}      {}

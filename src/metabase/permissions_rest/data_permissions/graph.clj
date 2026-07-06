@@ -490,7 +490,9 @@
    - Explicit db-level desired (nil key, no table overrides) → always db-level
    - Mixed (db-level default + table overrides) where all values same → coalesce to db-level
    - Table-level desired, current was db-level, all values match current → keep db-level (no-op)
-   - Otherwise → table-level rows"
+   - Otherwise → table-level rows (a uniform least-permissive value is then collapsed to db-level by
+     [[metabase.permissions.core/save-permission-changes!]]; other uniform values must stay granular
+     because a db-level row, unlike table-level rows, also applies to inactive tables)"
   [group-id db-id perm-type desired-entries current-rows all-tables]
   (let [has-db-level?  (contains? desired-entries nil)
         table-entries  (dissoc desired-entries nil)]
@@ -600,10 +602,8 @@
          desired-state       (compute-desired-state graph tables-by-db-schema)
          {:keys [to-delete to-insert]} (compute-diff desired-state current-perms tables-by-db)]
      (validate-blocked-permissions! graph)
-     (when (seq to-delete)
-       (perms/batch-delete-permissions! to-delete))
-     (when (seq to-insert)
-       (perms/batch-insert-permissions! to-insert))))
+     (perms/save-permission-changes! {:to-delete to-delete
+                                      :to-insert to-insert})))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

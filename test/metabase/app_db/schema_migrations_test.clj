@@ -3246,3 +3246,74 @@
               (when (= :mysql (mdb/db-type))
                 (testing "invalid JSON task_details is skipped by JSON_VALID, run stays null (GDGT-2680)"
                   (is (nil? (nid invalid))))))))))))
+
+(deftest collapse-uniform-table-permissions-migration-test
+  (testing "Migrations v60.2026-07-06T00:00:00 and v60.2026-07-06T00:00:01:
+            uniform full-coverage :blocked view-data table rows collapse to a db-level row (#76077)"
+    (impl/test-migrations ["v60.2026-07-06T00:00:00" "v60.2026-07-06T00:00:01"] [migrate!]
+      (let [group-id (t2/insert-returning-pk! :permissions_group {:name "collapse-test-group"})
+            db!      (fn [db-name]
+                       (t2/insert-returning-pk! :metabase_database
+                                                {:details    "{}"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :engine     "h2"
+                                                 :is_sample  false
+                                                 :name       db-name}))
+            table!   (fn [db-id active?]
+                       (t2/insert-returning-pk! :metabase_table
+                                                {:db_id      db-id
+                                                 :name       (mt/random-name)
+                                                 :schema     "PUBLIC"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :active     active?}))
+            perm!    (fn [db-id table-id perm-type perm-value]
+                       (t2/insert! :data_permissions
+                                   {:group_id    group-id
+                                    :db_id       db-id
+                                    :table_id    table-id
+                                    :schema_name (when table-id "PUBLIC")
+                                    :perm_type   perm-type
+                                    :perm_value  perm-value}))
+            rows     (fn [db-id perm-type]
+                       (t2/select-fn-set (juxt :table_id :perm_value) :data_permissions
+                                         :group_id group-id :db_id db-id :perm_type perm-type))
+            ;; db-1: uniform :blocked covering all active tables (+ a row for an inactive table) → collapses
+            db-1     (db! "collapse-uniform")
+            t1a      (table! db-1 true)
+            t1b      (table! db-1 true)
+            t1-off   (table! db-1 false)
+            ;; db-2: partial coverage → untouched
+            db-2     (db! "collapse-partial")
+            t2a      (table! db-2 true)
+            _t2b     (table! db-2 true)
+            ;; db-3: mixed values → untouched
+            db-3     (db! "collapse-mixed")
+            t3a      (table! db-3 true)
+            t3b      (table! db-3 true)
+            ;; db-4: uniform but :unrestricted → untouched
+            db-4     (db! "collapse-unrestricted")
+            t4a      (table! db-4 true)
+            ;; db-5: uniform :no create-queries (not view-data) → untouched
+            db-5     (db! "collapse-other-type")
+            t5a      (table! db-5 true)]
+        (perm! db-1 t1a "perms/view-data" "blocked")
+        (perm! db-1 t1b "perms/view-data" "blocked")
+        (perm! db-1 t1-off "perms/view-data" "blocked")
+        (perm! db-2 t2a "perms/view-data" "blocked")
+        (perm! db-3 t3a "perms/view-data" "blocked")
+        (perm! db-3 t3b "perms/view-data" "unrestricted")
+        (perm! db-4 t4a "perms/view-data" "unrestricted")
+        (perm! db-5 t5a "perms/create-queries" "no")
+        (migrate!)
+        (testing "uniform :blocked collapses to a single db-level row, dropping the inactive table's row too"
+          (is (= #{[nil "blocked"]} (rows db-1 "perms/view-data"))))
+        (testing "partial coverage untouched"
+          (is (= #{[t2a "blocked"]} (rows db-2 "perms/view-data"))))
+        (testing "mixed values untouched"
+          (is (= #{[t3a "blocked"] [t3b "unrestricted"]} (rows db-3 "perms/view-data"))))
+        (testing "uniform non-blocked value untouched"
+          (is (= #{[t4a "unrestricted"]} (rows db-4 "perms/view-data"))))
+        (testing "non-view-data perm types untouched"
+          (is (= #{[t5a "no"]} (rows db-5 "perms/create-queries"))))))))

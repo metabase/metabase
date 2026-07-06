@@ -53,6 +53,7 @@
   permissions-for-user
   prime-db-cache
   sandboxes-for-user
+  save-permission-changes!
   schema-permission-for-user
   set-database-permission!
   set-table-permission!
