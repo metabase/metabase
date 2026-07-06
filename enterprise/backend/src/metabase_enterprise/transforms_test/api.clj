@@ -4,7 +4,7 @@
   and error→HTTP-status mapping are the same for both target types."
   (:require
    [metabase-enterprise.transforms-test.api.util :as api-util]
-   [metabase-enterprise.transforms-test.core :as test-run.core]
+   [metabase-enterprise.transforms-test.chain :as chain]
    [metabase-enterprise.transforms-test.subgraph :as subgraph]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -105,9 +105,9 @@
        {:status 200
         :body   (mapv api-util/input-table->response (input-tables all-transforms))}))))
 
-(api.macros/defendpoint :post "/:target-type/:id/subgraph" :- [:map
-                                                               [:status pos-int?]
-                                                               [:body api-util/TestRunResponse]]
+(api.macros/defendpoint :post "/:target-type/:id/run" :- [:map
+                                                          [:status pos-int?]
+                                                          [:body api-util/TestRunResponse]]
   "Run a synchronous *chained* (sub-graph) test run whose target is identified by
   `target-type` (`transform` | `card`) and `id`.
 
@@ -115,7 +115,7 @@
   (one CSV per boundary leaf), `expected` (CSV), `assertions` (JSON array of
   `{name, sql, severity}`), `options` (optional JSON; `ignore_columns`). At
   least one of `expected` or `assertions` is required. The required leaves are
-  what `GET …/subgraph-inputs` returns for the same `(target-type, id, sources)`
+  what `GET …/inputs` returns for the same `(target-type, id, sources)`
   selection.
 
   `card` covers questions, models, and metric cards (`:type :metric`). Read access
@@ -133,26 +133,26 @@
         (run-test-run!
          multipart-params
          {:slice-transforms (partial transform-slice-transforms id)
-          :run              (partial test-run.core/run-chain-test! id)}))
+          :run              (partial chain/run-chain-test! id)}))
 
     "card"
     (let [card (api/read-check :model/Card id)]
       (run-test-run!
        multipart-params
        {:slice-transforms (partial card-slice-transforms card)
-        :run              (partial test-run.core/run-card-chain-test! card)}))))
+        :run              (partial chain/run-card-chain-test! card)}))))
 
-(api.macros/defendpoint :get "/:target-type/:id/subgraph-inputs" :- [:map
-                                                                     [:status pos-int?]
-                                                                     [:body [:or
-                                                                             [:sequential api-util/InputTableResponse]
-                                                                             [:map [:status [:= "error"]]]]]]
+(api.macros/defendpoint :get "/:target-type/:id/inputs" :- [:map
+                                                            [:status pos-int?]
+                                                            [:body [:or
+                                                                    [:sequential api-util/InputTableResponse]
+                                                                    [:map [:status [:= "error"]]]]]]
   "Return the boundary leaf input tables for a chained test run whose target is
   identified by `target-type` (`transform` | `card`) and `id`, with selected
   sources from the repeatable `sources` query param.
 
   A vector of `{table_id, schema, name, columns}` descriptors — one fixture CSV per
-  entry is required for `POST …/subgraph`. Same shape for both target types."
+  entry is required for `POST …/run`. Same shape for both target types."
   [{:keys [target-type id]} :- [:map
                                 [:target-type [:enum "transform" "card"]]
                                 [:id ms/PositiveInt]]
@@ -164,13 +164,13 @@
       (do (api/read-check :model/Transform id)
           (inputs-response!
            {:slice-transforms (partial transform-slice-transforms id source-ids)
-            :input-tables     (partial test-run.core/subgraph-input-tables id source-ids)}))
+            :input-tables     (partial chain/subgraph-input-tables id source-ids)}))
 
       "card"
       (let [card (api/read-check :model/Card id)]
         (inputs-response!
          {:slice-transforms (partial card-slice-transforms card source-ids)
-          :input-tables     (partial test-run.core/card-subgraph-input-tables card source-ids)})))))
+          :input-tables     (partial chain/card-subgraph-input-tables card source-ids)})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."

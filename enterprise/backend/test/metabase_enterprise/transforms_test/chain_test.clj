@@ -1,8 +1,8 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms-test.chain-test
   "End-to-end tests for the chained (sub-graph) test-run orchestrator
   ([[metabase-enterprise.transforms-test.chain/run-chain-test!]]) and the generalized HTTP
-  endpoints (`POST /api/ee/transform-test/:target-type/:id/subgraph`,
-  `GET /api/ee/transform-test/:target-type/:id/subgraph-inputs`).
+  endpoints (`POST /api/ee/transform-test/:target-type/:id/run`,
+  `GET /api/ee/transform-test/:target-type/:id/inputs`).
 
   Builds a 2-node native chain on the test-data schema (see
   [[metabase-enterprise.transforms-test.test-util]] for the shared fixtures):
@@ -19,7 +19,6 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.transforms-test.api.util :as api-util]
    [metabase-enterprise.transforms-test.chain :as chain]
-   [metabase-enterprise.transforms-test.core :as test-run.core]
    [metabase-enterprise.transforms-test.execute :as test-run.execute]
    [metabase-enterprise.transforms-test.scratch :as scratch]
    [metabase-enterprise.transforms-test.test-util :as tu :refer [with-temp-csv-files]]
@@ -180,13 +179,13 @@
               (str "diff: " (pr-str (:diff result)))))))))
 
 ;;; ===========================================================================
-;;; HTTP endpoints: GET subgraph-inputs + POST subgraph
+;;; HTTP endpoints: GET inputs + POST subgraph
 ;;; ===========================================================================
 
 (deftest subgraph-inputs-endpoint-test
-  (testing "GET subgraph-inputs returns the leaf input tables for (target, sources)"
+  (testing "GET inputs returns the leaf input tables for (target, sources)"
     (with-t1-t2-chain [{:keys [t1 t2 orders-id people-id]}]
-      (let [resp (mt/user-http-request :crowberto :get 200 (tu/subgraph-inputs-url (:id t2))
+      (let [resp (mt/user-http-request :crowberto :get 200 (tu/inputs-url (:id t2))
                                        :sources (:id t1))]
         (testing "both leaf tables (orders, people) are returned"
           (is (= #{orders-id people-id} (set (map :table_id resp)))))
@@ -204,7 +203,7 @@
                               people-f   tu/people-rows
                               expected-f tu/correct-expected-csv]
           (let [resp (mt/user-http-request
-                      :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                      :crowberto :post 200 (tu/test-run-url (:id t2))
                       tu/multipart-content-type
                       {(str "input-" orders-id) orders-f
                        (str "input-" people-id) people-f
@@ -228,7 +227,7 @@
                               people-f   tu/people-rows
                               expected-f tu/correct-expected-csv]
           (let [resp (mt/user-http-request
-                      :crowberto :post 400 (tu/subgraph-test-run-url (:id t2))
+                      :crowberto :post 400 (tu/test-run-url (:id t2))
                       tu/multipart-content-type
                       {(str "input-" orders-id) orders-f
                        (str "input-" people-id) people-f
@@ -265,14 +264,14 @@
        ~@body)))
 
 (deftest card-subgraph-inputs-endpoint-test
-  (testing "GET card subgraph-inputs returns the card's boundary leaf tables"
+  (testing "GET card inputs returns the card's boundary leaf tables"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
             (with-enrich-card [t1 card]
-              (let [resp (mt/user-http-request :crowberto :get 200 (tu/card-subgraph-inputs-url (:id card))
+              (let [resp (mt/user-http-request :crowberto :get 200 (tu/card-inputs-url (:id card))
                                                :sources (:id t1))]
                 (testing "both leaves (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :table_id resp)))))
@@ -297,7 +296,7 @@
                                     people-f   tu/people-rows
                                     expected-f tu/correct-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            :crowberto :post 200 (tu/card-test-run-url (:id card))
                             tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
@@ -325,7 +324,7 @@
                                     people-f   tu/people-rows
                                     expected-f tu/wrong-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            :crowberto :post 200 (tu/card-test-run-url (:id card))
                             tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
@@ -382,14 +381,14 @@
 (def ^:private mbql-card-wrong-csv    "count\n99\n")
 
 (deftest card-mbql-subgraph-inputs-endpoint-test
-  (testing "GET card/subgraph-inputs for a stored MBQL card returns the leaf tables"
+  (testing "GET card/inputs for a stored MBQL card returns the leaf tables"
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
             (with-enrich-mbql-card [t1 card]
-              (let [resp (mt/user-http-request :crowberto :get 200 (tu/card-subgraph-inputs-url (:id card))
+              (let [resp (mt/user-http-request :crowberto :get 200 (tu/card-inputs-url (:id card))
                                                :sources (:id t1))]
                 (testing "both leaves (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :table_id resp)))))
@@ -413,7 +412,7 @@
                                     people-f   tu/people-rows
                                     expected-f mbql-card-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            :crowberto :post 200 (tu/card-test-run-url (:id card))
                             tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
@@ -439,7 +438,7 @@
                                     people-f   tu/people-rows
                                     expected-f mbql-card-wrong-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (tu/card-subgraph-test-run-url (:id card))
+                            :crowberto :post 200 (tu/card-test-run-url (:id card))
                             tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
@@ -453,21 +452,23 @@
 
 (deftest card-target-read-check-test
   (testing "card target enforces read-check :model/Card — no collection access → 403"
-    (mt/with-temp [:model/Collection coll {}
-                   :model/Card card {:collection_id (:id coll)
-                                     :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                      "SELECT 1 AS n")}]
-      (mt/with-non-admin-groups-no-collection-perms coll
-        (with-temp-csv-files [expected-f "n\n1\n"]
-          (mt/user-http-request
-           :rasta :post 403 (tu/card-subgraph-test-run-url (:id card))
-           tu/multipart-content-type
-           {"expected" expected-f}))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Card card {:collection_id (:id coll)
+                                       :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                        "SELECT 1 AS n")}]
+        (mt/with-non-admin-groups-no-collection-perms coll
+          (with-temp-csv-files [expected-f "n\n1\n"]
+            (mt/user-http-request
+             :rasta :post 403 (tu/card-test-run-url (:id card))
+             tu/multipart-content-type
+             {"expected" expected-f})))))))
 
 (deftest unknown-target-type-rejected-test
   (testing "unrecognised target-type returns 404 (metric cards use target-type=card)"
-    (is (= "API endpoint does not exist."
-           (mt/user-http-request :crowberto :get 404 "ee/transform-test/metric/1/subgraph-inputs")))))
+    (mt/with-premium-features #{:dependencies}
+      (is (= "API endpoint does not exist."
+             (mt/user-http-request :crowberto :get 404 "ee/transform-test/metric/1/inputs"))))))
 
 ;;; ===========================================================================
 ;;; Assertions wired into run-chain-test! and run-card-chain-test!
@@ -589,7 +590,7 @@
                             people-f   tu/people-rows
                             expected-f tu/correct-expected-csv]
         (let [resp (mt/user-http-request
-                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    :crowberto :post 200 (tu/test-run-url (:id t2))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      (str "input-" people-id) people-f
@@ -615,7 +616,7 @@
                                  :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
                                  :severity "error"}])
               resp (mt/user-http-request
-                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    :crowberto :post 200 (tu/test-run-url (:id t2))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      (str "input-" people-id) people-f
@@ -645,7 +646,7 @@
                                  :sql  (str "SELECT * FROM " target-name " WHERE revenue < 0")
                                  :severity "error"}])
               resp (mt/user-http-request
-                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    :crowberto :post 200 (tu/test-run-url (:id t2))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      (str "input-" people-id) people-f
@@ -671,7 +672,7 @@
       (with-temp-csv-files [expected-f tu/correct-expected-csv]
         ;; Send invalid JSON as the assertions part.
         (mt/user-http-request
-         :crowberto :post 400 (tu/subgraph-test-run-url (:id t2))
+         :crowberto :post 400 (tu/test-run-url (:id t2))
          tu/multipart-content-type
          {"expected"   expected-f
           "assertions" "this is not json"})))))
@@ -692,7 +693,7 @@
                                  :sql  "SELECT * FROM products WHERE price < 0"
                                  :severity "error"}])
               resp (mt/user-http-request
-                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t2))
+                    :crowberto :post 200 (tu/test-run-url (:id t2))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      (str "input-" people-id) people-f
@@ -716,7 +717,7 @@
       (with-temp-csv-files [orders-f tu/orders-rows
                             people-f tu/people-rows]
         (mt/user-http-request
-         :crowberto :post 400 (tu/subgraph-test-run-url (:id t2))
+         :crowberto :post 400 (tu/test-run-url (:id t2))
          tu/multipart-content-type
          {(str "input-" orders-id) orders-f
           (str "input-" people-id) people-f
@@ -1006,7 +1007,7 @@
          ;; orders-rows has user_ids 1,1,2,3 → 3 groups; ts ignored.
          expected-f "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n3,1,1970-01-01T00:00:00Z\n"]
         (let [resp (mt/user-http-request
-                    :crowberto :post 200 (tu/subgraph-test-run-url (:id t))
+                    :crowberto :post 200 (tu/test-run-url (:id t))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      "expected"               expected-f
@@ -1025,7 +1026,7 @@
         [orders-f   tu/orders-rows
          expected-f "id\n1\n"]
         (let [resp (mt/user-http-request
-                    :crowberto :post 422 (tu/subgraph-test-run-url (:id t))
+                    :crowberto :post 422 (tu/test-run-url (:id t))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      "expected"               expected-f
@@ -1044,7 +1045,7 @@
         [orders-f   "wrong_col_a,wrong_col_b\n1,2\n"
          expected-f "user_id,order_count\n1,1\n"]
         (let [resp (mt/user-http-request
-                    :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+                    :crowberto :post 400 (tu/test-run-url (:id t))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      "expected"               expected-f
@@ -1064,7 +1065,7 @@
         [orders-f   tu/orders-rows
          expected-f "user_id,order_count\n1,2\n2,1\n3,1\n4,1\n"]
         (let [resp (mt/user-http-request
-                    :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+                    :crowberto :post 400 (tu/test-run-url (:id t))
                     tu/multipart-content-type
                     {(str "input-" orders-id) orders-f
                      "expected"               expected-f
@@ -1084,7 +1085,7 @@
         [orders-f   tu/orders-rows
          expected-f "user_id\n1\n"]
         (mt/user-http-request
-         :crowberto :post 400 (tu/subgraph-test-run-url (:id t))
+         :crowberto :post 400 (tu/test-run-url (:id t))
          tu/multipart-content-type
          {(str "input-" orders-id) orders-f
           "expected"               expected-f
@@ -1097,7 +1098,7 @@
       (mt/with-temp [:model/Transform t {}]
         (with-temp-csv-files [expected-f "x\n1\n"]
           (mt/user-http-request
-           :rasta :post 403 (tu/subgraph-test-run-url (:id t))
+           :rasta :post 403 (tu/test-run-url (:id t))
            tu/multipart-content-type
            {"expected" expected-f}))))))
 
@@ -1116,20 +1117,20 @@
                  (fn [_] (throw (ex-info "Premium features required."
                                          {:status-code 402})))]
                 (mt/user-http-request
-                 :crowberto :post 402 (tu/subgraph-test-run-url (:id t))
+                 :crowberto :post 402 (tu/test-run-url (:id t))
                  tu/multipart-content-type
                  {"expected" expected-f})))))))))
 
 (deftest subgraph-inputs-cannot-determine-inputs-422-test
-  (testing "GET /subgraph-inputs — cannot-determine-inputs error → 422"
+  (testing "GET /inputs — cannot-determine-inputs error → 422"
     (with-single-native-transform [{:keys [t]} "SELECT user_id FROM orders"]
       (mt/with-dynamic-fn-redefs
-        [test-run.core/subgraph-input-tables
+        [chain/subgraph-input-tables
          (fn [& _]
            (throw (ex-info "Cannot determine inputs for this transform."
                            {:error-type :metabase-enterprise.transforms-test.errors/cannot-determine-inputs})))]
         (let [resp (mt/user-http-request
-                    :crowberto :get 422 (tu/subgraph-inputs-url (:id t)))]
+                    :crowberto :get 422 (tu/inputs-url (:id t)))]
           (testing "status is error"
             (is (= "error" (:status resp))))
           (testing "error type is cannot-determine-inputs"
@@ -1137,14 +1138,14 @@
             (is (str/includes? (get-in resp [:error :type]) "cannot-determine-inputs"))))))))
 
 (deftest subgraph-inputs-permissions-403-test
-  (testing "GET /subgraph-inputs — user without read access → 403"
+  (testing "GET /inputs — user without read access → 403"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Transform t {}]
         (mt/user-http-request
-         :rasta :get 403 (tu/subgraph-inputs-url (:id t)))))))
+         :rasta :get 403 (tu/inputs-url (:id t)))))))
 
 (deftest subgraph-inputs-feature-flag-402-test
-  (testing "GET /subgraph-inputs — feature not enabled → 402"
+  (testing "GET /inputs — feature not enabled → 402"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
@@ -1157,7 +1158,7 @@
                (fn [_] (throw (ex-info "Premium features required."
                                        {:status-code 402})))]
               (mt/user-http-request
-               :crowberto :get 402 (tu/subgraph-inputs-url (:id t))))))))))
+               :crowberto :get 402 (tu/inputs-url (:id t))))))))))
 
 (deftest subgraph-requires-dependencies-feature-402-test
   (testing "POST /subgraph — the :dependencies capability gate rejects with 402 for both target types"
@@ -1168,9 +1169,9 @@
             (with-temp-csv-files [expected-f tu/correct-expected-csv]
               (testing "transform target"
                 (mt/user-http-request
-                 :crowberto :post 402 (tu/subgraph-test-run-url (:id t1))
+                 :crowberto :post 402 (tu/test-run-url (:id t1))
                  tu/multipart-content-type {"expected" expected-f}))
               (testing "card target"
                 (mt/user-http-request
-                 :crowberto :post 402 (tu/card-subgraph-test-run-url (:id card))
+                 :crowberto :post 402 (tu/card-test-run-url (:id card))
                  tu/multipart-content-type {"expected" expected-f})))))))))

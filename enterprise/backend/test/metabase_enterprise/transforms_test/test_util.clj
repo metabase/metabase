@@ -100,25 +100,25 @@
   "Request options for multipart endpoints (mt/user-http-request)."
   {:request-options {:headers {"content-type" "multipart/form-data"}}})
 
-(defn subgraph-inputs-url
-  "GET subgraph-inputs URL for a transform target."
+(defn inputs-url
+  "GET inputs URL for a transform target."
   [id]
-  (format "ee/transform-test/transform/%d/subgraph-inputs" id))
+  (format "ee/transform-test/transform/%d/inputs" id))
 
-(defn subgraph-test-run-url
-  "POST subgraph test-run URL for a transform target."
+(defn test-run-url
+  "POST test-run URL for a transform target."
   [id]
-  (format "ee/transform-test/transform/%d/subgraph" id))
+  (format "ee/transform-test/transform/%d/run" id))
 
-(defn card-subgraph-inputs-url
-  "GET subgraph-inputs URL for a card target."
+(defn card-inputs-url
+  "GET inputs URL for a card target."
   [id]
-  (format "ee/transform-test/card/%d/subgraph-inputs" id))
+  (format "ee/transform-test/card/%d/inputs" id))
 
-(defn card-subgraph-test-run-url
-  "POST subgraph test-run URL for a card target."
+(defn card-test-run-url
+  "POST test-run URL for a card target."
   [id]
-  (format "ee/transform-test/card/%d/subgraph" id))
+  (format "ee/transform-test/card/%d/run" id))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Fixture CSV content (full real-schema headers; small row sets)

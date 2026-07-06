@@ -19,7 +19,7 @@
 
   - Asserts the cleanup and no-TransformRun invariants at the API level.
 
-  These tests exercise the subgraph endpoint (`POST /api/ee/transform-test/transform/:id/subgraph`)
+  These tests exercise the test-run endpoint (`POST /api/ee/transform-test/transform/:id/run`)
   with `sources=[]`, the degenerate single-node case."
   (:require
    [clojure.test :refer :all]
@@ -147,7 +147,7 @@
                  people-f   people-5-rows
                  expected-f correct-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (tu/subgraph-test-run-url (:id transform))
+                            :crowberto :post 200 (tu/test-run-url (:id transform))
                             tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f
@@ -157,8 +157,8 @@
                   (testing "status is passed"
                     (is (= "passed" (:status resp))
                         (str "Expected passed; diff: " (pr-str (:diff resp)))))
-                  (testing "test_run_id is nil (synchronous)"
-                    (is (nil? (:test_run_id resp))))
+                  (testing "no test_run_id field (dropped; reintroduce with async runs)"
+                    (is (not (contains? resp :test_run_id))))
                   (testing "diff is present and well-formed"
                     (is (map? (:diff resp)))
                     (is (contains? (:diff resp) :status))
@@ -185,7 +185,7 @@
 
 (deftest e2e-join-aggregation-failed-test
   (testing "E2E: mutate one expected cell (TX order_count 99) → 200 failed with named diff"
-    ;; Uses POST /ee/transform-test/transform/:id/subgraph with sources=[] (degenerate single-node).
+    ;; Uses POST /ee/transform-test/transform/:id/run with sources=[] (degenerate single-node).
     (mt/with-premium-features #{:dependencies}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
@@ -208,7 +208,7 @@
                  ;; TX order_count is 2 in reality, but expected says 99.
                  expected-f wrong-expected-csv]
                 (let [resp (mt/user-http-request
-                            :crowberto :post 200 (tu/subgraph-test-run-url (:id transform))
+                            :crowberto :post 200 (tu/test-run-url (:id transform))
                             tu/multipart-content-type
                             {(str "input-" orders-id) orders-f
                              (str "input-" people-id) people-f

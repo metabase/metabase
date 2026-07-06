@@ -3602,13 +3602,11 @@
 
   enterprise/transforms-test
   {:team "Graphy"
-   ;; core is only used within this module, so it is not an :api member.
    :api  #{metabase-enterprise.transforms-test.api}
    :uses #{api
            driver
            lib
            lib-be
-           premium-features
            query-processor
            sql-tools
            transforms

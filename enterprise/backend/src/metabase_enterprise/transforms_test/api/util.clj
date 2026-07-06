@@ -231,15 +231,13 @@
   to the HTTP response body.
 
   Status keywords are converted to strings (`\"passed\"` / `\"failed\"`) for JSON
-  serialisation. `:test_run_id` is nil (reserved for a future async polling variant).
-  `:assertions` is included when assertions were run; nil otherwise."
+  serialisation. `:assertions` is included when assertions were run; nil otherwise."
   [record]
-  {:status       (name (:status record))
-   :diff         (:diff record)
-   :assertions   (when-let [results (:assertions record)]
-                   ;; Convert per-assertion :status keywords to strings for JSON.
-                   (mapv (fn [r] (update r :status name)) results))
-   :test_run_id  nil})
+  {:status     (name (:status record))
+   :diff       (:diff record)
+   :assertions (when-let [results (:assertions record)]
+                 ;; Convert per-assertion :status keywords to strings for JSON.
+                 (mapv (fn [r] (update r :status name)) results))})
 
 (defn error->response
   "Convert a typed ex-info from the test-run pipeline to a run-record shaped
@@ -251,22 +249,20 @@
   bare status code."
   [e]
   (let [data (ex-data e)]
-    {:status      "error"
-     :message     (ex-message e)
-     :error       {:type    (pr-str (:error-type data))
-                   :message (ex-message e)}
-     :test_run_id nil}))
+    {:status  "error"
+     :message (ex-message e)
+     :error   {:type    (pr-str (:error-type data))
+               :message (ex-message e)}}))
 
 (def TestRunResponse
   "Malli schema for the test-run HTTP response body.
 
   Covers three shapes:
-  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>, :assertions [...], :test_run_id nil}
-  - error:         {:status \"error\",             :error <map>,   :test_run_id nil}"
+  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>, :assertions [...]}
+  - error:         {:status \"error\",             :error <map>}"
   [:map {:closed false}
-   [:status      [:enum "passed" "failed" "error"]]
-   [:test_run_id [:maybe pos-int?]]
-   [:assertions  {:optional true} [:maybe [:sequential :any]]]])
+   [:status     [:enum "passed" "failed" "error"]]
+   [:assertions {:optional true} [:maybe [:sequential :any]]]])
 
 (def InputTableResponse
   "Malli schema for a single entry in the inputs response.
