@@ -979,6 +979,21 @@
       (is (zero? (t2/count :model/DataPermissions
                            :group_id group-id :db_id db-id :perm_type :perms/view-data
                            :table_id [:not= nil])))))
+  (testing "an inactive table's row with the SAME value collapses along with the rest"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}
+                   :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active false}]
+      (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/view-data)
+      (insert-table-view-data-perm! group-id db-id table-id-1 :blocked)
+      (insert-table-view-data-perm! group-id db-id table-id-2 :blocked)
+      (data-perms/collapse-uniform-table-permissions! [[group-id db-id]])
+      (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
+                                        :group_id group-id :db_id db-id :table_id nil
+                                        :perm_type :perms/view-data)))
+      (is (zero? (t2/count :model/DataPermissions
+                           :group_id group-id :db_id db-id :perm_type :perms/view-data
+                           :table_id [:not= nil])))))
   (testing "partial table coverage does not collapse"
     (mt/with-temp [:model/Database         {db-id :id}      {}
                    :model/PermissionsGroup {group-id :id}   {}
