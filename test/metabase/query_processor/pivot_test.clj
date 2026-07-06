@@ -18,10 +18,12 @@
    [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp.core]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
@@ -429,7 +431,11 @@
                 (lib/aggregate base (lib/cum-sum (meta/field-metadata :orders :total)))))))
     (testing ":offset aggregation is not compatible"
       (is (not (qp.pivot/native-pivot-compatible?
-                (lib/aggregate base (lib/offset (lib/count) -1)))))))
+                (lib/aggregate base (lib/offset (lib/count) -1))))))
+    (testing "window-function aggregation nested inside an arithmetic clause is not compatible"
+      (let [total (meta/field-metadata :orders :total)
+            diff  (lib/expression-clause :- [(lib/sum total) (lib/offset (lib/sum total) -1)] nil)]
+        (is (not (qp.pivot/native-pivot-compatible? (lib/aggregate base diff)))))))
   (testing "nested-field (e.g. JSON-unfolded) breakouts are compatible"
     (let [json-mp (lib.tu/mock-metadata-provider
                    {:database (assoc meta/database :id 1)
@@ -476,6 +482,46 @@
                          (lib/aggregate (lib/count)))]
       (testing "outer aggregations don't inherit the card's window-fn, so the pivot is compatible"
         (is (qp.pivot/native-pivot-compatible? query))))))
+
+(defn- capture-first-query
+  "Return `[p stub]` where `stub` is a `qp/process-query` replacement that delivers its first-received query to
+  the promise `p` and returns a benign completed result."
+  []
+  (let [p    (promise)
+        stub (fn [query _rff]
+               (deliver p query)
+               {:status :completed})]
+    [p stub]))
+
+(deftest ^:parallel candidate-must-not-invoke-callers-result-fn-test
+  (testing (str "The experiment candidate must not invoke qp.pipeline/*result*. In production the caller binds "
+                "*result* to a fn that finalizes and closes the streaming response; a second invocation from the "
+                "candidate would try to close an already-closed Jackson generator.")
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (mt/id)
+        (let [invocations (atom 0)
+              counting-result-fn (fn [result]
+                                   (swap! invocations inc)
+                                   (qp.pipeline/default-result-handler result))]
+          (binding [qp.pipeline/*result* counting-result-fn]
+            (qp.pivot/run-pivot-query (qp.pivot.test-util/pivot-query)))
+          (is (= 1 @invocations)))))))
+
+(deftest ^:parallel native-and-multi-pivot-paths-stash-same-pivot-options-test
+  (testing "the two pivot paths stash the same [:middleware :pivot-options] on the query given to qp/process-query"
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (mt/id)
+        (let [query                        (-> (qp.pivot.test-util/pivot-query)
+                                               qp.middleware.normalize/normalize-preprocessing-middleware)
+              [multi-p multi-stub]         (capture-first-query)
+              [native-p native-stub]       (capture-first-query)]
+          (mt/with-dynamic-fn-redefs [qp.core/process-query multi-stub]
+            (#'qp.pivot/run-pivot-query-multi query nil))
+          (mt/with-dynamic-fn-redefs [qp.core/process-query native-stub]
+            (#'qp.pivot/run-native-pivot-query query nil))
+          (is (some? (get-in @multi-p [:middleware :pivot-options])))
+          (is (= (get-in @multi-p  [:middleware :pivot-options])
+                 (get-in @native-p [:middleware :pivot-options]))))))))
 
 ;;; ---- wrap-nested-field-breakouts ----
 

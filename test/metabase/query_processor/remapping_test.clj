@@ -10,6 +10,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -410,23 +411,27 @@
 
 (deftest ^:parallel pivot-with-remapped-breakout
   (testing "remapped columns should be accounted for in the result rows (#46919)"
-    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
-                                         (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
-                                                                         (mt/id :products :title)))
-      (let [query (merge (mt/mbql-query orders
-                           {:aggregation [[:sum [:field (mt/id :orders :total)]]]
-                            :breakout    [[:field
-                                           (mt/id :orders :product_id)
-                                           {:base-type :type/Integer}]]
-                            :limit       3})
-                         {:pivot_rows [0]
-                          :pivot_cols []})]
-        (is (= [["Aerodynamic Bronze Hat"     144 0    5753.63]
-                ["Aerodynamic Concrete Bench" 116 0   10035.81]
-                ["Aerodynamic Concrete Lamp"  197 0    6478.65]
-                [nil                          nil 1 1510617.7]]
-               (mt/formatted-rows [str int int 2.0]
-                                  (qp.pivot/run-pivot-query query))))))))
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
+                                           (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                           (mt/id :products :title)))
+        (let [query (merge (mt/mbql-query orders
+                             {:aggregation [[:sum [:field (mt/id :orders :total)]]]
+                              :breakout    [[:field
+                                             (mt/id :orders :product_id)
+                                             {:base-type :type/Integer}]]
+                              :limit       3})
+                           {:pivot_rows [0]
+                            :pivot_cols []})]
+          ;; `:limit N` in the pivot's underlying query diverges between multi (per-sub-query) and native
+          ;; (whole GROUPING SETS output), so skip parity check for this test.
+          (qp.pivot.tu/without-pivot-parity-check
+           (is (= [["Aerodynamic Bronze Hat"     144 0    5753.63]
+                   ["Aerodynamic Concrete Bench" 116 0   10035.81]
+                   ["Aerodynamic Concrete Lamp"  197 0    6478.65]
+                   [nil                          nil 1 1510617.7]]
+                  (mt/formatted-rows [str int int 2.0]
+                                     (qp.pivot/run-pivot-query query))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"

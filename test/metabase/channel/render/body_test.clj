@@ -1,4 +1,4 @@
-(ns metabase.channel.render.body-test
+(ns ^:mb/driver-tests metabase.channel.render.body-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.render.body-test]}}}}}}
   (:require
    [clj-http.fake :as fake]
@@ -804,21 +804,21 @@
               (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
             (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))
 
-(deftest unknown-column-settings-test
+(deftest ^:mb/driver-tests unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
-    (mt/dataset test-data
-      (let [q   (mt/mbql-query reviews
-                  {:aggregation [[:sum $rating]],
-                   :breakout    [!week.created_at $reviewer],
-                   :filter      [:between $product_id 0 10]})
-            viz {:pivot_table.column_split
-                 {:rows    ["REVIEWER"],
-                  :columns ["CREATED_AT"],
-                  :values  ["sum"]}
-                 :column_settings
-                 {(format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/DateTime\"}]]" (mt/id :reviews :created_at))
-                  {:pivot_table.column_sort_order "ascending"}}}]
-        (mt/dataset test-data
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/dataset test-data
+        (let [q   (mt/mbql-query reviews
+                    {:aggregation [[:sum $rating]],
+                     :breakout    [!week.created_at $reviewer],
+                     :filter      [:between $product_id 0 10]})
+              viz {:pivot_table.column_split
+                   {:rows    [(mt/format-name "reviewer")],
+                    :columns [(mt/format-name "created_at")],
+                    :values  ["sum"]}
+                   :column_settings
+                   {(format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/DateTime\"}]]" (mt/id :reviews :created_at))
+                    {:pivot_table.column_sort_order "ascending"}}}]
           (mt/with-temp [:model/Card                 {card-id :id} {:display                :pivot
                                                                     :dataset_query          q
                                                                     :visualization_settings viz}]
@@ -1138,31 +1138,32 @@
                             (range)
                             (map :content (take 20 card-row-els)))))))))))))
 
-(deftest table-renders-excludes-pivot-grouping
+(deftest ^:mb/driver-tests table-renders-excludes-pivot-grouping
   (testing "Rendered Tables respect the provided viz-settings on the dashcard."
-    (mt/dataset test-data
-      (mt/with-temp [:model/Card {card-id :id}
-                     {:display                :pivot
-                      :visualization_settings {:pivot_table.column_split
-                                               {:rows    ["CATEGORY"]
-                                                :columns ["CREATED_AT"]
-                                                :values  ["sum"]}
-                                               :column_settings
-                                               {"[\"name\",\"sum\"]" {:number_style       "currency"
-                                                                      :currency_in_header false}}}
-                      :dataset_query          (mt/mbql-query products
-                                                {:aggregation [[:sum $price]]
-                                                 :breakout    [$category !year.created_at]})}]
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
-                card-header-els (hik.s/select (hik.s/tag :th) card-doc)
-                headers         (mapv (comp first :content) card-header-els)]
-            ;; A pivot card renders as an assembled (transposed) table: the row-dimension label is the
-            ;; top-left header, the pivot-grouping column is excluded, and row/grand totals are added.
-            (is (= "Category" (first headers)))
-            (is (not (some #{"pivot-grouping"} headers)))
-            (is (some #{"Row totals"} headers))
-            (is (> (count headers) 3))))))))
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    [(mt/format-name "category")]
+                                                  :columns [(mt/format-name "created_at")]
+                                                  :values  ["sum"]}
+                                                 :column_settings
+                                                 {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                        :currency_in_header false}}}
+                        :dataset_query          (mt/mbql-query products
+                                                  {:aggregation [[:sum $price]]
+                                                   :breakout    [$category !year.created_at]})}]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
+                  card-header-els (hik.s/select (hik.s/tag :th) card-doc)
+                  headers         (mapv (comp first :content) card-header-els)]
+              ;; A pivot card renders as an assembled (transposed) table: the row-dimension label is the
+              ;; top-left header, the pivot-grouping column is excluded, and row/grand totals are added.
+              (is (= "Category" (first headers)))
+              (is (not (some #{"pivot-grouping"} headers)))
+              (is (some #{"Row totals"} headers))
+              (is (> (count headers) 3)))))))))
 
 (deftest render-sankey-chart-test
   (testing "The static-viz sankey chart renders correctly."

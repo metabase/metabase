@@ -512,9 +512,12 @@
   #{:offset :cum-count :cum-sum})
 
 (defn- has-window-fn-aggregation?
-  "True iff any aggregation in the last stage of `query` has a tag in [[window-fn-aggregation-types]]."
+  "True iff any aggregation in the last stage of `query` contains a clause with a tag in
+  [[window-fn-aggregation-types]] at any depth."
   [query]
-  (boolean (some #(lib.util/clause-of-type? % window-fn-aggregation-types)
+  (boolean (some (fn [agg]
+                   (some #(lib.util/clause-of-type? % window-fn-aggregation-types)
+                         (tree-seq lib.util/clause? seq agg)))
                  (lib/aggregations query))))
 
 (defn native-pivot-compatible?
@@ -599,16 +602,22 @@
       (quot *pivot-max-result-rows* num-aggs)
       *pivot-max-result-rows*)))
 
+(defn- pivot-opts-from-query
+  "Return `query`'s pivot-options map — as downstream export middleware and streaming writers read it from
+  `[:middleware :pivot-options]` — or `nil` when `query` carries no pivot intent."
+  [query]
+  (or
+   (pivot-options query (get query :viz-settings))
+   (pivot-options query (get-in query [:info :visualization-settings]))
+   (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals]))))
+
 (mu/defn- run-pivot-query-multi
   "Generate one subquery per breakout combination implied by `query`'s pivot intent (viz-settings or legacy keys),
   run each, and merge the results through `rff` into a single output."
   [query :- ::lib.schema/query
    rff   :- [:maybe ::qp.schema/rff]]
   (let [rff         (or rff qp.reducible/default-rff)
-        pivot-opts  (or
-                     (pivot-options query (get query :viz-settings))
-                     (pivot-options query (get-in query [:info :visualization-settings]))
-                     (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+        pivot-opts  (pivot-opts-from-query query)
         pivot-limit (pivot-query-max-rows query)
         query       (-> query
                         (assoc-in [:middleware :pivot-options] pivot-opts)
@@ -627,32 +636,59 @@
    (or (:lib/metadata query)
        (lib-be/application-database-metadata-provider (:database query)))))
 
-(defn- pivot-rows-equivalent?
-  "True iff the rows at `(:data :rows)` of result maps `r1` and `r2` are equal as multisets.
+(def ^:private ^:const float-compare-decimals
+  "Decimal scale used when quantising fractional numbers for cross-path pivot row comparison. 6 is well below
+  meaningful precision for pivot aggregates (SUM/AVG typically report 2–4 decimals) but well above the noise
+  produced by different summation orders on doubles (order-of `10⁻¹⁴`)."
+  6)
 
-  Pivot postprocess re-indexes rows by breakout values for display, so the SQL-level ordering of pivot results
-  is incidental."
+(defn- round-numeric
+  "If `x` is fractional (Double / Float / BigDecimal), quantise it to a `BigDecimal` at
+  [[float-compare-decimals]] scale. Integral numbers and non-numbers pass through unchanged. Normalising
+  both floats and BigDecimals to `BigDecimal` at the same scale lets `=` succeed regardless of which type
+  each path returned."
+  [x]
+  (cond
+    (float? x)   (.setScale (bigdec x) float-compare-decimals java.math.RoundingMode/HALF_UP)
+    (decimal? x) (.setScale ^java.math.BigDecimal x float-compare-decimals java.math.RoundingMode/HALF_UP)
+    :else        x))
+
+(defn- pivot-rows-equivalent?
+  "Compare pivot result maps from the two pivot paths. The candidate always uses `default-rff` and so carries
+  `(:data :rows)` and `:row_count`; the control uses the caller's rff and may carry anything.
+
+  When comparing rows, each cell is normalised via [[round-numeric]] to tolerate float-associativity noise
+  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`."
   [r1 r2]
-  (= (frequencies (-> r1 :data :rows))
-     (frequencies (-> r2 :data :rows))))
+  (cond
+    (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
+                           (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
+    (:row_count r1)     (= (:row_count r1) (:row_count r2))
+    :else               true))
 
 (defn- run-native-pivot-query
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
   [query rff]
   (let [viz-settings (or (:viz-settings query)
-                         (get-in query [:info :visualization-settings]))]
+                         (get-in query [:info :visualization-settings]))
+        pivot-opts   (pivot-opts-from-query query)]
     (-> query
         apply-legacy-pivot-keys
         (apply-pivot-viz-settings viz-settings)
+        (assoc-in [:middleware :pivot-options] pivot-opts)
+        (cond-> (seq (:info query)) qp/userland-query)
         (qp/process-query rff))))
 
 (mu/defn run-pivot-query
-  "Run the pivot `query` through `rff`, choosing between the native MBQL5 pivot path (single `GROUPING SETS`
-  query) and the multi-query path. The native path is chosen when the target driver supports
-  `:native-pivot-tables` and `query` is [[native-pivot-compatible?]]; otherwise the multi-query path runs.
+  "Run the pivot `query` through `rff` via the multi-query path (one query per breakout combination, results
+  concatenated).
 
-  Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
+  Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself.
+
+  Experimental candidate: the native MBQL5 pivot path (single `GROUPING SETS` query), chosen when the target
+  driver supports `:native-pivot-tables` and `query` is [[native-pivot-compatible?]]; otherwise falls back to
+  the multi-query path."
   ([query]
    (run-pivot-query query nil))
 
@@ -666,10 +702,12 @@
    (qp.setup/with-qp-setup [query query]
      (let [query (qp.middleware.normalize/normalize-preprocessing-middleware query)
            db    (query-database query)]
-       (if (and (driver.u/supports? (:engine db) :native-pivot-tables db)
-                (native-pivot-compatible? query))
-         (experiment/experiment {:name           :pivot-native-vs-multi
-                                 :comparator-fn  pivot-rows-equivalent?}
-                                (run-pivot-query-multi   query rff)
-                                (run-native-pivot-query  query rff))
-         (run-pivot-query-multi query rff))))))
+       (experiment/experiment {:name           :pivot-native-vs-multi
+                               :comparator-fn  pivot-rows-equivalent?}
+                              (run-pivot-query-multi query rff)
+                              (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+                                (let [candidate-rff qp.reducible/default-rff]
+                                  (if (and (driver.u/supports? (:engine db) :native-pivot-tables db)
+                                           (native-pivot-compatible? query))
+                                    (run-native-pivot-query query candidate-rff)
+                                    (run-pivot-query-multi  query candidate-rff)))))))))

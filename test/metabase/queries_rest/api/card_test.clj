@@ -3197,15 +3197,16 @@
       (testing "POST /api/card/pivot/:card-id/query"
         (doseq [card-attributes [(api.pivots/pivot-card) (api.pivots/legacy-pivot-card)]]
           (mt/with-temp [:model/Card card card-attributes]
-            (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
-                  rows   (mt/rows result)]
-              (is (= 1144 (:row_count result)))
-              (is (= "completed" (:status result)))
-              (is (= 6 (count (get-in result [:data :cols]))))
-              (is (= 1144 (count rows)))
-              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-              (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
+            (api.pivots/with-pivot-parity-check
+              (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
+                    rows   (mt/rows result)]
+                (is (= 1144 (:row_count result)))
+                (is (= "completed" (:status result)))
+                (is (= 6 (count (get-in result [:data :cols]))))
+                (is (= 1144 (count rows)))
+                (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+                (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+                (is (= [nil nil nil 7 18760 69540] (last rows)))))))))))
 
 (deftest ^:parallel model-card-test
   (testing "Setting a question to a dataset makes it viz type table"
@@ -3698,47 +3699,55 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(deftest pivot-from-model-test
+(deftest ^:mb/driver-tests pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
-    (mt/dataset test-data
-      (testing "visualization_settings references field by id"
-        (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
-                                          :type :model}
-                       :model/Card card {:dataset_query
-                                         (mt/mbql-query nil
-                                           {:source-table (str "card__" (u/the-id model))
-                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
-                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]})
-                                         ;; The FE sometimes used a field id instead of field by name - we need
-                                         ;; to handle this
-                                         :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
-                                                                                             :columns [],
-                                                                                             :values  ["sum"]},
-                                                                  :table.cell_column "sum"}}]
-          (with-cards-in-readable-collection! [model card]
-            (is (=?
-                 {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
-                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
+    (mt/test-drivers #{:h2 :postgres}
+      (let [user-id (mt/format-name "user_id")
+            total   (mt/format-name "total")]
+        (mt/dataset test-data
+          (testing "visualization_settings references field by id"
+            (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
+                                              :type :model}
+                           :model/Card card {:dataset_query
+                                             (mt/mbql-query nil
+                                               {:source-table (str "card__" (u/the-id model))
+                                                :breakout [[:field user-id {:base-type :type/Integer}]]
+                                                :aggregation [[:sum [:field total {:base-type :type/Float}]]]})
+                                             ;; The FE sometimes used a field id instead of field by name - we need
+                                             ;; to handle this
+                                             :visualization_settings {:pivot_table.column_split {:rows    [user-id],
+                                                                                                 :columns [],
+                                                                                                 :values  ["sum"]},
+                                                                      :table.cell_column "sum"}}]
+              (with-cards-in-readable-collection! [model card]
+                (api.pivots/with-pivot-parity-check
+                  (is (=?
+                       {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
+                       (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))))))))
 
-(deftest pivot-from-model-test-2
+(deftest ^:mb/driver-tests pivot-from-model-test-2
   (testing "Pivot options should match fields through models (#35319)"
-    (mt/dataset test-data
-      (testing "visualization_settings references field by name"
-        (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
-                                          :type :model}
-                       :model/Card card {:dataset_query
-                                         (mt/mbql-query nil
-                                           {:source-table (str "card__" (u/the-id model))
-                                            :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
-                                            :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]})
-                                         :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
-                                                                                             :columns [],
-                                                                                             :values  ["sum"]},
-                                                                  :table.cell_column "sum"}}]
-          (with-cards-in-readable-collection! [model card]
-            (is (=?
-                 {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
-                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
+    (mt/test-drivers #{:h2 :postgres}
+      (let [user-id (mt/format-name "user_id")
+            total   (mt/format-name "total")]
+        (mt/dataset test-data
+          (testing "visualization_settings references field by name"
+            (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
+                                              :type :model}
+                           :model/Card card {:dataset_query
+                                             (mt/mbql-query nil
+                                               {:source-table (str "card__" (u/the-id model))
+                                                :breakout [[:field user-id {:base-type :type/Integer}]]
+                                                :aggregation [[:sum [:field total {:base-type :type/Float}]]]})
+                                             :visualization_settings {:pivot_table.column_split {:rows    [user-id],
+                                                                                                 :columns [],
+                                                                                                 :values  ["sum"]},
+                                                                      :table.cell_column "sum"}}]
+              (with-cards-in-readable-collection! [model card]
+                (api.pivots/with-pivot-parity-check
+                  (is (=?
+                       {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
+                       (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))))))))
 
 (defn run-based-on-upload-test!
   "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
@@ -4087,43 +4096,59 @@
                                        (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
 
-(deftest pivot-tables-with-model-sources-show-row-totals
+(deftest ^:mb/driver-tests pivot-tables-with-model-sources-show-row-totals
   (testing "Pivot Tables with a model source will return row totals (#46575)"
-    (mt/with-temp [:model/Card {model-id :id} {:type :model
-                                               :dataset_query
-                                               (mt/mbql-query orders
-                                                 {:joins
-                                                  [{:fields       :all
-                                                    :strategy     :left-join
-                                                    :alias        "People - User"
-                                                    :condition
-                                                    [:=
-                                                     [:field (mt/id :orders :user_id) {:base-type :type/Integer}]
-                                                     [:field (mt/id :people :id) {:base-type :type/BigInteger :join-alias "People - User"}]]
-                                                    :source-table (mt/id :people)}]})}
-                   :model/Card {pivot-id :id} {:display :pivot
-                                               :dataset_query
-                                               (mt/mbql-query nil
-                                                 {:aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
-                                                  :breakout
-                                                  [[:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
-                                                   [:field "NAME" {:base-type :type/Text}]
-                                                   [:field (mt/id :products :category) {:base-type    :type/Text
-                                                                                        :source-field (mt/id :orders :product_id)}]]
-                                                  :source-table (format "card__%s" model-id)})
-                                               :visualization_settings
-                                               {:pivot_table.column_split
-                                                {:rows    ["NAME" "CREATED_AT"]
-                                                 :columns ["CATEGORY"]
-                                                 :values  ["sum"]}}}]
-      ;; pivot row totals have a pivot-grouping of 1 (the second-last column in these results)
-      ;; before fixing issue #46575, these rows would not be returned given the model + card setup
-      (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
-             (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
-                   totals (filter (fn [row]
-                                    (< 0 (second (reverse row))))
-                                  (get-in result [:data :rows]))]
-               (first totals)))))))
+    (mt/test-drivers #{:h2 :postgres}
+      (let [name-col       (mt/format-name "name")
+            created-at-col (mt/format-name "created_at")
+            category-col   (mt/format-name "category")
+            total-col      (mt/format-name "total")]
+        (mt/with-temp [:model/Card {model-id :id} {:type :model
+                                                   :dataset_query
+                                                   (mt/mbql-query orders
+                                                     {:joins
+                                                      [{:fields       :all
+                                                        :strategy     :left-join
+                                                        :alias        "People - User"
+                                                        :condition
+                                                        [:=
+                                                         [:field (mt/id :orders :user_id) {:base-type :type/Integer}]
+                                                         [:field (mt/id :people :id) {:base-type :type/BigInteger :join-alias "People - User"}]]
+                                                        :source-table (mt/id :people)}]})}
+                       :model/Card {pivot-id :id} {:display :pivot
+                                                   :dataset_query
+                                                   (mt/mbql-query nil
+                                                     {:aggregation  [[:sum [:field total-col {:base-type :type/Float}]]]
+                                                      :breakout
+                                                      [[:field created-at-col {:base-type :type/DateTime, :temporal-unit :month}]
+                                                       [:field name-col {:base-type :type/Text}]
+                                                       [:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                            :source-field (mt/id :orders :product_id)}]]
+                                                      :source-table (format "card__%s" model-id)})
+                                                   :visualization_settings
+                                                   {:pivot_table.column_split
+                                                    {:rows    [name-col created-at-col]
+                                                     :columns [category-col]
+                                                     :values  ["sum"]}}}]
+          ;; pivot row totals have a pivot-grouping of 1 (the second-last column in these results)
+          ;; before fixing issue #46575, these rows would not be returned given the model + card setup.
+          ;;
+          ;; This particular query's primary sub-query aggregates to >10k rows on the joined model. The
+          ;; multi-query path bumps `:max-results` to `pivot-limit` per sub-query and clears the cap; the
+          ;; native `GROUPING SETS` path doesn't bump, so it hits the default aggregated cap and drops rows.
+          ;; Raise the setting so both paths have room, keeping the parity check meaningful.
+          (mt/with-temporary-setting-values [aggregated-query-row-limit 200000]
+            (api.pivots/with-pivot-parity-check
+              (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
+                    totals (filter (fn [row]
+                                     (< 0 (second (reverse row))))
+                                   (get-in result [:data :rows]))
+                    ;; Postgres SUM(float) returns a slightly noisy double; round the aggregated value so the
+                    ;; assertion is driver-agnostic.
+                    row    (update (vec (first totals)) 4
+                                   #(when % (double (/ (Math/round (* 100.0 (double %))) 100.0))))]
+                (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
+                       row))))))))))
 
 (deftest dashboard-internal-card-creation
   (mt/with-temp [:model/Collection {coll-id :id} {}
