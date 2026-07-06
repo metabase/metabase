@@ -94,12 +94,8 @@ const elements = [
   ].map((pattern) =>
     createElement({ type: "app", name: "mcp-app", pattern, mode: "full" }),
   ),
-  createElement({ type: "shared", name: "embedding", enforceOutgoing: false }),
-  createElement({
-    type: "shared",
-    name: "embedding-sdk",
-    enforceOutgoing: false,
-  }),
+  createElement({ type: "shared", name: "embedding" }),
+  createElement({ type: "shared", name: "embedding-sdk" }),
   createElement({
     type: "app",
     name: "embedding-sdk-bundle",
