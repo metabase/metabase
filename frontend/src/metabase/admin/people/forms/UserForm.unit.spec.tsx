@@ -39,6 +39,8 @@ interface SetupOpts {
   initialValues?: typeof USER;
   external?: boolean;
   tenants?: Tenant[];
+  hideNameFields?: boolean;
+  hideAttributes?: boolean;
 }
 
 const setup = ({
@@ -46,6 +48,8 @@ const setup = ({
   initialValues = USER,
   external = false,
   tenants = [] as Tenant[],
+  hideNameFields = false,
+  hideAttributes = false,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
@@ -75,6 +79,8 @@ const setup = ({
       onCancel={onCancel}
       initialValues={initialValues}
       external={external}
+      hideNameFields={hideNameFields}
+      hideAttributes={hideAttributes}
     />,
     {
       storeInitialState: state,
@@ -385,6 +391,27 @@ describe("UserForm", () => {
           expect.anything(),
         );
       });
+    });
+  });
+
+  describe("trimmed variant (invite flow)", () => {
+    it("hides the name fields when hideNameFields is set", async () => {
+      setup({ hideNameFields: true });
+
+      expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
+      expect(screen.queryByLabelText("First name")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Last name")).not.toBeInTheDocument();
+    });
+
+    it("hides the Attributes field when hideAttributes is set", async () => {
+      setup({
+        enterprisePlugins: ["sandboxes", "tenants"],
+        initialValues: { ...USER, login_attributes: { team: "engineering" } },
+        hideAttributes: true,
+      });
+
+      expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
+      expect(screen.queryByText("Attributes")).not.toBeInTheDocument();
     });
   });
 });

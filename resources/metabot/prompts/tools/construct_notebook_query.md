@@ -256,6 +256,15 @@ When you need to **compose on top of** a measure or segment (add an extra filter
 - Never invent a `portable_entity_id` — only use the value reported in a tool response.
 - The matching aggregation-only opaque-id clause is `["metric", {}, "<portable_entity_id>"]` (for metrics, which live independently of a table — see §Metrics above).
 
+## Translating the request
+
+Before the shape rules: map the user's wording to the right clause. These mismatches produce a query that runs cleanly and returns the wrong answer, so they're easy to miss.
+
+- **A constraint is a filter, not a breakout.** "where/only/with X = Y", "for active cards", "USD transactions only" → a `filters` entry restricting to that value. Reserve `breakout` for grouping language: "by", "per", "for each", "broken down by", "over time". "Open rate **where** opens are multiple" filters to multiple-opens rows; it does **not** group by the multiple-opens flag.
+- **Apply every constraint in the request.** Each "where/only/for/with" condition the user states must appear as a filter — don't drop one because you already added the aggregation.
+- **Don't add analysis the user didn't ask for.** If the request is only "travel expenses", filter to travel and return the rows; don't tack on an average or count that wasn't requested.
+- **An explicit date or year is an absolute filter.** "in 2024", "for 2024", "between 2024-01-01 and 2024-12-31" → an absolute filter on that range. Use `relative-datetime` / `time-interval` only when the user uses relative language ("last year", "past 30 days", "year to date").
+
 ## Rules and common mistakes
 
 Shape rules:

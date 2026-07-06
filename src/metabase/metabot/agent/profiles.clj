@@ -168,7 +168,7 @@
                         #'tools/ask-for-sql-clarification-tool]})
 
 ;; :nlq and :nlq-fallback are a pair selected by the library index's health (see [[get-profile]]): when the
-;; curated index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
+;; library index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
 ;; falls back to the general nlq search. They differ only in the discovery tool and the prompt that explains
 ;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
 (register-profile!
@@ -255,7 +255,7 @@
 ;;; API
 
 (defn- nlq-fallback?
-  "Whether a :nlq request should be served the general-search fallback: true when the curated library index
+  "Whether a :nlq request should be served the general-search fallback: true when the library index
   can't answer (not configured/licensed, or empty). Keeps data discovery working before the first reconcile
   and on OSS / unlicensed instances."
   [profile-id]

@@ -1483,10 +1483,7 @@ function(bin) {
      (assoc-in
       m
       (match/match-one field-clause
-        [:field (field-id :guard integer?) _]
-        (str/split (field-alias field-clause) #"\.")
-
-        [:field (field-name :guard string?) _]
+        [:field (id :guard (or (integer? id) (string? id))) _]
         (str/split (field-alias field-clause) #"\.")
 
         [:expression expr-name _]

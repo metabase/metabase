@@ -337,6 +337,51 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.815 -- drop unsupported `get-day-of-week` week-mode arguments.
+;;;
+;;; `get-day-of-week` accepts a positional week-mode (`["get-day-of-week" {} <field> <mode>]`).
+;;; The `::week-mode` schema allows `:iso`, `:us`, and `:instance` (shared with `get-week`), but
+;;; only the no-mode (default) and `:iso` forms actually have a lowering in
+;;; `metabase.lib.filter.desugar` - `:us` / `:instance` desugar to a **nil** temporal-extract unit
+;;; and blow up with an opaque 500 at SQL-compilation time (observed: an LLM emitting
+;;; `["get-day-of-week" {} <field> "instance"]` for "day of week on weekends").
+;;;
+;;; The default (no-mode) `get-day-of-week` already extracts the day-of-week relative to the
+;;; instance's start-of-week setting. For `:instance` that is an exact equivalence - default *is*
+;;; the instance semantics. For `:us` it is a best-effort substitution, NOT an equivalence: `:us`
+;;; would fix the week to start on Sunday, whereas the default honours the instance's start-of-week
+;;; setting, so the two diverge whenever that setting isn't Sunday. We accept the substitution
+;;; anyway because `get-day-of-week` has no `:us` lowering at all (unlike `get-week`), so the only
+;;; alternative is the opaque 500. Dropping to the default keeps the query running and close to the
+;;; model's intent. `:iso` and the bare (no-mode) forms are left untouched.
+;;;
+;;; Runs after `ensure-clause-options*`, so the options map is already at position 1 and the mode,
+;;; when present, is the single trailing arg at position 3. Idempotent: once the mode is dropped
+;;; the clause has arity 3 and the predicate no longer fires.
+;;; ============================================================
+
+(defn- get-day-of-week-clause-with-mode?
+  "True when `node` is `[\"get-day-of-week\" <opts-map> <field> <mode>]` (arity 4) whose mode is an
+  unsupported (non-`iso`) string. `nil`/absent mode (arity 3) and `iso` are left alone."
+  [node]
+  (and (vector? node)
+       (= 4 (count node))
+       (= "get-day-of-week" (nth node 0))
+       (map? (nth node 1))
+       (let [mode (nth node 3)]
+         (and (string? mode)
+              (not= "iso" (u/lower-case-en (str/trim mode)))))))
+
+(defn- drop-unsupported-day-of-week-mode*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (get-day-of-week-clause-with-mode? node)
+       (subvec node 0 3)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.85 -- canonicalise order-by direction aliases.
 ;;;
 ;;; The lib schema accepts only `[asc, {}, <ref>]` and `[desc, {}, <ref>]` as order-by
@@ -2700,6 +2745,7 @@
       dequote-field-targets*
       rewrite-operator-name-aliases*
       rewrite-temporal-bucket-aliases*
+      drop-unsupported-day-of-week-mode*
       rewrite-direction-aliases*
       rewrite-lib-type-aliases*
       merge-trailing-options*

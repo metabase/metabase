@@ -287,6 +287,25 @@
       (is (= ["!=" {} field 10]
              (repair/repair trivial-mp ["not-equals" {} field 10]))))))
 
+(deftest ^:parallel drop-unsupported-day-of-week-mode-test
+  (testing "unsupported get-day-of-week week-modes are dropped (they desugar to a nil unit → 500)"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
+      (testing "\"instance\" mode dropped → default (start-of-week aware) day-of-week"
+        (is (= ["get-day-of-week" {} field]
+               (repair/repair trivial-mp ["get-day-of-week" {} field "instance"]))))
+      (testing "\"us\" mode dropped (no lowering exists)"
+        (is (= ["get-day-of-week" {} field]
+               (repair/repair trivial-mp ["get-day-of-week" {} field "us"]))))
+      (testing "\"iso\" mode is preserved (it has a real lowering)"
+        (is (= ["get-day-of-week" {} field "iso"]
+               (repair/repair trivial-mp ["get-day-of-week" {} field "iso"]))))
+      (testing "the bare (no-mode) form is untouched"
+        (is (= ["get-day-of-week" {} field]
+               (repair/repair trivial-mp ["get-day-of-week" {} field]))))
+      (testing "nested inside a filter (the observed LLM shape)"
+        (is (= ["in" {} ["get-day-of-week" {} field] 1 7]
+               (repair/repair trivial-mp ["in" {} ["get-day-of-week" {} field "instance"] 1 7])))))))
+
 (deftest ^:parallel rewrite-aggregation-aliases-test
   (testing "aggregation lib-renames"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]

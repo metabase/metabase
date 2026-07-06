@@ -88,11 +88,22 @@
       (is (=? {:entity_type "measure" :entity_local_id 77 :ai_context {:instructions "same"}}
               (mt/user-http-request :crowberto :put 200 "osi/ai-context/measure/77" {:ai_context {:instructions "same"}})))
       (finally (t2/delete! :model/OsiAiContext :entity_type "measure" :entity_local_id 77))))
+  (testing "the OSI string shorthand for ai_context is accepted and migrated to {:instructions s}"
+    (try
+      (is (=? {:entity_type     "table"
+               :entity_local_id 3
+               :ai_context      {:instructions "Use for revenue questions."}}
+              (mt/user-http-request :crowberto :put 200 "osi/ai-context/table/3"
+                                    {:ai_context "Use for revenue questions."})))
+      (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 3))))
   (testing "ai_context is required"
     (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1" {}))
   (testing "an over-long instructions string is rejected"
     (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1"
                           {:ai_context {:instructions (apply str (repeat 6000 "x"))}}))
+  (testing "an over-long string shorthand is rejected (capped like instructions, which it becomes)"
+    (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1"
+                          {:ai_context (apply str (repeat 6000 "x"))}))
   (testing "too many synonyms is rejected"
     (mt/user-http-request :crowberto :put 400 "osi/ai-context/table/1"
                           {:ai_context {:synonyms (mapv str (range 51))}}))

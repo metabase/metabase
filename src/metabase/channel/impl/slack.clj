@@ -258,10 +258,11 @@
                (parameter-markdown parameter)))))
 
 (defn- dashboard-pdf
-  "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails."
-  [dashboard creator-id parameters]
+  "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails.
+  `parts` are the dashboard's already-executed parts, reused so the PDF generation doesn't re-run every query."
+  [dashboard creator-id parameters parts]
   (try
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters))]
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters) :a4 parts)]
       {:bytes    pdf-bytes
        :filename (-> dashboard
                      (some-> :name str/trim)
@@ -277,7 +278,8 @@
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
-        pdf              (some-> (when include_pdf (dashboard-pdf dashboard creator_id all-params))
+        pdf              (some-> (when include_pdf
+                                   (dashboard-pdf dashboard creator_id all-params (:dashboard_parts payload)))
                                  (assoc :comment (slack-dashboard-caption dashboard (:common_name creator)
                                                                           all-params top-level-params)))
         blocks           (if pdf
