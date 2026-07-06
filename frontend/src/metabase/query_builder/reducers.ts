@@ -317,7 +317,7 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
       }))
       .addCase(OPEN_QUESTION_SETTINGS, (state) =>
         setUIControls(state, {
-          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          ...(UI_CONTROLS_SIDEBAR_DEFAULTS as Partial<QueryBuilderUIControls>),
           isShowingQuestionSettingsSidebar: true,
         } as Partial<QueryBuilderUIControls>),
       )
