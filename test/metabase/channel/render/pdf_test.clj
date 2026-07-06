@@ -59,7 +59,7 @@
               md "[docs](https://metabase.com) [mail](mailto:a@b.com) [rel](/x) [js](javascript:1)"]
           (binding [font/*fonts*     (#'font/load-fonts! doc)
                     pdf/*link-rects* (atom [])]
-            (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 md)
+            (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 nil :top md)
             (.close cs)
             (#'pdf/add-link-annotations! page @pdf/*link-rects*)))
         ;; "rel" (relative) and "js" (javascript:) must not be clickable
@@ -521,7 +521,7 @@
               bold (#'font/face :bold)
               ;; draw-text-block! (plain text path) and draw-markdown-in-cell! (markdown path)
               dtb  (fn [face pt x y w h text] #(#'pdf/draw-text-block! cs face pt nil x y w h text))
-              dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h text))]
+              dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h nil :top text))]
           (doseq [[nm render expected]
                   ;; Plain text flows through the same item pipeline as Markdown, and it draws one
                   ;; record per word (not per line).
@@ -598,6 +598,39 @@
             (is (= expected (capture-line-draws! render))
                 nm))
           (.close cs))))))
+
+(deftest ^:parallel text-card-align-settings-test
+  (testing "text card alignment settings map to keywords (UXW-4703)"
+    (let [mk (fn [vs] {:visualization_settings vs})]
+      (testing "explicit horizontal/vertical settings"
+        (is (= :left   (#'pdf/text-card-align-h (mk {:text.align_horizontal "left"}))))
+        (is (= :center (#'pdf/text-card-align-h (mk {:text.align_horizontal "center"}))))
+        (is (= :right  (#'pdf/text-card-align-h (mk {:text.align_horizontal "right"}))))
+        (is (= :middle (#'pdf/text-card-align-v (mk {:text.align_vertical "middle"}))))
+        (is (= :bottom (#'pdf/text-card-align-v (mk {:text.align_vertical "bottom"})))))
+      (testing "unset horizontal -> nil (keeps base-direction default, so RTL text isn't forced left); vertical -> :top"
+        (is (nil? (#'pdf/text-card-align-h (mk {}))))
+        (is (= :top (#'pdf/text-card-align-v (mk {}))))))))
+
+(deftest ^:synchronized text-card-alignment-render-test
+  (testing "horizontal & vertical alignment position text within the cell (UXW-4703)"
+    (with-open [doc (PDDocument.)]
+      (let [page (PDPage. PDRectangle/A4)
+            _    (.addPage doc page)
+            cs   (PDPageContentStream. doc page)]
+        (binding [font/*fonts*     (#'font/load-fonts! doc)
+                  pdf/*link-rects* (atom [])]
+          (let [x0 40.0 top 800.0 w 400.0 h 200.0
+                cap-x (fn [ah] (:x (first (capture-line-draws!
+                                           #(#'pdf/draw-markdown-in-cell! doc cs x0 top w h ah :top "Hi")))))
+                cap-y (fn [av] (:y (first (capture-line-draws!
+                                           #(#'pdf/draw-markdown-in-cell! doc cs x0 top w h :left av "Hi")))))]
+            (testing "horizontal: left flush < center < right flush"
+              (is (< (cap-x :left) (cap-x :center) (cap-x :right)))
+              (is (= x0 (cap-x :left)) "left flush starts at the cell's left edge"))
+            (testing "vertical: top is higher on the page (larger y) than middle, and middle than bottom"
+              (is (> (cap-y :top) (cap-y :middle) (cap-y :bottom))))))
+        (.close cs)))))
 
 (deftest ^:synchronized em-width-memoization-test
   (with-open [doc (PDDocument.)]
