@@ -1,6 +1,7 @@
 import type {
   CardId,
   CollectionId,
+  ConcreteTableId,
   DatabaseId,
   ErdParams,
   FieldId,
@@ -288,7 +289,14 @@ export function getSchemaViewerParams({
     params.schema = schema;
   }
   if (tableIds != null && tableIds.length > 0) {
-    params["table-ids"] = [...tableIds];
+    // the ERD endpoint only handles concrete tables; virtual (card__*) table
+    // ids are string-typed and rejected by the API
+    const concreteTableIds = tableIds.filter(
+      (id): id is ConcreteTableId => typeof id === "number",
+    );
+    if (concreteTableIds.length > 0) {
+      params["table-ids"] = concreteTableIds;
+    }
   }
   return params;
 }
