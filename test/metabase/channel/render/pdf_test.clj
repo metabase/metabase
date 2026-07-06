@@ -18,6 +18,7 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.notification.settings :as notification.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.memoize :as memo])
   (:import
@@ -108,6 +109,31 @@
           (let [baos (ByteArrayOutputStream.)]
             (.save doc baos)
             (is (pos? (count (.toByteArray baos))))))))))
+
+(deftest ^:synchronized include-branding?-test
+  (testing "the 'Made with Metabase' badge is included only for OSS instances (no :whitelabel feature)"
+    (with-redefs [premium-features/enable-whitelabeling? (constantly false)]
+      (is (true? (#'pdf/include-branding?)) "OSS: branding included"))
+    (with-redefs [premium-features/enable-whitelabeling? (constantly true)]
+      (is (false? (#'pdf/include-branding?)) "Pro/EE (whitelabel): no branding"))))
+
+;; not ^:parallel: exercises the real PDFBox content-stream + font registry, which the deftest linter treats as
+;; side-effecting
+(deftest ^:synchronized header-branding-gated-on-whitelabel-test
+  (testing "draw-header! draws the branding badge only when the instance lacks the :whitelabel feature"
+    (doseq [[whitelabel? expected-badge?] [[false true] [true false]]]
+      (let [badge-drawn? (atom false)]
+        (with-redefs [premium-features/enable-whitelabeling? (constantly whitelabel?)
+                      pdf/draw-brand-badge!                  (fn [& _] (reset! badge-drawn? true))]
+          (with-open [doc (PDDocument.)]
+            (binding [font/*fonts*     (#'font/load-fonts! doc)
+                      pdf/*link-rects* (atom [])]
+              (let [page (PDPage. PDRectangle/A4)]
+                (.addPage doc page)
+                (with-open [cs (PDPageContentStream. doc page)]
+                  (#'pdf/draw-header! cs 841.89 500.0 {:dashboard-title "Dash"}))))))
+        (is (= expected-badge? @badge-drawn?)
+            (str "whitelabel=" whitelabel? " => badge " (if expected-badge? "drawn" "skipped")))))))
 
 (defn- last-non-stroking-color
   "The operands of the last non-stroking colour operator (`r g b sc`) in a page's content stream, as a vector of
