@@ -30,12 +30,6 @@ export function findRepoRoot(start = process.cwd()) {
 
 export const REPO_ROOT = findRepoRoot();
 
-/** The `create-data-app` template scaffolded over each fixture's src at build. */
-export const DATA_APP_TEMPLATE_DIR = path.join(
-  REPO_ROOT,
-  "skills/create-data-app/template",
-);
-
 /** Root holding one directory per data-app E2E fixture (`<name>/src/`). */
 export const DATA_APP_FIXTURES_DIR = path.join(
   REPO_ROOT,

@@ -40,12 +40,7 @@ export async function buildDataApp({
     );
   });
 
-  const bundlePath = path.join(
-    DATA_APP_FIXTURES_DIR,
-    ".build",
-    appName,
-    "dist/index.js",
-  );
+  const bundlePath = path.join(DATA_APP_FIXTURES_DIR, appName, "dist/index.js");
 
   if (!fs.existsSync(bundlePath)) {
     throw new Error(
