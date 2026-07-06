@@ -120,6 +120,36 @@
                (getResource ".keep-me")
                getProtocol)))
 
+;;; H2 driver availability
+;;;
+;;; H2 is an *optional* driver: the OSS build bundles the H2 JDBC JAR, but the EE build does not (per licensing, and
+;;; because SQLite -- not H2 -- is the sample database). EE users who want H2 (e.g. for a quick local trial, or to run
+;;; the dump-to-h2/load-from-h2 tasks) must supply the H2 JAR themselves, either by dropping it in the plugins
+;;; directory or putting it on the classpath explicitly.
+;;;
+;;; Consequences for the code base:
+;;;
+;;; 1. No *core* namespace (anything AOT-compiled into the uberjar) may reference an `org.h2.*` class at load/compile
+;;;    time -- doing so would fail the EE build (H2 absent at build time) and `NoClassDefFoundError` the app on boot.
+;;;    All such code lives in [[metabase.driver.h2]] (and namespaces it requires), which ships as *source* and is
+;;;    compiled lazily at runtime, only when H2 is actually present -- exactly like the `oracle`/`vertica` drivers.
+;;;
+;;; 2. The decision of whether to load [[metabase.driver.h2]] must be made at *runtime* via [[h2-available?]], NOT at
+;;;    macroexpansion/compile time. An EE user can add the H2 JAR after the jar was built (via `-cp` or the plugins
+;;;    dir), so the check has to run when the app boots, not when it was compiled.
+
+(def ^:private h2-driver-class-name "org.h2.Driver")
+
+(defn h2-available?
+  "True iff the H2 JDBC driver (`org.h2.Driver`) is on the classpath right now. H2 is bundled in OSS builds but not EE
+  builds; EE users must supply the H2 JAR themselves (see the comment above). Checked at runtime against the current
+  thread's context classloader so that JARs added after build time (via `-cp` or the plugins directory) are seen."
+  []
+  (try
+    (some? (Class/forName h2-driver-class-name false (.getContextClassLoader (Thread/currentThread))))
+    (catch Throwable _
+      false)))
+
 ;;; Version stuff
 
 (defn- version-info-from-properties-file []

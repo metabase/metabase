@@ -13,7 +13,6 @@
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.perf :as perf]
-   [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
@@ -46,8 +45,9 @@
 
 (comment
   metabase.core.init/keep-me
-  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
-  metabase.driver.h2/keep-me
+  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types.
+  ;; H2 is *not* here -- it's an optional driver loaded conditionally in [[metabase.driver.init]] when its JAR is on the
+  ;; classpath. See [[metabase.config.core/h2-available?]].
   metabase.driver.mysql/keep-me
   metabase.driver.postgres/keep-me
   ;; Make sure the custom Metabase logger code gets loaded up so we use our custom logger for performance reasons.

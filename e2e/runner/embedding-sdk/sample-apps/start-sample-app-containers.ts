@@ -6,6 +6,7 @@ import { SAMPLE_APP_SETUP_CONFIGS } from "./constants/sample-app-setup-configs";
 import { copyShoppyMetabaseAppDBDump } from "./helpers/copy-shoppy-metabase-app-db-dump";
 import { fetchApp } from "./helpers/fetch-app";
 import {
+  bundleH2DriverIntoJar,
   copyExampleEnvFile,
   copyLocalEmbeddingSdkPackage,
   copyLocalMetabaseJar,
@@ -59,6 +60,8 @@ export async function startSampleAppContainers(
     copyExampleEnvFile({ rootPath, dockerEnvExamplePath, dockerEnvPath });
 
     copyLocalMetabaseJar(rootPath);
+
+    bundleH2DriverIntoJar(rootPath);
 
     if (embeddingSdkVersion === "local") {
       copyLocalEmbeddingSdkPackage(rootPath);

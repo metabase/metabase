@@ -2,14 +2,15 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti ^:private query-canceled-exception?*
+;; NOTE: not private -- the `:h2` method is registered from `metabase.driver.h2`, since it references
+;; `org.h2.api.ErrorCode` and H2 is an optional driver whose classes must not appear in core (AOT-compiled)
+;; namespaces. See `metabase.config.core/h2-available?`.
+(defmulti query-canceled-exception?*
+  "Whether `e` (a `java.sql.SQLException`) represents a query cancelation for app-db type `db-type`, dispatching on
+  `(keyword db-type)`. The `:h2` method is registered from `metabase.driver.h2` (see the note above)."
   {:arglists '([db-type ^java.sql.SQLException e])}
   (fn [db-type _e]
     (keyword db-type)))
-
-(defmethod query-canceled-exception?* :h2
-  [_db-type ^java.sql.SQLException e]
-  (= (.getErrorCode e) org.h2.api.ErrorCode/STATEMENT_WAS_CANCELED))
 
 (defn- sql-state
   [^java.sql.SQLException e]

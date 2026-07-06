@@ -50,8 +50,6 @@
   com.google.auth/google-auth-library-credentials {:mvn/version "1.40.0"}       ; dep for BigQuery, Databricks, and Snowflake. Require here rather than letting different dep versions stomp on each other — see #70908
   com.google.code.gson/gson                 {:mvn/version "2.12.1"}             ; dep for BigQuery, Databricks, and Snowflake. Pin here so driver plugin JARs all use the same version — see #73736
   com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
-  com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
-  {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
   com.mchange/c3p0                          {:mvn/version "0.14.1"}             ; DB connection pool
@@ -264,6 +262,8 @@
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     com.github.erosb/json-sKema  {:mvn/version "0.25.0"}                    ; validating MBQL JSON Schema
+    com.h2database/h2 ^:antq/exclude           ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
+    {:mvn/version "2.1.214"}                   ; embedded SQL database
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
@@ -295,7 +295,11 @@
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
+   ;; H2 is the default dev/test data driver but now lives in its own driver module, so its source isn't on the core
+   ;; classpath. Include it here (the H2 JAR is already a `:dev` dep) so every `:dev`/test run can load it without
+   ;; pulling in all of `:drivers`. `:check` and the uberjar build don't use `:dev`, so they still exclude it.
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"
+                 "modules/drivers/h2/src"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -438,7 +442,10 @@
 
   ;; these aliases exist for symmetry with the ee aliases. Empty for now.
   :oss
-  {}
+  {:extra-deps
+   {com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
+    ;; embedded SQL database
+    {:mvn/version "2.1.214"}}}
 
   :oss-dev
   {}
@@ -562,6 +569,7 @@
     "modules/drivers/databricks/test"
     "modules/drivers/druid-jdbc/src"
     "modules/drivers/druid-jdbc/test"
+    "modules/drivers/h2/src"
     "modules/drivers/hive-like/src"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/src"
@@ -622,6 +630,7 @@
                                  "modules/drivers/clickhouse/src"
                                  "modules/drivers/databricks/src"
                                  "modules/drivers/druid-jdbc/src"
+                                 "modules/drivers/h2/src"
                                  "modules/drivers/hive-like/src"
                                  "modules/drivers/mongo/src"
                                  "modules/drivers/oracle/src"

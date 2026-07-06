@@ -49,7 +49,10 @@
                               :deps
                               vals
                               (keep (comp keyword :local/root))
-                              (into #{}))]
+                              (into #{})
+                              ;; :h2 is intentionally excluded from the linter set (it's the default test driver, so
+                              ;; hardcoding it is fine and ubiquitous), even though it now lives in modules/drivers.
+                              (#(disj % :h2)))]
       (doseq [driver driver-modules]
         (is (contains? driver-keywords driver)
             (format "hooks.clojure.test/driver-keywords should contain %s, please add it" driver))))))

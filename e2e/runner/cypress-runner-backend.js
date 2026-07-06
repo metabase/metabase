@@ -14,6 +14,22 @@ function getJvmOptsFromDepsEdn(alias = "e2e") {
   return execSync(cmd, { encoding: "utf8" }).trim().toString();
 }
 
+// E2E always uses the H2 sample database, but the H2 driver JAR is bundled only in OSS uberjars (EE supplies it
+// separately). Resolve the JAR from the local Maven repo so we can put it on the classpath explicitly when launching
+// the jar -- otherwise the EE backend can't open the H2 sample DB and every test fails.
+function getH2JarPath() {
+  const cmd =
+    "clojure -Spath -Sdeps '{:deps {com.h2database/h2 {:mvn/version \"2.1.214\"}}}'";
+  const cp = execSync(cmd, { encoding: "utf8" }).trim();
+  const h2 = cp
+    .split(path.delimiter)
+    .find((p) => /[/\\]h2-[\d.]+\.jar$/.test(p));
+  if (!h2) {
+    throw new Error("Could not resolve the H2 JAR for the E2E classpath");
+  }
+  return h2;
+}
+
 // Ensure that the only two required env vars have values
 process.env.MB_DB_FILE = process.env.MB_DB_FILE || tempDbPath;
 process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
@@ -47,11 +63,17 @@ const CypressBackend = {
     }
     if (!this.server.process) {
       process.env.JDK_JAVA_OPTIONS = getJvmOptsFromDepsEdn();
-      this.server.process = spawn("java", ["-jar", jarPath], {
-        env: process.env,
-        stdio: process.env.CI ? "ignore" : "inherit",
-        detached: true,
-      });
+      // Launch via `-cp` (not `-jar`) so we can append the H2 driver JAR; `java -jar` ignores the classpath.
+      const classpath = [jarPath, getH2JarPath()].join(path.delimiter);
+      this.server.process = spawn(
+        "java",
+        ["-cp", classpath, "metabase.core.bootstrap"],
+        {
+          env: process.env,
+          stdio: process.env.CI ? "ignore" : "inherit",
+          detached: true,
+        },
+      );
       await waitUntilReady(this.server);
       if (process.env.CI) {
         this.server.process.unref(); // detach console

@@ -5,6 +5,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.app-db.query-cancelation :as app-db.query-cancelation]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -25,6 +26,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.middleware.cache-backend.db :as cache-backend.db]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -34,8 +36,10 @@
   (:import
    (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
+   (org.h2.api ErrorCode)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)
+   (org.h2.jdbc JdbcBlob JdbcClob)
    (org.h2.util StringUtils)))
 
 (set! *warn-on-reflection* true)
@@ -47,6 +51,34 @@
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
+
+;;; --------------------------------------- H2 app-database support glue ----------------------------------------------
+;;;
+;;; The registrations below name H2-specific JDBC classes (`org.h2.jdbc.JdbcClob`/`JdbcBlob`, `org.h2.api.ErrorCode`),
+;;; so they MUST live here in [[metabase.driver.h2]] rather than in the core app-db/query-processor namespaces that own
+;;; these multimethods. H2 is an optional driver: this namespace ships as *source* and is compiled lazily at runtime
+;;; only when the H2 JAR is present (see [[metabase.driver.init]] and `metabase.config.core/h2-available?`), whereas
+;;; the core namespaces are AOT-compiled into the uberjar where H2 may be absent.
+
+;; Reading H2 CLOB/BLOB columns out of the *application* database (e.g. cached query results, serialized values).
+(extend-protocol jdbc/IResultSetReadColumn
+  JdbcClob
+  (result-set-read-column [clob _ _]
+    (driver-api/clob->str clob))
+
+  JdbcBlob
+  (result-set-read-column [^JdbcBlob blob _ _]
+    (.getBytes blob 0 (.length blob))))
+
+;; The query cache stores results as an H2 BLOB when H2 is the app DB; convert it back to a byte array.
+(defmethod cache-backend.db/results-as-bytes JdbcBlob
+  [{:keys [^JdbcBlob results]}]
+  (.getBytes results 1 (.length results)))
+
+;; Recognize H2's "statement was canceled" error so query cancelation works when H2 is the app DB.
+(defmethod app-db.query-cancelation/query-canceled-exception?* :h2
+  [_db-type ^SQLException e]
+  (= (.getErrorCode e) ErrorCode/STATEMENT_WAS_CANCELED))
 
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
