@@ -565,10 +565,16 @@
   visible tool-call row. Intended only for E2E tests."
   [_route-params
    _query-params
-   {:keys [user_id tool_name client_name]} :- [:map
-                                               [:user_id     ms/PositiveInt]
-                                               [:tool_name    {:optional true} [:maybe ms/NonBlankString]]
-                                               [:client_name  {:optional true} [:maybe ms/NonBlankString]]]]
+   {:keys [user_id tool_name client_name client_version status error_code error_message duration_ms]}
+   :- [:map
+       [:user_id        ms/PositiveInt]
+       [:tool_name       {:optional true} [:maybe ms/NonBlankString]]
+       [:client_name     {:optional true} [:maybe ms/NonBlankString]]
+       [:client_version  {:optional true} [:maybe ms/NonBlankString]]
+       [:status          {:optional true} [:maybe ms/NonBlankString]]
+       [:error_code      {:optional true} [:maybe :int]]
+       [:error_message   {:optional true} [:maybe ms/NonBlankString]]
+       [:duration_ms     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (let [session-id (str "e2e-mcp-" (random-uuid))
         tool-name  (or tool_name "execute_query")
         now        (t/offset-date-time)]
@@ -576,13 +582,15 @@
                 {:id             session-id
                  :user_id        user_id
                  :client_name    (or client_name "claude")
-                 :client_version "1.0.0"
+                 :client_version (or client_version "1.0.0")
                  :created_at     now})
     (t2/insert! :model/McpToolCallLog
                 {:mcp_session_id session-id
                  :user_id        user_id
                  :tool_name      tool-name
-                 :status         "success"
-                 :duration_ms    42
+                 :status         (or status "success")
+                 :duration_ms    (or duration_ms 42)
+                 :error_code     error_code
+                 :error_message  error_message
                  :created_at     now})
     {:session_id session-id :tool_name tool-name}))
