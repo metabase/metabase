@@ -92,6 +92,11 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
+(defn- ai-proxy-unsupported-ex []
+  (ex-info (tru "AI proxy is not supported for OpenRouter")
+           {:api-error  true
+            :error-code :proxy-unsupported}))
+
 (defn- openrouter-error-msg
   "Canonical, status-specific OpenRouter error message."
   [res]
@@ -137,8 +142,10 @@
 
 (defn- list-all-models
   "Fetch the full OpenRouter model catalog (`GET /v1/models`).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  `:ai-proxy?` is not supported for OpenRouter and throws when true."
   [{:keys [credentials ai-proxy?]}]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
   (when (and credentials (str/blank? (:api-key credentials)))
     (throw (core/missing-api-key-ex "OpenRouter")))
   (try
@@ -160,7 +167,8 @@
 
 (defn list-models
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
@@ -290,9 +298,12 @@
   "Perform a streaming request to the Chat Completions API.
 
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
-  `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.)."
+  `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
+  `:ai-proxy?` is not supported for OpenRouter and throws when true."
   [{:keys [model system input tools temperature max-tokens tool_choice schema ai-proxy?]
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
   (let [messages  (cond-> (parts->cc-messages input)
                     system (as-> msgs (into [{:role "system" :content system}] msgs)))
         all-tools (or (when schema

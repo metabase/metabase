@@ -199,17 +199,6 @@
                      :headers {"Authorization" "Bearer sk-or-v1-byok"}
                      :body    string?}
                     (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Uses ai proxy when explicitly requested"
-          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
-            (with-redefs [self.core/sse-reducible identity
-                          debug/capture-stream    (fn [r _] r)
-                          http/request            (fn [req] {:body req})]
-              (is (=? {:method  :post
-                       :url     "https://proxy.example/openrouter/v1/chat/completions"
-                       :headers {"x-metabase-instance-token" "proxy-token"}
-                       :body    string?}
-                      (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]
-                                                  :ai-proxy? true}))))))
         (testing "Does not fall back to ai proxy when BYOK is missing"
           (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
             (is (thrown-with-msg?
@@ -223,6 +212,26 @@
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
                  (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))))))
+
+(deftest list-models-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for OpenRouter"
+             (openrouter/list-models {:ai-proxy? true})))))))
+
+(deftest openrouter-raw-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for OpenRouter"
+             (openrouter/openrouter-raw {:model "anthropic/claude-haiku-4.5"
+                                         :input [{:role :user :content "hi"}]
+                                         :ai-proxy? true})))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; list-models tests
