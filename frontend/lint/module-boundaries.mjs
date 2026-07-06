@@ -73,10 +73,9 @@ const elements = [
   // shared/embedding: their patterns are subfolders of
   // frontend/src/metabase/embedding/, and the first matching element wins.
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-iframe-sdk",
     pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk/**",
-    enforceOutgoing: false,
   }),
   createElement({
     type: "app",
@@ -189,6 +188,15 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
+  // The theme editor preview renders the live embed via the app-tier EAJS
+  // runtime; the edge is whitelisted via the allow rules below.
+  createElement({
+    type: "feature",
+    name: "admin-theme-preview",
+    pattern:
+      "frontend/src/metabase/admin/embedding/components/ThemeEditor/ResourcePreview.tsx",
+    mode: "full",
+  }),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
@@ -383,6 +391,16 @@ const rules = [
     from: ["shared/embedding-sdk-window-bridge"],
     allow: ["app/embedding-sdk-bundle"],
     importKind: "type",
+  },
+  // Admin theme preview drives the live embed through the EAJS runtime.
+  // Remove once the preview is lifted out of admin.
+  {
+    from: ["feature/admin-theme-preview"],
+    allow: ["feature/admin", "app/embedding-iframe-sdk"],
+  },
+  {
+    from: ["feature/admin"],
+    allow: ["feature/admin-theme-preview"],
   },
 ];
 
