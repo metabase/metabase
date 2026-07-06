@@ -102,10 +102,9 @@ const elements = [
     enforceOutgoing: false,
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-sdk-bundle",
     pattern: "frontend/src/embedding-sdk-bundle/**",
-    enforceOutgoing: false,
   }),
   createElement({
     type: "shared",
@@ -122,12 +121,25 @@ const elements = [
     name: "embedding-sdk-package",
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
+  // Window-global bridges between the SDK bundle and the npm package. They
+  // stay shared tier (both artifacts compile them in), but their payload
+  // types are owned by the bundle, hence the type-only allow rule below.
   ...[
-    "frontend/src/embedding-sdk-shared/**",
-    "frontend/src/embedding-sdk-shared/.storybook/**",
+    "frontend/src/embedding-sdk-shared/lib/ensure-metabase-provider-props-store.ts",
+    "frontend/src/embedding-sdk-shared/lib/metabot-state-channel.ts",
   ].map((pattern) =>
-    createElement({ type: "shared", name: "embedding-sdk-shared", pattern }),
+    createElement({
+      type: "shared",
+      name: "embedding-sdk-window-bridge",
+      pattern,
+      mode: "full",
+    }),
   ),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-shared",
+    pattern: "frontend/src/embedding-sdk-shared/**",
+  }),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
@@ -255,6 +267,9 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
     "frontend/src/metabase/static-viz/index.tsx",
+    // Storybook config is a composition root: preview wires app-tier decorators.
+    // Needs its own pattern because ** doesn't match dot-folders.
+    "frontend/src/embedding-sdk-shared/.storybook/**",
   ].map((path) =>
     createElement({
       type: "app",
@@ -357,6 +372,15 @@ const rules = [
   {
     from: ["shared/monitor"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+  },
+  // Whitelisted cross-tier edges. Keep this list short; every entry should
+  // eventually be removed.
+  // Window-bridge ABI: the payload shapes are owned by the bundle.
+  // TODO(embedding-modules): decouple with shared contracts.
+  {
+    from: ["shared/embedding-sdk-window-bridge"],
+    allow: ["app/embedding-sdk-bundle"],
+    importKind: "type",
   },
 ];
 
