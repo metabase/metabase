@@ -1159,7 +1159,14 @@
         (t2/insert! :model/FieldUserSettings {:field_id f3-id})
         (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
           (is (= #{["FieldUserSettings" f1-id] ["FieldUserSettings" f2-id] ["FieldUserSettings" f3-id]}
-                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))))))
+                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc)))))))
+      (testing "Field and FieldUserSettings are leaf nodes in the descendants graph"
+        ;; Table's descendants method is the only source of field-level entries; if Field ever
+        ;; grows its own descendants (e.g. Field -> FieldUserSettings), traversal would visit
+        ;; every field and full exports would change shape. Cement the leaf-ness here.
+        (doseq [opts [{} {:user-edits-only true}]]
+          (is (empty? (serdes/descendants "Field" f1-id opts)))
+          (is (empty? (serdes/descendants "FieldUserSettings" f1-id opts))))))))
 
 (deftest user-edits-only-extract-test
   (mt/with-empty-h2-app-db!
