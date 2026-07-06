@@ -821,17 +821,22 @@
                " in table " table-name ", but got " actual-count)))))
 
 (defn- wait-for-table
-  "Wait for a table to appear in metadata, with timeout.
-   Copied from execute_test.clj - will consolidate later."
+  "Wait for a table to be created AND fully synced (fields included), with timeout.
+
+   Merely appearing in metadata is not enough: the target's field sync runs in the background after the
+   Table row is inserted, and querying before it finishes fails with \"Table has no Fields associated
+   with it\" on slow warehouses like Redshift's shared CI cluster."
   [table-name timeout-ms]
-  (let [mp    (mt/metadata-provider)
-        limit (+ (System/currentTimeMillis) timeout-ms)]
+  (let [limit (+ (System/currentTimeMillis) timeout-ms)]
     (loop []
       (Thread/sleep 200)
       (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
-      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
-          (recur)))))
+        (throw (ex-info "table has not been created and synced" {:table-name table-name, :timeout-ms timeout-ms})))
+      (let [table (t2/select-one :model/Table :db_id (mt/id) :name table-name :active true)]
+        (if (and table
+                 (t2/exists? :model/Field :table_id (:id table) :active true))
+          table
+          (recur))))))
 
 (deftest execute-transform-test
   (mt/with-premium-features #{}
@@ -855,7 +860,7 @@
                         {transform-id :id} (mt/user-http-request :lucky :post 200 "transform"
                                                                  original)
                         _                  (do (test-run! transform-id)
-                                               (wait-for-table table1-name 5000))
+                                               (wait-for-table table1-name 30000))
                         _                  (is (true? (transforms-base.u/target-table-exists? original)))
                         _                  (check-query-results table1-name [5 11 16] "Gadget")
                         updated            {:name        "Doohickey Products"
@@ -869,7 +874,7 @@
                              (mt/user-http-request :lucky :put 200 (format "transform/%s" transform-id) updated)
                              (update-in [:source :query] lib/normalize))))
                     (test-run! transform-id)
-                    (wait-for-table table2-name 5000)
+                    (wait-for-table table2-name 30000)
                     (is (true? (transforms-base.u/target-table-exists? original)))
                     (is (true? (transforms-base.u/target-table-exists? updated)))
                     (check-query-results table2-name [2 3 4 13] "Doohickey")))))))))))
@@ -1978,7 +1983,7 @@
                                                                       :schema (get-test-schema)
                                                                       :name   table-name}})]
                   (test-run! id)
-                  (wait-for-table table-name 5000)
+                  (wait-for-table table-name 30000)
                   (is (= (count (table-rows "transforms_products"))
                          (count (table-rows table-name)))))))))))))
 
