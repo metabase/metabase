@@ -201,4 +201,8 @@
               analytics     (first (filter #(and (= (:model %) "collection") (= (:id %) audit-coll-id)) items))]
           (is (some? analytics)
               "the analytics collection is listed under the root collection")
-          (is (false? (:can_write analytics))))))))
+          (is (false? (:can_write analytics)))))
+      (testing "GET /api/permissions/graph does not include the audit DB"
+        (let [resp (mt/user-http-request :crowberto :get 200 "permissions/graph")]
+          (is (every? #(not (contains? % audit/audit-db-id))
+                      (vals (:groups resp)))))))))

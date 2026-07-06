@@ -4,7 +4,8 @@
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -232,7 +233,12 @@
                     :output_namespace "ws_alice"
                     :input_schemas    ["public"]
                     :status           :provisioned}]
-      (let [details (-> (config/build-workspace-config ws-id) :config :databases first :details)]
+      ;; Select the MySQL entry explicitly rather than relying on `first` -- `:databases` also carries
+      ;; stub/sample entries (e.g. a pre-existing Sample Database), so its ordering isn't something this
+      ;; test should depend on.
+      (let [details (->> (config/build-workspace-config ws-id) :config :databases
+                         (u/seek #(= :mysql (:engine %)))
+                         :details)]
         (is (nil? (:schema-filters-type details)))
         (is (nil? (:schema-filters-patterns details)))
         (is (nil? (:dataset-filters-type details)))

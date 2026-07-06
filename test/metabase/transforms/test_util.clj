@@ -100,10 +100,13 @@
 
    The lookup is scoped to the current test database (`(mt/id)`) and to the schema of the `transforms_products`
    table (the schema all transform test targets are created in). This avoids matching an unrelated `Table` row with
-   the same bare name that may exist under a different database/schema, e.g. shared datasets on drivers like
-   Redshift where multiple concurrent test runs' tables can share a name."
+   the same bare name that may exist under a different database/schema. The schema is resolved via the table's id
+   because drivers like Redshift load datasets under prefixed physical names (`transforms_test_transforms_products`),
+   so a bare-name lookup finds nothing there; databases without the transforms dataset fall back to a db-scoped
+   bare-name lookup."
   [table-name]
-  (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :name "transforms_products")
+  (let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
+                 (t2/select-one-fn :schema :model/Table products-id))
         pk     (if schema
                  (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
                  (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name))]

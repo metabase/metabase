@@ -3290,16 +3290,24 @@
               (is (contains? ids item-id)))))))))
 
 (deftest can-write-false-for-view-only-user-on-trashed-item-test
-  (testing "GET /api/collection/<trash-id>/items reflects can_write:false for a trashed item whose source collection only grants read access"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
-      (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
-      (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
+    (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
+    (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+    (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived true})
+    (testing "GET /api/collection/<trash-id>/items does not list the item for a view-only user"
+      ;; Browsing the trash listing requires *write* access to the item's original collection (see
+      ;; `:permission-level (if archived? :write :read)` in `collections-rest.api/collection-children*`), so a
+      ;; view-only user won't see it there at all.
       (is (empty? (->> (mt/user-http-request :rasta :get 200
                                              (format "collection/%d/items" (collection/trash-collection-id)))
                        :data
-                       (filter #(= dash-id (:id %)))))))))
+                       (filter #(= dash-id (:id %)))))))
+    (testing "GET /api/dashboard/:id reflects can_write:false for the trashed item"
+      ;; Unlike the trash listing, fetching the item directly only requires *read* access, so a view-only user can
+      ;; still load it -- and the response should honestly report that they can't write it.
+      (is (=? {:id dash-id :can_write false}
+              (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id)))))))
 
 (deftest skip-graph-skips-graph-on-graph-PUT
   (is (malli= [:map [:revision :int] [:groups :map]]
