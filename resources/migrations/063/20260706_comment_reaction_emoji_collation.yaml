@@ -4,7 +4,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v63.2026-07-06T00:00:00
-      author: kulyk
+      author: ranquild
       dbms: mysql,mariadb
       comment: >-
         comment_reaction tables were created with the default utf8mb4_unicode_ci collation, which -- because its
