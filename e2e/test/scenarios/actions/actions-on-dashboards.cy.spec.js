@@ -618,14 +618,14 @@ const MODEL_NAME = "Test Action Model";
 
               changeValue({
                 fieldName: "Integer",
-                fieldType: "number",
+                fieldType: "text",
                 oldValue: oldRow.integer,
                 newValue: 123,
               });
 
               changeValue({
                 fieldName: "Float",
-                fieldType: "number",
+                fieldType: "text",
                 oldValue: oldRow.float,
                 newValue: 2.2,
               });
