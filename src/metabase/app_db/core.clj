@@ -17,7 +17,7 @@
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
    [metabase.app-db.h2 :as mdb.h2]
-   [metabase.app-db.jdbc-protocols]
+   [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
    [metabase.app-db.query-cancelation]
