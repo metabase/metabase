@@ -361,7 +361,7 @@ Whether to (asynchronously) sync newly created Databases during config-from-file
 - [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
 - [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
 
-Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations (`map-tile-server-url`, always allowed automatically).
 
 ### `MB_CSP_IMG_ENABLED`
 
