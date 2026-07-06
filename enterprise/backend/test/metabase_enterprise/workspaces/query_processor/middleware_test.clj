@@ -20,7 +20,6 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.workspaces.table-remapping :as oss.remap]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -760,7 +759,7 @@
    are `[schema table]` 2-tuples or `[db schema table]` 3-tuples."
   [mp & spec-pairs]
   (let [remappings (into {} (map (fn [[from to]] [(->spec from) (->spec to)])) spec-pairs)]
-    (oss.remap/override-metadata-provider (#'ws.middleware/table->overrides remappings) mp)))
+    (lib.metadata/table-overriding-metadata-provider (#'ws.middleware/table->overrides remappings) mp)))
 
 (defn- tables-by-id
   "Return `{id {:schema s :name n}}` for all tables visible through `mp`."

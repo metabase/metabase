@@ -242,3 +242,50 @@
         (str "SET ROLE none; " values-query) false false
         (str values-query "; SELECT 1") false false
         (str values-query "; SET ROLE none") false false))))
+
+;;; ---------------------------------------------- rewrite-table-refs ----------------------------------------------
+
+(deftest ^:parallel rewrite-table-refs-redirects-test
+  (sql-tools.tu/test-parser-backends
+   (testing "a table ref is redirected to its replacement target"
+     (let [rw (sql-tools/rewrite-table-refs
+               :postgres "SELECT id FROM orders"
+               {:tables {{:table "orders"} {:schema "public" :table "scratch_orders"}}})]
+       (is (re-find #"scratch_orders" rw))
+       (is (not (re-find #"\borders\b" rw)))))))
+
+(deftest ^:parallel rewrite-table-refs-allow-unused-test
+  (sql-tools.tu/test-parser-backends
+   (testing "an unused replacement key is tolerated with :allow-unused? true on every backend"
+     (let [rw (sql-tools/rewrite-table-refs
+               :postgres "SELECT id FROM orders"
+               {:tables {{:table "orders"}    {:schema "public" :table "scratch_orders"}
+                         {:table "customers"} {:schema "public" :table "scratch_customers"}}}
+               {:allow-unused? true})]
+       (is (re-find #"scratch_orders" rw))
+       (is (not (re-find #"scratch_customers" rw)))))))
+
+(deftest ^:parallel rewrite-table-refs-on-parse-error-test
+  (sql-tools.tu/test-parser-backends
+   (testing "a parse failure is funnelled to :on-parse-error (not thrown)"
+     (let [seen   (atom nil)
+           ;; A genuinely unparseable string. (If a backend parses it leniently this
+           ;; is a no-op rewrite, which still must not throw.)
+           result (sql-tools/rewrite-table-refs
+                   :postgres "SELECT FROM FROM WHERE )("
+                   {:tables {{:table "orders"} {:table "scratch_orders"}}}
+                   {:on-parse-error (fn [_sql e] (reset! seen (class e)) ::handled)})]
+       (is (or (= ::handled result) (string? result))
+           "either the parse error was handled, or the backend tolerated the input")
+       (when (= ::handled result)
+         (is (some? @seen) "the cause exception was passed to on-parse-error"))))))
+
+(deftest rewrite-table-refs-default-rethrows-test
+  (testing "without :on-parse-error, a parse failure propagates"
+    ;; Force the failure deterministically — backend parsers are too lenient to
+    ;; guarantee a parse error from any particular SQL string.
+    (mt/with-dynamic-fn-redefs [sql-tools/replace-names (fn [& _] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (sql-tools/rewrite-table-refs
+                             :postgres "SELECT 1"
+                             {:tables {}}))))))

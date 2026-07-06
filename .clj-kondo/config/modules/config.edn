@@ -2703,9 +2703,7 @@
   {:team "Graphy"
    :api #{metabase.workspaces.core
           metabase.workspaces.table-remapping}
-   :uses #{lib
-           premium-features
-           sql-tools
+   :uses #{premium-features
            util}}
 
   xrays
@@ -3612,8 +3610,7 @@
            transforms
            transforms-base
            upload
-           util
-           workspaces}
+           util}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3647,6 +3644,7 @@
            sample-data
            server
            settings
+           sql-tools
            util
            workspaces
            enterprise/serialization}

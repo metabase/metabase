@@ -66,13 +66,13 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.query-processor.store :as qp.store]
-   [metabase.workspaces.table-remapping :as oss.remap]))
+   [metabase.query-processor.store :as qp.store]))
 
 (set! *warn-on-reflection* true)
 
@@ -118,7 +118,7 @@
    schema-less driver's `:metadata/table.:schema = nil` (and a Postgres remapping
    row with `from_schema = \"public\"` matches the literal value)."
   [mp remappings]
-  (let [remapping-mp (oss.remap/override-metadata-provider (table->overrides remappings) mp)]
+  (let [remapping-mp (lib.metadata/table-overriding-metadata-provider (table->overrides remappings) mp)]
     (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
       ;; this has no body so it looks like this is a no-op. But the with-metadata-provider sets the metadata provider and then
       ;; doesn't pop it. We could use the private function that this uses: qp.store/set-metadata-provider!, or we could use the

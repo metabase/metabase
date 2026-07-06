@@ -242,47 +242,50 @@
         outputs*       (atom {})]
     (driver.conn/with-transform-connection
       ;; One statement-level timeout for everything the run executes: the node
-      ;; transforms, the read-back / card query, and the assertion queries.
-      (binding [driver.settings/*query-timeout-ms* timeout-ms]
-        (try
-          (let [{:keys [mapping outputs parser-backend]}
-                (run-slice! {:order                order
-                             :leaf-deps            leaf-deps
-                             :db                   db
-                             :db-id                db-id
-                             :driver               driver
-                             :schema               schema
-                             :fixtures-by-table-id fixtures-by-table-id
-                             :id->transform        id->transform
-                             :mapping*             mapping*
-                             :outputs*             outputs*})
-                {:keys [qp-result output-sql extra]}
-                (produce-actual {:mapping mapping :outputs outputs :db-id db-id :driver driver})
-                actual-cols (get-in qp-result [:data :cols])
-                actual-rows (get-in qp-result [:data :rows])
-                report      (when expected-csv-file
-                              (let [expected (fixtures/parse-fixture expected-csv-file
-                                                                     (execute/actual->schema actual-cols))]
-                                (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
-                ;; Run assertions while the scratch tables still exist: after
-                ;; produce-actual, before cleanup.
-                backend     (sql-tools/parser-backend)
-                assertion-results (assertions/run-assertions! db-id driver backend mapping output-sql assertion-defs)
-                overall     (assertions/overall-status (or (:status report) :passed)
-                                                       assertion-results)]
-            (merge {:status         overall
-                    :diff           report
-                    ;; nil, not [], when no assertions ran — the wire serializes null.
-                    :assertions     (not-empty assertion-results)
-                    :parser-backend parser-backend
-                    :order          order}
-                   extra))
-          (finally
-            ;; Drop node output scratch tables (one per slice node)...
-            (doseq [out-spec (vals @outputs*)]
-              (scratch/cleanup! db-id db {} out-spec))
-            ;; ...then the leaf input scratch tables.
-            (scratch/cleanup! db-id db @mapping* nil)))))))
+      ;; transforms, the read-back / card query, and the assertion queries. And one
+      ;; parser backend pinned for every sql-tools call in the run (rewrite, verify,
+      ;; assertions) — a mid-run settings flip must not mix backends.
+      (sql-tools/with-parser-backend (sql-tools/parser-backend)
+        (binding [driver.settings/*query-timeout-ms* timeout-ms]
+          (try
+            (let [{:keys [mapping outputs parser-backend]}
+                  (run-slice! {:order                order
+                               :leaf-deps            leaf-deps
+                               :db                   db
+                               :db-id                db-id
+                               :driver               driver
+                               :schema               schema
+                               :fixtures-by-table-id fixtures-by-table-id
+                               :id->transform        id->transform
+                               :mapping*             mapping*
+                               :outputs*             outputs*})
+                  {:keys [qp-result output-sql extra]}
+                  (produce-actual {:mapping mapping :outputs outputs :db-id db-id :driver driver})
+                  actual-cols (get-in qp-result [:data :cols])
+                  actual-rows (get-in qp-result [:data :rows])
+                  report      (when expected-csv-file
+                                (let [expected (fixtures/parse-fixture expected-csv-file
+                                                                       (execute/actual->schema actual-cols))]
+                                  (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})))
+                  ;; Run assertions while the scratch tables still exist: after
+                  ;; produce-actual, before cleanup.
+                  backend     (sql-tools/parser-backend)
+                  assertion-results (assertions/run-assertions! db-id driver backend mapping output-sql assertion-defs)
+                  overall     (assertions/overall-status (or (:status report) :passed)
+                                                         assertion-results)]
+              (merge {:status         overall
+                      :diff           report
+                      ;; nil, not [], when no assertions ran — the wire serializes null.
+                      :assertions     (not-empty assertion-results)
+                      :parser-backend parser-backend
+                      :order          order}
+                     extra))
+            (finally
+              ;; Drop node output scratch tables (one per slice node)...
+              (doseq [out-spec (vals @outputs*)]
+                (scratch/cleanup! db-id db {} out-spec))
+              ;; ...then the leaf input scratch tables.
+              (scratch/cleanup! db-id db @mapping* nil))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry points

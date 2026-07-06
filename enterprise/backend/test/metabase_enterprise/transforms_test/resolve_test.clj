@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transforms-test.resolve-test
   "Tests for metabase-enterprise.transforms-test.resolve.
 
-  `rewrite-native-sql` and the three-guard `verify` only parse, so they are tested
+  `rewrite-native-sql` and the four-guard `verify` only parse, so they are tested
   directly with no DB. `resolve-test-transform` end-to-end (compile + rewrite/override
   + verify) needs a real metadata provider, so those tests are gated under postgres
   with `mt/dataset test-data`."
@@ -30,7 +30,7 @@
    {:schema "public" :table "customers"} {:schema "public" :table "scratch_customers"}})
 
 (defn- rewrite
-  "Rewrite native SQL through the pinned backend (sqlglot in this env)."
+  "Rewrite native SQL through the current parser backend."
   [sql mapping]
   (resolve/rewrite-native-sql :postgres sql mapping (sql-tools.settings/current-parser-backend)))
 
@@ -59,26 +59,28 @@
 
 (deftest case-1-unqualified-table-unqualified-columns-test
   (testing "case 1: unqualified table ref + unqualified columns"
-    ;; sqlglot qualifies the rewritten ref with the target scratch schema (public),
-    ;; driver-quoted so the reference is case-preserved and matches the created table.
+    ;; The rewritten ref is qualified with the target scratch schema (public) and
+    ;; driver-quoted, so the reference is case-preserved and matches the created table.
     ;; (Assert the load-bearing fragment, not the full string — the surrounding
-    ;; formatting is backend pretty-printing and churns on sqlglot version bumps.)
+    ;; formatting is backend pretty-printing and churns on parser version bumps.)
     (is (re-find #"FROM \"public\"\.\"scratch_orders\""
                  (rewrite "SELECT id FROM orders" orders->scratch)))
     (is (string? (rewrite+verify "SELECT id FROM orders" orders->scratch)))))
 
 (deftest case-2-schema-qualified-table-alias-qualified-columns-test
   (testing "case 2: schema-qualified table ref, alias-qualified columns"
+    ;; sqlglot emits `AS o`; macaw emits bare `o` — accept both.
     (let [rw (rewrite "SELECT o.id, o.total FROM public.orders o" orders->scratch)]
-      (is (re-find #"FROM \"public\"\.\"scratch_orders\" AS o" rw)
+      (is (re-find #"FROM \"public\"\.\"scratch_orders\"\s+(AS\s+)?o" rw)
           "scratch ref is schema-qualified, quoted, and keeps the alias")
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-3-self-join-test
   (testing "case 3: self-join (two aliases, same table)"
+    ;; sqlglot emits `AS a`; macaw emits bare `a` — accept both.
     (let [rw (rewrite "SELECT a.id FROM orders a JOIN orders b ON a.id = b.id" orders->scratch)]
-      (is (re-find #"\"scratch_orders\" AS a" rw))
-      (is (re-find #"\"scratch_orders\" AS b" rw))
+      (is (re-find #"\"scratch_orders\"\s+(AS\s+)?a" rw))
+      (is (re-find #"\"scratch_orders\"\s+(AS\s+)?b" rw))
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-4-subquery-test
@@ -109,14 +111,25 @@
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-8-quoted-exact-case-identifier-test
-  (testing "case 8: quoted exact-case identifier with exact-case replacement key"
-    ;; A quoted mixed-case table mapped by exact case; output stays quoted.
-    (let [mapping {{:schema "public" :table "Orders"} {:schema "public" :table "scratch_Orders"}}
-          rw      (rewrite "SELECT id FROM \"public\".\"Orders\"" mapping)]
-      (is (re-find #"\"scratch_Orders\"" rw))
-      ;; verify: scratch ref set folds to lowercase; referenced-tables-raw returns the
-      ;; quoted name verbatim (Orders -> scratch_Orders), normalize-ref lowercases both sides.
-      (is (string? (resolve/verify :postgres mapping rw))))))
+  (let [mapping {{:schema "public" :table "Orders"} {:schema "public" :table "scratch_Orders"}}]
+    (testing "case 8 (sqlglot): quoted exact-case identifier with exact-case replacement key"
+      ;; A quoted mixed-case table mapped by exact case; output stays quoted.
+      (sql-tools/with-parser-backend :sqlglot
+        (let [rw (rewrite "SELECT id FROM \"public\".\"Orders\"" mapping)]
+          (is (re-find #"\"scratch_Orders\"" rw))
+          ;; verify: scratch ref set folds to lowercase; referenced-tables-raw returns the
+          ;; case-preserved name (Orders -> scratch_Orders); normalize-ref driver-normalizes
+          ;; (strips quoting) then lowercases both sides.
+          (is (string? (resolve/verify :postgres mapping rw))))))
+    (testing "case 8 (macaw): a quoted original + pre-quoted target double-quotes — fails closed"
+      ;; mapping->replacements pre-quotes targets (sqlglot preserves case that way);
+      ;; macaw quotes again when the original ref was quoted, yielding `\"\"...\"\"` —
+      ;; unparseable, so refs come back empty and guard 1 rejects it. Fail-closed, not
+      ;; silent: a known macaw divergence, pinned here so a behavior change surfaces.
+      (sql-tools/with-parser-backend :macaw
+        (let [rw (rewrite "SELECT id FROM \"public\".\"Orders\"" mapping)]
+          (is (cannot-test-run? #(resolve/verify :postgres mapping rw)
+                                ::resolve/non-empty-refs)))))))
 
 ;;; ===========================================================================
 ;;; Must-fail catalogue (cases 9-13)
@@ -145,9 +158,12 @@
     ;; referenced-tables-raw reports only FROM/JOIN sources -> [scratch_orders] -> guard 2 passes;
     ;; guard 3 must catch the surviving `orders` token.
     (let [broken "SELECT \"public\".\"orders\".\"user_id\" FROM \"public\".\"scratch_orders\""]
-      ;; sanity: guard 2 alone would pass (the only FROM source is scratch_orders)
-      (is (= [{:schema "public" :table "scratch_orders"}]
-             (vec (sql-tools/referenced-tables-raw :postgres broken))))
+      ;; sanity: guard 2 alone would pass (the only FROM source is scratch_orders).
+      ;; Raw parser output keeps quoting on macaw and strips it on sqlglot — assert
+      ;; the substance, not the quoting.
+      (let [refs (vec (sql-tools/referenced-tables-raw :postgres broken))]
+        (is (= 1 (count refs)))
+        (is (re-find #"scratch_orders" (:table (first refs)))))
       ;; but verify as a whole fails closed via guard 3
       (is (cannot-test-run?
            #(resolve/verify :postgres orders->scratch broken)
@@ -156,12 +172,12 @@
 (deftest case-12-cte-shadow-test
   (testing "case 12: CTE whose name shadows a mapped real table, no real reference"
     ;; `WITH orders AS (...) SELECT * FROM orders` — the only `orders` is the CTE.
-    ;; On sqlglot, replace-names mis-rewrites the final CTE-ref to scratch_orders.
-    ;; referenced-tables-raw correctly excludes CTE names, so guard 1 sees [] -> fails
-    ;; (non-empty-refs guard). The surviving `WITH orders AS` token is also caught by
-    ;; guard 3. Either way it fails closed. We assert it fails with the typed error.
+    ;; On sqlglot, replace-names mis-rewrites the final CTE-ref to scratch_orders,
+    ;; silently changing what the query reads; guard 4's CTE-name scan catches the
+    ;; surviving `WITH orders AS (` definition. On macaw the rewrite leaves the CTE
+    ;; alone, so refs = [] against a non-empty mapping and guard 1 fires. Either
+    ;; way it must fail closed with the typed error.
     (let [rw (rewrite "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders" orders->scratch)]
-      ;; Whatever the precise shape, verify must reject it (it cannot be safely test-run).
       (is (cannot-test-run? #(resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-13-empty-refs-vacuous-pass-blocked-test
@@ -171,26 +187,30 @@
     (is (cannot-test-run?
          #(resolve/verify :postgres orders->scratch "SELECT 1")
          ::resolve/non-empty-refs))
-    ;; A genuinely malformed string also yields [] from referenced-tables-raw -> guard 1.
+    ;; A genuinely malformed string yields [] or throws from referenced-tables-raw —
+    ;; either way guard 1 (::non-empty-refs).
     (is (cannot-test-run?
          #(resolve/verify :postgres orders->scratch "NOT SQL AT ALL ;;;")
          ::resolve/non-empty-refs))))
 
 ;;; ===========================================================================
-;;; Backend-divergence (cases 14-15) — record behavior for the pinned backend (:sqlglot)
+;;; Backend-divergence (cases 14-15)
 ;;; ===========================================================================
 
-(deftest case-14-allow-unused-noop-on-sqlglot-test
-  (testing "case 14: an unused replacement key is a no-op on sqlglot (no throw)"
-    ;; mapping references `customers` but the SQL only uses `orders`; sqlglot ignores
-    ;; the unused `customers` key silently (allow-unused? is moot). The rewrite succeeds;
-    ;; orders is rewritten, the unused customers key causes no error.
-    (let [rw (rewrite "SELECT id FROM orders" orders+customers->scratch)]
-      (is (re-find #"FROM \"public\"\.\"scratch_orders\"" rw))
-      (is (not (re-find #"customers" rw))))))
+(deftest case-14-unused-key-tolerated-on-both-backends-test
+  (testing "case 14: an unused replacement key never throws (allow-unused? is passed)"
+    ;; mapping references `customers` but the SQL only uses `orders`. sqlglot ignores
+    ;; unused keys unconditionally; macaw errors on them unless :allow-unused? — which
+    ;; rewrite-native-sql always passes (there is always an unused bare/qualified
+    ;; twin key). Assert on both backends.
+    (doseq [backend [:sqlglot :macaw]]
+      (sql-tools/with-parser-backend backend
+        (let [rw (rewrite "SELECT id FROM orders" orders+customers->scratch)]
+          (is (re-find #"scratch_orders" rw) (str "backend " backend))
+          (is (not (re-find #"scratch_customers" rw)) (str "backend " backend)))))))
 
 ;;; ===========================================================================
-;;; Ambiguous bare table names (C-4): same table name in two schemas
+;;; Ambiguous bare table names: same table name in two schemas
 ;;; ===========================================================================
 
 (deftest ambiguous-bare-table-name-fails-closed-test
@@ -217,12 +237,12 @@
 
 (deftest case-15-table-only-key-matches-loosely-on-sqlglot-test
   (testing "case 15: a bare table key matches a schema-qualified ref on sqlglot (loose match)"
-    ;; On macaw this would throw \"Unknown rename\"; on sqlglot the bare {:table orders}
-    ;; key matches public.orders. We register both keys, so this is covered, but assert
-    ;; the loose-match behavior explicitly with a bare-only mapping.
-    (let [bare-only {{:table "orders"} {:schema "public" :table "scratch_orders"}}]
-      (is (re-find #"FROM \"public\"\.\"scratch_orders\""
-                   (rewrite "SELECT id FROM public.orders" bare-only))))))
+    ;; sqlglot-specific divergence (macaw does not loose-match a bare key against a
+    ;; qualified ref) — pin the backend so the assertion holds under a :macaw sweep.
+    (sql-tools/with-parser-backend :sqlglot
+      (let [bare-only {{:table "orders"} {:schema "public" :table "scratch_orders"}}]
+        (is (re-find #"FROM \"public\"\.\"scratch_orders\""
+                     (rewrite "SELECT id FROM public.orders" bare-only)))))))
 
 ;;; ===========================================================================
 ;;; Token-survival edge: a mapped table whose name is a substring of a surviving
@@ -230,28 +250,27 @@
 ;;; ===========================================================================
 
 (deftest token-survival-substring-column-passes-test
-  (testing "a legitimate column `orders_total` does not trip guard 3 when `orders` is mapped away"
-    ;; FROM is scratch_orders; orders_total is a column (identifier boundary: the `_`
-    ;; after `orders` means `orders` is not a whole-identifier match). Must pass.
+  (testing "a legitimate column `orders_total` does not trip the token-survival guard when `orders` is mapped away"
+    ;; Bare columns are identifiers, outside the literal/CTE-scoped token scan. Must pass.
     (let [sql "SELECT orders_total FROM scratch_orders"]
       (is (string? (resolve/verify :postgres orders->scratch sql))))))
 
 (deftest token-survival-orders-old-does-not-match-orders-test
-  (testing "guard 3 is identifier-boundary-aware: `orders_old` is not `orders`"
-    ;; This is purely about the matching predicate: a different table orders_old must
-    ;; not be flagged as the surviving `orders` token. (It would trip guard 2 as an
-    ;; unmapped table, but here we map orders_old too so only the substring concern is tested.)
+  (testing "`scratch_orders_old` in FROM is not flagged as a surviving `orders`"
+    ;; Plain identifiers are outside the literal/CTE-scoped token scan, so nothing
+    ;; here is scanned for `orders`. (orders_old is mapped too — unmapped it would
+    ;; trip guard 2 and mask the substring concern.)
     (let [mapping {{:schema "public" :table "orders"}     {:schema "public" :table "scratch_orders"}
                    {:schema "public" :table "orders_old"} {:schema "public" :table "scratch_orders_old"}}
           sql     "SELECT id FROM scratch_orders JOIN scratch_orders_old ON true"]
       (is (string? (resolve/verify :postgres mapping sql))))))
 
 (deftest token-survival-case-different-quoted-alias-passes-test
-  (testing "a case-different quoted alias of a mapped table must not trip guard 3"
+  (testing "a case-different quoted alias of a mapped table must not trip the token scan"
     ;; The lib derives join aliases from table display names, so joining `products`
-    ;; compiles to `... AS "Products"` — a legitimate alias over a scratch table. A
-    ;; case-insensitive token check would flag that alias as the forbidden `products`,
-    ;; rejecting every MBQL join.
+    ;; compiles to `... AS "Products"` — a legitimate alias over a scratch table.
+    ;; Aliases are identifiers, outside the literal/CTE-scoped token scan; this pins
+    ;; that MBQL-join-shaped SQL passes verify.
     (let [mapping {{:schema "public" :table "orders"}   {:schema "public" :table "scratch_orders"}
                    {:schema "public" :table "products"} {:schema "public" :table "scratch_products"}}
           sql     (str "SELECT \"Products\".\"id\" FROM \"public\".\"scratch_orders\" "
@@ -259,26 +278,47 @@
                        "ON \"Products\".\"id\" = \"public\".\"scratch_orders\".\"product_id\"")]
       (is (string? (resolve/verify :postgres mapping sql))))))
 
+(deftest column-named-like-mapped-table-passes-test
+  (testing "a bare *column* named like another mapped input table passes verify"
+    ;; Table/column name collisions are routine (`status`, `type`, `source`, `state`).
+    ;; The token scan is scoped to parser-invisible contexts (string literals, CTE
+    ;; names), so a plain column reference must not trip it.
+    (let [mapping {{:schema "public" :table "orders"} {:schema "public" :table "scratch_orders"}
+                   {:schema "public" :table "status"} {:schema "public" :table "scratch_status"}}
+          sql     "SELECT status FROM public.scratch_orders JOIN public.scratch_status ON true"]
+      (is (string? (resolve/verify :postgres mapping sql)))))
+  (testing "a user-written *alias* equal to a mapped table name passes verify"
+    (let [mapping {{:schema "public" :table "orders"} {:schema "public" :table "scratch_orders"}
+                   {:schema "public" :table "people"} {:schema "public" :table "scratch_people"}}
+          sql     (str "SELECT x AS people FROM public.scratch_orders"
+                       " JOIN public.scratch_people ON true")]
+      (is (string? (resolve/verify :postgres mapping sql))))))
+
+(deftest safe-aliases-exempt-from-refs-guard-test
+  (testing "a safe-aliases name is exempt from guard 2 (the caller CTE-binds it)"
+    (is (= "SELECT * FROM test_output"
+           (resolve/verify :postgres orders->scratch
+                           "SELECT * FROM test_output" #{"test_output"})))))
+
 ;;; ===========================================================================
 ;;; String-literal fail-closed
 ;;; ===========================================================================
 
-(deftest string-literal-fails-closed-by-design-test
-  (testing "a string literal containing a real table token fails guard 3"
-    ;; `WHERE src = 'orders'` — the string literal `'orders'` matches the boundary-aware
-    ;; regex; this is an accepted fail-closed false positive, with the surviving token named.
+(deftest string-literal-token-fails-closed-test
+  (testing "a string literal containing a real table token fails guard 4"
+    ;; `WHERE src = 'orders'` — the literal-scoped, boundary-aware scan matches
+    ;; `'orders'`; an accepted fail-closed false positive, with the surviving token named.
     (let [sql "SELECT id FROM scratch_orders WHERE src = 'orders'"]
       (is (cannot-test-run?
            #(resolve/verify :postgres orders->scratch sql)
            ::resolve/token-survival)))))
 
-(deftest string-literal-check-is-case-sensitive-by-design-test
+(deftest string-literal-scan-case-sensitive-test
   (testing "the string-literal scan is case-sensitive — pinning both sides"
-    ;; A case-insensitive scan would collide with case-different quoted identifiers
-    ;; (join aliases like `AS "Products"` for table `products`), rejecting every MBQL
-    ;; join. The cost is that a case-different string literal slips through; that is
-    ;; harmless, since the dangling-qualifier hazard is caught by the parser-based
-    ;; check regardless.
+    ;; Identifiers (join aliases like `AS "Products"`) are outside the literal-scoped
+    ;; scan at any case; this pins the scan itself: case-sensitive, so a case-different
+    ;; literal slips through. Harmless — the dangling-qualifier hazard is caught by the
+    ;; parser-based check regardless.
     (let [fails  "SELECT id FROM scratch_orders WHERE src = 'orders'"
           passes "SELECT id FROM scratch_orders WHERE src = 'ORDERS'"]
       (is (cannot-test-run?
@@ -306,7 +346,7 @@
               target    {:schema "public" :table "out_xyz"}
               art       (resolve/resolve-test-transform transform mapping target {:db (mt/db)})]
           (is (= :postgres (:driver art)))
-          (is (= :sqlglot (:parser-backend art)))
+          (is (= (sql-tools/parser-backend) (:parser-backend art)))
           (is (= target (:target art)))
           ;; :compiled carried intact (qp.compile/compile shape), only :query updated
           (is (contains? (:compiled art) :query))
