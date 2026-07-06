@@ -215,11 +215,11 @@
     (testing "POST /api/ee/data-studio/table/publish-tables publishes recursive upstream dependencies"
       (mt/with-temp [:model/Collection {collection-id :id}    {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
-                     ;; Customers table (upstream of orders)
-                     :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published false}
-                     :model/Field      _                    {:table_id customers-id :name "id"
+                     ;; Purchasers table (upstream of orders)
+                     :model/Table      {purchasers-id :id}   {:db_id db-id :name "purchasers" :is_published false}
+                     :model/Field      _                    {:table_id purchasers-id :name "id"
                                                              :semantic_type :type/PK :base_type :type/Integer}
-                     :model/Field      {cust-name-f :id}    {:table_id customers-id :name "name"
+                     :model/Field      {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
                      ;; Orders table (upstream of order_items, downstream of customers)
                      :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published false}
@@ -227,8 +227,8 @@
                                                              :semantic_type :type/PK :base_type :type/Integer}
                      :model/Field      {order-name-f :id}   {:table_id orders-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
-                     :model/Field      {customer-fk :id}    {:table_id orders-id :name "customer_id"
-                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     :model/Field      {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
+                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Order items table (downstream of orders)
                      :model/Table      {items-id :id}       {:db_id db-id :name "order_items" :is_published false}
                      :model/Field      _                    {:table_id items-id :name "id"
@@ -236,7 +236,7 @@
                      :model/Field      {order-fk :id}       {:table_id items-id :name "order_id"
                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Dimensions for FK remapping
-                     :model/Dimension  _                    {:field_id customer-fk
+                     :model/Dimension  _                    {:field_id purchaser-fk
                                                              :human_readable_field_id cust-name-f
                                                              :type :external}
                      :model/Dimension  _                    {:field_id order-fk
@@ -247,7 +247,7 @@
                                 {:table_ids     [items-id]
                                  :collection_id collection-id})
           (are [table-id] (true? (t2/select-one-fn :is_published :model/Table table-id))
-            items-id orders-id customers-id))))))
+            items-id orders-id purchasers-id))))))
 
 (deftest unpublish-tables-with-downstream-dependents-test
   (mt/with-premium-features #{:library}
@@ -283,12 +283,12 @@
     (testing "POST /api/ee/data-studio/table/unpublish-tables unpublishes recursive downstream dependents"
       (mt/with-temp [:model/Collection {coll-id :id}        {:type collection/library-data-collection-type}
                      :model/Database   {db-id :id}          {}
-                     ;; Customers table (upstream of orders, published)
-                     :model/Table      {customers-id :id}   {:db_id db-id :name "customers" :is_published true
-                                                             :collection_id coll-id}
-                     :model/Field      _                    {:table_id customers-id :name "id"
+                     ;; Purchasers table (upstream of orders, published)
+                     :model/Table      {purchasers-id :id}   {:db_id db-id :name "purchasers" :is_published true
+                                                              :collection_id coll-id}
+                     :model/Field      _                    {:table_id purchasers-id :name "id"
                                                              :semantic_type :type/PK :base_type :type/Integer}
-                     :model/Field      {cust-name-f :id}    {:table_id customers-id :name "name"
+                     :model/Field      {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
                      ;; Orders table (downstream of customers, upstream of items, published)
                      :model/Table      {orders-id :id}      {:db_id db-id :name "orders" :is_published true
@@ -297,8 +297,8 @@
                                                              :semantic_type :type/PK :base_type :type/Integer}
                      :model/Field      {order-name-f :id}   {:table_id orders-id :name "name"
                                                              :semantic_type :type/Name :base_type :type/Text}
-                     :model/Field      {customer-fk :id}    {:table_id orders-id :name "customer_id"
-                                                             :semantic_type :type/FK :base_type :type/Integer}
+                     :model/Field      {purchaser-fk :id}    {:table_id orders-id :name "purchaser_id"
+                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Order items table (downstream of orders, published)
                      :model/Table      {items-id :id}       {:db_id db-id :name "order_items" :is_published true
                                                              :collection_id coll-id}
@@ -307,7 +307,7 @@
                      :model/Field      {order-fk :id}       {:table_id items-id :name "order_id"
                                                              :semantic_type :type/FK :base_type :type/Integer}
                      ;; Dimensions for FK remapping
-                     :model/Dimension  _                    {:field_id customer-fk
+                     :model/Dimension  _                    {:field_id purchaser-fk
                                                              :human_readable_field_id cust-name-f
                                                              :type :external}
                      :model/Dimension  _                    {:field_id order-fk
@@ -315,9 +315,9 @@
                                                              :type :external}]
         (testing "unpublishing customers also unpublishes orders and order_items (recursive downstream)"
           (mt/user-http-request :crowberto :post 204 "ee/data-studio/table/unpublish-tables"
-                                {:table_ids [customers-id]})
+                                {:table_ids [purchasers-id]})
           (are [table-id] (false? (t2/select-one-fn :is_published :model/Table table-id))
-            customers-id orders-id items-id))))))
+            purchasers-id orders-id items-id))))))
 
 (defn- with-fk-linked-published-tables
   "Sets up two Library/Data collections A and B, with published Table X in A and published Table Y in B, where Y has an

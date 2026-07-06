@@ -103,13 +103,13 @@
    the same bare name that may exist under a different database/schema, e.g. shared datasets on drivers like
    Redshift where multiple concurrent test runs' tables can share a name."
   [table-name]
-  (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+  (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :name "transforms_products")
+        pk     (if schema
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name))]
     (->>
      (mt/rows (mt/process-query {:database (mt/id)
-                                 :query    {:source-table (t2/select-one-pk :model/Table
-                                                                            :db_id  (mt/id)
-                                                                            :schema schema
-                                                                            :name   table-name)}
+                                 :query    {:source-table pk}
                                  :type     :query}))
      (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x))))))
 
