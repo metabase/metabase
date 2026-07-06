@@ -283,24 +283,26 @@ describe("scenarios > embedding-sdk > static-question", () => {
     });
   });
 
-  it("should not request /api/card/undefined when clicking a data point on an ad-hoc `query` question", () => {
-    // An ad-hoc question (rendered from `query`) has no saved card id. A static
-    // question must not navigate on a chart click — previously it did, fetching
+  it("should not request /api/card/undefined when clicking a data point on a query-only ad-hoc card", () => {
+    // A query-only ad-hoc card has no saved card id. A static question must not
+    // navigate on a chart click — previously it did, fetching
     // `GET /api/card/undefined` (the new card's id was `undefined`).
     cy.intercept("GET", "/api/card/undefined").as("getUndefinedCard");
 
     mountSdkContent(
       <StaticQuestion
-        query={{
-          database: SAMPLE_DB_ID,
-          type: "query",
+        card={{
           query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-            limit: 5,
+            database: SAMPLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+              limit: 5,
+            },
           },
         }}
       />,

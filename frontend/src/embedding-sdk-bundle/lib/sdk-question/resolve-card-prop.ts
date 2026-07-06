@@ -24,8 +24,7 @@ export function resolveCardProp(
   return {
     dataset_query: input.query as DatasetQuery,
     // Public-facing `visualization` maps to the internal card `display`. When
-    // omitted, mirror the legacy `query` prop and let query results pick a
-    // better unlocked display later.
+    // omitted, let query results pick a better unlocked display later.
     display: input.visualization ?? "table",
     ...(shouldSetDisplayLock
       ? {
