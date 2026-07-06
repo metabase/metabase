@@ -494,7 +494,7 @@ const visualizerSlice = createSlice({
           datasetMap: state.datasets as Record<VisualizerDataSourceId, Dataset>,
           dataSourceMap: Object.fromEntries(
             state.cards.map((card) => {
-              const dataSource = createDataSource('card', card.id, card.name);
+              const dataSource = createDataSource("card", card.id, card.name);
               return [dataSource.id, dataSource];
             }),
           ),
