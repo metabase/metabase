@@ -1,5 +1,3 @@
-import { IndexRedirect, Route } from "react-router";
-
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
@@ -8,6 +6,7 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
 } from "metabase/plugins";
+import { IndexRedirect, Route } from "metabase/router";
 
 import { CollectionPermissionsPage } from "./pages/CollectionPermissionsPage/CollectionPermissionsPage";
 import DataPermissionsPage from "./pages/DataPermissionsPage";

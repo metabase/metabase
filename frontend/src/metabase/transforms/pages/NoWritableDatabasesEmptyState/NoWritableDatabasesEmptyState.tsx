@@ -1,10 +1,10 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Center, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";

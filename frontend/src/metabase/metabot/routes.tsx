@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { SlackConnectSuccess } from "./components/SlackConnectSuccess";

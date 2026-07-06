@@ -1,6 +1,5 @@
-import type { Route } from "react-router";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { Route } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";

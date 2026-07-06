@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { WithRouterProps } from "react-router";
 import { match } from "ts-pattern";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { WithRouterProps } from "metabase/router";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 import {

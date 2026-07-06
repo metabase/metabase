@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Component } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
+
+import { type WithRouterProps, withRouter } from "metabase/router";
 
 interface ScrollToTopProps {
   children?: ReactNode;

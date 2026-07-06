@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -22,6 +21,7 @@ import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockCollection,
   createMockSettingDefinition,

@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -25,6 +24,7 @@ import {
   within,
 } from "__support__/ui";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { IndexRedirect, Link, Redirect, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";

@@ -1,10 +1,9 @@
-import type { WithRouterProps } from "react-router";
-
 import {
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { WithRouterProps } from "metabase/router";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import { ArchiveDashboardModalConnectedInner } from "./ArchiveDashboardModal";

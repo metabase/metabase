@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { withRouter } from "react-router";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
@@ -21,6 +20,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { withRouter } from "metabase/router";
 import { Button, Group, Icon, Tooltip } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import * as Errors from "metabase/utils/errors";

@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -27,6 +26,7 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { WithRouterProps } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";

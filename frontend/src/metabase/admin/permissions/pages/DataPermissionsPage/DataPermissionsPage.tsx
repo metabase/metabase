@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 import { useAsync } from "react-use";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
@@ -10,6 +9,7 @@ import {
   useListPermissionsGroupsQuery,
 } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";

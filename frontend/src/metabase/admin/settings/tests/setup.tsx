@@ -1,7 +1,6 @@
 import { render as testingLibraryRender } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 import type { ReactNode } from "react";
-import { Route } from "react-router";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -27,6 +26,7 @@ import { mockSettings } from "__support__/settings";
 import { getTestStoreAndWrapper, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
