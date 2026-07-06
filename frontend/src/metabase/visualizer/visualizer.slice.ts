@@ -389,11 +389,10 @@ const visualizerSlice = createSlice({
         addColumnToFunnel(
           state,
           settings,
-          state.datasets,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
-          dataset,
+          dataset as Dataset,
           dataSource,
         );
         return;
@@ -403,8 +402,6 @@ const visualizerSlice = createSlice({
         addColumnToCartesianChart(
           state,
           settings,
-          state.datasets,
-          dataset.data.cols,
           column,
           columnRef,
           dataSource,
@@ -419,7 +416,8 @@ const visualizerSlice = createSlice({
             state,
             columnRef,
             originalColumn,
-            dataset,
+            // Prevents "Type instantiation is excessively deep" error
+            dataset as Dataset,
             dataSource,
           );
         }
@@ -493,10 +491,10 @@ const visualizerSlice = createSlice({
       if (isCartesianChart(state.display)) {
         cartesianDropHandler(state, settings, event, {
           // Prevents "Type instantiation is excessively deep" error
-          datasetMap: state.datasets,
+          datasetMap: state.datasets as Record<VisualizerDataSourceId, Dataset>,
           dataSourceMap: Object.fromEntries(
             state.cards.map((card) => {
-              const dataSource = createDataSource("card", card.id, card.name);
+              const dataSource = createDataSource('card', card.id, card.name);
               return [dataSource.id, dataSource];
             }),
           ),
