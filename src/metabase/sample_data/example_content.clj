@@ -262,6 +262,60 @@
     (when-let [new-id (get (:dashboards maps) (:id dash))]
       (setting/set-value-of-type! :integer :example-dashboard-id new-id))))
 
+(defn- insert-sample-database-tables-and-fields!
+  "Seed `metabase_table`/`metabase_field` for the Sample Database `new-db-id` directly from `content`,
+  assigning fresh ids. Used on the downgrade restore path, which does not run sync, so the metadata
+  must be inserted rather than discovered. Field self-references (`fk_target_field_id`) are rewired in
+  a second pass once every field id exists. Table and field names match the extracted H2 file (they are
+  identical across the SQLite and H2 sample databases); the `database_type` strings carried by the
+  bundled SQLite EDN differ from H2's, which the next scheduled sync reconciles."
+  [new-db-id content]
+  (let [edn-tables    (:metabase_table content)
+        edn-fields    (:metabase_field content)]
+    (t2/query {:insert-into :metabase_table
+               ;; data_authority/data_layer are NOT NULL columns the Table model's before-insert normally
+               ;; fills; the bundled EDN omits them (it predates them), so a raw insert must supply their
+               ;; defaults - the DB-level default is dropped as later changesets roll back on downgrade.
+               :values      (mapv (fn [t] (-> t now-for-temporals (dissoc :id)
+                                              (assoc :db_id new-db-id)
+                                              (assoc :data_authority "unconfigured" :data_layer "internal")))
+                                  edn-tables)})
+    (let [tname->new   (t2/select-fn->pk :name :model/Table :db_id new-db-id)
+          edn-tid->new (into {} (map (fn [{:keys [id name]}] [id (tname->new name)])) edn-tables)]
+      (t2/query {:insert-into :metabase_field
+                 :values      (mapv (fn [f] (-> f now-for-temporals (dissoc :id)
+                                                (assoc :table_id (edn-tid->new (:table_id f)))
+                                                (assoc :fk_target_field_id nil :parent_id nil)))
+                                    edn-fields)})
+      (let [new-fields (t2/select :model/Field :table_id [:in (vals edn-tid->new)])
+            nf-index   (into {} (map (fn [f] [[(:table_id f) (:name f)] (:id f)])) new-fields)
+            efid->new  (into {} (keep (fn [{:keys [id table_id name]}]
+                                        (when-let [nt (edn-tid->new table_id)]
+                                          [id (nf-index [nt name])]))
+                                      edn-fields))]
+        (doseq [{:keys [id fk_target_field_id]} edn-fields
+                :when fk_target_field_id]
+          (t2/query {:update :metabase_field
+                     :set    {:fk_target_field_id (efid->new fk_target_field_id)}
+                     :where  [:= :id (efid->new id)]}))))))
+
+(defn- insert-example-content!
+  "Insert the bundled Example collection tree (collections, cards, dashboards, tabs, dashcards,
+  dimensions, permissions) from `content` onto the Sample Database `new-db-id`, remapping every id
+  reference. Assumes the database's tables and fields already exist (whether freshly synced or seeded
+  by [[insert-sample-database-tables-and-fields!]]), since ids are resolved by matching EDN names."
+  [content new-db-id]
+  (delete-prior-sample-content! content)
+  (let [maps (field-id-maps content new-db-id)
+        maps (assoc maps :collections (insert-collections! content))
+        maps (insert-cards! content maps)
+        maps (insert-dashboards! content maps)
+        maps (insert-dashboard-tabs! content maps)
+        maps (insert-dashcards! content maps)]
+    (insert-dimensions! content maps)
+    (grant-example-collection-perms! content maps)
+    (set-example-dashboard-id! content maps)))
+
 (defn recreate-example-content!
   "Recreate the bundled Example collection on the freshly-synced Sample Database `new-db-id`. Mirrors
   the fresh-install seeding, remapping every id reference to point at the new database's tables and
@@ -269,17 +323,21 @@
   [new-db-id]
   (try
     (t2/with-transaction [_conn]
-      (let [content (load-sample-content)
-            _       (delete-prior-sample-content! content)
-            maps    (field-id-maps content new-db-id)
-            maps    (assoc maps :collections (insert-collections! content))
-            maps    (insert-cards! content maps)
-            maps    (insert-dashboards! content maps)
-            maps    (insert-dashboard-tabs! content maps)
-            maps    (insert-dashcards! content maps)]
-        (insert-dimensions! content maps)
-        (grant-example-collection-perms! content maps)
-        (set-example-dashboard-id! content maps)))
+      (insert-example-content! (load-sample-content) new-db-id))
     (log/info "Recreated Sample Database example content")
     (catch Throwable e
       (log/error e "Failed to recreate Sample Database example content"))))
+
+(defn restore-example-content-on-downgrade!
+  "Seed the H2 Sample Database `new-db-id` with its tables, fields, and bundled Example content. Used
+  on downgrade, where the SQLite sample database has been removed and no sync runs, so the metadata is
+  inserted directly from the bundled content EDN. Best-effort: logs and swallows errors so a content
+  failure leaves the restored database in place rather than aborting the downgrade."
+  [new-db-id]
+  (try
+    (let [content (load-sample-content)]
+      (insert-sample-database-tables-and-fields! new-db-id content)
+      (insert-example-content! content new-db-id))
+    (log/info "Restored H2 Sample Database example content")
+    (catch Throwable e
+      (log/error e "Failed to restore H2 Sample Database example content"))))

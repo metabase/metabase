@@ -82,6 +82,12 @@
                      "Set MB_PLUGINS_DIR to a writable directory to make this stable.")))
     (sample-database-details engine (extract-sample-database! engine))))
 
+(defn extract-sample-database-details!
+  "Extract the bundled sample database file for `engine` out of the JAR to the plugins dir and return
+  its `:details` map. Public entry point for the downgrade path, which extracts the H2 file directly."
+  [engine]
+  (try-to-extract-sample-database! engine))
+
 (defn- sample-database-engine
   "Engine of the bundled sample database. Defaults to `:sqlite` (what we ship). E2E tests set
   `MB_SAMPLE_DATABASE_ENGINE=h2` so the sample database is the H2 one the suite was written against,
