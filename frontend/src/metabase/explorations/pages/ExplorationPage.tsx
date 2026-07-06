@@ -417,6 +417,32 @@ export function ExplorationPage({
       : undefined;
   }, [selectedEntityId, pageIdToPageAndQueries]);
 
+  // Forward / back triage navigation through the pages in document order.
+  const orderedPageIds = useMemo(
+    () => Array.from(pageIdToPageAndQueries.keys()),
+    [pageIdToPageAndQueries],
+  );
+  const currentPageIndex =
+    selectedEntityId?.type === "page"
+      ? orderedPageIds.indexOf(selectedEntityId.id)
+      : -1;
+  const previousPageId =
+    currentPageIndex > 0 ? orderedPageIds[currentPageIndex - 1] : undefined;
+  const nextPageId =
+    currentPageIndex !== -1 && currentPageIndex < orderedPageIds.length - 1
+      ? orderedPageIds[currentPageIndex + 1]
+      : undefined;
+  const goToPreviousPage = useCallback(() => {
+    if (previousPageId != null) {
+      setSelectedEntityId({ type: "page", id: previousPageId });
+    }
+  }, [previousPageId, setSelectedEntityId]);
+  const goToNextPage = useCallback(() => {
+    if (nextPageId != null) {
+      setSelectedEntityId({ type: "page", id: nextPageId });
+    }
+  }, [nextPageId, setSelectedEntityId]);
+
   const availableTimelines: Timeline[] = useMemo(() => {
     return (
       selectedPage?.thread?.timelines
@@ -563,6 +589,10 @@ export function ExplorationPage({
               setCommentDrafts={setCommentDrafts}
               isCommentsSidebarOpen={isCommentsSidebarOpen}
               wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
+              onPreviousPage={
+                previousPageId != null ? goToPreviousPage : undefined
+              }
+              onNextPage={nextPageId != null ? goToNextPage : undefined}
             />
           )}
           {selectedDocument && (

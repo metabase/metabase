@@ -8,7 +8,10 @@ import noResultsSource from "assets/img/no_results.svg";
 import { useCreateCommentMutation, useListCommentsQuery } from "metabase/api";
 import { CommentEditor } from "metabase/comments/components";
 import { Discussions } from "metabase/comments/components/Discussions";
-import type { CommentExtraRenderer } from "metabase/comments/types";
+import type {
+  CommentExtraRenderer,
+  CommentsLayout,
+} from "metabase/comments/types";
 import {
   getCommentNodeId,
   getCommentsCount,
@@ -23,6 +26,7 @@ import {
   Flex,
   Icon,
   Image,
+  Menu,
   Stack,
   Tabs,
   Text,
@@ -50,6 +54,7 @@ interface CommentsProps {
   onHoverChange?: (childTargetId: string | undefined) => void;
   renderExtra?: CommentExtraRenderer;
   disableAutoFocus?: boolean;
+  layout?: CommentsLayout;
 }
 
 export const Comments = ({
@@ -63,6 +68,7 @@ export const Comments = ({
   onHoverChange,
   renderExtra,
   disableAutoFocus = false,
+  layout = "sidesheet",
 }: CommentsProps) => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<SidesheetTab | null>("open");
@@ -75,6 +81,7 @@ export const Comments = ({
   const comments = commentsData?.comments;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
+  const isSidebar = layout === "sidebar";
 
   const targetComments = useMemo(() => {
     if (!comments) {
@@ -133,13 +140,14 @@ export const Comments = ({
   const resolvedCommentsCount = getCommentsCount(resolvedComments);
 
   const availableTabs = useMemo<SidesheetTab[]>(() => {
-    // Only show tabs if there are resolved comments
-    if (resolvedCommentsCount > 0) {
+    // The sidebar always offers the Open/Resolved filter in its header, so both
+    // tabs stay selectable even before any comment has been resolved.
+    if (isSidebar || resolvedCommentsCount > 0) {
       return ["open", "resolved"];
     }
 
     return [];
-  }, [resolvedCommentsCount]);
+  }, [isSidebar, resolvedCommentsCount]);
 
   // Update active tab if current tab is not available
   useEffect(() => {
@@ -203,23 +211,62 @@ export const Comments = ({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  // In the sidebar layout the composer is pinned to the bottom of the sidebar
+  // instead of sitting inline at the end of the scrolling comment list.
+  const showPinnedComposer =
+    isSidebar && childTargetId !== "all" && activeTab !== "resolved";
+
   return (
     <Stack gap={0} h="100%">
-      {(title || showCloseButton) && (
-        <Flex
-          px="xl"
-          pt="1.25rem"
-          pb="sm"
-          justify="space-between"
-          align="center"
-        >
-          {title && <Title order={3}>{title}</Title>}
-          {showCloseButton && (
-            <ActionIcon aria-label={t`Close`} onClick={closeSidebar}>
-              <Icon name="close" c="text-primary" />
-            </ActionIcon>
-          )}
+      {isSidebar ? (
+        <Flex px="lg" pt="md" pb="sm" justify="space-between" align="center">
+          <Title order={4}>{t`Comments`}</Title>
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <ActionIcon
+                aria-label={t`Filter comments`}
+                data-testid="comments-filter"
+              >
+                <Icon name="filter" c="text-secondary" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={
+                  <Icon name={activeTab === "open" ? "check" : "empty"} />
+                }
+                onClick={() => setActiveTab("open")}
+              >
+                {t`Open`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={
+                  <Icon name={activeTab === "resolved" ? "check" : "empty"} />
+                }
+                onClick={() => setActiveTab("resolved")}
+              >
+                {t`Resolved (${resolvedCommentsCount})`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Flex>
+      ) : (
+        (title || showCloseButton) && (
+          <Flex
+            px="xl"
+            pt="1.25rem"
+            pb="sm"
+            justify="space-between"
+            align="center"
+          >
+            {title && <Title order={3}>{title}</Title>}
+            {showCloseButton && (
+              <ActionIcon aria-label={t`Close`} onClick={closeSidebar}>
+                <Icon name="close" c="text-primary" />
+              </ActionIcon>
+            )}
+          </Flex>
+        )
       )}
 
       <Tabs
@@ -229,7 +276,7 @@ export const Comments = ({
           setActiveTab(value as SidesheetTab);
         }}
       >
-        {availableTabs.length > 0 && (
+        {!isSidebar && availableTabs.length > 0 && (
           <Tabs.List px="1.625rem" className={S.tabsList}>
             <Tabs.Tab value="open" data-testid="comments-open-tab">
               {t`Open`}
@@ -249,6 +296,7 @@ export const Comments = ({
               targetId={commentTarget.target_id}
               targetType={commentTarget.target_type}
               renderExtra={renderExtra}
+              layout={layout}
             />
           )}
 
@@ -267,7 +315,7 @@ export const Comments = ({
             </Flex>
           )}
 
-          {childTargetId !== "all" && (
+          {!isSidebar && childTargetId !== "all" && (
             <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
               <CommentEditor
                 autoFocus={activeComments.length === 0 && !disableAutoFocus}
@@ -287,9 +335,22 @@ export const Comments = ({
             targetId={commentTarget.target_id}
             targetType={commentTarget.target_type}
             renderExtra={renderExtra}
+            layout={layout}
           />
         </Tabs.Panel>
       </Tabs>
+
+      {showPinnedComposer && (
+        <Box className={S.pinnedComposer} px="lg" py="md">
+          <CommentEditor
+            autoFocus={activeComments.length === 0 && !disableAutoFocus}
+            data-testid="new-thread-editor"
+            placeholder={t`Add a comment…`}
+            onChange={(document) => setNewComment(document)}
+            onSubmit={handleSubmit}
+          />
+        </Box>
+      )}
     </Stack>
   );
 };

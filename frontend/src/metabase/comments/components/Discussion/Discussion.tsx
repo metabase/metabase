@@ -1,5 +1,6 @@
+import cx from "classnames";
 import { useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   useCreateCommentMutation,
@@ -8,12 +9,15 @@ import {
   useUpdateCommentMutation,
 } from "metabase/api";
 import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
-import type { CommentExtraRenderer } from "metabase/comments/types";
+import type {
+  CommentExtraRenderer,
+  CommentsLayout,
+} from "metabase/comments/types";
 import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { Avatar, Stack, Timeline, rem } from "metabase/ui";
+import { Avatar, Box, Button, Stack, Timeline, rem } from "metabase/ui";
 import type {
   Comment,
   CommentEntityType,
@@ -33,6 +37,7 @@ export interface DiscussionProps {
   targetType: CommentEntityType;
   onHoverChange?: (childTargetId: string | undefined) => void;
   renderExtra?: CommentExtraRenderer;
+  layout?: CommentsLayout;
 }
 
 export const Discussion = ({
@@ -42,9 +47,14 @@ export const Discussion = ({
   targetType,
   onHoverChange,
   renderExtra,
+  layout = "sidesheet",
 }: DiscussionProps) => {
   const currentUser = useSelector(getUser);
   const [, setNewComment] = useState<DocumentContent>();
+  // In the sidebar layout replies stay collapsed until the reader expands the
+  // thread (via the "N replies" toggle or the hover "Reply" action).
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [autoFocusReply, setAutoFocusReply] = useState(false);
   const parentCommentId = comments[0].id;
   const [sendToast] = useToast();
   const effectiveChildTargetId = childTargetId || comments[0]?.child_target_id;
@@ -189,16 +199,38 @@ export const Discussion = ({
     onHoverChange?.(undefined);
   };
 
+  const handleReply = () => {
+    setIsExpanded(true);
+    setAutoFocusReply(true);
+  };
+
+  const isSidebar = layout === "sidebar";
+  const avatarSize = isSidebar ? rem(32) : rem(24);
+  // In the sidebar, the context meta (timeline / segment pills) sits above the
+  // whole comment rather than inline next to the avatar.
+  const rootExtra = isSidebar ? renderExtra?.(comments[0]) : null;
+  const replyCount = comments.length - 1;
+  const hasHiddenReplies = isSidebar && !isExpanded && replyCount > 0;
+  // In the sidebar, collapse replies behind a toggle until the reader opens the
+  // thread; the sidesheet layout always shows the full thread.
+  const visibleComments =
+    hasHiddenReplies && comments.length > 0 ? [comments[0]] : comments;
+  const showReplyEditor =
+    !comments[0]?.is_resolved && (!isSidebar || isExpanded);
+
   return (
-    <Stack>
+    <Stack gap={0}>
+      {rootExtra && <Box mb="sm">{rootExtra}</Box>}
       <Timeline
-        bulletSize={rem(24)}
+        bulletSize={avatarSize}
         lineWidth={1}
-        className={S.discussionRoot}
+        className={cx(S.discussionRoot, {
+          [S.discussionRootSidebar]: isSidebar,
+        })}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {comments.map((comment, index) => (
+        {visibleComments.map((comment, index) => (
           <DiscussionComment
             key={comment.id}
             canResolve={index === 0}
@@ -210,16 +242,19 @@ export const Discussion = ({
             onCopyLink={handleCopyLink}
             onReaction={handleReaction}
             onReactionRemove={handleReactionRemove}
-            renderExtra={renderExtra}
+            onReply={isSidebar && index === 0 ? handleReply : undefined}
+            renderExtra={isSidebar ? undefined : renderExtra}
+            layout={layout}
           />
         ))}
-        {!comments[0]?.is_resolved && currentUser && (
+        {showReplyEditor && currentUser && (
           <Timeline.Item
             className={S.commentRoot}
-            bullet={<Avatar name={currentUser.common_name} />}
+            bullet={<Avatar name={currentUser.common_name} size={avatarSize} />}
           >
             <CommentEditor
               active={false}
+              autoFocus={autoFocusReply}
               data-testid="comment-editor"
               onChange={(document) => setNewComment(document)}
               onSubmit={handleSubmit}
@@ -227,6 +262,20 @@ export const Discussion = ({
           </Timeline.Item>
         )}
       </Timeline>
+      {hasHiddenReplies && (
+        <Button
+          className={S.repliesToggle}
+          variant="subtle"
+          size="compact-sm"
+          onClick={() => setIsExpanded(true)}
+        >
+          {ngettext(
+            msgid`${replyCount} reply`,
+            `${replyCount} replies`,
+            replyCount,
+          )}
+        </Button>
+      )}
     </Stack>
   );
 };

@@ -1,6 +1,39 @@
-.toolbar {
+.toolbarRow {
   align-self: center;
+}
+
+.toolbar {
   box-shadow: var(--mantine-shadow-xs);
+}
+
+/* Circular forward / back triage buttons flanking the toolbar. The gap on
+ * .toolbarRow keeps a visible margin between them and the toolbar so the card
+ * background shows through. */
+.triageButton {
+  background-color: var(--mb-color-tooltip-background);
+  color: var(--mb-color-tooltip-text);
+  box-shadow: var(--mantine-shadow-xs);
+
+  &:hover:not(:disabled):not([data-disabled]) {
+    background-color: var(--mb-color-tooltip-background-focused);
+    color: var(--mb-color-tooltip-text);
+  }
+
+  &:disabled,
+  &[data-disabled] {
+    background-color: var(--mb-color-tooltip-background);
+    color: var(--mb-color-tooltip-text);
+    opacity: 0.4;
+  }
+}
+
+/* Dark toolbar (like toasts/tooltips): keep the action buttons' icons white and
+ * give them a subtle light-overlay hover instead of the default light fill. */
+.toolbar :global([data-variant="viewHeader"]) {
+  &:hover {
+    color: var(--mb-color-tooltip-text);
+    background-color: var(--mb-color-background_surface-primary-inverse-hover);
+  }
 }
 
 .commentDropdown {
@@ -16,11 +49,28 @@ selecting the same class twice is a specificity hack to ensure the override take
   border-radius: 0;
 }
 
+/* Dark actions menu (matches the dark toolbar / tooltips), white text. The
+ * doubled class raises specificity above the base Menu dropdown/item styles. */
+.actionsMenu.actionsMenu {
+  background-color: var(--mb-color-tooltip-background);
+  border-color: transparent;
+
+  :global(.mantine-Menu-item) {
+    color: var(--mb-color-tooltip-text);
+  }
+
+  :global(.mantine-Menu-item):hover:not([data-disabled="true"]),
+  :global(.mantine-Menu-item[data-hovered]) {
+    background-color: var(--mb-color-tooltip-background-focused);
+    color: var(--mb-color-tooltip-text);
+  }
+}
+
 .timelineMenuTarget {
   cursor: pointer;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_surface-primary-inverse);
 
   &:hover {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_surface-primary-inverse-hover);
   }
 }

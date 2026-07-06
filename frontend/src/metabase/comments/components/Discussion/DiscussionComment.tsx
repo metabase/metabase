@@ -4,11 +4,23 @@ import { useCallback, useEffect } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import type { CommentExtraRenderer } from "metabase/comments/types";
+import type {
+  CommentExtraRenderer,
+  CommentsLayout,
+} from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { Avatar, Box, Group, Icon, Text, Timeline, Tooltip } from "metabase/ui";
+import {
+  Avatar,
+  Box,
+  Group,
+  Icon,
+  Text,
+  Timeline,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import type { Comment, DocumentContent } from "metabase-types/api";
 
 import { CommentEditor } from "../CommentEditor";
@@ -27,7 +39,9 @@ type DiscussionCommentProps = {
   onDelete?: (comment: Comment) => void;
   onEdit?: (comment: Comment, newContent: DocumentContent) => void;
   onCopyLink?: (comment: Comment) => void;
+  onReply?: (comment: Comment) => void;
   renderExtra?: CommentExtraRenderer;
+  layout?: CommentsLayout;
 };
 
 const TOOLTIP_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
@@ -45,9 +59,12 @@ export function DiscussionComment({
   onDelete,
   onEdit,
   onCopyLink,
+  onReply,
   renderExtra,
+  layout = "sidesheet",
 }: DiscussionCommentProps) {
   const currentUser = useSelector(getUser);
+  const avatarSize = layout === "sidebar" ? rem(32) : undefined;
   const [isEditing, editingHandler] = useDisclosure(false);
   const location = useLocation();
   const hash = location.hash?.substring(1);
@@ -113,7 +130,7 @@ export function DiscussionComment({
       className={cx(S.commentRoot, {
         [S.target]: isTarget,
       })}
-      bullet={<Avatar name={comment.creator?.common_name} />}
+      bullet={<Avatar name={comment.creator?.common_name} size={avatarSize} />}
       aria-current={isTarget ? "location" : undefined}
       data-testid="discussion-comment"
       id={commentNodeId}
@@ -128,6 +145,7 @@ export function DiscussionComment({
           onReaction={onReaction}
           onReopen={onReopen}
           onResolve={onResolve}
+          onReply={onReply}
         />
       )}
 

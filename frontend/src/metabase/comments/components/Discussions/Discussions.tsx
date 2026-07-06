@@ -1,11 +1,16 @@
 import { Fragment, useMemo } from "react";
 
-import type { CommentExtraRenderer } from "metabase/comments/types";
+import type {
+  CommentExtraRenderer,
+  CommentsLayout,
+} from "metabase/comments/types";
 import { getCommentThreads } from "metabase/comments/utils";
 import { Box, Stack } from "metabase/ui";
 import type { Comment } from "metabase-types/api/comments";
 
 import { Discussion } from "../Discussion";
+
+import S from "./Discussions.module.css";
 
 export interface DiscussionProps {
   childTargetId: Comment["child_target_id"];
@@ -14,6 +19,7 @@ export interface DiscussionProps {
   targetType: Comment["target_type"];
   onHoverChange?: (childTargetId: string | undefined) => void;
   renderExtra?: CommentExtraRenderer;
+  layout?: CommentsLayout;
 }
 
 export const Discussions = ({
@@ -23,17 +29,26 @@ export const Discussions = ({
   targetType,
   onHoverChange,
   renderExtra,
+  layout = "sidesheet",
 }: DiscussionProps) => {
   const threads = useMemo(
     () => getCommentThreads(comments, childTargetId),
     [comments, childTargetId],
   );
 
+  const isSidebar = layout === "sidebar";
+
   return (
-    <Stack pt="lg" gap={0}>
+    <Stack pt={isSidebar ? 0 : "lg"} gap={0}>
       {threads.map((thread) => (
         <Fragment key={thread.id}>
-          <Box px="lg" pb="lg">
+          <Box
+            className={isSidebar ? S.sidebarThread : undefined}
+            pl={isSidebar ? 0 : "lg"}
+            pr="lg"
+            py={isSidebar ? "md" : undefined}
+            pb={isSidebar ? "md" : "lg"}
+          >
             <Discussion
               childTargetId={childTargetId}
               comments={thread.comments}
@@ -41,6 +56,7 @@ export const Discussions = ({
               targetType={targetType}
               onHoverChange={onHoverChange}
               renderExtra={renderExtra}
+              layout={layout}
             />
           </Box>
         </Fragment>

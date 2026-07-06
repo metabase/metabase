@@ -31,6 +31,20 @@
   position: relative;
 }
 
+/* Sidebar layout: full-width rows, no bordered card around each thread. */
+.discussionRootSidebar {
+  border: none;
+  border-radius: 0;
+}
+
+.repliesToggle {
+  align-self: flex-start;
+  /* Align with the comment text: avatar right edge (bullet 24px) + gap. */
+  margin-left: 2rem;
+  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+}
+
 .actionPanel {
   position: absolute;
   top: -8px;

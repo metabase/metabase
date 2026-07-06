@@ -1,0 +1,14 @@
+.sidebarThread {
+  position: relative;
+
+  /* Divider is flush-left with the avatars and meta block (the thread has no
+   * left padding in the sidebar) and bleeds to the right edge. */
+  &:not(:last-of-type)::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-bottom: 1px solid var(--mb-color-border-neutral);
+  }
+}

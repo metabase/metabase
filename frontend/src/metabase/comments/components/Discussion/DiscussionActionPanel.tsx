@@ -27,6 +27,7 @@ export type DiscussionActionPanelProps = {
   onReaction?: (comment: Comment, emoji: string) => void;
   onReopen: (comment: Comment) => void;
   onResolve: (comment: Comment) => void;
+  onReply?: (comment: Comment) => void;
 };
 
 const ACTION_ICON_SIZE = "md";
@@ -41,6 +42,7 @@ export function DiscussionActionPanel({
   onReaction,
   onReopen,
   onResolve,
+  onReply,
 }: DiscussionActionPanelProps) {
   const [emojiPickerOpened, setEmojiPickerOpened] = useState(false);
   const [popoverOpened, setPopoverOpened] = useState(false);
@@ -63,6 +65,18 @@ export function DiscussionActionPanel({
       p="0.125rem"
     >
       <Group gap="0">
+        {onReply && (
+          <Tooltip label={t`Reply`}>
+            <ActionIcon
+              data-testid="comment-action-panel-reply"
+              aria-label={t`Reply`}
+              size={ACTION_ICON_SIZE}
+              onClick={() => onReply(comment)}
+            >
+              <Icon name="comment" />
+            </ActionIcon>
+          </Tooltip>
+        )}
         {canReact && (
           <Popover
             position="bottom-end"
