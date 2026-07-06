@@ -69,8 +69,6 @@ type StaticQuestionBaseProps = PropsWithChildren<
  * @interface
  * @expand
  * @category StaticQuestion
- * @notExported SdkQuestionQuery
- * @notExported StructuredDatasetQuery
  */
 export type StaticQuestionProps = StaticQuestionBaseProps &
   SdkQuestionEntityPublicProps;

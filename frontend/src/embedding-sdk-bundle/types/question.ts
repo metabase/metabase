@@ -5,12 +5,7 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
-import type {
-  Card,
-  ParameterValuesMap,
-  StructuredDatasetQuery,
-  UnsavedCard,
-} from "metabase-types/api";
+import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
 import type { SdkDashboardId } from "./dashboard";
 import type { SdkEntityId, SdkEntityToken } from "./entity";
@@ -44,17 +39,6 @@ export type SdkQuestionId =
   | "new-native" // Create new native SQL question
   | SdkEntityId; // Entity ID string (e.g., "abc123def456")
 
-/**
- * A table-backed ad hoc question query.
- *
- * @notExported StructuredDatasetQuery
- */
-export type SdkQuestionQuery = StructuredDatasetQuery;
-
-/**
- * @notExported SdkQuestionQuery
- * @notExported StructuredDatasetQuery
- */
 export type SdkQuestionEntityPublicProps =
   | {
       /**
@@ -94,15 +78,6 @@ export type SdkQuestionEntityPublicProps =
        */
       card: string | MetabaseCard;
       query?: never;
-    }
-  | {
-      questionId?: never;
-      token?: never;
-      card?: never;
-      /**
-       * A table-backed ad hoc query created with `createMetabaseQuery`.
-       */
-      query: SdkQuestionQuery;
     };
 
 /**
