@@ -426,7 +426,7 @@ export function waitForSyncToFinish({
  * @param {object} options
  * @param {number} [options.dbId]
  * @param {string} [options.tableName] - wait until this table is synced
- * @param {string} [options.tableAlias] - alias to `cy.wrap` the synced table as
+ * @param {string} [options.tableAlias]
  * @param {string[]} [options.tables] - wait until all of these tables are synced
  * @param {boolean} [options.retrigger] - occasionally re-trigger the schema sync while waiting
  */
