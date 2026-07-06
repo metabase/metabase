@@ -3670,6 +3670,7 @@
            api-keys
            app-db
            cache
+           config
            driver
            lib
            models
@@ -3680,8 +3681,10 @@
            server
            settings
            sql-tools
+           system
            util
            workspaces
+           enterprise/harbormaster
            enterprise/remote-sync
            enterprise/serialization}
    :model-exports #{:model/Workspace}

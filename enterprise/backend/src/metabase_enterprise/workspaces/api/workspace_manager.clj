@@ -4,17 +4,21 @@
    [[metabase-enterprise.workspaces.core]] and permission predicates live on
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.hm-instance :as hm-instance]
+   [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (comment serialization.schema/keep-me)
@@ -30,7 +34,11 @@
    [:name         ms/NonBlankString]
    [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]
    ;; git branch the child's initial import reads from; omitted = the repo's default branch
-   [:base_branch  {:optional true} ms/NonBlankString]])
+   [:base_branch  {:optional true} ms/NonBlankString]
+   ;; when true, also mint the agent api-key, build config.yml, and spawn the child
+   ;; instance via Harbormaster (blocking). Off by default so the config-download flow
+   ;; and local rigs keep working without HM.
+   [:spawn_instance {:optional true} [:maybe ms/BooleanValue]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -66,6 +74,11 @@
    [:creator       [:maybe CreatorResponse]]
    [:base_branch   {:optional true} [:maybe :string]]
    [:target_branch {:optional true} [:maybe :string]]
+   ;; child-instance fields: present once an instance has been spawned via HM
+   [:url          {:optional true} [:maybe :string]]
+   ;; returned ONLY by the create response when spawn_instance=true — the key value
+   ;; exists in memory at mint time only (the parent stores just its prefix)
+   [:api_key      {:optional true} ms/NonBlankString]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
    ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
@@ -87,8 +100,30 @@
 (defn- present-workspace [workspace]
   (some-> workspace
           (select-keys [:id :name :creator :base_branch :target_branch :created_at :updated_at :databases])
+          (m/assoc-some :url (:instance_url workspace))
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
+
+(defn- spawn-instance!
+  "Create-orchestration tail for `spawn_instance=true`: mint the agent api-key
+  (GHY-4056), build the config.yml with the api-keys + settings sections (GHY-4057),
+  POST it to Harbormaster (blocking), record the HM instance id + child URL, and
+  return the workspace response with `:url` and — only here, only once — `:api_key`.
+
+  An HM failure throws a 502 and leaves the provisioned workspace in place: the
+  caller can retry by deleting and re-creating, and nothing secret has leaked (the
+  minted key died with this request; a retry mints a fresh one)."
+  [ws-id]
+  (let [api-key (u.secret/expose (workspace/mint-api-key! ws-id))
+        config  (ws.config/build-workspace-config ws-id
+                                                  {:api-key       api-key
+                                                   :creator-email (:email @api/*current-user*)})
+        {hm-id :id url :url} (hm-instance/create-instance! {:workspace-id ws-id
+                                                            :name         (str "ws-" ws-id)
+                                                            :config-yml   (ws.config/config->yaml config)})]
+    (t2/update! :model/Workspace :id ws-id {:hm_instance_id hm-id :instance_url url})
+    (-> (present-workspace (ws/get-workspace ws-id))
+        (assoc :api_key api-key))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -110,13 +145,20 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking)."
+   for workspaces) and provision it (blocking). With `spawn_instance=true`, also
+   mint the agent api-key, build the child config.yml, and spawn the child instance
+   via Harbormaster (blocking) — the response then carries `:url` and `:api_key`
+   (the only time the key is ever returned)."
   {:scope "mb:workspace-manager"}
-  [_route-params _query-params params :- CreateWorkspaceParams]
+  [_route-params _query-params {:keys [spawn_instance] :as params} :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (present-workspace
-   (ws/create-workspace!
-    (assoc params :creator_id api/*current-user-id*))))
+  (let [ws (ws/create-workspace!
+            (-> params
+                (dissoc :spawn_instance)
+                (assoc :creator_id api/*current-user-id*)))]
+    (if spawn_instance
+      (spawn-instance! (:id ws))
+      (present-workspace ws))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
@@ -153,7 +195,15 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {ignore-pending? :ignore-pending} :- [:map [:ignore-pending {:default false} [:maybe ms/BooleanValue]]]]
   (api/write-check :model/Workspace id)
-  (assoc (ws/delete-workspace! id (boolean ignore-pending?)) :id id))
+  ;; capture before the row is deleted; HM delete runs AFTER warehouse teardown so a
+  ;; teardown refusal (409) never orphans a half-deleted workspace
+  (let [hm-id  (t2/select-one-fn :hm_instance_id :model/Workspace :id id)
+        result (assoc (ws/delete-workspace! id (boolean ignore-pending?)) :id id)]
+    (if (and hm-id (not (hm-instance/delete-instance! hm-id)))
+      (update result :message #(->> [% (format "Harbormaster instance %s could not be deleted; HM's backstop reaper will collect it." hm-id)]
+                                    (remove nil?)
+                                    (str/join " ")))
+      result)))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
