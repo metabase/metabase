@@ -1,9 +1,18 @@
-import type { TableQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import { isMetricReference } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import {
+  isMetricReference,
+  type QueryInput,
+  type QuestionQueryInput,
+  type TableQueryInput,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { MetricSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
 
-export function validateQueryInput(input: TableQueryInput) {
+export function validateQueryInput(input: QueryInput) {
+  if (isQuestionQueryInput(input)) {
+    validateQuestionInput(input);
+    return;
+  }
+
   validateLimit(input.limit);
   validateTableScopedInputs(input);
 }
@@ -15,6 +24,24 @@ function validateLimit(limit: number | undefined) {
 
   if (!Number.isInteger(limit) || limit <= 0) {
     throw new Error("Table query limit must be a positive integer.");
+  }
+}
+
+function isQuestionQueryInput(input: QueryInput): input is QuestionQueryInput {
+  return input.source.type === "card";
+}
+
+function validateQuestionInput(input: QuestionQueryInput) {
+  const extraKeys = Object.keys(input).filter(
+    (key) => key !== "source" && key !== "enabled",
+  );
+
+  if (extraKeys.length > 0) {
+    throw new Error(
+      `Saved question queries only support source and enabled, but received ${extraKeys.join(
+        ", ",
+      )}.`,
+    );
   }
 }
 
@@ -128,7 +155,7 @@ function isCountAggregation(value: unknown) {
   );
 }
 
-function isGroupedQuery(input: QueryInput) {
+function isGroupedQuery(input: TableQueryInput) {
   return Boolean(input.aggregations?.length || input.breakouts?.length);
 }
 
@@ -176,7 +203,7 @@ function getColumns(value: unknown) {
 }
 
 function isBreakoutReference(
-  breakouts: QueryInput["breakouts"] | undefined,
+  breakouts: TableQueryInput["breakouts"] | undefined,
   value: unknown,
 ) {
   if (!isObject(value)) {

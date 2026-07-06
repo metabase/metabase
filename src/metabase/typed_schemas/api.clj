@@ -36,7 +36,7 @@
   #"[A-Za-z_$][A-Za-z0-9_$]*")
 
 (def ^:private schema-render-policy
-  {:question         {:runtime [:kind :id :name :display :columns :parameters]
+  {:question         {:runtime [:type :id :name :display :columns :parameters]
                       :comment [:entityId :description :verified]}
    :table            {:runtime [:type :id :name :fields :segments :measures]
                       :comment [:entityId :description :databaseName :schemaName :tableName]}
@@ -404,7 +404,7 @@
 (defn- question-schema
   [{:keys [id name description verified display result-columns portable_entity_id]}]
   (assoc-some
-   {:kind    "question"
+   {:type    "card"
     :key     (generated-key name id)
     :id      id
     :name    name
@@ -965,6 +965,7 @@
     (let [kind (or (map-key-value value :type)
                    (map-key-value value :kind))]
       (cond
+        (= kind "card") :question
         (= kind "question") :question
         (= kind "table") :table
         (= kind "segment") :segment

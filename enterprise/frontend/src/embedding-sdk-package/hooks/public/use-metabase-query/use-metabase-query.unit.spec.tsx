@@ -327,9 +327,18 @@ const TEST_SCHEMA = {
       },
     },
   },
+  questions: {
+    ordersQuestion: {
+      type: "card",
+      id: 41,
+      name: "Orders question",
+      columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+    },
+  },
 } as const;
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
+type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
 
 const TEST_METADATA = {
   databases: {
@@ -455,6 +464,17 @@ const TEST_METADATA = {
     },
   },
   questions: {
+    41: createMockCard({
+      id: 41,
+      name: "Orders question",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+        },
+      },
+    }),
     31: createMockCard({
       id: 31,
       name: "Revenue",
@@ -585,6 +605,16 @@ const _validTableQueryWithJoinedMetricBreakout = {
   aggregations: [TEST_SCHEMA.metrics.revenue],
   breakouts: [breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.product)],
 } satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _validSavedQuestionQuery = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
+
+const _invalidSavedQuestionClauseQuery = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+  // @ts-expect-error saved question queries do not support additional clauses
+  filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
 
 const _validCardQuery = {
   query: {
@@ -1020,6 +1050,43 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("loads saved question metadata and passes the question source through Lib.createTestQuery", async () => {
+    const store = createMockStore();
+
+    const datasetQuery = await resolveDatasetQueryInBundle(store)({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+    });
+
+    expect(mockFetchTableMetadata).not.toHaveBeenCalled();
+
+    expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
+      1,
+      { id: 41 },
+      store.dispatch,
+      cardApi.endpoints.getCard,
+      { forceRefetch: false },
+    );
+
+    expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
+      2,
+      41,
+      store.dispatch,
+      cardApi.endpoints.getCardQueryMetadata,
+      { forceRefetch: false },
+    );
+
+    expect(datasetQuery).toMatchObject({
+      "lib/type": "mbql/query",
+      database: 1,
+      stages: [
+        {
+          "lib/type": "mbql.stage/mbql",
+          "source-card": 41,
+        },
+      ],
+    });
+  });
+
   it("passes aggregation result orderBys through Lib.createTestQuery", async () => {
     const avgAmount = avg(TEST_SCHEMA.tables.orders.fields.amount);
 
@@ -1238,7 +1305,7 @@ describe("resolveDatasetQuery", () => {
         source: TEST_SCHEMA.metrics.revenue,
       } as any),
     ).rejects.toThrow(
-      'Query object creation requires a source reference like `{ type: "table", id }`.',
+      'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "card", id }`.',
     );
   });
 });

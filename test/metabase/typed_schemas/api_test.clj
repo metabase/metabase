@@ -112,6 +112,19 @@
            :name         "Completed Orders"
            :display-name "Completed Orders"}))))
 
+(deftest question-schema-uses-card-source-discriminator-test
+  (is (= {:type    "card"
+          :key     "ordersQuestion"
+          :id      41
+          :name    "Orders question"
+          :display "table"
+          :columns [{:name "count", :displayName "Count", :jsType "number"}]}
+         (#'typed-schemas.api/question-schema
+          {:id             41
+           :name           "Orders question"
+           :display        "table"
+           :result-columns [{:name "count", :display_name "Count", :type :number}]}))))
+
 (deftest metric-source-id-test
   (testing "integer source-table emits sourceTableId but not sourceCardId"
     (let [card {:dataset_query {:query {:source-table 10}}}]
@@ -315,6 +328,13 @@
 (deftest typescript-renderer-compacts-runtime-objects-test
   (let [body (#'typed-schemas.api/render-typescript
               {:schemaVersion 2
+               :questions     {"ordersQuestion" {:type        "card"
+                                                 :key         "ordersQuestion"
+                                                 :id          41
+                                                 :name        "Orders question"
+                                                 :display     "table"
+                                                 :description "Saved orders"
+                                                 :columns     [{:name "count" :jsType "number"}]}}
                :tables        {"orders"     {:type         "table"
                                              :key          "orders"
                                              :id           10
@@ -420,6 +440,10 @@
     (is (str/includes? body "sourceName: \"orders\""))
     (is (str/includes? body "type: \"table\""))
     (is (not (str/includes? body "kind: \"table\"")))
+    (is (str/includes? body "ordersQuestion: {\n    type: \"card\""))
+    (is (str/includes? body "id: 41"))
+    (is (not (str/includes? body "kind: \"question\"")))
+    (is (str/includes? body (str "/" "/ Description: Saved orders")))
     (is (str/includes? body "fieldId: 3970"))
     (is (str/includes? body "tableId: 10"))
     (is (not (str/includes? body "displayName: \"Payment Method\"")))
@@ -740,7 +764,7 @@
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
                   (is (= #{30 40} collection-ids))
-                  [{:kind "question", :key "ordersByMonth", :id 1}])
+                  [{:type "card", :key "ordersByMonth", :id 1}])
                 typed-schemas.api/model-schemas
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
@@ -766,7 +790,7 @@
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
                   (is (= #{30} collection-ids))
-                  [{:kind "question", :key "ordersByMonth", :id 1}])
+                  [{:type "card", :key "ordersByMonth", :id 1}])
                 typed-schemas.api/model-schemas
                 (fn [database-ids collection-ids]
                   (is (nil? database-ids))
