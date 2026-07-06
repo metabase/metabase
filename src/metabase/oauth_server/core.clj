@@ -19,6 +19,13 @@
    onto the unrestricted scope sentinel (see [[metabase.server.middleware.session]])."
   scopes/full-access)
 
+(def workspace-manager-scope
+  "The OAuth scope string that limits a bearer token to the workspace-manager endpoints
+   (plus `GET /api/user/current` for whoami). Unlike [[full-access-scope]] it is NOT mapped
+   to the unrestricted sentinel: it stays a narrow scope and only reaches endpoints tagged
+   `{:scope \"mb:workspace-manager\"}`."
+  scopes/workspace-manager)
+
 ;; Cache holds `{:site-url <string>, :provider <Provider>}`. Every endpoint baked into the provider config is
 ;; derived from the Site URL (see [[build-provider-config]]), so a changed Site URL must rebuild the provider --
 ;; otherwise discovery keeps advertising the stale issuer/endpoints (e.g. http:// behind a TLS-terminating proxy
@@ -38,7 +45,7 @@
    superset of [[all-agent-scopes]] — the extra scopes are not part of the default grant a
    client receives at registration, so a client must explicitly request them."
   []
-  (conj (vec (all-agent-scopes)) full-access-scope))
+  (conj (vec (all-agent-scopes)) full-access-scope workspace-manager-scope))
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."

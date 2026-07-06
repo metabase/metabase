@@ -90,6 +90,7 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
   "List all Workspaces."
+  {:scope "mb:workspace-manager"}
   []
   (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
@@ -98,6 +99,7 @@
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
+  {:scope "mb:workspace-manager"}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check :model/Workspace id)
   (present-workspace (api/check-404 (ws/get-workspace id))))
@@ -105,6 +107,7 @@
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
    for workspaces) and provision it (blocking)."
+  {:scope "mb:workspace-manager"}
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (present-workspace
@@ -113,6 +116,7 @@
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
+  {:scope "mb:workspace-manager"}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
@@ -141,6 +145,7 @@
   unreachable for some `:provisioned` databases, the response includes
   `:orphaned_resources` and a `:message` describing the inert schema/user objects
   left behind for manual cleanup."
+  {:scope "mb:workspace-manager"}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {ignore-pending? :ignore-pending} :- [:map [:ignore-pending {:default false} [:maybe ms/BooleanValue]]]]
   (api/write-check :model/Workspace id)
@@ -155,6 +160,7 @@
       [:body    :string]]
   "Download the workspace's developer-instance config as a YAML file. 409 if any
   of the workspace's databases is not `:provisioned`."
+  {:scope "mb:workspace-manager"}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (let [config (api/check-404 (ws.config/build-workspace-config id))]
@@ -181,6 +187,7 @@
   scoped to each database's `:input` namespaces. Same flag semantics as
   `/api/ee/serialization/metadata/export` — sections must be opted into via the
   `with-databases` / `with-tables` / `with-fields` query parameters."
+  {:scope "mb:workspace-manager"}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    query-params
    :- [:map
