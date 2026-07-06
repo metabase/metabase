@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -28,16 +29,18 @@ import {
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import type { ExplorationShowFilters } from "metabase/explorations/sidebar-preferences";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
+import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
   Box,
   Center,
   Ellipsified,
+  Group,
   Icon,
   type IconProps,
   Menu,
+  SegmentedControl,
   Stack,
-  Tabs,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -94,6 +97,7 @@ export function ExplorationSidebar({
   onToggleShowFilter,
   onArchiveGroup,
 }: ExplorationSidebarProps) {
+  const dispatch = useDispatch();
   const treeController = useTree({
     data: tree,
     selectedId: selectedEntityId?.id,
@@ -238,32 +242,30 @@ export function ExplorationSidebar({
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Tabs
-        pl="0.5rem"
-        pr="1rem"
-        classNames={{ tab: S.tab }}
-        value={selectedSidebarTab}
-      >
-        <Tabs.List>
-          {Object.values(explorationSidebarTabsInfo).map(({ value, label }) => (
-            <Tabs.Tab
-              key={value}
-              value={value}
-              rightSection={
-                tabsWithNewContent?.has(value) ? <NewContentDot /> : undefined
-              }
-              renderRoot={(props) => (
-                <ForwardRefLink
-                  {...props}
-                  to={getSelectedSidebarTabUrl(value)}
+      <Box pl="0.5rem" pr="1rem">
+        <SegmentedControl
+          fullWidth
+          radius="xl"
+          value={selectedSidebarTab}
+          onChange={(value) =>
+            dispatch(
+              push(getSelectedSidebarTabUrl(value as ExplorationSidebarTab)),
+            )
+          }
+          data={Object.values(explorationSidebarTabsInfo).map(
+            ({ value, label }) => ({
+              value,
+              label: (
+                <SidebarTabLabel
+                  tab={value}
+                  label={label}
+                  hasNewContent={tabsWithNewContent?.has(value) ?? false}
                 />
-              )}
-            >
-              {label}
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
-      </Tabs>
+              ),
+            }),
+          )}
+        />
+      </Box>
       {tree.length > 0 ? (
         <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
           <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
@@ -274,6 +276,46 @@ export function ExplorationSidebar({
         </Center>
       )}
     </Stack>
+  );
+}
+
+function SidebarTabLabel({
+  tab,
+  label,
+  hasNewContent,
+}: {
+  tab: ExplorationSidebarTab;
+  label: string;
+  hasNewContent: boolean;
+}) {
+  let content: React.ReactNode = label;
+  if (tab === "stars") {
+    content = (
+      <Tooltip label={t`Stars`}>
+        <Center component="span" aria-label={t`Stars`}>
+          <Icon name="star_filled" />
+        </Center>
+      </Tooltip>
+    );
+  } else if (tab === "discussions") {
+    content = (
+      <Tooltip label={t`Discussions`}>
+        <Center component="span" aria-label={t`Discussions`}>
+          <Icon name="comment" />
+        </Center>
+      </Tooltip>
+    );
+  }
+
+  if (!hasNewContent) {
+    return content;
+  }
+
+  return (
+    <Group component="span" gap="xs" justify="center" wrap="nowrap">
+      {content}
+      <NewContentDot />
+    </Group>
   );
 }
 
