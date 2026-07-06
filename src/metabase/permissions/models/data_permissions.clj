@@ -740,7 +740,7 @@
 
 (defn- view-data-table-perm-pairs
   "Distinct `[group-id db-id]` pairs for the table-level `:perms/view-data` rows in `rows` — the only rows
-  [[collapse-uniform-table-permissions!]] may rewrite; see its docstring for why."
+  [[batch-collapse-permissions!]] may rewrite; see its docstring for why."
   [rows]
   (into #{}
         (comp (filter :table_id)
@@ -752,10 +752,10 @@
   (u/qualified-name :perms/view-data))
 
 (def ^:private collapsed-view-data-value
-  "The only value [[collapse-uniform-table-permissions!]] may rewrite to db-level; see its docstring."
+  "The only value [[batch-collapse-permissions!]] may rewrite to db-level; see its docstring."
   (least-permissive-value :perms/view-data))
 
-(defn collapse-uniform-table-permissions!
+(defn batch-collapse-permissions!
   "Rewrites table-level `:perms/view-data` rows as db-level rows wherever doing so cannot change any
   effective permission. Two set-based statements over the given `[group-id db-id]` pairs:
 
@@ -835,7 +835,7 @@
 (mu/defn save-permission-changes!
   "Applies a `{:to-delete [row-id ...] :to-insert [row-map ...]}` diff to `data_permissions`, then collapses
   any `(group, db)` view-data pair the inserts touched that is now fully uniform (see
-  [[collapse-uniform-table-permissions!]]). All permission writes should go through here so that table-level
+  [[batch-collapse-permissions!]]). All permission writes should go through here so that table-level
   rows never outlive their usefulness. Caller must hold the permissions cluster lock for the affected
   database(s)."
   [{:keys [to-delete to-insert]} :- [:map
@@ -843,7 +843,7 @@
                                      [:to-insert {:optional true} [:maybe [:sequential :map]]]]]
   (batch-delete-permissions! to-delete)
   (batch-insert-permissions! to-insert)
-  (collapse-uniform-table-permissions! (view-data-table-perm-pairs to-insert)))
+  (batch-collapse-permissions! (view-data-table-perm-pairs to-insert)))
 
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.

@@ -365,7 +365,7 @@
                                                          "s2" {t3d :all t3e :none}}}}}}
               ;; Run the update and count queries.
               ;; Expected: 1 select tables + 1 select current perms + 1 bulk delete + 1 bulk insert = 4,
-              ;; plus a constant number of aggregate checks from `collapse-uniform-table-permissions!`
+              ;; plus a constant number of aggregate checks from `batch-collapse-permissions!`
               ;; in the write funnel = 6.
               ;; If this grows by one or two more, that's okay, but more should be very suspicious - it's
               ;; very likely an N+1 query in one of these dimensions!
