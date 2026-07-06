@@ -1311,6 +1311,15 @@
                        :message #(str/starts-with? % "Missing required parameter")}}
               (:body response))))))
 
+(deftest resources-templates-list-test
+  (testing "resources/templates/list returns an empty list of resource templates"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/templates/list")
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= {:resourceTemplates []}
+             (get-in response [:body :result]))))))
+
 (def ^:private scoped-test-uri "test://mcp/api-test/scoped")
 
 (defn- dispatch-initialized-request [msg token-scopes]
