@@ -2389,6 +2389,7 @@
            run-tracking
            search
            settings
+           staleness
            task
            task-history
            tracing
