@@ -21,7 +21,11 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   color: {
-    options: { default: undefined, success: "success", error: "error" },
+    options: {
+      default: undefined,
+      "feedback-positive": "feedback-positive",
+      "feedback-negative": "feedback-negative",
+    },
     control: { type: "inline-radio" },
   },
   size: {
