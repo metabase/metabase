@@ -11,6 +11,7 @@
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
+   [metabase.oauth-server.store :as oauth-store]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
@@ -103,7 +104,10 @@
                   :description  (or (some-> (api-scope/scope-description s) str) s)
                   ;; Flag the broad first-party grant so the consent page can warn about it without
                   ;; hardcoding the scope string in the view.
-                  :full-access? (= s oauth-server/full-access-scope)})))))
+                  :full-access? (= s oauth-server/full-access-scope)
+                  ;; Flag the workspace-manager grant: approving it revokes the account's other
+                  ;; full-scope OAuth sessions (containment tier 1), and the consent page must say so.
+                  :revokes-full-scope? (= s oauth-server/workspace-manager-scope)})))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -318,6 +322,22 @@
                                  :error_description "The authorization request is invalid."}}))))))
           {:status 404 :body {:error "not_found"}}))))
 
+(defn- revoke-full-scope-sessions-on-workspace-login!
+  "Containment tier 1: a fresh workspace-scoped login (authorization_code grant whose
+   issued scope carries `mb:workspace-manager` and NOT `mb:full`) revokes the user's
+   other full-scope OAuth sessions server-side. The consent page warned the user this
+   would happen (see [[requested-scope-descriptions]]). Refresh grants are excluded —
+   routine token refresh of a workspace session must not repeatedly sweep the account."
+  [body response]
+  (when (= (:grant_type body) "authorization_code")
+    (let [scopes (set (some-> (:scope response) (str/split #"\s+")))]
+      (when (and (contains? scopes oauth-server/workspace-manager-scope)
+                 (not (contains? scopes oauth-server/full-access-scope)))
+        (when-let [user-id (some-> (:access_token response) oauth-server/resolve-access-token :user-id)]
+          (let [counts (oauth-store/revoke-full-scope-tokens-for-user! user-id)]
+            (log/infof "Workspace-scoped login for user %d: revoked full-scope OAuth sessions %s"
+                       user-id (pr-str counts))))))))
+
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
@@ -333,6 +353,7 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (let [response (oidc/token-request provider body authorization-header)]
+                  (revoke-full-scope-sessions-on-workspace-login! body response)
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

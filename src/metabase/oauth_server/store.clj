@@ -1,6 +1,7 @@
 (ns metabase.oauth-server.store
   "Database-backed implementations of OAuth provider storage protocols."
   (:require
+   [metabase.oauth-server.scopes :as scopes]
    [metabase.util :as u]
    [oidc-provider.protocol :as proto]
    [toucan2.core :as t2]))
@@ -207,6 +208,28 @@
     (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now})
     (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now})
     true))
+
+;;; ------------------------------------------- Bulk revocation ------------------------------------------------------
+
+(defn revoke-full-scope-tokens-for-user!
+  "Revoke every unrevoked full-scope (`mb:full`) OAuth access and refresh token
+   belonging to `user-id`. Tier 1 of the workspace containment ladder: called when a
+   workspace-scoped login is issued for the user, so stale full-access agent/CLI
+   sessions on the same account die server-side — the whole point of the narrow
+   credential is defeated if an old `mb:full` token is still sitting in a profile
+   store next to it. Narrower tokens (agent:*, mb:workspace-manager) are untouched.
+
+   Returns `{:access-tokens <n> :refresh-tokens <n>}` revocation counts."
+  [user-id]
+  (let [revoke! (fn [model]
+                  (let [ids (->> (t2/select [model :id :scope] :user_id user-id :revoked_at nil)
+                                 (filter #(some #{scopes/full-access} (:scope %)))
+                                 (mapv :id))]
+                    (if (seq ids)
+                      (t2/update! model :id [:in ids] {:revoked_at :%now})
+                      0)))]
+    {:access-tokens  (revoke! :model/OAuthAccessToken)
+     :refresh-tokens (revoke! :model/OAuthRefreshToken)}))
 
 ;;; ------------------------------------------------ Constructors ------------------------------------------------------
 
