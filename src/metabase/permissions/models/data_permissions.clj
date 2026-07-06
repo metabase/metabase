@@ -783,13 +783,9 @@
   permissions are unchanged and no new rows accumulate. Caller must hold the permissions cluster lock for
   the affected database(s)."
   [pairs]
-  ;; `(into #{} ...)` rather than `distinct`: `distinct` throws "nth not supported" when handed a set,
-  ;; which is exactly what [[view-data-table-perm-pairs]] produces.
-  (doseq [pairs (partition-all permission-batch-size (into #{} pairs))]
+  (doseq [pairs (partition-all permission-batch-size (set pairs))]
     (let [pair-cond (fn [group-col db-col]
                       [:in [:composite group-col db-col] (vec pairs)])]
-      ;; The INSERT ... SELECT copies group/db/type/value straight from existing (validated) rows, so
-      ;; bypassing the model's before-insert validation is safe here.
       (t2/query {:insert-into [[:data_permissions [:group_id :perm_type :db_id :perm_value]]
                                {:select    [:dp.group_id :dp.perm_type :dp.db_id [[:min :dp.perm_value]]]
                                 :from      [[:data_permissions :dp]]
@@ -820,8 +816,6 @@
                                             [:= [:count [:distinct [:case [:= :mt.active true]
                                                                     :dp.table_id]]]
                                              :tc.n]]}]})
-      ;; The extra derived-table wrapper around the id select lets MySQL delete from a table it also
-      ;; selects from (ERROR 1093 otherwise); Postgres and H2 are indifferent to it.
       (t2/query {:delete-from :data_permissions
                  :where [:in :id {:select [:id]
                                   :from   [[{:select [:dp.id]
