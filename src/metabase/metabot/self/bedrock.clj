@@ -199,6 +199,13 @@
   [{:keys [id]}]
   (contains? supported-models id))
 
+(defn- available-model?
+  "Whether a `/v1/models` catalog entry is available.
+  The AWS catalog lists models the account cannot invoke with `:status \"unavailable\"`, e.g. claude-fable-5 when the
+  account's data retention mode doesn't satisfy the model's `:data_retention` requirement."
+  [{:keys [status]}]
+  (= status "available"))
+
 (defn list-models
   "List the Bedrock models supported by this adapter (see [[supported-models]]).
   No-arg uses the `llm-bedrock-*` settings. The opts map supports `:credentials`, a map of `:access-key-id`,
@@ -207,7 +214,7 @@
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
-                 (filter supported-model?)
+                 (filter (every-pred supported-model? available-model?))
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
                          {:id id :display_name (supported-models id)})))}))

@@ -17,15 +17,15 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (def ^:private fake-catalog
-  [{:id "qwen.qwen3-next-80b-a3b-instruct" :object "model"}
-   {:id "openai.gpt-5.5" :object "model"}
-   {:id "anthropic.claude-haiku-4-5" :object "model"}
-   {:id "openai.gpt-oss-120b" :object "model"}
-   {:id "deepseek.v3.2" :object "model"}
-   {:id "anthropic.claude-opus-4-8" :object "model"}
-   {:id "anthropic.claude-fable-5" :object "model"}
-   {:id "anthropic.claude-3-5-sonnet" :object "model"}
-   {:id "openai.gpt-5.4" :object "model"}])
+  [{:id "qwen.qwen3-next-80b-a3b-instruct" :object "model" :status "available"}
+   {:id "openai.gpt-5.5" :object "model" :status "available"}
+   {:id "anthropic.claude-haiku-4-5" :object "model" :status "available"}
+   {:id "openai.gpt-oss-120b" :object "model" :status "available"}
+   {:id "deepseek.v3.2" :object "model" :status "available"}
+   {:id "anthropic.claude-opus-4-8" :object "model" :status "available"}
+   {:id "anthropic.claude-fable-5" :object "model" :status "available"}
+   {:id "anthropic.claude-3-5-sonnet" :object "model" :status "available"}
+   {:id "openai.gpt-5.4" :object "model" :status "available"}])
 
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
@@ -44,6 +44,23 @@
                        {:id "anthropic.claude-opus-4-8" :display_name "Claude Opus 4.8"}
                        {:id "openai.gpt-5.4" :display_name "GPT-5.4"}
                        {:id "openai.gpt-5.5" :display_name "GPT-5.5"}]}
+             (bedrock/list-models))))))
+
+(deftest list-models-filters-unavailable-models-test
+  (mt/with-dynamic-fn-redefs
+    [bedrock/list-all-models
+     (constantly
+      [{:id             "anthropic.claude-fable-5"
+        :object         "model"
+        :status         "unavailable"
+        :status_reason  "This model is not available under data retention mode 'default'."
+        :data_retention {:allowed_modes ["provider_data_share"] :mode "default" :source "model_default"}}
+       {:id             "anthropic.claude-sonnet-5"
+        :object         "model"
+        :status         "available"
+        :data_retention {:allowed_modes ["default" "provider_data_share" "none"] :mode "default" :source "model_default"}}])]
+    (testing "whitelisted models whose catalog status is not \"available\" are excluded"
+      (is (= {:models [{:id "anthropic.claude-sonnet-5" :display_name "Claude Sonnet 5"}]}
              (bedrock/list-models))))))
 
 (deftest list-models-missing-credentials-test
