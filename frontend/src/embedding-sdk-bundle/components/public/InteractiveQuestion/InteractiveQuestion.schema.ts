@@ -2,12 +2,9 @@ import * as Yup from "yup";
 
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-import type { InteractiveQuestionInternalProps } from "./InteractiveQuestion";
-
-// Typed against the internal shape so runtime validation accepts both the
-// public object `query` prop and the internal string `query` prop used by the
-// `useMetabot` hook.
-const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
+// Typed against the internal shape so runtime validation accepts the internal
+// string `query` prop used by the `useMetabot` hook.
+const propsSchema: Yup.ObjectSchema<any> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
   componentPlugins: Yup.object({
@@ -44,7 +41,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionInternalProps> = Yup.object({
   }),
   token: Yup.mixed().optional(),
   card: Yup.mixed().optional(),
-  query: Yup.mixed().optional(),
+  query: Yup.string().optional(),
   style: Yup.mixed().optional(),
   targetCollection: Yup.mixed().optional(),
   initialCollection: Yup.mixed().optional(),

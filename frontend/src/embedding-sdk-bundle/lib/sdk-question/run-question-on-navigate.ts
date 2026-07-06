@@ -48,8 +48,8 @@ export const runQuestionOnNavigateSdk =
     // Fallback when a visualization legend is clicked
     if (cardIsEquivalent(previousCard, nextCard)) {
       // Reload the canonical card only for saved questions. Ad-hoc questions
-      // (rendered from a `query` prop) have no id — there's nothing to fetch, so
-      // keep the card as-is rather than firing `GET /api/card/undefined`.
+      // have no id, so keep the card as-is rather than firing
+      // `GET /api/card/undefined`.
       if (nextCard.id !== null && nextCard.id !== undefined) {
         nextCard = await loadCard(
           { cardId: nextCard.id },
