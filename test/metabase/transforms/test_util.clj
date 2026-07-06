@@ -133,17 +133,25 @@
   (-> timestamp-string parse-instant str))
 
 (defn wait-for-table
-  "Wait for a table to appear in metadata, with timeout."
+  "Wait for a table to become queryable in the current test database, with timeout.
+
+   Sync creates the target's `Table` row first (already active) and inserts its `Field` rows in a later
+   step, so \"table exists but has no fields\" is a normal mid-sync state; a query against the table in
+   that state fails in `add-implicit-clauses` with \"Table has no Fields associated with it\". Wait for
+   the same condition the QP requires: an active table row (scoped to the current test database, like
+   `mt/id` resolution) with at least one active field."
   [^String table-name timeout-ms]
   (let [timer (u/start-timer)]
     (loop []
-      (let [table (t2/select-one :model/Table :name table-name)
-            fields (t2/select :model/Field :table_id (:id table))]
+      (let [table (t2/select-one :model/Table :db_id (mt/id) :name table-name :active true)]
         (cond
-          (and table (seq fields)) table
+          (and table (t2/exists? :model/Field :table_id (:id table) :active true))
+          table
+
           (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
+          (throw (ex-info (format "Table %s did not become queryable after %dms" table-name timeout-ms)
                           {:table-name table-name :timeout-ms timeout-ms}))
+
           :else (do (Thread/sleep 100)
                     (recur)))))))
 
