@@ -83,6 +83,25 @@
                 api/query-check                                 allow-read-check]
     (f)))
 
+(def ^:private mp-coerced
+  "ORDERS with a UNIX-seconds column coerced to a timestamp: `base-type :type/Integer`,
+  `effective-type :type/DateTime`. Exercises the editor gate's unsuppressed expression
+  type check against coerced columns (the #41122 false-positive class that
+  `*suppress-expression-type-check?*` exists for)."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"              :table-id 10 :base-type :type/Integer}
+               {:id 104 :name "CREATED_AT_UNIX" :table-id 10 :base-type :type/Integer
+                :effective-type :type/DateTime :coercion-strategy :Coercion/UNIXSeconds->DateTime}]}))
+
+(defn- with-coerced-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
 (defn- query-data
   "Build the keyword-keyed external-query map the tool accepts. Tests author the query as a
   string-keyed map (the form documented in earlier YAML-era tests); we walk-keywordize so the
@@ -537,25 +556,139 @@
             (is (some? (:base-type (nth stage1-bo 1))))
             (is (nil? (#'construct/query-not-runnable-explanation q)))))))))
 
-(deftest multi-stage-offset-in-custom-column-surfaces-error-end-to-end-test
-  (testing (str "BOT-1442 sibling: an `offset` in a custom column surfaces a loud\n"
-                ":offset-in-custom-column agent-error through the tool, instead of building a\n"
-                "query the editor silently can't run.")
+;;; ============================================================
+;;; Expression-editor diagnostics gate (post-resolve, mirrors FE `diagnose-expression`)
+;;; ============================================================
+
+(defn- editor-rejection
+  "Run `query` through the tool and return the thrown ExceptionInfo, or nil on success."
+  [string-keyed-query]
+  (try
+    (construct/execute-representations-query (query-data string-keyed-query))
+    nil
+    (catch clojure.lang.ExceptionInfo ex ex)))
+
+(deftest offset-in-custom-column-surfaces-error-end-to-end-test
+  (testing (str "BOT-1442 sibling: an `offset` in a custom column surfaces a loud, retryable\n"
+                "agent-error through the tool, instead of building a query the editor silently\n"
+                "can't run. The resolved query schema rejects any aggregation/window clause in\n"
+                "`:expressions`, so this is caught by the canRun-mirror gate, whose message\n"
+                "points the LLM at the misplaced-`offset` cause.")
     (with-mp-and-stubs!
       (fn []
-        (let [e (try
-                  (construct/execute-representations-query
-                   (query-data
-                    {"lib/type" "mbql/query"
-                     "database" "Sample"
-                     "stages"   [{"lib/type"     "mbql.stage/mbql"
-                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                  "expressions"  {"Prev" ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]}
-                                  "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]}))
-                  nil (catch clojure.lang.ExceptionInfo ex ex))]
+        (doseq [exprs [{"Prev" ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]}
+                       ;; offset nested inside a larger expression is caught too
+                       {"Delta" ["-" {}
+                                 ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                 ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]]}]]
+          (let [e (editor-rejection
+                   {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "expressions"  exprs
+                                 "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]})]
+            (is (some? e))
+            (is (true? (:agent-error? (ex-data e))))
+            (is (= :query-not-runnable (:error (ex-data e))))
+            (is (re-find #"`offset`" (ex-message e)))
+            (is (re-find #"non-aggregation expression" (ex-message e)))))))))
+
+(deftest editor-gate-offset-in-filter-surfaces-error-end-to-end-test
+  (testing (str "An `offset` anywhere inside a `filters:` clause surfaces an\n"
+                ":expression-editor-rejection agent-error - the editor rejects OFFSET in\n"
+                "custom filters even though the query schema accepts it.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [[">" {}
+                                                ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]
+                                                10]]}]})]
           (is (some? e))
           (is (true? (:agent-error? (ex-data e))))
-          (is (= :offset-in-custom-column (:error (ex-data e)))))))))
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (= :filter (:mode (ex-data e))))
+          (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
+
+(deftest editor-gate-offset-nested-in-aggregation-function-surfaces-error-end-to-end-test
+  (testing (str "A window function embedded *inside* an aggregation function\n"
+                "(`sum(offset(...))`) surfaces an :expression-editor-rejection agent-error -\n"
+                "only the outer position (`offset(sum(...))`) is supported.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["sum" {}
+                                                ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]]]
+                               "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]})]
+          (is (some? e))
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (= :aggregation (:mode (ex-data e)))))))))
+
+(deftest editor-gate-offset-in-supported-positions-passes-end-to-end-test
+  (testing "`offset` in its supported positions does NOT trigger the editor gate"
+    (with-mp-and-stubs!
+      (fn []
+        (testing "at the top of an aggregation (`offset(sum(...), -1)`)"
+          (is (some? (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["offset" {}
+                                                      ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                                      -1]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]})))))
+        (testing "inside an `order-by`"
+          (is (some? (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "order-by"     [["asc" {}
+                                                      ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]]]}]})))))))))
+
+(deftest editor-gate-coerced-column-expression-passes-end-to-end-test
+  (testing (str "The editor gate's unsuppressed type check does not false-positive on a\n"
+                "coerced column: an expression that uses the column per its effective-type\n"
+                "(`get-month` on a UNIX-seconds -> DateTime coercion) builds successfully.")
+    (with-coerced-mp-and-stubs!
+      (fn []
+        (is (some? (construct/execute-representations-query
+                    (query-data
+                     {"lib/type" "mbql/query"
+                      "database" "Sample"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                   "expressions"  {"Created Month" ["get-month" {}
+                                                                    ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT_UNIX"]]]}}]}))))))))
+
+(deftest editor-gate-type-incompatible-expression-surfaces-error-end-to-end-test
+  (testing (str "The editor gate type-checks expressions (which the canRun-mirror schema gate\n"
+                "suppresses): a non-boolean clause in `filters:` surfaces an\n"
+                ":expression-editor-rejection agent-error.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}]})]
+          (is (some? e))
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (= :filter (:mode (ex-data e)))))))))
 
 (deftest query-not-runnable-explanation-gate-test
   (testing (str "The runnability backstop returns nil for a runnable resolved query and a\n"

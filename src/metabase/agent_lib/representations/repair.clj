@@ -31,6 +31,7 @@
    [clojure.walk :as walk]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.models.serialization.resolve :as resolve]
@@ -2680,39 +2681,6 @@
 
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
-;;; ----- E7: `offset` window clause inside a custom column (`expressions:`) ------------
-
-(defn- offset-in-custom-column-error!
-  "Detect an `offset` window clause inside any stage's `expressions:` (a custom column). lib's
-  schema permits `offset` anywhere an expression is legal, and `can-run` suppresses the
-  expression type-check, so an `offset()` placed in a custom column passes validation - but the
-  FE's `diagnose-expression` rejects it (\"OFFSET is not supported in custom columns\"), leaving
-  a query that builds yet can't be visualized or saved (the BOT-1442 sibling). `offset` is only
-  valid inside an aggregation or `order-by`, so flag it here as a loud `:agent-error?`.
-
-  Runs after `normalize-expressions-shape*`, so `expressions:` is the canonical sequential
-  vector of clauses; the map form is handled too for safety."
-  [query]
-  (when (and (map? query) (vector? (get query "stages")))
-    (doseq [stage  (get query "stages")
-            :when  (map? stage)
-            clause (let [exprs (get stage "expressions")]
-                     (cond
-                       (map? exprs)    (vals exprs)
-                       (vector? exprs) exprs
-                       :else           nil))]
-      (when (some (fn [node]
-                    (and (vector? node)
-                         (not (map-entry? node))
-                         (= "offset" (nth node 0 nil))))
-                  (tree-seq coll? seq clause))
-        (throw (ex-info
-                (tru "`offset` is not supported in a custom column (`expressions:`). Use `offset` only inside an `aggregation:` or `order-by:` clause.")
-                {:agent-error? true
-                 :error        :offset-in-custom-column
-                 :clause       clause}))))
-    query))
-
 (defn- friendly-errors*
   "Run every diagnostic detector in turn. Throws on the first match; otherwise returns
   `query` unchanged."
@@ -2724,8 +2692,7 @@
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (blank-expression-ref-error! query)
-    (numeric-field-id-error! query)
-    (offset-in-custom-column-error! query))
+    (numeric-field-id-error! query))
   query)
 
 ;;; ============================================================
@@ -2847,3 +2814,44 @@
        (infer-source-card-field-types* mp content-store)
        (assert-cross-stage-refs-resolved* mp content-store)
        friendly-errors*)))
+
+;;; ============================================================
+;;; Post-resolve gate -- expressions the FE expression editor rejects
+;;; ============================================================
+
+(defn assert-editor-accepts-expressions!
+  "Run the FE expression editor's own validation, [[metabase.lib.expression/diagnose-expression]],
+  over every custom column, aggregation, and filter of the resolved `pmbql-query`, throwing a
+  retryable `:agent-error?` on the first clause it rejects. Returns `pmbql-query`.
+
+  Catches shapes that are schema-legal yet broken in the editor: `offset` in a filter, window
+  functions nested inside aggregation functions, cyclic expression references, type-incompatible
+  arguments, standalone constants without `:expression-literals` support.
+
+  Unlike the rest of this namespace this runs after resolve. Call it only on a query that already
+  passed the suppressed-type-check `::lib.schema/query` validation - `diagnose-expression`
+  validates its query argument against that same schema, and its raw validation error would
+  otherwise preempt the friendly message."
+  [pmbql-query]
+  (doseq [stage-idx      (range (lib/stage-count pmbql-query))
+          [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
+                          [:aggregation (lib/aggregations pmbql-query stage-idx)]
+                          [:filter      (lib/filters      pmbql-query stage-idx)]]
+          [pos clause]   (map-indexed vector clauses)]
+    (when-let [{:keys [message]} (lib.expression/diagnose-expression
+                                  pmbql-query stage-idx mode clause
+                                  (when (#{:expression :aggregation} mode) pos))]
+      (let [where (case mode
+                    :expression  "custom column (`expressions:`)"
+                    :aggregation "`aggregation:`"
+                    :filter      "`filters:`")]
+        (throw (ex-info
+                (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
+                     where stage-idx message)
+                {:agent-error? true
+                 :error        :expression-editor-rejection
+                 :status-code  400
+                 :stage        stage-idx
+                 :mode         mode
+                 :clause       clause})))))
+  pmbql-query)

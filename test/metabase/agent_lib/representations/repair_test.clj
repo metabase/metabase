@@ -2843,35 +2843,6 @@
                           "filters"  [[">" {} ["field" {} "count"] 10]]}]}]
       (is (some? (repair/repair trivial-mp q))))))
 
-(deftest ^:parallel friendly-error-offset-in-custom-column-test
-  (testing "BOT-1442 sibling: an `offset` clause inside a custom column (`expressions:`) raises
-           an :agent-error? - it is schema-legal but the editor rejects it as non-runnable."
-    (doseq [exprs [{"Prev Total" ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] -1]}
-                   ;; offset nested inside a larger expression is caught too
-                   {"Delta" ["-" {}
-                             ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]
-                             ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] -1]]}]]
-      (let [q {"lib/type" "mbql/query"
-               "database" "Sample"
-               "stages"   [{"lib/type"     "mbql.stage/mbql"
-                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                            "expressions"  exprs
-                            "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]}
-            e (try (repair/repair trivial-mp q) nil (catch clojure.lang.ExceptionInfo ex ex))]
-        (is (some? e))
-        (is (true? (:agent-error? (ex-data e))))
-        (is (= :offset-in-custom-column (:error (ex-data e))))))))
-
-(deftest ^:parallel friendly-error-offset-outside-custom-column-passes-test
-  (testing "`offset` in an `order-by` (its supported position) does NOT trigger the
-           custom-column detector"
-    (let [q {"lib/type" "mbql/query"
-             "database" "Sample"
-             "stages"   [{"lib/type"     "mbql.stage/mbql"
-                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                          "order-by"     [["asc" {} ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] -1]]]}]}]
-      (is (some? (repair/repair trivial-mp q))))))
-
 ;;; ============================================================
 ;;; Pass 1.88 - merge trailing options-map into position-1 opts
 ;;; ============================================================

@@ -193,7 +193,7 @@ Re-aggregate — average daily total by month:
   - An aggregation's output name is the **bare function**: `max`, `min`, `avg`, `sum`, `count`, `median` — the operand is dropped. `["max", {}, ["expression", {}, "Instance Has SC"]]` produces a column named **`max`** (display label "Max of Instance Has SC"). Reference it as `["field", {}, "max"]`, **not** `["field", {}, "Max of Instance Has SC"]`.
   - A breakout keeps the source field's machine name even when its label is bucketed: a month breakout of `CREATED_AT` is still named `CREATED_AT` (display "Created At: Month").
   - If a stage has several aggregations of the same function, the outputs are suffixed in order: `max`, `max_2`, `max_3`. So the second `max` is referenced as `["field", {}, "max_2"]`.
-- A `["field", {}, "<name>"]` cross-stage ref whose name matches no column the previous stage produced is an error — name it exactly. (The display label is recovered when unambiguous, but don't rely on it; use the machine name.)
+- A `["field", {}, "<name>"]` cross-stage ref whose name matches no column the previous stage produced is an error — name it exactly.
 - Within the **same stage**, refer to your own aggregation with `["aggregation", {}, <idx>]` (see §Aggregation references). In a **later** stage, use the cross-stage string-name form against the previous stage's output.
 - Joins, expressions, filters, aggregation, breakout, order-by, limit are all valid in later stages.
 
@@ -394,7 +394,7 @@ Temporal:
 - `["now", {}]` / `["today", {}]`
 
 Window:
-- `["offset", {}, <expr>, <n>]` — value of `<expr>` from `<n>` rows back (negative `<n>`) or ahead (positive). Valid **only** inside an `aggregation:` or `order-by:` clause — **never** in a custom column (`expressions:`); OFFSET in a custom column is rejected by the query builder and produces a query that can't be visualized or saved.
+- `["offset", {}, <expr>, <n>]` — value of `<expr>` from `<n>` rows back (negative `<n>`) or ahead (positive). Valid **only** inside an `aggregation:` or `order-by:` clause — **never** in a custom column (`expressions:`) or a filter.
 
 ### Temporal units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
 
