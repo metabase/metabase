@@ -5,6 +5,7 @@ import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { MeasureId } from "./measure";
+import type { MetricId } from "./metric";
 import type { Parameter } from "./parameters";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
@@ -452,23 +453,16 @@ export type TestCardSourceSpec = {
   id: CardId;
 };
 
-export type TestMetricSourceSpec = {
-  type: "metric";
-  id: CardId;
-};
-
-export type TestSourceSpec =
-  | TestTableSourceSpec
-  | TestCardSourceSpec
-  | TestMetricSourceSpec;
-
-export type TestJoinTargetSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
+export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 
 export type TestColumnSpec = {
   type: "column";
   name: string;
+  tableId?: TableId;
   "source-name"?: string;
   sourceName?: string;
+  "source-field-id"?: FieldId;
+  sourceFieldId?: FieldId;
   displayName?: string;
 
   // When the columns cannot be disambiguated with name, sourceName and displayName
@@ -491,12 +485,18 @@ export type TestMeasureSpec = {
   id: MeasureId;
 };
 
+export type TestMetricSpec = {
+  type: "metric";
+  id: MetricId;
+};
+
 export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
 
 export type TestAggregationSpec =
   | TestExpressionSpec
   | TestNamedExpressionSpec
-  | TestMeasureSpec;
+  | TestMeasureSpec
+  | TestMetricSpec;
 
 export type TestNamedExpressionSpec = {
   name: string;
@@ -536,7 +536,7 @@ export type TestColumnWithBinningSpec = TestColumnSpec & TestBinningSpec;
 export type TestBreakoutSpec = TestColumnWithBinningSpec;
 
 export type TestJoinSpec = {
-  source: TestJoinTargetSourceSpec;
+  source: TestSourceSpec;
   strategy: JoinStrategy;
 
   // If not set we will use the suggested join conditions

@@ -1,28 +1,24 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import {
-  isQueryInput,
-  isTableInput,
-} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import { cardApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { isQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TestQuerySpec } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import type { QueryInput } from "./input-types";
+import type { TableQueryInput } from "./input-types";
+import { loadReferencedMetricMetadata } from "./metric-metadata";
 import { validateQueryInput } from "./validation";
 
 export type ResolveDatasetQuery = (
   store: SdkStore,
-) => (input: QueryInput) => Promise<DatasetQuery>;
+) => (input: TableQueryInput) => Promise<DatasetQuery>;
 
 export const resolveDatasetQuery: ResolveDatasetQuery =
-  (store) => async (input: QueryInput) => {
+  (store) => async (input: TableQueryInput) => {
     if (!isQueryInput(input)) {
       throw new Error(
-        'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "metric", id }`.',
+        'Query object creation requires a source reference like `{ type: "table", id }`.',
       );
     }
 
@@ -37,16 +33,16 @@ export const resolveDatasetQuery: ResolveDatasetQuery =
   };
 
 function resolveQueryFromLoadedMetadata(
-  input: QueryInput,
+  input: TableQueryInput,
   metadata: Lib.Metadata,
 ) {
   if (!isQueryInput(input)) {
     throw new Error(
-      'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "metric", id }`.',
+      'Query object creation requires a source reference like `{ type: "table", id }`.',
     );
   }
 
-  const databaseId = getSourceDatabaseId(input, metadata);
+  const databaseId = getTableDatabaseId(input.source.id, metadata);
   const provider = Lib.metadataProvider(databaseId, metadata);
 
   return Lib.toJsQuery(
@@ -54,40 +50,9 @@ function resolveQueryFromLoadedMetadata(
   );
 }
 
-async function loadSourceMetadata(store: SdkStore, input: QueryInput) {
-  if (isTableInput(input)) {
-    await store.dispatch(fetchTableMetadata({ id: input.source.id }));
-    return;
-  }
-
-  await runRtkEndpoint(
-    { id: input.source.id },
-    store.dispatch,
-    cardApi.endpoints.getCard,
-    { forceRefetch: false },
-  );
-  await runRtkEndpoint(
-    input.source.id,
-    store.dispatch,
-    cardApi.endpoints.getCardQueryMetadata,
-    { forceRefetch: false },
-  );
-}
-
-function getSourceDatabaseId(input: QueryInput, metadata: Lib.Metadata) {
-  if (isTableInput(input)) {
-    return getTableDatabaseId(input.source.id, metadata);
-  }
-
-  if (typeof input.source.databaseId === "number") {
-    return input.source.databaseId;
-  }
-
-  if (typeof input.source.sourceTableId === "number") {
-    return getTableDatabaseId(input.source.sourceTableId, metadata);
-  }
-
-  throw new Error(`Unable to find database for Metric ${input.source.id}.`);
+async function loadSourceMetadata(store: SdkStore, input: TableQueryInput) {
+  await store.dispatch(fetchTableMetadata({ id: input.source.id }));
+  await loadReferencedMetricMetadata(store, input);
 }
 
 function getTableDatabaseId(tableId: number, metadata: Lib.Metadata) {

@@ -638,20 +638,30 @@
   (let [{:keys [dimensions dimension_mappings]} (t2/select-one [:model/Card :dimensions :dimension_mappings] :id id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
-(defn- table-key-disambiguators
+(defn- readable-table-source-rows
   [table-ids]
   (when (seq table-ids)
     (->> (t2/select [:model/Table :id :name :display_name] :id [:in table-ids])
-         (map (fn [{:keys [id name display_name]}]
-                [id (pascal-case (generated-key (or display_name name) id))]))
-         (into {}))))
+         (filter mi/can-read?))))
+
+(defn- table-key-disambiguators
+  ([table-ids]
+   (table-key-disambiguators table-ids (readable-table-source-rows table-ids)))
+  ([_table-ids table-rows]
+   (when (seq table-rows)
+     (->> table-rows
+          (map (fn [{:keys [id name display_name]}]
+                 [id (pascal-case (generated-key (or display_name name) id))]))
+          (into {})))))
 
 (defn- table-source-names
-  [table-ids]
-  (when (seq table-ids)
-    (->> (t2/select [:model/Table :id :name] :id [:in table-ids])
-         (map (juxt :id :name))
-         (into {}))))
+  ([table-ids]
+   (table-source-names table-ids (readable-table-source-rows table-ids)))
+  ([_table-ids table-rows]
+   (when (seq table-rows)
+     (->> table-rows
+          (map (juxt :id :name))
+          (into {})))))
 
 (defn- source-table-schema
   [[database-name schema-name table-name]]
@@ -714,8 +724,9 @@
                                          (field-table-id field-id)))))
                            (filter integer?)
                            distinct)
-        table-key-by-id (table-key-disambiguators table-ids)
-        table-source-name-by-id (table-source-names table-ids)
+        table-rows              (readable-table-source-rows table-ids)
+        table-key-by-id         (table-key-disambiguators table-ids table-rows)
+        table-source-name-by-id (table-source-names table-ids table-rows)
         dimension-schemas (mapv #(dimension-schema % id table-key-by-id table-source-name-by-id)
                                 dimensions)
         mapped-table-ids  (->> dimension-schemas

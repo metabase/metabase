@@ -3,9 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.typed-schemas.api :as typed-schemas.api]))
+   [metabase.typed-schemas.api :as typed-schemas.api]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -157,9 +159,19 @@
             :tableId 168
             :keyDisambiguator "Orders"}]))))
 
+(deftest table-source-names-filters-unreadable-tables-test
+  (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
+                                       {:id 20 :name "franchises" :display_name "Franchises"}])
+                mi/can-read? (fn [{:keys [id]}] (= id 10))]
+    (is (= {10 "orders"}
+           (#'typed-schemas.api/table-source-names [10 20])))
+    (is (= {10 "Orders"}
+           (#'typed-schemas.api/table-key-disambiguators [10 20])))))
+
 (deftest metric-schema-keys-dimensions-test
   (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
-                typed-schemas.api/table-source-names (constantly {10 "orders"})
+                typed-schemas.api/readable-table-source-rows
+                (constantly [{:id 10 :name "orders" :display_name "Orders"}])
                 typed-schemas.api/metric-dimensions
                 (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
                               :name           "orders"
@@ -188,6 +200,27 @@
             {:id   247
              :name "Customer Lifetime Value"}
             {:id 247})))))
+
+(deftest metric-schema-reuses-table-source-rows-test
+  (let [table-select-count (atom 0)]
+    (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
+                  typed-schemas.api/metric-dimensions
+                  (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
+                                :name           "orders"
+                                :display-name   "Orders"
+                                :effective-type :type/Integer
+                                :table-id       10
+                                :sources        [{:type :field, :field-id 42}]}])
+                  mi/can-read? (constantly true)
+                  t2/select (fn [columns & _args]
+                              (when (= columns [:model/Table :id :name :display_name])
+                                (swap! table-select-count inc)
+                                [{:id 10 :name "orders" :display_name "Orders"}]))]
+      (#'typed-schemas.api/metric-schema
+       {:id   247
+        :name "Customer Lifetime Value"}
+       {:id 247})
+      (is (= 1 @table-select-count)))))
 
 (deftest measure-schema-uses-result-column-test
   (testing "measure result columns come from the measure definition when available"

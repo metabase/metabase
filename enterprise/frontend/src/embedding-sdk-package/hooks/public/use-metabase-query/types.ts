@@ -13,7 +13,6 @@ import type { TemporalUnit } from "metabase-types/api";
 import type {
   FieldSchema,
   InferSchema,
-  MeasureSchema,
   MetricSchema,
   QueryData,
   SchemaColumn,
@@ -35,16 +34,6 @@ type FieldValues<TEntity> = TEntity extends {
   ? Values<NonNullable<TFields>>
   : never;
 
-type MetricDimensionValues<TEntity> = TEntity extends {
-  dimensions?: infer TDimensions;
-}
-  ? Values<NonNullable<TDimensions>> extends infer TDimensionGroup
-    ? TDimensionGroup extends unknown
-      ? Values<TDimensionGroup>
-      : never
-    : never
-  : never;
-
 type FieldNames<TEntity> =
   FieldValues<TEntity> extends { name: infer TName } ? TName : string;
 
@@ -60,50 +49,78 @@ type MeasureIds<TEntity> = TEntity extends { measures?: infer TMeasures }
     : never
   : never;
 
-type MetricSourceTableId<TEntity> = TEntity extends {
-  sourceTableId: infer TSourceTableId extends number;
-}
-  ? TSourceTableId
-  : never;
-
-type MetricMappedTableId<TEntity> = TEntity extends {
-  mappedTableIds?: infer TMappedTableIds extends readonly number[];
-}
-  ? TMappedTableIds[number]
-  : MetricSourceTableId<TEntity>;
-
-type IsMetricEntity<TEntity> = TEntity extends MetricSchema
-  ? TEntity extends
-      | { sourceTableId: number }
-      | { sourceCardId: number }
-      | { type: "metric" }
-    ? true
-    : false
-  : false;
-
 type SourceQuerySpec<TTable> = {
   type: "table";
   id: TTable extends { id: infer TId extends number } ? TId : number;
 };
 
+type TableId<TTable> = TTable extends { id: infer TId extends number }
+  ? TId
+  : number;
+
 export type SegmentReference<TTable = unknown> = {
   type: "segment";
   id: [SegmentIds<TTable>] extends [never] ? number : SegmentIds<TTable>;
-  tableId?: TTable extends { id: infer TId extends number } ? TId : number;
+  tableId?: TableId<TTable>;
 };
 
 export type MeasureReference<TTable = unknown> = {
   type: "measure";
   id: [MeasureIds<TTable>] extends [never] ? number : MeasureIds<TTable>;
-  tableId?: TTable extends { id: infer TId extends number } ? TId : number;
+  tableId?: TableId<TTable>;
   columns?: readonly SchemaColumn[];
 };
 
-export type FieldReference<TTable = unknown> = Omit<FieldSchema, "tableId"> & {
+/**
+ * Metrics with table source emits `sourceTableId`. Its `mappedTableIds` can include
+ * joined tables exposed by generated dimensions, so once `sourceTableId` matches the
+ * source table, `mappedTableIds` must stay wider than the source table id.
+ *
+ * The second branch is a fallback for Metric metadata without `sourceTableId`.
+ * In that shape, `mappedTableIds` is the only available compile-time proof,
+ * so each mapped id must match the query source table.
+ */
+export type MetricReference<TTable = unknown> = Omit<
+  MetricSchema,
+  "mappedTableIds" | "sourceCardId" | "sourceTableId"
+> & {
+  type: "metric";
+
+  // Metrics based on saved questions are not yet supported
+  // TODO(EMB-2045): add support for saved questions as metric sources
+  sourceCardId?: never;
+} & (
+    | {
+        sourceTableId: TableId<TTable>;
+        mappedTableIds?: readonly number[];
+      }
+    | {
+        sourceTableId?: TableId<TTable>;
+        mappedTableIds: readonly TableId<TTable>[];
+      }
+  );
+
+type LocalFieldReference<TTable = unknown> = Omit<
+  FieldSchema,
+  "sourceFieldId" | "tableId"
+> & {
   type: "column";
   name: [FieldNames<TTable>] extends [never] ? string : FieldNames<TTable>;
-  tableId: TTable extends { id: infer TId extends number } ? TId : number;
+  tableId: TableId<TTable>;
+
+  // Fields with `sourceFieldId` are FK-joined dimensions; keep them out of the
+  // "local source table" branch so table ownership checks stay strict.
+  sourceFieldId?: never;
 };
+
+type JoinedFieldReference = Omit<FieldSchema, "sourceFieldId"> & {
+  type: "column";
+  sourceFieldId: number;
+};
+
+export type FieldReference<TTable = unknown> =
+  | LocalFieldReference<TTable>
+  | JoinedFieldReference;
 
 export type CountAggregation = {
   type: "operator";
@@ -159,38 +176,8 @@ type AnyAggregation<TTable = unknown> =
   | CountAggregationSchema
   | FieldAggregation<FieldAggregationOperator, FieldReference<TTable>>
   | FieldAggregationSchema<FieldAggregationOperator, FieldReference<TTable>>
-  | MeasureReference<TTable>;
-
-type MetricMeasureReference<TMetric> = [MetricMappedTableId<TMetric>] extends [
-  never,
-]
-  ? MeasureSchema
-  : MeasureReference<{ id: MetricMappedTableId<TMetric> }>;
-
-type MetricSegmentReference<TMetric> = [MetricMappedTableId<TMetric>] extends [
-  never,
-]
-  ? SegmentReference
-  : SegmentReference<{ id: MetricMappedTableId<TMetric> }>;
-
-type MetricDimensionReference<TMetric> = [
-  MetricDimensionValues<TMetric>,
-] extends [never]
-  ? FieldReference
-  : MetricDimensionValues<TMetric>;
-
-type MetricAggregation<TMetric> =
-  | CountAggregation
-  | CountAggregationSchema
-  | FieldAggregation<
-      FieldAggregationOperator,
-      MetricDimensionReference<TMetric>
-    >
-  | FieldAggregationSchema<
-      FieldAggregationOperator,
-      MetricDimensionReference<TMetric>
-    >
-  | MetricMeasureReference<TMetric>;
+  | MeasureReference<TTable>
+  | MetricReference<TTable>;
 
 type AggregationDimensionWithJavaScriptType<
   TDimension,
@@ -292,10 +279,6 @@ type MetabaseDimensionFilterForDimension<TDimension> =
 export type MetabaseDimensionFilter<TEntity = unknown> =
   MetabaseDimensionFilterForDimension<FieldReference<TEntity>>;
 
-type MetricDimensionFilter<TMetric> = MetabaseDimensionFilterForDimension<
-  MetricDimensionReference<TMetric>
->;
-
 export type FilterLiteralValue = string | number | bigint | boolean;
 
 type DateBucketDimension<TDimension> = TDimension extends unknown
@@ -337,10 +320,6 @@ export type MetabaseBreakout<TTable = unknown> =
   | FieldReference<TTable>
   | MetabaseBreakoutObjectForDimension<FieldReference<TTable>>;
 
-type MetricBreakout<TMetric> =
-  | MetricDimensionReference<TMetric>
-  | MetabaseBreakoutObjectForDimension<MetricDimensionReference<TMetric>>;
-
 type BinningOptionsInput =
   | { bins?: number | "auto"; binWidth?: never }
   | { binWidth?: number | "auto"; bins?: never };
@@ -373,19 +352,6 @@ type TableQueryBase<TTable> = {
     }
 );
 
-export type MetricQuery<TMetric> = {
-  source: TMetric extends MetricSchema ? TMetric : MetricSchema;
-  fields?: never;
-  filters?: readonly (
-    | MetricSegmentReference<TMetric>
-    | MetricDimensionFilter<TMetric>
-  )[];
-  aggregations?: readonly MetricAggregation<TMetric>[];
-  breakouts?: readonly MetricBreakout<TMetric>[];
-  limit?: number;
-  enabled?: boolean;
-};
-
 type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
   breakouts: readonly [unknown, ...unknown[]];
 }
@@ -397,20 +363,17 @@ type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
 export type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
 
-export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> = [
-  TEntity,
-] extends [undefined]
-  ? TableQuery<TEntity> | MetricQuery<TEntity>
-  : IsMetricEntity<TEntity> extends true
-    ? MetricQuery<TEntity>
-    : TEntity extends TableSchema
-      ? TableQuery<TEntity>
-      : TableQuery<TEntity> | MetricQuery<TEntity>;
+export type MetabaseQueryOptions<
+  TEntity = unknown,
+  _TSchema = unknown,
+> = TableQuery<TEntity>;
 
 type EmptyRow = Record<never, never>;
 
 type ColumnRow<TColumn> = TColumn extends SchemaColumn
-  ? { [TName in TColumn["name"]]: SchemaValue<TColumn> }
+  ? string extends TColumn["name"]
+    ? EmptyRow
+    : { [TName in TColumn["name"]]: SchemaValue<TColumn> }
   : EmptyRow;
 
 type RowsFromColumns<TColumn> = [TColumn] extends [never]
@@ -445,9 +408,13 @@ type QueryAggregationColumns<TQuery> = TQuery extends {
 
 type DefaultTableColumns<TEntity, TQuery> = TQuery extends { fields: unknown }
   ? never
-  : TEntity extends { fields?: infer TFields }
-    ? Values<NonNullable<TFields>>
-    : never;
+  : TQuery extends { aggregations: unknown }
+    ? never
+    : TQuery extends { breakouts: unknown }
+      ? never
+      : TEntity extends { fields?: infer TFields }
+        ? Values<NonNullable<TFields>>
+        : never;
 
 type InferQuerySchema<TEntity, TQuery> = InferSchema<TEntity, EmptyRow> &
   RowsFromColumns<
@@ -473,13 +440,14 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
 };
 
 export type UseMetabaseQuery = <
-  TEntity extends MetricSchema | TableSchema | undefined = undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
-  const TQuery extends MetabaseQueryOptions<TEntity, TSchema> =
-    MetabaseQueryOptions<TEntity, TSchema>,
+  const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
 >(
   query: TQuery &
-    (TQuery extends { source: unknown }
-      ? RequireAggregationsForBreakouts<TQuery>
-      : unknown),
+    (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
+      ? TQuery extends { source: unknown }
+        ? RequireAggregationsForBreakouts<TQuery>
+        : unknown
+      : MetabaseQueryOptions<TEntity, TSchema>),
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery>;

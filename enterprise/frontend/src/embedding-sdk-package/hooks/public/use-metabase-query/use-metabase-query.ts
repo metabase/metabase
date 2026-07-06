@@ -11,11 +11,7 @@ import {
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
 
-import type {
-  MetricSchema,
-  SchemaJavaScriptType,
-  TableSchema,
-} from "../data-schema";
+import type { SchemaJavaScriptType, TableSchema } from "../data-schema";
 
 import { mapDatasetQueryData } from "./map-dataset-query-data";
 import { stableStringifyQuery } from "./stable-query-key";
@@ -30,7 +26,6 @@ import type {
   FilterOperator,
   MetabaseDimensionFilterForOperator,
   MetabaseQueryOptions,
-  MetricQuery,
   NumericAggregationDimension,
   OrderableAggregationDimension,
   TableQuery,
@@ -39,7 +34,9 @@ import type {
   UseMetabaseQueryResult,
   ValueFilterOperatorForDimension,
 } from "./types";
+
 export type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
+
 export type {
   CountAggregation,
   CountAggregationSchema,
@@ -155,13 +152,6 @@ const isOrderableJavaScriptType = (
 
 const getResolveDatasetQueryFromBundle = () =>
   getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.resolveDatasetQuery;
-
-type ResolveDatasetQueryFn = NonNullable<
-  ReturnType<typeof getResolveDatasetQueryFromBundle>
->;
-type ResolveDatasetQueryInput = Parameters<
-  ReturnType<ResolveDatasetQueryFn>
->[0];
 
 export type UseMetabaseQueryObjectResult = {
   query: MetabaseQueryObject | null;
@@ -280,7 +270,7 @@ function getBinningOptions(
 }
 
 const useMetabaseQueryImpl = <
-  TEntity extends MetricSchema | TableSchema | undefined = undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
   TQuery extends MetabaseQueryOptions<TEntity, TSchema> = MetabaseQueryOptions<
     TEntity,
@@ -334,9 +324,9 @@ const useMetabaseQueryImpl = <
           return;
         }
 
-        const datasetQuery = await resolveDatasetQuery(reduxStore)(
-          currentQuery as ResolveDatasetQueryInput,
-        );
+        const datasetQuery =
+          await resolveDatasetQuery(reduxStore)(currentQuery);
+
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
@@ -369,7 +359,7 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
-  query: MetricQuery<unknown> | TableQuery<unknown>,
+  query: TableQuery<unknown>,
 ): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
 

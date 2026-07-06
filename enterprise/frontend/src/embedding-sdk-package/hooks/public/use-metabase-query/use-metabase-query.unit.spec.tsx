@@ -114,6 +114,22 @@ const TEST_SCHEMA = {
           displayName: "Status",
           jsType: "string",
         },
+        productId: {
+          type: "column",
+          fieldId: 104,
+          tableId: 1,
+          name: "PRODUCT_ID",
+          displayName: "Product ID",
+          jsType: "number",
+        },
+        replacementProductId: {
+          type: "column",
+          fieldId: 105,
+          tableId: 1,
+          name: "REPLACEMENT_PRODUCT_ID",
+          displayName: "Replacement Product ID",
+          jsType: "number",
+        },
       },
       segments: {
         completed: { type: "segment", id: 11, tableId: 1 },
@@ -139,6 +155,14 @@ const TEST_SCHEMA = {
           displayName: "Price",
           jsType: "number",
         },
+        name: {
+          type: "column",
+          fieldId: 202,
+          tableId: 2,
+          name: "NAME",
+          displayName: "Name",
+          jsType: "string",
+        },
       },
       segments: {
         active: { type: "segment", id: 12, tableId: 2 },
@@ -160,7 +184,7 @@ const TEST_SCHEMA = {
       name: "Revenue",
       databaseId: 1,
       sourceTableId: 1,
-      mappedTableIds: [1],
+      mappedTableIds: [1, 2],
       columns: [{ name: "Revenue", displayName: "Revenue", jsType: "number" }],
       dimensions: {
         orders: {
@@ -189,6 +213,70 @@ const TEST_SCHEMA = {
             displayName: "Status",
             jsType: "string",
           },
+          product: {
+            type: "column",
+            fieldId: 202,
+            tableId: 2,
+            sourceFieldId: 104,
+            name: "NAME",
+            displayName: "Name",
+            jsType: "string",
+          },
+        },
+      },
+    },
+    productRevenue: {
+      type: "metric",
+      id: 32,
+      name: "Product Revenue",
+      databaseId: 1,
+      sourceTableId: 2,
+      mappedTableIds: [2],
+      columns: [
+        {
+          name: "Product Revenue",
+          displayName: "Product Revenue",
+          jsType: "number",
+        },
+      ],
+      dimensions: {
+        products: {
+          price: {
+            type: "column",
+            fieldId: 201,
+            tableId: 2,
+            name: "PRICE",
+            displayName: "Price",
+            jsType: "number",
+          },
+        },
+      },
+    },
+    questionRevenue: {
+      type: "metric",
+      id: 33,
+      name: "Question Revenue",
+      databaseId: 1,
+      sourceCardId: 41,
+      mappedTableIds: [1],
+      columns: [
+        {
+          name: "Question Revenue",
+          displayName: "Question Revenue",
+          jsType: "number",
+        },
+      ],
+      dimensions: {
+        orders: {
+          createdAt: {
+            type: "column",
+            fieldId: 103,
+            tableId: 1,
+            name: "CREATED_AT",
+            displayName: "Created At",
+            jsType: "Date",
+            baseType: "type/DateTime",
+          },
         },
       },
     },
@@ -196,7 +284,6 @@ const TEST_SCHEMA = {
 } as const;
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
-type RevenueMetric = (typeof TEST_SCHEMA)["metrics"]["revenue"];
 
 const TEST_METADATA = {
   databases: {
@@ -243,6 +330,35 @@ const TEST_METADATA = {
       base_type: "type/DateTime",
       effective_type: "type/DateTime",
     },
+    104: {
+      id: 104,
+      table_id: 1,
+      name: "PRODUCT_ID",
+      display_name: "Product ID",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      semantic_type: "type/FK",
+      fk_target_field_id: 200,
+    },
+    105: {
+      id: 105,
+      table_id: 1,
+      name: "REPLACEMENT_PRODUCT_ID",
+      display_name: "Replacement Product ID",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      semantic_type: "type/FK",
+      fk_target_field_id: 200,
+    },
+    200: {
+      id: 200,
+      table_id: 2,
+      name: "ID",
+      display_name: "ID",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      semantic_type: "type/PK",
+    },
     201: {
       id: 201,
       table_id: 2,
@@ -250,6 +366,14 @@ const TEST_METADATA = {
       display_name: "Price",
       base_type: "type/Float",
       effective_type: "type/Float",
+    },
+    202: {
+      id: 202,
+      table_id: 2,
+      name: "NAME",
+      display_name: "Name",
+      base_type: "type/Text",
+      effective_type: "type/Text",
     },
   },
   segments: {
@@ -294,6 +418,20 @@ const TEST_METADATA = {
         database: 1,
         query: {
           "source-table": 1,
+          aggregation: [["sum", ["field", 102, null]]],
+        },
+      },
+    }),
+    32: createMockCard({
+      id: 32,
+      name: "Product Revenue",
+      type: "metric",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 2,
+          aggregation: [["sum", ["field", 201, null]]],
         },
       },
     }),
@@ -367,13 +505,14 @@ const _invalidCrossTableFieldQuery = {
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
-const _validMetricQuery = {
-  source: TEST_SCHEMA.metrics.revenue,
+const _validTableQueryWithMetricAggregation = {
+  source: TEST_SCHEMA.tables.orders,
   filters: [
     TEST_SCHEMA.tables.orders.segments.completed,
     filter(TEST_SCHEMA.metrics.revenue.dimensions.orders.status, "=", "paid"),
   ],
   aggregations: [
+    TEST_SCHEMA.metrics.revenue,
     TEST_SCHEMA.tables.orders.measures.revenue,
     sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount),
   ],
@@ -383,7 +522,13 @@ const _validMetricQuery = {
     }),
   ],
   limit: 100,
-} satisfies MetabaseQueryOptions<RevenueMetric>;
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _validTableQueryWithJoinedMetricBreakout = {
+  source: TEST_SCHEMA.tables.orders,
+  aggregations: [TEST_SCHEMA.metrics.revenue],
+  breakouts: [breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.product)],
+} satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _validCardQuery = {
   query: {
@@ -403,13 +548,34 @@ const _invalidHookResultCard = {
   query: hookResult,
 } satisfies MetabaseCard;
 
-const _invalidMetricCrossTableSegmentQuery = {
-  source: TEST_SCHEMA.metrics.revenue,
-  filters: [
-    // @ts-expect-error segments must belong to a mapped metric table
-    TEST_SCHEMA.tables.products.segments.active,
+const _invalidCrossTableMetricAggregationQuery = {
+  source: TEST_SCHEMA.tables.orders,
+  aggregations: [
+    // @ts-expect-error metric aggregations must belong to the source table
+    TEST_SCHEMA.metrics.productRevenue,
   ],
-} satisfies MetabaseQueryOptions<RevenueMetric>;
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidIdOnlyMetricAggregationQuery = {
+  source: TEST_SCHEMA.tables.orders,
+  aggregations: [
+    // @ts-expect-error metric aggregations must include source table metadata
+    { type: "metric", id: 31 },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidSourceCardMetricAggregationQuery = {
+  source: TEST_SCHEMA.tables.orders,
+  aggregations: [
+    // @ts-expect-error source-card metric aggregations need a saved question source
+    TEST_SCHEMA.metrics.questionRevenue,
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidMetricSourceQuery = {
+  // @ts-expect-error Metrics must be used in aggregations, not as query sources
+  source: TEST_SCHEMA.metrics.revenue,
+} satisfies MetabaseQueryOptions;
 
 function TypeFixtures() {
   useMetabaseQuery<OrdersTable>({
@@ -427,15 +593,40 @@ function TypeFixtures() {
 
   void scalarAggregationValue;
 
-  const metricResult = useMetabaseQuery<RevenueMetric>({
-    source: TEST_SCHEMA.metrics.revenue,
-    aggregations: [sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount)],
-  });
+  // @ts-expect-error aggregation result rows should not include source fields
+  void scalarAggregationResult.data?.rows[0]?.amount;
+
+  const metricQuery = {
+    source: TEST_SCHEMA.tables.orders,
+    aggregations: [TEST_SCHEMA.metrics.revenue],
+  } satisfies MetabaseQueryOptions<OrdersTable>;
+  const metricResult = useMetabaseQuery(metricQuery);
 
   const metricAggregationValue: number | null | undefined =
-    metricResult.data?.rows[0]?.sum;
+    metricResult.data?.rows[0]?.Revenue;
 
   void metricAggregationValue;
+
+  // @ts-expect-error aggregation result rows should not include source fields
+  void metricResult.data?.rows[0]?.status;
+
+  const groupedMetricResult = useMetabaseQuery<OrdersTable>({
+    source: TEST_SCHEMA.tables.orders,
+    aggregations: [TEST_SCHEMA.metrics.revenue],
+    breakouts: [
+      breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.createdAt, {
+        unit: "month",
+      }),
+    ],
+  });
+
+  const groupedMetricBreakoutValue: string | Date | null | undefined =
+    groupedMetricResult.data?.rows[0]?.CREATED_AT;
+
+  void groupedMetricBreakoutValue;
+
+  // @ts-expect-error result row keys use returned column names, not schema object keys
+  void groupedMetricResult.data?.rows[0]?.createdAt;
 
   // @ts-expect-error grouped queries must include an explicit aggregation
   useMetabaseQuery<OrdersTable>({
@@ -577,11 +768,11 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
-  it("loads metric metadata and passes the public source DSL through Lib.createTestQuery", async () => {
+  it("loads metric aggregation metadata and passes the public table source DSL through Lib.createTestQuery", async () => {
     const store = createMockStore();
 
     const datasetQuery = await resolveDatasetQueryInBundle(store)({
-      source: TEST_SCHEMA.metrics.revenue,
+      source: TEST_SCHEMA.tables.orders,
       filters: [
         TEST_SCHEMA.tables.orders.segments.completed,
         filter(
@@ -591,6 +782,7 @@ describe("resolveDatasetQuery", () => {
         ),
       ],
       aggregations: [
+        TEST_SCHEMA.metrics.revenue,
         count(),
         sum(TEST_SCHEMA.metrics.revenue.dimensions.orders.amount),
         TEST_SCHEMA.tables.orders.measures.revenue,
@@ -603,7 +795,7 @@ describe("resolveDatasetQuery", () => {
       limit: 100,
     });
 
-    expect(mockFetchTableMetadata).not.toHaveBeenCalled();
+    expect(mockFetchTableMetadata).toHaveBeenCalledWith({ id: 1 });
 
     expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
       1,
@@ -646,6 +838,29 @@ describe("resolveDatasetQuery", () => {
             ],
           ],
           limit: 100,
+        },
+      ],
+    });
+  });
+
+  it("builds metric queries with FK-joined dimension breakouts", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.product),
+      ],
+    });
+
+    expect(datasetQuery).toMatchObject({
+      database: 1,
+      stages: [
+        {
+          "source-table": 1,
+          aggregation: [["metric", expect.anything(), 31]],
+          breakout: [
+            ["field", expect.objectContaining({ "source-field": 104 }), 202],
+          ],
         },
       ],
     });
@@ -698,41 +913,46 @@ describe("resolveDatasetQuery", () => {
     );
   });
 
-  it("rejects invalid metric query clauses with clear error messages", async () => {
+  it("rejects cross-table metric aggregations with clear error messages", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
-        source: TEST_SCHEMA.metrics.revenue,
-        filters: [TEST_SCHEMA.tables.products.segments.active],
+        source: TEST_SCHEMA.tables.orders,
+        aggregations: [TEST_SCHEMA.metrics.productRevenue],
       }),
     ).rejects.toThrow(
-      "Metric query filters must belong to one of the Metric's mapped tables. Expected table id 2 to be one of 1.",
+      "Table query metric aggregations must belong to source table 1, but received mapped table ids 2.",
     );
+  });
 
+  it("rejects metric aggregations without source table metadata", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
-        source: TEST_SCHEMA.metrics.revenue,
-        filters: [filter(TEST_SCHEMA.tables.products.fields.price, "=", 10)],
-      }),
+        source: TEST_SCHEMA.tables.orders,
+        aggregations: [{ type: "metric", id: 31 }],
+      } as any),
     ).rejects.toThrow(
-      "Metric query filters must use generated metric dimensions.",
+      "Table query metric aggregations must include source table metadata.",
     );
+  });
 
+  it("rejects source-card metric aggregations under table sources", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
-        source: TEST_SCHEMA.metrics.revenue,
-        aggregations: [sum(TEST_SCHEMA.tables.products.fields.price)],
+        source: TEST_SCHEMA.tables.orders,
+        aggregations: [TEST_SCHEMA.metrics.questionRevenue],
       }),
     ).rejects.toThrow(
-      "Metric query aggregations must use generated metric dimensions.",
+      "Table query metric aggregations cannot use source-card Metrics. Use a saved question source for source-card Metrics.",
     );
+  });
 
+  it("rejects metric sources with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.metrics.revenue,
-        breakouts: [TEST_SCHEMA.tables.products.fields.price],
-      }),
+      } as any),
     ).rejects.toThrow(
-      "Metric query breakouts must use generated metric dimensions.",
+      'Query object creation requires a source reference like `{ type: "table", id }`.',
     );
   });
 });

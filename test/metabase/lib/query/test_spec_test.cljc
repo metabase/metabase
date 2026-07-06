@@ -36,20 +36,6 @@
                            :source-card 1}]}
               query)))))
 
-(deftest ^:parallel test-query-with-metric-source-test
-  (testing "test-query creates a query from a metric source"
-    (let [query (lib.query.test-spec/test-query
-                 lib.tu/metadata-provider-with-metric
-                 {:stages [{:source {:type :metric
-                                     :id   1}}]})]
-      (is (=? {:lib/type :mbql/query
-               :database (meta/id)
-               :stages   [{:lib/type     :mbql.stage/mbql
-                           :source-table (meta/id :checkins)
-                           :aggregation  [[:metric {} 1]]
-                           :breakout     [[:field {} (meta/id :checkins :user-id)]]}]}
-              query)))))
-
 (deftest ^:parallel test-query-with-fields-test
   (testing "test-query adds fields to the query"
     (let [query (lib.query.test-spec/test-query
@@ -125,6 +111,17 @@
                             :aggregations [{:type     :operator
                                             :operator :count}]}]})]
       (is (=? [[:count {}]]
+              (lib/aggregations query))))))
+
+(deftest ^:parallel test-query-with-metric-aggregation-test
+  (testing "test-query adds Metrics as aggregations"
+    (let [query (lib.query.test-spec/test-query
+                 lib.tu/metadata-provider-with-metric
+                 {:stages [{:source       {:type :table
+                                           :id   (meta/id :checkins)}
+                            :aggregations [{:type :metric
+                                            :id   1}]}]})]
+      (is (=? [[:metric {} 1]]
               (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-with-breakouts-test
@@ -408,17 +405,7 @@
                                                     :right {:type :column
                                                             :name "USER_ID"}}]}]}]})]
       (is (=? [{:strategy :left-join}]
-              (-> query lib/joins)))))
-  (testing "test-query rejects joins with metric sources"
-    (is (thrown?
-         #?(:clj Exception :cljs js/Error)
-         (lib.query.test-spec/test-query
-          lib.tu/metadata-provider-with-metric
-          {:stages [{:source {:type :table
-                              :id   (meta/id :venues)}
-                     :joins  [{:source   {:type :metric
-                                          :id   1}
-                               :strategy :left-join}]}]})))))
+              (-> query lib/joins))))))
 
 (deftest ^:parallel test-query-with-join-conditions-with-bin-width-test
   (testing "test-query adds joins with bin-width binned conditions"
@@ -657,6 +644,17 @@
                 {:source-field (meta/id :orders :product-id)}
                 (meta/id :products :created-at)]]
               (lib/breakouts query)))
+      (let [query (lib.query.test-spec/test-query
+                   meta/metadata-provider
+                   {:stages [{:source    {:type :table
+                                          :id   (meta/id :orders)}
+                              :breakouts [{:type            :column
+                                           :name            "CATEGORY"
+                                           :source-field-id (meta/id :orders :product-id)}]}]})]
+        (is (=? [[:field
+                  {:source-field (meta/id :orders :product-id)}
+                  (meta/id :products :category)]]
+                (lib/breakouts query))))
       (let [query (lib.query.test-spec/test-query
                    meta/metadata-provider
                    {:stages [{:source {:type :table

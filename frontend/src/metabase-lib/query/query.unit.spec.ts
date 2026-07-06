@@ -8,7 +8,6 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS,
@@ -98,7 +97,7 @@ describe("createTestQuery", () => {
       expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
     });
 
-    it("should create a query with a metric source", () => {
+    it("should create a query with a metric aggregation", () => {
       const provider = Lib.metadataProvider(
         SAMPLE_DATABASE.id,
         createMockMetadata({
@@ -112,7 +111,7 @@ describe("createTestQuery", () => {
                 database: SAMPLE_DATABASE.id,
                 query: {
                   "source-table": ORDERS_ID,
-                  aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+                  aggregation: [["count"]],
                 },
               }),
             }),
@@ -124,9 +123,10 @@ describe("createTestQuery", () => {
         stages: [
           {
             source: {
-              type: "metric",
-              id: METRIC_ID,
+              type: "table",
+              id: ORDERS_ID,
             },
+            aggregations: [{ type: "metric", id: METRIC_ID }],
           },
         ],
       });
