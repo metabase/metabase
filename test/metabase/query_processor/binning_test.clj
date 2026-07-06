@@ -3,12 +3,14 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel binning-in-result-cols-display-name-test
   (doseq [[table-key field-key binning-name expected-display-name]
@@ -120,9 +122,9 @@
 (deftest ^:parallel temporal-bucket-on-native-source-card-test
   (testing "default temporal bucket for a native source card's datetime column resolves to Month (not Minute) via result_metadata (metabase#16671)"
     (let [mp   (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                [(mt/native-query {:query "SELECT CREATED_AT FROM ORDERS"})])
+                [(lib.convert/->legacy-MBQL (lib/native-query (mt/metadata-provider) "SELECT CREATED_AT FROM ORDERS"))])
           q    (lib/query mp (lib.metadata/card mp 1))
-          col  (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns q))]
+          col  (m/find-first (comp #{"created_at"} u/lower-case-en :name) (lib/breakoutable-columns q))]
       (is (some? col))
       (is (some :default (filter (comp #{:month} :unit) (lib/available-temporal-buckets q col))))
       (is (seq (mt/rows (qp/process-query
@@ -137,9 +139,9 @@
              ["SELECT LONGITUDE FROM PEOPLE" "LONGITUDE" "Bin every 10 degrees"]]]
       (testing (format "%s on %s" strategy-display-name col-name)
         (let [mp    (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
-                     [(mt/native-query {:query sql})])
+                     [(lib.convert/->legacy-MBQL (lib/native-query (mt/metadata-provider) sql))])
               q     (lib/query mp (lib.metadata/card mp 1))
-              col   (m/find-first (comp #{col-name} :name) (lib/breakoutable-columns q))
+              col   (m/find-first (comp #{(u/lower-case-en col-name)} u/lower-case-en :name) (lib/breakoutable-columns q))
               strat (m/find-first (comp #{strategy-display-name} :display-name)
                                   (lib/available-binning-strategies q col))]
           (is (some? col))
@@ -151,17 +153,21 @@
 
 (deftest ^:parallel post-aggregation-filter-on-same-column-breakouts-test
   (testing "a later stage can filter on each of two disambiguated same-column breakout columns (metabase#46536, metabase#46776)"
-    (let [filtered   (mt/mbql-query orders
-                       {:source-query {:source-table $$orders
-                                       :aggregation  [[:count]]
-                                       :breakout     [[:field %total {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 10}}]
-                                                      [:field %total {:base-type :type/Float, :binning {:strategy :num-bins, :num-bins 50}}]]}
-                        :filter       [:and
-                                       [:between [:field "TOTAL"   {:base-type :type/Float}] 10 50]
-                                       [:between [:field "TOTAL_2" {:base-type :type/Float}] 10 50]]})
-          unfiltered (update filtered :query dissoc :filter)
+    (let [mp         (mt/metadata-provider)
+          total      (m/find-first #(= (:id %) (mt/id :orders :total))
+                                   (lib/breakoutable-columns (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+          unfiltered (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-binning total {:strategy :num-bins, :num-bins 10}))
+                         (lib/breakout (lib/with-binning total {:strategy :num-bins, :num-bins 50}))
+                         lib/append-stage)
+          ;; the two same-column breakouts surface as distinct filterable columns (same field id, different
+          ;; source-column-alias, e.g. TOTAL / TOTAL_2); filter both to prove they resolve independently
+          total-cols (filter #(= (:id %) (mt/id :orders :total)) (lib/filterable-columns unfiltered))
+          filtered   (reduce (fn [q c] (lib/filter q (lib/between c 10 50))) unfiltered total-cols)
           n-all      (count (mt/rows (qp/process-query unfiltered)))
           n-filtered (count (mt/rows (qp/process-query filtered)))]
+      (is (= 2 (count total-cols)))
       ;; filtering on both disambiguated same-column breakout outputs matches some rows and is strictly narrower than
       ;; the unfiltered two-breakout result — proving the two same-column breakouts resolve as distinct columns.
       (is (pos? n-filtered))

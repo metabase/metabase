@@ -596,12 +596,14 @@
 
 (deftest ^:parallel internal-remap-on-model-test
   (testing "internal (FieldValues) remap values still surface through a model card query (#23449)"
-    (let [mp (-> (mt/metadata-provider)
-                 (lib.tu/remap-metadata-provider (mt/id :reviews :rating) {1 "Awful" 5 "Perfecto"})
-                 (lib.tu/metadata-provider-with-cards-for-queries [(mt/mbql-query reviews)])
-                 (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]}))]
+    (let [base (mt/metadata-provider)
+          mp   (-> base
+                   (lib.tu/remap-metadata-provider (mt/id :reviews :rating) {1 "Awful" 5 "Perfecto"})
+                   (lib.tu/metadata-provider-with-cards-for-queries
+                    [(lib/query base (lib.metadata/table base (mt/id :reviews)))])
+                   (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]}))]
       (qp.store/with-metadata-provider mp
-        (let [result   (mt/run-mbql-query nil {:source-table "card__1"})
+        (let [result   (qp/process-query (lib/query mp (lib.metadata/card mp 1)))
               all-vals (into #{} (mapcat identity) (mt/rows result))]
           (is (contains? all-vals "Perfecto")))))))
 

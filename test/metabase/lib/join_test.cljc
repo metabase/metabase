@@ -2061,10 +2061,7 @@
 (deftest ^:parallel breakoutable-joined-column-marked-selected-test
   (testing "#27873 a joined column that is already broken out is marked :selected? in breakoutable-columns"
     (let [q       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                      (lib/join (lib/join-clause
-                                 (meta/table-metadata :products)
-                                 [(lib/= (meta/field-metadata :orders :product-id)
-                                         (meta/field-metadata :products :id))])))
+                      (lib/join (meta/table-metadata :products)))
           rating  (m/find-first #(and (= "RATING" (:name %)) (= :source/joins (:lib/source %)))
                                 (lib/breakoutable-columns q))
           q2      (lib/breakout q rating)
@@ -2118,7 +2115,7 @@
           query  (lib/query mp q1)
           lhs    (m/find-first #(= "PRODUCT_ID" (:name %)) (lib/visible-columns query))
           rhs    (m/find-first #(= "ID" (:name %)) (lib/returned-columns (lib/query mp q2)))
-          joined (lib/join query (-> (lib/join-clause q2 [(lib/= (lib/ref lhs) (lib/ref rhs))])
+          joined (lib/join query (-> (lib/join-clause q2 [(lib/= lhs rhs)])
                                      (lib/with-join-fields :all)))
           jn     (first (lib/joins joined))]
       (testing ":fields :all marks every joined column as selected"

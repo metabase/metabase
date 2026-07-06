@@ -468,27 +468,40 @@
 
 (deftest ^:parallel min-max-non-numeric-test
   (mt/test-drivers (mt/normal-drivers)
-    (testing "min/max over a Text column return the lexical extremes (#18207, #22155)"
-      (is (= [["Doohickey" "Widget"]]
-             (mt/formatted-rows
-              [str str]
-              (mt/run-mbql-query products
-                {:aggregation [[:min $category] [:max $category]]})))))
-    (testing "min/max over a temporal column return temporal values (#4482)"
-      (let [row (first (mt/rows (mt/run-mbql-query orders
-                                  {:aggregation [[:min $created_at] [:max $created_at]]})))]
-        (is (= 2 (count row)))
-        (is (every? some? row))))))
+    (let [mp (mt/metadata-provider)]
+      (testing "min/max over a Text column return the lexical extremes (#18207, #22155)"
+        (let [category (lib.metadata/field mp (mt/id :products :category))
+              query    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (lib/min category))
+                           (lib/aggregate (lib/max category)))]
+          (is (= [["Doohickey" "Widget"]]
+                 (mt/formatted-rows [str str] (qp/process-query query))))))
+      (testing "min/max over a temporal column return temporal values (#4482)"
+        (let [created-at (lib.metadata/field mp (mt/id :orders :created_at))
+              query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/min created-at))
+                             (lib/aggregate (lib/max created-at)))
+              row        (first (mt/rows (qp/process-query query)))]
+          (is (= 2 (count row)))
+          (is (every? some? row)))))))
 
 (deftest ^:parallel count-with-field-arg-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "count with a field argument counts only non-null values of that field (#13814)"
       ;; orders.discount is NULL for most rows, so count(discount) must skip the NULLs: it equals
       ;; the non-null count and is strictly less than count(*). A regression to COUNT(*) fails both.
-      (let [[total cnt-field] (->> (mt/run-mbql-query orders {:aggregation [[:count] [:count $discount]]})
+      (let [mp                (mt/metadata-provider)
+            orders            (lib.metadata/table mp (mt/id :orders))
+            discount          (lib.metadata/field mp (mt/id :orders :discount))
+            [total cnt-field] (->> (-> (lib/query mp orders)
+                                       (lib/aggregate (lib/count))
+                                       (lib/aggregate (lib/count discount)))
+                                   qp/process-query
                                    (mt/formatted-rows [int int]) first)
-            non-null          (->> (mt/run-mbql-query orders
-                                     {:aggregation [[:count]], :filter [:not-null $discount]})
+            non-null          (->> (-> (lib/query mp orders)
+                                       (lib/filter (lib/not-null discount))
+                                       (lib/aggregate (lib/count)))
+                                   qp/process-query
                                    (mt/formatted-rows [int]) ffirst)]
         (is (= non-null cnt-field))
         (is (< cnt-field total))))))
@@ -496,12 +509,20 @@
 (deftest ^:parallel distinct-case-with-breakout-and-expression-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Distinct(case(...)) with a breakout and an extra custom column executes without error (#17512)"
-      (let [result (mt/run-mbql-query orders
-                     {:aggregation [[:distinct [:case [[[:> $discount 0] $subtotal]] {:default $total}]]]
-                      :breakout    [!month.created_at]
-                      :expressions {"CC" [:+ 1 1]}})]
+      (let [mp         (mt/metadata-provider)
+            orders     (lib.metadata/table mp (mt/id :orders))
+            discount   (lib.metadata/field mp (mt/id :orders :discount))
+            subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))
+            total      (lib.metadata/field mp (mt/id :orders :total))
+            created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            result     (-> (lib/query mp orders)
+                           (lib/expression "CC" (lib/+ 1 1))
+                           (lib/aggregate (lib/distinct (lib/case [[(lib/> discount 0) subtotal]] total)))
+                           (lib/breakout (lib/with-temporal-bucket created-at :month))
+                           qp/process-query)]
         (is (=? {:status :completed} result))
-        (let [rows (mt/rows result)]
+        ;; coerce the count column via formatted-rows so pos-int? holds for drivers that return it as BigDecimal
+        (let [rows (mt/formatted-rows [str int] result)]
           (is (seq rows))
           (testing "each breakout row carries a positive distinct count"
             (is (every? (fn [[_month cnt]] (pos-int? cnt)) rows))))))))
@@ -509,17 +530,21 @@
 (deftest ^:parallel num-bins-width-uses-filtered-range-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "a num-bins binned breakout derives its bin width from the FILTERED range, not the full range (#42942)"
-      (letfn [(bin-width [min-total]
-                (let [edges (->> (mt/run-mbql-query orders
-                                   {:aggregation [[:count]]
-                                    :breakout    [[:field %total {:binning {:strategy :num-bins, :num-bins 100}}]]
-                                    :filter      [:>= $total min-total]})
-                                 mt/rows
-                                 (map (comp double first))
-                                 sort)]
-                  (apply min (map - (rest edges) edges))))]
-        ;; a filter that narrows the range to a smaller window must yield a finer bin width
-        (is (< (bin-width 150) (bin-width 90)))))))
+      (let [mp     (mt/metadata-provider)
+            orders (lib.metadata/table mp (mt/id :orders))
+            total  (lib.metadata/field mp (mt/id :orders :total))]
+        (letfn [(bin-width [min-total]
+                  (let [edges (->> (-> (lib/query mp orders)
+                                       (lib/filter (lib/>= total min-total))
+                                       (lib/breakout (lib/with-binning total {:strategy :num-bins, :num-bins 100}))
+                                       (lib/aggregate (lib/count))
+                                       qp/process-query
+                                       mt/rows)
+                                   (map (comp double first))
+                                   sort)]
+                    (apply min (map - (rest edges) edges))))]
+          ;; a filter that narrows the range to a smaller window must yield a finer bin width
+          (is (< (bin-width 150) (bin-width 90))))))))
 
 (deftest ^:parallel nested-median-over-expression-and-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations :nested-queries :expressions)
@@ -532,9 +557,16 @@
                          (as-> $ (lib/aggregate $ (lib/median (lib/expression-ref $ "Mega"))))
                          (lib/breakout category)
                          lib/append-stage)
-            mega-col (m/find-first (comp #{"Mega"} :name) (lib/aggregable-columns q1 nil))
-            q2       (lib/aggregate q1 (lib/median mega-col))]
-        (is (seq (mt/rows (qp/process-query q2))))))))
+            ;; Reference the stage-1 median aggregation column by its display name. Matching the wrong column here
+            ;; (e.g. the non-existent "Mega") yields `(lib/median nil)` -> `MEDIAN(NULL)`, which returns NULL on H2
+            ;; and errors on Oracle/Redshift/SQL Server. The real median column keeps the aggregation numeric.
+            mega-col (m/find-first (comp #{"Median of Mega"} :display-name) (lib/aggregable-columns q1 nil))
+            _        (assert (some? mega-col))
+            q2       (lib/aggregate q1 (lib/median mega-col))
+            rows     (mt/rows (qp/process-query q2))]
+        (is (= 1 (count rows)))
+        ;; a real median-of-medians value (not a NULL artifact from a mis-resolved column ref)
+        (is (number? (ffirst rows)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Measure Edge Cases                                                       |
@@ -565,8 +597,9 @@
             direct-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/aggregate (lib/offset (lib/sum total) -1))
                               (lib/breakout (lib/with-temporal-bucket created-at :month)))]
-        (is (= (mt/rows (qp/process-query direct-query))
-               (mt/rows (qp/process-query measure-query))))))))
+        ;; round the numeric column: Presto's distributed SUM is ULP-nondeterministic across the two runs
+        (is (= (mt/formatted-rows [str 2.0] (qp/process-query direct-query))
+               (mt/formatted-rows [str 2.0] (qp/process-query measure-query))))))))
 
 (deftest ^:parallel measure-with-implicit-join-column-test
   (testing "a measure aggregating an implicit-join column executes like the equivalent inline aggregation"
@@ -582,8 +615,9 @@
                               (lib/aggregate (lib.metadata/measure mp 1)))
             direct-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/aggregate (lib/sum rating)))]
-        (is (= (mt/rows (qp/process-query direct-query))
-               (mt/rows (qp/process-query measure-query))))))))
+        ;; round the numeric column: Presto's distributed SUM is ULP-nondeterministic across the two runs
+        (is (= (mt/formatted-rows [2.0] (qp/process-query direct-query))
+               (mt/formatted-rows [2.0] (qp/process-query measure-query))))))))
 
 (deftest ^:parallel offset-of-measure-test
   (testing "wrapping a measure ref in offset() executes like the equivalent inline offset aggregation"
@@ -600,5 +634,6 @@
             direct-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                               (lib/aggregate (lib/offset (lib/sum total) -1))
                               (lib/breakout (lib/with-temporal-bucket created-at :month)))]
-        (is (= (mt/rows (qp/process-query direct-query))
-               (mt/rows (qp/process-query measure-query))))))))
+        ;; round the numeric column: Presto's distributed SUM is ULP-nondeterministic across the two runs
+        (is (= (mt/formatted-rows [str 2.0] (qp/process-query direct-query))
+               (mt/formatted-rows [str 2.0] (qp/process-query measure-query))))))))

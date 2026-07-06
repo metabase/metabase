@@ -1052,7 +1052,7 @@
                       lib/append-stage)
           agg-col (m/find-first #(= "Custom Sum" (:display-name %)) (lib/visible-columns q))]
       (is (some? agg-col))
-      (let [q'      (lib/expression q "Custom Sum + 1" (lib/+ (lib/ref agg-col) 1))
+      (let [q'      (lib/expression q "Custom Sum + 1" (lib/+ agg-col 1))
             new-col (m/find-first #(= "Custom Sum + 1" (:display-name %)) (lib/returned-columns q'))]
         (is (some? new-col))
         (is (lib.types.isa/numeric? new-col))))))

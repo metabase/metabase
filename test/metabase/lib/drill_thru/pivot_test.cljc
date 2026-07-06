@@ -9,7 +9,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util.malli :as mu]))
 
 ;; Case analysis:
@@ -329,8 +328,8 @@
                                :id            metric-id
                                :name          "Count of orders over time"
                                :database-id   (meta/id)
-                               :dataset-query (lib.tu.macros/mbql-query orders
-                                                {:aggregation [[:count]]})}]})
+                               :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                                  (lib/aggregate (lib/count)))}]})
           query     (-> (lib/query provider (meta/table-metadata :orders))
                         (lib/aggregate (lib.metadata/metric provider metric-id))
                         (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))

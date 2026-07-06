@@ -623,11 +623,15 @@
 (deftest ^:parallel expression-in-stage-after-cumulative-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "an expression in the outer stage does not break a cum-count source query (#13634)"
-      (is (seq (mt/rows (mt/run-mbql-query orders
-                          {:source-query {:source-table $$orders
-                                          :aggregation  [[:cum-count]]
-                                          :breakout     [!month.created_at]}
-                           :expressions  {"Foo Bar" [:+ 57910 1]}})))))))
+      (let [mp         (mt/metadata-provider)
+            orders     (lib.metadata/table mp (mt/id :orders))
+            created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            query      (-> (lib/query mp orders)
+                           (lib/aggregate (lib/cum-count))
+                           (lib/breakout (lib/with-temporal-bucket created-at :month))
+                           lib/append-stage
+                           (lib/expression "Foo Bar" (lib/+ 57910 1)))]
+        (is (seq (mt/rows (qp/process-query query))))))))
 
 (deftest ^:parallel cumulative-count-with-post-aggregation-filter-test
   (testing "a cum-count + month breakout query wrapped in an outer filter stage still returns rows (#33330)"

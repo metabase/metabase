@@ -397,7 +397,7 @@
   (let [query                (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
                                  (lib/join (lib/join-clause (meta/table-metadata :products)))
                                  (lib/join (lib/join-clause (meta/table-metadata :orders))))
-        original             (lib.metadata/field meta/metadata-provider (meta/id :people :latitude))
+        original             (meta/field-metadata :people :latitude)
         {latitude "LATITUDE"} (m/index-by :name (lib/visible-columns query))]
     (is (some? original))
     (is (some? latitude))))

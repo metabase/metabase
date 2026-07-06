@@ -1174,7 +1174,6 @@
               (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
                    (result-metadata/returned-columns query initial-cols)))))))
 
-;;; "should be able to distinguish explicitly and implicitly joined fields (metabase#33972)"
 (deftest ^:parallel explicit-join-in-card-plus-outer-implicit-join-stay-separate-test
   (testing "#33972 an implicitly-joined Products.Category carried by a source card and an outer explicit Products.Category join stay distinct"
     (let [card-q (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

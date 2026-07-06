@@ -1921,7 +1921,7 @@
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
-    (let [name-field (lib.metadata/field meta/metadata-provider (meta/id :venues :name))
+    (let [name-field (meta/field-metadata :venues :name)
           metadata-provider (lib.tu/merged-mock-metadata-provider
                              meta/metadata-provider
                              {:fields [{:id  (meta/id :venues :id)
@@ -2592,7 +2592,7 @@
 
 (deftest ^:parallel add-field-to-join-disambiguated-by-join-alias-test
   (testing "adding a column back to a join that matches a column from a joined native model works (#64779)"
-    (let [id-col (-> (lib.metadata/field meta/metadata-provider (meta/id :products :id))
+    (let [id-col (-> (meta/field-metadata :products :id)
                      (dissoc :table-id :id :fk-target-field-id))
           mp (lib.tu/metadata-provider-with-mock-card {:lib/type        :metadata/card
                                                        :id              1

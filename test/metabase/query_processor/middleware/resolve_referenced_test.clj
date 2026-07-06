@@ -54,27 +54,22 @@
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
         ;; allowing `with-temp` here: this exercises app-DB permission enforcement (card-read perms, current user)
         ;; via `process-query-for-card`, which a metadata provider does not model
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (mt/with-temp
-          [:model/Card {parent-id :id} {:database_id   (mt/id)
-                                        :dataset_query (mt/native-query {:query "SELECT * FROM PEOPLE WHERE STATE = 'WA'"})}
-           :model/Card child-card (let [tag (str "#" parent-id)]
-                                    {:database_id   (mt/id)
-                                     :dataset_query (mt/native-query
-                                                     {:query         (format "SELECT COUNT(*) FROM {{%s}}" tag)
-                                                      :template-tags {tag {:id           tag
-                                                                           :name         tag
-                                                                           :display-name tag
-                                                                           :type         :card
-                                                                           :card-id      parent-id}}})})]
-          (mt/with-test-user :rasta
-            (is (= [[41]]
-                   (mt/rows
-                    (qp.card/process-query-for-card
-                     child-card :api
-                     :make-run (constantly
-                                (fn [query info]
-                                  (qp/process-query (assoc query :info (assoc info :query-hash (byte-array 0))))))))))))))))
+        (let [mp (mt/metadata-provider)]
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          (mt/with-temp
+            [:model/Card {parent-id :id} {:database_id   (mt/id)
+                                          :dataset_query (lib/native-query mp "SELECT * FROM PEOPLE WHERE STATE = 'WA'")}
+             ;; the {{#<parent-id>}} tag is a card reference; lib extracts it as a :card tag with :card-id parent-id
+             :model/Card child-card {:database_id   (mt/id)
+                                     :dataset_query (lib/native-query mp (format "SELECT COUNT(*) FROM {{#%d}}" parent-id))}]
+            (mt/with-test-user :rasta
+              (is (= [[41]]
+                     (mt/rows
+                      (qp.card/process-query-for-card
+                       child-card :api
+                       :make-run (constantly
+                                  (fn [query info]
+                                    (qp/process-query (assoc query :info (assoc info :query-hash (byte-array 0)))))))))))))))))
 
 (deftest ^:parallel referenced-query-from-different-db-test
   (testing "fails on query that references a native query from a different database"

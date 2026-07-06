@@ -338,7 +338,6 @@
                                                      "2022-12-09"]]}]}})))))
 
 (deftest ^:parallel zoom-in-with-expression-breakout-test
-  ;; "should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)"
   (testing "zoom-in.timeseries works when the stage also has an expression breakout (#13289)"
     (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/expression "Math" (lib/+ 1 1)))
@@ -379,7 +378,6 @@
                 (lib/drill-thru query -1 nil drill)))))))
 
 (deftest ^:parallel zoom-in-day-to-hour-on-join-aliased-native-datetime-column-test
-  ;; "should be able to drill down into a question with datetime buckets and a native join (metabase#42817)"
   (testing "zooming a join-aliased native-card datetime breakout from day to hour produces a valid :hour query (#42817)"
     (let [mp         (lib.tu/metadata-provider-with-mock-cards)
           card       (:orders/native (lib.tu/mock-cards))

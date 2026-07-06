@@ -172,39 +172,60 @@
                 [2 "williamson-domenica@yahoo.com" "yahoo" "yahoo.com"]]
                (mt/formatted-rows [int str str str] (qp/process-query query))))))))
 
-;; (metabase#13751)" and "should correctly filter custom column by 'Not equal to' (metabase#14843)"
 (deftest ^:parallel filter-on-string-expression-result-test
   (testing "#13751 filter `=` on the result of a regex-match-first expression"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
       (mt/dataset test-data
-        (let [co-count (->> (mt/run-mbql-query people
-                              {:filter [:= $state "CO"] :aggregation [[:count]]})
-                            mt/rows ffirst long)]
+        (let [mp       (mt/metadata-provider)
+              people   (lib.metadata/table mp (mt/id :people))
+              state    (lib.metadata/field mp (mt/id :people :state))
+              co-count (->> (-> (lib/query mp people)
+                                (lib/filter (lib/= state "CO"))
+                                (lib/aggregate (lib/count)))
+                            qp/process-query mt/rows ffirst long)
+              expr-q   (-> (lib/query mp people)
+                           (lib/expression "C" (lib/regex-match-first state "^C[A-Z]")))
+              expr-q   (-> expr-q
+                           (lib/filter (lib/= (lib/expression-ref expr-q "C") "CO"))
+                           (lib/aggregate (lib/count)))]
           (is (pos? co-count))
           (is (= co-count
-                 (->> (mt/run-mbql-query people
-                        {:expressions {"C" [:regex-match-first $state "^C[A-Z]"]}
-                         :filter      [:= [:expression "C"] "CO"]
-                         :aggregation [[:count]]})
-                      mt/rows ffirst long)))))))
+                 (->> expr-q qp/process-query mt/rows ffirst long)))))))
   (testing "#14843 filter `!=` on the result of a length expression"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
       (mt/dataset test-data
-        (let [rows (mt/rows (mt/run-mbql-query people
-                              {:expressions {"L" [:length $city]}
-                               :filter      [:!= [:expression "L"] 3]
-                               :fields      [$city]
-                               :limit       200}))]
+        (let [mp     (mt/metadata-provider)
+              people (lib.metadata/table mp (mt/id :people))
+              city   (lib.metadata/field mp (mt/id :people :city))
+              query  (-> (lib/query mp people)
+                         (lib/expression "L" (lib/length city)))
+              query  (-> query
+                         (lib/filter (lib/!= (lib/expression-ref query "L") 3))
+                         (lib/with-fields [city])
+                         (lib/limit 200))
+              rows   (mt/rows (qp/process-query query))]
           (is (seq rows))
           (is (not-any? #(= 3 (count (first %))) rows)))))))
 
-;; and custom-column-reproductions-2 "should not remove backslashes from escaped characters (metabase#56596)"
 (deftest ^:parallel string-function-escape-literals-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
-    (testing "#53527 a double-quote replacement literal strips the quote"
-      (is (= "ab" (test-string-extract [:replace "a\"b" "\"" ""]))))
-    (testing "#56596 a `\\s` whitespace class keeps its backslash and captures a leading space"
-      (is (= " Medicine" (test-string-extract [:regex-match-first [:field (mt/id :venues :name) nil] "\\s.*"]))))))
+    (mt/dataset test-data
+      (let [mp      (mt/metadata-provider)
+            venues  (lib.metadata/table mp (mt/id :venues))
+            ven-id  (lib.metadata/field mp (mt/id :venues :id))
+            venname (lib.metadata/field mp (mt/id :venues :name))
+            extract (fn [expr]
+                      (let [q (-> (lib/query mp venues)
+                                  (lib/expression "test" expr))
+                            q (-> q
+                                  (lib/with-fields [(lib/expression-ref q "test")])
+                                  (lib/order-by ven-id :asc)
+                                  (lib/limit 1))]
+                        (ffirst (mt/rows (qp/process-query q)))))]
+        (testing "#53527 a double-quote replacement literal strips the quote"
+          (is (= "ab" (extract (lib/replace "a\"b" "\"" "")))))
+        (testing "#56596 a `\\s` whitespace class keeps its backslash and captures a leading space"
+          (is (= " Medicine" (extract (lib/regex-match-first venname "\\s.*")))))))))
 
 (deftest ^:parallel url-extractions-test
   (testing "`:domain`, `:subdomain`, `:host`, and `:path` extractions from URLs should work correctly"

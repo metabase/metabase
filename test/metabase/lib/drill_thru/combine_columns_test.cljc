@@ -10,10 +10,9 @@
 
 (use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
-;; see e2e question/native-query-drill.cy.spec.js "combine-columns drill" and
-;; custom-column/cc-shortcuts-combine.cy.spec.js. `combine-columns` has no BE application path
-;; (its drill-thru-method deliberately throws; the FE adds the :concat expression directly), so the
-;; BE-testable surface is availability and the returned drill.
+;; `combine-columns` has no BE application path (its drill-thru-method deliberately throws; the
+;; FE adds the :concat expression directly), so the BE-testable surface is availability and the
+;; returned drill.
 
 (deftest ^:parallel combine-columns-availability-test
   (canned/canned-test

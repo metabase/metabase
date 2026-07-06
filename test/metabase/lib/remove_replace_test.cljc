@@ -1863,22 +1863,21 @@
 
 (deftest ^:parallel remove-clause-referencing-missing-field-test
   (testing "#33835 an aggregation/breakout on a field absent from the metadata provider can still be removed"
-    (let [mp        (lib.tu/mock-metadata-provider
-                     {:database meta/database
-                      :tables   [(meta/table-metadata :orders)]
-                      :fields   (mapv #(meta/field-metadata :orders %) [:id :tax :quantity])})
-          total-ref [:field {:lib/uuid (str (random-uuid)) :base-type :type/Float} (meta/id :orders :total)]]
+    ;; The query's own metadata provider deliberately omits Orders.total, but the aggregation/breakout is
+    ;; built (via lib) over Orders.total from the full metadata provider, so the ref points at a field the
+    ;; query itself cannot resolve.
+    (let [mp    (lib.tu/mock-metadata-provider
+                 {:database meta/database
+                  :tables   [(meta/table-metadata :orders)]
+                  :fields   (mapv #(meta/field-metadata :orders %) [:id :tax :quantity])})
+          total (meta/field-metadata :orders :total)]
       (testing "aggregation"
-        (let [query (lib/aggregate (lib/query mp (meta/table-metadata :orders))
-                                   [:avg {:lib/uuid (str (random-uuid))} total-ref])]
+        (let [query (lib/aggregate (lib/query mp (meta/table-metadata :orders)) (lib/avg total))]
           (is (= 1 (count (lib/aggregations query))))
           (is (empty? (lib/aggregations (lib/remove-clause query (first (lib/aggregations query))))))))
       (testing "binned breakout"
         (let [query (lib/breakout (lib/query mp (meta/table-metadata :orders))
-                                  [:field {:lib/uuid   (str (random-uuid))
-                                           :base-type  :type/Float
-                                           :binning    {:strategy :num-bins :num-bins 10}}
-                                   (meta/id :orders :total)])]
+                                  (lib/with-binning total {:strategy :num-bins :num-bins 10}))]
           (is (= 1 (count (lib/breakouts query))))
           (is (empty? (lib/breakouts (lib/remove-clause query (first (lib/breakouts query)))))))))))
 

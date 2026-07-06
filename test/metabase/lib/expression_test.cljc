@@ -845,9 +845,6 @@
   (is (= :day
          (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))
 
-;;; ---------------------------------------------------------------------------------------------------------------------
-;;; ---------------------------------------------------------------------------------------------------------------------
-
 (deftest ^:parallel temporal-functions-require-temporal-args-test
   (testing "#26512 temporal-extraction / datetime-arithmetic functions reject non-temporal first args"
     (are [expr] (=? {:message #"(?i).*incompatible.*" :friendly true}
@@ -858,7 +855,6 @@
       [:datetime-add 42 1 :day]
       [:datetime-diff true 1 :day])))
 
-;;; "should not be possible to reference a custom expression / aggregation in itself (metabase#61010)"
 (deftest ^:parallel expression-self-reference-rejected-test
   (testing "#61010 an expression referencing itself at its own position is rejected"
     (let [q   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -867,7 +863,6 @@
       (is (some? (lib.expression/diagnose-expression
                   q 0 :expression (lib/+ (lib/expression-ref q "Foo") 1) pos))))))
 
-;;; "should not crash when referenced columns, segments, and metrics do not exist (metabase#48562)"
 (deftest ^:parallel unknown-field-ref-in-expression-degrades-gracefully-test
   (testing "#48562 an expression over a non-existent field ref renders a non-blank display name without throwing"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -877,7 +872,6 @@
       (is (not (str/blank? (lib/display-name query expr))))
       (is (some? (lib/visible-columns query))))))
 
-;;; "custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)"
 (deftest ^:parallel post-aggregation-expression-keeps-filterable-columns-test
   (testing "#19744 a post-aggregation expression must not drop first-stage temporal columns from filterable columns"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -896,7 +890,6 @@
           cols   (lib/returned-columns nested)]
       (is (= 2 (count (filter #(= "Rating" (:display-name %)) cols)))))))
 
-;;; "should be able to see notebook view even if a question custom field metadata is missing (metabase#28221)"
 (deftest ^:parallel expression-with-unresolvable-field-ref-does-not-throw-test
   (testing "#28221 an expression whose inner field id no longer exists must not crash visible-columns / display-info"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

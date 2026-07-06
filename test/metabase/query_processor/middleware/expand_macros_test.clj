@@ -137,8 +137,9 @@
                                 "Segment"]]
                               {:default "Other"}]}}}
               (expand-macros
-               (lib.tu.macros/mbql-query venues
-                 {:expressions {"CC" [:case [[[:segment 1] "Segment"]] {:default "Other"}]}})))))))
+               (lib.convert/->legacy-MBQL
+                (-> (lib/query mock-metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "CC" (lib/case [[(lib/segment 1) "Segment"]] "Other"))))))))))
 
 (deftest ^:parallel expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"

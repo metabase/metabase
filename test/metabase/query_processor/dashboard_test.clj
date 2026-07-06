@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.driver.common :as driver.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.card-test :as qp.card-test]
@@ -528,47 +529,52 @@
 (deftest ignore-parameter-mapping-to-native-model-test
   (testing "param mapped to a native model is ignored, but applied to a sibling MBQL card (#44288)"
     (mt/dataset test-data
-      (mt/with-temp
-        [:model/Card {mbql-card-id :id} {:dataset_query (mt/mbql-query products)}
-         :model/Card {native-model-id :id} {:type          :model
-                                            :dataset_query (mt/native-query {:query "SELECT * FROM PRODUCTS"})}
-         :model/Dashboard {dashboard-id :id} {:parameters [{:name "Category"
-                                                            :slug "category"
-                                                            :id   "_CAT_"
-                                                            :type "string/="}]}
-         :model/DashboardCard {mbql-dashcard-id :id}
-         {:dashboard_id       dashboard-id
-          :card_id            mbql-card-id
-          :parameter_mappings [{:parameter_id "_CAT_"
-                                :card_id      mbql-card-id
-                                :target       [:dimension [:field (mt/id :products :category) nil]]}]}
-         :model/DashboardCard {native-dashcard-id :id}
-         {:dashboard_id       dashboard-id
-          :card_id            native-model-id
-          :parameter_mappings [{:parameter_id "_CAT_"
-                                :card_id      native-model-id
-                                :target       [:dimension [:field (mt/id :products :category) nil]]}]}]
-        (testing "MBQL card applies the mapping: strictly fewer rows with the param than without"
-          (let [with-param (count (mt/rows (run-query-for-dashcard dashboard-id mbql-card-id mbql-dashcard-id
-                                                                   :parameters [{:id "_CAT_" :value ["Gadget"]}])))
-                without    (count (mt/rows (run-query-for-dashcard dashboard-id mbql-card-id mbql-dashcard-id)))]
-            (is (pos? with-param))
-            (is (< with-param without))))
-        (testing "native model ignores the mapping: same rows with and without the param, and no error"
-          (let [with-param (count (mt/rows (run-query-for-dashcard dashboard-id native-model-id native-dashcard-id
-                                                                   :parameters [{:id "_CAT_" :value ["Gadget"]}])))
-                without    (count (mt/rows (run-query-for-dashcard dashboard-id native-model-id native-dashcard-id)))]
-            (is (pos? without))
-            (is (= without with-param))))))))
+      (let [mp         (mt/metadata-provider)
+            cat-target [:dimension (lib.convert/->legacy-MBQL
+                                    (lib/ref (lib.metadata/field mp (mt/id :products :category))))]]
+        (mt/with-temp
+          [:model/Card {mbql-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+           :model/Card {native-model-id :id} {:type          :model
+                                              :dataset_query (lib/native-query mp "SELECT * FROM PRODUCTS")}
+           :model/Dashboard {dashboard-id :id} {:parameters [{:name "Category"
+                                                              :slug "category"
+                                                              :id   "_CAT_"
+                                                              :type "string/="}]}
+           :model/DashboardCard {mbql-dashcard-id :id}
+           {:dashboard_id       dashboard-id
+            :card_id            mbql-card-id
+            :parameter_mappings [{:parameter_id "_CAT_"
+                                  :card_id      mbql-card-id
+                                  :target       cat-target}]}
+           :model/DashboardCard {native-dashcard-id :id}
+           {:dashboard_id       dashboard-id
+            :card_id            native-model-id
+            :parameter_mappings [{:parameter_id "_CAT_"
+                                  :card_id      native-model-id
+                                  :target       cat-target}]}]
+          (testing "MBQL card applies the mapping: strictly fewer rows with the param than without"
+            (let [with-param (count (mt/rows (run-query-for-dashcard dashboard-id mbql-card-id mbql-dashcard-id
+                                                                     :parameters [{:id "_CAT_" :value ["Gadget"]}])))
+                  without    (count (mt/rows (run-query-for-dashcard dashboard-id mbql-card-id mbql-dashcard-id)))]
+              (is (pos? with-param))
+              (is (< with-param without))))
+          (testing "native model ignores the mapping: same rows with and without the param, and no error"
+            (let [with-param (count (mt/rows (run-query-for-dashcard dashboard-id native-model-id native-dashcard-id
+                                                                     :parameters [{:id "_CAT_" :value ["Gadget"]}])))
+                  without    (count (mt/rows (run-query-for-dashcard dashboard-id native-model-id native-dashcard-id)))]
+              (is (pos? without))
+              (is (= without with-param)))))))))
 
 (deftest missing-param-column-does-not-crash-test
   (testing "param mapped to a column missing from a model source card does not crash the dashcard (#32573)"
     (mt/dataset test-data
       (mt/with-temp
         [:model/Card {model-id :id} (assoc (qp.test-util/card-with-source-metadata-for-query
-                                            (mt/mbql-query orders {:fields [$tax]}))
+                                            (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                                                (lib/with-fields [(lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :tax)))])))
                                            :type :model)
-         :model/Card {question-id :id} {:dataset_query (mt/mbql-query nil {:source-table (str "card__" model-id)})}
+         :model/Card {question-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                                  (lib.metadata/card (mt/metadata-provider) model-id))}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name "ID"
                                                             :slug "id"
                                                             :id   "_ID_"
@@ -576,10 +582,11 @@
          :model/DashboardCard {dashcard-id :id}
          {:dashboard_id       dashboard-id
           :card_id            question-id
+          ;; Intentionally a name-based ref to a column ("ID") that the model does NOT expose (only TAX);
+          ;; this is the whole point of #32573, so it cannot be derived from the source card's metadata.
           :parameter_mappings [{:parameter_id "_ID_"
                                 :card_id      question-id
                                 :target       [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]}]
-        ;; The param references a column "ID" which the model does not expose (only TAX).
         (testing "parameter resolution does not throw (dashboard stays loadable)"
           (is (=? [{:id "_ID_", :target [:dimension [:field "ID" {:base-type :type/BigInteger}]]}]
                   (resolve-params-for-query dashboard-id question-id dashcard-id
@@ -594,41 +601,48 @@
 (deftest dashboard-param-on-custom-column-in-later-stage-test
   (testing "a dashboard param with {:stage-number 1} on a custom column filters the later stage (#48258)"
     (mt/dataset test-data
-      (mt/with-temp
-        [:model/Card {card-id :id}
-         {:dataset_query (mt/mbql-query products
-                           {:source-query {:source-table $$products
-                                           :aggregation  [[:count]]
-                                           :breakout     [$category]}
-                            :expressions  {"5xCount" [:* 5 *count/Integer]}
-                            :fields       [[:expression "5xCount"]]})}
-         :model/Dashboard {dashboard-id :id}
-         {:parameters [{:slug "cc" :id "_CC_" :name "cc" :type "number/>="}]}
-         :model/DashboardCard {dashcard-id :id}
-         {:dashboard_id       dashboard-id
-          :card_id            card-id
-          :parameter_mappings [{:parameter_id "_CC_"
-                                :card_id      card-id
-                                :target       [:dimension [:expression "5xCount"] {:stage-number 1}]}]}]
-        (testing "no filter: one row per category"
-          (is (= 4 (count (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))
-        (testing "filter on the stage-1 custom column narrows rows"
-          (is (= 2 (count (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id
-                                                           :parameters [{:id "_CC_" :value 260}]))))))))))
+      (let [mp     (mt/metadata-provider)
+            query  (let [q0  (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/aggregate (lib/count))
+                                 (lib/breakout (lib.metadata/field mp (mt/id :products :category))))
+                         q1  (lib/append-stage q0)
+                         cnt (first (filter #(= (:name %) "count") (lib/visible-columns q1)))
+                         q2  (lib/expression q1 "5xCount" (lib/* 5 cnt))]
+                     (lib/with-fields q2 [(lib/expression-ref q2 "5xCount")]))
+            cc-ref (lib.convert/->legacy-MBQL (lib/expression-ref query "5xCount"))]
+        (mt/with-temp
+          [:model/Card {card-id :id}
+           {:dataset_query query}
+           :model/Dashboard {dashboard-id :id}
+           {:parameters [{:slug "cc" :id "_CC_" :name "cc" :type "number/>="}]}
+           :model/DashboardCard {dashcard-id :id}
+           {:dashboard_id       dashboard-id
+            :card_id            card-id
+            :parameter_mappings [{:parameter_id "_CC_"
+                                  :card_id      card-id
+                                  :target       [:dimension cc-ref {:stage-number 1}]}]}]
+          (testing "no filter: one row per category"
+            (is (= 4 (count (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))
+          (testing "filter on the stage-1 custom column narrows rows"
+            (is (= 2 (count (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                                             :parameters [{:id "_CC_" :value 260}])))))))))))
 
 (deftest dashcard-id-param-on-nested-card-test
   (testing "an id param mapped to a field on an MBQL nested-card source filters the outer query to one row (#17213, #17212)"
     (mt/dataset test-data
       (mt/with-temp
-        [:model/Card {base-id :id} {:dataset_query (mt/mbql-query products)}
-         :model/Card {nested-id :id} {:dataset_query (mt/mbql-query nil {:source-table (str "card__" base-id)})}
+        [:model/Card {base-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}
+         :model/Card {nested-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                                (lib.metadata/card (mt/metadata-provider) base-id))}
          :model/Dashboard {dashboard-id :id} {:parameters [{:id "_ID_" :name "ID" :slug "id" :type "id"}]}
          :model/DashboardCard {dashcard-id :id}
          {:dashboard_id       dashboard-id
           :card_id            nested-id
           :parameter_mappings [{:parameter_id "_ID_"
                                 :card_id      nested-id
-                                :target       [:dimension [:field (mt/id :products :id) nil]]}]}]
+                                :target       [:dimension (lib.convert/->legacy-MBQL
+                                                           (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :id))))]}]}]
         (is (= 1
                (count (mt/rows (run-query-for-dashcard dashboard-id nested-id dashcard-id
                                                        :parameters [{:id "_ID_" :value 3}])))))))))

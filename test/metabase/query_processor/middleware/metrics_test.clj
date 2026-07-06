@@ -882,18 +882,28 @@
 
 (deftest ^:parallel metric-card-with-field-filter-parameter-test
   (testing "a mapped field-filter parameter narrows a metric card's result via an implicit join, matching an explicit filter"
-    (let [[metric mp] (mock-metric (mt/metadata-provider)
-                                   (mt/mbql-query orders {:aggregation [[:count]]})
+    (let [mp0         (mt/metadata-provider)
+          [metric mp] (mock-metric mp0
+                                   (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :orders)))
+                                       (lib/aggregate (lib/count)))
                                    {:name "Orders, Count", :database-id (mt/id)})
           metric-id   (:id metric)]
       (qp.store/with-metadata-provider mp
-        (let [param-query  (assoc (mt/mbql-query orders {:aggregation [[:metric metric-id]]})
-                                  :parameters [{:type   :string/=
-                                                :target [:dimension [:field (mt/id :products :category)
-                                                                     {:source-field (mt/id :orders :product_id)}]]
-                                                :value  ["Gadget"]}])
-              filter-query (mt/mbql-query orders {:aggregation [[:metric metric-id]]
-                                                  :filter      [:= $product_id->products.category "Gadget"]})
+        (let [orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              ;; products.category reached from orders via the product_id FK (an implicit join)
+              category-col (m/find-first #(and (= (mt/id :products :category) (:id %))
+                                               (= (mt/id :orders :product_id) (:fk-field-id %)))
+                                         (lib/visible-columns orders-query))
+              metric-agg   (lib.metadata/metric mp metric-id)
+              param-query  (-> orders-query
+                               (lib/aggregate metric-agg)
+                               (assoc :parameters
+                                      [{:type   :string/=
+                                        :target [:dimension (lib.convert/->legacy-MBQL (lib/ref category-col))]
+                                        :value  ["Gadget"]}]))
+              filter-query (-> orders-query
+                               (lib/aggregate metric-agg)
+                               (lib/filter (lib/= category-col "Gadget")))
               param-rows   (mt/rows (qp/process-query param-query))]
           (is (seq param-rows))
           (is (= (mt/rows (qp/process-query filter-query))

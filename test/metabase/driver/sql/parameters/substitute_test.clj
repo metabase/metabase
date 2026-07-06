@@ -9,7 +9,9 @@
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
@@ -1241,7 +1243,8 @@
                                                       :display-name "Checkin Date"
                                                       :type         :dimension
                                                       :widget-type  :date/all-options
-                                                      :dimension    [:field (meta/id :checkins :date) nil]}}}
+                                                      :dimension    (lib.convert/->legacy-MBQL
+                                                                     (lib/ref (lib.metadata/field mp (meta/id :checkins :date))))}}}
                  :parameters [{:type :date/single, :target [:dimension [:template-tag "date"]], :value "2016-07-01"}]})))))))
 
 (deftest ^:parallel field-filter-string-default-test
@@ -1252,7 +1255,8 @@
                               :template-tags {"cat" {:name         "cat"
                                                      :display-name "Cat"
                                                      :type         :dimension
-                                                     :dimension    [:field (meta/id :products :category) nil]
+                                                     :dimension    (lib.convert/->legacy-MBQL
+                                                                    (lib/ref (meta/field-metadata :products :category)))
                                                      :widget-type  :string/=
                                                      :required     true
                                                      :default      ["Doohickey"]}}}})))))

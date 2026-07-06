@@ -4,6 +4,9 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -345,7 +348,8 @@
 (deftest ^:sequential field-values-without-create-queries-perms-test
   (testing "a user with view-data but no create-queries permissions still gets field-values for a mapped dashboard param (#47097)"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products)}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                                          (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}
                      :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
                                                                         :name      "Category"
                                                                         :slug      "p1"
@@ -355,7 +359,8 @@
                                               :card_id            card-id
                                               :parameter_mappings [{:card_id      card-id
                                                                     :parameter_id "p1"
-                                                                    :target       ["dimension" ["field" (mt/id :products :category) nil]]}]}]
+                                                                    :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                                               (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :category))))]}]}]
         (perms.test-util/with-perms-for-group-and-tables!
           (perms-group/all-users)
           {(mt/id :products) {:perms/create-queries :no}}
@@ -372,7 +377,8 @@
   (testing "remapped id-param values work when the mapped source card is a model (#44231)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {model-id :id} {:type          :model
-                                                 :dataset_query (mt/mbql-query orders)}
+                                                 :dataset_query (lib/query (mt/metadata-provider)
+                                                                           (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
                      :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
                                                                         :name      "Product ID"
                                                                         :slug      "p1"
@@ -383,7 +389,8 @@
                                               :card_id            model-id
                                               :parameter_mappings [{:card_id      model-id
                                                                     :parameter_id "p1"
-                                                                    :target       ["dimension" ["field" (mt/id :orders :product_id) nil]]}]}]
+                                                                    :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                                               (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :product_id))))]}]}]
         (mt/with-column-remappings [orders.product_id products.title]
           (mt/with-full-data-perms-for-all-users!
             (data-perms/disable-perms-cache

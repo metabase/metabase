@@ -15,6 +15,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -2007,23 +2008,33 @@
 (deftest regex-expression-over-sandboxed-table-test
   (testing "a regex-match-first custom column over a sandboxed table compiles over the sandbox subquery and returns only the user's row (#14873)"
     (mt/dataset test-data
-      (met/with-gtaps! {:gtaps      {:people {:remappings {:id [:dimension [:field (mt/id :people :id) nil]]}}}
+      ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
+      ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
+      (met/with-gtaps! {:gtaps      {:people {:remappings {:id [:dimension (lib.convert/->legacy-MBQL
+                                                                            (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :people :id))))]}}}
                         :attributes {"id" "1"}}
-        (let [q (mt/mbql-query people
-                  {:expressions {"first" [:regex-match-first $name "^[A-Za-z]+"]}
-                   :fields      [[:expression "first"]]})]
+        (let [mp (mt/metadata-provider)
+              q  (as-> (lib/query mp (lib.metadata/table mp (mt/id :people))) q
+                   (lib/expression q "first" (lib/regex-match-first (lib.metadata/field mp (mt/id :people :name)) "^[A-Za-z]+"))
+                   (lib/with-fields q [(lib/expression-ref q "first")]))]
           (is (= [["Hudson"]] (mt/rows (qp/process-query q)))))))))
 
 (deftest case-expression-else-branch-table-substitution-test
   (testing "a :case custom column whose :default references the sandboxed table has that table-ref rewritten to the sandbox subquery (#14859)"
     (mt/dataset test-data
-      (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension [:field (mt/id :orders :user_id) nil]]}}}
+      ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
+      ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
+      (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension (lib.convert/->legacy-MBQL
+                                                                              (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}}}
                         :attributes {"uid" "1"}}
-        (let [baseline  (mt/mbql-query orders {:fields [$total]})
-              with-case (mt/mbql-query orders
-                          {:expressions {"cc" [:case [[[:> $discount 0] $discount]]
-                                               {:default $total}]}
-                           :fields      [[:expression "cc"]]})]
+        (let [mp        (mt/metadata-provider)
+              total     (lib.metadata/field mp (mt/id :orders :total))
+              discount  (lib.metadata/field mp (mt/id :orders :discount))
+              baseline  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (lib/with-fields [(lib/ref total)]))
+              with-case (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) with-case
+                          (lib/expression with-case "cc" (lib/case [[(lib/> discount 0) discount]] total))
+                          (lib/with-fields with-case [(lib/expression-ref with-case "cc")]))]
           ;; both queries run under the same user-1 sandbox, so they must return the same number of rows: an
           ;; unsandboxed leak would blow the baseline up to the full orders count, and a broken :default
           ;; table-ref rewrite would make `with-case` error rather than matching the baseline count.
@@ -2039,10 +2050,17 @@
     ;; loads a freshly created copy and destroys it afterwards, so the DDL can't leak.
     (mt/with-actions-test-data-tables #{"products"}
       (mt/with-actions-test-data
-        (met/with-gtaps! {:gtaps      {:products {:remappings {"category" [:dimension [:field (mt/id :products :category) nil]]}}}
+        ;; `with-gtaps!` runs the remapping form and body against a temp copy of the DB, so the metadata provider
+        ;; and field ids must be resolved *inside* that copy context (not captured beforehand).
+        (met/with-gtaps! {:gtaps      {:products {:remappings {"category" [:dimension (lib.convert/->legacy-MBQL
+                                                                                       (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :category))))]}}}
                           :attributes {"category" "Gizmo"}}
           (testing "sanity check: the sandbox filters rows to the user's category"
-            (let [rows (mt/rows (mt/run-mbql-query products {:fields [$category] :limit 20}))]
+            (let [mp   (mt/metadata-provider)
+                  q    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :products :category)))])
+                           (lib/limit 20))
+                  rows (mt/rows (qp/process-query q))]
               (is (seq rows))
               (is (every? #(= "Gizmo" (first %)) rows))))
           (testing "after the sandbox filter column is dropped, the query fails closed rather than returning unfiltered rows"
@@ -2058,4 +2076,8 @@
             ;; enforcement.)
             (is (thrown?
                  Throwable
-                 (mt/rows (mt/run-mbql-query products {:fields [$id] :limit 20}))))))))))
+                 (mt/rows (qp/process-query
+                           (let [mp (mt/metadata-provider)]
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :products :id)))])
+                                 (lib/limit 20)))))))))))))

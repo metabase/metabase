@@ -1,5 +1,4 @@
 (ns ^:mb/driver-tests metabase.query-processor.coercion-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.coercion-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
@@ -181,7 +180,7 @@
                      {:cards [{:id            1
                                :type          :model
                                :database-id   (mt/id)
-                               :dataset-query (mt/mbql-query reviews)}]})
+                               :dataset-query (lib/query base-mp (lib.metadata/table base-mp (mt/id :reviews)))}]})
             query   (lib/query mp (lib.metadata/card mp 1))]
         (mt/with-native-query-testing-context query
           (is (seq (mt/rows (qp/process-query query)))))))))

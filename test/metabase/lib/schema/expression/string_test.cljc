@@ -55,7 +55,6 @@
       [:split-part {:lib/uuid "00000000-0000-0000-0000-000000000000"} "a b" " " 1]
       [:split-part {:lib/uuid "00000000-0000-0000-0000-000000000000"} "a b" " " 2])))
 
-;;; "should allow passing stringly-typed expressions to is-empty and not-empty (metabase#55687)"
 (deftest ^:parallel is-empty-not-empty-accept-string-expressions-test
   (testing "is-empty / not-empty accept string-typed expressions and string literals (#55687)"
     (are [clause] (mr/validate ::lib.schema.expression/boolean clause)

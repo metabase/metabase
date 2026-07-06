@@ -109,12 +109,9 @@
 (deftest ^:parallel columns-mapped-to-same-field-id-stay-distinct-test
   (testing "distinct-named columns all mapped to the same field id remain separate columns (metabase#33427)"
     (let [rm (for [[i n] (map-indexed vector ["A" "B" "C"])]
-               {:lib/type      :metadata/column
-                :name          n
-                :display-name  (str "ID" (inc i))
-                :id            (meta/id :orders :id)
-                :semantic-type :type/PK
-                :base-type     :type/BigInteger})
+               (assoc (meta/field-metadata :orders :id)
+                      :name         n
+                      :display-name (str "ID" (inc i))))
           mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id              1
