@@ -257,7 +257,7 @@
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.)."
   [{:keys [model system input tools temperature max-tokens tool_choice schema ai-proxy?]
-    :or   {model "anthropic/claude-haiku-4-5"}} :- core/LLMRequestOpts]
+    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (let [messages  (cond-> (parts->cc-messages input)
                     system (as-> msgs (into [{:role "system" :content system}] msgs)))
         all-tools (or (when schema
