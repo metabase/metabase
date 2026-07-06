@@ -33,6 +33,12 @@
     (mt/with-temp [:model/OsiAiContext _ (assoc entity :ai_context {:instructions "Just this."})]
       (is (= {:instructions "Just this."} (:ai_context (by-key entity)))))))
 
+(deftest string-ai-context-migrates-to-instructions-test
+  (testing "the OSI string shorthand is migrated to {:instructions s} on write, so storage is always the
+           object form (this covers every write path — the coercion is in the model transform, not the API)"
+    (mt/with-temp [:model/OsiAiContext _ (assoc entity :ai_context "Use for revenue questions.")]
+      (is (= {:instructions "Use for revenue questions."} (:ai_context (by-key entity)))))))
+
 (deftest hooks-nudge-a-targeted-reconcile-test
   (testing "insert, update and delete each nudge the entity's reconcile once — deferred until the txn commits"
     (let [nudges (atom [])

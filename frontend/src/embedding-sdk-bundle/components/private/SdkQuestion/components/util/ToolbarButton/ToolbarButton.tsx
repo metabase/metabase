@@ -28,7 +28,7 @@ function _ToolbarButton(
         iconUrl ? (
           <img src={iconUrl} alt="" width={16} height={16} />
         ) : icon ? (
-          <Icon name={icon} />
+          <Icon name={icon} aria-hidden />
         ) : undefined
       }
       py="sm"
