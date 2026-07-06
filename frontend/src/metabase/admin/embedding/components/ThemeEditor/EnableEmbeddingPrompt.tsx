@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { Anchor, Button, Center, Stack, Text } from "metabase/ui";
@@ -32,8 +32,13 @@ export function EnableEmbeddingPrompt({
   );
 
   const message = !isEnabled
-    ? t`Enable modular embedding to see a live preview of your theme.`
-    : jt`Accept the ${usageConditionsLink} to see a live preview of your theme.`;
+    ? c(
+        "Prompt to enable modular embedding to see a live preview of an embedding theme.",
+      ).t`Enable modular embedding to see a live preview of your theme.`
+    : c(
+        "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme.",
+      )
+        .jt`Accept the ${usageConditionsLink} to see a live preview of your theme.`;
 
   const buttonLabel = !isEnabled
     ? t`Enable modular embedding`
