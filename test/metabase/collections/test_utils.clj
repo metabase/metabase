@@ -77,3 +77,36 @@
   "Ensures Library collection is not remote-synced for the duration of body."
   [& body]
   `(do-with-library-not-synced (fn [] ~@body)))
+
+(defn do-with-library
+  "Implementation for [[with-library]]."
+  [f]
+  (if-let [library (collection/library-collection)]
+    ;; A library already exists — reuse it and its sub-collections, scoped to its location so a same-typed
+    ;; collection elsewhere can't be picked up (the library sub-collection types aren't unique).
+    (let [loc (str "/" (:id library) "/")]
+      (f {:library library
+          :data    (t2/select-one :model/Collection
+                                  :type collection/library-data-collection-type :location loc)
+          :metrics (t2/select-one :model/Collection
+                                  :type collection/library-metrics-collection-type :location loc)}))
+    ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward.
+    (mt/with-temp [:model/Collection library {:name     "Library"
+                                              :type     collection/library-collection-type
+                                              :location "/"}
+                   :model/Collection data    {:name     "Data"
+                                              :type     collection/library-data-collection-type
+                                              :location (str "/" (:id library) "/")}
+                   :model/Collection metrics {:name     "Metrics"
+                                              :type     collection/library-metrics-collection-type
+                                              :location (str "/" (:id library) "/")}]
+      (f {:library library :data data :metrics metrics}))))
+
+(defmacro with-library
+  "Ensure the singleton Library collection and its Data/Metrics sub-collections exist for the duration of
+  `body`, binding `binding` to a `{:library _ :data _ :metrics _}` map of those collections.
+  Reuses an existing library if one is present; otherwise creates a temporary tree that's cleaned up
+  afterward."
+  {:style/indent 1}
+  [[binding] & body]
+  `(do-with-library (fn [~binding] ~@body)))

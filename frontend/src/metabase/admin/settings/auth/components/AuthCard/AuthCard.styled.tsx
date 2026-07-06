@@ -38,8 +38,8 @@ export const CardBadge = styled.div<CardBadgeProps>`
     props.isEnabled ? color("core-brand") : color("danger")};
   background-color: ${(props) =>
     props.isEnabled
-      ? "var(--mb-color-background-brand)"
-      : "var(--mb-color-background-secondary)"};
+      ? "var(--mb-color-background_surface-brand-subtle)"
+      : "var(--mb-color-background_page-secondary)"};
   padding: 0.25rem 0.375rem;
   border-radius: 0.25rem;
   font-weight: bold;

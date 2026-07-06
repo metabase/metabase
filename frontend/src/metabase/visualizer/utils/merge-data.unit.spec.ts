@@ -156,4 +156,38 @@ describe("mergeVisualizerData", () => {
       expect(result.insights).toEqual([]);
     },
   );
+
+  it("should carry the results timezone from the source dataset so charts render in the report timezone (#73972)", () => {
+    const result = mergeVisualizerData({
+      columns: [
+        createMockColumn(StringColumn({ name: "COLUMN_1" })),
+        createMockColumn(NumberColumn({ name: "COLUMN_2" })),
+      ],
+      columnValuesMapping: {
+        COLUMN_1: [
+          { sourceId: "card:1", originalName: "CREATED_AT", name: "COLUMN_1" },
+        ],
+        COLUMN_2: [
+          { sourceId: "card:1", originalName: "count", name: "COLUMN_2" },
+        ],
+      },
+      datasets: {
+        "card:1": createMockDataset({
+          data: {
+            cols: [
+              createMockColumn(StringColumn({ name: "CREATED_AT" })),
+              createMockColumn(NumberColumn({ name: "count" })),
+            ],
+            rows: [["2025-01-01T00:00:00-08:00", 1]],
+            results_timezone: "America/Los_Angeles",
+          },
+        }),
+      },
+      dataSources: [
+        { id: "card:1", sourceId: 1, type: "card", name: "Chart 1" },
+      ],
+    });
+
+    expect(result.results_timezone).toBe("America/Los_Angeles");
+  });
 });

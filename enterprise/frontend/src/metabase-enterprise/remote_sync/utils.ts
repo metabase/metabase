@@ -65,7 +65,7 @@ export const getSyncStatusColor = (
       return "danger";
     case "update":
     case "touch":
-      return "saturated-blue";
+      return "core-blue-saturated";
     default:
       return "info";
   }

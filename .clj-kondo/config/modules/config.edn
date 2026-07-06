@@ -180,6 +180,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/Database
                     :model/Table
                     :model/User}}
 
@@ -357,6 +358,7 @@
   {:team "UX West"
    :api  #{metabase.audit-app.core
            metabase.audit-app.init}
+   :friends #{enterprise/memoize-monitor}
    :uses #{api
            app-db
            events
@@ -572,6 +574,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.core
+           metabase.collections.curation
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -685,18 +688,6 @@
    :api  #{}
    :uses :any}
 
-  curated-search
-  {:team "Metabot"
-   :api  #{metabase.curated-search.api
-           metabase.curated-search.core}
-   :uses #{api
-           models
-           premium-features
-           request
-           util}
-   :model-exports #{:model/CuratedSearchEntry}
-   :model-imports #{:model/Card}}
-
   dashboards
   {:team "UX West"
    :api  #{metabase.dashboards.autoplace
@@ -712,6 +703,7 @@
            audit-app
            collections
            config
+           embedding
            events
            lib
            models
@@ -722,6 +714,7 @@
            query-processor
            search
            settings
+           staleness
            sync
            util}
    :model-exports #{:model/Dashboard
@@ -973,6 +966,13 @@
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
+  entity-retrieval
+  {:team "Metabot"
+   :api  #{metabase.entity-retrieval.core
+           metabase.entity-retrieval.mirror}
+   :uses #{premium-features}
+   :model-imports #{:model/OsiAiContext}}
+
   events
   {:team "DevEx"
    :api  #{metabase.events.core
@@ -1191,7 +1191,10 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1278,9 +1281,9 @@
               channel
               collections
               config
-              curated-search
               documents
               driver
+              entity-retrieval
               interestingness
               legacy-mbql
               lib
@@ -1483,6 +1486,20 @@
            task
            tracing
            util}}
+
+  osi
+  {:team "Metabot"
+   :api  #{metabase.osi.ai-context.api}
+   :uses #{api
+           app-db
+           entity-retrieval
+           models
+           request
+           util}
+   :model-exports #{:model/OsiAiContext}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/Segment}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1704,6 +1721,7 @@
            content-verification
            dashboards
            documents
+           embedding
            events
            graph
            lib
@@ -1719,6 +1737,8 @@
            query-processor
            request
            search
+           settings
+           staleness
            sync
            util
            view-log
@@ -1926,6 +1946,7 @@
            metabase.sample-data.init}
    :uses #{config
            models
+           permissions
            plugins
            settings
            sync
@@ -1933,6 +1954,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DataPermissions
                     :model/Database
                     :model/Field
                     :model/Table}}
@@ -2180,6 +2202,10 @@
               system
               util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
+
+  staleness
+  {:team "UX West"
+   :api  #{metabase.staleness.core}}
 
   startup
   {:team "DevEx"
@@ -2975,15 +3001,6 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
-  enterprise/curated-search
-  {:team "Metabot"
-   :api  #{metabase-enterprise.curated-search.init}
-   :uses #{premium-features
-           task
-           util
-           enterprise/semantic-search}
-   :model-imports #{:model/CuratedSearchEntry}}
-
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
@@ -3160,6 +3177,22 @@
    ;; make token tracking a hook). Drop this dep once the relocation lands.
    :uses #{enterprise/semantic-search}}
 
+  enterprise/entity-retrieval
+  {:team "Metabot"
+   :api  #{metabase-enterprise.entity-retrieval.init}
+   :uses #{analytics-interface
+           collections
+           entity-retrieval
+           premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table}}
+
   enterprise/erd
   {:team "Gadget"
    :api  #{metabase-enterprise.erd.api}
@@ -3220,6 +3253,20 @@
            collections
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
+
+  enterprise/memoize-monitor
+  {:team "Graphy"
+   :api  #{metabase-enterprise.memoize-monitor.init}
+   :uses #{analytics
+           analytics-interface
+           audit-app
+           collections
+           driver
+           models
+           util
+           warehouse-schema
+           warehouses
+           enterprise/serialization}}
 
   enterprise/metabot
   {:team    "Metabot"
@@ -3435,8 +3482,10 @@
            analytics-interface
            api
            app-db
+           collections
            config
            connection-pool
+           events
            llm
            metabot
            models
@@ -3447,7 +3496,9 @@
            task
            tracing
            util}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Collection
+                    :model/Dashboard
+                    :model/Table}}
 
   enterprise/serialization
   {:team "Graphy"
@@ -3457,12 +3508,12 @@
            metabase-enterprise.serialization.init
            metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
+   :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
            app-db
            appearance
            collections
-           config
            events
            lib
            logger
@@ -3515,11 +3566,11 @@
    :uses #{analytics
            api
            collections
-           embedding
            premium-features
            queries
            request
            settings
+           staleness
            util}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 

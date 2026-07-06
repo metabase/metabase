@@ -38,7 +38,7 @@
 
 .Navigation {
   padding: 0.5rem 1rem;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 

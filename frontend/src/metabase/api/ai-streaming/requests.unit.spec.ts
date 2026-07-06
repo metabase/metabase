@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { api } from "metabase/api/client";
+import { setupBasename } from "__support__/basename";
 
 import {
   aiStreamingQuery,
@@ -10,16 +10,9 @@ import { mockStreamedEndpoint } from "./test-utils";
 
 const endpoint = "/some-streamed-endpoint";
 const fakeBasename = "http://example.com";
-const originalBasename = api.basename;
 
 describe("ai requests", () => {
-  beforeAll(() => {
-    api.basename = fakeBasename;
-  });
-
-  afterAll(() => {
-    api.basename = originalBasename;
-  });
+  setupBasename(fakeBasename);
 
   describe("aiStreamingQuery", () => {
     it("should call a request with a baseurl", async () => {

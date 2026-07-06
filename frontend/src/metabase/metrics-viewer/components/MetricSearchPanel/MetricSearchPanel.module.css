@@ -1,7 +1,7 @@
 .container {
   border-radius: 1rem;
   overflow: hidden;
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
 }
 
 .container:has([data-has-error]) {

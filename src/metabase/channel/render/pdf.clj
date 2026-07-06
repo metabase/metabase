@@ -48,9 +48,11 @@
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.shared :as channel.shared]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
@@ -85,7 +87,7 @@
 
   Other types (pie, gauge, funnel, progress, scalar, table, ...) have a fixed size when rendered, and resized to fit
   their grid cell, preserving aspect ratio."
-  #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row})
+  #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row :treemap})
 
 ;; --------------------------------------------------------------------------------------------
 ;; Page geometry
@@ -192,29 +194,28 @@
       (draw-md-basic-item! cs x baseline item))))
 
 (defn- draw-md-line!
-  "Draw one wrapped markdown line within the box `[x, x+content-w]`.
-
-  When `rtl?`, the line is laid out flush-right within that box. The `items` (words) are reordered to their
-  left-to-right *visual* order on the page via [[typeset/reorder-bidi-items]]."
-  [^PDPageContentStream cs x content-w rtl? baseline items]
+  "Draw one wrapped markdown line within the box `[x, x+content-w]`, flushed per `align`
+  (`:left` / `:center` / `:right`). The `items` (words) are reordered to their left-to-right *visual* order on the
+  page via [[typeset/reorder-bidi-items]]."
+  [^PDPageContentStream cs x content-w align baseline items]
   (reduce #(draw-md-item! cs %1 baseline %2)
-          ;; Starting `x` depends on `rtl?`: flush left for LTR, or inset from left to make the line flush right.
-          (if rtl?
-            (+ x
-               (max 0.0 (- content-w
-                           (typeset/md-line-width items))))
-            x)
+          ;; Starting `x` is the box left plus the slack (box width minus line width) apportioned by `align`.
+          (let [slack (max 0.0 (- content-w (typeset/md-line-width items)))]
+            (+ x (case align
+                   :right  slack
+                   :center (* 0.5 slack)
+                   0.0)))
           (typeset/reorder-bidi-items items)))
 
 (defn- draw-item-lines!
   "Draw already-wrapped `lines` (each a vector of measured items) top-down from `top-y`, laying each out within
-  `[content-x, content-x+content-w]` and stopping before `bottom`. `rtl?` right-aligns. On the first line, `marker`
-  (if non-nil) is drawn at `marker-x` in `marker-font`.
+  `[content-x, content-x+content-w]` and stopping before `bottom`. `align` (`:left`/`:center`/`:right`) flushes each
+  line. On the first line, `marker` (if non-nil) is drawn at `marker-x` in `marker-font`.
 
   Note that `y` decreases downwards in PDFs; reversed from the convention on the web.
 
   Returns the y just below the last line actually drawn. Shared by [[draw-block!]] and [[draw-text-block!]]."
-  [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt rtl? marker marker-x marker-font]
+  [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt align marker marker-x marker-font]
   (let [lh (* base-pt common/line-height-factor)]
     (when marker
       (draw-line! cs marker-font base-pt marker-x (- top-y base-pt) marker))
@@ -226,7 +227,7 @@
                     adv      (+ lh extra)
                     y'       (- y adv)]
                 (when (>= y' bottom)
-                  (draw-md-line! cs content-x content-w rtl? baseline line))
+                  (draw-md-line! cs content-x content-w align baseline line))
                 y'))
             top-y
             lines)))
@@ -251,7 +252,7 @@
                                   (mapv #(assoc % :color color) line))))
                       (typeset/words->lines (typeset/runs->words runs) font-pt false max-w))
           y     (draw-item-lines! cs lines x max-w top-y (- top-y max-h)
-                                  font-pt (font/base-rtl? text) nil x nil)]
+                                  font-pt (if (font/base-rtl? text) :right :left) nil x nil)]
       (- top-y y))))
 
 (defn- draw-code-block!
@@ -329,7 +330,7 @@
 (defn- draw-paragraph-block!
   [^PDPageContentStream cs
    {:keys [indent kind level marker runs] :as _block}
-   x top-y cell-w bottom scale]
+   x top-y cell-w bottom scale align-override]
   (let [heading?    (= :heading kind)
         base-pt     (* scale (if heading?
                                (typeset/heading-pt level)
@@ -342,40 +343,52 @@
                       0.0)
         content-x   (+ indent-x marker-w)
         content-w   (- (+ x cell-w) content-x)
-        ;; right-align RTL paragraphs and headings; list items (those with a marker) stay
-        ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
-        rtl?        (and (nil? marker)
-                         (font/base-rtl? (apply str (map typeset/item-text runs))))
+        ;; List items (those with a marker) stay left-aligned for now -- a card-level alignment or proper RTL list
+        ;; (marker on the right) is a separate change. Otherwise the text card's `align-override` wins (see
+        ;; `text.align_horizontal`); with no override, right-align RTL paragraphs/headings and left-align the rest.
+        align       (if marker
+                      :left
+                      (or align-override
+                          (if (font/base-rtl? (apply str (map typeset/item-text runs))) :right :left)))
         lines       (typeset/words->lines (typeset/runs->words runs) base-pt heading? content-w)]
-    (draw-item-lines! cs lines content-x content-w top-y bottom base-pt rtl? marker indent-x marker-font)))
+    (draw-item-lines! cs lines content-x content-w top-y bottom base-pt align marker indent-x marker-font)))
 
 (defn- draw-block!
   "Draw one markdown block within `[x, top-y]` of `cell-w`, clipping at `bottom`.
 
   Returns the y below the block (top of the next)."
-  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale]
+  [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale align-override]
   (case (:kind block)
     :hr         (draw-hr-block! cs x top-y cell-w scale)
     :image      (draw-image-block! doc cs block x top-y cell-w bottom scale)
     :code-block (draw-code-block! cs block x top-y cell-w bottom scale)
     ;; heading / paragraph / list-item
-    (draw-paragraph-block! cs block x top-y cell-w bottom scale)))
+    (draw-paragraph-block! cs block x top-y cell-w bottom scale align-override)))
 
 (defn- draw-markdown-in-cell!
-  "Render markdown `text` top-down within a cell rectangle.
+  "Render markdown `text` within a cell rectangle, honouring the text card's `text.align_horizontal` (`align-h`:
+  `:left`/`:center`/`:right`) and `text.align_vertical` (`align-v`: `:top`/`:middle`/`:bottom`).
 
   Shrinks the font (down to a floor, see [[typeset/fit-scale]]) so the content fits the cell height instead of clipping.
-  If it doesn't fit even at the limit of scaling down, we do clip the output."
-  [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h text]
-  (let [blocks (md/parse-markdown-blocks text)
-        scale  (typeset/fit-scale blocks cell-w cell-h)
-        bottom (- top-y cell-h)]
+  If it doesn't fit even at the limit of scaling down, we do clip the output (and vertical alignment collapses to top)."
+  [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h align-h align-v text]
+  (let [blocks  (md/parse-markdown-blocks text)
+        scale   (typeset/fit-scale blocks cell-w cell-h)
+        bottom  (- top-y cell-h)
+        ;; Vertical alignment: drop the start-y by the leftover space, apportioned by `align-v`. fit-scale keeps the
+        ;; laid-out height <= cell-h, so the slack is >= 0 (start-y stays at top when the content doesn't fit). `bottom`
+        ;; is unchanged (the true cell floor), so overflow still clips there.
+        slack   (max 0.0 (- cell-h (typeset/markdown-total-height blocks cell-w scale)))
+        start-y (- top-y (case align-v
+                           :bottom slack
+                           :middle (* 0.5 slack)
+                           0.0))]
     (reduce (fn [y block]
               (if (<= y (+ bottom 2.0))
                 y
-                (- (draw-block! doc cs block x y cell-w bottom scale)
+                (- (draw-block! doc cs block x y cell-w bottom scale align-h)
                    (* 4.0 scale))))
-            top-y blocks)))
+            start-y blocks)))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
@@ -413,17 +426,42 @@
       :visualization_settings
       :text))
 
+(defn- text-card-align-h
+  "A text card's explicit horizontal alignment keyword (`:left`/`:center`/`:right`) from its `text.align_horizontal`
+  setting, or `nil` when unset -- in which case the drawing keeps the base-direction default (LTR flush-left, RTL
+  flush-right) rather than forcing left, so existing RTL text cards aren't regressed."
+  [dashcard]
+  (when-let [raw (get-in dashcard [:visualization_settings :text.align_horizontal])]
+    (keyword raw)))
+
+(defn- text-card-align-v
+  "A text card's vertical alignment keyword (`:top`/`:middle`/`:bottom`) from its `text.align_vertical` setting.
+  Defaults to `:top`, matching the frontend's default."
+  [dashcard]
+  (if-let [raw (get-in dashcard [:visualization_settings :text.align_vertical])]
+    (keyword raw)
+    :top))
+
 (defn- dashcard->cell
   "Build a renderable cell from a dashcard, preserving its grid geometry.
 
-  Returns nil for dashcard kinds we don't render (placeholder/action) or cards that fail/are empty."
-  [dashcard parameters]
+  `parts-by-dashcard-id` maps a dashcard id to its already-executed `:card` part -- either the subscription payload's
+  parts (so email/Slack/PDF run each query once) or this render's own single
+  [[metabase.notification.payload.core/execute-dashboard]] call. Queries are never re-run here.
+
+  Returns nil for dashcard kinds we don't render (placeholder/action), or for a card with no part -- a card whose
+  query failed or was hidden while empty (`card.hide_empty`), which `execute-dashboard` omits."
+  [dashcard parameters parts-by-dashcard-id]
   (let [inline (resolve-inline-params dashcard parameters)
         geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
                  (seq inline) (assoc :inline-params inline))]
     (cond
       (:card_id dashcard)
-      (when-let [part (notification.payload/execute-dashboard-subscription-card dashcard parameters)]
+      ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
+      ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
+      ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
+      ;; walks its parts one at a time to keep its memory watermark low.
+      (when-let [part (get parts-by-dashcard-id (:id dashcard))]
         (assoc geom
                :kind :card
                :part (cond-> part
@@ -433,7 +471,10 @@
       (assoc geom :kind :heading, :text (virtual-dashcard->text dashcard parameters))
 
       (notification.payload/virtual-card-of-type? dashcard "text")
-      (assoc geom :kind :text, :text (virtual-dashcard->text dashcard parameters))
+      (assoc geom :kind :text
+             :text    (virtual-dashcard->text dashcard parameters)
+             :align-h (text-card-align-h dashcard)
+             :align-v (text-card-align-v dashcard))
 
       ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
       ;; reuse the email conversion so they match, and so entity links are permission-checked.
@@ -451,13 +492,13 @@
 
 (defn- build-cells
   "Order a tab's (or the untabbed dashboard's) dashcards and build cells, normalizing row numbers so the first
-  row of the section is 0."
-  [dashcards parameters]
+  row of the section is 0. `parts-by-dashcard-id` supplies each card's already-executed part (see [[dashcard->cell]])."
+  [dashcards parameters parts-by-dashcard-id]
   (let [sorted  (sort dashboard-card/dashcard-comparator dashcards)
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
                   0)]
-    (into [] (comp (keep #(dashcard->cell % parameters))
+    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id))
                    (map  #(update % :row - min-row)))
           sorted)))
 
@@ -667,9 +708,9 @@
         y (reduce (fn [y {:keys [name-lines value-lines height] :as _row}]
                     (let [bottom (- y height 1.0)]
                       (draw-item-lines! cs name-lines name-x name-w y bottom common/param-pt
-                                        (lines-rtl? name-lines) nil name-x nil)
+                                        (if (lines-rtl? name-lines) :right :left) nil name-x nil)
                       (draw-item-lines! cs value-lines value-x value-w y bottom common/param-pt
-                                        (lines-rtl? value-lines) nil value-x nil)
+                                        (if (lines-rtl? value-lines) :right :left) nil value-x nil)
                       (- y height)))
                   top-y
                   rows)]
@@ -708,7 +749,7 @@
     (draw-item-lines! cs lines x content-w top-y (- top-y
                                                     (typeset/lines-height lines common/param-pt)
                                                     1.0)
-                      common/param-pt (lines-rtl? lines) nil x nil)))
+                      common/param-pt (if (lines-rtl? lines) :right :left) nil x nil)))
 
 (defn- fill-rect!
   "Fill the box whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`, then reset to black.
@@ -929,6 +970,20 @@
     (draw-line! cs (font/face :regular) label-pt label-x label-baseline label)
     (.setNonStrokingColor cs Color/BLACK)))
 
+(defn- draw-too-large!
+  "Draw a centered message when a card's result was too large to load into memory: the disk-spilled result exceeded
+  [[metabase.notification.settings/notification-temp-file-size-max-bytes]], so `maybe-realize-data-rows` skipped the
+  load and marked the part `:render/too-large?` (carrying a localized `:error` string) instead of handing back rows.
+  Drawn as centered native text -- mirroring [[draw-no-results!]] -- so the card reads as a clear explanation rather
+  than the misleading empty state it would otherwise fall through to."
+  [^PDPageContentStream cs x body-top cell-w body-h message]
+  (let [pt      common/text-card-pt
+        text    (str message)
+        ;; wrap to the body width, then vertically center the resulting block in the body band
+        block-h (typeset/text-block-height (font/face :regular) pt cell-w body-h text)
+        top-y   (common/v-center body-top body-h block-h)]
+    (draw-text-block! cs (font/face :regular) pt common/body-color x top-y cell-w body-h text)))
+
 (defn- render-card-cell!
   "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level (crisp text) and
   the space it consumes is reserved before the body is rendered. Card descriptions are intentionally omitted -- they
@@ -936,12 +991,15 @@
 
   Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining body area (matching the frontend);
   other types render their body title-less and resized (preserving aspect) to fit into the body area."
-  [^PDDocument doc ^PDPageContentStream cs timezone
-   {:keys [card dashcard inline-params]
-    {:keys [data]} :result
-    :as part}
-   x top-y cell-w cell-h]
-  (let [title      (card-title card dashcard)
+  [^PDDocument doc ^PDPageContentStream cs timezone part x top-y cell-w cell-h]
+  (let [;; Realize the disk-backed rows for THIS card only, here at draw time (email does the same, one part at a
+        ;; time). A result too large for memory comes back marked `:render/too-large?` instead of loaded. Once this
+        ;; function returns, the realized rows are unreferenced and become garbage before the next card is drawn --
+        ;; so peak memory is one card's rows, not the whole dashboard's.
+        {:keys [card dashcard inline-params]
+         {:keys [data]} :result
+         :as part}      (channel.shared/maybe-realize-data-rows part)
+        title      (card-title card dashcard)
         title-h    (typeset/text-block-height (font/face :bold) common/chart-title-pt cell-w (* 0.5 cell-h) title)
         ;; Inline parameters (filters attached to this card) render between the title and the chart body,
         ;; like the email subscription does.
@@ -964,7 +1022,10 @@
         ;; rows (e.g. filtered out) detects as :empty regardless of display, and gets the no-results placeholder.
         chart-type (render.card/detect-pulse-chart-type card dashcard data)
         table?     (= :table chart-type)
-        empty?     (= :empty chart-type)]
+        empty?     (= :empty chart-type)
+        ;; the result was too big to load into memory (see [[draw-too-large!]]); show its message instead of a chart.
+        ;; carries no :data, so it would otherwise detect as :empty and show a misleading no-results placeholder.
+        too-large? (get-in part [:result :render/too-large?])]
     ;; Debug overlays (drawn first, so content sits on top): the full title box (blue) and the full
     ;; chart-body box (red) -- the *allocated* space, regardless of how much the content fills.
     (when *debug-boxes*
@@ -981,6 +1042,12 @@
       (binding [js.svg/*svg-background-color* (when-not *debug-boxes*
                                                 js.svg/*svg-background-color*)]
         (b/cond
+          ;; result too large to load: show its explanatory message rather than attempting (and failing) to draw a chart
+          too-large?
+          (draw-too-large! cs x body-top cell-w body-h
+                           (or (get-in part [:result :error])
+                               (tru "Results too large to display.")))
+
           ;; no rows: show the centered no-results placeholder instead of attempting (and failing) to draw a chart
           empty?
           (draw-no-results! doc cs x body-top cell-w body-h)
@@ -1132,6 +1199,12 @@
     (.setNonStrokingColor cs Color/BLACK)
     (* vw scale)))
 
+(defn- include-branding?
+  "Whether the 'Made with Metabase' badge should be drawn. Branding in exports is included only for
+  instances that lack the `:whitelabel` feature -- i.e. OSS instances. Pro/EE instances get no badge."
+  []
+  (not (premium-features/enable-whitelabeling?)))
+
 (defn- draw-brand-badge!
   "Draw the 'Made with [logo] Metabase' badge, right-aligned to `right`, with the logo's top at
   `logo-top` (placed in the page's top common/margin band). The 'Made with' prefix is localized to the
@@ -1157,9 +1230,11 @@
   [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-table]}]
   (let [bold (font/face :bold)
         top  (- page-height common/margin)
-        ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned
-        _    (draw-brand-badge! cs (+ common/margin content-w)
-                                (common/v-center page-height common/margin brand-logo-pt))
+        ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned.
+        ;; Only OSS instances get the badge; Pro/EE (whitelabel feature) render no branding.
+        _    (when (include-branding?)
+               (draw-brand-badge! cs (+ common/margin content-w)
+                                  (common/v-center page-height common/margin brand-logo-pt)))
         ;; order: dashboard title, then the dashboard-wide parameter table, then the tab title
         y1   (if dashboard-title
                (do (draw-line! cs bold common/dashboard-title-pt
@@ -1242,7 +1317,7 @@
                 :heading (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
                            #(draw-text-block! cs (font/face :bold) common/heading-card-pt nil x top-y cell-w % (:text cell)))
                 :text    (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
-                           #(draw-markdown-in-cell! doc cs x top-y cell-w % (:text cell)))
+                           #(draw-markdown-in-cell! doc cs x top-y cell-w % (:align-h cell) (:align-v cell) (:text cell)))
                 nil)
               (catch Throwable e
                 (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
@@ -1288,33 +1363,51 @@
   "Render the dashboard with `dashboard-id` to PDF bytes, running queries as user `user-id`. `parameters` is a vector
   of dashboard parameter overrides; `[]` to use the dashboard's own parameter defaults.
 
-  `paper-key` is `:a4` (default) or `:letter`. Lays cards out following the dashboard's explicit 24-column grid."
+  `paper-key` is `:a4` (default) or `:letter`. Lays cards out following the dashboard's explicit 24-column grid.
+
+  `parts` are the already-executed dashboard parts from a subscription payload (see
+  [[metabase.notification.payload.core/execute-dashboard]]). When supplied they are the source of every card's
+  results, so queries are NOT re-run -- an email or Slack subscription that renders both chart images and a PDF
+  attachment executes each query once. When `parts` is nil (the download API) the queries are executed here via a
+  single `execute-dashboard` call, which shares one spill budget across all cards exactly like an email; the temp
+  files that execution creates are cleaned up before returning."
   (^bytes [dashboard-id user-id parameters]
-   (render-dashboard-to-pdf dashboard-id user-id parameters :a4))
+   (render-dashboard-to-pdf dashboard-id user-id parameters :a4 nil))
   (^bytes [dashboard-id user-id parameters paper-key]
+   (render-dashboard-to-pdf dashboard-id user-id parameters paper-key nil))
+  (^bytes [dashboard-id user-id parameters paper-key parts]
    (request/with-current-user user-id
-     (let [dims     (paper-dims paper-key)
-           dash     (t2/select-one :model/Dashboard :id dashboard-id)
-           tabs     (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
-           dcs      (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
+     (let [owned-parts? (nil? parts)
+           ;; Reuse the subscription's parts, or run one shared-budget execution ourselves (matching the email
+           ;; channel). Either way, large results are disk-backed handles at this point -- realized one card at a
+           ;; time at draw time (see [[render-card-cell!]]), never all at once.
+           parts     (or parts (notification.payload/execute-dashboard dashboard-id user-id parameters))
+           ;; index the `:card` parts by their dashcard id so build-cells can look each one up by grid position
+           parts-idx (into {} (comp (filter #(= :card (:type %)))
+                                    (map (juxt #(-> % :dashcard :id) identity)))
+                           parts)
+           dims      (paper-dims paper-key)
+           dash      (t2/select-one :model/Dashboard :id dashboard-id)
+           tabs      (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
+           dcs       (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
-           tabbed?  (> (count tabs) 1)
-           by-tab   (group-by :dashboard_tab_id dcs)
-           resolved (resolve-parameters dash parameters)
-           sections (if tabbed?
-                      (mapv (fn [t]
-                              {:tab-name (:name t)
-                               :cells    (build-cells (get by-tab (:id t)) resolved)})
-                            tabs)
-                      [{:tab-name nil
-                        :cells    (build-cells dcs resolved)}])
-           timezone (some (fn [s]
-                            (some #(when (= :card (:kind %))
-                                     (-> % :part :card render.card/defaulted-timezone))
-                                  (:cells s)))
-                          sections)
-           doc      (PDDocument.)]
+           tabbed?   (> (count tabs) 1)
+           by-tab    (group-by :dashboard_tab_id dcs)
+           resolved  (resolve-parameters dash parameters)
+           sections  (if tabbed?
+                       (mapv (fn [t]
+                               {:tab-name (:name t)
+                                :cells    (build-cells (get by-tab (:id t)) resolved parts-idx)})
+                             tabs)
+                       [{:tab-name nil
+                         :cells    (build-cells dcs resolved parts-idx)}])
+           timezone  (some (fn [s]
+                             (some #(when (= :card (:kind %))
+                                      (-> % :part :card render.card/defaulted-timezone))
+                                   (:cells s)))
+                           sections)
+           doc       (PDDocument.)]
        (try
          (binding [font/*fonts*       (font/load-fonts! doc)
                    font/*em-width*    (memo/memo font/raw-em-width-inner)]
@@ -1331,7 +1424,15 @@
              (.save doc os)
              (.toByteArray os)))
          (finally
-           (.close doc)))))))
+           (.close doc)
+           ;; Clean up ONLY the temp files we created. When `parts` were passed in, the notification pipeline
+           ;; ([[metabase.notification.send/do-after-notification-sent]]) owns their cleanup, once every channel has
+           ;; rendered -- deleting them here would pull the rug out from the email/Slack render sharing the same parts.
+           (when owned-parts?
+             (try
+               (run! #(some-> % :result :data :rows notification.payload/cleanup!) parts)
+               (catch Throwable e
+                 (log/warn e "Error cleaning up temp files for dashboard PDF"))))))))))
 
 (defn render-dashboard-to-pdf-file
   "Convenience wrapper for the REPL: render the dashboard to PDF and write it to `path`."

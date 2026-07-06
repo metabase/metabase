@@ -2,11 +2,10 @@
 import styled from "@emotion/styled";
 
 import { FormField } from "metabase/common/components/FormField";
-import { Radio } from "metabase/common/components/Radio";
 import { darken } from "metabase/ui/colors";
 
 export const FormFieldContainer = styled.div`
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-spacing-sm);
   overflow: hidden;
@@ -21,14 +20,6 @@ export const EditorContainer = styled(ContentContainer)`
   display: flex;
   padding: 1rem 1rem 0.85rem 0.85rem;
   gap: var(--mantine-spacing-sm);
-
-  ${Radio.RadioGroupVariants.join(", ")} {
-    margin-top: 10px;
-  }
-
-  ${Radio.RadioContainerVariants.join(", ")} {
-    padding: 4px 10px;
-  }
 `;
 
 export const Column = styled.div<{ full?: boolean }>`
@@ -56,8 +47,8 @@ export const Subtitle = styled.div`
 `;
 
 export const PreviewContainer = styled(ContentContainer)`
-  background-color: var(--mb-color-background-secondary);
-  border-top: 1px solid ${() => darken("background-secondary", 0.1)};
+  background-color: var(--mb-color-background_page-secondary);
+  border-top: 1px solid ${() => darken("background_page-secondary", 0.1)};
   padding: 1rem 1rem 2rem 1rem;
 
   ${FormField.Root} {

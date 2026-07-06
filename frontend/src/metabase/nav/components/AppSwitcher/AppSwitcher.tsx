@@ -5,9 +5,9 @@ import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPag
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
+import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import { userInitials } from "metabase/common/utils/user";
-import { trackDataStudioOpened } from "metabase/data-studio/analytics";
-import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
@@ -195,7 +195,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
                 </Avatar>
                 <Stack gap="xs">
                   <Text lh="xs">{user?.first_name}</Text>
-                  <Text c="text-tertiary" fz="md" lh="xs">
+                  <Text c="text-disabled" fz="md" lh="xs">
                     {user?.email}
                   </Text>
                 </Stack>

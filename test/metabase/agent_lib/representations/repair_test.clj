@@ -287,6 +287,25 @@
       (is (= ["!=" {} field 10]
              (repair/repair trivial-mp ["not-equals" {} field 10]))))))
 
+(deftest ^:parallel drop-unsupported-day-of-week-mode-test
+  (testing "unsupported get-day-of-week week-modes are dropped (they desugar to a nil unit → 500)"
+    (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]]
+      (testing "\"instance\" mode dropped → default (start-of-week aware) day-of-week"
+        (is (= ["get-day-of-week" {} field]
+               (repair/repair trivial-mp ["get-day-of-week" {} field "instance"]))))
+      (testing "\"us\" mode dropped (no lowering exists)"
+        (is (= ["get-day-of-week" {} field]
+               (repair/repair trivial-mp ["get-day-of-week" {} field "us"]))))
+      (testing "\"iso\" mode is preserved (it has a real lowering)"
+        (is (= ["get-day-of-week" {} field "iso"]
+               (repair/repair trivial-mp ["get-day-of-week" {} field "iso"]))))
+      (testing "the bare (no-mode) form is untouched"
+        (is (= ["get-day-of-week" {} field]
+               (repair/repair trivial-mp ["get-day-of-week" {} field]))))
+      (testing "nested inside a filter (the observed LLM shape)"
+        (is (= ["in" {} ["get-day-of-week" {} field] 1 7]
+               (repair/repair trivial-mp ["in" {} ["get-day-of-week" {} field "instance"] 1 7])))))))
+
 (deftest ^:parallel rewrite-aggregation-aliases-test
   (testing "aggregation lib-renames"
     (let [field ["field" {} ["Sample" "PUBLIC" "X" "A"]]
@@ -931,6 +950,46 @@
       (is (= once twice)))))
 
 ;;; ============================================================
+;;; Pass 1.87 - rewrite misspelled `lib/type` aliases
+;;; ============================================================
+
+(def ^:private lib-type-join-query
+  "ORDERS with an explicit join to PRODUCTS. The join `lib/type` is filled in by each test."
+  {"lib/type" "mbql/query"
+   "database" "Sample"
+   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                "joins"        [{"alias"      "P"
+                                 "fields"     "none"
+                                 "conditions" [["=" {}
+                                                ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                ["field" {"join-alias" "P"} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]
+                                 "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]}]}]})
+
+(defn- join-lib-type [q]
+  (get-in q ["stages" 0 "joins" 0 "lib/type"]))
+
+(defn- with-join-lib-type [v]
+  (assoc-in lib-type-join-query ["stages" 0 "joins" 0 "lib/type"] v))
+
+(deftest ^:parallel rewrite-join-lib-type-test
+  (testing "a join with the misspelled `mbql.join/join` marker is rewritten to `mbql/join`"
+    (let [output (repair/repair trivial-mp (with-join-lib-type "mbql.join/join"))]
+      (is (= "mbql/join" (join-lib-type output))))))
+
+(deftest ^:parallel rewrite-join-lib-type-preserves-canonical-test
+  (testing "a join that already has the canonical `mbql/join` marker is left unchanged"
+    (let [output (repair/repair trivial-mp (with-join-lib-type "mbql/join"))]
+      (is (= "mbql/join" (join-lib-type output))))))
+
+(deftest ^:parallel rewrite-join-lib-type-idempotent-test
+  (testing "join `lib/type` correction is a fixed point"
+    (let [once  (repair/repair trivial-mp (with-join-lib-type "mbql.join/join"))
+          twice (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+;;; ============================================================
 ;;; Pass 2 - fill in missing `lib/type`
 ;;; ============================================================
 
@@ -959,6 +1018,11 @@
   (testing "a random non-stage map without stage-body keys is untouched"
     (let [input {"foo" "bar"}]
       (is (= input (repair/repair trivial-mp input))))))
+
+(deftest ^:parallel add-join-lib-type-test
+  (testing "a join with no lib/type gets mbql/join"
+    (let [output (repair/repair trivial-mp (update-in lib-type-join-query ["stages" 0 "joins" 0] dissoc "lib/type"))]
+      (is (= "mbql/join" (join-lib-type output))))))
 
 ;;; ============================================================
 ;;; Pass 1.9 - stamp top-level `database:` from the first stage's source

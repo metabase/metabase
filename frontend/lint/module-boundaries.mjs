@@ -62,10 +62,8 @@ const elements = [
     pattern: "enterprise/frontend/src/custom-viz/**",
   }),
   createElement({ type: "shared", name: "data-grid" }),
-  createElement({ type: "shared", name: "data-studio" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
-  createElement({ type: "shared", name: "documents" }),
   createElement({
     type: "shared",
     name: "embed",
@@ -110,7 +108,7 @@ const elements = [
   createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
-  createElement({ type: "shared", name: "i18n" }),
+  createElement({ type: "shared", name: "content-translation" }),
   createElement({
     type: "shared",
     name: "metabase-shared",
@@ -119,6 +117,7 @@ const elements = [
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
+  createElement({ type: "shared", name: "monitor" }),
   createElement({ type: "shared", name: "nav" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
@@ -155,6 +154,8 @@ const elements = [
   // feature
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "data-studio" }),
+  createElement({ type: "feature", name: "documents" }),
   createElement({
     type: "feature",
     name: "enterprise",
@@ -175,6 +176,8 @@ const elements = [
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-embed-mcp.tsx",
+    "frontend/src/metabase/app-embed-mcp-public-path.ts",
+    "frontend/src/metabase/app-embed-mcp-public-path.unit.spec.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
@@ -284,6 +287,17 @@ const rules = [
   },
   {
     from: ["app/*"],
+    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+  },
+  // TEMP(content-optimizer): the Monitor space is mid-migration — source files are
+  // being relocated here from admin/ and data-studio/ before their routes and
+  // dependencies are moved, so monitor currently imports heavily from feature
+  // modules (admin, etc.). We allow it to import from anywhere until the migration
+  // is complete.
+  // TODO (@stasgavrylov 24/06/26): remove this rule and give monitor proper boundaries once the
+  // Monitor migration is complete.
+  {
+    from: ["shared/monitor"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
 ];

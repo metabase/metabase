@@ -3,6 +3,9 @@ import { useCallback } from "react";
 import visualizations from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationDisplay } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
+
+import { trackCustomVizSelected } from "./analytics";
 
 export type UseQuestionVisualizationStateProps = {
   question?: Question;
@@ -19,6 +22,9 @@ export const useQuestionVisualizationState = ({
     (display: VisualizationDisplay) => {
       if (!question || selectedVisualization === display) {
         return;
+      }
+      if (isCustomVizDisplay(display)) {
+        trackCustomVizSelected();
       }
       let newQuestion = question.setDisplay(display).lockDisplay();
       const visualization = visualizations.get(display);

@@ -35,21 +35,27 @@ import {
   EmbeddingSettings,
   GuestEmbedsSettings,
 } from "metabase/admin/settings/components/EmbeddingSettings";
-import { Help } from "metabase/admin/tools/components/Help";
-import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
-import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
-import { LogLevelsModal } from "metabase/admin/tools/components/LogLevelsModal";
-import { Logs } from "metabase/admin/tools/components/Logs";
-import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import {
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
+import { Help } from "metabase/monitor/tools/components/Help";
+import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
+import { JobTriggersModal } from "metabase/monitor/tools/components/JobTriggersModal";
+import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
+import { Logs } from "metabase/monitor/tools/components/Logs";
+import {
+  ModelCachePage,
+  ModelCacheRefreshJobModal,
+} from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
+import { ToolsApp } from "metabase/monitor/tools/components/ToolsApp";
+import { ToolsUpsell } from "metabase/monitor/tools/components/ToolsUpsell";
+import {
+  getNotificationsRoutes,
+  getTasksRoutes,
+} from "metabase/monitor/tools/routes";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -74,9 +80,6 @@ import { OAuthAuthorizationsPage } from "./ai/OAuthAuthorizationsPage";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { getSettingsRoutes } from "./settingsRoutes";
-import { ToolsApp } from "./tools/components/ToolsApp";
-import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
 import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,

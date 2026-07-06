@@ -23,11 +23,11 @@
   }
 
   tbody > tr:hover {
-    background-color: var(--mb-color-background-hover) !important;
+    background-color: var(--mb-color-background_surface-hover) !important;
   }
 
   tbody > tr.currentTarget {
-    background-color: var(--mb-color-background-highlight) !important;
+    background-color: var(--mb-color-background_page-highlighted) !important;
   }
 }
 

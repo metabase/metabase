@@ -135,6 +135,7 @@ export function getFiltersCount(filters: FilterState): number {
     filters.dataLayer != null,
     filters.ownerEmail != null || filters.ownerUserId != null,
     filters.unusedOnly === true,
+    filters.publishedOnly === true,
   ].filter(Boolean).length;
 }
 

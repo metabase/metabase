@@ -1,6 +1,6 @@
 .Well {
   flex-wrap: nowrap;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   padding: var(--mantine-spacing-sm);
   gap: var(--mantine-spacing-sm);
   border-radius: var(--border-radius-xl);
@@ -14,11 +14,11 @@
 
 .isActive {
   border-color: var(--mb-color-core-brand);
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
 
   &.isOver {
     transform: scale(1.025);
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
