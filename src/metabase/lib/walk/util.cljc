@@ -44,6 +44,7 @@
   [query :- ::lib.schema/query]
   (stage-values-set query (keep :source-table)))
 
+;; NOCOMMIT -- decide whether to keep this.
 (mu/defn all-template-tags-map :- [:maybe ::lib.schema.template-tag/template-tag-map]
   "Return a combined template tags map for all native stages of a `query`."
   [query :- ::lib.schema/query]

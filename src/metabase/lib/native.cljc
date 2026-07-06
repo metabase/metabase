@@ -28,6 +28,9 @@
    [metabase.util.match :as match]
    [metabase.util.performance :refer [empty? every? mapv not-empty select-keys some]]))
 
+;; TODO (Cam 2026-07-06) -- a lot of this stuff is template-tag-specific rather than native-query-specific per se and
+;; should probably be moved into [[metabase.lib.template-tags]]
+
 (mu/defn- merge-template-tags :- ::lib.schema.template-tag/template-tags
   "Merge two sequences of template tags by `:name` as you would with map `merge`, e.g. with
 

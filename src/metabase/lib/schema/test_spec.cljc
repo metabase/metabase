@@ -182,11 +182,13 @@
    [::mc/default   [:ref ::test-raw-value-spec]]])
 
 (mr/def ::test-template-tags-spec
-  [:map-of
-   ::lib.schema.template-tag/name
+  [:sequential
+   {:decode/normalize (fn [xs]
+                        (cond-> xs
+                          (map? xs) vals))}
    ::test-template-tag-spec])
 
 (mr/def ::test-native-query-spec
   [:map
    [:query         string?]
-   [:template-tags {:optional true :default {}} [:maybe [:ref ::test-template-tags-spec]]]])
+   [:template-tags {:optional true :default []} [:maybe [:ref ::test-template-tags-spec]]]])
