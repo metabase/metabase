@@ -60,7 +60,7 @@ tokens.forEach((token) => {
           .click();
       });
 
-      cy.findByRole("listbox")
+      H.selectDropdown()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")
@@ -74,7 +74,7 @@ tokens.forEach((token) => {
         .should("have.value", "Pug / Jade")
         .click();
 
-      cy.findByRole("listbox")
+      H.selectDropdown()
         .should("contain", "Mustache")
         .and("contain", "Pug / Jade")
         .and("contain", "ERB")
@@ -181,7 +181,7 @@ tokens.forEach((token) => {
           .click();
       });
 
-      cy.findByRole("listbox")
+      H.selectDropdown()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")

@@ -15,6 +15,7 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
@@ -42,6 +43,8 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1367,9 +1370,12 @@
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :embedding_type :entity_id :metabase_version :public_uuid :type :name
+          :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
-   :skip [;; cache invalidation is instance-specific
+   :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
+          ;; serialized representation is versioned by :card_schema instead
+          :metabase_version
+          ;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
           :view_count :last_used_at :initially_published_at
@@ -1595,3 +1601,38 @@
 
 (search/define-spec "metric"
   (-> (base-search-spec) (sql.helpers/where [:= :this.type "metric"])))
+
+(defmethod staleness/find-stale-query :model/Card
+  [_model args]
+  {:select [:report_card.id
+            [(h2x/literal "Card") :model]
+            [:report_card.name :name]
+            :last_used_at]
+   :from :report_card
+   :left-join [:moderation_review [:and
+                                   [:= :moderation_review.moderated_item_id :report_card.id]
+                                   [:= :moderation_review.moderated_item_type (h2x/literal "card")]
+                                   [:= :moderation_review.most_recent true]
+                                   [:= :moderation_review.status (h2x/literal "verified")]]
+               :pulse_card [:= :pulse_card.card_id :report_card.id]
+               :pulse [:and
+                       [:= :pulse_card.pulse_id :pulse.id]
+                       [:= :pulse.archived false]]
+               :sandboxes [:= :sandboxes.card_id :report_card.id]
+               :collection [:= :collection.id :report_card.collection_id]]
+   :where [:and
+           [:= :sandboxes.id nil]
+           [:= :pulse.id nil]
+           [:= :moderation_review.id nil]
+           [:= :report_card.archived false]
+           [:<= :report_card.last_used_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           [:= :collection.type nil]
+           (when (embed.settings/some-embedding-enabled?)
+             [:= :report_card.enable_embedding false])
+           (when (setting/get :enable-public-sharing)
+             [:= :report_card.public_uuid nil])
+           [:or
+            (when (contains? (:collection-ids args) nil)
+              [:is :report_card.collection_id nil])
+            [:in :report_card.collection_id (-> args :collection-ids)]]]})

@@ -60,7 +60,14 @@ runs:
       uses: ./.github/actions/report-failures-to-ci-conductor
       with:
         test-suite: ${{ inputs.junit-name }}
-        entrypoint: release/ci-conductor/src/report-backend.ts
+        adapter: backend
+    - name: Quarantine gate (dry run)
+      if: ${{ always() && steps.run-test.outcome != 'success' }}
+      continue-on-error: true
+      uses: ./.github/actions/quarantine-gate
+      with:
+        adapter: backend
+        test-suite: ${{ inputs.junit-name }}
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context

@@ -9,7 +9,6 @@
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
    [toucan2.jdbc.connection :as t2.jdbc.conn]
-   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -129,63 +128,9 @@
   []
   (.id *application-db*))
 
-(defn- reset-autocommit!
-  "Restore `connection`'s autoCommit to the JDBC default of true, logging -- but not propagating -- any failure, so a
-  reset error never masks the original exception or breaks the connection's return to the pool."
-  [^java.sql.Connection connection]
-  (try
-    (.setAutoCommit connection true)
-    (catch Throwable t
-      (log/warn t "Failed to reset the connection's autocommit flag to true"))))
-
-(def ^:private select-fetch-size
-  "Default JDBC fetch size (rows per network round-trip) for app-db queries. Postgres only streams a result set from a
-  server-side cursor -- instead of materializing the whole thing in client memory -- when the fetch size is positive
-  *and* autoCommit is off (see [[do-with-app-db-connection]]); the JDBC default fetch size of 0 means \"fetch
-  everything\"."
-  500)
-
-(defn- do-with-app-db-connection
-  "Acquire a connection from the application DB and run `f` on it.
-
-  On Postgres we run the connection with autoCommit *off* so the driver streams large SELECTs from a server-side cursor
-  instead of buffering them into client memory, and we commit (or roll back on error) manually at the end of the
-  connection scope. We also set a positive default fetch size, which Postgres additionally requires before it will use a
-  cursor. Writes still commit -- Toucan 2's transaction handling commits at the end of each [[t2/with-transaction]], and
-  anything left uncommitted in the scope (e.g. a bare SELECT) is committed here.
-
-  We restore autoCommit=true before the connection returns to the pool: other borrowers of the same pooled connection
-  (Liquibase, raw `.getConnection` callers) expect the JDBC default, and in particular the pool's `on-check-in` hook
-  runs `DISCARD ALL`, which Postgres refuses to run inside a transaction block. H2/MySQL keep the plain JDBC-default
-  behavior.
-
-  This runs only at the outermost connection acquisition (nested Toucan calls reuse the already-bound
-  `java.sql.Connection`), so `conn` is always a freshly checked-out pooled connection we own outright. We flip autoCommit
-  off unconditionally -- idempotent if it is somehow already off -- and always commit and reset, which also heals a
-  connection a previous borrower may have left in manual-commit mode."
-  [^ApplicationDB app-db f]
-  (if (not= :postgres (.db-type app-db))
-    (with-open [conn (.getConnection app-db)]
-      (f conn))
-    (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :fetch-size select-fetch-size)]
-      (with-open [conn (.getConnection app-db)]
-        (.setAutoCommit conn false)
-        (try
-          (let [result (f conn)]
-            (.commit conn)
-            result)
-          (catch Throwable e
-            (try
-              (.rollback conn)
-              (catch Throwable rollback-e
-                (log/warn rollback-e "Failed to roll back app-db connection")))
-            (throw e))
-          (finally
-            (reset-autocommit! conn)))))))
-
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (do-with-app-db-connection *application-db* f))
+  (t2.conn/do-with-connection *application-db* f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 
@@ -194,16 +139,60 @@
   []
   (pos? *transaction-depth*))
 
+;; Accumulates thunks to run after the outermost transaction commits. Bound to a fresh atom when the
+;; outermost transaction starts (see [[do-with-transaction]]); nil outside any transaction.
+(def ^:private ^:dynamic *after-commit-callbacks* nil)
+
+(defn do-after-commit
+  "Run `thunk` after the current outermost transaction commits successfully — never on rollback.
+  Outside a transaction (autocommit), runs `thunk` immediately — the surrounding write already committed.
+  Use to *schedule* post-commit work — enqueue async work, fire a `future`, publish an event — that must
+  observe committed state (e.g. a reconcile that reads the row).
+  Do not do synchronous DB I/O in `thunk`: it runs while the transaction's connection is still checked out,
+  so a query here would hold a second connection and can deadlock a saturated pool. Hand DB work to the
+  async job you schedule, which acquires its own connection."
+  [thunk]
+  (if-let [callbacks *after-commit-callbacks*]
+    (do (swap! callbacks conj thunk) nil)
+    (thunk)))
+
+(defn- run-after-commit-callbacks! [callbacks]
+  ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
+  ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
+  ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
+  ;; immediately rather than enqueue into this now-drained accumulator.
+  (binding [t2.conn/*current-connectable* nil
+            *transaction-depth*           0
+            *after-commit-callbacks*      nil]
+    (doseq [thunk @callbacks]
+      ;; the transaction already committed; a failing callback must not unwind it
+      (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
+    (reset! callbacks [])))
+
+(defn- discard-after-commit-callbacks-after! [callback-count]
+  (when-let [callbacks *after-commit-callbacks*]
+    (swap! callbacks
+           (fn [callbacks]
+             ;; copy rather than return the subvec view, which would retain the discarded callbacks (and their
+             ;; captured closures) through the backing array until the outer transaction finishes
+             (into [] (subvec callbacks 0 (min callback-count (count callbacks))))))))
+
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
-            (let [savepoint (.setSavepoint connection)]
+            (let [savepoint      (.setSavepoint connection)
+                  callback-count (some-> *after-commit-callbacks* deref count)]
               (try
                 (let [result (f connection)]
                   (when (= *transaction-depth* 1)
-                    ;; top-level transaction, commit
+                    ;; top-level transaction; post-commit side effects run after the transaction bindings unwind
                     (.commit connection))
                   result)
                 (catch Throwable txn-e
+                  ;; the nested body failed, so its callbacks must never fire — discard them before attempting
+                  ;; rollback, otherwise a throwing .rollback would leave them in the shared accumulator to run
+                  ;; at outer-commit time for data that was rolled back
+                  (when callback-count
+                    (discard-after-commit-callbacks-after! callback-count))
                   (try
                     (.rollback connection savepoint)
                     (catch Exception rollback-e
@@ -219,7 +208,10 @@
         (thunk)
         (finally
           ;; prevent a failing .setAutoCommit call from masking the original exception
-          (reset-autocommit! connection)))
+          (try
+            (.setAutoCommit connection true)
+            (catch Throwable t
+              (log/warn t "Failed to reset the connection's autocommit flag to true")))))
       (thunk))))
 
 (comment
@@ -253,8 +245,15 @@
                     {:options options}))
 
     :else
-    (binding [*transaction-depth* (inc *transaction-depth*)]
-      (do-transaction connection f))))
+    (let [outermost? (zero? *transaction-depth*)
+          callbacks  (if outermost? (atom []) *after-commit-callbacks*)
+          result     (binding [*transaction-depth*      (inc *transaction-depth*)
+                               ;; one accumulator for the whole tree, created when the outermost transaction starts
+                               *after-commit-callbacks* callbacks]
+                       (do-transaction connection f))]
+      (when outermost?
+        (run-after-commit-callbacks! callbacks))
+      result)))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively

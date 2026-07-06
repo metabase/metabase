@@ -9,6 +9,48 @@
 
 (set! *warn-on-reflection* true)
 
+;;; ------------------------------------------------- Merge target helpers -------------------------------------------------
+
+(deftest merge-target?-test
+  (testing "true only for a table-incremental target with a merge strategy"
+    (is (transforms-base.u/merge-target?
+         {:target {:type "table-incremental"
+                   :target-incremental-strategy {:type "merge" :unique-key [{:name "id"}]}}}))
+    (is (not (transforms-base.u/merge-target?
+              {:target {:type "table-incremental"
+                        :target-incremental-strategy {:type "append"}}})))
+    (is (not (transforms-base.u/merge-target? {:target {:type "table"}})))))
+
+(deftest merge-target-unique-key-test
+  (testing "returns the physical column names of the merge key"
+    (is (= ["id"]
+           (transforms-base.u/merge-target-unique-key
+            {:target {:target-incremental-strategy {:type "merge" :unique-key [{:name "id"}]}}})))
+    (is (= ["order_id" "region"]
+           (transforms-base.u/merge-target-unique-key
+            {:target {:target-incremental-strategy
+                      {:type "merge" :unique-key [{:name "order_id"} {:name "region"}]}}}))))
+  (testing "nil when the target isn't a merge target"
+    (is (nil? (transforms-base.u/merge-target-unique-key
+               {:target {:target-incremental-strategy {:type "append"}}})))))
+
+(deftest validate-merge-unique-key!-test
+  (testing "returns the key when every column is present in the target columns"
+    (is (= ["id"] (transforms-base.u/validate-merge-unique-key! ["id"] ["id" "status"])))
+    (is (= ["a" "b"] (transforms-base.u/validate-merge-unique-key! ["a" "b"] ["a" "b" "c"]))))
+  (testing "throws when a key column is not among the target columns"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"not present in the target"
+         (transforms-base.u/validate-merge-unique-key! ["id" "ghost"] ["id" "status"])))
+    (testing "the thrown error carries a user-facing :transform-message"
+      (is (-> (try
+                (transforms-base.u/validate-merge-unique-key! ["ghost"] ["id"])
+                (catch clojure.lang.ExceptionInfo e
+                  (ex-data e)))
+              :transform-message
+              some?)))))
+
 (deftest throw-if-db-routing-enabled!-oss-test
   (testing "on OSS (no :database-routing premium feature) the check is a no-op"
     (mt/with-premium-features #{}

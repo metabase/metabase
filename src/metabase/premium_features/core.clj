@@ -62,6 +62,7 @@
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
+  enable-library-retrieval?
   enable-metabase-ai-managed?
   enable-metabot-v3?
   enable-dependencies?

@@ -44,9 +44,26 @@ To open a **measure** in the metrics explorer:
 2. Select your measure.
 3. On the measure's page, click **three dots** next to the measure's name and select **Explore**.
 
-Once you open a measure or metric in the metrics explorer, Metabase will create tabs plotting the metric/measure along the most appropriate dimensions, as well as the **Totals** tab with the total result of the metric, without any dimensions applied.
+When you open a measure or metric in the Metrics explorer, Metabase plots it along the most appropriate dimension. To change how the metric is broken out, click the current breakout dimension in the bottom controls to open the **Break out** sidebar. 
+
+By default, the sidebar lists all available dimensions. The heading reads **Dimensions** when you select a single metric or measure, or **Shared dimensions** when you compare multiple metrics or measures. 
+
+To break out by a column that isn't listed, click **See all**. This shows every column from the table the metric or measure is built on, and any related tables. To see the total result without any dimensions, select **No breakout**.
 
 You can also [break out](#break-out-by-dimensions) a metric/measure by additional dimensions or [filter the metric/measure](#filter-metrics-and-measures).
+
+Column labels are hidden from the visualization by default. To show them, open the **...** menu in the bottom controls and enable the **Show column labels** toggle.
+
+### Time and country dimensions
+
+Metabase collapses all time columns into a single **Time** bucket and all country columns into a single **Country** bucket. 
+
+- A column appears in the **Time** bucket based on its data type, so any date or datetime column is included. 
+- A column appears in the **Country** bucket based on its semantic type, so the **Country** bucket only appears when a column has the **Country** semantic type. 
+
+To break out by a specific time or country column, click the slider button next to **Time** or **Country** and choose one.
+
+![Metrics explorer time bucket](images/metrics-explorer-time-bucket.png)
 
 ## Compare metrics and measures
 
@@ -59,25 +76,17 @@ To compare multiple metrics or measures:
 
    ![Compare metrics](./images/compare-metrics.png)
 
-You can add the same metric/measure multiple times. This is useful if you want to [break out](#break-out-by-dimensions) or [filter](#filter-metrics-and-measures) the metric, while keeping the total trend visibile. For example, you might want to compare the trend of total revenue to the revenue of a single product category.
+You can add the same metric/measure multiple times. This is useful if you want to [break out](#break-out-by-dimensions) or [filter](#filter-metrics-and-measures) the metric, while keeping the total trend visible. For example, you might want to compare the trend of total revenue to the revenue of a single product category.
 
-Once you pick the metrics, you'll see the dimensions of the first metric/measure below the search bar. You can pick a dimension to compare metrics/measures (for example, if you want to see how both Number of Orders and Revenue change by date, state, or product category).
+Once you pick the metrics or measures, open the **Break out** sidebar to choose a dimension to compare them by. Metabase matches dimensions across metrics/measures differently depending on the column type:
+
+- **Compare across different time or country columns.** If your metrics/measures have time or country dimensions, you can choose which column each metric/measure uses for the comparison, even if they're different columns. For example, you can compare Orders by their order date with Reviews by their review date. Click the slider icon next to **Time** or **Country** to choose a dimension for each metric/measure.
+  ![Metrics explorer time bucket comparison](images/metrics-explorer-time-bucket-comparison.png)
+- **Other columns require an exact match.** The column appears as a comparison option under **Shared dimensions** only if both metrics/measures have it. To break out by a column that only one metric/measure has, click **See all** and select that column. Metabase applies the breakout to that metric/measure and disables the other.
 
 ![Compare metrics](./images/two-metrics.png)
 
-Metabase will automatically detect shared dimensions and offer them for comparison, like when the metrics/measures are associated with the same data source, or the underlying data sources have foreign key relationships to another shared data source.
-
-If your metrics/measures don't have shared dimensions, you'll need to select a dimension for comparison:
-
-1. Click on the **+** under the search bar to select a dimension for the first metric/measure.
-
-   ![Pick first dimension](./images/pick-first-dimension.png)
-
-2. At the bottom of the screen, select compatible dimensions for other metrics/measures.
-
-   ![Pick second dimension](./images/pick-second-dimension.png)
-
-When your metrics/measures don't have shared dimensions, Metabase has no way of knowing how the dimensions relate to each other, so it's on you to make sure the dimensions you pick make sense to compare!
+Metabase treats dimensions as shared when the metrics or measures come from the same data source, or when their data sources have foreign key relationships to a common data source.
 
 You can [filter](#filter-metrics-and-measures) or [break out](#break-out-by-dimensions) each metric/measure separately, or [do simple calculations with metrics/measures](#calculations-with-metrics-and-measures).
 
@@ -89,12 +98,12 @@ You can also break out each metric by additional dimensions. For example, you mi
 
 To break out a metric or measure by additional dimensions:
 
-1. Click on the metric's card in the search bar.
-2. Select **Break out**
+1. Click the metric's card in the search bar.
+2. Select **Add a series breakout**
    ![Break out by](./images/break-out-metric.png)
 3. Choose the breakout dimension.
 
-To remove the breakout, click on the measure/metric card in the search bar again and select **Remove breakout**.
+To remove the breakout, click on the measure/metric card in the search bar again and select **Remove series breakout**.
 
 ## Filter metrics and measures
 

@@ -74,13 +74,14 @@
   "Allow-list of API sort keys → vectors of HoneySQL ORDER BY expressions (sans
    direction). A vector lets a single sort key emit multiple ORDER BY terms that
    share the same direction (e.g. user sort orders by first_name then last_name)."
-  {"created_at"    [:c.created_at]
-   "message_count" [:message_count]
-   "total_tokens"  [:total_tokens]
-   "user"          [[:lower [:min :u.first_name]]
-                    [:lower [:min :u.last_name]]]
-   "profile_id"    [:profile_id]
-   "ip_address"    [:c.ip_address]})
+  {"created_at"        [:c.created_at]
+   "message_count"     [:message_count]
+   "total_tokens"      [:total_tokens]
+   "cache_read_tokens" [:cache_read_tokens]
+   "user"              [[:lower [:min :u.first_name]]
+                        [:lower [:min :u.last_name]]]
+   "profile_id"        [:profile_id]
+   "ip_address"        [:c.ip_address]})
 
 (def ^:private list-query
   "HoneySQL query that selects one row per conversation with the aggregate
@@ -103,7 +104,18 @@
                             [:= :mm.deleted_at nil]]
                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                  :limit    1}
-                :profile_id]]
+                :profile_id]
+               ;; Cache tokens are only recorded per LLM call in `ai_usage_log`
+               ;; (`metabot_message` stores prompt+completion only), so this is a
+               ;; correlated subquery rather than another one-to-many join, which
+               ;; would fan out against the `metabot_message` join and inflate
+               ;; every aggregate above.
+               [[:coalesce
+                 {:select [[[:sum :aul.cache_read_tokens]]]
+                  :from   [[:ai_usage_log :aul]]
+                  :where  [:= :aul.conversation_id :c.id]}
+                 0]
+                :cache_read_tokens]]
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:and
                                       [:= :m.conversation_id :c.id]
@@ -123,6 +135,7 @@
    :user_message_count      (:user_message_count row)
    :assistant_message_count (:assistant_message_count row)
    :total_tokens            (long (:total_tokens row 0))
+   :cache_read_tokens       (long (:cache_read_tokens row 0))
    :last_message_at         (:last_message_at row)
    :profile_id              (:profile_id row)
    :search_count            (:search_count row 0)
