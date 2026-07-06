@@ -26,6 +26,7 @@
                                           seconds-from-now-ns
                                           table-rows
                                           utc-timestamp
+                                          wait-for-table
                                           with-transform-cleanup!]]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -819,24 +820,6 @@
       (is (= (count ids) actual-count)
           (str "Expected " (count ids) " rows with category " category
                " in table " table-name ", but got " actual-count)))))
-
-(defn- wait-for-table
-  "Wait for a table to be created AND fully synced (fields included), with timeout.
-
-   Merely appearing in metadata is not enough: the target's field sync runs in the background after the
-   Table row is inserted, and querying before it finishes fails with \"Table has no Fields associated
-   with it\" on slow warehouses like Redshift's shared CI cluster."
-  [table-name timeout-ms]
-  (let [limit (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (Thread/sleep 200)
-      (when (> (System/currentTimeMillis) limit)
-        (throw (ex-info "table has not been created and synced" {:table-name table-name, :timeout-ms timeout-ms})))
-      (let [table (t2/select-one :model/Table :db_id (mt/id) :name table-name :active true)]
-        (if (and table
-                 (t2/exists? :model/Field :table_id (:id table) :active true))
-          table
-          (recur))))))
 
 (deftest execute-transform-test
   (mt/with-premium-features #{}
