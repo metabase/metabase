@@ -603,96 +603,105 @@ describe("Tenants - management", () => {
     H.modal().should("not.exist");
   });
 
-  it("should show tenant attributes in user attribute lists when multi tenancy is enabled", () => {
-    H.restore("postgres-writable");
-    H.activateToken("pro-self-hosted"); // needed because of the restore on the line above
+  it(
+    "should show tenant attributes in user attribute lists when multi tenancy is enabled",
+    { tags: "@external" },
+    () => {
+      H.restore("postgres-writable");
+      H.activateToken("pro-self-hosted"); // needed because of the restore on the line above
 
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
-    cy.findByRole("switch", { name: /model actions/i }).click({ force: true });
-    cy.findByRole("switch", { name: /database routing/i }).click({
-      force: true,
-    });
-
-    cy.findByPlaceholderText("Choose an attribute").click();
-
-    H.popover().findByText("@tenant.slug").should("not.exist");
-    cy.visit(
-      `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
-    );
-    cy.findByPlaceholderText("Pick a user attribute").click();
-
-    H.popover().findByText("@tenant.slug").should("not.exist");
-    cy.visit(
-      `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
-    );
-
-    cy.findByPlaceholderText("Pick a user attribute").click();
-    H.popover().findByText("@tenant.slug").should("not.exist");
-
-    cy.request("PUT", "/api/setting/use-tenants", { value: true });
-
-    createTenants();
-    createUsers();
-
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    cy.findByRole("switch", { name: /database routing/i }).click({
-      force: true,
-    });
-
-    cy.findByPlaceholderText("Choose an attribute").click();
-    H.popover()
-      .findByRole("option", { name: /@tenant.slug/ })
-      .findByTestId("system-defined-tooltip-icon")
-      .realHover();
-    // The select input also has a tooltip on hover, so we need to findAll
-    cy.findAllByRole("tooltip").should(
-      "contain.text",
-      "This attribute is system defined",
-    );
-
-    cy.visit(
-      `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
-    );
-    cy.findByPlaceholderText("Pick a user attribute").click();
-    H.popover()
-      .findByRole("option", { name: /@tenant.slug/ })
-      .findByTestId("system-defined-tooltip-icon");
-
-    cy.visit(
-      `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
-    );
-    cy.findByPlaceholderText("Pick a user attribute").click();
-    H.popover()
-      .findByRole("option", { name: /@tenant.slug/ })
-      .findByTestId("system-defined-tooltip-icon");
-
-    cy.log("check that tenant attributes propagate to users");
-
-    cy.visit("/admin/people/tenants/people");
-    cy.findByTestId("nav-item-external-users").findByText("Tenant users", 1000);
-    cy.findByTestId("admin-people-list-table").within(() => {
-      cy.findByText(`${GIZMO_USER.first_name} ${GIZMO_USER.last_name}`).should(
-        "exist",
-      );
-    });
-
-    cy.findAllByRole("button", { name: /ellipsis/ })
-      .should("have.length", 3)
-      .last()
-      .click();
-    H.popover().findByText("Edit user").click();
-
-    cy.wait(["@getUser", "@getTenant"]);
-
-    H.modal().within(() => {
-      cy.findByText("Attributes").click();
-      Object.entries(GIZMO_TENANT.attributes!).forEach(([key, value]) => {
-        cy.findByText(key).should("be.visible");
-        cy.findByDisplayValue(value).should("be.visible");
+      cy.findByRole("switch", { name: /model actions/i }).click({
+        force: true,
       });
-    });
-  });
+      cy.findByRole("switch", { name: /database routing/i }).click({
+        force: true,
+      });
+
+      cy.findByPlaceholderText("Choose an attribute").click();
+
+      H.popover().findByText("@tenant.slug").should("not.exist");
+      cy.visit(
+        `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
+      );
+      cy.findByPlaceholderText("Pick a user attribute").click();
+
+      H.popover().findByText("@tenant.slug").should("not.exist");
+      cy.visit(
+        `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
+      );
+
+      cy.findByPlaceholderText("Pick a user attribute").click();
+      H.popover().findByText("@tenant.slug").should("not.exist");
+
+      cy.request("PUT", "/api/setting/use-tenants", { value: true });
+
+      createTenants();
+      createUsers();
+
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+      cy.findByRole("switch", { name: /database routing/i }).click({
+        force: true,
+      });
+
+      cy.findByPlaceholderText("Choose an attribute").click();
+      H.popover()
+        .findByRole("option", { name: /@tenant.slug/ })
+        .findByTestId("system-defined-tooltip-icon")
+        .realHover();
+      // The select input also has a tooltip on hover, so we need to findAll
+      cy.findAllByRole("tooltip").should(
+        "contain.text",
+        "This attribute is system defined",
+      );
+
+      cy.visit(
+        `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
+      );
+      cy.findByPlaceholderText("Pick a user attribute").click();
+      H.popover()
+        .findByRole("option", { name: /@tenant.slug/ })
+        .findByTestId("system-defined-tooltip-icon");
+
+      cy.visit(
+        `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
+      );
+      cy.findByPlaceholderText("Pick a user attribute").click();
+      H.popover()
+        .findByRole("option", { name: /@tenant.slug/ })
+        .findByTestId("system-defined-tooltip-icon");
+
+      cy.log("check that tenant attributes propagate to users");
+
+      cy.visit("/admin/people/tenants/people");
+      cy.findByTestId("nav-item-external-users").findByText(
+        "Tenant users",
+        1000,
+      );
+      cy.findByTestId("admin-people-list-table").within(() => {
+        cy.findByText(
+          `${GIZMO_USER.first_name} ${GIZMO_USER.last_name}`,
+        ).should("exist");
+      });
+
+      cy.findAllByRole("button", { name: /ellipsis/ })
+        .should("have.length", 3)
+        .last()
+        .click();
+      H.popover().findByText("Edit user").click();
+
+      cy.wait(["@getUser", "@getTenant"]);
+
+      H.modal().within(() => {
+        cy.findByText("Attributes").click();
+        Object.entries(GIZMO_TENANT.attributes!).forEach(([key, value]) => {
+          cy.findByText(key).should("be.visible");
+          cy.findByDisplayValue(value).should("be.visible");
+        });
+      });
+    },
+  );
 });
 
 describe("tenant users", () => {

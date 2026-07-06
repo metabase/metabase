@@ -146,15 +146,16 @@ jobs:
       # steps below. DEV-1999.
       - uses: ./.github/actions/resolve-job-id
 
-      # Regular chunks don't run the QA database containers (see "Prepare
-      # Docker containers" above), so they skip the @external snapshot creator
-      # (qa-db.cy.snap.js) — it needs those containers, and it's the expensive
-      # part of snapshot generation (adding + syncing three QA databases).
+      # Chunks only generate the snapshots their containers can serve (see
+      # "Prepare Docker containers" above): regular chunks skip the whole QA
+      # database creator (qa-db.cy.snap.js), @external chunks skip just its
+      # mongo part. Smart runs (specs != '') start every container, so they
+      # generate everything.
       - name: Generate database snapshots
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
-          node e2e/runner/run_cypress_ci.js snapshot ${{ (inputs.specs == '' && !contains(inputs.tags, '@external')) && '--expose grepTags=-@external' || '' }}
+          node e2e/runner/run_cypress_ci.js snapshot ${{ (inputs.specs == '' && !contains(inputs.tags, '@external') && '--expose grepTags=-@external') || (inputs.specs == '' && '--expose grepTags=-@mongo') || '' }}
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         id: split-e2e

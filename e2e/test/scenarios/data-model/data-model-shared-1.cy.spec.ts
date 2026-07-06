@@ -214,31 +214,35 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         });
       });
 
-      it("should restore previously selected table when expanding the tree", () => {
-        H.restore("mysql-8");
-        cy.signInAsAdmin();
+      it(
+        "should restore previously selected table when expanding the tree",
+        { tags: ["@external"] },
+        () => {
+          H.restore("mysql-8");
+          cy.signInAsAdmin();
 
-        visit({
-          databaseId: MYSQL_DB_ID,
-          schemaId: MYSQL_DB_SCHEMA_ID,
-        });
+          visit({
+            databaseId: MYSQL_DB_ID,
+            schemaId: MYSQL_DB_SCHEMA_ID,
+          });
 
-        TablePicker.getDatabase("QA MySQL8").click();
-        cy.location("pathname").should(
-          "eq",
-          `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
-        );
+          TablePicker.getDatabase("QA MySQL8").click();
+          cy.location("pathname").should(
+            "eq",
+            `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          );
 
-        TablePicker.getDatabase("QA MySQL8").click();
-        cy.location("pathname").should(
-          "eq",
-          `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
-        );
+          TablePicker.getDatabase("QA MySQL8").click();
+          cy.location("pathname").should(
+            "eq",
+            `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          );
 
-        cy.log("ensure navigation to another db works");
-        TablePicker.getDatabase("Sample Database").click();
-        TablePicker.getTables().should("have.length", 12);
-      });
+          cy.log("ensure navigation to another db works");
+          TablePicker.getDatabase("Sample Database").click();
+          TablePicker.getTables().should("have.length", 12);
+        },
+      );
     });
 
     describe("1 database, 1 schema", () => {

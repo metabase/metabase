@@ -17,7 +17,7 @@ import {
 const { H } = cy;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-describe("admin > database > database routing", () => {
+describe("admin > database > database routing", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();

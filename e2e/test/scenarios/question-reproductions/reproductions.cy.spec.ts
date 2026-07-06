@@ -804,7 +804,7 @@ describe("issue 58829", () => {
   });
 });
 
-describe("54205", () => {
+describe("54205", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
 
@@ -1333,7 +1333,7 @@ describe("issue 64293", () => {
   });
 });
 
-describe("issue 13347", () => {
+describe("issue 13347", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore();
     H.restore("postgres-12");
@@ -1401,7 +1401,7 @@ describe("issue 13347", () => {
   });
 });
 
-describe("issue #47005", () => {
+describe("issue #47005", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore();
     H.restore("postgres-12");

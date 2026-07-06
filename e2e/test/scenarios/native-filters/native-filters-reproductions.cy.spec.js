@@ -1287,7 +1287,7 @@ describe("issue 58061", () => {
   });
 });
 
-describe("issue 63537", () => {
+describe("issue 63537", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_data_types" });

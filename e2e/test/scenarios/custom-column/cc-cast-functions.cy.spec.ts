@@ -361,7 +361,7 @@ describe("exercise binary datetime() cast function", () => {
   });
 });
 
-describe("exercise today() function", () => {
+describe("exercise today() function", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();

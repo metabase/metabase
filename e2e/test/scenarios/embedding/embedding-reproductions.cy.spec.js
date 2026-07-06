@@ -1353,7 +1353,7 @@ describe("issue 50373", () => {
   });
 });
 
-describe("issue 51934 (EMB-189)", () => {
+describe("issue 51934 (EMB-189)", { tags: "@external" }, () => {
   const COLLECTION_NAME = "Model Collection";
   const MODEL_IN_ROOT_NAME = "Products Model";
   const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";

@@ -421,7 +421,7 @@ describe("issue 52806", () => {
   });
 });
 
-describe("issue 55951", () => {
+describe("issue 55951", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
@@ -593,7 +593,7 @@ describe("issue 56905", () => {
   });
 });
 
-describe("issue 57644", () => {
+describe("issue 57644", { tags: "@external" }, () => {
   describe("with only one database", () => {
     beforeEach(() => {
       H.restore();
@@ -765,7 +765,7 @@ describe("issue 60719", () => {
   });
 });
 
-describe("issue 59356", () => {
+describe("issue 59356", { tags: "@external" }, () => {
   function typeRunShortcut() {
     cy.realPress([H.metaKey, "Enter"]);
   }
