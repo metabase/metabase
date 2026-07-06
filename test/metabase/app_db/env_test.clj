@@ -5,6 +5,8 @@
    [metabase.app-db.env :as mdb.env]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest raw-connection-string->type-test
   (are [s expected] (= expected (#'mdb.env/raw-connection-string->type s))
     "jdbc:postgres:wow"   :postgres
