@@ -48,4 +48,4 @@
   (extend blob-class
     jdbc/IResultSetReadColumn
     {:result-set-read-column (fn [^java.sql.Blob blob _ _]
-                               (.getBytes blob 0 (int (.length blob))))}))
+                               (.getBytes blob 1 (int (.length blob))))}))
