@@ -523,7 +523,9 @@
   [_object-type]
   (fn [k v]
     (case k
-      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map
+      ;; TODO (Cam 2026-07-06) not sure this is needed since this should be done automatically as part of normalizing
+      ;; a `:metabase.lib.schema.metadata/native-query-snippet` these days
+      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tags
                                               #?(:cljs (js->clj v)
                                                  :clj  v))
       v)))
