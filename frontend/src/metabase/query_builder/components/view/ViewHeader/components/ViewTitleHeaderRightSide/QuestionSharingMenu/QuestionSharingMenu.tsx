@@ -1,8 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { useSetting } from "metabase/common/hooks";
+import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
 import { LinkCopiedTooltipLabel } from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
 import {
   COPY_TIMEOUT_MS,
@@ -10,6 +12,7 @@ import {
   CopyPublicLinkMenuItem,
 } from "metabase/embedding/components/SharingMenu/MenuItems/CopyLinkMenuItem";
 import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
+import { InviteToViewMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/InviteToViewMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import {
   SharingButton,
@@ -87,11 +90,15 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
       resourceType: "question",
     },
   );
+  const [isInviteOpen, { open: openInvite, close: closeInvite }] =
+    useDisclosure();
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const shareUrl = useQuestionAppUrl(question);
 
   return (
     <Flex>
       <SharingMenu>
+        <InviteToViewMenuItem onClick={openInvite} />
         <CopyQuestionLinkMenuItem question={question} />
         {isPublicSharingEnabled && (
           <PublicLinkMenuItem
@@ -109,6 +116,19 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
           target={<Box h="2rem" />}
           isOpen
           onClose={() => setModalType(null)}
+        />
+      )}
+      {isInviteOpen && (
+        <InviteToViewModal
+          title={t`Invite someone to view this question`}
+          shareUrl={shareUrl}
+          triggeredFrom="question"
+          inviteTarget={{
+            type: "question",
+            id: question.id(),
+            name: question.card().name,
+          }}
+          onClose={closeInvite}
         />
       )}
     </Flex>
