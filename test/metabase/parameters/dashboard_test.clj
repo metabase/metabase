@@ -11,6 +11,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -399,4 +400,36 @@
                (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                      parameter (first (:parameters dashboard))]
                  (is (= [1 "Rustic Paper Wallet"]
+                        (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))
+
+(deftest ^:sequential implicit-fk-pk-name-remapped-value-single-field-test
+  (testing "a single-field id param on an FK column resolves via the implicit fk->pk->name remap"
+    (mt/dataset test-data
+      (let [mp           (mt/metadata-provider)
+            name-field   (lib.metadata/field mp (mt/id :people :name))
+            people-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                             (lib/filter (lib/= (lib.metadata/field mp (mt/id :people :id)) 1))
+                             (lib/with-fields [name-field]))
+            person-name  (-> (mt/formatted-rows [str] (qp/process-query people-query))
+                             first first)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query (mt/metadata-provider)
+                                                                            (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
+                       :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
+                                                                          :name      "User ID"
+                                                                          :slug      "p1"
+                                                                          :type      "id"
+                                                                          :sectionId "id"}]}
+                       :model/DashboardCard {} {:dashboard_id       dashboard-id
+                                                :card_id            card-id
+                                                :parameter_mappings [{:card_id      card-id
+                                                                      :parameter_id "p1"
+                                                                      :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                                                 (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}]}]
+          (mt/with-full-data-perms-for-all-users!
+            (data-perms/disable-perms-cache
+             (binding [api/*current-user-id*         (mt/user->id :rasta)
+                       qp.perms/*param-values-query* true]
+               (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                     parameter (first (:parameters dashboard))]
+                 (is (= [1 person-name]
                         (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))

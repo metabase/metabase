@@ -634,3 +634,20 @@
                            {:type   :string/=
                             :value  ["Gadget"]
                             :target [:dimension cat-ref]}]))))))))
+
+(deftest ^:parallel temporal-unit-allowlist-not-enforced-at-execution-test
+  (testing "a :temporal_units allow-list on the parameter is not enforced when expanding the query"
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)
+          month-ref  (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+          query      (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month)))]
+      (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :year}]]}}
+              (expand-parameters
+               (-> (lib.convert/->legacy-MBQL query)
+                   (assoc :parameters
+                          [{:type           :temporal-unit
+                            :target         [:dimension month-ref]
+                            :value          :year
+                            :temporal_units [:month :quarter]}]))))))))

@@ -96,12 +96,24 @@
        ~@body)))
 
 (defn table-rows
+  "Fetch all rows of `table-name` in the current test database.
+
+   Dataset tables (e.g. `transforms_products`) are resolved by their logical name via `mt/id`, which handles
+   drivers like Redshift that load datasets under prefixed physical names (`transforms_test_transforms_products`).
+   Transform TARGET tables are created with their exact requested name, so they are looked up by bare name scoped
+   to the current test database and, when the transforms dataset is loaded, to its schema — avoiding an unrelated
+   `Table` row with the same name under a different database/schema."
   [table-name]
-  (->>
-   (mt/rows (mt/process-query {:database (mt/id)
-                               :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
-                               :type     :query}))
-   (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x)))))
+  (let [pk (or (try (mt/id (keyword table-name)) (catch Exception _ nil))
+               (if-let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
+                                 (t2/select-one-fn :schema :model/Table products-id))]
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)))]
+    (->>
+     (mt/rows (mt/process-query {:database (mt/id)
+                                 :query    {:source-table pk}
+                                 :type     :query}))
+     (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x))))))
 
 (defn parse-timestamp
   "Parse a local datetime and convert it to a ZonedDateTime in the default timezone."
