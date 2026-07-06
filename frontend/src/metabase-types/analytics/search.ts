@@ -1,4 +1,4 @@
-import type { SearchContext, SearchModel } from "metabase-types/api";
+import type { SearchContext } from "metabase-types/api";
 
 type SearchEventSchema = {
   event: string;
@@ -54,26 +54,26 @@ type SearchContentType = (typeof SNOWPLOW_CONTENT_TYPES)[number];
 
 const SNOWPLOW_CONTENT_TYPE_SET = new Set<string>(SNOWPLOW_CONTENT_TYPES);
 
-// Maps a search request's `models` to snowplow `content_type`, bucketing untracked values into "other"
-// and de-duplicating. The `SearchContentType[]` return type doubles as a compile-time guard.
+const isSearchContentType = (model: string): model is SearchContentType =>
+  SNOWPLOW_CONTENT_TYPE_SET.has(model);
+
+// Maps arbitrary model strings to snowplow `content_type`, bucketing untracked values into "other"
+// and de-duplicating.
 export const toSnowplowContentTypes = (
-  models: SearchModel[] | null | undefined,
+  models: string[] | null | undefined,
 ): SearchContentType[] | null =>
   models == null
     ? null
     : Array.from(
         new Set(
-          models.map((model) =>
-            SNOWPLOW_CONTENT_TYPE_SET.has(model) ? model : "other",
-          ),
+          models.map((model) => (isSearchContentType(model) ? model : "other")),
         ),
       );
 
 // The snowplow `search` schema's `context` enum; keep in sync with
 // snowplow/iglu-client-embedded/schemas/com.metabase/search/jsonschema/1-1-4
-// A new UI context must be added here (and the iglu schema), or listed in `PENDING_CONTEXTS` to bucket
-// it as `"other"` until the schema catches up. Non-null in the event types below though the wire schema
-// allows null — keeping the schema nullable avoids a MODEL version bump that forks events to a new table.
+// Add a new UI context here (and to iglu), or to `PENDING_CONTEXTS` to emit it as "other" until iglu catches up.
+// Kept nullable on the wire (though always sent non-null) to avoid a MODEL version bump that forks events to a new table.
 type SnowplowSearchContext =
   | "basic-actions"
   | "browse"

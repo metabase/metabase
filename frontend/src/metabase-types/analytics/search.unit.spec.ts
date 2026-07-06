@@ -1,4 +1,4 @@
-import type { SearchContext, SearchModel } from "metabase-types/api";
+import type { SearchContext } from "metabase-types/api";
 
 import { toSnowplowContentTypes, toSnowplowContext } from "./search";
 
@@ -22,19 +22,12 @@ describe("toSnowplowContentTypes", () => {
 
   it("buckets untracked models into 'other'", () => {
     // A model that is a valid SearchModel but not in the snowplow content_type enum.
-    expect(
-      toSnowplowContentTypes(["not-a-content-type" as SearchModel]),
-    ).toEqual(["other"]);
+    expect(toSnowplowContentTypes(["not-a-content-type"])).toEqual(["other"]);
   });
 
   it("de-duplicates, collapsing repeats and multiple untracked models to a single 'other'", () => {
     expect(
-      toSnowplowContentTypes([
-        "card",
-        "card",
-        "mystery-a" as SearchModel,
-        "mystery-b" as SearchModel,
-      ]),
+      toSnowplowContentTypes(["card", "card", "mystery-a", "mystery-b"]),
     ).toEqual(["card", "other"]);
   });
 });
