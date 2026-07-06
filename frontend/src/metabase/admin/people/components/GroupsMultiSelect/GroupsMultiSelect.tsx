@@ -153,7 +153,7 @@ export const GroupsMultiSelect = ({
                 fw="normal"
                 withRemoveButton={!isGroupLocked(group)}
                 removeButtonProps={{
-                  "aria-label": t`Remove`,
+                  "aria-label": t`Remove ${getGroupNameLocalized(group)}`,
                   "aria-hidden": false,
                   className: S.remove,
                 }}
