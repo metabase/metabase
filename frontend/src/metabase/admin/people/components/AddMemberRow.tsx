@@ -94,9 +94,6 @@ export function AddMemberRow({
                 {Array.from(selectedUsersById.values()).map((user, index) => (
                   <Pill
                     key={user.id}
-                    size="xl"
-                    bg="background_page-tertiary"
-                    c="text-primary"
                     ms={index > 0 ? "sm" : ""}
                     withRemoveButton
                     onRemove={() => handleRemoveUser(user)}

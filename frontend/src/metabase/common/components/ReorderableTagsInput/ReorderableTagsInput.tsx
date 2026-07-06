@@ -55,14 +55,12 @@ export function SortablePill({
   onRemove,
   containerId,
   style,
-  size,
 }: {
   id: string;
   label: string;
   onRemove?: () => void;
   containerId?: string;
   style?: CSSProperties;
-  size?: MantineSize;
 }) {
   const {
     attributes,
@@ -88,7 +86,6 @@ export function SortablePill({
 
   return (
     <Pill
-      size={size}
       ref={setNodeRef}
       className={cx(S.pill, { [S.dragging]: isDragging })}
       withRemoveButton
@@ -98,15 +95,6 @@ export function SortablePill({
       {...attributes}
       {...listeners}
       style={combinedStyle}
-      styles={{
-        label: {
-          display: "flex",
-          alignItems: "center",
-        },
-        remove: {
-          marginRight: 0,
-        },
-      }}
       radius="xl"
       draggable
       onDragStart={(e) => {
@@ -270,7 +258,6 @@ export function ReorderableTagsInput({
 
           return (
             <SortablePill
-              size={size}
               key={v}
               id={v}
               label={data.find((o) => o.value === v)?.label ?? v}
