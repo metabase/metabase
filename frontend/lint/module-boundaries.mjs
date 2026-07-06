@@ -120,7 +120,7 @@ const elements = [
     enforceOutgoing: false,
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-sdk-package",
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
