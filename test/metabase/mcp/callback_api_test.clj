@@ -111,6 +111,18 @@
                 (t2/select-one :model/McpFeedback :user_id (mt/user->id :rasta)
                                {:order-by [[:id :desc]]})))))))
 
+(deftest feedback-post-requires-metabot-enabled-test
+  (testing "MCP feedback returns 403 and persists nothing when no metabot instance is enabled"
+    (mt/with-model-cleanup [:model/McpFeedback]
+      (mt/with-temporary-setting-values [metabot-enabled? false
+                                         embedded-metabot-enabled? false]
+        (let [session-id (mcp.session/create! (mt/user->id :rasta))
+              body       {:feedback          {:positive true}
+                          :conversation_data {:source "mcp"}}]
+          (is (=? {:status 403}
+                  (post-mcp-feedback :rasta 403 body session-id)))
+          (is (zero? (t2/count :model/McpFeedback :user_id (mt/user->id :rasta)))))))))
+
 (deftest feedback-post-rejects-oversized-free-text-test
   (testing "MCP feedback bounds user-controlled free text before persisting"
     (mt/with-model-cleanup [:model/McpFeedback]

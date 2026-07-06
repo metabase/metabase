@@ -6,10 +6,8 @@
 ## via a message FK.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/063_update_migrations.yaml
-
   - changeSet:
-      id: v63.2026-07-02T00:00:00
+      id: v63.d7cqgl
       author: tplude
       comment: Create mcp_feedback table for MCP Apps visualization feedback
       changes:

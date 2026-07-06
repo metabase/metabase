@@ -10,6 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
+   [metabase.metabot.config :as metabot.config]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -76,6 +77,7 @@
    request]
   (let [session-id (mcp-session-id-from-headers request)
         _          (check-session-header! session-id api/*current-user-id*)]
+    (metabot.config/check-metabot-enabled!)
     (persist-mcp-feedback! body))
   api/generic-204-no-content)
 
