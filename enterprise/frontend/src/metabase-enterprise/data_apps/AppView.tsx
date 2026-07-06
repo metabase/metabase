@@ -102,7 +102,6 @@ export function AppView({ params }: AppViewProps) {
           detach = attachIframeUrlMirror(win, name);
         }
       } catch (error) {
-
         detach = null;
         // Expected only for a cross-origin frame; rethrow anything else so mirror
         // bugs surface.
