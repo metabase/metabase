@@ -1320,6 +1320,15 @@
       (is (= {:resourceTemplates []}
              (get-in response [:body :result]))))))
 
+(deftest prompts-list-test
+  (testing "prompts/list returns an empty list of prompts"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "prompts/list")
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= {:prompts []}
+             (get-in response [:body :result]))))))
+
 (def ^:private scoped-test-uri "test://mcp/api-test/scoped")
 
 (defn- dispatch-initialized-request [msg token-scopes]
