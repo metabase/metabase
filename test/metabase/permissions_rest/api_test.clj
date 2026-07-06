@@ -397,6 +397,58 @@
                (do-perm-put "permissions/graph?force=false" 409)))
         (do-perm-put "permissions/graph?force=true" 200)))))
 
+(deftest oss-preserves-sandboxed-view-data-test
+  (testing "PUT /api/permissions/graph in OSS preserves stored EE sandbox config on rows it never surfaces"
+    (mt/with-model-cleanup [:model/Sandbox]
+      (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                     :model/Card {cid1 :id} {}
+                     :model/Card {cid2 :id} {}]
+        (mt/with-premium-features #{:advanced-permissions :sandboxes}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (-> (data-perms.graph/api-graph)
+               (assoc-in [:groups gid (mt/id) :view-data]
+                         {"PUBLIC" {(mt/id :orders) :sandboxed (mt/id :people) :sandboxed}})
+               (assoc :sandboxes [{:table_id (mt/id :orders) :group_id gid :card_id cid1 :attribute_remappings {"foo" 1}}
+                                  {:table_id (mt/id :people) :group_id gid :card_id cid2 :attribute_remappings {"foo" 1}}]))))
+        (mt/with-premium-features #{}
+          (mt/user-http-request
+           :crowberto :put 200 "permissions/graph"
+           (assoc-in (data-perms.graph/api-graph)
+                     [:groups gid (mt/id) :create-queries]
+                     {"PUBLIC" {(mt/id :orders) :query-builder}})))
+        (testing "both sandbox rows survive the OSS create-queries edit"
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :orders) :group_id gid))
+          (is (t2/exists? :model/Sandbox :table_id (mt/id :people) :group_id gid)))
+        (testing "the graph still surfaces :sandboxed view-data under EE"
+          (mt/with-premium-features #{:advanced-permissions :sandboxes}
+            (is (= :sandboxed (get-in (data-perms.graph/api-graph)
+                                      [:groups gid (mt/id) :view-data "PUBLIC" (mt/id :orders)])))
+            (is (= :sandboxed (get-in (data-perms.graph/api-graph)
+                                      [:groups gid (mt/id) :view-data "PUBLIC" (mt/id :people)])))))))))
+
+(deftest oss-edit-create-queries-on-blocked-row-test
+  (testing "PUT /api/permissions/graph in OSS: a create-queries-only edit on a :blocked database returns 200 and bumps view-data to :unrestricted"
+    (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                   :model/Database {db-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (data-perms/set-database-permission! gid db-id :perms/view-data :blocked))
+      (mt/with-premium-features #{}
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (data-perms.graph/api-graph) [:groups gid db-id :create-queries] :query-builder-and-native))
+        (is (= :unrestricted (data-perms/table-permission-for-groups #{gid} :perms/view-data db-id nil)))))))
+
+(deftest update-graph-response-echoes-only-modified-groups-test
+  (testing "PUT /api/permissions/graph response :groups map contains only the request's modified group ids"
+    (mt/with-temp [:model/PermissionsGroup g1 {} :model/PermissionsGroup g2 {}]
+      (let [body (assoc-in (data-perms.graph/api-graph)
+                           [:groups (u/the-id g1) (mt/id) :view-data] :unrestricted)
+            resp (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                       (update body :groups select-keys [(u/the-id g1)]))]
+        (is (= #{(u/the-id g1)} (set (keys (:groups resp)))))
+        (is (not (contains? (:groups resp) (u/the-id g2))))))))
+
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (let [table-id (mt/id :venues)]

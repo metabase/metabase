@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -15,12 +16,14 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
                                           parse-instant
                                           seconds-from-now-ns
+                                          table-rows
                                           utc-timestamp
                                           with-transform-cleanup!]]
    [metabase.util :as u]
@@ -1259,7 +1262,8 @@
                                  :target {:type "table" :name (mt/random-name)}})
           (mt/user-http-request :rasta :put 403 (str "transform/" (:id transform))
                                 {:name "Updated"})
-          (mt/user-http-request :rasta :delete 403 (str "transform/" (:id transform))))
+          (mt/user-http-request :rasta :delete 403 (str "transform/" (:id transform)))
+          (mt/user-http-request :rasta :post 403 (format "transform/%d/run" (:id transform))))
         (testing "Data analysts can read transforms"
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (mt/user-http-request :lucky :get 200 "transform")
@@ -1919,3 +1923,146 @@
             (mt/user-http-request :crowberto :get 400 "transform/run"
                                   :sort-column "bogus"
                                   :sort-direction "asc")))))))
+
+(deftest execute-transform-with-field-filter-template-tag-test
+  (testing "a required field-filter (:dimension) template tag resolves via its default value at unattended execution"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (with-transform-cleanup! [table-name "field_filter_default_output"]
+                (let [mp           (mt/metadata-provider)
+                      category-col (lib.metadata/field mp (mt/id :transforms_products :category))
+                      query        (lib/with-template-tags
+                                     (lib/native-query mp "SELECT * FROM transforms_products WHERE {{ cat }}")
+                                     {"cat" {:id "cat" :name "cat" :display-name "Cat"
+                                             :type :dimension :widget-type :string/=
+                                             :dimension (lib/ref category-col)
+                                             :required true :default ["Gadget"]}})
+                      {id :id}     (mt/user-http-request :lucky :post 200 "transform"
+                                                         {:name   "Field Filter Transform"
+                                                          :source {:type "query" :query query}
+                                                          :target {:type   "table"
+                                                                   :schema (get-test-schema)
+                                                                   :name   table-name}})]
+                  (test-run! id)
+                  (check-query-results table-name [5 11 16] "Gadget"))))))))))
+
+(deftest execute-transform-with-table-template-tag-test
+  (testing "a table (table-variable) template tag substitutes a schema-qualified identifier at unattended execution"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (with-transform-cleanup! [table-name "table_tag_output"]
+                (let [source-table-id (mt/id :transforms_products)
+                      query           (lib/with-template-tags
+                                        (lib/native-query (mt/metadata-provider) "SELECT * FROM {{ tbl }}")
+                                        {"tbl" {:id "tbl" :name "tbl" :display-name "Tbl" :type :table
+                                                :table-id source-table-id}})
+                      {id :id}        (mt/user-http-request :lucky :post 200 "transform"
+                                                            {:name   "Table Tag Transform"
+                                                             :source {:type "query" :query query}
+                                                             :target {:type   "table"
+                                                                      :schema (get-test-schema)
+                                                                      :name   table-name}})]
+                  (test-run! id)
+                  (wait-for-table table-name 5000)
+                  (is (= (count (table-rows "transforms_products"))
+                         (count (table-rows table-name)))))))))))))
+
+(deftest reject-target-name-collision-test
+  (testing "target-name collision with a pre-existing, non-transform table is rejected"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (let [schema               (get-test-schema)
+                    existing-table-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+                    other-existing-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_orders))]
+                (testing "POST /api/transform"
+                  (mt/user-http-request :lucky :post 403 "transform"
+                                        {:name   "Colliding Transform"
+                                         :source {:type "query" :query (make-query "Gadget")}
+                                         :target {:type   "table"
+                                                  :schema schema
+                                                  :name   existing-table-name}}))
+                (testing "PUT /api/transform/:id (target-change collision)"
+                  (with-transform-cleanup! [table-name "collision_source"]
+                    (let [created (mt/user-http-request :lucky :post 200 "transform"
+                                                        {:name   "Non-colliding Transform"
+                                                         :source {:type "query" :query (make-query "Gadget")}
+                                                         :target {:type   "table"
+                                                                  :schema schema
+                                                                  :name   table-name}})]
+                      (mt/user-http-request :lucky :put 403 (format "transform/%d" (:id created))
+                                            {:target {:type   "table"
+                                                      :schema schema
+                                                      :name   other-existing-name}}))))))))))))
+
+(deftest delete-target-then-recreate-same-name-test
+  (testing "re-running after DELETE /api/transform/:id/table recreates the same target name"
+    (mt/with-premium-features #{}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "gadget_products_recreate"]
+            (let [target     {:type "table" :schema (get-test-schema) :name table-name}
+                  definition {:name   "Recreate Target Transform"
+                              :source {:type "query" :query (make-query "Gadget")}
+                              :target target}
+                  {id :id}   (mt/user-http-request :crowberto :post 200 "transform" definition)]
+              (test-run! id)
+              (is (true? (transforms-base.u/target-table-exists? definition)))
+              (mt/user-http-request :crowberto :delete 204 (format "transform/%s/table" id))
+              (is (false? (transforms-base.u/target-table-exists? definition)))
+              (test-run! id)
+              (is (true? (transforms-base.u/target-table-exists? definition))))))))))
+
+(deftest get-transform-with-deleted-database-test
+  (testing "GET /api/transform/:id degrades gracefully when its source database has been deleted"
+    (mt/with-temp [:model/Database db {}]
+      (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:id db))
+            query (lib/native-query mp "select 1")]
+        (mt/with-temp [:model/Transform transform {:source {:type "query" :query query}
+                                                   :target {:type "table" :name (mt/random-name)}}]
+          (t2/delete! :model/Database (:id db))
+          (is (=? {:id (:id transform)}
+                  (mt/user-http-request :crowberto :get 200 (str "transform/" (:id transform))))))))))
+
+(deftest cancel-transform-run-endpoint-test
+  (testing "POST /api/transform/:id/cancel"
+    (mt/with-premium-features #{}
+      (mt/test-driver :postgres
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "cancel_endpoint_output"]
+            (let [query      (lib/native-query (mt/metadata-provider)
+                                               "SELECT a FROM (SELECT pg_sleep(5)) x, generate_series(1, 5) a")
+                  {id :id}   (mt/user-http-request :crowberto :post 200 "transform"
+                                                   {:name   "Slow Transform"
+                                                    :source {:type "query" :query query}
+                                                    :target {:type   "table"
+                                                             :schema (get-test-schema)
+                                                             :name   table-name}})]
+              (testing "cancelling a running transform synchronously marks the run canceling"
+                (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" id))
+                (mt/user-http-request :crowberto :post 204 (format "transform/%s/cancel" id))
+                ;; A background poller (every 20s, see metabase.transforms.canceling/CancelRuns) drives
+                ;; the same transition, so an unlucky race can already land the run in "canceled" by the
+                ;; time we check here.
+                (is (contains? #{"canceling" "canceled"}
+                               (-> (mt/user-http-request :crowberto :get 200 (format "transform/%s" id))
+                                   :last_run :status))))
+              ;; Drive the cancelation to completion directly instead of waiting on the 20s background
+              ;; poller — the same mechanism metabase.transforms.canceling-test uses to settle a run
+              ;; synchronously. `running-run-for-transform-id` returns nil if the poller already beat us
+              ;; to it, in which case there's nothing left to do.
+              (when-let [run (transforms.core/running-run-for-transform-id id)]
+                (transforms.core/cancel-run! run (java.time.OffsetDateTime/now)))
+              (is (= "canceled"
+                     (-> (mt/user-http-request :crowberto :get 200 (format "transform/%s" id))
+                         :last_run :status)))
+              (testing "cancelling a transform with no running run is a 404"
+                (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))

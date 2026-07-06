@@ -229,3 +229,14 @@
         (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
       (testing "New group should NOT have permissions for the destination database"
         (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+
+(deftest manage-db-user-cannot-delete-destination-database-test
+  (testing "DELETE /api/database/:id is rejected (403) for a non-superuser with only manage-database perms on a routed destination"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                   :model/Database {dest :id} {:router_database_id db-id}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (str "database/" dest))))
+        (is (t2/exists? :model/Database :id dest))))))

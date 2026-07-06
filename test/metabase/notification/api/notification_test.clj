@@ -197,6 +197,22 @@
                                                            :details nil}]}]}}
                       (mt/latest-audit-log-entry))))))))))
 
+(deftest slack-recipient-persists-channel-id-and-name-test
+  (testing "A Slack recipient's details persist both the display name and the immutable channel_id"
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (let [notification {:payload_type "notification/card"
+                            :active       true
+                            :creator_id   (mt/user->id :crowberto)
+                            :payload      {:card_id card-id}
+                            :handlers     [{:channel_type :channel/slack
+                                            :recipients   [{:type    :notification-recipient/raw-value
+                                                            :details {:value "#work" :channel_id "C001"}}]}]}
+              created       (mt/user-http-request :crowberto :post 200 "notification" notification)
+              slack-details (-> created :handlers first :recipients first :details)]
+          (is (= "#work" (:value slack-details)))
+          (is (= "C001" (:channel_id slack-details))))))))
+
 (deftest create-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :post 401 "notification"))))

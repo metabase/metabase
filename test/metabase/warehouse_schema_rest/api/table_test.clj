@@ -1480,3 +1480,16 @@
           (data-perms/set-table-permission! (perms-group/all-users) table-id :perms/create-queries :query-builder)
           (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
             (is (map? response))))))))
+
+(deftest bulk-update-tables-visibility-persists-test
+  (testing "PUT /api/table with an ids vector flips visibility_type on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id) :visibility_type nil}
+                   :model/Table {t2 :id} {:db_id (mt/id) :visibility_type nil}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type "hidden"})
+      (is (= [:hidden :hidden]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2])))
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type nil})
+      (is (= [nil nil]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2]))))))

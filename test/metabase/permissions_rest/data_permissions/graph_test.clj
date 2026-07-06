@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.core.core :as mbc]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -614,3 +615,12 @@
                   {}))))))
     (testing "an empty reducible yields an empty graph"
       (is (= {} (reduce-into-graph [] identity))))))
+
+(deftest audit-db-excluded-from-permissions-graph-test
+  (testing "GET /api/permissions/graph does not include the audit DB"
+    ;; Guarantee the audit DB is installed rather than relying on test ordering (this is a no-op if it's already there).
+    (mbc/ensure-audit-db-installed!)
+    (is (t2/exists? :model/Database :id audit/audit-db-id))
+    (let [resp (mt/user-http-request :crowberto :get 200 "permissions/graph")]
+      (is (every? #(not (contains? % audit/audit-db-id))
+                  (vals (:groups resp)))))))

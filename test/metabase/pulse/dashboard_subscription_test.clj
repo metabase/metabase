@@ -4,12 +4,15 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
@@ -17,6 +20,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -1229,6 +1233,41 @@
                                                 pulse.test-util/png-attachment]})
               (mt/summarize-multipart-single-email email
                                                    #"Aviary KPIs"))))}}))
+
+(deftest dashboard-sub-pivot-csv-attachment-test
+  (testing "PulseCard.pivot_results true produces a pivoted (not flat) CSV attachment (#49525)"
+    (let [{:keys [dataset_query visualization_settings]} (api.pivots/pivot-card)
+          header-col-count (fn [pivot?]
+                             (let [col-count (atom nil)]
+                               (do-test!
+                                {:card       {:dataset_query          dataset_query
+                                              :display                :pivot
+                                              :visualization_settings visualization_settings}
+                                 :dashcard   {:visualization_settings visualization_settings}
+                                 :pulse-card {:include_csv   true
+                                              :pivot_results pivot?}
+                                 :assert
+                                 {:email
+                                  (fn [_ [email]]
+                                    (let [csv-part (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+                                      (reset! col-count (-> csv-part :content slurp str/split-lines first (str/split #",") count))))}})
+                               @col-count))]
+      (is (not= (header-col-count true) (header-col-count false))
+          "the pivoted CSV header shape must differ from the flat CSV header shape"))))
+
+(deftest dashboard-subscription-email-branding-respects-whitelabel-test
+  (testing "the 'Made with Metabase' footer in dashboard subscription emails respects the :whitelabel premium feature"
+    (let [mp            (mt/metadata-provider)
+          query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          has-branding? (fn [email] (str/includes? (-> email :message first :content) "Made with"))]
+      (mt/with-premium-features #{}
+        (do-test!
+         {:card   {:dataset_query query}
+          :assert {:email (fn [_ [email]] (is (true? (has-branding? email))))}}))
+      (mt/with-premium-features #{:whitelabel}
+        (do-test!
+         {:card   {:dataset_query query}
+          :assert {:email (fn [_ [email]] (is (false? (has-branding? email))))}})))))
 
 (deftest multi-series-test
   (mt/with-temp

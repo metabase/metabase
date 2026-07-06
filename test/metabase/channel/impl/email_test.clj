@@ -7,6 +7,8 @@
    [metabase.channel.impl.email :as email.impl]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
+   [metabase.notification.send :as notification.send]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
 
 (deftest bcc-enabled-test
@@ -186,3 +188,25 @@
                     (and (re-find #"Rendering user-provided template" message)
                          (re-find #"Hello" message)))
                   (messages)))))))
+
+(deftest email-branding-hidden-when-whitelabel-test
+  (testing "the 'Made with Metabase' footer respects the :whitelabel premium feature"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card         {:name          "Orders question"
+                                      :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :subscriptions [{:type          :notification-subscription/cron
+                                        :cron_schedule "0 0 0 * * ? *"}]
+                       :handlers      [{:channel_type :channel/email
+                                        :recipients   [{:type    :notification-recipient/user
+                                                        :user_id (mt/user->id :crowberto)}]}]}]
+        (let [render! (fn []
+                        (-> (notification.tu/with-captured-channel-send!
+                              (#'notification.send/send-notification-sync! notification))
+                            :channel/email first :message first :content))]
+          (testing "branding link is present without whitelabel"
+            (mt/with-premium-features #{}
+              (is (str/includes? (render!) "Made with"))))
+          (testing "branding link is hidden with whitelabel"
+            (mt/with-premium-features #{:whitelabel}
+              (is (not (str/includes? (render!) "Made with"))))))))))

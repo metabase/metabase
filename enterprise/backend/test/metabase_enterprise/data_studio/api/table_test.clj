@@ -2,6 +2,7 @@
   "Tests for /api/ee/data-studio/table endpoints (enterprise-only: publish-tables, unpublish-tables)."
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
    [metabase.permissions.core :as perms]
@@ -14,6 +15,20 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest table-metadata-survives-deleted-transform-test
+  (testing "a table whose creating transform has since been deleted (metabase#69904)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temp [:model/Transform transform {}
+                     :model/Table     {table-id :id} {:transform_id (:id transform)}]
+        (t2/delete! :model/Transform (:id transform))
+        (testing "metabase_table.transform_id -> transform.id is ON DELETE SET NULL, not left dangling"
+          (is (nil? (t2/select-one-fn :transform_id :model/Table :id table-id))))
+        (testing "GET /api/table/:id does not crash"
+          (is (=? {:id table-id} (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))
+        (testing "GET /api/table (list, which hydrates :transform when transforms are enabled) does not crash"
+          (is (=? {:id table-id :transform nil}
+                  (m/find-first #(= table-id (:id %)) (mt/user-http-request :crowberto :get 200 "table")))))))))
 
 (deftest publish-table-test
   (mt/with-premium-features #{:library :audit-app}

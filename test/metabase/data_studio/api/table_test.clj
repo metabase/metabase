@@ -41,6 +41,15 @@
                                :visibility_type  "hidden"
                                :data_layer "hidden"})))))
 
+(deftest bulk-edit-does-not-allow-changing-data-source-away-from-transform-test
+  (testing "POST /api/data-studio/table/edit cannot change a transform-created table's data_source"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id :data_source :metabase-transform}]
+      (mt/user-http-request :crowberto :post 400 "data-studio/table/edit"
+                            {:table_ids   [table-id]
+                             :data_source "ingested"})
+      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
+
 (deftest data-analyst-can-access-endpoints-test
   (testing "Data analysts (members of Data Analysts group) can access data studio endpoints"
     (let [data-analyst-group-id (:id (perms-group/data-analyst))]
