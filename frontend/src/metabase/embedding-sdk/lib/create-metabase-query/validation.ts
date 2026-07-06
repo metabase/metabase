@@ -133,7 +133,7 @@ function isGroupedQuery(input: QueryInput) {
 }
 
 function isAggregationResultReference(
-  aggregations: QueryInput["aggregations"] | undefined,
+  aggregations: readonly unknown[] | undefined,
   value: unknown,
 ) {
   if (
@@ -148,7 +148,7 @@ function isAggregationResultReference(
 }
 
 function getAggregationResultColumnNames(
-  aggregations: QueryInput["aggregations"] | undefined,
+  aggregations: readonly unknown[] | undefined,
 ) {
   return (aggregations ?? []).flatMap((aggregation) => {
     if (isCountAggregation(aggregation)) {
@@ -183,7 +183,10 @@ function isBreakoutReference(
     return false;
   }
 
-  return (breakouts ?? []).some((breakout) => fieldsMatch(breakout, value));
+  return (breakouts ?? []).some(
+    (breakout) =>
+      fieldsMatch(breakout, value) && bucketOptionsMatch(breakout, value),
+  );
 }
 
 function getTableId(value: unknown): number | undefined {
@@ -259,5 +262,34 @@ function fieldsMatch(left: unknown, right: Record<string, unknown>) {
     leftSourceFieldId === rightSourceFieldId &&
     ((leftFieldId != null && leftFieldId === rightFieldId) ||
       left.name === right.name)
+  );
+}
+
+function bucketOptionsMatch(left: unknown, right: Record<string, unknown>) {
+  if (!isObject(left)) {
+    return false;
+  }
+
+  return (
+    left.unit === right.unit &&
+    binningOptionsMatch(left.binning, right.binning) &&
+    left.bins === right.bins &&
+    left.binWidth === right.binWidth
+  );
+}
+
+function binningOptionsMatch(left: unknown, right: unknown) {
+  if (left == null || right == null) {
+    return left == null && right == null;
+  }
+
+  if (!isObject(left) || !isObject(right)) {
+    return false;
+  }
+
+  return (
+    left.strategy === right.strategy &&
+    left["num-bins"] === right["num-bins"] &&
+    left["bin-width"] === right["bin-width"]
   );
 }

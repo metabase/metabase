@@ -13,6 +13,7 @@ import type { DatasetQuery } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import * as DataApp from "../../../data-app";
+import type { RowValue } from "../data-schema";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from ".";
 import {
@@ -189,7 +190,7 @@ const TEST_SCHEMA = {
       databaseId: 1,
       sourceTableId: 1,
       mappedTableIds: [1, 2],
-      columns: [{ name: "Revenue", displayName: "Revenue", jsType: "number" }],
+      columns: [{ name: "sum", displayName: "Revenue", jsType: "number" }],
       dimensions: {
         orders: {
           amount: {
@@ -663,7 +664,7 @@ function TypeFixtures() {
     aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
   });
 
-  const scalarAggregationValue: number | null | undefined =
+  const scalarAggregationValue: RowValue | undefined =
     scalarAggregationResult.data?.rows[0]?.sum;
 
   void scalarAggregationValue;
@@ -671,14 +672,12 @@ function TypeFixtures() {
   // @ts-expect-error aggregation result rows should not include source fields
   void scalarAggregationResult.data?.rows[0]?.amount;
 
-  const metricQuery = {
+  const metricResult = useMetabaseQuery({
     source: TEST_SCHEMA.tables.orders,
     aggregations: [TEST_SCHEMA.metrics.revenue],
-  } satisfies MetabaseQueryOptions<OrdersTable>;
-  const metricResult = useMetabaseQuery(metricQuery);
+  });
 
-  const metricAggregationValue: number | null | undefined =
-    metricResult.data?.rows[0]?.Revenue;
+  const metricAggregationValue = metricResult.data?.rows[0];
 
   void metricAggregationValue;
 
@@ -1086,6 +1085,35 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("passes metric aggregation orderBys through Lib.createTestQuery", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [TEST_SCHEMA.metrics.revenue],
+      breakouts: [
+        breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.status),
+      ],
+      orderBys: [orderBy(TEST_SCHEMA.metrics.revenue, "desc")],
+      limit: 15,
+    });
+
+    expect(datasetQuery).toMatchObject({
+      stages: [
+        {
+          aggregation: [["metric", expect.anything(), 31]],
+          breakout: [["field", expect.anything(), 101]],
+          "order-by": [
+            [
+              "desc",
+              expect.anything(),
+              ["aggregation", expect.anything(), expect.anything()],
+            ],
+          ],
+          limit: 15,
+        },
+      ],
+    });
+  });
+
   it("rejects invalid limits with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
@@ -1147,6 +1175,24 @@ describe("resolveDatasetQuery", () => {
         aggregations: [avg(TEST_SCHEMA.tables.orders.fields.amount)],
         breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
         orderBys: [orderBy(TEST_SCHEMA.tables.orders.fields.amount, "desc")],
+      }),
+    ).rejects.toThrow(
+      "Table query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.tables.orders,
+        breakouts: [
+          breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+            unit: "month",
+          }),
+        ],
+        orderBys: [
+          orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", {
+            unit: "year",
+          }),
+        ],
       }),
     ).rejects.toThrow(
       "Table query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
