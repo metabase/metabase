@@ -110,8 +110,8 @@ export function specFeatureModules(
   return result;
 }
 
-// A spec runs if any feature module it covers is affected. A spec that maps to
-// NO feature module always runs because it's scope is unknown
+// A spec runs if any feature module it covers is affected.
+// A spec doesn't map to any feature module always runs because its scope is unknown
 export function filterAffectedE2eSpecs(
   specFeatures: Map<string, Set<string>>,
   affected: Set<string>,

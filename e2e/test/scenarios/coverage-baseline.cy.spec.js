@@ -4,11 +4,14 @@ const { H } = cy;
 // The manifest builder subtracts this baseline from every other spec's
 // coverage to strip eager-loaded modules that fire on every page load.
 describe("coverage baseline", () => {
-  it("signs in and loads the home page", () => {
+  beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
+
+  it("signs in and loads the home page", () => {
     cy.visit("/");
-    cy.findByTestId("app-bar", { timeout: 30000 }).should("exist");
-    cy.findByTestId("home-page", { timeout: 30000 }).should("exist");
+    cy.findByTestId("app-bar").should("be.visible");
+    cy.findByTestId("home-page").should("be.visible");
   });
 });
