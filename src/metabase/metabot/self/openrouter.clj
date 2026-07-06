@@ -107,32 +107,67 @@
       503 (tru "OpenRouter service is unavailable")
       (tru "OpenRouter API error (HTTP {0})" status))))
 
+(def ^:private supported-models
+  "OpenRouter models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the `/v1/models` catalog.
+  Mirrors the models whitelisted for the direct anthropic and openai providers; note that
+  OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
+  Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
+  {"anthropic/claude-fable-5"    "Claude Fable 5"
+   "anthropic/claude-opus-4.8"   "Claude Opus 4.8"
+   "anthropic/claude-opus-4.7"   "Claude Opus 4.7"
+   "anthropic/claude-opus-4.6"   "Claude Opus 4.6"
+   "anthropic/claude-opus-4.5"   "Claude Opus 4.5"
+   "anthropic/claude-opus-4.1"   "Claude Opus 4.1"
+   "anthropic/claude-sonnet-5"   "Claude Sonnet 5"
+   "anthropic/claude-sonnet-4.6" "Claude Sonnet 4.6"
+   "anthropic/claude-sonnet-4.5" "Claude Sonnet 4.5"
+   "anthropic/claude-haiku-4.5"  "Claude Haiku 4.5"
+   "openai/gpt-5.5"              "GPT-5.5"
+   "openai/gpt-5.5-pro"          "GPT-5.5 Pro"
+   "openai/gpt-5.4"              "GPT-5.4"
+   "openai/gpt-5.4-pro"          "GPT-5.4 Pro"
+   "openai/gpt-5.4-mini"         "GPT-5.4 Mini"
+   "openai/gpt-5"                "GPT-5"})
+
+(defn- supported-model?
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
+  [{:keys [id]}]
+  (contains? supported-models id))
+
+(defn- list-all-models
+  "Fetch the full OpenRouter model catalog (`GET /v1/models`).
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  [{:keys [credentials ai-proxy?]}]
+  (when (and credentials (str/blank? (:api-key credentials)))
+    (throw (core/missing-api-key-ex "OpenRouter")))
+  (try
+    (let [auth (core/resolve-auth "openrouter" "OpenRouter"
+                                  (when-let [k (or (not-empty (:api-key credentials))
+                                                   (not-empty (llm/llm-openrouter-api-key)))]
+                                    {:url     (llm/llm-openrouter-api-base-url)
+                                     :headers {"Authorization" (str "Bearer " k)}})
+                                  ai-proxy?)
+          res  (core/request auth {:method  :get
+                                   :url     "/v1/models"
+                                   :as      :json
+                                   :headers {"Content-Type" "application/json"
+                                             "HTTP-Referer" "https://metabase.com"
+                                             "X-Title"      "Metabase"}})]
+      (get-in res [:body :data]))
+    (catch Exception e
+      (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))
+
 (defn list-models
-  "List available OpenRouter models.
+  "List the OpenRouter models supported by this adapter (see [[supported-models]]).
   No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy?]}]
-   (when (and credentials (str/blank? (:api-key credentials)))
-     (throw (core/missing-api-key-ex "OpenRouter")))
-   (try
-     (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                   (when-let [k (or (not-empty (:api-key credentials))
-                                                    (not-empty (llm/llm-openrouter-api-key)))]
-                                     {:url     (llm/llm-openrouter-api-base-url)
-                                      :headers {"Authorization" (str "Bearer " k)}})
-                                   ai-proxy?)
-           res  (core/request auth {:method  :get
-                                    :url     "/v1/models"
-                                    :as      :json
-                                    :headers {"Content-Type" "application/json"
-                                              "HTTP-Referer" "https://metabase.com"
-                                              "X-Title"      "Metabase"}})]
-       {:models (mapv (fn [model]
-                        {:id           (:id model)
-                         :display_name (or (:name model) (:id model))})
-                      (reverse (sort-by :created (get-in res [:body :data]))))})
-     (catch Exception e
-       (core/rethrow-api-error! "openrouter" openrouter-error-msg e)))))
+  ([opts]
+   {:models (->> (list-all-models opts)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id] :as model}]
+                         {:id id :display_name (or (:name model) (supported-models id))})))}))
 
 ;;; Streaming response → AISDK v5 chunks
 

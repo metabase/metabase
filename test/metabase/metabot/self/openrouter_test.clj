@@ -223,3 +223,23 @@
                  clojure.lang.ExceptionInfo
                  #"No OpenRouter API key is set"
                  (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; list-models tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest list-models-filters-catalog-to-whitelist-test
+  (testing "list-models keeps only whitelisted models sorted by id, preferring the catalog display name"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-test"]
+      (with-redefs [http/request (fn [_]
+                                   {:status 200
+                                    :body   {:data [{:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
+                                                    {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
+                                                    {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
+                                                    {:id "anthropic/claude-sonnet-4.6" :created 25}
+                                                    {:id "anthropic/claude-haiku-4.5"  :name "Anthropic: Claude Haiku 4.5"  :created 20}
+                                                    {:id "openai/gpt-4o"               :name "OpenAI: GPT-4o"               :created 10}]}})]
+        (is (= [{:id "anthropic/claude-haiku-4.5"  :display_name "Anthropic: Claude Haiku 4.5"}
+                {:id "anthropic/claude-sonnet-4.6" :display_name "Claude Sonnet 4.6"}
+                {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}]
+               (:models (openrouter/list-models))))))))
