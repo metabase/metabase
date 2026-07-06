@@ -283,12 +283,18 @@ import type { ComponentType, ReactNode } from "react";
 
 | Field | Purpose | Notes |
 |---|---|---|
-| `colors.brand`, `colors.brand-hover` | Accent for SDK widgets | Use the data app's primary color. |
+| `colors.brand` | Accent for SDK widgets | Use the data app's primary color. |
+| `colors.brand-hover`, `colors.brand-hover-light` | Hover/accent backgrounds for SDK widgets | Use a subtle surface tint that contrasts with hover text. Do not use the same saturated color as `brand`. |
 | `colors.charts` | Chart palette | Array of strings. Use vivid brand-shade colors only; **never pale tints** — palette index 1+ may render labels and pale-on-white is invisible. |
 | `colors.positive` / `colors.negative` | Semantic indicators | |
 | `colors.background`, `colors.background-secondary` | SDK component surface | **MUST match the immediate parent container of the SDK component.** If the chart sits inside a white card, use `"white"`. If it sits on a tinted page, use that tint. |
 | `colors.text-primary`, `text-secondary`, `text-tertiary` | Text on SDK surfaces | **MUST contrast with `background`.** For white bg: use `#1f2937` or similar dark color. The SDK's default `text-primary` resolves to ~white, so leaving it unset on a white surface produces invisible white text. **Always pair `background` and `text-primary` when overriding.** |
 | `fontFamily` | SDK widget typography | |
+
+Hover colors are a contrast pair. If you set `colors.text-hover`, verify it
+contrasts with `colors.brand-hover` / `colors.brand-hover-light` in open menus,
+chart type selectors, and visualization settings dropdowns. For a blue `brand`,
+use a pale hover surface like `#EAF4FF`, not the brand blue itself.
 
 **The theme only styles SDK widgets — never your own UI.** For your page background, headers, card wrappers, etc., use inline `style={{ background: "#f5f5f7" }}` or CSS modules on your own elements.
 
