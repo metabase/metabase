@@ -2900,8 +2900,6 @@
                     :model/Dashboard
                     :model/Database
                     :model/Field
-                    :model/McpSessionLog
-                    :model/McpToolCallLog
                     :model/Notification
                     :model/NotificationRecipient
                     :model/Permissions
@@ -3264,10 +3262,12 @@
 
   enterprise/mcp
   {:team    "Metabot"
-   :friends #{mcp}
+   :api     #{metabase-enterprise.mcp.init}
    :uses    #{analytics
               mcp
+              metabot
               premium-features
+              task
               util}
    :model-imports #{:model/McpSessionLog
                     :model/McpToolCallLog}}

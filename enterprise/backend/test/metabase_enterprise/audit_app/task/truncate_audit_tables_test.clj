@@ -84,39 +84,3 @@
               (#'task.truncate-audit-tables/truncate-audit-tables!)
               (is (= #{vl1-id}
                      (t2/select-fn-set :id :model/ViewLog {:where [:in :id [vl1-id vl2-id vl3-id]]}))))))))))
-
-(deftest mcp-tool-call-log-cleanup-test
-  (testing "When the task runs, rows in `mcp_tool_call_log` older than the configured threshold are deleted"
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp
-        [:model/McpToolCallLog {tc1-id :id} {:tool_name  "execute_query"
-                                             :created_at (t/offset-date-time)}
-         :model/McpToolCallLog {tc2-id :id} {:tool_name  "execute_query"
-                                             :created_at (t/minus (t/offset-date-time) (t/days 31))}
-         :model/McpToolCallLog {tc3-id :id} {:tool_name  "execute_query"
-                                             :created_at (t/minus (t/offset-date-time) (t/years 1))}]
-        ;; Mock a cloud environment so that we can change the setting value via env var
-        (with-redefs [premium-features/is-hosted? (constantly true)]
-          (testing "When the threshold is 30 days, two rows are deleted"
-            (mt/with-temp-env-var-value! [mb-audit-max-retention-days 30]
-              (#'task.truncate-audit-tables/truncate-audit-tables!)
-              (is (= #{tc1-id}
-                     (t2/select-fn-set :id :model/McpToolCallLog {:where [:in :id [tc1-id tc2-id tc3-id]]}))))))))))
-
-(deftest mcp-session-log-cleanup-test
-  (testing "When the task runs, rows in `mcp_session_log` older than the configured threshold are deleted"
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp
-        [:model/McpSessionLog {s1-id :id} {:id "mcp-session-current"
-                                           :created_at (t/offset-date-time)}
-         :model/McpSessionLog {s2-id :id} {:id "mcp-session-31d"
-                                           :created_at (t/minus (t/offset-date-time) (t/days 31))}
-         :model/McpSessionLog {s3-id :id} {:id "mcp-session-1y"
-                                           :created_at (t/minus (t/offset-date-time) (t/years 1))}]
-        ;; Mock a cloud environment so that we can change the setting value via env var
-        (with-redefs [premium-features/is-hosted? (constantly true)]
-          (testing "When the threshold is 30 days, two rows are deleted"
-            (mt/with-temp-env-var-value! [mb-audit-max-retention-days 30]
-              (#'task.truncate-audit-tables/truncate-audit-tables!)
-              (is (= #{s1-id}
-                     (t2/select-fn-set :id :model/McpSessionLog {:where [:in :id [s1-id s2-id s3-id]]}))))))))))
