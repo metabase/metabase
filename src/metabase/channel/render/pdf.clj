@@ -89,6 +89,12 @@
   their grid cell, preserving aspect ratio."
   #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row :treemap})
 
+(def ^:private table-like-chart-types
+  "Chart types (from [[render.card/detect-pulse-chart-type]]) that render as a CSSBox HTML table -- the native
+  flat table, an assembled pivot, and the object-detail key/value view. All three take the width-filling,
+  natively-framed table path (see [[draw-table-card!]]) instead of the aspect-fit, centered image path."
+  #{:table :pivot :object})
+
 ;; --------------------------------------------------------------------------------------------
 ;; Page geometry
 ;; --------------------------------------------------------------------------------------------
@@ -582,10 +588,6 @@
   (* (double px)
      (/ 72.0 common/dpi)))
 
-(defn- card-title [card dashcard]
-  (or (get-in dashcard [:visualization_settings :card.title])
-      (:name card)))
-
 (defn- effective-display
   "The display type the card actually renders as. A visualizer dashcard overrides the underlying card's `:display`
   (e.g. a smartscalar card shown as a `bar`), so prefer the visualizer display when present. This is the same
@@ -780,6 +782,15 @@
   via [[table-border-color]]."
   (Color. 0xF0 0xF0 0xF0))
 
+(def ^:private frame-line-w-pt
+  "Stroke width (points) of the native card frame."
+  0.5)
+
+(def ^:private frame-corner-radius-pt
+  "Corner radius (points) of the native card frame -- also used to clip the content image so its square corners
+  don't spill past the rounded frame."
+  4.0)
+
 (def ^:private table-border-color
   "CSS form of [[table-frame-color]] for the in-image footer divider (`border-top` above the `N rows` row)."
   (format "#%06X" (bit-and (.getRGB ^Color table-frame-color) 0xFFFFFF)))
@@ -824,44 +835,101 @@
           items)))
 
 (defn- restyle-form
-  "Restyle one walked Hiccup form: the `<table>` gets [[table-css]]; header rows get per-cell
-  dividers. Everything else passes through."
-  [form]
+  "Restyle one walked Hiccup form: the `<table>` gets [[table-css]] (fill the frame, drop its own
+  border/radius/margin); with `add-dividers?` header rows also get per-cell dividers. Everything else passes
+  through."
+  [add-dividers? form]
   (cond
     (and (element? form :table) (map? (second form)))
     (append-style form table-css)
 
-    (and (element? form :tr) (header-row? form))
+    (and add-dividers? (element? form :tr) (header-row? form))
     (add-header-dividers form)
 
     :else form))
 
 (defn- restyle-table
-  "Restyle the inner `<table>` to fit the card frame: fill the width, drop its own border/radius/margin
-  (the native frame and per-cell dividers remain), and add header dividers to match the body."
-  [content]
-  (walk/postwalk restyle-form content))
+  "Restyle the inner `<table>` to fill the card frame: `width:100%`, dropping its own border/radius/margin (the
+  native frame and per-cell dividers remain). In the fixed-width clip box this fills the cell when the content
+  is narrower (columns stretch, like the dashboard) and overflows-then-clips when it's wider. `add-dividers?`
+  adds header dividers to match the body (native `:table` only -- pivots and object-detail border their cells)."
+  [content add-dividers?]
+  (walk/postwalk #(restyle-form add-dividers? %) content))
+
+(def ^:private footer-text-css
+  "Font size and color shared by the card footers -- the native table's row-count footer and object-detail's
+  \"Showing 1 of N\" note -- so they match."
+  "font-size:12.5px;color:#696E7B")
+
+(def ^:private footer-pad-px
+  "Horizontal inset (logical px) of footer text from the card frame, shared by the table and object-detail footers."
+  16)
 
 (def ^:private table-footer-css
   "Style of the `N rows` footer row at the bottom of a table image."
   (format (str "height:%1$dpx;line-height:%1$dpx;box-sizing:border-box;"
-               "font-size:12.5px;text-align:right;padding-right:16px;"
-               "color:#696E7B;border-top:1px solid %2$s")
-          table-footer-px table-border-color))
+               "text-align:right;padding-right:%2$dpx;%3$s;border-top:1px solid %4$s")
+          table-footer-px footer-pad-px footer-text-css table-border-color))
+
+(def ^:private object-detail-footer-px
+  "Logical-pixel height reserved for the object-detail \"Showing 1 of N\" note, kept visible below the
+  (possibly clipped) fields rather than hidden by the height clip on a short card."
+  34)
+
+(def ^:private object-detail-footer-css
+  "Style of the object-detail \"Showing 1 of N\" footer box: a fixed-height band inset from the frame, carrying
+  the shared footer font/color so the plain note text inherits it (like the table footer's count)."
+  (format "height:%dpx;overflow:hidden;padding:12px %dpx 0;%s"
+          object-detail-footer-px footer-pad-px footer-text-css))
+
+(defn- object-detail-note
+  "The text of the trailing \"Showing 1 of N\" note in object-detail render content, or nil when the shown
+  record is the only one. Coupled to [[body/render]] `:object`, which appends the note `<div>` after the
+  key/value `<table>` inside a section `<div>`."
+  [content]
+  (some-> (some #(when (element? % :div) %) (drop 2 content)) last))
+
+(defn- card-footer
+  "The pinned footer for a table-like card body, as `{:footer <hiccup-or-nil>, :footer-h <reserved-px>}`: the
+  native `:table` shows its row count and object-detail its \"Showing 1 of N\" `note` text (both inheriting the
+  shared footer style from their box); a pivot has neither."
+  [chart-type note n-rows]
+  (cond
+    (= :table chart-type)
+    {:footer   [:div {:style table-footer-css} (trun "{0} row" "{0} rows" n-rows)]
+     :footer-h table-footer-px}
+
+    note
+    {:footer   [:div {:style object-detail-footer-css} note]
+     :footer-h object-detail-footer-px}
+
+    :else
+    {:footer nil :footer-h 0}))
 
 (defn- table-body-png
-  "Render a table card body to PNG bytes sized to the `px-w` x `px-h` cell (logical pixels):
-  width-filled, height-capped, with a row-count footer, supersampled at [[table-supersample]]x."
-  ^bytes [timezone {:keys [card dashcard result]} px-w px-h]
+  "Render a table-like card body (`:table`, `:pivot`, or `:object`) to PNG bytes sized to the `px-w` x `px-h`
+  cell (logical pixels), supersampled at [[table-supersample]]x. The body is a `width:100%` table inside a
+  fixed-`px-w` clip box, so -- like the dashboard -- its columns stretch to fill when the content is narrower
+  than the cell, and a wider table (e.g. a many-column pivot) overflows and is clipped at the cell edge. (The
+  card frame itself is stroked around the full cell in [[draw-table-card!]], not around this content.)
+
+  A pinned footer (see [[card-footer]]) is kept visible below the (possibly height-clipped) body: the native
+  `:table` gets a row-count footer, and object-detail keeps its \"Showing 1 of N\" note (pulled out of the
+  clipped body so a short card can't hide it). A pivot has neither."
+  ^bytes [timezone {:keys [card dashcard result]} chart-type px-w px-h]
   (let [;; Render directly, not via render-pulse-card: its <p>/.pulse-body margins escape CSSBox's
         ;; height clip and push the image past the cell. body/render gives the bare table.
-        info     (body/render :table :inline timezone card dashcard (:data result))
-        n-rows   (count (get-in result [:data :rows]))
-        clip-css (format "max-height:%dpx;overflow:hidden" (max 0 (- (long px-h) table-footer-px 2)))
+        info     (body/render chart-type :inline timezone card dashcard (:data result))
+        note     (when (= :object chart-type) (object-detail-note (:content info)))
+        ;; the note is body/render's trailing element, so drop it from the clipped body (it's pinned below)
+        body     (cond-> (:content info) note pop)
+        {:keys [footer footer-h]} (card-footer chart-type note (count (get-in result [:data :rows])))
+        max-h    (max 0 (- (long px-h) footer-h 2))
+        clip-css (format "width:%dpx;max-height:%dpx;overflow:hidden" (long px-w) max-h)
         ;; the frame is stroked natively in draw-table-card!, so this wrapper has no border
         content  [:div
-                  [:div {:style clip-css} (restyle-table (:content info))]
-                  [:div {:style table-footer-css} (trun "{0} row" "{0} rows" n-rows)]]]
+                  [:div {:style clip-css} (restyle-table body (= :table chart-type))]
+                  footer]]
     (png/render-html-to-png (assoc info :content content) px-w {:channel.render/scale table-supersample})))
 
 (defn- move-to! [^PDPageContentStream cs x y] (.moveTo cs (float x) (float y)))
@@ -889,19 +957,16 @@
                (+ ax (* rc dx2)) (+ ay (* rc dy2))
                (+ ax (* r  dx2)) (+ ay (* r  dy2)))))
 
-(defn- stroke-round-rect!
-  "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
-  at `line-w` points and corner radius `r` points, then reset to a black hairline. Corners are
-  quarter-circle cubic Béziers (see [[corner-to!]])."
-  [^PDPageContentStream cs ^Color color line-w r x top-y w h]
+(defn- round-rect-path!
+  "Append a rounded-rectangle subpath -- top-left `[x, top-y]`, size `w` x `h`, corner radius `r` points -- to the
+  content stream's current path (quarter-circle cubic Béziers, see [[corner-to!]]). The caller strokes or clips it."
+  [^PDPageContentStream cs r x top-y w h]
   (let [l  x
         t  top-y
         rt (+ l w)
         b  (- t h)
         r  (min r (/ w 2.0) (/ h 2.0))
         c  (* r bezier-circle-kappa)]
-    (.setStrokingColor cs color)
-    (.setLineWidth cs (float line-w))
     (move-to!   cs (+ l r) t)
     (line-to!   cs (- rt r) t)               ; top edge
     (corner-to! cs r c rt t   1  0   0 -1)   ; TR
@@ -910,10 +975,18 @@
     (line-to!   cs (+ l r) b)                ; bottom edge
     (corner-to! cs r c l  b  -1  0   0  1)   ; BL
     (line-to!   cs l (- t r))                ; left edge
-    (corner-to! cs r c l  t   0  1   1  0)   ; TL
-    (.stroke cs)
-    (.setStrokingColor cs Color/BLACK)
-    (.setLineWidth cs (float 1.0))))
+    (corner-to! cs r c l  t   0  1   1  0)))  ; TL
+
+(defn- stroke-round-rect!
+  "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
+  at `line-w` points and corner radius `r` points, then reset to a black hairline."
+  [^PDPageContentStream cs ^Color color line-w r x top-y w h]
+  (.setStrokingColor cs color)
+  (.setLineWidth cs (float line-w))
+  (round-rect-path! cs r x top-y w h)
+  (.stroke cs)
+  (.setStrokingColor cs Color/BLACK)
+  (.setLineWidth cs (float 1.0)))
 
 (defn- supersampled-px->pt
   "Points spanned on the page by `px` device pixels of a [[table-supersample]]-rastered image."
@@ -921,16 +994,24 @@
   (px->pt (/ (double px) table-supersample)))
 
 (defn- draw-table-card!
-  "Draw the table card body fitted to `[x, body-top]` x `cell-w` x `body-h`, with the card's outer
-  frame stroked natively around the image."
-  [^PDDocument doc ^PDPageContentStream cs timezone part x body-top cell-w body-h]
+  "Draw a table-like card body (`:table`, `:pivot`, or `:object`) into its `[x, body-top]` x `cell-w` x
+  `body-h` cell. The content image is drawn top-left at its natural size (filled or hugged per type, and
+  clipped to the cell), and the outer frame is stroked natively around the *full allocated cell* -- like the
+  card border on the dashboard -- so the border wraps the whole dashcard rather than shrink-wrapping the
+  content."
+  [^PDDocument doc ^PDPageContentStream cs timezone chart-type part x body-top cell-w body-h]
   (let [img (PDImageXObject/createFromByteArray
-             doc (table-body-png timezone part (pt->px cell-w) (pt->px body-h)) "table")
+             doc (table-body-png timezone part chart-type (pt->px cell-w) (pt->px body-h)) "table")
         ;; image is at table-supersample x logical pixels -> divide back to points
         dw  (supersampled-px->pt (.getWidth img))
         dh  (supersampled-px->pt (.getHeight img))]
+    ;; clip the rectangular image to the frame's rounded rect so its square corners can't spill past the arc
+    (.saveGraphicsState cs)
+    (round-rect-path! cs frame-corner-radius-pt x body-top cell-w body-h)
+    (.clip cs)
     (.drawImage cs img (float x) (float (- body-top dh)) (float dw) (float dh))
-    (stroke-round-rect! cs table-frame-color 0.5 4.0 x body-top dw dh)))
+    (.restoreGraphicsState cs)
+    (stroke-round-rect! cs table-frame-color frame-line-w-pt frame-corner-radius-pt x body-top cell-w body-h)))
 
 (def ^:private no-results-image-bytes
   "Raw bytes of the 'no results' sail-boat asset (the same image the email/dashboard empty state uses), read once."
@@ -990,6 +1071,7 @@
   vary from the frontend dashboard and add little in a static export.
 
   Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining body area (matching the frontend);
+  table-like cards (native table, pivot, object-detail) draw their content top-left and get a native frame around the cell (see [[draw-table-card!]]);
   other types render their body title-less and resized (preserving aspect) to fit into the body area."
   [^PDDocument doc ^PDPageContentStream cs timezone part x top-y cell-w cell-h]
   (let [;; Realize the disk-backed rows for THIS card only, here at draw time (email does the same, one part at a
@@ -999,7 +1081,7 @@
         {:keys [card dashcard inline-params]
          {:keys [data]} :result
          :as part}      (channel.shared/maybe-realize-data-rows part)
-        title      (card-title card dashcard)
+        title      (render.util/dashcard-title card dashcard)
         title-h    (typeset/text-block-height (font/face :bold) common/chart-title-pt cell-w (* 0.5 cell-h) title)
         ;; Inline parameters (filters attached to this card) render between the title and the chart body,
         ;; like the email subscription does.
@@ -1018,10 +1100,9 @@
         fill?      (or (contains? rectangular-displays display)
                        (and (= :pie display)
                             (>= cell-w body-h)))
-        ;; tables, pivots, and table fallbacks (map/object/unknown) all detect as :table; a result with no
-        ;; rows (e.g. filtered out) detects as :empty regardless of display, and gets the no-results placeholder.
         chart-type (render.card/detect-pulse-chart-type card dashcard data)
-        table?     (= :table chart-type)
+        tabular?   (contains? table-like-chart-types chart-type)
+        ;; a no-row result detects as :empty regardless of display -> no-results placeholder
         empty?     (= :empty chart-type)
         ;; the result was too big to load into memory (see [[draw-too-large!]]); show its message instead of a chart.
         ;; carries no :data, so it would otherwise detect as :empty and show a misleading no-results placeholder.
@@ -1061,8 +1142,8 @@
                       (float x) (float (- body-top body-h))
                       (float cell-w) (float body-h))
 
-          table?
-          (draw-table-card! doc cs timezone part x body-top cell-w body-h)
+          tabular?
+          (draw-table-card! doc cs timezone chart-type part x body-top cell-w body-h)
 
           ;; other types (and charts whose render produced no SVG): title-less body PNG,
           ;; fit preserving aspect
