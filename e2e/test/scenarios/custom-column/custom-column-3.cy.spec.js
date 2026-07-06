@@ -229,63 +229,67 @@ describe("scenarios > question > custom column > function browser", () => {
   });
 });
 
-describe("scenarios > question > custom column > splitPart", () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
+describe(
+  "scenarios > question > custom column > splitPart",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
 
-    H.startNewQuestion();
-    H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("People").click();
+      H.startNewQuestion();
+      H.miniPicker().within(() => {
+        cy.findByText("QA Postgres12").click();
+        cy.findByText("People").click();
+      });
+
+      cy.findByLabelText("Custom column").click();
     });
 
-    cy.findByLabelText("Custom column").click();
-  });
+    function assertTableData({ title, value }) {
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      H.tableInteractive()
+        .findAllByTestId("header-cell")
+        .last()
+        .should("have.text", title);
 
-  function assertTableData({ title, value }) {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.tableInteractive()
-      .findAllByTestId("header-cell")
-      .last()
-      .should("have.text", title);
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      H.tableInteractiveBody()
+        .findAllByTestId("cell-data")
+        .last()
+        .should("have.text", value);
+    }
 
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.tableInteractiveBody()
-      .findAllByTestId("cell-data")
-      .last()
-      .should("have.text", value);
-  }
+    it("should be possible to split a custom column", () => {
+      const CC_NAME = "Split Title";
 
-  it("should be possible to split a custom column", () => {
-    const CC_NAME = "Split Title";
+      H.enterCustomColumnDetails({
+        formula: "splitPart([Name], ' ', 1)",
+        name: CC_NAME,
+      });
+      H.popover().button("Done").click();
 
-    H.enterCustomColumnDetails({
-      formula: "splitPart([Name], ' ', 1)",
-      name: CC_NAME,
-    });
-    H.popover().button("Done").click();
+      cy.findByLabelText("Row limit").click();
+      cy.findByPlaceholderText("Enter a limit").type(1).blur();
 
-    cy.findByLabelText("Row limit").click();
-    cy.findByPlaceholderText("Enter a limit").type(1).blur();
+      H.visualize();
 
-    H.visualize();
-
-    H.tableInteractiveScrollContainer().scrollTo("right");
-    assertTableData({ title: CC_NAME, value: "Hudson" });
-  });
-
-  it("should show a message when index is below 1", () => {
-    H.enterCustomColumnDetails({
-      formula: "splitPart([Name], ' ', 0)",
+      H.tableInteractiveScrollContainer().scrollTo("right");
+      assertTableData({ title: CC_NAME, value: "Hudson" });
     });
 
-    H.popover().button("Done").should("be.disabled");
-    H.popover().should("contain", "Expected positive integer but found 0");
-  });
-});
+    it("should show a message when index is below 1", () => {
+      H.enterCustomColumnDetails({
+        formula: "splitPart([Name], ' ', 0)",
+      });
 
-describe("exercise today() function", () => {
+      H.popover().button("Done").should("be.disabled");
+      H.popover().should("contain", "Expected positive integer but found 0");
+    });
+  },
+);
+
+describe("exercise today() function", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();

@@ -510,8 +510,9 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
       false,
     );
 
-    // load the page w/ legacy value in the graph and test that it does exist
-    cy.reload();
+    // load the page w/ legacy value in the graph and test that it does exist.
+    // The intercept must be registered before the reload, otherwise the
+    // graph request can win the race and return the real (non-legacy) value.
     cy.intercept("GET", `/api/permissions/graph/group/${ALL_USERS_GROUP}`, {
       statusCode: 200,
       body: {
@@ -527,6 +528,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
         },
       },
     });
+    cy.reload();
 
     H.assertPermissionTable([
       [

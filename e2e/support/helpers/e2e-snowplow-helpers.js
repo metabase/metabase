@@ -1,6 +1,9 @@
 import { updateSetting } from "e2e/support/helpers";
 
-const SNOWPLOW_URL = "http://localhost:9090";
+// Configurable via MB_SNOWPLOW_URL so local runs can use a different port
+// when 9090 is taken (CI always runs snowplow-micro on 9090).
+const SNOWPLOW_URL =
+  Cypress.expose("SNOWPLOW_MICRO_URL") || "http://localhost:9090";
 const SNOWPLOW_INTERVAL = 100;
 const SNOWPLOW_TIMEOUT = 1000;
 

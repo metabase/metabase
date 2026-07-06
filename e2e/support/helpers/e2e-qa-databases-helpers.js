@@ -14,7 +14,7 @@ import { createQuestion } from "./api";
  **            QA DATABASES             **
  ******************************************/
 
-const SYNC_RETRY_DELAY_MS = 500;
+const SYNC_RETRY_DELAY_MS = 200;
 
 export function addMongoDatabase(displayName = "QA Mongo") {
   const { host, user, password, database: dbName } = QA_DB_CREDENTIALS;
@@ -147,7 +147,7 @@ function assertOnDatabaseMetadata(engine) {
 
 function recursiveCheck(id, i = 0) {
   // Let's not wait more than 20s for the sync to finish
-  if (i === 40) {
+  if (i === 100) {
     cy.task(
       "log",
       "The DB sync isn't complete yet, but let's be optimistic about it",
@@ -155,7 +155,10 @@ function recursiveCheck(id, i = 0) {
     return;
   }
 
-  cy.wait(SYNC_RETRY_DELAY_MS);
+  // check first, wait only between retries — the sync is often already done
+  if (i > 0) {
+    cy.wait(SYNC_RETRY_DELAY_MS);
+  }
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
     cy.task("log", {
@@ -172,7 +175,7 @@ function recursiveCheck(id, i = 0) {
 
 function recursiveCheckFields(id, i = 0) {
   // Let's not wait more than 10s for the sync to finish
-  if (i === 20) {
+  if (i === 50) {
     cy.task("log", "The field sync isn't complete");
     return;
   }
@@ -352,8 +355,8 @@ export const createModelFromTableName = ({
   });
 };
 
-const RESYNC_TRIGGER_INDEX = 10;
-const MAX_RESYNC_ITERATIONS = 40;
+const RESYNC_TRIGGER_INDEX = 25; // every ~5s
+const MAX_RESYNC_ITERATIONS = 100; // 100 x 200ms = 20s total
 export function waitForSyncToFinish({
   iteration = 0,
   dbId = 2,
@@ -362,7 +365,7 @@ export function waitForSyncToFinish({
   tables = [],
   retrigger = false,
 }) {
-  // 40 x 500ms (20s) should be plenty of time for the sync to finish.
+  // 100 x 200ms (20s) should be plenty of time for the sync to finish.
   if (iteration === MAX_RESYNC_ITERATIONS) {
     throw new Error("The sync is taking too long. Something is wrong.");
   }
@@ -376,7 +379,10 @@ export function waitForSyncToFinish({
     cy.request("POST", `/api/database/${dbId}/sync_schema`);
   }
 
-  cy.wait(SYNC_RETRY_DELAY_MS);
+  // check first, wait only between retries — the sync is often already done
+  if (iteration > 0) {
+    cy.wait(SYNC_RETRY_DELAY_MS);
+  }
 
   const rerunSync = () =>
     waitForSyncToFinish({

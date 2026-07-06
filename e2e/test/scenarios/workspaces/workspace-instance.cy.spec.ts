@@ -82,166 +82,170 @@ const MYSQL_CONFIG: AdvancedConfig = {
   },
 };
 
-describe("scenarios > workspaces > workspace instance", () => {
-  describe("postgres", () => {
-    beforeEach(() => {
-      H.restore("postgres-writable");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.resetTestTable({ type: "postgres", table: "multi_schema" });
-      H.queryWritableDB(
-        `CREATE SCHEMA IF NOT EXISTS ${POSTGRES_OUTPUT_SCHEMA}`,
-        "postgres",
-      );
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-    });
-
-    afterEach(() => {
-      H.clearWorkspaceInstanceConfig();
-      H.queryWritableDB(
-        `DROP SCHEMA IF EXISTS ${POSTGRES_OUTPUT_SCHEMA} CASCADE`,
-        "postgres",
-      );
-    });
-
-    it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
-      cy.log("set up the workspace");
-      H.WorkspaceListPage.visit();
-      H.WorkspaceListPage.setupInstanceButton().click();
-      H.SetupWorkspaceModal.uploadConfig(POSTGRES_CONFIG);
-      H.SetupWorkspaceModal.setupButton().click();
-      H.CurrentWorkspacePage.get().should("be.visible");
-
-      cy.log("create and run a transform via the API");
-      createAndRunTransform({
-        sourceTable: POSTGRES_SOURCE_TABLE,
-        sourceSchema: POSTGRES_INPUT_SCHEMA,
-        targetTable: POSTGRES_TARGET_TABLE,
-        targetSchema: POSTGRES_INPUT_SCHEMA,
-      });
-
-      cy.log("instance page shows the remapping for the transform target");
-      H.CurrentWorkspacePage.visit();
-      H.CurrentWorkspacePage.database(POSTGRES_DB_NAME)
-        .should(
-          "contain.text",
-          `${POSTGRES_INPUT_SCHEMA}/${POSTGRES_TARGET_TABLE}`,
-        )
-        .and(
-          "contain.text",
-          `${POSTGRES_OUTPUT_SCHEMA}/${POSTGRES_INPUT_SCHEMA}__${POSTGRES_TARGET_TABLE}`,
+describe(
+  "scenarios > workspaces > workspace instance",
+  { tags: "@external" },
+  () => {
+    describe("postgres", () => {
+      beforeEach(() => {
+        H.restore("postgres-writable");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.queryWritableDB(
+          `CREATE SCHEMA IF NOT EXISTS ${POSTGRES_OUTPUT_SCHEMA}`,
+          "postgres",
         );
-
-      cy.log("native query is rewritten to workspace table");
-      H.startNewNativeQuestion({
-        database: WRITABLE_DB_ID,
-        query: `SELECT * FROM "${POSTGRES_INPUT_SCHEMA}"."${POSTGRES_TARGET_TABLE}"`,
-      });
-      H.runNativeQuery();
-      H.assertQueryBuilderRowCount(ROW_COUNT);
-
-      cy.log("mbql query is rewritten to workspace table");
-      H.startNewQuestion();
-      H.miniPicker().findByText(POSTGRES_DB_NAME).click();
-      H.miniPicker().findByText(POSTGRES_INPUT_SCHEMA).click();
-      H.miniPicker().findByText(POSTGRES_TARGET_TABLE_DISPLAY_NAME).click();
-      H.visualize();
-      H.assertQueryBuilderRowCount(ROW_COUNT);
-
-      cy.log("the actual warehouse table lives under the workspace schema");
-      H.queryWritableDB(
-        `SELECT COUNT(*) AS count FROM "${POSTGRES_OUTPUT_SCHEMA}"."${POSTGRES_INPUT_SCHEMA}__${POSTGRES_TARGET_TABLE}"`,
-        "postgres",
-      ).then((result) => {
-        expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
       });
 
-      cy.log("leave the workspace through the UI");
-      H.CurrentWorkspacePage.visit();
-      H.CurrentWorkspacePage.leaveButton().click();
-      H.LeaveWorkspaceModal.confirmButton().click();
-      H.WorkspaceListPage.setupInstanceButton().should("be.visible");
-    });
-  });
-
-  describe("mysql", () => {
-    beforeEach(() => {
-      H.restore("mysql-writable");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.resetTestTable({ type: "mysql", table: MYSQL_SOURCE_TABLE });
-      H.queryWritableDB(
-        `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
-        "mysql",
-      );
-      H.queryWritableDB(`CREATE DATABASE ${MYSQL_OUTPUT_DATABASE}`, "mysql");
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-    });
-
-    afterEach(() => {
-      H.clearWorkspaceInstanceConfig();
-      H.queryWritableDB(
-        `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
-        "mysql",
-      );
-    });
-
-    it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
-      cy.log("set up the workspace");
-      H.WorkspaceListPage.visit();
-      H.WorkspaceListPage.setupInstanceButton().click();
-      H.SetupWorkspaceModal.uploadConfig(MYSQL_CONFIG);
-      H.SetupWorkspaceModal.setupButton().click();
-      H.CurrentWorkspacePage.get().should("be.visible");
-
-      cy.log("create and run a transform via the API");
-      createAndRunTransform({
-        sourceTable: MYSQL_SOURCE_TABLE,
-        sourceSchema: null,
-        targetTable: MYSQL_TARGET_TABLE,
-        targetSchema: null,
-      });
-
-      cy.log("instance page shows the remapping for the transform target");
-      H.CurrentWorkspacePage.visit();
-      H.CurrentWorkspacePage.database(MYSQL_DB_NAME)
-        .should("contain.text", MYSQL_TARGET_TABLE)
-        .and(
-          "contain.text",
-          `${MYSQL_OUTPUT_DATABASE}/__${MYSQL_TARGET_TABLE}`,
+      afterEach(() => {
+        H.clearWorkspaceInstanceConfig();
+        H.queryWritableDB(
+          `DROP SCHEMA IF EXISTS ${POSTGRES_OUTPUT_SCHEMA} CASCADE`,
+          "postgres",
         );
-
-      cy.log("native query is rewritten to workspace table");
-      H.startNewNativeQuestion({
-        database: WRITABLE_DB_ID,
-        query: `SELECT * FROM \`${MYSQL_TARGET_TABLE}\``,
-      });
-      H.runNativeQuery();
-      H.assertQueryBuilderRowCount(ROW_COUNT);
-
-      cy.log("mbql query is rewritten to workspace table");
-      H.startNewQuestion();
-      H.miniPicker().findByText(MYSQL_DB_NAME).click();
-      H.miniPicker().findByText(MYSQL_TARGET_TABLE_DISPLAY_NAME).click();
-      H.visualize();
-      H.assertQueryBuilderRowCount(ROW_COUNT);
-
-      cy.log("the actual warehouse table lives under the workspace database");
-      H.queryWritableDB(
-        `SELECT COUNT(*) AS count FROM \`${MYSQL_OUTPUT_DATABASE}\`.\`__${MYSQL_TARGET_TABLE}\``,
-        "mysql",
-      ).then((result) => {
-        expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
 
-      cy.log("leave the workspace through the UI");
-      H.CurrentWorkspacePage.visit();
-      H.CurrentWorkspacePage.leaveButton().click();
-      H.LeaveWorkspaceModal.confirmButton().click();
-      H.WorkspaceListPage.setupInstanceButton().should("be.visible");
+      it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
+        cy.log("set up the workspace");
+        H.WorkspaceListPage.visit();
+        H.WorkspaceListPage.setupInstanceButton().click();
+        H.SetupWorkspaceModal.uploadConfig(POSTGRES_CONFIG);
+        H.SetupWorkspaceModal.setupButton().click();
+        H.CurrentWorkspacePage.get().should("be.visible");
+
+        cy.log("create and run a transform via the API");
+        createAndRunTransform({
+          sourceTable: POSTGRES_SOURCE_TABLE,
+          sourceSchema: POSTGRES_INPUT_SCHEMA,
+          targetTable: POSTGRES_TARGET_TABLE,
+          targetSchema: POSTGRES_INPUT_SCHEMA,
+        });
+
+        cy.log("instance page shows the remapping for the transform target");
+        H.CurrentWorkspacePage.visit();
+        H.CurrentWorkspacePage.database(POSTGRES_DB_NAME)
+          .should(
+            "contain.text",
+            `${POSTGRES_INPUT_SCHEMA}/${POSTGRES_TARGET_TABLE}`,
+          )
+          .and(
+            "contain.text",
+            `${POSTGRES_OUTPUT_SCHEMA}/${POSTGRES_INPUT_SCHEMA}__${POSTGRES_TARGET_TABLE}`,
+          );
+
+        cy.log("native query is rewritten to workspace table");
+        H.startNewNativeQuestion({
+          database: WRITABLE_DB_ID,
+          query: `SELECT * FROM "${POSTGRES_INPUT_SCHEMA}"."${POSTGRES_TARGET_TABLE}"`,
+        });
+        H.runNativeQuery();
+        H.assertQueryBuilderRowCount(ROW_COUNT);
+
+        cy.log("mbql query is rewritten to workspace table");
+        H.startNewQuestion();
+        H.miniPicker().findByText(POSTGRES_DB_NAME).click();
+        H.miniPicker().findByText(POSTGRES_INPUT_SCHEMA).click();
+        H.miniPicker().findByText(POSTGRES_TARGET_TABLE_DISPLAY_NAME).click();
+        H.visualize();
+        H.assertQueryBuilderRowCount(ROW_COUNT);
+
+        cy.log("the actual warehouse table lives under the workspace schema");
+        H.queryWritableDB(
+          `SELECT COUNT(*) AS count FROM "${POSTGRES_OUTPUT_SCHEMA}"."${POSTGRES_INPUT_SCHEMA}__${POSTGRES_TARGET_TABLE}"`,
+          "postgres",
+        ).then((result) => {
+          expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
+        });
+
+        cy.log("leave the workspace through the UI");
+        H.CurrentWorkspacePage.visit();
+        H.CurrentWorkspacePage.leaveButton().click();
+        H.LeaveWorkspaceModal.confirmButton().click();
+        H.WorkspaceListPage.setupInstanceButton().should("be.visible");
+      });
     });
-  });
-});
+
+    describe("mysql", () => {
+      beforeEach(() => {
+        H.restore("mysql-writable");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
+        H.resetTestTable({ type: "mysql", table: MYSQL_SOURCE_TABLE });
+        H.queryWritableDB(
+          `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
+          "mysql",
+        );
+        H.queryWritableDB(`CREATE DATABASE ${MYSQL_OUTPUT_DATABASE}`, "mysql");
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+      });
+
+      afterEach(() => {
+        H.clearWorkspaceInstanceConfig();
+        H.queryWritableDB(
+          `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
+          "mysql",
+        );
+      });
+
+      it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
+        cy.log("set up the workspace");
+        H.WorkspaceListPage.visit();
+        H.WorkspaceListPage.setupInstanceButton().click();
+        H.SetupWorkspaceModal.uploadConfig(MYSQL_CONFIG);
+        H.SetupWorkspaceModal.setupButton().click();
+        H.CurrentWorkspacePage.get().should("be.visible");
+
+        cy.log("create and run a transform via the API");
+        createAndRunTransform({
+          sourceTable: MYSQL_SOURCE_TABLE,
+          sourceSchema: null,
+          targetTable: MYSQL_TARGET_TABLE,
+          targetSchema: null,
+        });
+
+        cy.log("instance page shows the remapping for the transform target");
+        H.CurrentWorkspacePage.visit();
+        H.CurrentWorkspacePage.database(MYSQL_DB_NAME)
+          .should("contain.text", MYSQL_TARGET_TABLE)
+          .and(
+            "contain.text",
+            `${MYSQL_OUTPUT_DATABASE}/__${MYSQL_TARGET_TABLE}`,
+          );
+
+        cy.log("native query is rewritten to workspace table");
+        H.startNewNativeQuestion({
+          database: WRITABLE_DB_ID,
+          query: `SELECT * FROM \`${MYSQL_TARGET_TABLE}\``,
+        });
+        H.runNativeQuery();
+        H.assertQueryBuilderRowCount(ROW_COUNT);
+
+        cy.log("mbql query is rewritten to workspace table");
+        H.startNewQuestion();
+        H.miniPicker().findByText(MYSQL_DB_NAME).click();
+        H.miniPicker().findByText(MYSQL_TARGET_TABLE_DISPLAY_NAME).click();
+        H.visualize();
+        H.assertQueryBuilderRowCount(ROW_COUNT);
+
+        cy.log("the actual warehouse table lives under the workspace database");
+        H.queryWritableDB(
+          `SELECT COUNT(*) AS count FROM \`${MYSQL_OUTPUT_DATABASE}\`.\`__${MYSQL_TARGET_TABLE}\``,
+          "mysql",
+        ).then((result) => {
+          expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
+        });
+
+        cy.log("leave the workspace through the UI");
+        H.CurrentWorkspacePage.visit();
+        H.CurrentWorkspacePage.leaveButton().click();
+        H.LeaveWorkspaceModal.confirmButton().click();
+        H.WorkspaceListPage.setupInstanceButton().should("be.visible");
+      });
+    });
+  },
+);
 
 function createAndRunTransform({
   sourceTable,

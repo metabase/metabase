@@ -7,7 +7,7 @@ const SOURCE_TABLE = "Animals";
 const TARGET_SCHEMA = "Schema A";
 const TARGET_TABLE = "transform_table";
 
-describe("scenarios > admin > transforms", () => {
+describe("scenarios > admin > transforms", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });

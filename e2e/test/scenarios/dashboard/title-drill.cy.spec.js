@@ -23,12 +23,16 @@ describe("scenarios > dashboard > title drill", () => {
       H.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id }, questionId }) => {
           cy.wrap(questionId).as("questionId");
-          H.visitDashboard(dashboard_id);
+          cy.wrap(dashboard_id).as("dashboardId");
         },
       );
     });
 
     describe("as a user with access to underlying data", () => {
+      beforeEach(() => {
+        H.visitDashboard("@dashboardId");
+      });
+
       it("should let you click through the title to the query builder (metabase#13042)", () => {
         cy.get("@questionId").then((questionId) => {
           cy.findByTestId("loading-indicator").should("not.exist");
@@ -56,7 +60,7 @@ describe("scenarios > dashboard > title drill", () => {
     describe("as a user without access to the underlying data", () => {
       beforeEach(() => {
         cy.signIn("nodata");
-        cy.reload();
+        H.visitDashboard("@dashboardId");
       });
 
       it("should let you click through the title to the query builder (metabase#13042)", () => {
@@ -143,12 +147,15 @@ describe("scenarios > dashboard > title drill", () => {
           ],
         });
 
-        H.visitDashboard(dashboard_id);
-        checkScalarResult("200");
+        cy.wrap(dashboard_id).as("dashboardId");
       });
     });
 
     describe("as a user with access to underlying data", () => {
+      beforeEach(() => {
+        H.visitDashboard("@dashboardId");
+      });
+
       it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
         checkScalarResult("200");
 
@@ -172,7 +179,7 @@ describe("scenarios > dashboard > title drill", () => {
     describe("as a user without access to underlying data", () => {
       beforeEach(() => {
         cy.signIn("nodata");
-        cy.reload();
+        H.visitDashboard("@dashboardId");
       });
 
       it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
@@ -253,12 +260,16 @@ describe("scenarios > dashboard > title drill", () => {
             `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
 
-          H.visitDashboard(dashboard_id);
+          cy.wrap(dashboard_id).as("dashboardId");
         },
       );
     });
 
     describe("as a user with access to underlying data", () => {
+      beforeEach(() => {
+        H.visitDashboard("@dashboardId");
+      });
+
       it("should let you click through the title to the query builder with the parameter applied as a filter on the question", () => {
         cy.wait("@cardQuery");
 
@@ -288,7 +299,7 @@ describe("scenarios > dashboard > title drill", () => {
     describe("as a user without access to underlying data", () => {
       beforeEach(() => {
         cy.signIn("nodata");
-        cy.reload();
+        H.visitDashboard("@dashboardId");
       });
 
       it("should let you click through the title to the query builder with the parameter filter showing in the query builder", () => {

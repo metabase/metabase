@@ -6,78 +6,82 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > dependencies > dependency checks", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "many_schemas" });
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
-    H.resetSnowplow();
+describe(
+  "scenarios > dependencies > dependency checks",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_schemas" });
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
+      H.resetSnowplow();
 
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");
-    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  describe("questions", () => {
-    it("should not show a confirmation if there are no breaking changes when updating a MBQL question", () => {
-      createMbqlQuestionWithDependentMbqlQuestions();
-      H.visitQuestion("@questionId");
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Expr").click();
-      H.CustomExpressionEditor.clear().type("2 + 2");
-      H.popover().button("Update").click();
-      H.queryBuilderHeader().button("Save").click();
-      H.modal().button("Save").click();
-      cy.wait("@updateCard");
+      cy.intercept("PUT", "/api/card/*").as("updateCard");
+      cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");
+      cy.intercept("PUT", "/api/transform/*").as("updateTransform");
     });
-  });
 
-  describe("metrics", () => {
-    it("should not show a warning when a change to a metric is backward-compatible with existing content", () => {
-      createMetricWithDependentMbqlQuestionsAndTransforms();
-      cy.get<number>("@metricId").then((metricId) => {
-        cy.visit(`/metric/${metricId}/query`);
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    describe("questions", () => {
+      it("should not show a confirmation if there are no breaking changes when updating a MBQL question", () => {
+        createMbqlQuestionWithDependentMbqlQuestions();
+        H.visitQuestion("@questionId");
+        H.openNotebook();
+        H.getNotebookStep("expression").findByText("Expr").click();
+        H.CustomExpressionEditor.clear().type("2 + 2");
+        H.popover().button("Update").click();
+        H.queryBuilderHeader().button("Save").click();
+        H.modal().button("Save").click();
+        cy.wait("@updateCard");
       });
-      H.getNotebookStep("summarize").findByText("Min of Score").click();
-      H.popover().findByText("Name").click();
-      cy.button("Save").click();
-      cy.wait("@updateCard");
-    });
-  });
-
-  describe("transforms", () => {
-    const goToEditorAndType = (queryString: string) => {
-      H.DataStudio.Transforms.clickEditDefinition();
-      cy.url().should("include", "/edit");
-      H.NativeEditor.clear().type(queryString);
-    };
-
-    it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
-      createSqlTransformWithDependentMbqlQuestions();
-      cy.get<number>("@transformId").then(H.visitTransform);
-      goToEditorAndType('SELECT score, name FROM "Schema A"."Animals"');
-      H.DataStudio.Transforms.saveChangesButton().click();
-      cy.wait("@updateTransform");
     });
 
-    it("should not show a confirmation if there are no breaking changes when updating a MBQL transform before it was run", () => {
-      createMbqlTransformWithDependentMbqlTransforms();
-      cy.get<number>("@transformId").then(H.visitTransform);
-      H.DataStudio.Transforms.clickEditDefinition();
-      H.getNotebookStep("data").button("Sort").click();
-      H.popover().findByText("Score").click();
-      H.DataStudio.Transforms.saveChangesButton().click();
-      cy.wait("@updateTransform");
+    describe("metrics", () => {
+      it("should not show a warning when a change to a metric is backward-compatible with existing content", () => {
+        createMetricWithDependentMbqlQuestionsAndTransforms();
+        cy.get<number>("@metricId").then((metricId) => {
+          cy.visit(`/metric/${metricId}/query`);
+        });
+        H.getNotebookStep("summarize").findByText("Min of Score").click();
+        H.popover().findByText("Name").click();
+        cy.button("Save").click();
+        cy.wait("@updateCard");
+      });
     });
-  });
-});
+
+    describe("transforms", () => {
+      const goToEditorAndType = (queryString: string) => {
+        H.DataStudio.Transforms.clickEditDefinition();
+        cy.url().should("include", "/edit");
+        H.NativeEditor.clear().type(queryString);
+      };
+
+      it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
+        createSqlTransformWithDependentMbqlQuestions();
+        cy.get<number>("@transformId").then(H.visitTransform);
+        goToEditorAndType('SELECT score, name FROM "Schema A"."Animals"');
+        H.DataStudio.Transforms.saveChangesButton().click();
+        cy.wait("@updateTransform");
+      });
+
+      it("should not show a confirmation if there are no breaking changes when updating a MBQL transform before it was run", () => {
+        createMbqlTransformWithDependentMbqlTransforms();
+        cy.get<number>("@transformId").then(H.visitTransform);
+        H.DataStudio.Transforms.clickEditDefinition();
+        H.getNotebookStep("data").button("Sort").click();
+        H.popover().findByText("Score").click();
+        H.DataStudio.Transforms.saveChangesButton().click();
+        cy.wait("@updateTransform");
+      });
+    });
+  },
+);
 
 function createMbqlQuestionWithDependentMbqlQuestions() {
   H.createQuestion({

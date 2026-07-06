@@ -2320,48 +2320,55 @@ describe("scenarios > metrics > explorer", () => {
   });
 });
 
-describe("scenarios > metrics > explorer > BigInt filters", () => {
-  beforeEach(() => {
-    interceptDatasetQuery();
-  });
-
-  it("should filter on BigInt values", () => {
-    const DECIMAL_PK_TABLE_NAME = "decimal_pk_table";
-    const METRIC_NAME = "Count of decimal_pk_table";
-
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.resetTestTable({ type: "postgres", table: DECIMAL_PK_TABLE_NAME });
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tables: [DECIMAL_PK_TABLE_NAME] });
-
-    H.getTableId({ name: DECIMAL_PK_TABLE_NAME }).then((tableId) => {
-      const BIGINT_METRIC: StructuredQuestionDetailsWithName = {
-        name: METRIC_NAME,
-        type: "metric",
-        description: "A metric",
-        query: {
-          "source-table": tableId,
-          aggregation: [["count"]],
-        },
-        database: WRITABLE_DB_ID,
-        display: "scalar",
-      };
-      H.createQuestion(BIGINT_METRIC);
-      H.MetricsViewer.goToViewer();
-      addMetric(METRIC_NAME);
-      H.MetricsViewer.getFilterButton().click();
-      H.popover().findByText("ID").click();
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Enter an ID").type("9223372036854775808");
-        cy.button("Add filter").click();
-      });
-      H.MetricsViewer.getMetricVisualization()
-        .should("contain.text", "Positive")
-        .should("not.contain.text", "Negative")
-        .should("not.contain.text", "Zero");
+describe(
+  "scenarios > metrics > explorer > BigInt filters",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
     });
-  });
-});
+
+    it("should filter on BigInt values", () => {
+      const DECIMAL_PK_TABLE_NAME = "decimal_pk_table";
+      const METRIC_NAME = "Count of decimal_pk_table";
+
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.resetTestTable({ type: "postgres", table: DECIMAL_PK_TABLE_NAME });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tables: [DECIMAL_PK_TABLE_NAME],
+      });
+
+      H.getTableId({ name: DECIMAL_PK_TABLE_NAME }).then((tableId) => {
+        const BIGINT_METRIC: StructuredQuestionDetailsWithName = {
+          name: METRIC_NAME,
+          type: "metric",
+          description: "A metric",
+          query: {
+            "source-table": tableId,
+            aggregation: [["count"]],
+          },
+          database: WRITABLE_DB_ID,
+          display: "scalar",
+        };
+        H.createQuestion(BIGINT_METRIC);
+        H.MetricsViewer.goToViewer();
+        addMetric(METRIC_NAME);
+        H.MetricsViewer.getFilterButton().click();
+        H.popover().findByText("ID").click();
+        H.popover().within(() => {
+          cy.findByPlaceholderText("Enter an ID").type("9223372036854775808");
+          cy.button("Add filter").click();
+        });
+        H.MetricsViewer.getMetricVisualization()
+          .should("contain.text", "Positive")
+          .should("not.contain.text", "Negative")
+          .should("not.contain.text", "Zero");
+      });
+    });
+  },
+);
 
 function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
   metrics.forEach((metric) => H.createQuestion(metric));

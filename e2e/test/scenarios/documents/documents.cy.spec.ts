@@ -600,7 +600,7 @@ describe("documents", () => {
     });
   });
 
-  describe("Empty Document", () => {
+  describe("Empty Document", { tags: "@external" }, () => {
     beforeEach(() => {
       H.createDocument({
         name: "Foo Document",
