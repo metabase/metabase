@@ -11,7 +11,7 @@
    [metabuild-common.misc :as misc]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
   (:import
-   (java.io File InputStream OutputStream)
+   (java.io File OutputStream)
    (java.nio.file Files OpenOption StandardOpenOption)
    (java.util.jar Manifest)))
 
@@ -194,38 +194,13 @@
 (def ^:private slf4j-conflict-handler
   {"org/slf4j/.*" (prefer-lib 'org.slf4j/slf4j-api)})
 
-;; H2's own jar contributes `org.h2.Driver` to the merged META-INF/services/java.sql.Driver. The
-;; cloud image strips the H2 library, leaving that entry dangling; DriverManager's ServiceLoader then
-;; aborts on it and skips every driver listed after it (Postgres, SQLite, ...). Drop H2's line here so
-;; the merged file never lists it -- the H2 app-db driver is registered explicitly instead (see
-;; metabase.app-db.env/register-app-db-driver!), and H2 is not supported as a data warehouse.
-(defn- jdbc-driver-services-merger
-  "Conflict handler for the merged `META-INF/services/java.sql.Driver`: concatenate the driver
-  providers contributed by each jar, minus `org.h2.Driver`."
-  [{:keys [^InputStream in ^File existing]}]
-  ;; Read the current entry's bytes via `.readAllBytes` rather than `slurp`: `in` is the shared
-  ;; JarInputStream tools.build is iterating, and `slurp` would close it, breaking the rest of the uber
-  ;; build ("Stream closed"). `.readAllBytes` reads to the end of the current entry without closing.
-  (let [existing-lines (when (.exists existing) (str/split-lines (slurp existing)))
-        in-lines       (str/split-lines (String. (.readAllBytes in) "UTF-8"))
-        merged         (->> (concat existing-lines in-lines)
-                            (remove #(= "org.h2.Driver" (str/trim %)))
-                            distinct)]
-    (spit existing (str/join "\n" merged)))
-  nil)
-
-(def ^:private jdbc-driver-services-conflict-handler
-  {"^META-INF/services/java\\.sql\\.Driver$" jdbc-driver-services-merger})
-
 (def conflict-handlers
   "Merged conflict handlers for the uberjar build. Handles Log4j2 plugin merging,
-   jakarta.activation class visibility, gson version pinning, SLF4J API, and dropping H2's
-   JDBC driver registration from the merged service file."
+   jakarta.activation class visibility, gson version pinning, and SLF4J API."
   (merge log4j2-conflict-handler
          activation-conflict-handler
          gson-conflict-handler
-         slf4j-conflict-handler
-         jdbc-driver-services-conflict-handler))
+         slf4j-conflict-handler))
 
 (defn- create-uberjar! [basis]
   (u/step "Create uberjar"
