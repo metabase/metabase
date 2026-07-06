@@ -416,7 +416,6 @@ const visualizerSlice = createSlice({
             state,
             columnRef,
             originalColumn,
-            // Prevents "Type instantiation is excessively deep" error
             dataset as Dataset,
             dataSource,
           );
@@ -605,10 +604,11 @@ const visualizerSlice = createSlice({
         const card = action.payload;
         const index = state.cards.findIndex((c) => c.id === card.id);
 
+        // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
-          state.cards[index] = card;
+          state.cards[index] = card as any;
         } else {
-          state.cards.push(card);
+          state.cards.push(card as any);
         }
 
         state.loadingDataSources[`card:${card.id}`] = false;
@@ -634,7 +634,9 @@ const visualizerSlice = createSlice({
           const { cardId } = action.meta.arg;
           const dataset = action.payload;
 
-          state.datasets[`card:${cardId}`] = dataset;
+          // `any` prevents the "Type instantiation is excessively deep" error
+          state.datasets[`card:${cardId}`] = dataset as any;
+
           state.loadingDatasets[`card:${cardId}`] = false;
         },
       )
