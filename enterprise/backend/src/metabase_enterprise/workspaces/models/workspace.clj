@@ -1,9 +1,11 @@
 (ns metabase-enterprise.workspaces.models.workspace
   (:require
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.api-keys.core :as api-keys]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -95,6 +97,23 @@
         (t2/insert! :model/WorkspaceDatabase
                     (map #(with-workspace-database-defaults % workspace-id) databases)))
       (get-workspace workspace-id))))
+
+(defn mint-api-key!
+  "Mint the api-key for `workspace-id`'s child instance: generate a fresh `mb_` key,
+  record its prefix on the workspace row, and return the unhashed key (a
+  [[metabase.util.secret]]; `u.secret/expose` it at the single point of use).
+
+  Accounting only: the parent stores just the prefix — deliberately NOT a
+  `:model/ApiKey` row — so the key can never authenticate against the parent. It
+  authenticates against the child, which registers it at boot from the config.yml
+  `api-keys:` section. ws<->key = this prefix; key<->user = the workspace's
+  `creator_id`. One key per workspace, minted at create; calling again replaces
+  the recorded prefix (the old key dies with the child instance it was born for)."
+  [workspace-id]
+  (let [k (api-keys/generate-key)]
+    (t2/update! :model/Workspace :id workspace-id
+                {:api_key_prefix (api-keys/prefix (u.secret/expose k))})
+    k))
 
 (defn- reject-active-modification!
   "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)

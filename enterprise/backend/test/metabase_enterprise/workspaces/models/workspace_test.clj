@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (defn- ws-db-attrs
@@ -275,3 +276,19 @@
                    :model/WorkspaceDatabase _                  {:workspace_id ws-id, :database_id db2-id}]
       (testing "superuser with attached databases — true"
         (with-admin (is (true? (mi/can-write? ws))))))))
+
+(deftest mint-api-key-test
+  (mt/with-model-cleanup [:model/Workspace]
+    (let [{ws-id :id} (create-ws! {:name "Keyed" :databases []})
+          k           (u.secret/expose (workspace/mint-api-key! ws-id))]
+      (testing "returns a well-formed mb_ key and records its prefix on the workspace"
+        (is (re-matches #"mb_[A-Za-z0-9+/=]+" k))
+        (is (= (subs k 0 7)
+               (t2/select-one-fn :api_key_prefix :model/Workspace :id ws-id))))
+      (testing "accounting only: no ApiKey row exists on the parent, so the key cannot authenticate here"
+        (is (not (t2/exists? :model/ApiKey :key_prefix (subs k 0 7)))))
+      (testing "minting again replaces the recorded prefix (one live key per workspace)"
+        (let [k2 (u.secret/expose (workspace/mint-api-key! ws-id))]
+          (is (not= k k2))
+          (is (= (subs k2 0 7)
+                 (t2/select-one-fn :api_key_prefix :model/Workspace :id ws-id))))))))
