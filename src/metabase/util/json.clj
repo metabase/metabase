@@ -1,13 +1,13 @@
 (ns metabase.util.json
   "Functions for encoding and decoding JSON that abstract away the underlying implementation."
+  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]} [cheshire.core :as cheshire]
+   [cheshire.core :as cheshire]
    [cheshire.factory]
    [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [flatland.ordered.map :as ordered-map]
-   #_{:clj-kondo/ignore [:discouraged-namespace]} [jsonista.core :as jsonista])
+   [flatland.ordered.map :as ordered-map] [jsonista.core :as jsonista])
   (:import
    (com.fasterxml.jackson.core JsonGenerator JsonParser JsonToken)
    (com.fasterxml.jackson.databind DeserializationContext JsonDeserializer ObjectMapper)
