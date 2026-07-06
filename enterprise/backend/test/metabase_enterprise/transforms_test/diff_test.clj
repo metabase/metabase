@@ -240,33 +240,21 @@
           report      (diff/diff actual-cols actual-rows expected {})]
       (is (= :passed (:status report))))))
 
-(deftest float-tolerance-exact-by-default-test
-  (testing "without :float-tolerance, floats are compared exactly (after decimal normalisation)"
+(deftest float-comparison-exact-test
+  (testing "floats are compared exactly (after decimal normalisation): 3.0 ≠ 3.1"
     (let [actual-cols [(col "f" :type/Float)]
           actual-rows [[3.0]]
           expected    (fixture [(schema-col "f" :type/Float)]
                                [[3.1]])
           report      (diff/diff actual-cols actual-rows expected {})]
       (is (= :failed (:status report)))))
-  (testing "without :float-tolerance, 3.0 == 3.0"
+  (testing "3.0 == 3.0"
     (let [actual-cols [(col "f" :type/Float)]
           actual-rows [[3.0]]
           expected    (fixture [(schema-col "f" :type/Float)]
                                [[3.0]])
           report      (diff/diff actual-cols actual-rows expected {})]
       (is (= :passed (:status report))))))
-
-(deftest float-tolerance-option-removed-test
-  (testing "passing :float-tolerance throws (fail closed) — it must never silently
-            appear to work, since float comparison is exact-only"
-    (let [actual-cols [(col "f" :type/Float)]
-          actual-rows [[3.0]]
-          expected    (fixture [(schema-col "f" :type/Float)]
-                               [[3.0]])
-          e           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"float-tolerance is not supported"
-                                            (diff/diff actual-cols actual-rows expected
-                                                       {:float-tolerance 0.01})))]
-      (is (= ::errors/unsupported-option (-> e ex-data :error-type))))))
 
 (deftest bigint-precision-above-2-53-test
   (testing "a clojure.lang.BigInt above 2^53 compares exactly (no double round-trip)"

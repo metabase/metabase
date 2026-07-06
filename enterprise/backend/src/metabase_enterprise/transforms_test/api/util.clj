@@ -25,7 +25,6 @@
    ::errors/ragged-row                  400
    ;; Diff errors — 400: caller supplied bad options.
    ::errors/unknown-ignore-columns      400
-   ::errors/unsupported-option          400
    ;; Canonicalization — 422: a fixture or output value we cannot compare.
    ::errors/cannot-canonicalize         422
    ;; Input resolution errors — 400 or 422.

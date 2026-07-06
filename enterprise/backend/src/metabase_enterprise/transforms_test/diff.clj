@@ -332,9 +332,6 @@
     - `:ignore-columns` — `#{\"col-name\" ...}` columns excluded from both sides
                           before comparison (matched exactly against `actual-cols`
                           names; an unknown name throws `::errors/unknown-ignore-columns`).
-    - `:float-tolerance` — unsupported; supplying it throws `::errors/unsupported-option`.
-                           Float comparison is exact — use `:ignore-columns` for
-                           noisy columns.
 
   Returns a JSON-serializable report map; all fields always present, all values
   JSON-serializable (no Java objects):
@@ -357,10 +354,6 @@
   rows can be sorted into stable pairs. `:cell-mismatches`, `:missing-rows`, and
   `:extra-rows` are each capped at [[mismatch-cap]] entries."
   [actual-cols actual-rows expected opts]
-  (when (contains? opts :float-tolerance)
-    (throw (ex-info ":float-tolerance is not supported; float comparison is exact. Use :ignore-columns for noisy columns."
-                    {:error-type ::errors/unsupported-option
-                     :option     :float-tolerance})))
   (let [ignore-cols    (set (:ignore-columns opts))
         ;; Validate ignore-columns: every name must appear in actual-cols
         actual-names   (mapv :name actual-cols)

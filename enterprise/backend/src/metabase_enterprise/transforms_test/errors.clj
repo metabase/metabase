@@ -12,7 +12,6 @@
     ::ragged-row                 ; A CSV data row has more or fewer cells than the header.
     ;; Diff options.
     ::unknown-ignore-columns     ; `:ignore-columns` names a column not present in the actual result.
-    ::unsupported-option         ; An unrecognised diff option was supplied.
     ;; Diff canonicalization.
     ::cannot-canonicalize        ; A cell value could not be canonicalized for comparison.
     ;; Input resolution.
