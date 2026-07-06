@@ -1,7 +1,3 @@
-// Shared filesystem locations for the data-app E2E fixtures, used by both the
-// `buildDataApp` Cypress task (e2e-data-app-tasks.ts) and the standalone Vite
-// builder it spawns (build-data-app-fixture.mjs). Plain `.mjs` so both a Node
-// process and the bundled Cypress config can import it.
 import fs from "node:fs";
 import path from "node:path";
 
@@ -12,6 +8,7 @@ import path from "node:path";
  */
 export function findRepoRoot(start = process.cwd()) {
   let dir = start;
+
   for (let i = 0; i < 12; i++) {
     if (
       fs.existsSync(path.join(dir, "e2e/support/assets/data-apps")) &&
@@ -19,10 +16,13 @@ export function findRepoRoot(start = process.cwd()) {
     ) {
       return dir;
     }
+
     const parent = path.dirname(dir);
+
     if (parent === dir) {
       break;
     }
+
     dir = parent;
   }
   throw new Error(`could not locate the metabase repo root from ${start}`);

@@ -1,39 +1,82 @@
 import { getIframeBody } from "./e2e-embedding-helpers";
-import { LOCAL_GIT_PATH } from "./e2e-remote-sync-helpers";
 
-type SeedDataAppOptions = {
-  name?: string;
+type MockDataAppOptions = {
+  /** Display name (iframe title + admin list); defaults to the fixture dir name. */
+  displayName?: string;
+  /** `allowed_hosts` served in the bundle response header. */
+  allowedHosts?: string[];
 };
 
-/**
- * Build the data-app fixture `appName` (its committed `src/` layered over the
- * `create-data-app` template base) with the Vite API, then drop it into the
- * connected git repo as `data_apps/<slug>/` and commit — ready for a
- * remote-sync pull to materialize it. The slug is the fixture directory name.
- *
- * Fixtures live in `e2e/support/assets/data-apps/<appName>/src/`; everything
- * else is generated here and never committed.
- */
-export function seedDataApp(
-  appName: string,
-  { name = appName }: SeedDataAppOptions = {},
+/** A materialized-data-app metadata row, as `/api/data-app/:slug` returns it. */
+function dataAppMeta(
+  slug: string,
+  displayName: string,
+  allowedHosts: string[],
 ) {
-  const slug = appName;
-  const appRepoDir = `${LOCAL_GIT_PATH}/data_apps/${slug}`;
+  return {
+    id: 1,
+    name: slug,
+    display_name: displayName,
+    bundle_path: `data_apps/${slug}/dist/index.js`,
+    enabled: true,
+    allowed_hosts: allowedHosts,
+    bundle_hash: "e2e-bundle-hash",
+    last_synced_sha: "e2e0000",
+    last_synced_at: "2024-01-01T00:00:00Z",
+    sync_error: null,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
+  };
+}
 
-  return cy.task<string>("buildDataApp", { appName }).then((code) => {
-    cy.writeFile(
-      `${appRepoDir}/data_app.yml`,
-      `name: ${name}\nslug: ${slug}\npath: dist/index.js\n`,
+/**
+ * Set up a data app for the current test without going through remote-sync/git.
+ *
+ * Builds the fixture `appName` (its committed `src/` layered over the
+ * `create-data-app` template) with the Vite API — so the template + real build
+ * are still exercised — then mocks the data-app API so the app can be listed,
+ * opened, and rendered as if it had been synced:
+ *
+ *   GET /api/data-app                -> [app]            (admin list)
+ *   GET /api/data-app/repo-status    -> { configured }   (admin page)
+ *   GET /api/data-app/:slug          -> app metadata      (drives AppView)
+ *   GET /api/data-app/:slug/bundle   -> the built bundle  (drives the iframe)
+ *
+ * The materialization + serving these stub out are covered by the backend
+ * tests; this keeps the browser-only path real: build -> `/embed/data-app/:slug`
+ * shell -> fetch bundle -> Near-Membrane sandbox -> host provider -> render.
+ *
+ * Reused across data-app cases: each case commits only its `src/`, and passes
+ * its fixture dir name as `appName` (which is also the slug).
+ */
+export function mockDataApp(appName: string, options: MockDataAppOptions = {}) {
+  const slug = appName;
+  const displayName = options.displayName ?? appName;
+  const allowedHosts = options.allowedHosts ?? [];
+
+  return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
+    const app = dataAppMeta(slug, displayName, allowedHosts);
+
+    cy.intercept("GET", "/api/data-app/repo-status", { configured: true });
+    cy.intercept("GET", "/api/data-app", [app]);
+    cy.intercept({ method: "GET", pathname: `/api/data-app/${slug}` }, app);
+    cy.intercept(
+      { method: "GET", pathname: `/api/data-app/${slug}/bundle` },
+      {
+        statusCode: 200,
+        headers: {
+          "content-type": "text/javascript",
+          "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
+        },
+        body: bundleCode,
+      },
     );
-    cy.writeFile(`${appRepoDir}/dist/index.js`, code);
-    cy.exec(
-      `git -C ${LOCAL_GIT_PATH} add .; git -C ${LOCAL_GIT_PATH} commit -m 'Add ${slug} data app'`,
-    );
+
+    return cy.wrap({ slug, displayName }, { log: false });
   });
 }
 
-/** Open a materialized data app at `/data-app/:slug`. */
+/** Open a data app at `/data-app/:slug`. */
 export function openDataApp(slug: string) {
   return cy.visit(`/data-app/${slug}`);
 }
