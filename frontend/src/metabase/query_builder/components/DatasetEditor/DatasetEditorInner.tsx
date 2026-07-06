@@ -434,7 +434,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
       if (!focusedFieldName) {
         return;
       }
-      setMetadataDiff({ name: focusedFieldName!, changes: values });
+      setMetadataDiff({ name: focusedFieldName, changes: values });
     },
     [focusedFieldName, setMetadataDiff],
   );
@@ -445,7 +445,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         return;
       }
       const changes = inheritMappedFieldProperties({ id: value });
-      setMetadataDiff({ name: focusedFieldName!, changes });
+      setMetadataDiff({ name: focusedFieldName, changes });
     },
     [focusedFieldName, setMetadataDiff, inheritMappedFieldProperties],
   );

@@ -212,6 +212,7 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal triggers TS2589 (excessively deep instantiation) via immer Draft<DashboardState>
   const prevDash = dashId ? (state as DashboardState).dashboards[dashId] : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];
@@ -360,6 +361,7 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal triggers TS2589 (excessively deep instantiation) via immer Draft<DashboardState>
           if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
             return;
           }
@@ -499,6 +501,7 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       _moveDashCardToTab,
       (state, { payload: { dashCardId, destinationTabId } }) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal triggers TS2589 (excessively deep instantiation) via immer Draft<DashboardState>
         const dashboardState = { ...state } as unknown as DashboardState;
         const dashCard = dashboardState.dashcards[dashCardId];
         const dashboardId = checkNotNull(dashboardState.dashboardId);

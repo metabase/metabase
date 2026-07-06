@@ -79,6 +79,7 @@ export function UpdateRowActionFormModal({
     validateForm: revalidateForm,
   } = useFormik({
     // We want to track only changed values, not all values
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
     initialValues: {} as Record<string, RowValue>,
     onSubmit: handleFormikSubmit,
     validate: validateForm,

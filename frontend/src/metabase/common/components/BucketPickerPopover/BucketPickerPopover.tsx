@@ -1,6 +1,5 @@
 import cx from "classnames";
 import {
-  type CSSProperties,
   type MouseEvent,
   type TouchEvent,
   useCallback,
@@ -124,12 +123,10 @@ export function BucketPickerPopover({
         <SelectList
           p="sm"
           miw="10rem"
-          style={
-            {
-              "--bucket-picker-active-color": activeColor,
-              overscrollBehavior: "contain",
-            } as CSSProperties
-          }
+          style={{
+            "--bucket-picker-active-color": activeColor,
+            overscrollBehavior: "contain",
+          }}
         >
           {visibleItems.map((item) => (
             <SelectList.Item

@@ -64,6 +64,7 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
 };
 
 export const databasesReducer = combineReducers({
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
   deletionError: createReducer(null as null | unknown, (builder) => {
     builder.addCase(
       DELETE_DATABASE_FAILED,

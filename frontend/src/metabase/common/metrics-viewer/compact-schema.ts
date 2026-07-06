@@ -91,6 +91,7 @@ function normalizeDescriptor(descriptor: FieldDescriptor): NormalizedField {
 export function defineCompactSchema<T>(
   config: SchemaConfig<T>,
 ): CompactSchema<T> {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
   const entries = Object.entries(config) as [string, FieldDescriptor][];
   const normalized = entries.map(
     ([fullKey, descriptor]) =>

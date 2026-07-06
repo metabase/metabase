@@ -68,6 +68,7 @@ export const Schedule = ({
   const schedule = useMemo(() => {
     return (
       cronToScheduleSettings(initialCronString, isCustomSchedule) ?? {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
         schedule_type: "hourly" as ScheduleType,
         schedule_minute: 0,
       }

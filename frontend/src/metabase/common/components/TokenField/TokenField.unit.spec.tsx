@@ -85,6 +85,7 @@ describe("TokenField", () => {
   });
 
   const input = () => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
     return screen.getByRole("textbox") as HTMLInputElement;
   };
 

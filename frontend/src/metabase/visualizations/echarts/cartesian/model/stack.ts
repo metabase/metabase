@@ -48,7 +48,7 @@ export const getStackModels = (
 
       return {
         axis,
-        display: display as "bar" | "area", // Ensured by filtering above
+        display: display, // Ensured by filtering above
         seriesKeys: seriesModelsByDisplay[display].map(
           (seriesModel) => seriesModel.dataKey,
         ),

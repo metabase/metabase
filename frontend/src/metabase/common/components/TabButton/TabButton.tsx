@@ -289,7 +289,7 @@ export function RenameableTabButton({
       onFinishRenaming={onFinishEditing}
       onInputDoubleClick={() => setIsRenaming(canRename)}
       menuItems={
-        menuItems as TabButtonMenuItem[] /* workaround for styled component swallowing generic type */
+        menuItems /* workaround for styled component swallowing generic type */
       }
       ref={inputRef}
       {...props}

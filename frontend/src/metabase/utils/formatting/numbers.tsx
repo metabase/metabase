@@ -149,7 +149,7 @@ export function formatNumber(
       if (options["currency"] && options["currency_style"] === "symbol") {
         formatted = formatted.replace(
           options["currency"],
-          getCurrencySymbol(options["currency"] as string),
+          getCurrencySymbol(options["currency"]),
         );
       }
 

@@ -54,6 +54,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
       }
 
       const { instanceUrl, sessionToken, mcpSessionId } =
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
       if (isClaudeHost(app)) {

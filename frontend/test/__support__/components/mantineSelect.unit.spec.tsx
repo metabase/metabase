@@ -7,6 +7,7 @@ describe("viewMantineSelectOptions", () => {
   it("fetches options from the <Select> component", async () => {
     render(
       <Select
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
         value={"option2" as string}
         data={[
           { value: "option1", label: "Option 1" },
@@ -30,6 +31,7 @@ describe("viewMantineSelectOptions", () => {
     render(
       <>
         <Select
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
           value={"select1-option2" as string}
           data={[
             { value: "select1-option1", label: "First Select, option 1" },
@@ -39,6 +41,7 @@ describe("viewMantineSelectOptions", () => {
         />
         <div data-testid="second-select-container">
           <Select
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
             value={"select2-option2" as string}
             data={[
               {
@@ -77,6 +80,7 @@ describe("viewMantineSelectOptions", () => {
     render(
       <>
         <Select
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
           value={"select1-option2" as string}
           data={[
             { value: "select1-option1", label: "First Select, option 1" },
@@ -89,15 +93,16 @@ describe("viewMantineSelectOptions", () => {
             value={"select2-option2"}
             data={[
               {
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
                 value: "select2-option1" as string,
                 label: "Second Select, option 1",
               },
               {
-                value: "select2-option2" as string,
+                value: "select2-option2",
                 label: "Second Select, option 2",
               },
               {
-                value: "select2-option3" as string,
+                value: "select2-option3",
                 label: "Second Select, option 3",
               },
             ]}

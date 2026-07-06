@@ -66,6 +66,7 @@ describe("TextInputBlurChange", () => {
   it("should set `internalValue` to the normalized value even if the normalized value is the same as the previous one", async () => {
     const value = "/";
     setup({ value, normalize: (value) => (value as string).trim() });
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
     const input = screen.getByDisplayValue(value) as HTMLInputElement;
     await userEvent.clear(input);
     await userEvent.type(input, "           /         ");

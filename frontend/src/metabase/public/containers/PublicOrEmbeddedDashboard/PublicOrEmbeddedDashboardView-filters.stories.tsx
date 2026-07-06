@@ -544,6 +544,7 @@ export const LightThemeParameterListWithValue = {
     const popover = getLastPopover();
     await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
     await userEvent.click(popover.getByText("Widget"));
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
     const gizmo = popover.getByRole("checkbox", {
       name: "Gizmo",
     }) as HTMLInputElement;

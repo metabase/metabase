@@ -21,8 +21,9 @@ const mockPreviewResponse: PreviewDatabaseReplicationResponse = {
 };
 
 const setup = async ({
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
   previewResponse = mockPreviewResponse as RouteResponse,
-  createResponse = {} as RouteResponse,
+  createResponse = {},
 } = {}) => {
   const database = createMockDatabase({ id: 1, name: "Test Database" });
 

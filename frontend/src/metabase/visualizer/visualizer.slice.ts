@@ -389,11 +389,11 @@ const visualizerSlice = createSlice({
         addColumnToFunnel(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
+          state.datasets,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
-          dataset as Dataset,
+          dataset,
           dataSource,
         );
         return;
@@ -403,7 +403,7 @@ const visualizerSlice = createSlice({
         addColumnToCartesianChart(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
+          state.datasets,
           dataset.data.cols,
           column,
           columnRef,
@@ -419,7 +419,7 @@ const visualizerSlice = createSlice({
             state,
             columnRef,
             originalColumn,
-            dataset as Dataset,
+            dataset,
             dataSource,
           );
         }
@@ -493,7 +493,7 @@ const visualizerSlice = createSlice({
       if (isCartesianChart(state.display)) {
         cartesianDropHandler(state, settings, event, {
           // Prevents "Type instantiation is excessively deep" error
-          datasetMap: state.datasets as Record<VisualizerDataSourceId, Dataset>,
+          datasetMap: state.datasets,
           dataSourceMap: Object.fromEntries(
             state.cards.map((card) => {
               const dataSource = createDataSource("card", card.id, card.name);
@@ -609,9 +609,9 @@ const visualizerSlice = createSlice({
 
         // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
-          state.cards[index] = card as any;
+          state.cards[index] = card;
         } else {
-          state.cards.push(card as any);
+          state.cards.push(card);
         }
 
         state.loadingDataSources[`card:${card.id}`] = false;
@@ -638,7 +638,7 @@ const visualizerSlice = createSlice({
           const dataset = action.payload;
 
           // `any` prevents the "Type instantiation is excessively deep" error
-          state.datasets[`card:${cardId}`] = dataset as any;
+          state.datasets[`card:${cardId}`] = dataset;
 
           state.loadingDatasets[`card:${cardId}`] = false;
         },

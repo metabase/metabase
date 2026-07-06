@@ -29,7 +29,8 @@ export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
   typeof error === "object" &&
   error !== null &&
   "data" in error &&
-  typeof (error as { data: any }).data === "object" &&
+  typeof error.data === "object" &&
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
   "message" in (error as { data: any }).data &&
   typeof (error as { data: { message: any } }).data.message === "string";
 

@@ -104,6 +104,7 @@ export const DashboardApp = ({
 
   const parameterQueryParams = location.query;
   const dashboardId =
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
     _dashboardId || (Urls.extractEntityId(params.slug) as DashboardId);
 
   useRegisterDashboardMetabotContext();

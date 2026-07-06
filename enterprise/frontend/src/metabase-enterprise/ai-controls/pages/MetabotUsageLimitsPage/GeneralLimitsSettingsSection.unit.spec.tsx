@@ -16,7 +16,9 @@ import { createMockSettings } from "metabase-types/api/mocks";
 import { GeneralLimitsSettingsSection } from "./GeneralLimitsSettingsSection";
 
 function setup({
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
   limitType = "tokens" as MetabotLimitType,
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: removal fails type-check
   limitPeriod = "monthly" as MetabotLimitPeriod,
   quotaMessage = "",
   instanceMaxUsage = null as number | null,
