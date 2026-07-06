@@ -199,14 +199,14 @@
       (tru "OpenAI API error (HTTP {0})" status))))
 
 (def ^:private supported-models
-  "OpenAI chat models offered in the Metabot model picker.
-  `list-models` returns the intersection of this set with the account's `/v1/models` catalog."
-  #{"gpt-5.5"
-    "gpt-5.5-pro"
-    "gpt-5.4"
-    "gpt-5.4-pro"
-    "gpt-5.4-mini"
-    "gpt-5"})
+  "OpenAI chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"gpt-5.5"      "GPT-5.5"
+   "gpt-5.5-pro"  "GPT-5.5 Pro"
+   "gpt-5.4"      "GPT-5.4"
+   "gpt-5.4-pro"  "GPT-5.4 Pro"
+   "gpt-5.4-mini" "GPT-5.4 Mini"
+   "gpt-5"        "GPT-5"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -246,7 +246,7 @@
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
-                         {:id id :display_name id})))}))
+                         {:id id :display_name (supported-models id)})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.

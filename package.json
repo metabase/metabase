@@ -105,7 +105,7 @@
     "detect-package-manager": "^3.0.2",
     "diff": "^5.2.2",
     "dompurify": "^3.4.11",
-    "echarts": "6.0.0",
+    "echarts": "6.1.0",
     "events": "^3.3.0",
     "fast-text-encoding": "^1.0.6",
     "formik": "^2.4.5",

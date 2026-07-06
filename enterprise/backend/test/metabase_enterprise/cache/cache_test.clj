@@ -223,4 +223,10 @@
             (is (=? {:count pos-int?}
                     (invalidate! 200 :include :overrides :database (mt/id))))
             (is (=? {:cached nil :data some?}
-                    (run-query! card1-id {:dashboard_id (:id dash)})))))))))
+                    (run-query! card1-id {:dashboard_id (:id dash)}))))
+          (testing "calling without any target filter is a 400, not a misleading 404 (#66499)"
+            (is (re-find #"At least one of"
+                         (invalidate! 400)))
+            (testing "and `include=overrides` alone does not count as a target"
+              (is (re-find #"At least one of"
+                           (invalidate! 400 :include :overrides))))))))))
