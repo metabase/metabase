@@ -701,6 +701,27 @@
                    :expires_in   pos-int?}
                   refresh-response)))))))
 
+(deftest token-refresh-cannot-widen-scope-test
+  (testing "Refresh token grant -- requesting a scope beyond the original grant is rejected"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [test-client    (create-test-client!)
+              client-id      (:client_id test-client)
+              client-secret  (:client_secret test-client)
+              code           (authorize-and-get-code! client-id)
+              token-response (token-request!
+                              {:grant_type    "authorization_code"
+                               :code          code
+                               :redirect_uri  "https://example.com/callback"}
+                              :authorization (basic-auth-header client-id client-secret))
+              response       (token-request!
+                              {:grant_type    "refresh_token"
+                               :refresh_token (:refresh_token token-response)
+                               :scope         "profile mb:full"}
+                              :expected-status 400
+                              :authorization (basic-auth-header client-id client-secret))]
+          (is (=? {:error string?} response)))))))
+
 (deftest refresh-token-has-expiry-test
   (testing "Refresh tokens are stored with an expiry derived from oauth-server-refresh-token-ttl"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"
