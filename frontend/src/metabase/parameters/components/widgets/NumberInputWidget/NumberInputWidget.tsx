@@ -5,12 +5,13 @@ import _ from "underscore";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import { BigIntNumberInput } from "metabase/querying/common/components/BigIntNumberInput";
 import type { NumberFilterValue } from "metabase/querying/parameters/types";
 import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { Box, type ComboboxItem, NumberInput } from "metabase/ui";
+import { Box, type ComboboxItem } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -116,15 +117,15 @@ export function NumberInputWidget({
       ) : (
         _.times(arity, (i) => (
           <div key={i}>
-            <NumberInput
+            <BigIntNumberInput
               w="100%"
               className={CS.p1}
               autoFocus={autoFocus && i === 0}
-              value={unsavedArrayValue[i]?.toString() ?? ""}
+              value={unsavedArrayValue[i] ?? null}
               onChange={(newValue) => {
                 setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = parseNumber(String(newValue));
+                  newUnsavedValue[i] = newValue;
                   return newUnsavedValue;
                 });
               }}
