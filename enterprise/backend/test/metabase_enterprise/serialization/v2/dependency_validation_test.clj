@@ -84,7 +84,8 @@
                             (messages))))))
         (testing "when it's :parameters"
           (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-            (extract-aborts! {:targets       [["Collection" coll2-id]]
+            ;; the parameter-referencing "Card with parameters" lives in coll3, so target coll3 to exercise it
+            (extract-aborts! {:targets       [["Collection" coll3-id]]
                               :no-settings   true
                               :no-data-model true})
             (is (some #(re-find #"not included in the export" %)
@@ -174,7 +175,9 @@
               (extract-aborts! opts)
               (is (some #(re-find #"missing from the source database" %) (map :message (messages)))
                   "the warning reports the unsatisfied data-model reference")))
-          (testing "continue-on-error exports anyway, skipping the affected card"
+          ;; continue-on-error only suppresses the abort: the affected card is still serialized (with a malformed ref)
+          ;; and is skipped on import, not at export. See the escape-continue-on-error round-trip test in load-test.
+          (testing "continue-on-error proceeds without aborting the export"
             (let [extracted (into [] (extract/extract (assoc opts :continue-on-error true)))]
               (is (some #(= "Collection" (-> % :serdes/meta last :model)) extracted)
                   "the target collection is still exported under continue-on-error"))))))))

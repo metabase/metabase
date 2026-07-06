@@ -89,13 +89,18 @@
 
 (defn- analytics-card-ids
   "Of `card-ids`, the subset living in an 'analytics' namespace collection. These are removed from extraction (they
-   have stable entity_ids across instances) and references to them stay valid, resolving on import."
+   have stable entity_ids across instances) and references to them stay valid, resolving on import. `card-ids` is
+   queried in bounded `:in` batches so a large closure doesn't blow past database parameter limits."
   [card-ids]
   (let [analytics-colls (analytics-collection-ids)]
     (if (and (seq card-ids) (seq analytics-colls))
-      (t2/select-pks-set :model/Card {:where [:and
-                                              [:in :id (vec card-ids)]
-                                              [:in :collection_id (vec analytics-colls)]]})
+      (into #{}
+            (comp (partition-all 1000)
+                  (mapcat (fn [batch]
+                            (t2/select-pks-set :model/Card {:where [:and
+                                                                    [:in :id (vec batch)]
+                                                                    [:in :collection_id (vec analytics-colls)]]}))))
+            card-ids)
       #{})))
 
 (defn- resolve-targets
