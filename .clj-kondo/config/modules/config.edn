@@ -2496,7 +2496,8 @@
                     :model/QueryExecution
                     :model/Segment
                     :model/Table}
-   :uses #{lib
+   :uses #{app-db
+           lib
            lib-be
            models
            settings
@@ -2871,7 +2872,6 @@
            app-db
            audit-app
            classloader
-           config
            driver
            lib
            models
