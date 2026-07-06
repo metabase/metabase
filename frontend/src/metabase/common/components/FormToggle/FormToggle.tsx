@@ -16,6 +16,7 @@ export interface FormToggleProps extends Omit<
   actions?: ReactNode;
   description?: ReactNode;
   optional?: boolean;
+  nullable?: boolean;
   style?: CSSProperties;
 }
 
@@ -29,6 +30,7 @@ export const FormToggle = forwardRef(function FormToggle(
     description,
     onChange,
     optional,
+    nullable: _nullable,
     ...props
   }: FormToggleProps,
   ref: Ref<HTMLDivElement>,

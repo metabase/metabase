@@ -706,7 +706,11 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("Integer").type("-20");
             cy.findByPlaceholderText("IntegerUnsigned").type("20");
             cy.findByPlaceholderText("Tinyint").type("101");
-            cy.findByLabelText("Tinyint1").click({ force: true });
+            if (dialect === "mysql") {
+              cy.findByLabelText("Tinyint1").click({ force: true });
+            } else {
+              cy.findByPlaceholderText("Tinyint1").type("1");
+            }
             cy.findByPlaceholderText("Smallint").type("32767");
             cy.findByPlaceholderText("Mediumint").type("8388607");
             cy.findByPlaceholderText("Bigint").type("922337204775");
