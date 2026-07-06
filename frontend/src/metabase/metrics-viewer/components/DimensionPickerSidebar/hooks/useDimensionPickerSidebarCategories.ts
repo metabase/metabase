@@ -8,6 +8,7 @@ import {
   type DimensionPickerSidebarCategory,
   getComparableDimensionKey,
   getDimensionBreakoutConfig,
+  getDimensionBreakoutTypeLabel,
 } from "metabase/metrics-viewer/utils";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 
@@ -123,15 +124,11 @@ function sortSidebarCategories(
 function getSidebarCategoryName(item: DimensionPickerItem) {
   const type = item.dimensionBreakoutInfo.type;
 
-  if (type === "time") {
-    return t`Time`;
-  }
-
   if (type === "geo" && item.geoSubtype === "country") {
     return t`Country`;
   }
 
-  return item.name;
+  return getDimensionBreakoutTypeLabel(type) ?? item.name;
 }
 
 function hasMappingForEverySlot(
@@ -146,9 +143,7 @@ function hasMappingForEverySlot(
 function mergeDimensionMappings(items: DimensionPickerItem[]) {
   const mapping: Record<number, string> = {};
 
-  const preferredItems = [...items].sort(sortPreferredItemsFirst);
-
-  for (const item of preferredItems) {
+  for (const item of flattenNameGroupsByCoverage(items)) {
     for (const [slotIndex, dimensionId] of Object.entries(
       item.dimensionBreakoutInfo.dimensionMapping,
     )) {
@@ -161,11 +156,37 @@ function mergeDimensionMappings(items: DimensionPickerItem[]) {
   return mapping;
 }
 
-function sortPreferredItemsFirst(
-  first: DimensionPickerItem,
-  second: DimensionPickerItem,
-) {
-  return (
-    Number(second.isPreferred === true) - Number(first.isPreferred === true)
-  );
+interface DimensionNameGroup {
+  items: DimensionPickerItem[];
+  slotIndices: Set<number>;
+  hasPreferred: boolean;
+}
+
+function flattenNameGroupsByCoverage(items: DimensionPickerItem[]) {
+  const groups = new Map<string, DimensionNameGroup>();
+
+  for (const item of items) {
+    let group = groups.get(item.name);
+    if (!group) {
+      group = { items: [], slotIndices: new Set(), hasPreferred: false };
+      groups.set(item.name, group);
+    }
+    group.items.push(item);
+    group.hasPreferred ||= item.isPreferred === true;
+    for (const [slotIndex, dimensionId] of Object.entries(
+      item.dimensionBreakoutInfo.dimensionMapping,
+    )) {
+      if (dimensionId != null) {
+        group.slotIndices.add(Number(slotIndex));
+      }
+    }
+  }
+
+  return [...groups.values()]
+    .sort(
+      (first, second) =>
+        second.slotIndices.size - first.slotIndices.size ||
+        Number(second.hasPreferred) - Number(first.hasPreferred),
+    )
+    .flatMap((group) => group.items);
 }

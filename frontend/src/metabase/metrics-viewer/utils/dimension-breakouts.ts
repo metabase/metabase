@@ -721,6 +721,25 @@ export function getScalarDimensionBreakoutLabel() {
   return t`Totals`;
 }
 
+export function getDimensionBreakoutTypeLabel(
+  type: MetricsViewerDimensionBreakoutType,
+): string | null {
+  switch (type) {
+    case "time":
+      return t`Time`;
+    case "category":
+      return t`Category`;
+    case "boolean":
+      return t`Boolean`;
+    case "numeric":
+      return t`Number`;
+
+    // Geo has per-subtype naming and scalar has its own label
+    default:
+      return null;
+  }
+}
+
 // ── DimensionBreakout dimension matching ──
 
 function findSubtypeFromExistingDimensionBreakout(

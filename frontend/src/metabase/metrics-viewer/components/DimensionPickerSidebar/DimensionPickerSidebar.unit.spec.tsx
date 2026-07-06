@@ -237,6 +237,267 @@ describe("DimensionPickerSidebar", () => {
     );
   });
 
+  it("offers one Category option for different-named category fields across metrics", async () => {
+    const { onSelectDimensionBreakout } = setup({
+      dimensionBreakout: scalarDimensionBreakout,
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "label",
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Plan Type",
+                dimensionMapping: { 0: "dim-plan-type" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [
+            {
+              icon: "label",
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Status",
+                dimensionMapping: { 1: "dim-status" },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+      },
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Plan Type" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Status" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Category" }));
+
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
+      type: "category",
+      label: "Category",
+      dimensionMapping: { 0: "dim-plan-type", 1: "dim-status" },
+    });
+  });
+
+  it("marks the Category option as selected for any active category breakout", async () => {
+    setup({
+      dimensionBreakout: {
+        id: "dim-status",
+        type: "category",
+        label: "Status",
+        display: "bar",
+        dimensionMapping: { 0: "dim-plan-type-2", 1: "dim-status" },
+        projectionConfig: {},
+      },
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "label",
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Plan Type",
+                dimensionMapping: { 0: "dim-plan-type" },
+              },
+            },
+            {
+              icon: "label",
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Plan Type 2",
+                dimensionMapping: { 0: "dim-plan-type-2" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [
+            {
+              icon: "label",
+              isPreferred: true,
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Status",
+                dimensionMapping: { 1: "dim-status" },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+      },
+    });
+
+    expect(screen.getByRole("button", { name: "Category" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    // the per-slot selects reflect the active breakout's dimensions
+    await userEvent.click(
+      screen.getByRole("button", { name: "Configure Category" }),
+    );
+
+    expect(screen.getByLabelText("Select dimension for Revenue")).toHaveValue(
+      "Plan Type 2",
+    );
+    expect(
+      screen.getByLabelText("Select dimension for Total Orders"),
+    ).toHaveValue("Status");
+  });
+
+  it("deselects a metric's dimension by clicking it again in See all", async () => {
+    const activeTimeBreakout: MetricsViewerDimensionBreakoutState = {
+      id: "dim-birth-date",
+      type: "time",
+      label: "Birth Date",
+      display: "line",
+      dimensionMapping: {
+        0: "dim-birth-date",
+        1: "second-dim-created-at",
+      },
+      projectionConfig: {},
+    };
+    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
+      setup({
+        dimensionBreakout: activeTimeBreakout,
+        dimensions: {
+          shared: [],
+          bySource: {
+            [SOURCE_ID]: [
+              {
+                icon: "calendar",
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Birth Date",
+                  dimensionMapping: { 0: "dim-birth-date" },
+                },
+              },
+            ],
+            [SECOND_SOURCE_ID]: [
+              {
+                icon: "calendar",
+                dimensionBreakoutInfo: {
+                  type: "time",
+                  label: "Created At",
+                  dimensionMapping: { 1: "second-dim-created-at" },
+                },
+              },
+            ],
+          },
+        },
+        slots: [
+          { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+          { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+        ],
+        sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+        sources: {
+          [SOURCE_ID]: { type: "metric", name: "Revenue" },
+          [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+        },
+      });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+
+    const selectedDimension = screen.getByRole("button", {
+      name: "Birth Date",
+    });
+    expect(selectedDimension).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(selectedDimension);
+
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalled();
+    const updaterFn = onUpdateActiveDimensionBreakout.mock.calls[0][0];
+    expect(updaterFn(activeTimeBreakout)).toMatchObject({
+      dimensionMapping: { 0: null, 1: "second-dim-created-at" },
+    });
+    expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("reselects a deselected dimension from See all", async () => {
+    const { onSelectDimensionBreakout } = setup({
+      dimensionBreakout: {
+        id: "dim-user-status",
+        type: "category",
+        label: "Status",
+        display: "bar",
+        dimensionMapping: { 0: null, 1: "dim-product-status" },
+        projectionConfig: {},
+      },
+      dimensions: {
+        shared: [],
+        bySource: {
+          [SOURCE_ID]: [
+            {
+              icon: "label",
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Status",
+                dimensionMapping: { 0: "dim-user-status" },
+              },
+            },
+          ],
+          [SECOND_SOURCE_ID]: [
+            {
+              icon: "label",
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Status",
+                dimensionMapping: { 1: "dim-product-status" },
+              },
+            },
+          ],
+        },
+      },
+      slots: [
+        { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
+      ],
+      sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
+      sources: {
+        [SOURCE_ID]: { type: "metric", name: "Revenue" },
+        [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Status" })[0]);
+
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith(
+      {
+        id: "dim-user-status",
+        type: "category",
+        label: "Status",
+        dimensionMapping: { 0: "dim-user-status", 1: "dim-product-status" },
+      },
+      { updateExisting: true },
+    );
+  });
+
   it("hides categories that are not available for multiple metric sources", () => {
     setup({
       dimensions: {
@@ -420,83 +681,6 @@ describe("DimensionPickerSidebar", () => {
     expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
   });
 
-  it("activates the clicked field when its slot is already mapped", async () => {
-    const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
-      setup({
-        dimensionBreakout: {
-          id: "second-dim-created-at",
-          type: "time",
-          label: "Created At",
-          display: "line",
-          dimensionMapping: {
-            0: "dim-birth-date",
-            1: "second-dim-created-at",
-          },
-          projectionConfig: {},
-        },
-        dimensions: {
-          shared: [],
-          bySource: {
-            [SOURCE_ID]: [
-              {
-                icon: "calendar",
-                dimensionBreakoutInfo: {
-                  type: "time",
-                  label: "Birth Date",
-                  dimensionMapping: { 0: "dim-birth-date" },
-                },
-              },
-            ],
-            [SECOND_SOURCE_ID]: [
-              {
-                icon: "calendar",
-                dimensionBreakoutInfo: {
-                  type: "time",
-                  label: "Created At",
-                  dimensionMapping: { 1: "second-dim-created-at" },
-                },
-              },
-            ],
-          },
-        },
-        slots: [
-          { slotIndex: 0, entityIndex: 0, sourceId: SOURCE_ID },
-          { slotIndex: 1, entityIndex: 1, sourceId: SECOND_SOURCE_ID },
-        ],
-        sourceOrder: [SOURCE_ID, SECOND_SOURCE_ID],
-        sources: {
-          [SOURCE_ID]: { type: "metric", name: "Revenue" },
-          [SECOND_SOURCE_ID]: { type: "metric", name: "Total Orders" },
-        },
-      });
-
-    await userEvent.click(screen.getByRole("button", { name: "See all" }));
-    await userEvent.click(screen.getByRole("button", { name: "Birth Date" }));
-
-    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalled();
-    const updaterFn = onUpdateActiveDimensionBreakout.mock.calls[0][0];
-    expect(
-      updaterFn({
-        id: "second-dim-created-at",
-        type: "time",
-        label: "Created At",
-        display: "line",
-        dimensionMapping: {
-          0: "dim-birth-date",
-          1: "second-dim-created-at",
-        },
-        projectionConfig: {},
-      }),
-    ).toMatchObject({
-      label: "Birth Date",
-      dimensionMapping: {
-        0: "dim-birth-date",
-        1: "second-dim-created-at",
-      },
-    });
-    expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
-  });
-
   it("maps the other metric's same-named field when clicked from See all", async () => {
     const { onSelectDimensionBreakout, onUpdateActiveDimensionBreakout } =
       setup({
@@ -556,12 +740,15 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
     await userEvent.click(screen.getAllByRole("button", { name: "Status" })[0]);
 
-    expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
-      id: "dim-user-status",
-      type: "category",
-      label: "Status",
-      dimensionMapping: { 0: "dim-user-status", 1: "dim-product-status" },
-    });
+    expect(onSelectDimensionBreakout).toHaveBeenCalledWith(
+      {
+        id: "dim-user-status",
+        type: "category",
+        label: "Status",
+        dimensionMapping: { 0: "dim-user-status", 1: "dim-product-status" },
+      },
+      { updateExisting: true },
+    );
     expect(onUpdateActiveDimensionBreakout).not.toHaveBeenCalled();
   });
 
@@ -626,12 +813,15 @@ describe("DimensionPickerSidebar", () => {
       await userEvent.click(screen.getByRole("button", { name: "See all" }));
       await userEvent.click(screen.getByRole("button", { name: fieldName }));
 
-      expect(onSelectDimensionBreakout).toHaveBeenCalledWith({
-        id: fieldId,
-        type: "category",
-        label: fieldName,
-        dimensionMapping: { 0: fieldId, 1: "dim-accounts-email" },
-      });
+      expect(onSelectDimensionBreakout).toHaveBeenCalledWith(
+        {
+          id: fieldId,
+          type: "category",
+          label: fieldName,
+          dimensionMapping: { 0: fieldId, 1: "dim-accounts-email" },
+        },
+        { updateExisting: true },
+      );
       expect(onUpdateActiveDimensionBreakout).not.toHaveBeenCalled();
     },
   );

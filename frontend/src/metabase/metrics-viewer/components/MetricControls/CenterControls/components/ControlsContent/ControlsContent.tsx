@@ -5,6 +5,7 @@ import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutProjectionConfig } from "metabase/metrics-viewer/types";
 import {
   type DimensionFilterValue,
+  getDimensionBreakoutTypeLabel,
   getDimensionIcon,
   getProjectionInfo,
 } from "metabase/metrics-viewer/utils";
@@ -102,9 +103,10 @@ export function ControlsContent(props: ControlsContentProps) {
   );
 
   const columnPickerLabel =
-    dimensionBreakout?.type === "time"
-      ? t`Time`
-      : (dimensionBreakout?.label ?? t`Select column`);
+    (dimensionBreakout &&
+      getDimensionBreakoutTypeLabel(dimensionBreakout.type)) ??
+    dimensionBreakout?.label ??
+    t`Select column`;
   const dimensionFilter = dimensionBreakout?.projectionConfig.dimensionFilter;
 
   return (

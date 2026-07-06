@@ -100,10 +100,10 @@ export function isCategorySelected(
   category: DimensionPickerSidebarCategory,
   activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
 ) {
-  if (
-    category.dimensionBreakoutInfo.type === "time" &&
-    activeDimensionBreakout.type === "time"
-  ) {
+  // A type-keyed category stands for every dimension of its type, so any
+  // active breakout of that type selects it. Geo keys carry a subtype and
+  // fall through to exact dimension matching.
+  if (category.key === `type:${activeDimensionBreakout.type}`) {
     return true;
   }
 
@@ -122,19 +122,5 @@ export function hasMultipleMetricSources(metricSlots: MetricSlot[]) {
 export function getDimensionBreakoutId(item: DimensionPickerItem) {
   return Object.values(item.dimensionBreakoutInfo.dimensionMapping).find(
     (dimensionId) => dimensionId != null,
-  );
-}
-
-export function isMatchingActiveDimensionBreakout(
-  item: DimensionPickerItem,
-  activeDimensionBreakout: MetricsViewerDimensionBreakoutState,
-) {
-  const dimensionBreakoutId = getDimensionBreakoutId(item);
-
-  return (
-    hasMatchingDimensions(item, activeDimensionBreakout) &&
-    item.dimensionBreakoutInfo.label === activeDimensionBreakout.label &&
-    (dimensionBreakoutId == null ||
-      dimensionBreakoutId === activeDimensionBreakout.id)
   );
 }

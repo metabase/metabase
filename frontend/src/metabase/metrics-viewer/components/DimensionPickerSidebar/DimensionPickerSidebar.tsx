@@ -35,10 +35,10 @@ import {
   filterSections,
   getDimensionBreakoutId,
   getSelectedCategoryKey,
+  hasMatchingDimensions,
   hasMultipleMetricSources,
   hasSameDimensions,
   isCategorySelected,
-  isMatchingActiveDimensionBreakout,
 } from "./utils";
 
 type SidebarMode = "default" | "all";
@@ -121,7 +121,23 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
 
   const handleAllFieldsSelect = useCallback(
     (item: DimensionPickerItem) => {
-      if (isMatchingActiveDimensionBreakout(item, activeDimensionBreakout)) {
+      // Clicking an already-selected dimension deselects it: the item's slots
+      // lose their dimension, excluding those metric instances from the
+      // breakout. All fields items are scoped per metric accordion, so only
+      // that metric is affected.
+      if (hasMatchingDimensions(item, activeDimensionBreakout)) {
+        const clearedSlots = Object.entries(
+          item.dimensionBreakoutInfo.dimensionMapping,
+        )
+          .filter(([, dimensionId]) => dimensionId != null)
+          .map(([slotIndex]) => [Number(slotIndex), null] as const);
+        updateActiveDimensionBreakout((prev) => ({
+          ...prev,
+          dimensionMapping: {
+            ...prev.dimensionMapping,
+            ...Object.fromEntries(clearedSlots),
+          },
+        }));
         return;
       }
 
@@ -148,11 +164,16 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         return;
       }
 
-      onSelectDimensionBreakout({
-        ...item.dimensionBreakoutInfo,
-        ...(dimensionBreakoutId ? { id: dimensionBreakoutId } : {}),
-        dimensionMapping,
-      });
+      onSelectDimensionBreakout(
+        {
+          ...item.dimensionBreakoutInfo,
+          ...(dimensionBreakoutId ? { id: dimensionBreakoutId } : {}),
+          dimensionMapping,
+        },
+        // Update in place when the breakout already exists (e.g. re-enabling a
+        // deselected metric), instead of silently keeping the stale mapping.
+        { updateExisting: true },
+      );
       trackMetricsViewerDimensionSelected();
     },
     [

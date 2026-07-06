@@ -10,8 +10,27 @@ import {
   computeDefaultDimensionBreakouts,
   createDimensionBreakoutFromInfo,
   findMatchingDimensionForBreakout,
+  getDimensionBreakoutTypeLabel,
   resolveCommonDimensionBreakoutLabel,
 } from "./dimension-breakouts";
+
+describe("getDimensionBreakoutTypeLabel", () => {
+  it.each([
+    ["time", "Time"],
+    ["category", "Category"],
+    ["boolean", "Boolean"],
+    ["numeric", "Number"],
+  ] as const)("labels %s breakouts by dimension type", (type, label) => {
+    expect(getDimensionBreakoutTypeLabel(type)).toBe(label);
+  });
+
+  it.each(["geo", "scalar"] as const)(
+    "returns null for %s breakouts, which keep their own labels",
+    (type) => {
+      expect(getDimensionBreakoutTypeLabel(type)).toBeNull();
+    },
+  );
+});
 
 describe("resolveCommonDimensionBreakoutLabel", () => {
   it("returns null for empty array", () => {

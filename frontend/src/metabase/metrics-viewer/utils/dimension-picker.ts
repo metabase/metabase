@@ -245,17 +245,13 @@ export type DimensionPickerSection = {
 export function getComparableDimensionKey(item: DimensionPickerItem) {
   const type = item.dimensionBreakoutInfo.type;
 
-  if (type === "time") {
-    return "type:time";
+  if (type === "geo") {
+    return item.geoSubtype === "country"
+      ? "type:geo:country"
+      : ["geo", item.name].join(":");
   }
 
-  if (type === "geo" && item.geoSubtype === "country") {
-    return "type:geo:country";
-  }
-
-  // Dimensions with the same name across dimensions are treated as compatible.
-  // TODO: Alternatively, we can do this by dimension type instead.
-  return [type, item.name].join(":");
+  return `type:${type}`;
 }
 
 function getDimensionPickerItemByDimensionId(
