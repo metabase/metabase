@@ -972,7 +972,7 @@
       (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
       ;; simulate the redundant state a crash between collapse's insert and delete would leave behind
       (insert-table-view-data-perm! group-id db-id table-id :unrestricted)
-      (data-perms/batch-collapse-permissions! [[group-id db-id]])
+      (data-perms/batch-collapse-permissions!)
       (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions
                                              :group_id group-id :db_id db-id :table_id nil
                                              :perm_type :perms/view-data)))
@@ -987,7 +987,7 @@
       (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/view-data)
       (insert-table-view-data-perm! group-id db-id table-id-1 :blocked)
       (insert-table-view-data-perm! group-id db-id table-id-2 :blocked)
-      (data-perms/batch-collapse-permissions! [[group-id db-id]])
+      (data-perms/batch-collapse-permissions!)
       (is (= :blocked (t2/select-one-fn :perm_value :model/DataPermissions
                                         :group_id group-id :db_id db-id :table_id nil
                                         :perm_type :perms/view-data)))
@@ -1001,7 +1001,7 @@
                    :model/Table            {_table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
       (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/view-data)
       (insert-table-view-data-perm! group-id db-id table-id-1 :blocked)
-      (data-perms/batch-collapse-permissions! [[group-id db-id]])
+      (data-perms/batch-collapse-permissions!)
       (is (nil? (t2/select-one :model/DataPermissions
                                :group_id group-id :db_id db-id :table_id nil
                                :perm_type :perms/view-data)))
@@ -1017,7 +1017,7 @@
       (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/view-data)
       (insert-table-view-data-perm! group-id db-id table-id-1 :blocked)
       (insert-table-view-data-perm! group-id db-id table-id-2 :unrestricted)
-      (data-perms/batch-collapse-permissions! [[group-id db-id]])
+      (data-perms/batch-collapse-permissions!)
       (is (nil? (t2/select-one :model/DataPermissions
                                :group_id group-id :db_id db-id :table_id nil
                                :perm_type :perms/view-data)))

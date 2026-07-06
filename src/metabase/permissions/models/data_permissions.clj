@@ -738,16 +738,6 @@
   (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
     (t2/delete! :model/DataPermissions :id [:in batched-to-delete-ids])))
 
-(defn- view-data-table-perm-pairs
-  "Distinct `[group-id db-id]` pairs for the table-level `:perms/view-data` rows in `rows` — the only rows
-  [[batch-collapse-permissions!]] may rewrite; see its docstring for why."
-  [rows]
-  (into #{}
-        (comp (filter :table_id)
-              (filter #(= (:perm_type %) :perms/view-data))
-              (map (juxt :group_id :db_id)))
-        rows))
-
 (def ^:private view-data-type-name
   (u/qualified-name :perms/view-data))
 
@@ -757,16 +747,16 @@
 
 (defn batch-collapse-permissions!
   "Rewrites table-level `:perms/view-data` rows as db-level rows wherever doing so cannot change any
-  effective permission. Two set-based statements over the given `[group-id db-id]` pairs:
+  effective permission, across the whole instance. Two set-based statements:
 
-  1. For each pair with no db-level view-data row whose table-level rows ALL carry
+  1. For each (group, db) pair with no db-level view-data row whose table-level rows ALL carry
      [[collapsed-view-data-value]] — including rows referencing inactive tables, so collapsing never
      discards a value a reactivated table would otherwise pick back up — and cover every active table in
      the database: insert the equivalent db-level row.
   2. Delete every table-level row whose value matches the pair's db-level row. This removes the rows
      step 1 just made redundant, and heals equal-value duplicates left by pre-collapse Metabase versions
-     (#76077 data collapses organically as writes touch it) or an H2 crash mid-collapse (on other app dbs
-     the enclosing cluster-lock transaction makes partial states unreachable). Rows whose value differs
+     (#76077 data collapses as writes come in) or an H2 crash mid-collapse (on other app dbs the
+     enclosing cluster-lock transaction makes partial states unreachable). Rows whose value differs
      from the db-level row are left alone — they are anomalies this code did not create, and deleting
      them would change what a reactivated table reads.
 
@@ -778,72 +768,62 @@
   granular\" path only triggers on `:blocked`, a view-data value, so the row explosion it used to cause
   (#76077) was all view-data rows.
 
-  Idempotent. Deliberately triggered only by inserts (via [[save-permission-changes!]]): pairs that become
-  collapsible through row deletion or table deactivation alone stay granular, which is harmless — effective
-  permissions are unchanged and no new rows accumulate. Caller must hold the permissions cluster lock for
-  the affected database(s)."
-  [pairs]
-  (doseq [pairs (partition-all permission-batch-size (set pairs))]
-    (let [pair-cond (fn [group-col db-col]
-                      [:in [:composite group-col db-col] (vec pairs)])]
-      (t2/query {:insert-into [[:data_permissions [:group_id :perm_type :db_id :perm_value]]
-                               {:select    [:dp.group_id :dp.perm_type :dp.db_id [[:min :dp.perm_value]]]
-                                :from      [[:data_permissions :dp]]
-                                :left-join [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
-                                :join      [[{:select   [:db_id [[:count :*] :n]]
-                                              :from     [:metabase_table]
-                                              :where    [:and
-                                                         [:in :db_id (into #{} (map second) pairs)]
-                                                         [:= :active true]]
-                                              :group-by [:db_id]} :tc]
-                                            [:= :tc.db_id :dp.db_id]]
-                                :where     [:and
-                                            [:= :dp.perm_type view-data-type-name]
-                                            [:not= :dp.table_id nil]
-                                            (pair-cond :dp.group_id :dp.db_id)
-                                            [:not [:exists {:select [[[:inline 1]]]
-                                                            :from   [[:data_permissions :dbp]]
-                                                            :where  [:and
-                                                                     [:= :dbp.group_id :dp.group_id]
-                                                                     [:= :dbp.db_id :dp.db_id]
-                                                                     [:= :dbp.perm_type :dp.perm_type]
-                                                                     [:= :dbp.table_id nil]]}]]]
-                                :group-by  [:dp.group_id :dp.perm_type :dp.db_id :tc.n]
-                                :having    [:and
-                                            [:= [:count [:distinct :dp.perm_value]] [:inline 1]]
-                                            [:= [:min :dp.perm_value]
-                                             (u/qualified-name collapsed-view-data-value)]
-                                            [:= [:count [:distinct [:case [:= :mt.active true]
-                                                                    :dp.table_id]]]
-                                             :tc.n]]}]})
-      (t2/query {:delete-from :data_permissions
-                 :where [:in :id {:select [:id]
-                                  :from   [[{:select [:dp.id]
-                                             :from   [[:data_permissions :dp]]
-                                             :join   [[:data_permissions :dbp]
-                                                      [:and
-                                                       [:= :dbp.group_id :dp.group_id]
-                                                       [:= :dbp.db_id :dp.db_id]
-                                                       [:= :dbp.perm_type :dp.perm_type]
-                                                       [:= :dbp.perm_value :dp.perm_value]
-                                                       [:= :dbp.table_id nil]]]
-                                             :where  [:and
-                                                      [:= :dp.perm_type view-data-type-name]
-                                                      [:not= :dp.table_id nil]
-                                                      (pair-cond :dp.group_id :dp.db_id)]} :redundant]]}]}))))
+  Idempotent. Caller must hold the permissions cluster lock for the affected database(s)."
+  []
+  (t2/query {:insert-into [[:data_permissions [:group_id :perm_type :db_id :perm_value]]
+                           {:select    [:dp.group_id :dp.perm_type :dp.db_id [[:min :dp.perm_value]]]
+                            :from      [[:data_permissions :dp]]
+                            :left-join [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
+                            :join      [[{:select   [:db_id [[:count :*] :n]]
+                                          :from     [:metabase_table]
+                                          :where    [:= :active true]
+                                          :group-by [:db_id]} :tc]
+                                        [:= :tc.db_id :dp.db_id]]
+                            :where     [:and
+                                        [:= :dp.perm_type view-data-type-name]
+                                        [:not= :dp.table_id nil]
+                                        [:not [:exists {:select [[[:inline 1]]]
+                                                        :from   [[:data_permissions :dbp]]
+                                                        :where  [:and
+                                                                 [:= :dbp.group_id :dp.group_id]
+                                                                 [:= :dbp.db_id :dp.db_id]
+                                                                 [:= :dbp.perm_type :dp.perm_type]
+                                                                 [:= :dbp.table_id nil]]}]]]
+                            :group-by  [:dp.group_id :dp.perm_type :dp.db_id :tc.n]
+                            :having    [:and
+                                        [:= [:count [:distinct :dp.perm_value]] [:inline 1]]
+                                        [:= [:min :dp.perm_value]
+                                         (u/qualified-name collapsed-view-data-value)]
+                                        [:= [:count [:distinct [:case [:= :mt.active true]
+                                                                :dp.table_id]]]
+                                         :tc.n]]}]})
+  (t2/query {:delete-from :data_permissions
+             :where [:in :id {:select [:id]
+                              :from   [[{:select [:dp.id]
+                                         :from   [[:data_permissions :dp]]
+                                         :join   [[:data_permissions :dbp]
+                                                  [:and
+                                                   [:= :dbp.group_id :dp.group_id]
+                                                   [:= :dbp.db_id :dp.db_id]
+                                                   [:= :dbp.perm_type :dp.perm_type]
+                                                   [:= :dbp.perm_value :dp.perm_value]
+                                                   [:= :dbp.table_id nil]]]
+                                         :where  [:and
+                                                  [:= :dp.perm_type view-data-type-name]
+                                                  [:not= :dp.table_id nil]]} :redundant]]}]})
+  nil)
 
 (mu/defn save-permission-changes!
-  "Applies a `{:to-delete [row-id ...] :to-insert [row-map ...]}` diff to `data_permissions`, then collapses
-  any `(group, db)` view-data pair the inserts touched that is now fully uniform (see
-  [[batch-collapse-permissions!]]). All permission writes should go through here so that table-level
-  rows never outlive their usefulness. Caller must hold the permissions cluster lock for the affected
+  "Applies a `{:to-delete [row-id ...] :to-insert [row-map ...]}` diff to `data_permissions`, then runs
+  [[batch-collapse-permissions!]] so table-level rows never outlive their usefulness. All permission
+  writes should go through here. Caller must hold the permissions cluster lock for the affected
   database(s)."
   [{:keys [to-delete to-insert]} :- [:map
                                      [:to-delete {:optional true} [:maybe [:sequential :int]]]
                                      [:to-insert {:optional true} [:maybe [:sequential :map]]]]]
   (batch-delete-permissions! to-delete)
   (batch-insert-permissions! to-insert)
-  (batch-collapse-permissions! (view-data-table-perm-pairs to-insert)))
+  (batch-collapse-permissions!))
 
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.
