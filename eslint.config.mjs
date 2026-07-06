@@ -397,32 +397,6 @@ const configs = [
     },
   },
   {
-    files: ["**/*.ts", "**/*.tsx"],
-    ignores: [
-      "release/**",
-      "bin/**",
-      "enterprise/frontend/src/custom-viz/vite.config.ts",
-      "enterprise/frontend/src/custom-viz/scripts/**",
-      "enterprise/frontend/src/custom-viz/src/templates/**",
-      "frontend/src/embedding-sdk-shared/.storybook/**",
-    ],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        projectService: {
-          allowDefaultProject: [
-            "frontend/src/metabase/app-public.ts",
-            "frontend/src/metabase/app-embed.ts",
-          ],
-        },
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-    rules: {
-      "@typescript-eslint/no-unnecessary-type-assertion": "error",
-    },
-  },
-  {
     files: [
       "**/*.unit.spec.ts",
       "**/*.unit.spec.tsx",
