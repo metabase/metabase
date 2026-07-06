@@ -715,22 +715,27 @@
         ;; render-table-head splices the header cells into the :tr as a seq, like `for` output.
         table [:table {:style "border: 1px solid #F0F0F0; border-radius: 6px; margin: 16px;"}
                [:thead [:tr {} (list (th "a") (th "b") (th "c"))]]
-               [:tbody [:tr {} [:td {:style "x"} "1"]]]]
-        [_table attrs
-         [_thead
-          [_tr _tr-attrs
-           th-a th-b th-c]]
-         tbody]              (#'pdf/restyle-table table)]
-    (testing "the <table> fills its frame and drops its own border/radius/margin"
-      (is (str/includes? (:style attrs) "width:100%"))
-      (is (str/includes? (:style attrs) "border:none")))
-    (testing "header cells get a divider, except the last"
-      (is (divider? th-a))
-      (is (divider? th-b))
-      (is (not (divider? th-c))))
-    (testing "body rows pass through untouched"
-      (is (= [:tbody [:tr {} [:td {:style "x"} "1"]]]
-             tbody)))))
+               [:tbody [:tr {} [:td {:style "x"} "1"]]]]]
+    (testing "the native :table (add-dividers? true) fills its frame, drops its own border/radius/margin, and gets header dividers"
+      (let [[_table attrs
+             [_thead
+              [_tr _tr-attrs
+               th-a th-b th-c]]
+             tbody] (#'pdf/restyle-table table true)]
+        (is (str/includes? (:style attrs) "width:100%"))
+        (is (str/includes? (:style attrs) "border:none"))
+        (is (divider? th-a))
+        (is (divider? th-b))
+        (is (not (divider? th-c)))
+        (testing "body rows pass through untouched"
+          (is (= [:tbody [:tr {} [:td {:style "x"} "1"]]]
+                 tbody)))))
+    (testing "pivot/object-detail (add-dividers? false) also fill the frame but add no header dividers"
+      (let [restyled (#'pdf/restyle-table table false)
+            attrs    (second restyled)]
+        (is (str/includes? (:style attrs) "width:100%"))
+        (is (str/includes? (:style attrs) "border:none"))
+        (is (not (str/includes? (pr-str restyled) "border-right")))))))
 
 (deftest ^:parallel add-header-dividers-test
   (testing "spliced seqs are flattened and all header cells but the last get the divider"
@@ -745,6 +750,17 @@
               [:th {:style ""} "last"]]]
       (is (= tr (#'pdf/add-header-dividers tr))))))
 
+(def ^:private cell-fill-slack-px
+  "Logical px a width-filling table image may fall short of the cell (CSSBox rounding)."
+  8)
+
+(defn- fills-cell-width?
+  "Whether a table image's device-pixel `width` fills its `px-w` cell at the supersample scale (within
+  [[cell-fill-slack-px]]) without overflowing past it."
+  [width px-w]
+  (let [ss (long @#'pdf/table-supersample)]
+    (<= (* ss (- px-w cell-fill-slack-px)) width (* ss px-w))))
+
 ;; not ^:parallel: exercises the real CSSBox HTML rendering path
 (deftest ^:synchronized table-body-png-sizing-test
   (let [data               {:cols [{:name         "n"
@@ -757,13 +773,66 @@
         px-w               400
         px-h               300
         ss                 (long @#'pdf/table-supersample)
-        ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part px-w px-h)))]
+        ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part :table px-w px-h)))]
     (testing "width fills the cell at the supersampled scale"
-      (is (<= (* ss (- px-w 8))
-              (.getWidth img)
-              (* ss px-w))))
+      (is (fills-cell-width? (.getWidth img) px-w)))
     (testing "height is capped to the cell even though 50 rows don't fit"
       (is (<= 1 (.getHeight img) (* ss px-h))))))
+
+;; not ^:parallel: exercises the real CSSBox HTML rendering path for object-detail through the framed table path
+(deftest ^:synchronized object-detail-body-png-test
+  (testing "an object-detail card renders through the framed table path: width-filled and height-bounded"
+    (let [data               {:cols [{:name "id" :display_name "ID" :base_type :type/Integer}
+                                     {:name "name" :display_name "Name" :base_type :type/Text}]
+                              :rows [[1401 "Carmela"]]}
+          part               {:card     {:name "Most recent subscription"}
+                              :dashcard nil
+                              :result   {:data data}}
+          px-w               400
+          px-h               300
+          ss                 (long @#'pdf/table-supersample)
+          ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part :object px-w px-h)))]
+      (is (fills-cell-width? (.getWidth img) px-w))
+      (is (<= 1 (.getHeight img) (* ss px-h))))))
+
+;; not ^:parallel: exercises the real CSSBox HTML rendering path for the pivot's fill-the-cell framing
+(deftest ^:synchronized pivot-body-png-test
+  (let [px-h      400
+        assembled {:card     {:display                :pivot
+                              :visualization_settings {:pivot_table.column_split {:rows ["R"] :columns ["C"] :values ["m"]}}}
+                   :dashcard nil
+                   :result   {:data {:cols                 [{:name "R" :base_type :type/Text}
+                                                            {:name "C" :base_type :type/Text}
+                                                            {:name "pivot-grouping" :base_type :type/Integer}
+                                                            {:name "m" :base_type :type/Integer}]
+                                     :rows                 [["a" "x" 0 10]
+                                                            ["a" "y" 0 20]
+                                                            ["b" "x" 0 30]
+                                                            ["b" "y" 0 40]]
+                                     :format-rows?         true
+                                     :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}}}}
+        width     (fn [part px-w] (.getWidth ^BufferedImage
+                                   (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part :pivot px-w px-h)))))]
+    (testing "an assembled pivot fills a roomy cell -- columns stretch to use the space, like the dashboard"
+      (is (fills-cell-width? (width assembled 1000) 1000)))
+    (testing "a pivot wider than the cell is clipped at the cell edge, not rendered past it"
+      (is (fills-cell-width? (width assembled 100) 100)))
+    (testing "a :pivot that can't be assembled falls back to a flat table and also fills the cell (no collapse)"
+      (let [fallback {:card     {:display :pivot}
+                      :dashcard nil
+                      :result   {:data {:cols [{:name "a" :display_name "A" :base_type :type/Text}
+                                               {:name "b" :display_name "B" :base_type :type/Text}]
+                                        :rows [["x" "y"]]}}}]
+        (is (fills-cell-width? (width fallback 1000) 1000))))))
+
+(deftest ^:parallel table-like-chart-types-test
+  (testing "native table, pivot, and object-detail cards all classify into the framed table path"
+    (let [data {:cols [{:name "n" :display_name "N" :base_type :type/Integer}]
+                :rows [[1] [2]]}]
+      (doseq [display [:table :pivot :object]]
+        (is (contains? @#'pdf/table-like-chart-types
+                       (render.card/detect-pulse-chart-type {:display display} nil data))
+            (format "display %s should route through the framed table path" display))))))
 
 ;; not ^:parallel: exercises the real CSSBox/PDFBox rendering path (font loading + the no-results HTML->PNG asset)
 (deftest ^:synchronized no-results-card-render-test
