@@ -1069,6 +1069,7 @@ const configs = [
       "rspack.*.js",
       "bin/**/*.js",
       ".github/scripts/**/*.js",
+      ".github/scripts/**/*.mjs",
     ],
     languageOptions: {
       globals: {

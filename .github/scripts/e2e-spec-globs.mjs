@@ -1,22 +1,32 @@
 import { execFileSync } from "node:child_process";
 
-// Canonical glob set identifying e2e scenario specs — the "universe" the test
-// planner selects from (create-test-plan.ts) and the coverage manifest builder
-// reconciles against for backfill (build-coverage-manifest.mjs).
-export const E2E_SPEC_GLOBS = [
-  "e2e/test/scenarios/**/*.cy.spec.js",
-  "e2e/test/scenarios/**/*.cy.spec.jsx",
-  "e2e/test/scenarios/**/*.cy.spec.ts",
-  "e2e/test/scenarios/**/*.cy.spec.tsx",
-];
+import micromatch from "micromatch";
 
-// Tracked spec files matching E2E_SPEC_GLOBS, repo-relative.
+const SPEC_DIR = "e2e/test/scenarios";
+
+// This is the nightly-only baseline helper that runs in the instrumented pass to
+// capture boot-time coverage. It is not a product spec, so it is excluded from
+// the test plan universe and from the manifest backfill reconciliation.
+export const BASELINE_SPEC = `${SPEC_DIR}/coverage-baseline.cy.spec.js`;
+
+// This glob set defines the spec "universe". The test planner
+// (create-test-plan.ts) selects which specs to run from it, and the coverage
+// manifest builder (build-coverage-manifest.mjs) reconciles against it when
+// backfilling specs that did not run.
+export const E2E_SPEC_GLOBS = [`${SPEC_DIR}/**/*.cy.spec.{js,jsx,ts,tsx}`];
+
+// Returns the tracked e2e specs as repo-relative paths, excluding the baseline
+// helper.
 export function listSpecFiles(cwd = process.cwd()) {
-  return execFileSync("git", ["ls-files", "--", ...E2E_SPEC_GLOBS], {
+  const tracked = execFileSync("git", ["ls-files", "--", SPEC_DIR], {
     cwd,
     encoding: "utf8",
   })
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+  return micromatch(tracked, E2E_SPEC_GLOBS, {
+    ignore: [BASELINE_SPEC],
+    dot: true,
+  });
 }

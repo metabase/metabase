@@ -30,7 +30,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { listSpecFiles } from "../../.github/scripts/e2e-spec-globs.mjs";
+import {
+  BASELINE_SPEC,
+  listSpecFiles,
+} from "../../.github/scripts/e2e-spec-globs.mjs";
 
 import { discriminatingFiles } from "./baseline.mjs";
 
@@ -44,10 +47,16 @@ const OUTPUT_FILE = path.join(
   REPO_ROOT,
   "e2e/coverage/spec-file-manifest.json",
 );
-const BASELINE_SPEC = "e2e/test/scenarios/coverage-baseline.cy.spec.js";
 
 function readEntry(file) {
-  return JSON.parse(fs.readFileSync(file, "utf8"));
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch (error) {
+    console.warn(
+      `Skipping unreadable coverage entry ${file}: ${error.message}`,
+    );
+    return null;
+  }
 }
 
 // The previous nightly's manifest (downloaded by the merge job) used to backfill
@@ -92,7 +101,9 @@ function main() {
       continue;
     }
     const entry = readEntry(path.join(PER_SPEC_DIR, file));
-    entries[entry.spec] = entry;
+    if (entry) {
+      entries[entry.spec] = entry;
+    }
   }
 
   const baseline = entries[BASELINE_SPEC];
