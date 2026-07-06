@@ -184,7 +184,14 @@ function SaveChartAction({
       dashboard_tab_id: options?.dashboardTabId,
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
-    dispatch(markChartSaved({ agentId, entityId, cardId: created.id }));
+    dispatch(
+      markChartSaved({
+        agentId,
+        entity_id: entityId,
+        card_id: created.id,
+        name: created.name,
+      }),
+    );
     dispatch(
       addUndo({
         icon: "check_filled",

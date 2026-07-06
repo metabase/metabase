@@ -2,7 +2,7 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
-import type { SavedEntityLocation } from "metabase/api/ai-streaming/schemas";
+import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
@@ -63,24 +63,28 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
+    // Records a manual (Save button) save as an `entity_saved` data part with no
+    // location, so the chart's "Saved" state derives from the same source as agent
+    // saves without rendering a confirmation block.
     markChartSaved: convoReducer(
-      (
-        convo,
-        action: ConvoPayloadAction<{
-          entityId: string;
-          cardId: number;
-          location?: SavedEntityLocation;
-        }>,
-      ) => {
-        const { entityId, cardId, location } = action.payload;
-        const prevState = convo.state ?? {};
-        convo.state = {
-          ...prevState,
-          savedCharts: {
-            ...(prevState.savedCharts ?? {}),
-            [entityId]: { card_id: cardId, ...(location ? { location } : {}) },
+      (convo, action: ConvoPayloadAction<EntitySavedValue>) => {
+        const { entity_id, card_id, name, location } = action.payload;
+        convo.messages.push({
+          id: createMessageId(),
+          role: "agent",
+          type: "data_part",
+          part: {
+            type: "data-entity_saved",
+            data: {
+              entity_id,
+              card_id,
+              name,
+              ...(location ? { location } : {}),
+            },
           },
-        };
+          // Casting as any to avoid the "excessively deep" union check the message
+          // types trigger here (same reason as addAgentMessage below).
+        } as any);
       },
     ),
     // CONVERSATION REDUCERS

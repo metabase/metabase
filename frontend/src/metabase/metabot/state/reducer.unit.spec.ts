@@ -1,6 +1,6 @@
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
-import { insertPastedChart, markChartSaved } from "./actions";
+import { insertPastedChart } from "./actions";
 import { metabotReducer } from "./reducer";
 import { getMetabotInitialState } from "./reducer-utils";
 
@@ -55,47 +55,6 @@ describe("metabot reducer", () => {
       const state = next.conversations.omnibot?.state;
       expect(Object.keys(state?.charts ?? {})).toEqual(["chart-1", "chart-2"]);
       expect(Object.keys(state?.queries ?? {})).toEqual(["query-1", "query-2"]);
-    });
-  });
-
-  describe("markChartSaved", () => {
-    const location = {
-      type: "collection" as const,
-      id: 5,
-      name: "Sales analytics",
-      url: "/collection/5",
-    };
-
-    it("records the saved card + location in the conversation state", () => {
-      const next = metabotReducer(
-        getMetabotInitialState(),
-        markChartSaved({
-          agentId: "omnibot",
-          entityId: "chart-1",
-          cardId: 99,
-          location,
-        }),
-      );
-
-      expect(next.conversations.omnibot?.state?.savedCharts["chart-1"]).toEqual(
-        {
-          card_id: 99,
-          location,
-        },
-      );
-    });
-
-    it("stores just the card id for a manual save with no location", () => {
-      const next = metabotReducer(
-        getMetabotInitialState(),
-        markChartSaved({ agentId: "omnibot", entityId: "chart-1", cardId: 42 }),
-      );
-
-      expect(next.conversations.omnibot?.state?.savedCharts["chart-1"]).toEqual(
-        {
-          card_id: 42,
-        },
-      );
     });
   });
 });

@@ -8,7 +8,6 @@
   where it landed. It should only be called when the user asks to save the chart."
   (:require
    [metabase.api.common :as api]
-   [metabase.channel.urls :as channel.urls]
    [metabase.collections.models.collection :as collection]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
@@ -30,10 +29,16 @@
    [:name :string]
    [:description :string]
    [:destination
-    [:map {:closed true}
-     [:target_type [:enum "collection" "dashboard"]]
-     [:collection_id {:optional true} [:maybe :int]]
-     [:dashboard_id {:optional true} :int]]]])
+    [:multi {:dispatch :target_type}
+     ["collection"
+      [:map {:closed true}
+       [:target_type [:= "collection"]]
+       ;; omit for the user's personal collection; explicit null for the root collection
+       [:collection_id {:optional true} [:maybe :int]]]]
+     ["dashboard"
+      [:map {:closed true}
+       [:target_type [:= "dashboard"]]
+       [:dashboard_id :int]]]]]])
 
 (defn- agent-error! [msg]
   (throw (ex-info msg {:agent-error? true :status-code 400})))
@@ -59,18 +64,14 @@
   (:id (collection/user->personal-collection api/*current-user-id*)))
 
 (defn- collection-location
-  "Resolve the human name + frontend path for a collection target. `nil` id is the
-  root (\"Our analytics\") collection."
+  "Resolve `{:type :id :name}` for a collection target so the FE can label + link it.
+  A `nil` id is the root (\"Our analytics\") collection."
   [collection-id]
-  (if (nil? collection-id)
-    {:type "collection"
-     :id   nil
-     :name (:name (collection/root-collection-with-ui-details nil))
-     :url  "/collection/root"}
-    {:type "collection"
-     :id   collection-id
-     :name (t2/select-one-fn :name :model/Collection :id collection-id)
-     :url  (str "/collection/" collection-id)}))
+  {:type "collection"
+   :id   collection-id
+   :name (if (nil? collection-id)
+           (:name (collection/root-collection-with-ui-details nil))
+           (t2/select-one-fn :name :model/Collection :id collection-id))})
 
 (defn- save-to-collection!
   [{:keys [name description dataset_query display destination]}]
@@ -111,8 +112,7 @@
       {:card     card
        :location {:type "dashboard"
                   :id   dashboard-id
-                  :name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
-                  :url  (channel.urls/dashboard-path dashboard-id)}
+                  :name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)}
        :link     (str "metabase://dashboard/" dashboard-id)})))
 
 (mu/defn ^{:tool-name "save_entity"
@@ -166,7 +166,6 @@
                             {:entity_id chart_id
                              :card_id   (:id card)
                              :name      question-name
-                             :card_url  (channel.urls/card-path (:id card))
                              :location  location})]})
     (catch Exception e
       (log/error e "Error saving entity")

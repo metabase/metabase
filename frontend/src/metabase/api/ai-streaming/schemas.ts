@@ -76,15 +76,15 @@ export type SavedEntityLocation = {
   type: "collection" | "dashboard";
   id: number | null;
   name: string;
-  url: string;
 };
 
 export type EntitySavedValue = {
   entity_id: string;
   card_id: number;
   name: string;
-  card_url: string;
-  location: SavedEntityLocation;
+  // present when the agent saves (drives the confirmation block); absent for a
+  // manual save, which only flips the chart header to "Saved"
+  location?: SavedEntityLocation;
 };
 
 export type KnownDataPart =

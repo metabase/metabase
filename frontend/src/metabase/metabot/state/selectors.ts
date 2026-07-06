@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import type { SavedEntityLocation } from "metabase/api/ai-streaming/schemas";
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
@@ -44,26 +43,27 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
-type SavedChart = { card_id: number; location?: SavedEntityLocation };
-
-const getSavedChart = (
+// A generated chart is "saved" iff an `entity_saved` data part exists for it in the
+// conversation. Reading it from the (persisted) messages — rather than a session-only
+// map — means the "Saved" state survives once threads rehydrate their messages.
+export const getSavedChartCardId = (
   state: State,
   entityId: string,
-): SavedChart | undefined => {
-  const conversations = getMetabotState(state).conversations;
-  for (const convo of Object.values(conversations)) {
-    const saved = convo?.state?.savedCharts?.[entityId];
-    if (saved) {
-      return saved;
+): number | undefined => {
+  const messages = Object.values(getMetabotState(state).conversations).flatMap(
+    (convo) => convo?.messages ?? [],
+  );
+  for (const message of messages) {
+    if (
+      message.type === "data_part" &&
+      message.part.type === "data-entity_saved" &&
+      message.part.data.entity_id === entityId
+    ) {
+      return message.part.data.card_id;
     }
   }
   return undefined;
 };
-
-export const getSavedChartCardId = (
-  state: State,
-  entityId: string,
-): number | undefined => getSavedChart(state, entityId)?.card_id;
 
 export const getMetabotReactionsState = createSelector(
   getMetabotState,

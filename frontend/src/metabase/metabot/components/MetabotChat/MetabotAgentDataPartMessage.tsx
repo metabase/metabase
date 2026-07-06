@@ -4,7 +4,10 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
+import type {
+  EntitySavedValue,
+  SavedEntityLocation,
+} from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type {
@@ -96,12 +99,17 @@ export const AgentDataPartMessage = ({
         </Stack>
       ),
     )
-    .with({ part: { type: "data-entity_saved" } }, ({ part }) => (
-      <Stack gap="md">
-        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-        <EntitySavedMessage value={part.data} />
-      </Stack>
-    ))
+    .with({ part: { type: "data-entity_saved" } }, ({ part }) =>
+      part.data.location == null ? null : (
+        <Stack gap="md">
+          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+          <EntitySavedMessage
+            value={part.data}
+            location={part.data.location}
+          />
+        </Stack>
+      ),
+    )
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
@@ -113,23 +121,36 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
-const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
+const locationUrl = ({ type, id }: SavedEntityLocation): string => {
+  if (type === "dashboard") {
+    return `/dashboard/${id}`;
+  }
+  return id == null ? "/collection/root" : `/collection/${id}`;
+};
+
+const EntitySavedMessage = ({
+  value,
+  location,
+}: {
+  value: EntitySavedValue;
+  location: SavedEntityLocation;
+}) => {
   const target = (
     <Anchor
       key="target"
       component={ForwardRefLink}
-      to={value.location.url}
+      to={locationUrl(location)}
       target="_blank"
       fw="bold"
     >
-      {value.location.name}
+      {location.name}
     </Anchor>
   );
   const chartName = (
     <Anchor
       key="name"
       component={ForwardRefLink}
-      to={value.card_url}
+      to={`/question/${value.card_id}`}
       target="_blank"
       fw="bold"
     >
