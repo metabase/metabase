@@ -79,10 +79,9 @@ const elements = [
     enforceOutgoing: false,
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-iframe-sdk-setup",
     pattern: "frontend/src/metabase/embedding/embedding-iframe-sdk-setup/**",
-    enforceOutgoing: false,
   }),
   createElement({
     type: "app",
