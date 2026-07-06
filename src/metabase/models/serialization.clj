@@ -24,7 +24,7 @@
       tests)
     - `serdes/descendants` - if model should be extracted along with some support (like Collection and all its
       children), you need to specify what to fetch - see `Card` for an example (used during export)
-    - `serdes/dependencies` - if model references other models, you need to declare which ones, see `Action` for an
+    - `serdes/deserialization-dependencies` - if model references other models, you need to declare which ones, see `Action` for an
       example (used during import)
   - Write tests
     - basic layout (that all entity fields are mentioned, fks are marked as such) is tested automatically
@@ -656,7 +656,7 @@
 
 (defmulti serialization-dependencies
   "Returns the entities that `entity` references and that must be satisfied for `entity` to serialize into a complete,
-  importable archive. Used by export-time validation (not by load — that's [[dependencies]], which works on the
+  importable archive. Used by export-time validation (not by load — that's [[deserialization-dependencies]], which works on the
   serialized form and deliberately omits tables/fields because import creates them on the fly).
 
   `entity` is a raw appdb (Toucan) instance, not a serialized map.
@@ -732,7 +732,7 @@
 ;;; Then for each ingested entity:
 ;;;
 ;;; - `(ingest-one serdes-path opts)` is called to read the value into memory, then
-;;; - `(dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
+;;; - `(deserialization-dependencies ingested)` gets a list of other `:serdes/meta` paths need to be loaded first.
 ;;;     - See below on dependencies.
 ;;; - Dependencies are loaded recursively in postorder; that is an entity is loaded after all its deps.
 ;;;     - Circular dependencies will make the load process throw.
@@ -785,7 +785,7 @@
 ;;; ## Dependencies
 ;;; The files of an export are returned in arbitrary order by [[ingest-list]]. But in order to load any entity,
 ;;; everything it has a foreign key to must be loaded first. This is the purpose of one of the most complicated parts of
-;;; serdes: [[dependencies]].
+;;; serdes: [[deserialization-dependencies]].
 ;;;
 ;;; This multimethod returns a list (possibly empty) of `:serdes/meta` paths that this entity depends on. A `Card`
 ;;; depends on the `Table`s it queries, the `Collection` it belongs to, and possibly much else.
@@ -796,18 +796,19 @@
 ;;; Missing dependencies will cause flaky deserialization failures, since sometimes the FK target will exist already,
 ;;; and sometimes not, depending on the arbitrary order of `ingest-list`.
 
-(defmulti dependencies
+(defmulti deserialization-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
-  NOTE: This is called during **LOAD**.
+  NOTE: This is called during **LOAD**. Its export-time counterpart is [[serialization-dependencies]], which runs on a
+  raw entity and additionally reports tables/fields (which import synthesizes on the fly, so they aren't load deps).
 
   Keyed on the model name for this entity.
   Default implementation returns `nil`, so only models that have dependencies need to implement this."
   {:arglists '([ingested])}
   ingested-model)
 
-(defmethod dependencies :default [_]
+(defmethod deserialization-dependencies :default [_]
   nil)
 
 (defmulti load-update!
@@ -1049,7 +1050,7 @@
 
   The identifier can be a single entity ID string, a single identity-hash string, or a vector of entity ID and hash
   strings. If the ID is compound, then the last ID is the one that corresponds to the model. This allows for the
-  compound IDs needed for nested entities like `DashboardCard`s to get their [[dependencies]].
+  compound IDs needed for nested entities like `DashboardCard`s to get their [[deserialization-dependencies]].
 
   Throws if the corresponding entity cannot be found.
 
@@ -1130,7 +1131,7 @@
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
-  This is useful for writing [[dependencies]] implementations."
+  This is useful for writing [[deserialization-dependencies]] implementations."
   [[db-name schema table-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})
@@ -1217,7 +1218,7 @@
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
-  This is useful for writing [[dependencies]] implementations."
+  This is useful for writing [[deserialization-dependencies]] implementations."
   [[db-name schema table-name field-name]]
   (filterv some? [{:model "Database" :id db-name}
                   (when schema {:model "Schema" :id schema})

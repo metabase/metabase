@@ -56,7 +56,7 @@
                         extracted)))
               (testing "dependencies cover the referenced Card"
                 (is (= #{[{:model "Card" :id card-eid}]}
-                       (serdes/dependencies extracted))))
+                       (serdes/deserialization-dependencies extracted))))
               (testing "importing resolves the ref back to the local id"
                 (t2/delete! :model/CuratedSearchEntry :id sli-id)
                 (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
@@ -74,7 +74,7 @@
                    {:search_prompt "legacy" :entity {:model "garbage" :id 5}}]
       (let [extracted (ts/extract-one "CuratedSearchEntry" sli-id)]
         (is (=? {:entity {:model "garbage" :id 5}} extracted))
-        (is (= #{} (serdes/dependencies extracted)))))))
+        (is (= #{} (serdes/deserialization-dependencies extracted)))))))
 
 (deftest table-entity-round-trip-test
   (let [table-id (mt/id :venues)]
@@ -89,7 +89,7 @@
           (is (= ["VENUES"] (take-last 1 (:id table-ref)))))
         (testing "dependencies cover the Table's Database (the Table is synthesized on import)"
           (is (= #{[{:model "Database" :id (first (:id table-ref))}]}
-                 (serdes/dependencies extracted))))
+                 (serdes/deserialization-dependencies extracted))))
         (testing "importing resolves the ref back to the local id"
           (t2/delete! :model/CuratedSearchEntry :id sli-id)
           (serdes.load/load-metabase! (ingestion-in-memory [extracted]))

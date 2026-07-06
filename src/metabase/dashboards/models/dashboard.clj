@@ -451,7 +451,7 @@
     (when action_id #{[{:model "Action" :id action_id}]})
     (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
-(defmethod serdes/dependencies "Dashboard"
+(defmethod serdes/deserialization-dependencies "Dashboard"
   [{:keys [collection_id dashcards parameters]}]
   (->> (map serdes-deps-dashcard dashcards)
        (reduce set/union #{})

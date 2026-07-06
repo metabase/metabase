@@ -450,7 +450,7 @@
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
-(defmethod serdes/dependencies "Transform"
+(defmethod serdes/deserialization-dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]
   (set
    (concat

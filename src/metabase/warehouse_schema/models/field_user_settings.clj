@@ -44,7 +44,7 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldUserSettings" :id "1"}))
 
-(defmethod serdes/dependencies "FieldUserSettings" [fv]
+(defmethod serdes/deserialization-dependencies "FieldUserSettings" [fv]
   (let [db-path (first (serdes/path fv))]
     [[db-path]]))
 

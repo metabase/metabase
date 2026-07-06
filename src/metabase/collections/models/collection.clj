@@ -2107,7 +2107,7 @@
                             ;; stable filename de-dup suffixes across exports, see GHY-3754
                             :order-by serdes/stable-storage-order}))))
 
-(defmethod serdes/dependencies "Collection"
+(defmethod serdes/deserialization-dependencies "Collection"
   [{:keys [parent_id]}]
   (when parent_id
     #{[{:model "Collection" :id parent_id}]}))

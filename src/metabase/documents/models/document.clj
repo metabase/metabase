@@ -245,7 +245,7 @@
                                                 :else
                                                 nil))))))
 
-(defmethod serdes/dependencies "Document"
+(defmethod serdes/deserialization-dependencies "Document"
   [{:keys [collection_id] :as document}]
   (set (concat
         (document-deps document)

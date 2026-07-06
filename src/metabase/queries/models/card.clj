@@ -1413,7 +1413,7 @@
               :collection_preview  true
               :enable_embedding    false}})
 
-(defmethod serdes/dependencies "Card"
+(defmethod serdes/deserialization-dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata source_card_id visualization_settings
            dashboard_id document_id]}]

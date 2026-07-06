@@ -190,7 +190,7 @@
   [_measure]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/dependencies "Measure" [{:keys [definition]}]
+(defmethod serdes/deserialization-dependencies "Measure" [{:keys [definition]}]
   (serdes/mbql-deps definition))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]

@@ -92,7 +92,7 @@
   [{:label "curated_search_entries"}
    {:label (u/slugify (:search_prompt entity) {:unicode? true}) :key (:entity_id entity)}])
 
-(defmethod serdes/dependencies "CuratedSearchEntry"
+(defmethod serdes/deserialization-dependencies "CuratedSearchEntry"
   [{{:keys [model id]} :entity}]
   ;; A referenced Table is synthesized on import if missing, so (like link cards) we depend on its Database,
   ;; not the Table itself. Card refs depend on the Card directly.

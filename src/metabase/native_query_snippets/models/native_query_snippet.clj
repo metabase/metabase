@@ -186,7 +186,7 @@
   (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
-(defmethod serdes/dependencies "NativeQuerySnippet"
+(defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
   (when collection_id
     [[{:model "Collection" :id collection_id}]]))

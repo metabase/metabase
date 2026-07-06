@@ -457,7 +457,7 @@
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false}})
 
-(defmethod serdes/dependencies "Action" [action]
+(defmethod serdes/deserialization-dependencies "Action" [action]
   (set
    (concat
     ;; other stuff is implicitly referenced through a Card

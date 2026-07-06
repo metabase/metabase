@@ -52,7 +52,7 @@
   [_timeline]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
-(defmethod serdes/dependencies "Timeline" [{:keys [collection_id]}]
+(defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
