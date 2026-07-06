@@ -2,12 +2,25 @@ import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
+import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
-import { ActionIcon, Badge, Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import type {
+  MetabotAgentDataPartMessage,
+  MetabotAgentId,
+} from "metabase/metabot/state";
+import {
+  ActionIcon,
+  Anchor,
+  Badge,
+  Box,
+  Flex,
+  Icon,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
 import {
@@ -23,12 +36,14 @@ type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
+  agentId?: MetabotAgentId;
 };
 
 export const AgentDataPartMessage = ({
   message,
   readonly,
   debug,
+  agentId,
 }: AgentDataPartMessageProps) =>
   match(message)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
@@ -73,10 +88,20 @@ export const AgentDataPartMessage = ({
       ({ part }) => (
         <Stack gap="md">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <MetabotInlineChart value={part.data} readonly={readonly} />
+          <MetabotInlineChart
+            value={part.data}
+            readonly={readonly}
+            agentId={agentId}
+          />
         </Stack>
       ),
     )
+    .with({ part: { type: "data-entity_saved" } }, ({ part }) => (
+      <Stack gap="md">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <EntitySavedMessage value={part.data} />
+      </Stack>
+    ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
@@ -87,6 +112,40 @@ export const AgentDataPartMessage = ({
       console.warn("AgentDataPartMessage received an unexpected value:", msg);
       return null;
     });
+
+const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
+  const target = (
+    <Anchor
+      key="target"
+      component={ForwardRefLink}
+      to={value.location.url}
+      target="_blank"
+      fw="bold"
+    >
+      {value.location.name}
+    </Anchor>
+  );
+  const chartName = (
+    <Anchor
+      key="name"
+      component={ForwardRefLink}
+      to={value.card_url}
+      target="_blank"
+      fw="bold"
+    >
+      {value.name}
+    </Anchor>
+  );
+
+  return (
+    <Flex align="center" gap="sm" c="text-secondary">
+      <Icon name="check" size={14} />
+      <Text c="text-secondary">
+        {jt`Chart ${chartName} saved to ${target}`}
+      </Text>
+    </Flex>
+  );
+};
 
 const formatPartType = (type: string) => type.replace(/^data-/, "");
 

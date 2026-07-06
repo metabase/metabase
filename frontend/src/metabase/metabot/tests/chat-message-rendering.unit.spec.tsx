@@ -101,6 +101,35 @@ describe("AgentMessage", () => {
     });
   });
 
+  describe("entity_saved", () => {
+    it("renders a 'Chart X saved to Y' confirmation block", () => {
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "entity_saved",
+          version: 1,
+          value: {
+            entity_id: "chart-1",
+            card_id: 99,
+            name: "Accounts by Day",
+            card_url: "/question/99",
+            location: {
+              type: "collection",
+              id: 5,
+              name: "Personal Collection",
+              url: "/collection/5",
+            },
+          },
+        },
+      });
+
+      expect(screen.getByText("Accounts by Day")).toBeInTheDocument();
+      expect(screen.getByText("Personal Collection")).toBeInTheDocument();
+    });
+  });
+
   describe("turn_errored", () => {
     it("shows locked message for metabase_ai_managed_locked errors", () => {
       setup({

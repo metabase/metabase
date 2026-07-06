@@ -221,7 +221,11 @@ describe("MetabotInlineChart", () => {
       await submitSaveModal(modal);
 
       await waitFor(() => {
-        expect(store.getState().metabot.savedChartCardIds["card-1"]).toBe(99);
+        expect(
+          store.getState().metabot.conversations.omnibot?.state?.savedCharts[
+            "card-1"
+          ]?.card_id,
+        ).toBe(99);
       });
       await waitFor(() => {
         expect(
@@ -231,12 +235,13 @@ describe("MetabotInlineChart", () => {
       expect(await screen.findByText("Saved")).toBeInTheDocument();
     });
 
-    it("shows a 'Saved in <folder>' link once the agent saves it", async () => {
+    it("shows a short 'Saved' link (not the folder name) after saving", async () => {
       const { store } = setup();
 
       act(() => {
         store.dispatch(
           markChartSaved({
+            agentId: "omnibot",
             entityId: "card-1",
             cardId: 99,
             location: {
@@ -249,9 +254,8 @@ describe("MetabotInlineChart", () => {
         );
       });
 
-      expect(
-        await screen.findByText("Saved in Sales analytics"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Saved")).toBeInTheDocument();
+      expect(screen.queryByText(/Sales analytics/)).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument();

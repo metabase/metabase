@@ -158,6 +158,7 @@ export const MetabotChat = ({
                 }
                 isDoingScience={metabot.isDoingScience}
                 debug={metabot.debugMode}
+                agentId={config.agentId}
               />
               {/* loading */}
               {metabot.isDoingScience && (

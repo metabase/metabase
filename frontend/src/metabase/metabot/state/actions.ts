@@ -479,16 +479,17 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-entity_saved" }, (part) => {
-                // Annotates a previously-shown inline chart with its saved
-                // location; it updates the chart in place rather than adding a
-                // new message, so it is not pushed as a data part.
+                // Flip the inline chart's header to "Saved" and render a small
+                // "Chart X saved to Y" confirmation block in the conversation.
                 dispatch(
                   markChartSaved({
+                    agentId,
                     entityId: part.data.entity_id,
                     cardId: part.data.card_id,
                     location: part.data.location,
                   }),
                 );
+                pushDataPart({ type: "data_part", part });
               })
               .with(
                 { type: "data-generated_entity" },

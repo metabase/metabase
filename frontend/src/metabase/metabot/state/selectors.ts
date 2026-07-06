@@ -44,17 +44,26 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
-export const getSavedChartCardId = createSelector(
-  [getMetabotState, (_state: State, entityId: string) => entityId],
-  (metabotState, entityId): number | undefined =>
-    metabotState.savedChartCardIds[entityId],
-);
+type SavedChart = { card_id: number; location?: SavedEntityLocation };
 
-export const getSavedChartLocation = (
+const getSavedChart = (
   state: State,
   entityId: string,
-): SavedEntityLocation | undefined =>
-  getMetabotState(state).savedChartLocations[entityId];
+): SavedChart | undefined => {
+  const conversations = getMetabotState(state).conversations;
+  for (const convo of Object.values(conversations)) {
+    const saved = convo?.state?.savedCharts?.[entityId];
+    if (saved) {
+      return saved;
+    }
+  }
+  return undefined;
+};
+
+export const getSavedChartCardId = (
+  state: State,
+  entityId: string,
+): number | undefined => getSavedChart(state, entityId)?.card_id;
 
 export const getMetabotReactionsState = createSelector(
   getMetabotState,

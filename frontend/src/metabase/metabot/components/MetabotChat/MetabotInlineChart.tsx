@@ -13,8 +13,8 @@ import { useSetting } from "metabase/common/hooks";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import {
+  type MetabotAgentId,
   getSavedChartCardId,
-  getSavedChartLocation,
   markChartSaved,
 } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -50,9 +50,11 @@ import S from "./MetabotInlineChart.module.css";
 export function MetabotInlineChart({
   value: { id: entityId, title, description, display, query },
   readonly = false,
+  agentId = "omnibot",
 }: {
   value: GeneratedCard;
   readonly?: boolean;
+  agentId?: MetabotAgentId;
 }) {
   const datasetQuery = query.query;
   const clipboard = useClipboard();
@@ -130,6 +132,7 @@ export function MetabotInlineChart({
           </ActionIcon>
         </Tooltip>
         <SaveChartAction
+          agentId={agentId}
           entityId={entityId}
           question={question}
           readonly={readonly}
@@ -155,10 +158,12 @@ export function MetabotInlineChart({
 }
 
 function SaveChartAction({
+  agentId,
   entityId,
   question,
   readonly,
 }: {
+  agentId: MetabotAgentId;
   entityId: string;
   question: Question;
   readonly: boolean;
@@ -168,9 +173,6 @@ function SaveChartAction({
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const savedCardId = useSelector((state) =>
     getSavedChartCardId(state, entityId),
-  );
-  const savedLocation = useSelector((state) =>
-    getSavedChartLocation(state, entityId),
   );
 
   const handleCreate = async (
@@ -182,7 +184,7 @@ function SaveChartAction({
       dashboard_tab_id: options?.dashboardTabId,
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
-    dispatch(markChartSaved({ entityId, cardId: created.id }));
+    dispatch(markChartSaved({ agentId, entityId, cardId: created.id }));
     dispatch(
       addUndo({
         icon: "check_filled",
@@ -202,18 +204,14 @@ function SaveChartAction({
         .with({ savedCardId: P.number }, ({ savedCardId }) => (
           <Button
             component={ForwardRefLink}
-            to={
-              savedLocation
-                ? savedLocation.url
-                : Urls.question(question.setId(savedCardId))
-            }
+            to={Urls.question(question.setId(savedCardId))}
             target="_blank"
             variant="subtle"
             color="text-secondary"
             size="compact-xs"
             leftSection={<Icon name="check" size={14} />}
           >
-            {savedLocation ? t`Saved in ${savedLocation.name}` : t`Saved`}
+            {t`Saved`}
           </Button>
         ))
         .with({ readonly: true }, () => null)
