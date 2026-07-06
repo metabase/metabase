@@ -417,18 +417,23 @@
 (defn- dashcard->cell
   "Build a renderable cell from a dashcard, preserving its grid geometry.
 
-  Returns nil for dashcard kinds we don't render (placeholder/action) or cards that fail/are empty."
-  [dashcard parameters]
+  `parts-by-dashcard-id` maps a dashcard id to its already-executed `:card` part -- either the subscription payload's
+  parts (so email/Slack/PDF run each query once) or this render's own single
+  [[metabase.notification.payload.core/execute-dashboard]] call. Queries are never re-run here.
+
+  Returns nil for dashcard kinds we don't render (placeholder/action), or for a card with no part -- a card whose
+  query failed or was hidden while empty (`card.hide_empty`), which `execute-dashboard` omits."
+  [dashcard parameters parts-by-dashcard-id]
   (let [inline (resolve-inline-params dashcard parameters)
         geom   (cond-> (select-keys dashcard [:row :col :size_x :size_y])
                  (seq inline) (assoc :inline-params inline))]
     (cond
       (:card_id dashcard)
-      ;; Large card results are streamed to disk as a StreamingTempFileStorage (see
-      ;; [[metabase.notification.payload.temp-storage]]); realize them here -- exactly as the email/Slack/HTTP
-      ;; channels do -- so the renderer sees an ordinary `:rows` collection rather than the disk-backed handle.
-      (when-let [part (some-> (notification.payload/execute-dashboard-subscription-card dashcard parameters)
-                              channel.shared/maybe-realize-data-rows)]
+      ;; Reuse the pre-executed part. Large results stay disk-backed (a StreamingTempFileStorage handle, see
+      ;; [[metabase.notification.payload.temp-storage]]) here and are realized lazily at draw time in
+      ;; [[render-card-cell!]] -- so only the card being drawn is resident in memory, exactly as the email channel
+      ;; walks its parts one at a time to keep its memory watermark low.
+      (when-let [part (get parts-by-dashcard-id (:id dashcard))]
         (assoc geom
                :kind :card
                :part (cond-> part
@@ -456,13 +461,13 @@
 
 (defn- build-cells
   "Order a tab's (or the untabbed dashboard's) dashcards and build cells, normalizing row numbers so the first
-  row of the section is 0."
-  [dashcards parameters]
+  row of the section is 0. `parts-by-dashcard-id` supplies each card's already-executed part (see [[dashcard->cell]])."
+  [dashcards parameters parts-by-dashcard-id]
   (let [sorted  (sort dashboard-card/dashcard-comparator dashcards)
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
                   0)]
-    (into [] (comp (keep #(dashcard->cell % parameters))
+    (into [] (comp (keep #(dashcard->cell % parameters parts-by-dashcard-id))
                    (map  #(update % :row - min-row)))
           sorted)))
 
@@ -955,12 +960,15 @@
 
   Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining body area (matching the frontend);
   other types render their body title-less and resized (preserving aspect) to fit into the body area."
-  [^PDDocument doc ^PDPageContentStream cs timezone
-   {:keys [card dashcard inline-params]
-    {:keys [data]} :result
-    :as part}
-   x top-y cell-w cell-h]
-  (let [title      (card-title card dashcard)
+  [^PDDocument doc ^PDPageContentStream cs timezone part x top-y cell-w cell-h]
+  (let [;; Realize the disk-backed rows for THIS card only, here at draw time (email does the same, one part at a
+        ;; time). A result too large for memory comes back marked `:render/too-large?` instead of loaded. Once this
+        ;; function returns, the realized rows are unreferenced and become garbage before the next card is drawn --
+        ;; so peak memory is one card's rows, not the whole dashboard's.
+        {:keys [card dashcard inline-params]
+         {:keys [data]} :result
+         :as part}      (channel.shared/maybe-realize-data-rows part)
+        title      (card-title card dashcard)
         title-h    (typeset/text-block-height (font/face :bold) common/chart-title-pt cell-w (* 0.5 cell-h) title)
         ;; Inline parameters (filters attached to this card) render between the title and the chart body,
         ;; like the email subscription does.
@@ -1316,33 +1324,51 @@
   "Render the dashboard with `dashboard-id` to PDF bytes, running queries as user `user-id`. `parameters` is a vector
   of dashboard parameter overrides; `[]` to use the dashboard's own parameter defaults.
 
-  `paper-key` is `:a4` (default) or `:letter`. Lays cards out following the dashboard's explicit 24-column grid."
+  `paper-key` is `:a4` (default) or `:letter`. Lays cards out following the dashboard's explicit 24-column grid.
+
+  `parts` are the already-executed dashboard parts from a subscription payload (see
+  [[metabase.notification.payload.core/execute-dashboard]]). When supplied they are the source of every card's
+  results, so queries are NOT re-run -- an email or Slack subscription that renders both chart images and a PDF
+  attachment executes each query once. When `parts` is nil (the download API) the queries are executed here via a
+  single `execute-dashboard` call, which shares one spill budget across all cards exactly like an email; the temp
+  files that execution creates are cleaned up before returning."
   (^bytes [dashboard-id user-id parameters]
-   (render-dashboard-to-pdf dashboard-id user-id parameters :a4))
+   (render-dashboard-to-pdf dashboard-id user-id parameters :a4 nil))
   (^bytes [dashboard-id user-id parameters paper-key]
+   (render-dashboard-to-pdf dashboard-id user-id parameters paper-key nil))
+  (^bytes [dashboard-id user-id parameters paper-key parts]
    (request/with-current-user user-id
-     (let [dims     (paper-dims paper-key)
-           dash     (t2/select-one :model/Dashboard :id dashboard-id)
-           tabs     (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
-           dcs      (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
+     (let [owned-parts? (nil? parts)
+           ;; Reuse the subscription's parts, or run one shared-budget execution ourselves (matching the email
+           ;; channel). Either way, large results are disk-backed handles at this point -- realized one card at a
+           ;; time at draw time (see [[render-card-cell!]]), never all at once.
+           parts     (or parts (notification.payload/execute-dashboard dashboard-id user-id parameters))
+           ;; index the `:card` parts by their dashcard id so build-cells can look each one up by grid position
+           parts-idx (into {} (comp (filter #(= :card (:type %)))
+                                    (map (juxt #(-> % :dashcard :id) identity)))
+                           parts)
+           dims      (paper-dims paper-key)
+           dash      (t2/select-one :model/Dashboard :id dashboard-id)
+           tabs      (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
+           dcs       (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
            ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
-           tabbed?  (> (count tabs) 1)
-           by-tab   (group-by :dashboard_tab_id dcs)
-           resolved (resolve-parameters dash parameters)
-           sections (if tabbed?
-                      (mapv (fn [t]
-                              {:tab-name (:name t)
-                               :cells    (build-cells (get by-tab (:id t)) resolved)})
-                            tabs)
-                      [{:tab-name nil
-                        :cells    (build-cells dcs resolved)}])
-           timezone (some (fn [s]
-                            (some #(when (= :card (:kind %))
-                                     (-> % :part :card render.card/defaulted-timezone))
-                                  (:cells s)))
-                          sections)
-           doc      (PDDocument.)]
+           tabbed?   (> (count tabs) 1)
+           by-tab    (group-by :dashboard_tab_id dcs)
+           resolved  (resolve-parameters dash parameters)
+           sections  (if tabbed?
+                       (mapv (fn [t]
+                               {:tab-name (:name t)
+                                :cells    (build-cells (get by-tab (:id t)) resolved parts-idx)})
+                             tabs)
+                       [{:tab-name nil
+                         :cells    (build-cells dcs resolved parts-idx)}])
+           timezone  (some (fn [s]
+                             (some #(when (= :card (:kind %))
+                                      (-> % :part :card render.card/defaulted-timezone))
+                                   (:cells s)))
+                           sections)
+           doc       (PDDocument.)]
        (try
          (binding [font/*fonts*       (font/load-fonts! doc)
                    font/*em-width*    (memo/memo font/raw-em-width-inner)]
@@ -1359,7 +1385,15 @@
              (.save doc os)
              (.toByteArray os)))
          (finally
-           (.close doc)))))))
+           (.close doc)
+           ;; Clean up ONLY the temp files we created. When `parts` were passed in, the notification pipeline
+           ;; ([[metabase.notification.send/do-after-notification-sent]]) owns their cleanup, once every channel has
+           ;; rendered -- deleting them here would pull the rug out from the email/Slack render sharing the same parts.
+           (when owned-parts?
+             (try
+               (run! #(some-> % :result :data :rows notification.payload/cleanup!) parts)
+               (catch Throwable e
+                 (log/warn e "Error cleaning up temp files for dashboard PDF"))))))))))
 
 (defn render-dashboard-to-pdf-file
   "Convenience wrapper for the REPL: render the dashboard to PDF and write it to `path`."

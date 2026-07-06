@@ -376,6 +376,7 @@ export const tokenFeatures = [
   "transforms-python",
   "transforms-basic",
   "library",
+  "library_retrieval",
   "support-users",
   "tenants",
   "writable_connection",

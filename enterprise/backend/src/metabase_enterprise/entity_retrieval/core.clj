@@ -32,17 +32,26 @@
 (defn pgvector-configured?
   "True when a pgvector store is configured (read once at boot from MB_PGVECTOR_DB_URL).
   The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
-  even when the semantic-search feature is turned on after startup (a common onboarding flow)."
+  even when the library-retrieval feature is turned on after startup (a common onboarding flow)."
   []
   (string? (not-empty semantic.db.datasource/db-url)))
 
 (defn available?
-  "Whether the entity-retrieval mirror can run right now: a pgvector store is configured and the license
-  includes semantic search.
-  The feature check can flip at runtime (token entered post-boot), so callers re-evaluate per use."
+  "Whether the entity-retrieval mirror can run right now. All four must hold:
+    - a pgvector store is configured (somewhere to hold the index),
+    - the license includes `:library-retrieval` (the tool is entitled),
+    - the license includes `:library`: retrieval operates over library entities, so the tool is meaningless
+      without it (the index would have nothing to hold) — enforced here so a token granting
+      `:library-retrieval` alone degrades to \"unavailable\" explicitly, not silently via an empty index,
+    - an embedding backend is configured (see [[embedding/embedding-supported?]]): without one, both
+      reconcile and query embedding would throw, so we gate rather than fail mid-run.
+  The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
+  re-evaluate per use."
   []
   (and (pgvector-configured?)
-       (premium-features/has-feature? :semantic-search)))
+       (premium-features/has-feature? :library)
+       (premium-features/has-feature? :library-retrieval)
+       (embedding/embedding-supported? (embedding/get-configured-model))))
 
 (defn- index-ready?
   "Whether the library entity index can serve a query right now: its meta row matches the configured
@@ -60,14 +69,14 @@
             (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
      (catch Throwable _ false))))
 
-;; OSS-callable surface used to decide whether to OFFER the curated retrieve_library_entities tool: it must
+;; OSS-callable surface used to decide whether to OFFER the retrieve_library_entities tool: it must
 ;; be able to actually answer, so beyond config + license the index has to be built for the current model and
 ;; populated. (The write/reconcile path gates on the looser [[available?]] instead, so an empty or stale
 ;; index can still be rebuilt.) Runs unconditionally rather than gating on :feature — the OSS fallback
 ;; `false` already covers the unlicensed case.
 (defenterprise entity-retrieval-available?
-  "EE impl: pgvector configured + semantic-search licensed AND the index is ready (built for the current
-  model and populated), so the curated tool is offered only when it can serve a query (otherwise the agent
+  "EE impl: pgvector configured + library-retrieval licensed AND the index is ready (built for the current
+  model and populated), so the tool is offered only when it can serve a query (otherwise the agent
   gets the general-search fallback)."
   :feature :none
   []
@@ -181,7 +190,7 @@
   this call finishes. Returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _
   :ran_ms _}}, or nil when entity retrieval isn't available (no pgvector store configured).
   See [[reconcile-full-coalesced!]] for the coalescing semantics it shares with the periodic backstop."
-  :feature :semantic-search
+  :feature :library-retrieval
   []
   (when (available?)
     (reconcile-full-coalesced!)))
@@ -191,7 +200,7 @@
   Fire-and-forget: never blocks, throws, or does embedding/pgvector work on the calling (appdb-write)
   thread — the reconcile runs later on a future. Covers `osi_ai_context` edits; membership / name /
   description changes to the underlying entity are caught by the periodic full reconcile."
-  :feature :semantic-search
+  :feature :library-retrieval
   [entity-type entity-local-id]
   (when (available?)
     (try
@@ -203,7 +212,7 @@
 
 (defenterprise library-entity-keys
   "Live set of `[entity_type entity_local_id]` for entities currently in the library (see the OSS shim)."
-  :feature :semantic-search
+  :feature :library-retrieval
   []
   (reconcile/library-entity-keys))
 
@@ -245,7 +254,7 @@
   Each result is shaped `{:entity {:model :id} :doc_type :doc_text :score}`, best score first; the caller
   dedupes the (many-per-entity) docs down to distinct entities.
   Returns [] when the pgvector store is unconfigured."
-  :feature :semantic-search
+  :feature :library-retrieval
   [user-search-prompt limit]
   (if-not (available?)
     []
@@ -263,7 +272,7 @@
                                                [[:raw distance] :distance])
                            (sql.helpers/from (keyword index-table/*vectors-table*))
                            ;; Exact scan, no HNSW: the blended order-by can't use an ANN index, and the
-                           ;; curated set is tiny.
+                           ;; library set is tiny.
                            (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])
                            (sql.helpers/limit limit)
                            (sql/format {:quoted true}))

@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -56,8 +55,7 @@
         database-name
         ;; releases get their own isolated datasets
         (tx/on-master-or-release-branch?)
-        (str "sha_" (config/current-major-version) "_"
-             (tx/hash-dataset db-def) "_" database-name)
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" database-name)
         :else
         (str "sha__" (tx/hash-dataset db-def) "_" database-name)))
 
