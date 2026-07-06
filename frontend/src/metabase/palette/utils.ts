@@ -7,6 +7,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
+import { METABASE_DOCS_LABELS } from "./constants";
 import type { PaletteActionImpl } from "./types";
 
 export const processResults = (
@@ -22,7 +23,10 @@ export const processResults = (
   const search = processSection(t`Results`, groupedResults["search"]);
   const recent = processSection(t`Recents`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
-  const docs = processSection(t`Documentation`, groupedResults["docs"]);
+  const docs = processSection(
+    METABASE_DOCS_LABELS.section,
+    groupedResults["docs"],
+  );
 
   if (searchTerm.trim().length === 0) {
     return [...recent];
