@@ -15,7 +15,6 @@ import {
   Stack,
   Text,
   Title,
-  Tooltip,
 } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 
@@ -111,7 +110,6 @@ interface EmptyStateProps {
   ctaLink?: CTALink;
   contactAdminReason?: ContactReason;
   secondaryAction?: ReactNode;
-  contentMaxWidth?: string;
 }
 
 const AddDataEmptyState = ({
@@ -121,12 +119,11 @@ const AddDataEmptyState = ({
   ctaLink,
   contactAdminReason,
   secondaryAction,
-  contentMaxWidth = CONTENT_MAX_WIDTH,
 }: EmptyStateProps) => {
   return (
     <Stack gap="lg" align="center" justify="center" pt="2.5rem">
       {illustration}
-      <Box component="header" ta="center" maw={contentMaxWidth}>
+      <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
         <Title order={2} size="h4" mb="xs">
           {title}
         </Title>
@@ -180,29 +177,13 @@ export const CSVPanelEmptyState = ({
       contactAdminReason: ContactReason;
       secondaryAction?: never;
     }) => {
-  const yourDatabase = (
-    <Tooltip
-      inline
-      maw={INNER_WIDTH}
-      multiline
-      label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
-      key="database-tooltip"
-    >
-      <Text component="span" td="underline">{c(
-        "in the sentence 'To work with CSVs, enable file uploads in your database.'",
-      ).t`your database`}</Text>
-    </Tooltip>
-  );
-
-  const storageSubtitle = c("{0} refers to the string 'your database'")
-    // prettier-ignore
+  const storageSubtitle =
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
-    .jt`To work with CSVs, either enable file uploads in ${yourDatabase}, or add Metabase Storage.`;
+    t`To work with CSVs, either enable file uploads in your database, or add Metabase Storage.`;
 
   const ctaSubtitle = secondaryAction
     ? storageSubtitle
-    : c("{0} refers to the string 'your database'")
-        .jt`To work with CSVs, enable file uploads in ${yourDatabase}.`;
+    : t`To work with CSVs, enable file uploads in your database.`;
 
   const subtitle = ctaLink
     ? ctaSubtitle
@@ -216,7 +197,6 @@ export const CSVPanelEmptyState = ({
       contactAdminReason={contactAdminReason}
       ctaLink={ctaLink}
       secondaryAction={secondaryAction}
-      contentMaxWidth="24rem"
     />
   );
 };

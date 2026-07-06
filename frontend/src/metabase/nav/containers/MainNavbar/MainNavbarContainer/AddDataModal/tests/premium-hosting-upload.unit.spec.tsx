@@ -15,19 +15,18 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
           "To work with spreadsheets, you can add storage to your instance.",
       });
 
-      expect(
-        await screen.findByRole("heading", { name: "Add Metabase Storage" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Secure, fully managed by Metabase"),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Upload CSV files")).toBeInTheDocument();
-      expect(screen.getByText("Sync with Google Sheets")).toBeInTheDocument();
-      const upsellLink = screen.getByRole("link", { name: "Add" });
-      expect(upsellLink).toBeInTheDocument();
+      // The upsell is a single button matching the CSV tab, not the old
+      // bulleted banner. With no in-app add-on it links to the store.
+      const upsellLink = await screen.findByRole("link", {
+        name: /Add Metabase Storage/,
+      });
+      expect(upsellLink).toHaveAttribute(
+        "href",
+        "https://store.metabase.com/account/storage",
+      );
     });
 
-    it("should offer the purchasable storage add-on to an admin through the upsell banner", async () => {
+    it("should offer the purchasable storage add-on to an admin through the upsell button", async () => {
       setupHostedInstance({
         isAdmin: true,
         addOns: [mockStorageCloudAddOn],
@@ -38,16 +37,11 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
           "To work with spreadsheets, you can add storage to your instance.",
       });
 
-      // The banner looks exactly like the store-link version...
-      expect(
-        await screen.findByRole("heading", { name: "Add Metabase Storage" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Secure, fully managed by Metabase"),
-      ).toBeInTheDocument();
-
-      // ...but its Add button opens the purchase confirmation instead.
-      const addButton = await screen.findByRole("button", { name: "Add" });
+      // When purchasable in-app, the button opens the purchase confirmation
+      // instead of linking to the store.
+      const addButton = await screen.findByRole("button", {
+        name: /Add Metabase Storage/,
+      });
       await userEvent.click(addButton);
 
       const modal = await screen.findByRole("dialog", {

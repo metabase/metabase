@@ -5,10 +5,10 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import {
+  StoragePurchaseButton,
   StorageSetupView,
   useStorageSetup,
 } from "metabase/common/components/upsells/StoragePurchaseModal";
-import { UpsellStorage } from "metabase/common/components/upsells/UpsellStorage";
 import { useStoreUrl } from "metabase/common/hooks";
 import {
   CONTENT_MAX_WIDTH,
@@ -140,8 +140,7 @@ export const GdriveAddDataPanel = ({
   });
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const { isSettingUp, storageAddOn, openPurchaseModal, hasAttachedDwh } =
-    useStorageSetup();
+  const { isSettingUp, hasAttachedDwh } = useStorageSetup();
   const storeUrl = useStoreUrl("account/storage");
 
   const showGdrive = useShowGdrive();
@@ -173,10 +172,7 @@ export const GdriveAddDataPanel = ({
   if (!hasAttachedDwh) {
     return (
       <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
-        <UpsellStorage
-          location="add-data-modal-sheets"
-          onAddClick={storageAddOn ? openPurchaseModal : undefined}
-        />
+        <StoragePurchaseButton location="add-data-modal-sheets" />
       </PanelWrapper>
     );
   }
