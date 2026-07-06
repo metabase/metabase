@@ -12,4 +12,4 @@
    [:content :string]
    [:description {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:template_tags [:ref ::lib.schema.template-tag/template-tag-map]]])
+   [:template_tags [:ref ::lib.schema.template-tag/template-tag-map]]]) ;; NOCOMMIT -- decide what to do about native query snippets.

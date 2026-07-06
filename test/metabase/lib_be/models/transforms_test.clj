@@ -59,14 +59,13 @@
   (is (=? {:lib/type :mbql/query
            :stages   [{:lib/type :mbql.stage/native
                        :template-tags
-                       {"device_category"
-                        {:widget-type  :category
+                       [{:widget-type  :category
                          :id           "e8b0b767-0f02-b640-5de3-128e7f7fd71e"
                          :name         "device_category"
                          :display-name "Device category"
                          :type         :dimension
                          :dimension    [:field {} 298221]
-                         :default      nil}}
+                         :default      nil}]
                        :native   "<<NATIVE QUERY>>"}]
            :database 26}
           (mu/disable-enforcement

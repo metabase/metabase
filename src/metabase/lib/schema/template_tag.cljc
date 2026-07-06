@@ -218,11 +218,12 @@
                (= tag-name (:name tag-definition)))
              m))])
 
-(defn- normalize-template-tag-map [template-tags]
+(defn normalize-template-tag-map
+  "If `template-tags` is a sequence, convert it to an (ordered) map."
+  [template-tags]
   (letfn [(normalize-template-tag-sequence [tags]
             (into #?(:clj (ordered-map/ordered-map) :cljs {})
-                  (map (fn [tag]
-                         [(:name tag) tag]))
+                  (map (juxt :name identity))
                   tags))]
     (cond-> template-tags
       (sequential? template-tags) normalize-template-tag-sequence)))

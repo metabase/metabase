@@ -25,6 +25,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+;; NOCOMMIT -- decide what to do about native query snippets.
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in
                    :out (comp (mi/catch-normalization-exceptions
