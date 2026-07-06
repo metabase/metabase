@@ -178,16 +178,16 @@
             (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
                             {:status-code 400
                              :error-type  ::errors/assertions-parse-error
-                             :severity    sev}))))]
-    (let [n   (get entry "name")
-          s   (get entry "sql")
-          sev (get entry "severity" "error")]
-      (validate-name! n)
-      (validate-sql! s)
-      (validate-severity! sev)
-      {:name     n
-       :sql      s
-       :severity (keyword sev)})))
+                             :severity    sev}))))
+        n   (get entry "name")
+        s   (get entry "sql")
+        sev (get entry "severity" "error")]
+    (validate-name! n)
+    (validate-sql! s)
+    (validate-severity! sev)
+    {:name     n
+     :sql      s
+     :severity (keyword sev)}))
 
 (defn parse-assertions
   "Parse the `assertions` JSON multipart part.

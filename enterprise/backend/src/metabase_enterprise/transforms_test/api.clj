@@ -16,10 +16,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def keep-me
-  "Loaded for side effects (registers this ns's endpoints)."
-  nil)
-
 (defn- check-test-run-allowed!
   "Throw a 402 unless every transform the run exercises has its per-type feature
   enabled and is not locked. `slice-transforms-thunk` returns those transforms.
@@ -51,11 +47,10 @@
   (try
     (thunk)
     (catch clojure.lang.ExceptionInfo e
-      (let [http-status (get api-util/test-run-error-http-status (:error-type (ex-data e)))]
-        (if http-status
-          {:status http-status
-           :body   (api-util/error->response e)}
-          (throw e))))))
+      (if-let [http-status (get api-util/test-run-error-http-status (:error-type (ex-data e)))]
+        {:status http-status
+         :body   (api-util/error->response e)}
+        (throw e)))))
 
 (defn- run-test-run!
   "Shared POST body for both target types. Parses the multipart contract, then
@@ -69,32 +64,43 @@
   Returns an HTTP response map; typed test-run errors become error responses,
   other exceptions propagate."
   [multipart-params {:keys [slice-transforms run]}]
-  (let [expected-part     (get multipart-params "expected")
-        parsed-assertions (api-util/parse-assertions (get multipart-params "assertions"))]
-    (when (and (nil? expected-part) (empty? parsed-assertions))
-      (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
-                      {:status-code 400})))
-    (let [expected-file  (when expected-part (:tempfile expected-part))
-          source-ids     (api-util/parse-source-ids (get multipart-params "sources"))
-          fixtures-by-id (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
-          opts           (assoc (api-util/parse-test-run-options (get multipart-params "options"))
-                                :assertions parsed-assertions)]
-      (test-run-response
-       (fn []
-         (let [all-transforms (t2/select :model/Transform)]
-           (check-test-run-allowed! #(slice-transforms source-ids all-transforms))
-           {:status 200
-            :body   (api-util/run-record->response
-                     (run source-ids fixtures-by-id expected-file opts all-transforms))}))))))
+  (let [validate-expectations!
+        (fn [expected-part parsed-assertions]
+          (when (and (nil? expected-part) (empty? parsed-assertions))
+            (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
+                            {:status-code 400}))))
+        expected-part     (get multipart-params "expected")
+        parsed-assertions (api-util/parse-assertions (get multipart-params "assertions"))
+        _                 (validate-expectations! expected-part parsed-assertions)
+        expected-file     (when expected-part (:tempfile expected-part))
+        source-ids        (api-util/parse-source-ids (get multipart-params "sources"))
+        fixtures-by-id    (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
+        opts              (assoc (api-util/parse-test-run-options (get multipart-params "options"))
+                                 :assertions parsed-assertions)]
+    (test-run-response
+     (fn []
+       (let [all-transforms (t2/select :model/Transform)]
+         (check-test-run-allowed! #(slice-transforms source-ids all-transforms))
+         {:status 200
+          :body   (api-util/run-record->response
+                   (run source-ids fixtures-by-id expected-file opts all-transforms))})))))
 
 (defn- inputs-response
-  "Shape `(tables-thunk)` (a thunk returning leaf table-infos) into the inputs
-  response, mapping typed test-run errors to HTTP statuses."
-  [tables-thunk]
+  "Shared GET body for both target types, with one `:model/Transform` snapshot
+  shared between the permission check and the leaf query:
+
+  - `(slice-transforms all-transforms)` — the transforms the run would exercise.
+  - `(input-tables all-transforms)` — the boundary leaf table-infos.
+
+  Returns an HTTP response map; typed test-run errors become error responses,
+  other exceptions propagate."
+  [{:keys [slice-transforms input-tables]}]
   (test-run-response
    (fn []
-     {:status 200
-      :body   (mapv api-util/input-table->response (tables-thunk))})))
+     (let [all-transforms (t2/select :model/Transform)]
+       (check-test-run-allowed! #(slice-transforms all-transforms))
+       {:status 200
+        :body   (mapv api-util/input-table->response (input-tables all-transforms))}))))
 
 (api.macros/defendpoint :post "/:target-type/:id/subgraph" :- [:map
                                                                [:status pos-int?]
@@ -122,21 +128,15 @@
     (do (api/read-check :model/Transform id)
         (run-test-run!
          multipart-params
-         {:slice-transforms (fn [source-ids all-transforms]
-                              (transform-slice-transforms id source-ids all-transforms))
-          :run              (fn [source-ids fixtures-by-id expected-file opts all-transforms]
-                              (test-run.core/run-chain-test!
-                               id source-ids fixtures-by-id expected-file opts all-transforms))}))
+         {:slice-transforms (partial transform-slice-transforms id)
+          :run              (partial test-run.core/run-chain-test! id)}))
 
     "card"
     (let [card (api/read-check :model/Card id)]
       (run-test-run!
        multipart-params
-       {:slice-transforms (fn [source-ids all-transforms]
-                            (card-slice-transforms card source-ids all-transforms))
-        :run              (fn [source-ids fixtures-by-id expected-file opts all-transforms]
-                            (test-run.core/run-card-chain-test!
-                             card source-ids fixtures-by-id expected-file opts all-transforms))}))))
+       {:slice-transforms (partial card-slice-transforms card)
+        :run              (partial test-run.core/run-card-chain-test! card)}))))
 
 (api.macros/defendpoint :get "/:target-type/:id/subgraph-inputs" :- [:map
                                                                      [:status pos-int?]
@@ -154,22 +154,19 @@
                                 [:id ms/PositiveInt]]
    {:keys [sources]} :- [:map
                          [:sources {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
-  (case target-type
-    "transform"
-    (do (api/read-check :model/Transform id)
-        (inputs-response
-         (fn []
-           (let [all-transforms (t2/select :model/Transform)]
-             (check-test-run-allowed! #(transform-slice-transforms id (set sources) all-transforms))
-             (test-run.core/subgraph-input-tables id (set sources) all-transforms)))))
+  (let [source-ids (set sources)]
+    (case target-type
+      "transform"
+      (do (api/read-check :model/Transform id)
+          (inputs-response
+           {:slice-transforms (partial transform-slice-transforms id source-ids)
+            :input-tables     (partial test-run.core/subgraph-input-tables id source-ids)}))
 
-    "card"
-    (let [card (api/read-check :model/Card id)]
-      (inputs-response
-       (fn []
-         (let [all-transforms (t2/select :model/Transform)]
-           (check-test-run-allowed! #(card-slice-transforms card (set sources) all-transforms))
-           (test-run.core/card-subgraph-input-tables card (set sources) all-transforms)))))))
+      "card"
+      (let [card (api/read-check :model/Card id)]
+        (inputs-response
+         {:slice-transforms (partial card-slice-transforms card source-ids)
+          :input-tables     (partial test-run.core/card-subgraph-input-tables card source-ids)})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."
