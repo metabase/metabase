@@ -50,7 +50,7 @@ export default function App() {
 
       <h2 style={{ margin: "0 0 8px" }}>All orders</h2>
       <div style={{ height: 400 }}>
-        <InteractiveQuestion query={ordersQuery} />
+        <InteractiveQuestion card={{ query: ordersQuery }} />
       </div>
     </div>
   );
