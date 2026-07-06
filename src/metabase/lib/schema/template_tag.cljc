@@ -1,6 +1,8 @@
 (ns metabase.lib.schema.template-tag
   (:refer-clojure :exclude [every?])
   (:require
+   #?@(:clj
+       ([flatland.ordered.map :as ordered-map]))
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
@@ -216,7 +218,56 @@
                (= tag-name (:name tag-definition)))
              m))])
 
+(defn- normalize-template-tag-map [template-tags]
+  (letfn [(normalize-template-tag-sequence [tags]
+            (into #?(:clj (ordered-map/ordered-map) :cljs {})
+                  (map (fn [tag]
+                         [(:name tag) tag]))
+                  tags))]
+    (cond-> template-tags
+      (sequential? template-tags) normalize-template-tag-sequence)))
+
+;; TODO -- make this schema JS-only
 (mr/def ::template-tag-map
+  "Legacy way to store template tags... storing them as a map is problematic because having more than 8 template tags
+  causes the map to switch to a hash map (in the JVM) and order gets lost (see #5136). For the sake of keeping things
+  simple for the FE (which does not have this issue with JS Objects).
+
+  TODO NOCOMMIT FINISH DOCSTRING"
   [:and
-   [:map-of ::name ::template-tag]
+   ;; NOCOMMIT
+   ;; #?(:clj
+   ;;    [:schema
+   ;;     {:decode/normalize (fn [m]
+   ;;                          (when (map? m)
+   ;;                            (into (ordered-map/ordered-map) m)))}
+   ;;     (common/instance-of-class flatland.ordered.map.OrderedMap)])
+   [:map-of
+    {:decode/normalize normalize-template-tag-map}
+    [:ref ::name]
+    [:ref ::template-tag]]
    [:ref ::template-tag-map.validate-names]])
+
+(defn- normalize-template-tags [template-tags]
+  (letfn [(normalize-map [tags-map]
+            (reduce-kv
+             (fn [acc tag-name template-tag]
+               (conj acc (assoc template-tag :name tag-name))) ; prefer `:name` used as a map key
+             []
+             tags-map))]
+    (cond-> template-tags
+      (map? template-tags) normalize-map)))
+
+(mr/def ::template-tags
+  "Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.
+
+  NOCOMMIT Add more info."
+  [:sequential
+   {:decode/normalize normalize-template-tags}
+   [:ref ::template-tag]])
+
+(mr/def ::template-tag-map-or-sequence
+  "TODO NOCOMMIT DOCSTRING"
+  [:or
+   [:ref ::template-tag-map]
+   [:ref ::template-tags]])

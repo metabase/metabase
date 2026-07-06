@@ -68,6 +68,7 @@
     ;; TODO: see tech debt issue #39378 and `native-test/card-tag-test`
     content))
 
+;; TODO NOCOMMIT This should be part of tag name normalization.
 (def ^{:arglists '([tag-name])} match-and-normalize-tag-name
   "Matches a full tag string against tag normalizer functions and returns
    normalized-name or nil if no match."
