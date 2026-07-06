@@ -6,6 +6,7 @@ export type SchemaJavaScriptType =
   | "unknown";
 
 export type SchemaColumn = {
+  type?: "column";
   name: string;
   description?: string;
   displayName?: string;

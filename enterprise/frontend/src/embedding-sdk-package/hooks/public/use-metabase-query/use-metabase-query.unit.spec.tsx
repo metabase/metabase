@@ -224,7 +224,6 @@ const TEST_SCHEMA = {
           product: {
             type: "column",
             fieldId: 202,
-            tableId: 2,
             sourceFieldId: 104,
             name: "NAME",
             displayName: "Name",
@@ -332,7 +331,26 @@ const TEST_SCHEMA = {
       type: "card",
       id: 41,
       name: "Orders question",
-      columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+      columns: [
+        {
+          type: "column",
+          name: "STATUS",
+          displayName: "Status",
+          jsType: "string",
+        },
+        {
+          type: "column",
+          name: "AMOUNT",
+          displayName: "Amount",
+          jsType: "number",
+        },
+        {
+          type: "column",
+          name: "CREATED_AT",
+          displayName: "Created At",
+          jsType: "Date",
+        },
+      ],
     },
   },
 } as const;
@@ -612,8 +630,9 @@ const _validSavedQuestionQuery = {
 
 const _invalidSavedQuestionClauseQuery = {
   source: TEST_SCHEMA.questions.ordersQuestion,
-  // @ts-expect-error saved question queries do not support additional clauses
-  filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+
+  // @ts-expect-error saved question queries only support source and enabled
+  fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
 } satisfies MetabaseQueryOptions<OrdersQuestion>;
 
 const _validCardQuery = {
@@ -1296,6 +1315,35 @@ describe("resolveDatasetQuery", () => {
       }),
     ).rejects.toThrow(
       "Table query metric aggregations cannot use source-card Metrics. Use a saved question source for source-card Metrics.",
+    );
+  });
+
+  it("rejects unsupported saved question query clauses with a clear error message", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+      }),
+    ).rejects.toThrow(
+      "Saved question queries only support source and enabled, but received fields.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        limit: 10,
+      }),
+    ).rejects.toThrow(
+      "Saved question queries only support source and enabled, but received limit.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        aggregations: [avg(TEST_SCHEMA.questions.ordersQuestion.columns[1])],
+      }),
+    ).rejects.toThrow(
+      "Saved question queries only support source and enabled, but received aggregations.",
     );
   });
 

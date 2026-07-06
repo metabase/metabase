@@ -11,12 +11,6 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
 
 export type QuestionQueryInput = {
   source: QuestionSchema;
-  fields?: never;
-  filters?: never;
-  aggregations?: never;
-  breakouts?: never;
-  orderBys?: never;
-  limit?: never;
   enabled?: boolean;
 };
 

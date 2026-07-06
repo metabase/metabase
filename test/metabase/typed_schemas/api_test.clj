@@ -12,7 +12,8 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (deftest column-schema-includes-description-test
-  (is (= {:name          "name"
+  (is (= {:type          "column"
+          :name          "name"
           :displayName   "Name"
           :baseType      "type/Text"
           :jsType        "string"
@@ -118,7 +119,7 @@
           :id      41
           :name    "Orders question"
           :display "table"
-          :columns [{:name "count", :displayName "Count", :jsType "number"}]}
+          :columns [{:type "column", :name "count", :displayName "Count", :jsType "number"}]}
          (#'typed-schemas.api/question-schema
           {:id             41
            :name           "Orders question"
@@ -196,7 +197,10 @@
             :key            "customerLifetimeValue"
             :id             247
             :name           "Customer Lifetime Value"
-            :columns        [{:name "Customer Lifetime Value", :displayName "Customer Lifetime Value", :jsType "unknown"}]
+            :columns        [{:type        "column"
+                              :name        "Customer Lifetime Value"
+                              :displayName "Customer Lifetime Value"
+                              :jsType      "unknown"}]
             :mappedTableIds [10]
             :dimensions     {"orders" {:type        "column"
                                        :name        "orders"
@@ -251,7 +255,8 @@
             :key          "storesWithOver5Employees"
             :id           259
             :name         "Stores with Over 5 Employees"
-            :columns      [{:name "Stores with Over 5 Employees"
+            :columns      [{:type "column"
+                            :name "Stores with Over 5 Employees"
                             :displayName "Stores with Over 5 Employees"
                             :jsType "unknown"}]
             :sourceCardId 258
@@ -279,7 +284,8 @@
               :id      1
               :tableId 10
               :name    "Total Revenue"
-              :columns [{:name        "sum"
+              :columns [{:type        "column"
+                         :name        "sum"
                          :displayName "Sum of Total"
                          :baseType    "type/Decimal"
                          :jsType      "number"}]}
@@ -295,7 +301,7 @@
               :id      1
               :tableId 10
               :name    "Total Revenue"
-              :columns [{:name "Total Revenue", :displayName "Total Revenue", :jsType "unknown"}]}
+              :columns [{:type "column", :name "Total Revenue", :displayName "Total Revenue", :jsType "unknown"}]}
              (#'typed-schemas.api/measure-schema
               10
               2
@@ -334,7 +340,7 @@
                                                  :name        "Orders question"
                                                  :display     "table"
                                                  :description "Saved orders"
-                                                 :columns     [{:name "count" :jsType "number"}]}}
+                                                 :columns     [{:type "column" :name "count" :jsType "number"}]}}
                :tables        {"orders"     {:type         "table"
                                              :key          "orders"
                                              :id           10
@@ -419,7 +425,7 @@
                                                :databaseId    1
                                                :sourceCardId  42
                                                :mappedTableIds [10]
-                                               :columns       [{:name "count" :jsType "number"}]
+                                               :columns       [{:type "column" :name "count" :jsType "number"}]
                                                :dimensions    {"createdAt" {:type        "column"
                                                                             :name        "created_at"
                                                                             :sourceName "orders"

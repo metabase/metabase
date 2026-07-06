@@ -52,7 +52,7 @@
    :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
-   :column           {:runtime [:name :jsType]
+   :column           {:runtime [:type :name :jsType]
                       :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
 
 (def ^:private comment-labels
@@ -103,7 +103,8 @@
   [{:keys [name display_name base_type effective_type semantic_type description unit] :as column}]
   (let [effective-type (or effective_type base_type)]
     (assoc-some
-     {:name        name
+     {:type        "column"
+      :name        name
       :displayName (or display_name name)
       :jsType      (js-type column)}
      :baseType base_type
@@ -698,7 +699,8 @@
 
 (defn- fallback-metric-column
   [{:keys [name]}]
-  {:name          name
+  {:type          "column"
+   :name          name
    :displayName   name
    :jsType        "unknown"})
 

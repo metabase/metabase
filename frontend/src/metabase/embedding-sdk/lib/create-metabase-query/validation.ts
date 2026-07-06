@@ -233,8 +233,9 @@ function getSourceFieldId(value: unknown): number | undefined {
 }
 
 function validateMetricAggregation(metric: MetricSchema, tableId: number) {
-  // Source-card Metrics need a saved-question source so Lib scopes metric
-  // dimensions to the card stage. EMB-2045 will add that source path:
+  // Source-card Metrics need query composition over saved-question sources so
+  // Lib can scope metric dimensions to the card stage. Saved-question sources
+  // currently support source-only shortcuts, so reject source-card Metrics here.
   if (metric.sourceCardId != null) {
     throw new Error(
       "Table query metric aggregations cannot use source-card Metrics. Use a saved question source for source-card Metrics.",

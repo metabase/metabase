@@ -57,7 +57,7 @@ function resolveQueryFromLoadedMetadata(
 }
 
 async function loadSourceMetadata(store: SdkStore, input: QueryInput) {
-  if (isQuestionInput(input)) {
+  if (input.source.type === "card") {
     await loadCardMetadata(store, input.source.id);
     return;
   }
