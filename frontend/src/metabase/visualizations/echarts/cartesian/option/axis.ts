@@ -347,6 +347,12 @@ export const buildCategoricalDimensionAxis = (
 
         return getPaddedAxisLabel(formatter(value));
       },
+      ...(chartLayout.ticksDimensions.xTickWidthCap < Infinity
+        ? {
+            width: chartLayout.ticksDimensions.xTickWidthCap,
+            overflow: "truncate",
+          }
+        : {}),
     },
   };
 };

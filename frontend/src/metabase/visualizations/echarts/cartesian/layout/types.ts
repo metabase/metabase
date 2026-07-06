@@ -7,6 +7,7 @@ export interface TicksDimensions {
   yTicksWidthLeft: number;
   yTicksWidthRight: number;
   xTicksHeight: number;
+  xTickWidthCap: number;
   firstXTickWidth: number;
   lastXTickWidth: number;
   getXTickWidth: (text: string) => number;
