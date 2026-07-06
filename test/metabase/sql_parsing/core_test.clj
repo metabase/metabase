@@ -2,8 +2,12 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics-interface]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.util :as u]))
+   [metabase.test :as mt]
+   [metabase.util :as u])
+  (:import
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -524,3 +528,12 @@
             "Should include users wildcard")
         (is (some #(= ["transactions" "total"] %) (normalize-fields result))
             "Should include transactions.total")))))
+
+;;; ------------------------------------------- Timeout handler tests ------------------------------------------
+
+(deftest handle-timeout-always-throws-timeout-exception-test
+  (testing "TimeoutException surfaces even if a step inside the timeout handler throws (#77084)"
+    (mt/with-dynamic-fn-redefs [analytics-interface/inc! (fn [& _] (throw (Exception. "boom")))]
+      (is (thrown? TimeoutException
+                   ;; nil ctx is fine: pool/interrupt! and pool/poison! no-op unless passed a PooledContext.
+                   (#'sql-parsing/handle-timeout! nil 42))))))
