@@ -14,9 +14,8 @@ describe("permalinkDatabase", () => {
   });
 
   it("encodes non-ASCII names raw instead of slugifying them", () => {
-    const name = "Über Aufträge";
-    expect(permalinkDatabase({ id: 1, name })).toBe(
-      `/browse/databases/${encodeURIComponent(name)}`,
+    expect(permalinkDatabase({ id: 1, name: "Über Aufträge" })).toBe(
+      "/browse/databases/%C3%9Cber%20Auftr%C3%A4ge",
     );
   });
 
