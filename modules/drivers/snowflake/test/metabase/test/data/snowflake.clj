@@ -144,6 +144,7 @@
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- delete-old-datasets-if-needed!
   "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
@@ -164,8 +165,10 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old datasets that should be deleted
-    (delete-old-datasets-if-needed!)
+    ;; disabling this like on release-x.59.x and up (see #74663): it deletes tracked datasets not
+    ;; accessed in the last 2 days, including datasets other branches' CI runs may be relying on.
+    ;; If datasets change, old versions will need to be manually GCed.
+    ;; (delete-old-datasets-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
