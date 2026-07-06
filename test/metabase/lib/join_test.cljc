@@ -2119,7 +2119,9 @@
                                      (lib/with-join-fields :all)))
           jn     (first (lib/joins joined))]
       (testing ":fields :all marks every joined column as selected"
-        (is (every? :selected? (lib/join-fieldable-columns joined jn))))
+        (let [cols (lib/join-fieldable-columns joined jn)]
+          (is (seq cols) "the join must expose fieldable columns, or `every?` below checks nothing")
+          (is (every? :selected? cols))))
       (testing "restricting :fields unselects the dropped column"
         (let [some-cols (drop 1 (lib/join-fieldable-columns joined jn))
               jn'       (lib/with-join-fields jn some-cols)

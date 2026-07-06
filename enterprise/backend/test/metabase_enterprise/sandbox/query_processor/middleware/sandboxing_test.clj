@@ -2022,24 +2022,36 @@
 (deftest case-expression-else-branch-table-substitution-test
   (testing "a :case custom column whose :default references the sandboxed table has that table-ref rewritten to the sandbox subquery (#14859)"
     (mt/dataset test-data
-      ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
-      ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
-      (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension (lib.convert/->legacy-MBQL
-                                                                              (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}}}
-                        :attributes {"uid" "1"}}
-        (let [mp        (mt/metadata-provider)
-              total     (lib.metadata/field mp (mt/id :orders :total))
-              discount  (lib.metadata/field mp (mt/id :orders :discount))
-              baseline  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                            (lib/with-fields [(lib/ref total)]))
-              with-case (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) with-case
-                          (lib/expression with-case "cc" (lib/case [[(lib/> discount 0) discount]] total))
-                          (lib/with-fields with-case [(lib/expression-ref with-case "cc")]))]
-          ;; both queries run under the same user-1 sandbox, so they must return the same number of rows: an
-          ;; unsandboxed leak would blow the baseline up to the full orders count, and a broken :default
-          ;; table-ref rewrite would make `with-case` error rather than matching the baseline count.
-          (is (= (count (mt/rows (qp/process-query baseline)))
-                 (count (mt/rows (qp/process-query with-case))))))))))
+      ;; Full, unsandboxed row count of orders, computed as admin *outside* the sandbox below. The sandboxed
+      ;; queries must return strictly fewer rows than this, otherwise a global sandbox bypass would go undetected.
+      (let [full-count (let [omp (mt/metadata-provider)]
+                         (-> (lib/query omp (lib.metadata/table omp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             qp/process-query mt/rows ffirst))]
+        ;; `with-gtaps!` runs both the remapping form and the body against a temp copy of the DB, so the metadata
+        ;; provider and field ids must be resolved *inside* that copy context (not captured beforehand).
+        (met/with-gtaps! {:gtaps      {:orders {:remappings {"uid" [:dimension (lib.convert/->legacy-MBQL
+                                                                                (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}}}
+                          :attributes {"uid" "1"}}
+          (let [mp              (mt/metadata-provider)
+                total           (lib.metadata/field mp (mt/id :orders :total))
+                discount        (lib.metadata/field mp (mt/id :orders :discount))
+                baseline        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                    (lib/with-fields [(lib/ref total)]))
+                with-case       (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) with-case
+                                  (lib/expression with-case "cc" (lib/case [[(lib/> discount 0) discount]] total))
+                                  (lib/with-fields with-case [(lib/expression-ref with-case "cc")]))
+                baseline-count  (count (mt/rows (qp/process-query baseline)))
+                with-case-count (count (mt/rows (qp/process-query with-case)))]
+            ;; `with-case` adds only a :case column whose :default references the sandboxed orders table.
+            ;; A missing table-ref rewrite (#14859) would make it throw or return a different row set than
+            ;; `baseline`. Equal counts prove the rewrite, not the sandbox filter (a global bypass would
+            ;; inflate both equally).
+            (is (= baseline-count with-case-count))
+            ;; Leak discriminator: the sandbox filters orders down to user 1's rows, so both queries must
+            ;; return strictly fewer rows than the full table. A global sandbox bypass would inflate them to
+            ;; `full-count` and fail here even though the equal-counts check above would still pass.
+            (is (< with-case-count full-count))))))))
 
 (deftest sandbox-fails-closed-when-filter-column-dropped-test
   (testing "a column-based sandbox fails closed (errors, returns no unfiltered rows) when its filter column is dropped from the DB"

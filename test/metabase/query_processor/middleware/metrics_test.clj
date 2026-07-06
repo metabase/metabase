@@ -322,17 +322,23 @@
          (adjust query)))))
 
 (deftest ^:parallel metric-defined-as-ratio-of-metrics-test
-  (testing "a metric defined as a custom-named ratio of metric refs expands both nested :metric clauses and executes (#30574)"
-    (let [base-mp  (mt/metadata-provider)
-          m1-query (-> (lib/query base-mp (lib.metadata/table base-mp (mt/id :products)))
-                       (lib/aggregate (lib/avg (lib.metadata/field base-mp (mt/id :products :rating)))))
-          [m1 mp]  (mock-metric base-mp m1-query {:name "M1", :database-id (mt/id)})
-          m2-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                       (lib/aggregate (-> (lib// (lib.metadata/metric mp (:id m1)) (lib.metadata/metric mp (:id m1)))
-                                          (lib/with-expression-name "X"))))
-          [m2 mp]  (mock-metric mp m2-query {:name "M2", :database-id (mt/id)})
-          query    (lib/query mp (lib.metadata/card mp (:id m2)))]
-      (is (= [[1.0]] (mt/rows (qp/process-query query)))))))
+  (testing "a metric defined as a custom-named ratio of two different metric refs expands both nested :metric clauses and executes (#30574)"
+    (let [base-mp      (mt/metadata-provider)
+          ;; Two DIFFERENT metrics so the ratio is discriminating: if both refs collapsed to the same
+          ;; underlying aggregation the result would be 1.0 and tell us nothing about what was expanded.
+          count-q      (-> (lib/query base-mp (lib.metadata/table base-mp (mt/id :products)))
+                           (lib/aggregate (lib/count)))
+          [m-count mp] (mock-metric base-mp count-q {:name "Count metric", :database-id (mt/id)})
+          sum-q        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :rating)))))
+          [m-sum mp]   (mock-metric mp sum-q {:name "Sum metric", :database-id (mt/id)})
+          m2-query     (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (-> (lib// (lib.metadata/metric mp (:id m-count)) (lib.metadata/metric mp (:id m-sum)))
+                                              (lib/with-expression-name "X"))))
+          [m2 mp]      (mock-metric mp m2-query {:name "M2", :database-id (mt/id)})
+          query        (lib/query mp (lib.metadata/card mp (:id m2)))]
+      ;; count(products)=200 / sum(rating)=694.3 = 0.2881 (rounded), i.e. clearly not 1.0.
+      (is (= [[0.2881]] (mt/formatted-rows [4.0] (qp/process-query query)))))))
 
 (deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
