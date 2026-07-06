@@ -18,13 +18,9 @@ describe("permalinkDatabase", () => {
     expect(permalinkDatabase({ id: 1, name })).toBe(
       `/browse/databases/${encodeURIComponent(name)}`,
     );
-    // a slugified link ("uber-auftrage") would not resolve back to the row
-    expect(permalinkDatabase({ id: 1, name })).not.toContain("uber-auftrage");
   });
 
   it("falls back to the id when the name starts with a digit", () => {
-    // the router parses leading digits as an id, so name resolution can't reach these;
-    // emitting the id keeps the copied link resolvable
     expect(permalinkDatabase({ id: 7, name: "7-sales" })).toBe(
       "/browse/databases/7",
     );
