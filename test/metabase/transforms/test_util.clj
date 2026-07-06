@@ -98,18 +98,17 @@
 (defn table-rows
   "Fetch all rows of `table-name` in the current test database.
 
-   The lookup is scoped to the current test database (`(mt/id)`) and to the schema of the `transforms_products`
-   table (the schema all transform test targets are created in). This avoids matching an unrelated `Table` row with
-   the same bare name that may exist under a different database/schema. The schema is resolved via the table's id
-   because drivers like Redshift load datasets under prefixed physical names (`transforms_test_transforms_products`),
-   so a bare-name lookup finds nothing there; databases without the transforms dataset fall back to a db-scoped
-   bare-name lookup."
+   Dataset tables (e.g. `transforms_products`) are resolved by their logical name via `mt/id`, which handles
+   drivers like Redshift that load datasets under prefixed physical names (`transforms_test_transforms_products`).
+   Transform TARGET tables are created with their exact requested name, so they are looked up by bare name scoped
+   to the current test database and, when the transforms dataset is loaded, to its schema — avoiding an unrelated
+   `Table` row with the same name under a different database/schema."
   [table-name]
-  (let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
-                 (t2/select-one-fn :schema :model/Table products-id))
-        pk     (if schema
+  (let [pk (or (try (mt/id (keyword table-name)) (catch Exception _ nil))
+               (if-let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
+                                 (t2/select-one-fn :schema :model/Table products-id))]
                  (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
-                 (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name))]
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)))]
     (->>
      (mt/rows (mt/process-query {:database (mt/id)
                                  :query    {:source-table pk}
