@@ -178,20 +178,25 @@
                                 driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms*
                                                                           transform-timeout-ms)]
                         (run-transform! cancel-chan source-range-params)))]
-            (when full-create?
+            (if full-create?
               ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
               ;; stays a full rebuild that re-attempts the index).
               (let [running-indexes (table-index/mark-runnable-indexes-running!
                                      (:index-request-ids (:target transform)))]
                 (try
                   (transforms-base.u/apply-target-indexes! transform)
-                  (transforms-base.u/verify-managed-indexes! transform)
-                  (table-index/mark-unverified-running-indexes-failed!
-                   running-indexes
-                   "Index status could not be verified after the transform completed.")
+                  ;; Only a real (non-nil) warehouse read settles "still running" into a failure -- an unreadable
+                  ;; warehouse leaves rows running for the next full-create run to re-verify (see
+                  ;; verify-managed-indexes!).
+                  (when (transforms-base.u/verify-managed-indexes! transform)
+                    (table-index/mark-unverified-running-indexes-failed!
+                     running-indexes
+                     "Index status could not be verified after the transform completed."))
                   (catch Throwable t
                     (table-index/mark-unverified-running-indexes-failed! running-indexes (ex-message t))
-                    (throw t)))))
+                    (throw t))))
+              ;; Append run: no rebuild, but a standalone-kind create-pending index can still land in place.
+              (transforms-base.u/apply-pending-standalone-index-creates! transform))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
             (transform-run/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
@@ -209,9 +214,22 @@
                   (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
             ret))
         (catch Throwable t
-          (if (:timeout (ex-data t))
-            (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
-            (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
+          (let [message (ex-message-fn t)]
+            ;; Mark the run failed first: it's the load-bearing bookkeeping, and must not be pre-empted by the
+            ;; best-effort index attribution below throwing (which does its own DB reads that can fail when the
+            ;; original error was a connection loss).
+            (if (:timeout (ex-data t))
+              (transform-run/timeout-run! run-id {:message message})
+              (transform-run/fail-started-run! run-id {:message message}))
+            ;; A full-create run can fail before ever reaching the index-apply step above (e.g. the table-creation
+            ;; CTAS itself throws) -- that step, and its own per-index attribution, never runs. Without this, an
+            ;; inline index request from this run stays stuck :pending/nil-error forever.
+            (try
+              (transforms-base.u/mark-inline-index-requests-failed!
+               transform (:index-request-ids (:target transform)) message)
+              (catch Throwable attribution-error
+                (log/warnf attribution-error "Failed to attribute inline index failure for transform %s"
+                           (:id transform)))))
           (throw t))))))
 
 (defn is-temp-transform-table?

@@ -4,14 +4,20 @@ import fetchMock from "fetch-mock";
 import { setupTableIndexEndpoints } from "__support__/server-mocks/index-manager";
 import { setupTableQueryMetadataEndpoint } from "__support__/server-mocks/table";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { StructuredIndex, TableIndexEntry } from "metabase-types/api";
+import type {
+  RequestableIndexes,
+  StructuredIndex,
+  TableIndexEntry,
+} from "metabase-types/api";
 import {
   createMockField,
+  createMockIndexMethod,
   createMockRequestableIndexes,
   createMockTable,
   createMockTableIndexEntry,
   createMockTableIndexRequest,
   createMockTransform,
+  createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
 import { IndexEditorModal } from "./IndexEditorModal";
@@ -24,11 +30,22 @@ const TABLE = createMockTable({
   ],
 });
 
-function setup({ index }: { index?: TableIndexEntry } = {}) {
+function setup({
+  index,
+  incremental = false,
+  requestableIndexes = createMockRequestableIndexes(),
+}: {
+  index?: TableIndexEntry;
+  incremental?: boolean;
+  requestableIndexes?: RequestableIndexes;
+} = {}) {
   const transform = createMockTransform({
     id: 1,
     table: TABLE,
-    requestable_indexes: createMockRequestableIndexes(),
+    target: createMockTransformTarget(
+      incremental ? { type: "table-incremental" } : undefined,
+    ),
+    requestable_indexes: requestableIndexes,
   });
 
   setupTableQueryMetadataEndpoint(TABLE);
@@ -153,6 +170,63 @@ describe("IndexEditorModal", () => {
     const body = await waitForBody("updateTableIndex-42");
     expect(Object.keys(body)).toEqual(["structured"]);
     expect(body.structured.name).toBe("idx_existing");
+  });
+
+  it("warns that saving an inline index rebuilds an incremental transform's table", async () => {
+    setup({
+      incremental: true,
+      requestableIndexes: {
+        sortkey: createMockIndexMethod({
+          lifecycle: "inline",
+          fields: [
+            { name: "columns", "display-name": "Columns", type: "columns" },
+          ],
+        }),
+      },
+    });
+
+    expect(
+      await screen.findByText(/reprocess all data from scratch/),
+    ).toBeInTheDocument();
+  });
+
+  it("warns when editing an index on an incremental transform", async () => {
+    const index = createMockTableIndexEntry({
+      metabase_managed: true,
+      request: createMockTableIndexRequest({
+        id: 7,
+        structured: {
+          kind: "btree",
+          name: "idx_existing",
+          columns: [{ name: "city", direction: "asc" }],
+          unique: false,
+        },
+      }),
+    });
+
+    setup({ incremental: true, index });
+
+    expect(
+      await screen.findByText(/reprocess all data from scratch/),
+    ).toBeInTheDocument();
+  });
+
+  it("does not warn when creating a standalone index on an incremental transform", async () => {
+    setup({ incremental: true });
+
+    await screen.findByLabelText("Give your index a name");
+    expect(
+      screen.queryByText(/reprocess all data from scratch/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not warn on a non-incremental transform", async () => {
+    setup();
+
+    await screen.findByLabelText("Give your index a name");
+    expect(
+      screen.queryByText(/reprocess all data from scratch/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an error toast when the request fails", async () => {

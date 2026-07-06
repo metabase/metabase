@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.indexes.reconcile :as reconcile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -360,3 +361,118 @@
                       {:engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
         (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
         (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
+
+(deftest apply-pending-standalone-index-creates!-test
+  (testing "on an append run, applies standalone create-pending requests in place and marks them succeeded;
+            inline create-pending requests are left for the next rebuild"
+    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                               :source {:type "query" :query {:database (mt/id)}}
+                                               :target {:database (mt/id) :type "table-incremental"
+                                                        :schema "public" :name (mt/random-name)}}
+                   :model/TableIndex {standalone-id :id} {:transform_id tid :index_name "standalone_idx"
+                                                          :structured {:kind :btree :name "standalone_idx"
+                                                                       :columns [{:name "x"}]}}
+                   :model/TableIndex {inline-id :id} {:transform_id tid :index_name "inline_idx"
+                                                      :structured {:kind :sortkey :style :compound
+                                                                   :columns [{:name "y"}]}}]
+      (let [compiled (atom [])]
+        (with-redefs [driver/supported-index-methods (fn [& _] {:btree   {:lifecycle :standalone}
+                                                                :sortkey {:lifecycle :inline}})
+                      driver/connection-spec        (fn [& _] {})
+                      driver/compile-create-index   (fn [_ _ _ idx] (swap! compiled conj idx) ["CREATE INDEX ..."])
+                      driver/execute-raw-queries!   (fn [& _] nil)]
+          (transforms-base.u/apply-pending-standalone-index-creates!
+           {:id tid :source {:type "query" :query {:database (mt/id)}}
+            :target {:database (mt/id) :schema "public" :name "t"}})
+          (is (= [:btree] (map :kind @compiled)) "only the standalone request's DDL was compiled and executed")
+          (is (= :succeeded (t2/select-one-fn :status :model/TableIndex standalone-id)))
+          (is (= :create-pending (t2/select-one-fn :status :model/TableIndex inline-id)))))))
+  (testing "a no-op on a full-create run -- those indexes are applied by apply-target-indexes! instead"
+    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                               :source {:type "query" :query {:database (mt/id)}}
+                                               :target {:database (mt/id) :type "table"
+                                                        :schema "public" :name (mt/random-name)}}
+                   :model/TableIndex {standalone-id :id} {:transform_id tid :index_name "standalone_idx"
+                                                          :structured {:kind :btree :name "standalone_idx"
+                                                                       :columns [{:name "x"}]}}]
+      (with-redefs [driver/execute-raw-queries! (fn [& _] (throw (ex-info "should not be called" {})))]
+        (transforms-base.u/apply-pending-standalone-index-creates!
+         {:id tid :target {:type "table" :database (mt/id) :schema "public" :name "t"}})
+        (is (= :create-pending (t2/select-one-fn :status :model/TableIndex standalone-id)))))))
+
+(deftest mark-inline-index-requests-failed!-test
+  (testing "on a full-create run, marks only unsettled inline-kind requests failed with the message"
+    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                               :source {:type "query" :query {:database (mt/id)}}
+                                               :target {:database (mt/id) :type "table"
+                                                        :schema "public" :name (mt/random-name)}}
+                   :model/TableIndex {inline-id :id} {:transform_id tid :index_name "inline_idx"
+                                                      :structured {:kind :sortkey :style :compound
+                                                                   :columns [{:name "x"}]}}
+                   :model/TableIndex {standalone-id :id} {:transform_id tid :index_name "standalone_idx"
+                                                          :structured {:kind :btree :name "standalone_idx"
+                                                                       :columns [{:name "y"}]}}
+                   :model/TableIndex {settled-id :id} {:transform_id tid :index_name "settled_idx"
+                                                       :status :succeeded
+                                                       :structured {:kind :sortkey :style :compound
+                                                                    :columns [{:name "z"}]}}]
+      (with-redefs [driver/supported-index-methods (fn [& _] {:sortkey {:lifecycle :inline}
+                                                              :btree   {:lifecycle :standalone}})]
+        (transforms-base.u/mark-inline-index-requests-failed!
+         {:id tid :source {:type "query" :query {:database (mt/id)}} :target {:type "table"}}
+         [inline-id standalone-id settled-id]
+         "ctas boom")
+        (is (= :failed (t2/select-one-fn :status :model/TableIndex inline-id)))
+        (is (= "ctas boom" (t2/select-one-fn :error_message :model/TableIndex inline-id)))
+        (is (= :create-pending (t2/select-one-fn :status :model/TableIndex standalone-id))
+            "a standalone request is not attributed a CTAS failure -- it applies in a later, separate DDL step")
+        (is (= :succeeded (t2/select-one-fn :status :model/TableIndex settled-id))
+            "an already-settled request is left alone"))))
+  (testing "a no-op when not a full-create run (an append)"
+    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                               :source {:type "query" :query {:database (mt/id)}}
+                                               :target {:database (mt/id) :type "table-incremental"
+                                                        :schema "public" :name (mt/random-name)}}
+                   :model/TableIndex {inline-id :id} {:transform_id tid :index_name "inline_idx"
+                                                      :structured {:kind :sortkey :style :compound
+                                                                   :columns [{:name "x"}]}}]
+      ;; No `:id` on the transform passed in: an append run's own `full-incremental-run?` check never
+      ;; looks up pending rows, matching the caller in `run-cancelable-transform!`, which passes the same
+      ;; in-memory transform it started the run with.
+      (transforms-base.u/mark-inline-index-requests-failed!
+       {:target {:type "table-incremental"} :last_checkpoint_value "100"}
+       [inline-id]
+       "should not apply")
+      (is (= :create-pending (t2/select-one-fn :status :model/TableIndex inline-id))))))
+
+(deftest ^:synchronized verify-managed-indexes!-returns-false-when-warehouse-unreadable-test
+  (testing "returns false, and leaves a :running row running, when the warehouse can't be read"
+    (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                               :source             {:type "query"}
+                                               :source_database_id (mt/id)
+                                               :target             {:database (mt/id) :type "table"
+                                                                    :schema "public" :name "t"}}
+                   :model/TableIndex {running-id :id} {:transform_id tid :index_name "running_idx"
+                                                       :status :running
+                                                       :structured {:kind :btree :name "running_idx"
+                                                                    :columns [{:name "x"}]}}]
+      (with-redefs [reconcile/fetch-warehouse-indexes (fn [& _] nil)]
+        (is (false? (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))))
+        (is (= :running (t2/select-one-fn :status :model/TableIndex running-id)))))))
+
+(deftest ^:synchronized verify-managed-indexes!-returns-true-test
+  (testing "returns true when the warehouse could be read, including when there's nothing to verify"
+    (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                               :source             {:type "query"}
+                                               :source_database_id (mt/id)
+                                               :target             {:database (mt/id) :type "table"
+                                                                    :schema "public" :name "t"}}]
+      (is (true? (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid)))
+          "nothing to verify")
+      (mt/with-temp [:model/TableIndex {present-id :id} {:transform_id tid :index_name "present_idx"
+                                                         :structured {:kind :btree :name "present_idx"
+                                                                      :columns [{:name "x"}]}}]
+        (with-redefs [driver/fetch-table-indexes
+                      (fn [& _] [(warehouse-btree "present_idx" "x")])]
+          (is (true? (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))))
+          (is (= :succeeded (t2/select-one-fn :status :model/TableIndex present-id))))))))

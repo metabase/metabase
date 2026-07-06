@@ -61,6 +61,12 @@ export function IndexEditorModal({
 
   const columnOptions = getColumnOptions(table);
   const fields = getFields(kind, requestableIndexes);
+  // On an incremental target, an edit always reprocesses from scratch, and an inline index (sortkey/distkey/order-by)
+  // can only apply by recreating the table. A standalone create lands in place, so it's the one case that stays quiet.
+  const isIncremental = transform.target?.type === "table-incremental";
+  const willRebuild =
+    isIncremental &&
+    (isEditing || requestableIndexes?.[kind]?.lifecycle === "inline");
   const initialValues = buildInitialValues(fields, request?.structured);
   const validationSchema = buildValidationSchema(fields);
   const [createTableIndex] = useCreateTableIndexMutation();
@@ -112,6 +118,7 @@ export function IndexEditorModal({
             fields={fields}
             columnOptions={columnOptions}
             isEditing={isEditing}
+            showRebuildWarning={willRebuild}
             submitLabel={isEditing ? t`Update index` : t`Create index`}
             onKindChange={setKind}
             onClose={onClose}

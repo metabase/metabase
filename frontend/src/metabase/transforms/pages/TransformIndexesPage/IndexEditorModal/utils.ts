@@ -70,6 +70,10 @@ export function buildValidationSchema(fields: IndexField[]) {
   );
 }
 
+function isBlank(value: unknown): boolean {
+  return value === null || value === undefined || value === "";
+}
+
 export function toStructured(
   kind: IndexKind,
   fields: IndexField[],
@@ -80,13 +84,17 @@ export function toStructured(
     const value = values[field.name];
     if (field.type === "columns") {
       const columns = (value as IndexColumn[] | undefined) ?? [];
-      structured[field.name] = field.directions
-        ? columns.map((column) => ({
-            name: column.name,
-            direction: column.direction ?? "asc",
-          }))
-        : columns.map((column) => ({ name: column.name }));
-    } else {
+      // Omit an empty columns key: the schema rejects [] (e.g. an ALL/EVEN distkey takes none).
+      if (columns.length > 0) {
+        structured[field.name] = field.directions
+          ? columns.map((column) => ({
+              name: column.name,
+              direction: column.direction ?? "asc",
+            }))
+          : columns.map((column) => ({ name: column.name }));
+      }
+    } else if (!isBlank(value)) {
+      // Omit blank optional fields; the schema rejects present-but-null. Real 0/false are kept.
       structured[field.name] = value;
     }
   }

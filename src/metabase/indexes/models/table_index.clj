@@ -8,6 +8,7 @@
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered."
   (:require
+   [metabase.driver :as driver]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -36,11 +37,13 @@
    :status     (mi/transform-validator mi/transform-keyword (partial mi/assert-enum schema/statuses))})
 
 (def pending-statuses
-  "Statuses that require a full incremental rebuild before an index request's physical state can be trusted."
+  "Statuses of a request with a real, not-yet-applied change: a driver DDL kind/op it declares (create/update/delete),
+  or mid-run. Whether one actually forces a full rebuild depends on lifecycle -- see `rebuild-required?`. Distinct
+  from `:verify-pending` (a bystander revalidation, see `mark-for-revalidation!`), which never does."
   #{:create-pending :update-pending :delete-pending :running})
 
 (def ^:private runnable-statuses
-  #{:create-pending :update-pending :running :failed})
+  #{:create-pending :update-pending :verify-pending :running :failed})
 
 (def ^:private defaults
   {:status :create-pending})
@@ -66,13 +69,26 @@
   (or (:transform_id idx)
       (:transform_id (t2/original idx))))
 
+(defn- checkpoint-reset-required-for-insert?
+  "True unless the newly-inserted `idx`'s kind is the driver's `:standalone` lifecycle -- those apply in place via
+  `CREATE INDEX IF NOT EXISTS`, no rebuild needed. Reads the transform's `:target_db_id` directly (not through
+  transforms-base, which depends on this module) to look up the driver. Defaults to true, the safe/reset choice,
+  when that lookup comes up empty."
+  [{:keys [transform_id structured]}]
+  (let [standalone? (when-let [db-id (t2/select-one-fn :target_db_id :model/Transform :id transform_id)]
+                      (when-let [database (t2/select-one :model/Database db-id)]
+                        (= :standalone (get-in (driver/supported-index-methods (:engine database) database)
+                                               [(:kind structured) :lifecycle]))))]
+    (not (true? standalone?))))
+
 (t2/define-before-insert :model/TableIndex
   [req]
   (merge defaults req))
 
 (t2/define-after-insert :model/TableIndex
   [idx]
-  (reset-incremental-checkpoint! (:transform_id idx))
+  (when (checkpoint-reset-required-for-insert? idx)
+    (reset-incremental-checkpoint! (:transform_id idx)))
   idx)
 
 (t2/define-before-update :model/TableIndex
@@ -130,13 +146,27 @@
   (some-> (t2/select-one :model/TableIndex :id id)
           (as-> idx (when (applicable? idx) idx))))
 
-(defn pending-changes-for-transform?
-  "True when `transform-id` has index changes that require a full rebuild to apply."
+(defn select-pending-for-transform
+  "This transform's index request rows with a real, not-yet-applied change (see [[pending-statuses]])."
   [transform-id]
-  (boolean
-   (when transform-id
-     (some #(contains? pending-statuses (:status %))
-           (t2/select :model/TableIndex :transform_id transform-id)))))
+  (when transform-id
+    (t2/select :model/TableIndex :transform_id transform-id :status [:in pending-statuses])))
+
+(defn select-create-pending-for-transform
+  "This transform's `:create-pending` index request rows."
+  [transform-id]
+  (t2/select :model/TableIndex :transform_id transform-id :status :create-pending {:order-by [[:id :asc]]}))
+
+(defn rebuild-required?
+  "True when pending index request `row` needs a full table rebuild to take effect, given the driver's
+  `methods` (`driver/supported-index-methods`). A pending `:standalone` create can be applied in place with
+  `CREATE INDEX IF NOT EXISTS`; anything else -- an `:inline` kind (rendered into the CREATE TABLE, so it can only
+  ever apply via a rebuild), or a `:standalone` update/delete (no in-place DDL exists yet) -- needs the rebuild. An
+  unrecognized kind (e.g. dropped from driver support) rebuilds too, rather than silently skip a real change."
+  [{:keys [status structured]} methods]
+  (case status
+    :create-pending (not= :standalone (get-in methods [(:kind structured) :lifecycle]))
+    true))
 
 (defn mark-runnable-indexes-running!
   "Mark hydrated index requests that this run will apply as running.
@@ -161,14 +191,19 @@
                  :last_executed_at :%now})))
 
 (defn mark-for-revalidation!
-  "Flip `transform-id`'s applicable index requests to `:update-pending` and clear stale errors, so the next run
-  re-applies them against the current schema. Skips `:delete-pending` rows so a pending deletion isn't revived."
+  "Flip `transform-id`'s *settled* (`:succeeded`/`:failed`) index requests to `:verify-pending` and clear stale
+  errors, so a future full rebuild (whenever one next happens) re-applies them against the current schema. Rows
+  that already carry a real pending change (`:create-pending`/`:update-pending`/`:delete-pending`/`:running`) are
+  left alone -- downgrading them here would mask that change. Unlike those, `:verify-pending` never itself forces
+  a rebuild (see [[rebuild-required?]]): the transform's source/target changed, not necessarily this index's own
+  definition."
   [transform-id]
   (when transform-id
-    (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
+    (when-let [ids (seq (into [] (comp (filter (comp #{:succeeded :failed} :status)) (map :id))
+                              (select-applicable-for-transform transform-id)))]
       (t2/update! :model/TableIndex
                   {:id [:in ids]}
-                  {:status :update-pending, :error_message nil}))))
+                  {:status :verify-pending, :error_message nil}))))
 
 (defn exists-for-transform?
   "True when `transform-id` already has a request for `index-name`."

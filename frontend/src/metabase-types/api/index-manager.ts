@@ -41,9 +41,12 @@ export type SortKeyIndex = {
   columns: IndexColumn[];
 };
 
+export type DistKeyStyle = "key" | "all" | "even";
+
 export type DistKeyIndex = {
   kind: "distkey";
-  column: string;
+  style: DistKeyStyle;
+  columns?: IndexColumn[];
 };
 
 export type ClusteringIndex = {
@@ -89,6 +92,7 @@ export const TABLE_INDEX_REQUEST_STATUSES = [
   "create-pending",
   "update-pending",
   "delete-pending",
+  "verify-pending",
   "running",
   "succeeded",
   "failed",

@@ -2,6 +2,7 @@
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:refer-clojure :exclude [get-in some not-empty])
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -1480,10 +1481,12 @@
             target
             cols)))
 
-(defn- sql-string-literal
-  "A MySQL `'...'` string literal for trusted `s`, escaping embedded quotes."
-  [s]
-  (str \' (sql.u/escape-sql s :ansi) \'))
+(defn- utf8-string-expr
+  "A MySQL expression evaluating to the string `s`, hex-encoded so there is nothing to escape and SQL injection is
+  impossible. Index names are unvalidated free-form user input and `sql.u/escape-sql` is explicitly not safe for that
+  (a backslash defeats its quote-doubling, and its escaping is session-dependent), so we use the hex pattern instead."
+  [^String s]
+  (format "CONVERT(UNHEX('%s') USING utf8mb4)" (codecs/bytes->hex (.getBytes s "UTF-8"))))
 
 (defmethod driver/compile-create-index :mysql
   [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]
@@ -1491,15 +1494,16 @@
     (if-not if-not-exists
       [[create]]
       ;; MySQL has no `CREATE INDEX IF NOT EXISTS`, and the apply path re-issues creates on full rebuilds, so guard
-      ;; with dynamic SQL that runs the create only when no index of this name exists. Identifiers are inlined as
-      ;; string literals because the MariaDB driver rejects `?` placeholders inside the `SET @var := (SELECT ...)`.
+      ;; with dynamic SQL that runs the create only when no index of this name exists. Strings (including the whole
+      ;; CREATE statement) are inlined as hex-encoded expressions rather than bound params because the MariaDB driver
+      ;; rejects `?` placeholders inside `SET @var := (SELECT ...)`.
       [[(format "SET @mb_idx_exists := (SELECT COUNT(*) FROM information_schema.statistics
                                         WHERE table_schema = %s AND table_name = %s AND index_name = %s)"
-                (if (not-empty schema) (sql-string-literal schema) "DATABASE()")
-                (sql-string-literal table)
-                (sql-string-literal index-name))]
+                (if (not-empty schema) (utf8-string-expr schema) "DATABASE()")
+                (utf8-string-expr table)
+                (utf8-string-expr index-name))]
        [(format "SET @mb_idx_sql := IF(@mb_idx_exists > 0, 'DO 0', %s)"
-                (sql-string-literal create))]
+                (utf8-string-expr create))]
        ["PREPARE mb_idx_stmt FROM @mb_idx_sql"]
        ["EXECUTE mb_idx_stmt"]
        ["DEALLOCATE PREPARE mb_idx_stmt"]])))

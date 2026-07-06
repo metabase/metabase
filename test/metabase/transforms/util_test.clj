@@ -499,6 +499,34 @@
                (reset! driver-observed-timeout-ms driver.settings/*query-timeout-ms*))))))
       (is (= (u/minutes->ms 90) @driver-observed-timeout-ms)))))
 
+(deftest run-cancelable-transform!-leaves-running-indexes-when-verify-cannot-read-warehouse-test
+  (testing "on a full-create run, when verify-managed-indexes! returns false (warehouse unreadable), the caller does
+            not mark-unverified-running-indexes-failed! -- rows mark-runnable-indexes-running! put :running stay
+            :running for a future run to re-verify"
+    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                               :source {:type "query"}
+                                               :source_database_id (mt/id)
+                                               :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                   :model/TableIndex {idx-id :id} {:transform_id tid :index_name "idx"
+                                                   :structured {:kind :btree :name "idx" :columns [{:name "x"}]}}]
+      (with-redefs [driver/schema-exists?                            (constantly true)
+                    driver/create-schema-if-needed!                  (constantly nil)
+                    transforms-base.u/get-source-range-params        (constantly nil)
+                    transforms-base.u/save-run-checkpoint-range!     (constantly nil)
+                    transforms-base.u/save-watermark!                (constantly nil)
+                    transforms-base.u/apply-target-indexes!          (constantly nil)
+                    transforms-base.u/verify-managed-indexes!        (constantly false)
+                    transforms.canceling/chan-start-timeout-vthread! (constantly nil)
+                    transforms.canceling/chan-start-run!             (constantly nil)
+                    transforms.canceling/chan-end-run!               (constantly nil)
+                    transform-run/succeed-started-run!               (constantly nil)]
+        (mt/with-premium-features #{:transforms-basic}
+          (transforms.u/run-cancelable-transform!
+           1 {:id tid :target {:type "table" :index-request-ids [idx-id]}} :h2
+           {:db-id 1 :conn-spec nil :output-schema "x"}
+           (fn [_cancel-chan _range-params] nil))))
+      (is (= :running (t2/select-one-fn :status :model/TableIndex idx-id))))))
+
 ;;; -------------------------------------------------- `:metabase-transforms/incremental-rows` --------------------------------------------------
 
 (defn- run-cancelable-with-mocks!

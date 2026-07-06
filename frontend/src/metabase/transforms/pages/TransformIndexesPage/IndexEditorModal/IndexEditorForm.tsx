@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Form, FormSubmitButton } from "metabase/forms";
-import { Button, Group, Select, Stack, Text } from "metabase/ui";
+import { Alert, Button, Group, Icon, Select, Stack, Text } from "metabase/ui";
 import type { IndexField, IndexKind } from "metabase-types/api";
 
 import { IndexFieldInput } from "./IndexFieldInput";
@@ -14,6 +14,7 @@ type IndexEditorFormProps = {
   fields: IndexField[];
   columnOptions: ColumnOption[];
   isEditing: boolean;
+  showRebuildWarning: boolean;
   submitLabel: string;
   onKindChange: (kind: IndexKind) => void;
   onClose: () => void;
@@ -25,6 +26,7 @@ export function IndexEditorForm({
   fields,
   columnOptions,
   isEditing,
+  showRebuildWarning,
   submitLabel,
   onKindChange,
   onClose,
@@ -44,6 +46,12 @@ export function IndexEditorForm({
   return (
     <Form>
       <Stack gap="lg" mt="sm">
+        {showRebuildWarning && (
+          <Alert icon={<Icon name="warning" />} color="warning">
+            {t`Saving this index will cause the next run to reprocess all data from scratch instead of only new rows.`}
+          </Alert>
+        )}
+
         {firstField && renderField(firstField, !isEditing)}
 
         <Select
