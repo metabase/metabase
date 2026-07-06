@@ -490,9 +490,10 @@
    - Explicit db-level desired (nil key, no table overrides) → always db-level
    - Mixed (db-level default + table overrides) where all values same → coalesce to db-level
    - Table-level desired, current was db-level, all values match current → keep db-level (no-op)
-   - Otherwise → table-level rows (a uniform least-permissive value is then collapsed to db-level by
-     [[metabase.permissions.core/save-permission-changes!]]; other uniform values must stay granular
-     because a db-level row, unlike table-level rows, also applies to inactive tables)"
+   - Otherwise → table-level rows (uniform `:blocked` view-data rows are then collapsed to db-level by
+     [[metabase.permissions.core/save-permission-changes!]]; all other uniform values stay granular —
+     a db-level row, unlike table-level rows, also applies to inactive tables, and non-view-data perm
+     types must keep their granular graph shape per #73520)"
   [group-id db-id perm-type desired-entries current-rows all-tables]
   (let [has-db-level?  (contains? desired-entries nil)
         table-entries  (dissoc desired-entries nil)]

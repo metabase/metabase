@@ -954,6 +954,16 @@
                          :group_id group-id :db_id db-id :perm_type :perms/view-data
                          :table_id [:not= nil]))))))
 
+(defn- insert-table-view-data-perm!
+  "Inserts a raw table-level view-data row, bypassing the write funnel's collapse."
+  [group-id db-id table-id value]
+  (t2/insert! :model/DataPermissions {:group_id    group-id
+                                      :db_id       db-id
+                                      :table_id    table-id
+                                      :schema_name "PUBLIC"
+                                      :perm_type   :perms/view-data
+                                      :perm_value  value}))
+
 (deftest collapse-uniform-table-permissions!-test
   (testing "table-level rows duplicating an equal-value db-level row are deleted"
     (mt/with-temp [:model/Database         {db-id :id}    {}
@@ -961,13 +971,8 @@
                    :model/Table            {table-id :id} {:db_id db-id :schema "PUBLIC" :active true}]
       (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
       ;; simulate the redundant state a crash between collapse's insert and delete would leave behind
-      (t2/insert! :model/DataPermissions {:group_id    group-id
-                                          :db_id       db-id
-                                          :table_id    table-id
-                                          :schema_name "PUBLIC"
-                                          :perm_type   :perms/view-data
-                                          :perm_value  :unrestricted})
-      (data-perms/collapse-uniform-table-permissions! [[group-id db-id :perms/view-data]])
+      (insert-table-view-data-perm! group-id db-id table-id :unrestricted)
+      (data-perms/collapse-uniform-table-permissions! [[group-id db-id]])
       (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions
                                              :group_id group-id :db_id db-id :table_id nil
                                              :perm_type :perms/view-data)))
@@ -980,19 +985,29 @@
                    :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}
                    :model/Table            {_table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active true}]
       (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/view-data)
-      (t2/insert! :model/DataPermissions {:group_id    group-id
-                                          :db_id       db-id
-                                          :table_id    table-id-1
-                                          :schema_name "PUBLIC"
-                                          :perm_type   :perms/view-data
-                                          :perm_value  :blocked})
-      (data-perms/collapse-uniform-table-permissions! [[group-id db-id :perms/view-data]])
+      (insert-table-view-data-perm! group-id db-id table-id-1 :blocked)
+      (data-perms/collapse-uniform-table-permissions! [[group-id db-id]])
       (is (nil? (t2/select-one :model/DataPermissions
                                :group_id group-id :db_id db-id :table_id nil
                                :perm_type :perms/view-data)))
       (is (= 1 (t2/count :model/DataPermissions
                          :group_id group-id :db_id db-id :perm_type :perms/view-data
-                         :table_id [:not= nil]))))))
+                         :table_id [:not= nil])))))
+  (testing "a differing value on an INACTIVE table's row blocks the collapse — the row must survive so a
+            reactivated table picks its value back up"
+    (mt/with-temp [:model/Database         {db-id :id}      {}
+                   :model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC" :active true}
+                   :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC" :active false}]
+      (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/view-data)
+      (insert-table-view-data-perm! group-id db-id table-id-1 :blocked)
+      (insert-table-view-data-perm! group-id db-id table-id-2 :unrestricted)
+      (data-perms/collapse-uniform-table-permissions! [[group-id db-id]])
+      (is (nil? (t2/select-one :model/DataPermissions
+                               :group_id group-id :db_id db-id :table_id nil
+                               :perm_type :perms/view-data)))
+      (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions
+                                             :group_id group-id :db_id db-id :table_id table-id-2))))))
 
 (deftest set-default-table-permissions!-simple-insert-test
   (testing "When group is already table-granular, new table gets a simple insert"

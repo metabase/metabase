@@ -3297,7 +3297,13 @@
             t4a      (table! db-4 true)
             ;; db-5: uniform :no create-queries (not view-data) → untouched
             db-5     (db! "collapse-other-type")
-            t5a      (table! db-5 true)]
+            t5a      (table! db-5 true)
+            ;; db-6: active tables uniformly blocked, but an inactive table's row differs → untouched
+            ;; entirely (collapsing would pair a db-level row with a mismatched table row, and would lose
+            ;; the value the table picks back up on reactivation)
+            db-6     (db! "collapse-inactive-differs")
+            t6a      (table! db-6 true)
+            t6-off   (table! db-6 false)]
         (perm! db-1 t1a "perms/view-data" "blocked")
         (perm! db-1 t1b "perms/view-data" "blocked")
         (perm! db-1 t1-off "perms/view-data" "blocked")
@@ -3306,6 +3312,8 @@
         (perm! db-3 t3b "perms/view-data" "unrestricted")
         (perm! db-4 t4a "perms/view-data" "unrestricted")
         (perm! db-5 t5a "perms/create-queries" "no")
+        (perm! db-6 t6a "perms/view-data" "blocked")
+        (perm! db-6 t6-off "perms/view-data" "unrestricted")
         (migrate!)
         (testing "uniform :blocked collapses to a single db-level row, dropping the inactive table's row too"
           (is (= #{[nil "blocked"]} (rows db-1 "perms/view-data"))))
@@ -3316,4 +3324,6 @@
         (testing "uniform non-blocked value untouched"
           (is (= #{[t4a "unrestricted"]} (rows db-4 "perms/view-data"))))
         (testing "non-view-data perm types untouched"
-          (is (= #{[t5a "no"]} (rows db-5 "perms/create-queries"))))))))
+          (is (= #{[t5a "no"]} (rows db-5 "perms/create-queries"))))
+        (testing "differing inactive-table row blocks the collapse entirely"
+          (is (= #{[t6a "blocked"] [t6-off "unrestricted"]} (rows db-6 "perms/view-data"))))))))

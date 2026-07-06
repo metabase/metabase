@@ -738,141 +738,135 @@
   (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
     (t2/delete! :model/DataPermissions :id [:in batched-to-delete-ids])))
 
-(defn- table-perm-combos
-  "Distinct `[group-id db-id perm-type-name]` tuples for the table-level rows in `rows`."
+(defn- view-data-table-perm-pairs
+  "Distinct `[group-id db-id]` pairs for the table-level `:perms/view-data` rows in `rows` — the only rows
+  [[collapse-uniform-table-permissions!]] may rewrite; see its docstring for why."
   [rows]
   (into #{}
         (comp (filter :table_id)
-              (map (fn [{:keys [group_id db_id perm_type]}]
-                     [group_id db_id (u/qualified-name perm_type)])))
+              (filter #(= (:perm_type %) :perms/view-data))
+              (map (juxt :group_id :db_id)))
         rows))
 
-(defn- combo-conditions
-  "HoneySQL condition matching any of the `[group-id db-id perm-type-name]` tuples in `combos`, using the
-  provided column keywords."
-  [combos group-col db-col type-col]
-  (into [:or]
-        (map (fn [[group-id db-id perm-type]]
-               [:and [:= group-col group-id] [:= db-col db-id] [:= type-col perm-type]]))
-        combos))
+(def ^:private view-data-type-name
+  (u/qualified-name :perms/view-data))
 
-(def ^:private collapsible-perm-types
-  "Perm types the write funnel may auto-collapse to db-level. Restricted to `:perms/view-data` for two
-  reasons:
+(def ^:private collapsed-view-data-value
+  "The only value [[collapse-uniform-table-permissions!]] may rewrite to db-level; see its docstring."
+  (least-permissive-value :perms/view-data))
 
-  - Only its least-permissive value (`:blocked`) is safe to collapse at all: table-level rows are ignored
-    for inactive tables (they read as least-permissive), while a db-level row applies to inactive tables
-    too, so collapsing any other value would silently upgrade inactive tables (see
-    [[inactive-table-permission-test]]).
-  - The permissions graph API intentionally reports other perm types' table-level rows as granular even
-    when uniform (#73520); collapsing them would change the shape the admin UI displays.
+(defn- collapsible-view-data-pairs
+  "The subset of `[group-id db-id]` `pairs` (none of which has a db-level view-data row) whose table-level
+  view-data rows all share [[collapsed-view-data-value]] and cover every active table of the database.
+  Uniformity is checked across ALL rows — including rows referencing inactive tables — so collapsing (which
+  deletes every table-level row for the pair) never discards a value a reactivated table would otherwise
+  pick back up."
+  [pairs]
+  (let [active-counts (u/index-by :db_id :n
+                                  (t2/query {:select   [:db_id [[:count :*] :n]]
+                                             :from     [:metabase_table]
+                                             :where    [:and
+                                                        [:in :db_id (into #{} (map second) pairs)]
+                                                        [:= :active true]]
+                                             :group-by [:db_id]}))
+        ;; Aggregate instead of selecting rows: a single (group, db) pair can have one row per table, which
+        ;; is millions of rows on large instances (see #76077).
+        stats         (t2/query {:select    [:dp.group_id :dp.db_id
+                                             [[:min :dp.perm_value] :perm_value]
+                                             [[:count [:distinct :dp.perm_value]] :n_values]
+                                             [[:count [:distinct [:case [:= :mt.active true] :dp.table_id]]]
+                                              :n_active_tables]]
+                                 :from      [[:data_permissions :dp]]
+                                 :left-join [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
+                                 :where     [:and
+                                             [:= :dp.perm_type view-data-type-name]
+                                             [:not= :dp.table_id nil]
+                                             [:in [:composite :dp.group_id :dp.db_id] (vec pairs)]]
+                                 :group-by  [:dp.group_id :dp.db_id]})]
+    (for [{group-id :group_id db-id :db_id value :perm_value
+           n-values :n_values n-active-tables :n_active_tables} stats
+          :when (and (= n-values 1)
+                     (= value (u/qualified-name collapsed-view-data-value))
+                     (pos? n-active-tables)
+                     (= n-active-tables (get active-counts db-id 0)))]
+      [group-id db-id])))
 
-  This restriction still covers the entire pathological case: the new-table \"going granular\" path only
-  triggers on `:blocked`, which is a view-data value, so the row explosion it used to cause (#76077) was
-  all view-data rows."
-  #{:perms/view-data})
+(defn- delete-table-view-data-rows!
+  "Deletes table-level view-data rows for the given `[group-id db-id]` or `[group-id db-id perm-value]`
+  tuples; the 3-element form only deletes rows with that value."
+  [tuples]
+  (doseq [batch (partition-all permission-batch-size tuples)]
+    (t2/delete! :model/DataPermissions
+                {:where [:and
+                         [:= :perm_type view-data-type-name]
+                         [:not= :table_id nil]
+                         (into [:or]
+                               (map (fn [[group-id db-id value]]
+                                      (cond-> [:and [:= :group_id group-id] [:= :db_id db-id]]
+                                        value (conj [:= :perm_value value]))))
+                               batch)]})))
 
 (defn collapse-uniform-table-permissions!
-  "Rewrites table-level permission rows as db-level rows wherever doing so cannot change any effective
-  permission or the API graph shape. For each `[group-id db-id perm-type]` tuple in `combos` (perm-type
-  may be a keyword or string) whose perm type is in [[collapsible-perm-types]]:
+  "Rewrites table-level `:perms/view-data` rows as db-level rows wherever doing so cannot change any
+  effective permission. For each `[group-id db-id]` pair:
 
-  - no db-level row, and the tuple's table-level rows cover every active table in the database with the
-    perm type's *least-permissive* value → replace them with one db-level row
-  - db-level row already present → delete any table-level rows with the same value (redundant duplicates)
+  - no db-level view-data row, and the pair's table-level rows all carry [[collapsed-view-data-value]] and
+    cover every active table in the database → replace them with one db-level row
+  - db-level view-data row already present → delete any table-level rows with the same value (redundant
+    duplicates; heals states left by pre-collapse versions or an H2 crash — on other app dbs the enclosing
+    cluster-lock transaction makes partial collapse states unreachable)
 
-  Idempotent. Caller must hold the permissions cluster lock for the affected database(s)."
-  [combos]
-  (when-let [combos (->> combos
-                         (filter (fn [[_group-id _db-id perm-type]]
-                                   (contains? collapsible-perm-types (keyword perm-type))))
-                         (map (fn [[group-id db-id perm-type]]
-                                [group-id db-id (u/qualified-name perm-type)]))
-                         distinct
-                         seq)]
-    (let [db-ids        (into #{} (map second) combos)
-          active-counts (into {}
-                              (map (juxt :db_id :n))
-                              (t2/query {:select   [:db_id [[:count :*] :n]]
-                                         :from     [:metabase_table]
-                                         :where    [:and [:in :db_id db-ids] [:= :active true]]
-                                         :group-by [:db_id]}))
-          db-level-val  (into {}
-                              (map (fn [{:keys [group_id db_id perm_type perm_value]}]
-                                     [[group_id db_id (u/qualified-name perm_type)]
-                                      (u/qualified-name perm_value)]))
-                              (t2/select [:model/DataPermissions :group_id :db_id :perm_type :perm_value]
+  Only view-data at its least-permissive value (`:blocked`) collapses: table-level rows are ignored for
+  inactive tables (they read as least-permissive), while a db-level row applies to inactive tables too, so
+  collapsing any other value would silently upgrade inactive tables (see
+  [[inactive-table-permission-test]]). Other perm types must additionally keep their granular graph shape
+  even when uniform (#73520). This scope still covers the entire pathological case: the new-table \"going
+  granular\" path only triggers on `:blocked`, a view-data value, so the row explosion it used to cause
+  (#76077) was all view-data rows.
+
+  Idempotent. Deliberately triggered only by inserts (via [[save-permission-changes!]]): pairs that become
+  collapsible through row deletion or table deactivation alone stay granular, which is harmless — effective
+  permissions are unchanged and no new rows accumulate. Caller must hold the permissions cluster lock for
+  the affected database(s)."
+  [pairs]
+  ;; `(into #{} ...)` rather than `distinct`: `distinct` throws "nth not supported" when handed a set,
+  ;; which is exactly what [[view-data-table-perm-pairs]] produces.
+  (doseq [pairs (partition-all permission-batch-size (into #{} pairs))]
+    (let [db-level-val (t2/select-fn->fn (juxt :group_id :db_id) (comp u/qualified-name :perm_value)
+                                         :model/DataPermissions
                                          {:where [:and
+                                                  [:= :perm_type view-data-type-name]
                                                   [:= :table_id nil]
-                                                  (combo-conditions combos :group_id :db_id :perm_type)]}))
-          ;; Aggregate instead of selecting rows: a single (group, db, perm-type) tuple can have one row per
-          ;; table, which is millions of rows on large instances (see #76077).
-          stats         (t2/query {:select   [:dp.group_id :dp.db_id :dp.perm_type
-                                              [[:min :dp.perm_value] :perm_value]
-                                              [[:count [:distinct :dp.perm_value]] :n_values]
-                                              [[:count [:distinct :dp.table_id]] :n_tables]]
-                                   :from     [[:data_permissions :dp]]
-                                   :join     [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
-                                   :where    [:and
-                                              [:= :mt.active true]
-                                              (combo-conditions combos :dp.group_id :dp.db_id :dp.perm_type)]
-                                   :group-by [:dp.group_id :dp.db_id :dp.perm_type]})
-          collapsible   (filter (fn [{:keys [group_id db_id perm_type perm_value n_values n_tables]}]
-                                  (and (nil? (db-level-val [group_id db_id perm_type]))
-                                       (= n_values 1)
-                                       (= (keyword perm_value)
-                                          (least-permissive-value (keyword perm_type)))
-                                       (pos? n_tables)
-                                       (= n_tables (get active-counts db_id 0))))
-                                stats)
-          dedupable     (keep (fn [[group-id db-id perm-type :as combo]]
-                                (when-let [value (db-level-val combo)]
-                                  {:group_id group-id :db_id db-id :perm_type perm-type :perm_value value}))
-                              combos)]
+                                                  [:in [:composite :group_id :db_id] (vec pairs)]]})
+          {with-db-row true no-db-row false} (group-by #(contains? db-level-val %) pairs)
+          collapsible (when (seq no-db-row)
+                        (collapsible-view-data-pairs no-db-row))]
       (when (seq collapsible)
-        ;; Insert the db-level rows first so a crash between the two statements leaves a redundant-but-correct
-        ;; state (identical-value table rows alongside the db-level row), which the dedup branch cleans up on
-        ;; the next write to the same tuple.
         (batch-insert-permissions!
-         ;; `stats` comes from a raw `t2/query`, so perm_type/perm_value are strings; the model's
-         ;; before-insert validation expects keywords.
-         (map (fn [{:keys [group_id db_id perm_type perm_value]}]
-                {:group_id   group_id
-                 :db_id      db_id
-                 :perm_type  (keyword perm_type)
-                 :perm_value (keyword perm_value)})
-              collapsible))
-        (doseq [batch (partition-all 100 collapsible)]
-          (t2/delete! :model/DataPermissions
-                      {:where [:and
-                               [:not= :table_id nil]
-                               (combo-conditions (map (juxt :group_id :db_id :perm_type) batch)
-                                                 :group_id :db_id :perm_type)]})))
-      (doseq [batch (partition-all 100 dedupable)]
-        (t2/delete! :model/DataPermissions
-                    {:where [:and
-                             [:not= :table_id nil]
-                             (into [:or]
-                                   (map (fn [{:keys [group_id db_id perm_type perm_value]}]
-                                          [:and
-                                           [:= :group_id group_id]
-                                           [:= :db_id db_id]
-                                           [:= :perm_type perm_type]
-                                           [:= :perm_value perm_value]]))
-                                   batch)]})))))
+         (for [[group-id db-id] collapsible]
+           {:group_id   group-id
+            :db_id      db-id
+            :perm_type  :perms/view-data
+            :perm_value collapsed-view-data-value}))
+        (delete-table-view-data-rows! collapsible))
+      ;; Dedup: table rows that exactly duplicate the db-level row's value are redundant no matter how they
+      ;; came to be. Rows with a *different* value are left alone — they are anomalies this code did not
+      ;; create, and deleting them would change what a reactivated table reads.
+      (when (seq with-db-row)
+        (delete-table-view-data-rows! (map #(conj % (db-level-val %)) with-db-row))))))
 
-(defn save-permission-changes!
+(mu/defn save-permission-changes!
   "Applies a `{:to-delete [row-id ...] :to-insert [row-map ...]}` diff to `data_permissions`, then collapses
-  any `(group, db, perm-type)` tuple the inserts touched that is now fully uniform (see
+  any `(group, db)` view-data pair the inserts touched that is now fully uniform (see
   [[collapse-uniform-table-permissions!]]). All permission writes should go through here so that table-level
   rows never outlive their usefulness. Caller must hold the permissions cluster lock for the affected
   database(s)."
-  [{:keys [to-delete to-insert]}]
-  (when (seq to-delete)
-    (batch-delete-permissions! to-delete))
-  (when (seq to-insert)
-    (batch-insert-permissions! to-insert))
-  (collapse-uniform-table-permissions! (table-perm-combos to-insert)))
+  [{:keys [to-delete to-insert]} :- [:map
+                                     [:to-delete {:optional true} [:maybe [:sequential :int]]]
+                                     [:to-insert {:optional true} [:maybe [:sequential :map]]]]]
+  (batch-delete-permissions! to-delete)
+  (batch-insert-permissions! to-insert)
+  (collapse-uniform-table-permissions! (view-data-table-perm-pairs to-insert)))
 
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.
@@ -1022,11 +1016,15 @@
     (if (and (= other-values 1)
              (= values #{(keyword other-value)}))
       ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
-      ;; perms with a DB-level perm instead.
-      (build-database-permission (index-database-permissions [group-id] [db-id])
+      ;; perms with a DB-level perm instead. Build the to-delete index from id-only rows rather than
+      ;; `index-database-permissions` — the full-row select is one row per table x perm type, and only the
+      ;; ids are consumed downstream.
+      (build-database-permission (group-by (juxt :group_id :db_id :perm_type)
+                                           (t2/select [:model/DataPermissions :id :group_id :db_id :perm_type]
+                                                      :group_id group-id :db_id db-id))
                                  group-id db-id perm-type (first values))
       ;; Otherwise, just replace the rows for the individual table perm
-      (let [table-perms-to-delete (t2/select :model/DataPermissions
+      (let [table-perms-to-delete (t2/select [:model/DataPermissions :id]
                                              {:where [:and
                                                       [:= :perm_type (u/qualified-name perm-type)]
                                                       [:= :group_id group-id]
