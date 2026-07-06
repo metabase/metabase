@@ -2,7 +2,6 @@
   (:require
    #?@(:clj [[potemkin :as p]])
    [medley.core :as m]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
