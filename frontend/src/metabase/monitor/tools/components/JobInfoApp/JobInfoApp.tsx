@@ -27,7 +27,9 @@ export const JobInfoApp = ({ children }: JobInfoAppProps) => {
         ) : (
           <>
             {data != null && data.scheduler.length > 0 && (
-              <Code block>{data.scheduler.join("\n")}</Code>
+              <Code block p="xl" style={{ flexShrink: 0 }}>
+                {data.scheduler.join("\n")}
+              </Code>
             )}
             <JobsTable jobs={data?.jobs ?? []} isLoading={isFetching} />
           </>
