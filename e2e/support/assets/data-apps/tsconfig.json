@@ -1,0 +1,12 @@
+{
+  // Fixture apps are standalone SDK apps built by Vite; here we only typecheck
+  // their src against the local ambient SDK shim (metabase-sdk.d.ts) — see that
+  // file for why we don't resolve the real SDK types. `noEmit`, so nothing is
+  // built by tsc.
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["metabase-sdk.d.ts", "*/src/**/*.ts", "*/src/**/*.tsx"],
+  "exclude": [".build"]
+}
