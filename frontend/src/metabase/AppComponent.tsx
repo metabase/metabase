@@ -9,6 +9,7 @@ import {
   getIsAppBarVisible,
   getIsDataStudioApp,
   getIsNavBarEnabled,
+  getIsToolsApp,
 } from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
@@ -36,6 +37,7 @@ import { AppKBarProvider } from "./AppKBarProvider";
 import ErrorBoundary from "./ErrorBoundary";
 import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { Metabot } from "./metabot/components/Metabot";
+import { PROTO_NAV_ENABLED } from "./nav/containers/ProtoNavbar/flag";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
@@ -59,6 +61,7 @@ interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
   isDataStudioApp: boolean;
+  isToolsApp: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -82,6 +85,7 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isDataStudioApp: getIsDataStudioApp(state, props),
+  isToolsApp: getIsToolsApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -94,6 +98,7 @@ function App({
   errorPage,
   isAdminApp,
   isDataStudioApp,
+  isToolsApp,
   isAppBarVisible,
   isNavBarEnabled,
   children,
@@ -116,8 +121,10 @@ function App({
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
-            <AppContentContainer isAdminApp={isAdminApp}>
+            {isAppBarVisible && !PROTO_NAV_ENABLED && <AppBarContainer />}
+            <AppContentContainer
+              isAdminApp={isAdminApp && !(PROTO_NAV_ENABLED && isToolsApp)}
+            >
               {isNavBarEnabled && <Navbar />}
               <AppContent ref={setViewportElement}>
                 <ContentViewportContext.Provider

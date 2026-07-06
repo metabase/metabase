@@ -5,6 +5,10 @@ import { useListDatabasesQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
+import {
+  PROTO_NAV_ENABLED,
+  ProtoNavbar,
+} from "metabase/nav/containers/ProtoNavbar";
 import { connect } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
 import { getAdminPaths } from "metabase/selectors/admin";
@@ -42,9 +46,28 @@ function NavbarInner({
     () => location.pathname.startsWith("/admin/"),
     [location.pathname],
   );
+  // The prototype nav owns the Tools views (Monitor section), so it replaces
+  // the admin chrome on /admin/tools.
+  const isToolsApp = useMemo(
+    () => location.pathname.startsWith("/admin/tools"),
+    [location.pathname],
+  );
 
   if (!user) {
     return null;
+  }
+
+  if (PROTO_NAV_ENABLED) {
+    return isAdminApp && !isToolsApp ? (
+      <AdminNavbar path={location.pathname} adminPaths={adminPaths} />
+    ) : (
+      <ProtoNavbar
+        isOpen={isOpen}
+        location={location}
+        params={params}
+        dashboard={dashboard}
+      />
+    );
   }
 
   return isAdminApp ? (

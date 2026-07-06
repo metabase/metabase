@@ -148,25 +148,34 @@ export function transformToTreeTableFormat(
   );
 }
 
+export function transformDatabaseChildrenToTreeTable(
+  database: DatabaseNode,
+  canFlattenSingleSchema = true,
+): TablePickerTreeNode[] {
+  const isSingleSchema = database.children.length === 1;
+  const shouldFlattenSingleSchema = canFlattenSingleSchema && isSingleSchema;
+
+  if (shouldFlattenSingleSchema) {
+    return sort(database.children[0].children).map(transformTableNode);
+  }
+
+  return sort(database.children).flatMap((schema) => {
+    if (schema.label === UNNAMED_SCHEMA_NAME) {
+      return sort(schema.children).map(transformTableNode);
+    }
+    return [transformSchemaNode(schema)];
+  });
+}
+
 function transformDatabaseNode(
   database: DatabaseNode,
   canFlattenSingleSchema: boolean,
 ): TablePickerTreeNode {
   const { databaseId } = database.value;
-  const isSingleSchema = database.children.length === 1;
-  const shouldFlattenSingleSchema = canFlattenSingleSchema && isSingleSchema;
-
-  let children: TablePickerTreeNode[];
-  if (shouldFlattenSingleSchema) {
-    children = sort(database.children[0].children).map(transformTableNode);
-  } else {
-    children = sort(database.children).flatMap((schema) => {
-      if (schema.label === UNNAMED_SCHEMA_NAME) {
-        return sort(schema.children).map(transformTableNode);
-      }
-      return [transformSchemaNode(schema)];
-    });
-  }
+  const children = transformDatabaseChildrenToTreeTable(
+    database,
+    canFlattenSingleSchema,
+  );
 
   return {
     id: `db:${databaseId}`,

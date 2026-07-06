@@ -27,6 +27,8 @@ export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
   selectedId?: number | string;
   onSelect?: (item: ITreeNodeItem) => void;
+  initialExpandedIds?: ITreeNodeItem["id"][];
+  pinnedExpandedIds?: ITreeNodeItem["id"][];
 };
 
 export interface GitSettingsModalProps {

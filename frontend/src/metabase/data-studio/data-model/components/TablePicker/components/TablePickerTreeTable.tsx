@@ -15,6 +15,7 @@ import {
   DATA_LAYER_ICONS,
   getDataLayerLabel,
 } from "metabase/metadata/utils/data-layer";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -54,6 +55,7 @@ import {
 import {
   getTreeMap,
   nodeToTreePath,
+  transformDatabaseChildrenToTreeTable,
   transformToTreeTableFormat,
 } from "../utils";
 
@@ -102,7 +104,20 @@ export function TablePickerTreeTable({
     );
   }, [usersData]);
 
-  const treeData = useMemo(() => transformToTreeTableFormat(tree), [tree]);
+  const isProtoDatabaseScoped = PROTO_NAV_ENABLED && path.databaseId != null;
+
+  const treeData = useMemo(() => {
+    if (isProtoDatabaseScoped) {
+      const database = tree.children.find(
+        (child) => child.value.databaseId === path.databaseId,
+      );
+      if (database?.type === "database") {
+        return transformDatabaseChildrenToTreeTable(database);
+      }
+      return [];
+    }
+    return transformToTreeTableFormat(tree);
+  }, [tree, isProtoDatabaseScoped, path.databaseId]);
 
   const nodeKeyToId = useMemo(() => {
     const map = new Map<string, string>();
@@ -445,6 +460,7 @@ export function TablePickerTreeTable({
     <TreeTable
       instance={instance}
       showCheckboxes
+      indentWidth={isProtoDatabaseScoped ? 12 : undefined}
       onRowClick={handleRowClick}
       getSelectionState={getSelectionState}
       onCheckboxClick={handleCheckboxClick}

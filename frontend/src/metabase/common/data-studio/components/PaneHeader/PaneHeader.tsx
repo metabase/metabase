@@ -6,6 +6,7 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -48,6 +49,8 @@ export const PaneHeader = ({
   showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
+  const shouldShowAppSwitcher = showAppSwitcher && !PROTO_NAV_ENABLED;
+
   return (
     <Stack gap={0} pt="xs" {...rest}>
       <Flex mb="lg" mt="md" w="100%" h="xl">
@@ -55,7 +58,7 @@ export const PaneHeader = ({
 
         <Group ml="auto" gap="md" className={S.ButtonGroup}>
           {showMetabotButton && <MetabotDataStudioButton />}
-          {showAppSwitcher && <AppSwitcher />}
+          {shouldShowAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
       <Group

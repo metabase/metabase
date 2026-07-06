@@ -6,6 +6,7 @@ import {
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
@@ -33,6 +34,10 @@ export const getIsAdminApp = createSelector([getRouterPath], (path) => {
 
 export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
+});
+
+export const getIsToolsApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/admin/tools");
 });
 
 export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
@@ -68,7 +73,9 @@ export const getIsAppSwitcherVisible = createSelector(
 const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
-  /^\/data-studio/,
+  // The prototype nav stays mounted on /data-studio (it provides the Library
+  // and Data sections), so it's only excluded when the prototype is off.
+  ...(PROTO_NAV_ENABLED ? [] : [/^\/data-studio/]),
   /\/model\/.*\/query/,
   /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,
