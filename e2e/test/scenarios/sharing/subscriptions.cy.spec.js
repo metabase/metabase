@@ -378,7 +378,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.be.checked")
         .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Questions to attach").click();
-      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments").click({ force: true });
       cy.findByLabelText("Send only attachments").should("be.checked");
 
       H.sendEmailAndAssert((email) => {

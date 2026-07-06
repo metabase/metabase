@@ -470,7 +470,7 @@ const MODEL_NAME = "Test Action Model";
             });
 
             H.popover().within(() => {
-              cy.findByLabelText("Required").uncheck();
+              cy.findByLabelText("Required").uncheck({ force: true });
             });
 
             H.modal().within(() => {
@@ -529,7 +529,7 @@ const MODEL_NAME = "Test Action Model";
             });
 
             H.popover().within(() => {
-              cy.findByLabelText("Required").check();
+              cy.findByLabelText("Required").check({ force: true });
             });
 
             H.modal().within(() => {
@@ -630,7 +630,9 @@ const MODEL_NAME = "Test Action Model";
                 newValue: 2.2,
               });
 
-              cy.findByLabelText("Boolean").should("be.checked").click();
+              cy.findByLabelText("Boolean")
+                .should("be.checked")
+                .click({ force: true });
 
               changeValue({
                 fieldName: "String",
@@ -712,7 +714,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("Double").type("1.79769313486");
             cy.findByPlaceholderText("Decimal").type("123901.21");
 
-            cy.findByLabelText("Boolean").click();
+            cy.findByLabelText("Boolean").click({ force: true });
 
             cy.findByPlaceholderText("String").type("Zany Zebras");
             cy.findByPlaceholderText("Text").type("Zany Zebras");
