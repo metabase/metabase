@@ -55,8 +55,6 @@ export type InteractiveQuestionBaseProps = Omit<
  * @interface
  * @expand
  * @category InteractiveQuestion
- * @notExported SdkQuestionQuery
- * @notExported StructuredDatasetQuery
  */
 export type InteractiveQuestionProps = InteractiveQuestionBaseProps &
   SdkQuestionEntityPublicProps;
