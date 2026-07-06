@@ -48,8 +48,19 @@ export const DATA_APP_BUILD_SCRIPT = path.join(
   "e2e/support/helpers/build-data-app-fixture.mjs",
 );
 
-/** The locally built SDK's data-app-dev entry (provides `dataAppConfig`). */
-export const SDK_DATA_APP_DEV_ENTRY = path.join(
+/**
+ * SDK source that provides `dataAppConfig` — the same entry the template imports
+ * as `@metabase/embedding-sdk-react/data-app-dev`. We bundle it from source at
+ * build time (see build-data-app-fixture.mjs) rather than importing a prebuilt
+ * `dist/`, since regular e2e doesn't build the SDK package.
+ */
+export const SDK_DATA_APP_DEV_SOURCE = path.join(
   REPO_ROOT,
-  "resources/embedding-sdk/dist/data-app-dev.js",
+  "enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts",
 );
+
+/**
+ * Root of the `build-configs` path alias used inside the SDK dev-config source.
+ * Needed to resolve its `build-configs/*` imports when bundling from source.
+ */
+export const BUILD_CONFIGS_DIR = path.join(REPO_ROOT, "frontend/build");

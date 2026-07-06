@@ -2,12 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { build as bundle } from "esbuild";
 import { build } from "vite";
 
 import {
+  BUILD_CONFIGS_DIR,
   DATA_APP_FIXTURES_DIR,
   DATA_APP_TEMPLATE_DIR,
-  SDK_DATA_APP_DEV_ENTRY,
+  SDK_DATA_APP_DEV_SOURCE,
 } from "./data-app-fixture-paths.mjs";
 
 const appName = process.argv[2];
@@ -39,9 +41,24 @@ fs.cpSync(DATA_APP_TEMPLATE_DIR, buildDir, {
 
 fs.cpSync(srcDir, path.join(buildDir, "src"), { recursive: true });
 
-const { dataAppConfig } = await import(
-  pathToFileURL(SDK_DATA_APP_DEV_ENTRY).href
-);
+// Load `dataAppConfig` by transpiling it from SDK source into the throwaway
+// build dir — regular e2e doesn't build the SDK's `dist/`, so there's no
+// prebuilt entry to import. node_modules deps stay external; the `build-configs`
+// path alias is mapped to frontend/build so the dev-config graph resolves.
+const dataAppDevEntry = path.join(buildDir, ".data-app-dev.mjs");
+
+await bundle({
+  entryPoints: [SDK_DATA_APP_DEV_SOURCE],
+  outfile: dataAppDevEntry,
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  packages: "external",
+  alias: { "build-configs": BUILD_CONFIGS_DIR },
+  logLevel: "warning",
+});
+
+const { dataAppConfig } = await import(pathToFileURL(dataAppDevEntry).href);
 
 await build({
   root: buildDir,
