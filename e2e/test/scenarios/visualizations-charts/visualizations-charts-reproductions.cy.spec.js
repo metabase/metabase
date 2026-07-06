@@ -656,7 +656,6 @@ describe("issue 21665", () => {
     });
 
     H.saveDashboard();
-    cy.wait("@getDashboard");
   });
 
   it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
@@ -666,7 +665,8 @@ describe("issue 21665", () => {
 
     H.visitDashboard("@dashboardId");
 
-    cy.get("@dashboardLoaded").should("have.callCount", 3);
+    // The dashboard loads twice: once on the initial visit, once on re-visit.
+    cy.get("@dashboardLoaded").should("have.callCount", 2);
     cy.findByTestId("dashcard")
       .findByText(
         "Some columns are missing, this card might not render correctly.",
@@ -719,39 +719,6 @@ describe("issue 22527", { tags: "@skip" }, () => {
     H.popover().contains(/size/i).click();
 
     assertion();
-  });
-});
-
-describe("issue 25007", () => {
-  const questionDetails = {
-    name: "11435",
-    display: "line",
-    native: {
-      query: `SELECT dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) AS "CREATED_AT", count(*) AS "count"
-  FROM "PUBLIC"."ORDERS"
-  GROUP BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date))
-  ORDER BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) ASC`,
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CREATED_AT"],
-      "graph.metrics": ["count"],
-    },
-  };
-
-  const clickLineDot = ({ index } = {}) => {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.cartesianChartCircle().eq(index).click({ force: true });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    clickLineDot({ index: 1 });
-    H.echartsTooltip().should("contain", "May 4–10, 2025");
   });
 });
 

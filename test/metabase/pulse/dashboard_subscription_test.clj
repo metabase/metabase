@@ -1395,10 +1395,11 @@
     (let [render-args (atom nil)]
       ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
       (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [dashboard-id user-id parameters]
+                    (fn [dashboard-id user-id parameters & [_paper-key parts]]
                       (reset! render-args {:dashboard-id dashboard-id
                                            :user-id      user-id
-                                           :parameters   parameters})
+                                           :parameters   parameters
+                                           :parts        parts})
                       (.getBytes "%PDF-1.4 stub" "UTF-8"))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
@@ -1420,6 +1421,9 @@
             (testing "renderer is called with the subscription's dashboard id and resolved parameters"
               (is (= dashboard-id (:dashboard-id @render-args)))
               (is (= [] (:parameters @render-args))))
+            (testing "the already-executed dashboard parts are handed to the renderer so queries aren't re-run"
+              (is (some #(= :card (:type %))
+                        (:parts @render-args))))
             (let [message  (:message (first (:channel/email pulse-results)))
                   pdf-part (some #(when (= "application/pdf" (:content-type %)) %) message)]
               (testing "the PDF attachment is named after the dashboard"
@@ -1473,8 +1477,9 @@
                                              :details      {:channel "#general" :include_pdf true}}]
         (let [render-args (atom nil)]
           (with-redefs [channel.render/render-dashboard-to-pdf
-                        (fn [dashboard-id user-id parameters]
-                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id :parameters parameters})
+                        (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id
+                                               :parameters parameters :parts parts})
                           (.getBytes "%PDF-1.4 stub" "UTF-8"))]
             (pulse.test-util/slack-test-setup!
              (let [results (pulse.test-util/with-captured-channel-send-messages!

@@ -1328,7 +1328,8 @@ export function formatDateTimeWithUnit(
   if (unit === "week") {
     if (
       (options.type === "tooltip" || options.type === "cell") &&
-      !options.noRange
+      !options.noRange &&
+      options.column?.source !== "native"
     ) {
       // tooltip show range like "January 1 - 7, 2017"
       return formatDateTimeRangeWithUnit([String(value)], unit, options);

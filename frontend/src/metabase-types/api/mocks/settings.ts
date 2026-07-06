@@ -146,6 +146,7 @@ export const createMockTokenFeatures = (
   "transforms-basic": false,
   "transforms-python": false,
   library: false,
+  library_retrieval: false,
   "support-users": false,
   tenants: false,
   writable_connection: false,

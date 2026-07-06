@@ -16,7 +16,6 @@
    [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.shared :as channel.shared]
-   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.notification.settings :as notification.settings]
    [metabase.test :as mt]
@@ -60,7 +59,7 @@
               md "[docs](https://metabase.com) [mail](mailto:a@b.com) [rel](/x) [js](javascript:1)"]
           (binding [font/*fonts*     (#'font/load-fonts! doc)
                     pdf/*link-rects* (atom [])]
-            (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 md)
+            (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 nil :top md)
             (.close cs)
             (#'pdf/add-link-annotations! page @pdf/*link-rects*)))
         ;; "rel" (relative) and "js" (javascript:) must not be clickable
@@ -263,7 +262,7 @@
                                     :size_y                 1
                                     :visualization_settings {:virtual_card {:display "link"}
                                                              :link         {:url "https://example.com"}}}
-                                   []))))))
+                                   [] nil))))))
 
 (def ^:private iframe-html
   "<iframe width=\"560\" src=\"https://www.youtube.com/embed/x\" allowfullscreen></iframe>")
@@ -299,7 +298,7 @@
                                   :size_y                 3
                                   :visualization_settings {:virtual_card {:display "iframe"}
                                                            :iframe       "https://youtu.be/abc"}}
-                                 [])))))
+                                 [] nil)))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Parameter name-column sizing (min-column-width)
@@ -522,7 +521,7 @@
               bold (#'font/face :bold)
               ;; draw-text-block! (plain text path) and draw-markdown-in-cell! (markdown path)
               dtb  (fn [face pt x y w h text] #(#'pdf/draw-text-block! cs face pt nil x y w h text))
-              dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h text))]
+              dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h nil :top text))]
           (doseq [[nm render expected]
                   ;; Plain text flows through the same item pipeline as Markdown, and it draws one
                   ;; record per word (not per line).
@@ -599,6 +598,39 @@
             (is (= expected (capture-line-draws! render))
                 nm))
           (.close cs))))))
+
+(deftest ^:parallel text-card-align-settings-test
+  (testing "text card alignment settings map to keywords (UXW-4703)"
+    (let [mk (fn [vs] {:visualization_settings vs})]
+      (testing "explicit horizontal/vertical settings"
+        (is (= :left   (#'pdf/text-card-align-h (mk {:text.align_horizontal "left"}))))
+        (is (= :center (#'pdf/text-card-align-h (mk {:text.align_horizontal "center"}))))
+        (is (= :right  (#'pdf/text-card-align-h (mk {:text.align_horizontal "right"}))))
+        (is (= :middle (#'pdf/text-card-align-v (mk {:text.align_vertical "middle"}))))
+        (is (= :bottom (#'pdf/text-card-align-v (mk {:text.align_vertical "bottom"})))))
+      (testing "unset horizontal -> nil (keeps base-direction default, so RTL text isn't forced left); vertical -> :top"
+        (is (nil? (#'pdf/text-card-align-h (mk {}))))
+        (is (= :top (#'pdf/text-card-align-v (mk {}))))))))
+
+(deftest ^:synchronized text-card-alignment-render-test
+  (testing "horizontal & vertical alignment position text within the cell (UXW-4703)"
+    (with-open [doc (PDDocument.)]
+      (let [page (PDPage. PDRectangle/A4)
+            _    (.addPage doc page)
+            cs   (PDPageContentStream. doc page)]
+        (binding [font/*fonts*     (#'font/load-fonts! doc)
+                  pdf/*link-rects* (atom [])]
+          (let [x0 40.0 top 800.0 w 400.0 h 200.0
+                cap-x (fn [ah] (:x (first (capture-line-draws!
+                                           #(#'pdf/draw-markdown-in-cell! doc cs x0 top w h ah :top "Hi")))))
+                cap-y (fn [av] (:y (first (capture-line-draws!
+                                           #(#'pdf/draw-markdown-in-cell! doc cs x0 top w h :left av "Hi")))))]
+            (testing "horizontal: left flush < center < right flush"
+              (is (< (cap-x :left) (cap-x :center) (cap-x :right)))
+              (is (= x0 (cap-x :left)) "left flush starts at the cell's left edge"))
+            (testing "vertical: top is higher on the page (larger y) than middle, and middle than bottom"
+              (is (> (cap-y :top) (cap-y :middle) (cap-y :bottom))))))
+        (.close cs)))))
 
 (deftest ^:synchronized em-width-memoization-test
   (with-open [doc (PDDocument.)]
@@ -757,21 +789,40 @@
         (is (thrown? IllegalArgumentException
                      (render.card/detect-pulse-chart-type {:display "table" :name "t"} nil
                                                           {:cols cols :rows storage}))))
-      (testing "dashcard->cell realizes the rows into an ordinary vector"
+      (testing "dashcard->cell reuses the pre-executed part from the index, deferring realization (rows stay on disk)"
         (let [part     {:card     {:display "table"
                                    :name    "t"}
-                        :dashcard nil
+                        :dashcard {:id 99}
+                        :type     :card
                         :result   {:data {:cols cols
                                           :rows storage}}}
-              dashcard {:card_id 1
+              dashcard {:id      99
+                        :card_id 1
                         :row     0
                         :col     0
                         :size_x  6
-                        :size_y  4}]
-          (with-redefs [notification.payload/execute-dashboard-subscription-card (constantly part)]
-            (let [realized (get-in (#'pdf/dashcard->cell dashcard []) [:part :result :data :rows])]
-              (is (= rows realized))
-              (is (not (temp-storage/streaming-temp-file? realized))))))))))
+                        :size_y  4}
+              cell     (#'pdf/dashcard->cell dashcard [] {99 part})]
+          (is (= :card (:kind cell)))
+          (is (temp-storage/streaming-temp-file? (get-in cell [:part :result :data :rows]))
+              "the disk-backed handle is NOT realized in dashcard->cell -- realization is deferred to draw time")
+          (is (nil? (#'pdf/dashcard->cell dashcard [] {}))
+              "a dashcard with no part in the index (hidden-empty / failed card) is omitted")))
+      (testing "render-card-cell! realizes the disk-backed rows at draw time and draws without throwing"
+        (let [part {:card     {:display "table"
+                               :name    "t"}
+                    :dashcard nil
+                    :result   {:data {:cols cols
+                                      :rows storage}}}]
+          (with-open [doc (PDDocument.)]
+            (binding [font/*fonts* (#'font/load-fonts! doc)]
+              (let [page (PDPage. PDRectangle/A4)]
+                (.addPage doc page)
+                (with-open [cs (PDPageContentStream. doc page)]
+                  (#'pdf/render-card-cell! doc cs nil part 36.0 760.0 480.0 360.0))
+                (let [baos (ByteArrayOutputStream.)]
+                  (.save doc baos)
+                  (is (pos? (count (.toByteArray baos)))))))))))))
 
 (deftest ^:parallel too-large-result-marked-test
   (testing "maybe-realize-data-rows marks an oversized disk-spilled result :render/too-large? instead of loading it"
