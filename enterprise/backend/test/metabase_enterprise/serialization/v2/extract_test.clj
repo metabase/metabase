@@ -1168,7 +1168,7 @@
                        :model/Table       {table-id :id} {:name "T" :db_id db-id
                                                           :is_published true
                                                           :collection_id coll-id}
-                       :model/Field       {f1-id    :id} {:name "F1" :table_id table-id}
+                       :model/Field       _              {:name "F1" :table_id table-id}
                        :model/Field       {f2-id    :id} {:name "F2" :table_id table-id}
                        :model/FieldUserSettings _ {:field_id f2-id :description "curated"}]
       (testing "targeting the collection with user-edits-only: produces FieldUserSettings, not Field"
