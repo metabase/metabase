@@ -6,7 +6,6 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
 import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
-import { JobTriggersModal } from "metabase/monitor/tools/components/JobTriggersModal";
 import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
 import { Logs } from "metabase/monitor/tools/components/Logs";
 import {
@@ -65,11 +64,8 @@ export function getMonitorRoutes(
           <Route path="tasks">{getTasksRoutes()}</Route>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
           <Route path="jobs" component={JobInfoApp}>
-            <ModalRoute
-              path=":jobKey"
-              modal={JobTriggersModal}
-              modalProps={{ size: "85%" }}
-            />
+            {/* renders the job triggers sidebar within JobInfoApp */}
+            <Route path=":jobKey" />
           </Route>
           <Route path="logs" component={Logs}>
             <ModalRoute path="levels" modal={LogLevelsModal} />

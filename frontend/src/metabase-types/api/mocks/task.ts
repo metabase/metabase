@@ -4,6 +4,7 @@ import type {
   TaskInfo,
   TaskRun,
   TaskRunExtended,
+  Trigger,
 } from "metabase-types/api";
 
 export const createMockTask = (task?: Partial<Task>): Task => ({
@@ -40,6 +41,24 @@ export const createMockTaskRunExtended = (
 ): TaskRunExtended => ({
   ...createMockTaskRun(taskRunExtended),
   tasks: taskRunExtended?.tasks ?? [],
+});
+
+export const createMockTrigger = (trigger?: Partial<Trigger>): Trigger => ({
+  key: "a-trigger-key",
+  description: "A trigger description",
+  schedule: "0 0 * * * ?",
+  timezone: "UTC",
+  "previous-fire-time": "2023-03-04T01:45:00Z",
+  "next-fire-time": "2023-03-05T01:45:00Z",
+  "start-time": "2023-03-01T00:00:00Z",
+  "end-time": null,
+  "final-fire-time": null,
+  state: "WAITING",
+  priority: 5,
+  "misfire-instruction": "DO_NOTHING",
+  "may-fire-again?": true,
+  data: {},
+  ...trigger,
 });
 
 export const createMockJob = (job?: Partial<Job>): Job => ({

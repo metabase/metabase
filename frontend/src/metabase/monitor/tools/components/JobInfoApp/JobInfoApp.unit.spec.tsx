@@ -7,10 +7,17 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  within,
 } from "__support__/ui";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import * as Urls from "metabase/urls";
 import type { TaskInfo } from "metabase-types/api";
-import { createMockJob, createMockTaskInfo } from "metabase-types/api/mocks";
+import {
+  createMockJob,
+  createMockTaskInfo,
+  createMockTrigger,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { JobInfoApp } from "./JobInfoApp";
 
@@ -19,9 +26,14 @@ const PATHNAME = Urls.monitorJobs();
 interface SetupOpts {
   error?: boolean;
   taskInfo?: TaskInfo;
+  initialRoute?: string;
 }
 
-const setup = ({ error, taskInfo = createMockTaskInfo() }: SetupOpts = {}) => {
+const setup = ({
+  error,
+  taskInfo = createMockTaskInfo(),
+  initialRoute = PATHNAME,
+}: SetupOpts = {}) => {
   if (error) {
     fetchMock.get("path:/api/task/info", { status: 500 });
   } else {
@@ -31,13 +43,22 @@ const setup = ({ error, taskInfo = createMockTaskInfo() }: SetupOpts = {}) => {
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={JobInfoApp}>
-      {/* stub so row-click navigation to a job's triggers modal resolves */}
+    <Route
+      path={PATHNAME}
+      component={(props) => (
+        <MonitorContent>
+          <JobInfoApp {...props} />
+        </MonitorContent>
+      )}
+    >
       <Route path=":jobKey" />
     </Route>,
     {
-      initialRoute: PATHNAME,
+      initialRoute,
       withRouter: true,
+      storeInitialState: {
+        currentUser: createMockUser(),
+      },
     },
   );
 };
@@ -72,10 +93,18 @@ describe("JobInfoApp", () => {
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
   });
 
-  it("should navigate to the job's triggers when a row is clicked", async () => {
+  it("should open the triggers sidebar in the Monitor outlet when a row is clicked", async () => {
     const { history } = setup({
       taskInfo: createMockTaskInfo({
-        jobs: [createMockJob({ key: "a-job-key" })],
+        jobs: [
+          createMockJob({
+            key: "a-job-key",
+            triggers: [
+              createMockTrigger({ key: "trigger-1", state: "WAITING" }),
+              createMockTrigger({ key: "trigger-2", state: "PAUSED" }),
+            ],
+          }),
+        ],
       }),
     });
 
@@ -85,5 +114,58 @@ describe("JobInfoApp", () => {
     expect(history?.getCurrentLocation().pathname).toBe(
       Urls.monitorJobTriggers("a-job-key"),
     );
+
+    const sidebar = await screen.findByTestId("job-triggers-sidebar");
+    expect(screen.getByTestId("monitor-sidebar-region")).toContainElement(
+      sidebar,
+    );
+    expect(
+      within(sidebar).getByText("Triggers for a-job-key"),
+    ).toBeInTheDocument();
+    expect(within(sidebar).getByText("trigger-1")).toBeInTheDocument();
+    expect(within(sidebar).getByText("WAITING")).toBeInTheDocument();
+    expect(within(sidebar).getByText("trigger-2")).toBeInTheDocument();
+    expect(within(sidebar).getByText("PAUSED")).toBeInTheDocument();
+  });
+
+  it("should close the triggers sidebar", async () => {
+    const { history } = setup({
+      taskInfo: createMockTaskInfo({
+        jobs: [
+          createMockJob({
+            key: "a-job-key",
+            triggers: [createMockTrigger()],
+          }),
+        ],
+      }),
+      initialRoute: Urls.monitorJobTriggers("a-job-key"),
+    });
+
+    const sidebar = await screen.findByTestId("job-triggers-sidebar");
+    await userEvent.click(
+      within(sidebar).getByRole("button", { name: "Close" }),
+    );
+
+    expect(history?.getCurrentLocation().pathname).toBe(Urls.monitorJobs());
+    expect(
+      screen.queryByTestId("job-triggers-sidebar"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show the triggers sidebar when opened via a direct link", async () => {
+    setup({
+      taskInfo: createMockTaskInfo({
+        jobs: [
+          createMockJob({
+            key: "a-job-key",
+            triggers: [createMockTrigger({ key: "trigger-1" })],
+          }),
+        ],
+      }),
+      initialRoute: Urls.monitorJobTriggers("a-job-key"),
+    });
+
+    const sidebar = await screen.findByTestId("job-triggers-sidebar");
+    expect(within(sidebar).getByText("trigger-1")).toBeInTheDocument();
   });
 });
