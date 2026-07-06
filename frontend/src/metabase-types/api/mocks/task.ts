@@ -1,4 +1,10 @@
-import type { Task, TaskRun, TaskRunExtended } from "metabase-types/api";
+import type {
+  Job,
+  Task,
+  TaskInfo,
+  TaskRun,
+  TaskRunExtended,
+} from "metabase-types/api";
 
 export const createMockTask = (task?: Partial<Task>): Task => ({
   id: 1,
@@ -34,4 +40,21 @@ export const createMockTaskRunExtended = (
 ): TaskRunExtended => ({
   ...createMockTaskRun(taskRunExtended),
   tasks: taskRunExtended?.tasks ?? [],
+});
+
+export const createMockJob = (job?: Partial<Job>): Job => ({
+  key: "a-job-key",
+  class: "org.quartz.jobs.AJobClass",
+  description: "A job description",
+  "concurrent-execution-disallowed?": false,
+  "durable?": true,
+  "requests-recovery?": false,
+  triggers: [],
+  ...job,
+});
+
+export const createMockTaskInfo = (taskInfo?: Partial<TaskInfo>): TaskInfo => ({
+  scheduler: ["A scheduler line"],
+  jobs: [createMockJob()],
+  ...taskInfo,
 });
