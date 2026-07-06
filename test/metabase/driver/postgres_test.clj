@@ -1022,8 +1022,7 @@
            (is (= [["Rasta" "good bird" "sad bird" "toucan"]]
                   (mt/rows
                    (qp/process-query
-                    (assoc (-> (lib/query mp (lib.metadata/table mp table-id))
-                               (lib/filter (lib/= type-field "toucan")))
+                    (assoc (lib/query mp (lib.metadata/table mp table-id))
                            :parameters [{:type   :string/=
                                          :target [:dimension (lib.convert/->legacy-MBQL (lib/ref type-field))]
                                          :value  ["toucan"]}]))))))

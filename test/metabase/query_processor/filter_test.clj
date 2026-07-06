@@ -1268,7 +1268,9 @@
         query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                   (lib/aggregate (lib/count))
                   (lib/filter (filter-fn mp)))]
-    (ffirst (mt/formatted-rows [int] (qp/process-query query)))))
+    ;; mongo returns no rows instead of 0 for an empty count (#5419)
+    (or (ffirst (mt/formatted-rows [int] (qp/process-query query)))
+        0)))
 
 (deftest ^:parallel does-not-contain-keeps-null-rows-test
   (mt/test-drivers (mt/normal-drivers)

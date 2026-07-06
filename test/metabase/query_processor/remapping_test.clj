@@ -575,24 +575,26 @@
 
 (deftest ^:parallel fk-remap-to-temporal-target-test
   (testing "an FK remapped to a temporal target column projects the datetime value, not the raw id (#7108)"
-    (let [mp        (-> (mt/metadata-provider)
-                        (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
-                                                        (mt/id :products :created_at)))
-          query     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        (lib/limit 1))
-          result    (qp/process-query query)
-          cols      (mt/cols result)
-          remap-col (first (filter #(= (mt/id :products :created_at) (:id %)) cols))]
-      (testing "the remapped column is the temporal target"
-        (is (some? remap-col))
-        (is (isa? (:base_type remap-col) :type/Temporal))
-        (is (= (mt/id :orders :product_id) (:fk_field_id remap-col))))
-      (testing "the projected value is a datetime, not the raw product id"
-        (let [idx (first (keep-indexed (fn [i col]
-                                         (when (= (mt/id :products :created_at) (:id col)) i))
-                                       cols))
-              v   (nth (first (mt/rows result)) idx)]
-          (is (not (integer? v))))))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset test-data
+        (let [mp        (-> (mt/metadata-provider)
+                            (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                            (mt/id :products :created_at)))
+              query     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (lib/limit 1))
+              result    (qp/process-query query)
+              cols      (mt/cols result)
+              remap-col (first (filter #(= (mt/id :products :created_at) (:id %)) cols))]
+          (testing "the remapped column is the temporal target"
+            (is (some? remap-col))
+            (is (isa? (:base_type remap-col) :type/Temporal))
+            (is (= (mt/id :orders :product_id) (:fk_field_id remap-col))))
+          (testing "the projected value is a datetime, not the raw product id"
+            (let [idx (first (keep-indexed (fn [i col]
+                                             (when (= (mt/id :products :created_at) (:id col)) i))
+                                           cols))
+                  v   (nth (first (mt/rows result)) idx)]
+              (is (not (integer? v))))))))))
 
 (deftest ^:parallel internal-remap-on-model-test
   (testing "internal (FieldValues) remap values still surface through a model card query (#23449)"

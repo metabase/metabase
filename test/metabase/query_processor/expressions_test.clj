@@ -1346,7 +1346,11 @@
                         qp/process-query mt/rows ffirst long)))
           (is (= 2 (->> (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                             (lib/aggregate (lib/count-where (lib/in id 1 2))))
-                        qp/process-query mt/rows ffirst long))))))))
+                        qp/process-query mt/rows ffirst long)))
+          (is (= 197 (->> (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                              (lib/filter (lib/not-in id 1 2 3))
+                              (lib/aggregate (lib/count)))
+                          qp/process-query mt/rows ffirst long))))))))
 
 (deftest ^:parallel temporal-filter-on-date-expression-test
   ;; the case() default resolves an implicit-join column (products.created_at), which compiles to a LEFT JOIN
