@@ -442,8 +442,8 @@
       (t2/delete! :model/Database :is_audit true)
       (audit/last-analytics-checksum! 0)
       (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
-        (with-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
-                      ee-audit/adjust-audit-db-to-host! (fn [& _] (throw (ex-info "host-adjust interrupted" {})))]
+        (mt/with-dynamic-fn-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
+                                    ee-audit/adjust-audit-db-to-host! (fn [& _] (throw (ex-info "host-adjust interrupted" {})))]
           (is (thrown-with-msg? Exception #"host-adjust interrupted"
                                 (ee-audit/ensure-audit-db-installed!)))
           (is (= 0 (audit/last-analytics-checksum))
