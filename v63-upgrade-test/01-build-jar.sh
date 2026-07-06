@@ -1,47 +1,34 @@
 #!/usr/bin/env bash
-# Download the master EE uberjar, re-stamp it as the fake v63 release, and strip the H2
-# library exactly as the ee-extra `update-build.yml` does for major_version >= 63.
+# Build the v63 test jar: download the $MB_REF branch's CI uberjar, re-stamp it as a v63 release, and
+# remove H2 by running the REAL metabase-ee-extra packaging script ($REMOVE_H2_SCRIPT), which strips
+# the H2 classes AND the dangling org.h2.Driver entry from META-INF/services/java.sql.Driver.
 set -euo pipefail
 . "$(dirname "$0")/config.sh"
 
+[ -x "$REMOVE_H2_SCRIPT" ] || { echo "Missing/!executable $REMOVE_H2_SCRIPT (need the metabase-ee-extra branch checked out)"; exit 1; }
 mkdir -p "$BUILD_DIR"
 
-SRC_JAR="$(ls -t "$BUILD_DIR"/metabase_branch_master_*.jar 2>/dev/null | head -1 || true)"
+SRC_JAR="$(ls -t "$BUILD_DIR"/metabase_branch_${MB_REF}_*.jar 2>/dev/null | head -1 || true)"
 if [ -n "$SRC_JAR" ] && [ -z "${FORCE_DOWNLOAD:-}" ]; then
-  echo "== Reusing existing master jar (skip download): $SRC_JAR =="
+  echo "== Reusing existing $MB_REF jar (skip download): $SRC_JAR =="
   echo "   (set FORCE_DOWNLOAD=1 to re-fetch the latest CI artifact)"
 else
   : "${GH_TOKEN:?Set GH_TOKEN (mage jar-download needs it to pull the CI artifact)}"
-  echo "== Downloading master EE uberjar via mage =="
-  ( cd "$METABASE_DIR" && ./bin/mage jar-download master "$BUILD_DIR" )
-  SRC_JAR="$(ls -t "$BUILD_DIR"/metabase_branch_master_*.jar | head -1)"
+  echo "== Downloading $MB_REF EE uberjar via mage =="
+  ( cd "$METABASE_DIR" && ./bin/mage jar-download "$MB_REF" "$BUILD_DIR" )
+  SRC_JAR="$(ls -t "$BUILD_DIR"/metabase_branch_${MB_REF}_*.jar | head -1)"
 fi
 echo "Source jar: $SRC_JAR"
 cp "$SRC_JAR" "$JAR_FINAL"
 
-echo "== Re-stamping version.properties tag=$FAKE_TAG =="
+echo "== Re-stamping version.properties tag=$FAKE_TAG (simulate a v63 release) =="
 work="$(mktemp -d)"
 ( cd "$work" && jar xf "$JAR_FINAL" version.properties )
-echo "-- before --"; cat "$work/version.properties"
 perl -0pi -e "s/^tag=.*/tag=$FAKE_TAG/m" "$work/version.properties"
-echo "-- after --"; cat "$work/version.properties"
 ( cd "$work" && jar uf "$JAR_FINAL" version.properties )
 rm -rf "$work"
 
-major="$(printf '%s' "$FAKE_TAG" | cut -d'.' -f2)"
-echo "Parsed major_version = $major (H2 removal fires when >= 63)"
+echo "== Removing H2 via the production ee-extra script: $REMOVE_H2_SCRIPT =="
+"$REMOVE_H2_SCRIPT" "$JAR_FINAL"
 
-echo "== Stripping org/h2/* from the uberjar =="
-# CI's update-build.yml only does `zip -d 'org/h2/*'`, which misses the multi-release-jar
-# overlay classes under META-INF/versions/N/org/h2/ (still loaded on Java 9+). Strip both so
-# H2 is fully gone. NOTE: the real workflow needs the second pattern too.
-zip -q -d "$JAR_FINAL" 'org/h2/*' 'META-INF/versions/*/org/h2/*' || true
-
-echo "== Asserting H2 classes are gone =="
-h2count="$(unzip -l "$JAR_FINAL" | grep -c 'org/h2/' || true)"
-if [ "$h2count" -ne 0 ]; then
-  echo "FAIL: $h2count org/h2/ entries still present in the jar"; exit 1
-fi
-echo "OK: no org/h2/ entries remain"
-echo "Final jar: $JAR_FINAL ($(du -h "$JAR_FINAL" | cut -f1))"
-echo "tag: $(unzip -p "$JAR_FINAL" version.properties | grep '^tag=')"
+echo "Final jar: $JAR_FINAL ($(du -h "$JAR_FINAL" | cut -f1)) tag=$(unzip -p "$JAR_FINAL" version.properties | grep '^tag=')"

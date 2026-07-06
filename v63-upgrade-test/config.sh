@@ -6,6 +6,17 @@
 METABASE_DIR="${METABASE_DIR:-$HOME/Projects/metabase}"
 EE_EXTRA_DIR="${EE_EXTRA_DIR:-$HOME/Projects/metabase-ee-extra}"
 
+# The metabase branch whose CI uberjar we test (the H2-deferral changes).
+MB_REF="${MB_REF:-defer-h2-loading}"
+
+# The real production H2-removal script from metabase-ee-extra (strips classes + the ServiceLoader
+# entry). The test runs this exact script so a reviewer validates the actual packaging step.
+REMOVE_H2_SCRIPT="${REMOVE_H2_SCRIPT:-$EE_EXTRA_DIR/.github/scripts/remove-h2-from-jar.sh}"
+
+# Admin user created on the seeded v62 instance (so the v63 upgrade takes the existing-install path).
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-Metabot1!extra}"
+
 # Work dirs
 TEST_DIR="${TEST_DIR:-$METABASE_DIR/v63-upgrade-test}"
 BUILD_DIR="${BUILD_DIR:-$TEST_DIR/build}"
