@@ -65,7 +65,9 @@ import {
   type ExplorationShowFilters,
   getArchivedExplorationGroupIds,
   getExplorationShowFilters,
+  getReadExplorationPageIds,
   setExplorationGroupArchived,
+  setExplorationPageRead,
   setExplorationShowFilters,
 } from "../sidebar-preferences";
 import { type ExplorationSidebarTab, isExplorationSidebarTab } from "../types";
@@ -262,6 +264,9 @@ export function ExplorationPage({
   const [hiddenPageIds, setHiddenPageIds] = useState<ReadonlySet<string>>(() =>
     getHiddenExplorationPageIds(explorationIdNum),
   );
+  const [readPageIds, setReadPageIds] = useState<ReadonlySet<string>>(() =>
+    getReadExplorationPageIds(explorationIdNum),
+  );
 
   const handleHidePage = useCallback(
     (pageId: string | number) => {
@@ -306,6 +311,9 @@ export function ExplorationPage({
         if (isHidden && !showFilters.hidden) {
           return false;
         }
+        if (showFilters.unread && readPageIds.has(node.data.page_id)) {
+          return false;
+        }
         if (
           showFilters.interesting &&
           (node.data.interestingness_score ?? 0) <
@@ -323,6 +331,7 @@ export function ExplorationPage({
     selectedSidebarTab,
     explorationSidebarTabsInfo,
     hiddenPageIds,
+    readPageIds,
     showFilters,
     archivedGroupIds,
   ]);
@@ -364,6 +373,17 @@ export function ExplorationPage({
     }
     return pickInitialSidebarEntity(tree);
   }, [params.entityType, params.entityId, tree]);
+
+  // Viewing a page marks it read, so its sidebar row stops being bolded.
+  useEffect(() => {
+    if (
+      selectedEntityId?.type === "page" &&
+      !readPageIds.has(selectedEntityId.id)
+    ) {
+      setExplorationPageRead(explorationIdNum, selectedEntityId.id);
+      setReadPageIds((prev) => new Set(prev).add(String(selectedEntityId.id)));
+    }
+  }, [selectedEntityId, readPageIds, explorationIdNum]);
 
   // AI Summary generates its document asynchronously: the FE shows a
   // placeholder "Analysis underway…" Document while the worker runs, and
@@ -676,6 +696,7 @@ export function ExplorationPage({
             setSelectedEntityId={setSelectedEntityId}
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
             isOpen={isSidebarOpen}
+            readPageIds={readPageIds}
             showFilters={showFilters}
             onToggleShowFilter={handleToggleShowFilter}
             onArchiveGroup={handleArchiveGroup}

@@ -22,11 +22,7 @@ import {
   trackExplorationStopped,
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
-import {
-  ExplorationErrorMarker,
-  PotentiallyInterestingMarker,
-} from "metabase/explorations/components/PotentiallyInterestingMarker";
-import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import { ExplorationErrorMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import type { ExplorationShowFilters } from "metabase/explorations/sidebar-preferences";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import { useDispatch } from "metabase/redux";
@@ -77,6 +73,7 @@ interface ExplorationSidebarProps {
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
   isOpen: boolean;
+  readPageIds: ReadonlySet<string>;
   showFilters: ExplorationShowFilters;
   onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
   onArchiveGroup: (groupId: string | number) => void;
@@ -93,6 +90,7 @@ export function ExplorationSidebar({
   setSelectedEntityId,
   getSelectedEntityIdUrl,
   isOpen,
+  readPageIds,
   showFilters,
   onToggleShowFilter,
   onArchiveGroup,
@@ -216,6 +214,7 @@ export function ExplorationSidebar({
         handlePrefetch={handlePrefetch}
         shouldScrollSelectionRef={shouldScrollSelectionRef}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+        readPageIds={readPageIds}
         showFilters={showFilters}
         onToggleShowFilter={onToggleShowFilter}
         onArchiveGroup={onArchiveGroup}
@@ -226,6 +225,7 @@ export function ExplorationSidebar({
       exploration.can_write,
       handlePrefetch,
       getSelectedEntityIdUrl,
+      readPageIds,
       showFilters,
       onToggleShowFilter,
       onArchiveGroup,
@@ -341,6 +341,7 @@ interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  readPageIds: ReadonlySet<string>;
   showFilters: ExplorationShowFilters;
   onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
   onArchiveGroup: (groupId: string | number) => void;
@@ -597,6 +598,7 @@ function ExplorationTreeItem({
   handlePrefetch,
   shouldScrollSelectionRef,
   getSelectedEntityIdUrl,
+  readPageIds,
 }: ExplorationTreeItemProps) {
   const itemRef = useRef<HTMLAnchorElement>(null);
 
@@ -636,10 +638,7 @@ function ExplorationTreeItem({
   const pageData = item.data.type === "page" ? item.data : null;
   const isError = pageData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
-  const isInteresting =
-    !isError &&
-    (pageData?.interestingness_score ?? 0) >=
-      QUERY_INTERESTINGNESS_SCORE_THRESHOLD;
+  const isUnread = pageData != null && !readPageIds.has(pageData.page_id);
 
   return (
     <ForwardRefLink
@@ -663,7 +662,7 @@ function ExplorationTreeItem({
         flex={1}
         size="md"
         lh="1rem"
-        fw={500}
+        fw={isUnread ? 700 : 500}
         {...(isLoading ? { className: S.shimmerText, c: "transparent" } : {})}
       >
         {item.name}
@@ -673,7 +672,6 @@ function ExplorationTreeItem({
           message={t`We couldn't generate one or more of these charts.`}
         />
       )}
-      {isInteresting && <PotentiallyInterestingMarker />}
     </ForwardRefLink>
   );
 }

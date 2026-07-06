@@ -10,7 +10,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import { DEFAULT_SHOW_FILTERS } from "metabase/explorations/sidebar-preferences";
 import {
   createBlock,
@@ -148,6 +147,7 @@ function setup({
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       isOpen
+      readPageIds={new Set()}
       showFilters={DEFAULT_SHOW_FILTERS}
       onToggleShowFilter={jest.fn()}
       onArchiveGroup={jest.fn()}
@@ -278,6 +278,7 @@ describe("ExplorationSidebar", () => {
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
         isOpen
+        readPageIds={new Set()}
         showFilters={DEFAULT_SHOW_FILTERS}
         onToggleShowFilter={jest.fn()}
         onArchiveGroup={jest.fn()}
@@ -368,6 +369,7 @@ describe("ExplorationSidebar", () => {
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
           isOpen
+          readPageIds={new Set()}
           showFilters={DEFAULT_SHOW_FILTERS}
           onToggleShowFilter={jest.fn()}
           onArchiveGroup={jest.fn()}
@@ -637,105 +639,6 @@ describe("ExplorationSidebar", () => {
     );
 
     expect(getRow("AI Summary")).toHaveAttribute("aria-busy", "true");
-  });
-
-  describe("potentially-interesting marker", () => {
-    const marker = (rowName: string) =>
-      within(getRow(rowName)).queryByTestId("potentially-interesting-marker");
-
-    it("shows the marker when the heuristic score passes the threshold", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "High interest",
-            status: "done",
-            interestingness_score: 0.9,
-          }),
-        ],
-      });
-
-      expect(marker("High interest")).toBeInTheDocument();
-    });
-
-    it("hides the marker when the heuristic score is below the threshold", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Low interest",
-            status: "done",
-            interestingness_score: 0.2,
-          }),
-        ],
-      });
-
-      expect(marker("Low interest")).not.toBeInTheDocument();
-    });
-
-    it("shows the marker when the score is exactly at the threshold (>= 0.7)", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Exactly threshold",
-            status: "done",
-            interestingness_score: QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
-          }),
-        ],
-      });
-
-      expect(marker("Exactly threshold")).toBeInTheDocument();
-    });
-
-    it("prefers contextual over heuristic — marks when contextual passes even if heuristic does not", () => {
-      setup({
-        prompt: "Why are signups down?",
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Contextually relevant",
-            status: "done",
-            interestingness_score: 0.1,
-            contextual_interestingness_score: 0.95,
-          }),
-        ],
-      });
-
-      expect(marker("Contextually relevant")).toBeInTheDocument();
-    });
-
-    it("prefers contextual over heuristic — does not mark when contextual is low even if heuristic passes", () => {
-      setup({
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Not contextually relevant",
-            status: "done",
-            interestingness_score: 0.95,
-            contextual_interestingness_score: 0.1,
-          }),
-        ],
-      });
-
-      expect(marker("Not contextually relevant")).not.toBeInTheDocument();
-    });
-
-    it("falls back to heuristic when contextual is missing", () => {
-      setup({
-        prompt: "Why are signups down?",
-        queries: [
-          createQuery({
-            id: 1,
-            name: "Heuristic fallback",
-            status: "done",
-            interestingness_score: 0.95,
-          }),
-        ],
-      });
-
-      expect(marker("Heuristic fallback")).toBeInTheDocument();
-    });
   });
 
   it("links each row to the selected entity URL", () => {
