@@ -11,6 +11,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -23,6 +24,8 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -533,3 +536,35 @@
                                                         [:= :mr.moderated_item_type "dashboard"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}})
+
+(defmethod staleness/find-stale-query :model/Dashboard
+  [_model args]
+  {:select [:report_dashboard.id
+            [(h2x/literal "Dashboard") :model]
+            [:report_dashboard.name :name]
+            [:last_viewed_at :last_used_at]]
+   :from :report_dashboard
+   :left-join [:pulse [:and
+                       [:= :pulse.archived false]
+                       [:= :pulse.dashboard_id :report_dashboard.id]]
+               :collection [:= :collection.id :report_dashboard.collection_id]
+               :moderation_review [:and
+                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                   [:= :moderation_review.most_recent true]
+                                   [:= :moderation_review.status (h2x/literal "verified")]]]
+   :where [:and
+           [:= :pulse.id nil]
+           [:= :moderation_review.id nil]
+           [:= :report_dashboard.archived false]
+           [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
+           ;; find things only in regular collections, not the `instance-analytics` collection.
+           [:= :collection.type nil]
+           (when (embed.settings/some-embedding-enabled?)
+             [:= :report_dashboard.enable_embedding false])
+           (when (setting/get :enable-public-sharing)
+             [:= :report_dashboard.public_uuid nil])
+           [:or
+            (when (contains? (:collection-ids args) nil)
+              [:is :report_dashboard.collection_id nil])
+            [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})

@@ -210,10 +210,27 @@ describe("pivot tables", () => {
 
     cy.log("filter picker");
 
+    // After exiting edit mode the pivot dashcard re-renders and re-runs its
+    // query. Until that finishes the dashcard title isn't wired to open the
+    // question — its click handler is only attached once the card series has
+    // loaded — so clicking it too early navigates nowhere and the pivot query
+    // never fires. Wait for the card to finish loading before clicking.
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("legend-caption-title")
+      .should("be.visible");
+    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("loading-indicator")
+      .should("not.exist");
+
     H.getDashboardCard(QUESTION_PIVOT_INDEX)
       .findByTestId("legend-caption-title")
       .click();
-    cy.wait("@datasetPivot");
+    // Clicking the title navigates to an ad-hoc QB, which must boot the route,
+    // load table metadata, and only then issue /api/dataset/pivot. Under network
+    // throttling that whole chain can exceed cy.wait's default 5s timeout (the
+    // request does fire — just late), so give the alias a throttle-tolerant
+    // window instead of asserting on the default.
+    cy.wait("@datasetPivot", { timeout: 30000 });
     cy.findByTestId("qb-header")
       .button(/Filter/)
       .click();

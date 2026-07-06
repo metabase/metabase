@@ -9,10 +9,10 @@ import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actions";
 import { getParameterValues } from "metabase/dashboard/selectors";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { isEmpty } from "metabase/utils/validate";
 import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";

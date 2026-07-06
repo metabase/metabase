@@ -656,7 +656,6 @@ describe("issue 21665", () => {
     });
 
     H.saveDashboard();
-    cy.wait("@getDashboard");
   });
 
   it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
@@ -666,7 +665,8 @@ describe("issue 21665", () => {
 
     H.visitDashboard("@dashboardId");
 
-    cy.get("@dashboardLoaded").should("have.callCount", 3);
+    // The dashboard loads twice: once on the initial visit, once on re-visit.
+    cy.get("@dashboardLoaded").should("have.callCount", 2);
     cy.findByTestId("dashcard")
       .findByText(
         "Some columns are missing, this card might not render correctly.",

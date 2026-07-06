@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import type { SdkQuestionProps } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import { deserializeCard, parseHash } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
 
@@ -60,9 +61,6 @@ export const SdkAdHocQuestion = ({
     [questionPath],
   );
 
-  // If we cannot extract an entity ID from the slug, assume we are creating a new question.
-  const questionId = Urls.extractEntityId(params.slug) ?? null;
-
   const { options, deserializedCard } = useMemo(() => {
     const { options, serializedCard } = parseHash(location.hash);
     const deserializedCard = serializedCard
@@ -71,6 +69,11 @@ export const SdkAdHocQuestion = ({
 
     return { options, deserializedCard };
   }, [location.hash]);
+
+  const questionId = resolveQuestionId(
+    params.slug,
+    deserializedCard as { dataset_query?: { type?: string } } | undefined,
+  );
 
   return (
     <SdkQuestion
@@ -100,6 +103,25 @@ export const SdkAdHocQuestion = ({
     </SdkQuestion>
   );
 };
+
+/**
+ * Derives the questionId from URL slug and deserialized card.
+ * Returns "new-native" for hash-encoded native cards (e.g. Metabot SQL editor navigation),
+ * a numeric/string ID for saved questions, or null for new notebook questions.
+ */
+export function resolveQuestionId(
+  slug: string | undefined,
+  deserializedCard: { dataset_query?: { type?: string } } | undefined,
+): SdkQuestionId | null {
+  const extractedId = Urls.extractEntityId(slug) ?? null;
+  if (extractedId !== null) {
+    return extractedId;
+  }
+  if (deserializedCard?.dataset_query?.type === "native") {
+    return "new-native";
+  }
+  return null;
+}
 
 /**
  * This generates route parameters based on the provided URL path

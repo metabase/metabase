@@ -147,7 +147,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
                 <tr>
                   <td colSpan={2}>
                     <Flex
-                      c="text-tertiary"
+                      c="text-disabled"
                       justify="center"
                     >{t`No tasks`}</Flex>
                   </td>

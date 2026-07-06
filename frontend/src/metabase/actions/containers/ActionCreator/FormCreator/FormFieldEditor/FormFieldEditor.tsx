@@ -7,8 +7,7 @@ import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFie
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
-import { Radio } from "metabase/common/components/Radio";
-import { Checkbox } from "metabase/ui";
+import { Checkbox, Group, Radio } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type {
   FieldSettings,
@@ -125,16 +124,21 @@ function FormFieldEditor({
             )}
           </Header>
           {isEditable && fieldSettings && (
-            <>
-              <Subtitle>{t`Field type`}</Subtitle>
-              <Radio
-                value={fieldSettings.fieldType}
-                options={fieldTypeOptions}
-                aria-label={t`Field type`}
-                variant="bubble"
-                onChange={handleChangeFieldType}
-              />
-            </>
+            <Radio.Group
+              label={<Subtitle>{t`Field type`}</Subtitle>}
+              value={fieldSettings.fieldType}
+              onChange={(value) => handleChangeFieldType(value as FieldType)}
+            >
+              <Group gap="lg">
+                {fieldTypeOptions.map((option) => (
+                  <Radio
+                    key={option.value}
+                    value={option.value}
+                    label={option.name}
+                  />
+                ))}
+              </Group>
+            </Radio.Group>
           )}
           <Subtitle>{t`Appearance`}</Subtitle>
         </Column>

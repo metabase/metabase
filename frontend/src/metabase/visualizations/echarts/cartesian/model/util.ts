@@ -1,9 +1,9 @@
-import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
+import type { ColumnSettings } from "metabase-types/api";
 
 import {
   NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX,
@@ -19,7 +19,7 @@ export function getBarSeriesDataLabelKey(dataKey: DataKey, sign: "+" | "-") {
   return `${dataKey}_${NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX}`;
 }
 
-export function getFormattingOptionsWithoutScaling(options: OptionsType) {
+export function getFormattingOptionsWithoutScaling(options: ColumnSettings) {
   return { ...options, scale: undefined };
 }
 

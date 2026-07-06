@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import { Ellipsified } from "metabase/ui";

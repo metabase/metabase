@@ -251,7 +251,7 @@ export const NotificationsTable = ({
         onRowClick={handleRowClick}
         getRowProps={getRowProps}
         emptyState={
-          <Flex c="text-tertiary" justify="center">{t`No results`}</Flex>
+          <Flex c="text-disabled" justify="center">{t`No results`}</Flex>
         }
       />
     </Card>

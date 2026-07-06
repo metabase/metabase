@@ -216,7 +216,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
                 </Avatar>
                 <Stack gap="xs">
                   <Text lh="xs">{user?.first_name}</Text>
-                  <Text c="text-tertiary" fz="md" lh="xs">
+                  <Text c="text-disabled" fz="md" lh="xs">
                     {user?.email}
                   </Text>
                 </Stack>
