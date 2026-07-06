@@ -1,7 +1,16 @@
 import type { ComponentType } from "react";
 
+import type { Location, Params } from "./types";
 import { useLocation } from "./use-location";
 import { useParams } from "./use-params";
+
+/**
+ * The router props injected by the facade hooks into a wrapped component.
+ */
+export interface RouteProps {
+  params: Params;
+  location: Location;
+}
 
 /**
  * Temporary shim for the react-router v7 migration. Wraps a legacy component
@@ -10,13 +19,14 @@ import { useParams } from "./use-params";
  * the engine swap happen without touching the wrapped components. Removed in
  * Phase 4 once they read the hooks themselves.
  */
-export function withRouteProps<Props extends object>(
+export function withRouteProps<Props extends RouteProps>(
   WrappedComponent: ComponentType<Props>,
-): ComponentType<Omit<Props, "params" | "location">> {
-  function WithRouteProps(props: Omit<Props, "params" | "location">) {
+): ComponentType<Omit<Props, keyof RouteProps>> {
+  function WithRouteProps(props: Omit<Props, keyof RouteProps>) {
     const params = useParams();
     const location = useLocation();
 
+    // TS cannot see that re-adding the omitted route props reconstructs `Props`.
     const injectedProps = { ...props, params, location } as Props;
     return <WrappedComponent {...injectedProps} />;
   }

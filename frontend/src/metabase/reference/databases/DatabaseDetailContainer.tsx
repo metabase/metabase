@@ -8,7 +8,7 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import DatabaseDetail from "metabase/reference/databases/DatabaseDetail";
 import * as actions from "metabase/reference/reference";
-import { withRouteProps } from "metabase/router";
+import { type RouteProps, withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -90,5 +90,5 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
-  )(DatabaseDetailContainer as unknown as React.ComponentType),
+  )(DatabaseDetailContainer as unknown as React.ComponentType<RouteProps>),
 );
