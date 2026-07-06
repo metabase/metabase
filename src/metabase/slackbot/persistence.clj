@@ -1,6 +1,7 @@
 (ns metabase.slackbot.persistence
   "Slack-specific persistence: reconstruct conversation history from stored messages."
   (:require
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -85,9 +86,8 @@
   "Mark the stored assistant response for this Slack channel/message as soft-deleted."
   [channel-id slack-msg-id deleter-user-id]
   (when (and channel-id slack-msg-id deleter-user-id)
-    (pos? (t2/update! :model/MetabotMessage
-                      {:channel_id   channel-id
-                       :slack_msg_id slack-msg-id
-                       :role         "assistant"}
-                      {:deleted_at         (java.time.OffsetDateTime/now)
-                       :deleted_by_user_id deleter-user-id}))))
+    (pos? (metabot.persistence/soft-delete-messages!
+           {:channel_id   channel-id
+            :slack_msg_id slack-msg-id
+            :role         "assistant"}
+           deleter-user-id))))

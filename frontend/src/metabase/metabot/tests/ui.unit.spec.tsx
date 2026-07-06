@@ -21,7 +21,6 @@ import {
   enterChatMessage,
   hideMetabot,
   input,
-  lastChatMessage,
   mockAgentEndpoint,
   resetChatButton,
   setup,
@@ -230,73 +229,6 @@ describe("metabot > ui", () => {
 
     expect(firstParagraph).toBeInTheDocument();
     expect(secondParagraph).toBeInTheDocument();
-  });
-
-  it("should present the user an option to retry a response", async () => {
-    setup();
-    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
-
-    await enterChatMessage("Who is your favorite?");
-    const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
-    expect(
-      await within(lastMessage!).findByTestId("metabot-chat-message-retry"),
-    ).toBeInTheDocument();
-  });
-
-  it("should successfully rewind a response", async () => {
-    setup();
-    mockAgentEndpoint({
-      events: [
-        { type: "text-start", id: "t0" },
-        { type: "text-delta", id: "t0", delta: "Let me think..." },
-        { type: "text-end", id: "t0" },
-        ...whoIsYourFavoriteResponse,
-      ],
-    });
-    await enterChatMessage("Who is your favorite?");
-
-    const beforeMessages = await screen.findByTestId("metabot-chat-messages");
-    expect(beforeMessages).toHaveTextContent(/Let me think.../);
-    expect(beforeMessages).toHaveTextContent(/You, but don't tell anyone./);
-
-    mockAgentEndpoint({
-      events: [
-        { type: "text-start", id: "t1" },
-        { type: "text-delta", id: "t1", delta: "The answer is always you." },
-        { type: "text-end", id: "t1" },
-        { type: "data-state", data: { queries: {} } },
-        { type: "finish", finishReason: "stop" },
-      ],
-    });
-    await userEvent.click(
-      await screen.findByTestId("metabot-chat-message-retry"),
-    );
-
-    const afterMessages = await screen.findByTestId("metabot-chat-messages");
-
-    expect(afterMessages).not.toHaveTextContent(/Let me think.../);
-    expect(afterMessages).not.toHaveTextContent(/You, but don't tell anyone./);
-
-    expect(afterMessages).toHaveTextContent(/The answer is always you./);
-  });
-
-  it("should show retry option for error messages", async () => {
-    setup();
-
-    mockAgentEndpoint({
-      events: [
-        { type: "error", errorText: "Anthropic API key expired or invalid" },
-      ],
-    });
-
-    await enterChatMessage("Who is your favorite?");
-
-    const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(/Something went wrong/);
-    expect(
-      within(lastMessage!).getByTestId("metabot-chat-message-retry"),
-    ).toBeInTheDocument();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {

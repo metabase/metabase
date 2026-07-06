@@ -12,6 +12,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -163,6 +164,47 @@
              (do (vreset! pending part)
                  (if prev (rf result prev) result)))))))))
 
+(defn live-messages
+  "A conversation's non-deleted messages in reader order, as slim maps (no `:data`)."
+  [conversation-id]
+  (t2/select [:model/MetabotMessage :id :external_id :conversation_id :role :error :finished :created_at]
+             :conversation_id conversation-id
+             :deleted_at nil
+             {:order-by [[:created_at :asc] [:id :asc]]}))
+
+(defn live-message
+  "The non-deleted message with `external-id`, or nil."
+  [external-id]
+  (t2/select-one :model/MetabotMessage :external_id external-id :deleted_at nil))
+
+(defn soft-delete-messages!
+  "Soft-delete the messages matching Toucan `conditions` in one statement,
+  stamping who deleted them. Returns the number of rows updated. `conditions`
+  must be non-empty — an empty map would match every message."
+  [conditions deleted-by-user-id]
+  {:pre [(seq conditions)]}
+  (t2/update! :model/MetabotMessage conditions
+              {:deleted_at         (OffsetDateTime/now)
+               :deleted_by_user_id deleted-by-user-id}))
+
+(defn- insert-assistant-placeholder!
+  "Insert a turn's in-flight assistant row (`:finished` nil until
+  [[finalize-assistant-turn!]] resolves it); returns its pk."
+  [conversation-id profile-id external-id ai-proxy? & {:keys [user-id channel-id]}]
+  (t2/insert-returning-pk!
+   :model/MetabotMessage
+   (cond-> {:conversation_id conversation-id
+            :data            []
+            :data_version    schema.v2/current-data-version
+            :role            :assistant
+            :profile_id      profile-id
+            :external_id     external-id
+            :total_tokens    0
+            :ai_proxied      (boolean ai-proxy?)
+            :finished        nil}
+     user-id    (assoc :user_id user-id)
+     channel-id (assoc :channel_id channel-id))))
+
 (defn start-turn!
   "Atomically begin a turn: upsert the conversation row, insert the user-message row,
   and insert a placeholder assistant row. The placeholder's `created_at` is pinned
@@ -189,12 +231,14 @@
      it so the assistant row's `user_id` stays NULL. Falls back to
      `api/*current-user-id*` when omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
+  - `:delete-message-ids` — pks soft-deleted in the same transaction as the new
+     rows; used when this turn replaces trailing failed turns.
 
-  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str>}`."
+  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
   [conversation-id profile-id user-message
    & {:keys [hostname pii-info
              channel-id slack-msg-id slack-team-id slack-thread-ts
-             user-id ai-proxy?]}]
+             user-id ai-proxy? delete-message-ids]}]
   (let [;; Originator: explicit `:user-id` wins; otherwise fall back to the
         ;; auth-bound dynamic. Used for both the conversation `user_id` (on
         ;; first insert) and the user-message row's `user_id`.
@@ -202,6 +246,7 @@
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
                                  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
+        user-external-id       (str (random-uuid))
         assistant-external-id  (str (random-uuid))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
@@ -209,6 +254,8 @@
     ;; the column default resolves to `transaction_timestamp()`. Readers ordering
     ;; metabot_message rows for chat-detail rendering must tiebreak on `:id`
     (t2/with-transaction [_conn]
+      (when (seq delete-message-ids)
+        (soft-delete-messages! {:id [:in delete-message-ids]} originator-id))
       (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                                 (fn [existing]
                                   ;; `:user_id` is the originator — set on insert, never overwritten.
@@ -238,29 +285,54 @@
                            :data_version    schema.v2/current-data-version
                            :role            :user
                            :profile_id      profile-id
-                           :external_id     (str (random-uuid))
+                           :external_id     user-external-id
                            :total_tokens    0
                            :ai_proxied      (boolean ai-proxy?)}
                     originator-id (assoc :user_id originator-id)
                     channel-id    (assoc :channel_id channel-id)
                     slack-msg-id  (assoc :slack_msg_id slack-msg-id)))
-      ;; `:finished nil` is the in-flight marker; `finalize-assistant-turn!`
-      ;; UPDATEs to true (success/error) or false (aborted).
-      (let [pk (t2/insert-returning-pk!
-                :model/MetabotMessage
-                (cond-> {:conversation_id conversation-id
-                         :data            []
-                         :data_version    schema.v2/current-data-version
-                         :role            :assistant
-                         :profile_id      profile-id
-                         :external_id     assistant-external-id
-                         :total_tokens    0
-                         :ai_proxied      (boolean ai-proxy?)
-                         :finished        nil}
-                  user-id    (assoc :user_id user-id)
-                  channel-id (assoc :channel_id channel-id)))]
+      (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?
+                                              :user-id user-id
+                                              :channel-id channel-id)]
         {:assistant-msg-id      pk
-         :assistant-external-id assistant-external-id}))))
+         :assistant-external-id assistant-external-id
+         :user-external-id      user-external-id}))))
+
+(defn retry-turn!
+  "Regenerate the response for `retry-message-external-id`, the conversation's last
+  live user message (validated by the caller): soft-deletes the live assistant rows
+  after it and inserts a fresh placeholder. The prompt row is reused — no new user
+  row is inserted, so each prompt keeps a single live response.
+
+  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`;
+  throws a 409 when the prompt row is no longer live."
+  [conversation-id profile-id retry-message-external-id]
+  (let [ai-proxy?             (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
+        assistant-external-id (str (random-uuid))]
+    (analytics/inc! :metabase-metabot/turn-started
+                    {:profile-id (or profile-id "unknown")})
+    (t2/with-transaction [_conn]
+      (let [rows     (live-messages conversation-id)
+            user-row (u/seek #(= retry-message-external-id (:external_id %)) rows)]
+        (when-not (and user-row (= :user (:role user-row)))
+          (throw (ex-info (tru "This conversation has changed. Reload to see the latest messages.")
+                          {:status-code 409})))
+        (let [delete-ids (->> rows
+                              (drop-while #(not= (:id %) (:id user-row)))
+                              rest
+                              (filter #(= :assistant (:role %)))
+                              (map :id))]
+          ;; a raced concurrent retry can leave an extra live response behind;
+          ;; the sweep heals it, but more than one row here is worth a look
+          (when (> (count delete-ids) 1)
+            (log/warn "Retry found multiple live assistant rows for one prompt"
+                      {:conversation-id conversation-id :message-ids delete-ids}))
+          (when (seq delete-ids)
+            (soft-delete-messages! {:id [:in delete-ids]} api/*current-user-id*)))
+        (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?)]
+          {:assistant-msg-id      pk
+           :assistant-external-id assistant-external-id
+           :user-external-id      retry-message-external-id})))))
 
 (defn finalize-assistant-turn!
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final
@@ -331,6 +403,7 @@
                   :order-by [[:created_at :desc] [:id :desc]]}))
 
 (defn leaf-external-id
+  "The [[leaf-message]]'s `external_id`, or nil."
   [conversation-id]
   (:external_id (leaf-message conversation-id)))
 

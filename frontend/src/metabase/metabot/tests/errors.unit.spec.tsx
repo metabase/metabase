@@ -200,6 +200,7 @@ describe("metabot > errors", () => {
 
     const retryBody = await lastReqBody(retrySpy);
     expect(retryBody.message).toBe("new first prompt");
+    expect(retryBody.retry_message_id).toBeUndefined();
     expect(retryBody.history).not.toContainEqual(
       expect.objectContaining({ role: "user", content: "first prompt" }),
     );

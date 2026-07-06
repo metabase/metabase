@@ -27,6 +27,7 @@ export type MetabotUserTextChatMessage = {
   role: "user";
   type: "text";
   message: string;
+  externalId?: string;
 };
 
 export type MetabotAgentTextChatMessage = {

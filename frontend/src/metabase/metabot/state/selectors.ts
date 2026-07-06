@@ -248,13 +248,24 @@ export const getProfile = createSelector(
 );
 
 export const getAgentRequestMetadata = createSelector(
-  getHistory,
-  getMetabotRequestState,
-  getProfile,
-  getLastAgentMessageExternalId,
-  (history, state, profile, parentMessageId) => ({
+  [
+    getHistory,
+    getMetabotRequestState,
+    getProfile,
+    getLastAgentMessageExternalId,
+    (
+      _state: State,
+      _agentId: MetabotAgentId,
+      retryMessageId: string | undefined,
+    ) => retryMessageId,
+  ],
+  (history, state, profile, parentMessageId, retryMessageId) => ({
     state,
-    parent_message_id: parentMessageId,
+    // a retry regenerates the response to an existing message, so it carries
+    // retry_message_id in place of parent_message_id — never both
+    ...(retryMessageId
+      ? { retry_message_id: retryMessageId }
+      : { parent_message_id: parentMessageId }),
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
     history: history.map((h) =>
       h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,

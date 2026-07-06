@@ -1,6 +1,7 @@
 (ns metabase.metabot.persistence-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [java-time.api :as t]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.persistence :as metabot-persistence]
@@ -534,6 +535,131 @@
               (t2/update! :model/MetabotMessage b-pk {:deleted_at (java.time.OffsetDateTime/now)})
               (is (= a-ext (metabot-persistence/leaf-external-id conversation-id))
                   "must not fall through to turn B's undeleted user row"))))))))
+
+(deftest start-turn-returns-user-external-id-test
+  (testing "start-turn! returns the user row's external_id"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [user-external-id]} (metabot-persistence/start-turn!
+                                            conversation-id "internal"
+                                            {:role "user" :content "hi"})]
+            (is (string? user-external-id))
+            (is (= user-external-id
+                   (t2/select-one-fn :external_id :model/MetabotMessage
+                                     :conversation_id conversation-id :role "user")))))))))
+
+(deftest retry-turn-test
+  (testing "retry-turn! soft-deletes the old response, keeps the prompt, and inserts a fresh placeholder"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{a-pk :assistant-msg-id} (metabot-persistence/start-turn!
+                                          conversation-id "internal"
+                                          {:role "user" :content "hi"})
+                _        (metabot-persistence/finalize-assistant-turn!
+                          conversation-id a-pk [{:type :text :text "reply"}])
+                user-ext (t2/select-one-fn :external_id :model/MetabotMessage
+                                           :conversation_id conversation-id :role "user")
+                {:keys [assistant-msg-id assistant-external-id user-external-id]}
+                (metabot-persistence/retry-turn! conversation-id "internal" user-ext)]
+            (is (pos-int? assistant-msg-id))
+            (is (string? assistant-external-id))
+            (is (= user-ext user-external-id))
+            (testing "old response is soft-deleted with the deleting user stamped"
+              (is (=? {:deleted_at some? :deleted_by_user_id (mt/user->id :rasta)}
+                      (t2/select-one :model/MetabotMessage a-pk))))
+            (testing "prompt row stays live"
+              (is (=? {:deleted_at nil}
+                      (t2/select-one :model/MetabotMessage :external_id user-ext))))
+            (testing "fresh placeholder is the new leaf"
+              (is (=? {:finished nil :data [] :deleted_at nil}
+                      (t2/select-one :model/MetabotMessage assistant-msg-id)))
+              (is (= assistant-external-id
+                     (metabot-persistence/leaf-external-id conversation-id))))
+            (testing "conversation-detail shows the prompt exactly once"
+              (metabot-persistence/finalize-assistant-turn!
+               conversation-id assistant-msg-id [{:type :text :text "retried reply"}])
+              (let [messages (:chat_messages (metabot-persistence/conversation-detail conversation-id))]
+                (is (= ["hi" "retried reply"] (map :message messages)))))))))))
+
+(deftest retry-turn-deletes-all-trailing-assistant-rows-test
+  (testing "retry-turn! soft-deletes every live assistant row after the retried prompt"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{a-pk :assistant-msg-id} (metabot-persistence/start-turn!
+                                          conversation-id "internal"
+                                          {:role "user" :content "hi"})
+                _        (metabot-persistence/finalize-assistant-turn!
+                          conversation-id a-pk [{:type :text :text "reply"}])
+                extra-pk (t2/insert-returning-pk!
+                          :model/MetabotMessage
+                          {:conversation_id conversation-id
+                           :role            "assistant"
+                           :profile_id      "internal"
+                           :external_id     (str (random-uuid))
+                           :total_tokens    0
+                           :data            [{:type "text" :text "extra"}]
+                           :data_version    2
+                           :finished        true
+                           :created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
+                user-ext (t2/select-one-fn :external_id :model/MetabotMessage
+                                           :conversation_id conversation-id :role "user")]
+            (metabot-persistence/retry-turn! conversation-id "internal" user-ext)
+            (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage a-pk)))
+            (is (some? (t2/select-one-fn :deleted_at :model/MetabotMessage extra-pk)))))))))
+
+(deftest start-turn-delete-message-ids-test
+  (testing "start-turn! soft-deletes :delete-message-ids alongside inserting the replacement rows"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{a-pk :assistant-msg-id} (metabot-persistence/start-turn!
+                                          conversation-id "internal"
+                                          {:role "user" :content "fails"})
+                _    (metabot-persistence/finalize-assistant-turn!
+                      conversation-id a-pk []
+                      :error {:message "boom"})
+                u-pk (t2/select-one-fn :id :model/MetabotMessage
+                                       :conversation_id conversation-id :role "user")]
+            (metabot-persistence/start-turn!
+             conversation-id "internal" {:role "user" :content "replacement"}
+             :delete-message-ids [u-pk a-pk])
+            (let [rows (t2/select :model/MetabotMessage :conversation_id conversation-id
+                                  {:order-by [[:created_at :asc] [:id :asc]]})
+                  live (remove :deleted_at rows)]
+              (is (= [:user :assistant] (mapv :role live)))
+              (is (= "replacement" (-> live first :data first :text)))
+              (is (= [(mt/user->id :rasta) (mt/user->id :rasta)]
+                     (map :deleted_by_user_id (filter :deleted_at rows)))))))))))
+
+(deftest retry-turn-rejects-non-user-message-test
+  (testing "retry-turn! throws 409 when the external-id is not a live user message"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{a-ext :assistant-external-id} (metabot-persistence/start-turn!
+                                                conversation-id "internal"
+                                                {:role "user" :content "hi"})]
+            (is (thrown-with-msg? Exception #"changed"
+                                  (metabot-persistence/retry-turn! conversation-id "internal" a-ext)))))))))
+
+(deftest retry-turn-without-live-response-test
+  (testing "retry-turn! with no live trailing assistant only inserts a fresh placeholder"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [conversation-id (str (random-uuid))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{a-pk :assistant-msg-id user-ext :user-external-id}
+                (metabot-persistence/start-turn! conversation-id "internal" {:role "user" :content "hi"})
+                _ (metabot-persistence/soft-delete-messages! {:id a-pk} (mt/user->id :rasta))
+                {:keys [assistant-external-id]}
+                (metabot-persistence/retry-turn! conversation-id "internal" user-ext)
+                rows (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+            (is (= [a-pk] (map :id (filter :deleted_at rows)))
+                "retry soft-deleted nothing new")
+            (is (= assistant-external-id
+                   (metabot-persistence/leaf-external-id conversation-id)))))))))
 
 (deftest message->chat-messages-annotates-agent-row-test
   (testing "empty :data on errored row emits a stub agent message so the FE can render the alert"

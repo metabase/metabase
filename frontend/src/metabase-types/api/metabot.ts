@@ -177,6 +177,7 @@ export type MetabotAgentRequest = {
   state: MetabotStateContext;
   conversation_id: string; // uuid
   parent_message_id?: string;
+  retry_message_id?: string;
   metabot_id?: string;
   profile_id?: string;
 };
