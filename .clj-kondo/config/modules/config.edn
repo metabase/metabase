@@ -3332,6 +3332,7 @@
            task
            task-history
            util
+           workspaces
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}
