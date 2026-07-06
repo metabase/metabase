@@ -18,7 +18,6 @@ interface StructuredQueryRightSidebarProps {
   isShowingAIQuestionAnalysisSidebar: boolean;
   isShowingSummarySidebar: boolean;
   isShowingTimelineSidebar: boolean;
-  onCloseQuestionInfo: () => void;
   onCloseSummary: () => void;
   onCloseAIQuestionAnalysisSidebar: () => void;
   onCloseTimelines: () => void;

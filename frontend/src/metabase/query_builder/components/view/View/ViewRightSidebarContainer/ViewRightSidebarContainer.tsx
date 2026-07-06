@@ -10,7 +10,6 @@ type ViewRightSidebarContainerProps = ComponentProps<
   Pick<
     ComponentProps<typeof StructuredQueryRightSidebar>,
     | "isShowingSummarySidebar"
-    | "onCloseQuestionInfo"
     | "onCloseSummary"
     | "onOpenModal"
     | "updateQuestion"
@@ -30,7 +29,6 @@ export const ViewRightSidebarContainer = (
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
     onCloseAIQuestionAnalysisSidebar,
-    onCloseQuestionInfo,
     onCloseSummary,
     onCloseTimelines,
     onOpenModal,
@@ -58,7 +56,6 @@ export const ViewRightSidebarContainer = (
       isShowingSummarySidebar={isShowingSummarySidebar}
       isShowingTimelineSidebar={isShowingTimelineSidebar}
       onCloseAIQuestionAnalysisSidebar={onCloseAIQuestionAnalysisSidebar}
-      onCloseQuestionInfo={onCloseQuestionInfo}
       onCloseSummary={onCloseSummary}
       onCloseTimelines={onCloseTimelines}
       onOpenModal={onOpenModal}
