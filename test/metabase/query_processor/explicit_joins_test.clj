@@ -1752,7 +1752,8 @@
                                                (lib.metadata/field mp0 (mt/id :products :category))]))
               compiled   (:query (qp.compile/compile products-q))
               ;; non-SQL drivers (mongo) compile to a pipeline vector; a saved native query stores its JSON text
-              native-q   (lib/native-query mp0 (cond-> compiled (not (string? compiled)) json/encode))
+              native-q   (-> (lib/native-query mp0 (cond-> compiled (not (string? compiled)) json/encode))
+                             (lib/with-native-extras {:collection "products"}))
               mp         (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-q])
               card       (lib.metadata/card mp 1)
               base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
