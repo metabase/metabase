@@ -2,11 +2,11 @@
   (:require
    #?@(:clj [[potemkin :as p]])
    [medley.core :as m]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.lib.normalize :as lib.normalize]))
+   [metabase.util.malli.registry :as mr]))
 
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the

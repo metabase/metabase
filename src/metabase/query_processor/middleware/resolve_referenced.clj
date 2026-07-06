@@ -6,14 +6,14 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query :as qp.fetch-source-query]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [weavejester.dependency :as dep]
-   [metabase.lib.schema.template-tag :as lib.schema.template-tag])
+   [weavejester.dependency :as dep])
   (:import
    (clojure.lang ExceptionInfo)))
 
