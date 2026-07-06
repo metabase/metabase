@@ -29,7 +29,6 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
-         metabase.app-db.jdbc-protocols/keep-me
          metabase.app-db.query/keep-me
          metabase.app-db.query-cancelation/keep-me)
 
@@ -49,8 +48,9 @@
  [mdb.env
   db-file]
  [mdb.h2
-  clob->str
   jdbc-sql-syntax-error-exception-classname]
+ [mdb.jdbc-protocols
+  clob->str]
  [mdb.encryption
   decrypt-db
   encrypt-db]
