@@ -149,14 +149,18 @@ ms/NonBlankString               ;; Non-empty string
 ms/BooleanValue                 ;; String "true"/"false" or boolean
 ms/MaybeBooleanValue            ;; BooleanValue or nil
 ms/TemporalString               ;; ISO-8601 date/time string (for REQUEST params only!)
+ms/TemporalInstant              ;; java.time object (for RESPONSE schemas; documents as ISO-8601 string in OpenAPI)
 ms/Map                          ;; Any map
 ms/JSONString                   ;; JSON-encoded string
 ms/PositiveNum                  ;; Positive number
 ms/IntGreaterThanOrEqualToZero  ;; 0 or positive
 ```
 
-**IMPORTANT:** For response schemas, use `:any` for temporal fields, not `ms/TemporalString`!
-Response schemas validate BEFORE JSON serialization, so they see Java Time objects.
+**IMPORTANT:** For response schemas, use `ms/TemporalInstant` for temporal fields, not `ms/TemporalString`!
+Response schemas validate BEFORE JSON serialization, so they see Java Time objects. `ms/TemporalInstant`
+validates the java.time object and still documents the field as an ISO-8601 string in the generated
+OpenAPI spec (which frontend TS types are generated from) — prefer it over `:any`, which turns the
+field into `unknown` on the frontend.
 
 ### Built-in Malli Types
 
@@ -307,12 +311,15 @@ Avoid using sequence schemas unless completely necessary.
 ;; WRONG - Java Time objects aren't strings yet
 [:date_joined ms/TemporalString]
 
-;; RIGHT - schemas validate BEFORE JSON serialization
-[:date_joined :any]  ;; Java Time object, serialized to string by middleware
-[:last_login [:maybe :any]]  ;; Java Time object or nil
+;; WRONG - validates, but documents the field as `unknown` in generated TS types
+[:date_joined :any]
+
+;; RIGHT - validates the java.time object, documents as ISO-8601 string in OpenAPI
+[:date_joined ms/TemporalInstant]
+[:last_login [:maybe ms/TemporalInstant]]  ;; Java Time object or nil
 ```
 
-**Why:** Response schemas validate the internal Clojure data structures BEFORE they are serialized to JSON. Java Time objects like `OffsetDateTime` get converted to ISO-8601 strings by the JSON middleware, so the schema needs to accept the raw Java objects.
+**Why:** Response schemas validate the internal Clojure data structures BEFORE they are serialized to JSON. Java Time objects like `OffsetDateTime` get converted to ISO-8601 strings by the JSON middleware, so the schema needs to accept the raw Java objects. `ms/TemporalInstant` does that while carrying a `:json-schema` override (`{:type "string" :format "date-time"}`) so the OpenAPI spec — and the frontend TS types generated from it — see a proper string type.
 
 ### Don't: Use `[:sequential X]` when the data is actually a set
 
