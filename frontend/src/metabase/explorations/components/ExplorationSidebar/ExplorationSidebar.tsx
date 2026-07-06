@@ -26,6 +26,7 @@ import {
   PotentiallyInterestingMarker,
 } from "metabase/explorations/components/PotentiallyInterestingMarker";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import type { ExplorationShowFilters } from "metabase/explorations/sidebar-preferences";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import {
   ActionIcon,
@@ -59,6 +60,7 @@ import {
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
+  pickInitialSidebarEntity,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -72,6 +74,9 @@ interface ExplorationSidebarProps {
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
   isOpen: boolean;
+  showFilters: ExplorationShowFilters;
+  onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
+  onArchiveGroup: (groupId: string | number) => void;
 }
 
 export function ExplorationSidebar({
@@ -85,6 +90,9 @@ export function ExplorationSidebar({
   setSelectedEntityId,
   getSelectedEntityIdUrl,
   isOpen,
+  showFilters,
+  onToggleShowFilter,
+  onArchiveGroup,
 }: ExplorationSidebarProps) {
   const treeController = useTree({
     data: tree,
@@ -204,6 +212,9 @@ export function ExplorationSidebar({
         handlePrefetch={handlePrefetch}
         shouldScrollSelectionRef={shouldScrollSelectionRef}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+        showFilters={showFilters}
+        onToggleShowFilter={onToggleShowFilter}
+        onArchiveGroup={onArchiveGroup}
       />
     ),
     [
@@ -211,6 +222,9 @@ export function ExplorationSidebar({
       exploration.can_write,
       handlePrefetch,
       getSelectedEntityIdUrl,
+      showFilters,
+      onToggleShowFilter,
+      onArchiveGroup,
     ],
   );
 
@@ -285,6 +299,9 @@ interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  showFilters: ExplorationShowFilters;
+  onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
+  onArchiveGroup: (groupId: string | number) => void;
 }
 
 function ExplorationTreeNode(props: ExplorationTreeNodeProps) {
@@ -321,6 +338,11 @@ function ExplorationTreeHeading({
   onToggleExpand,
   depth,
   canWrite,
+  explorationId,
+  getSelectedEntityIdUrl,
+  showFilters,
+  onToggleShowFilter,
+  onArchiveGroup,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
   return (
@@ -351,24 +373,42 @@ function ExplorationTreeHeading({
       {item.data?.lastActivityAt && isSettled(item.data.status) && (
         <ExplorationLastActivity lastActivityAt={item.data.lastActivityAt} />
       )}
-      <ExplorationThreadMenu item={item} canWrite={canWrite} />
+      <ExplorationGroupMenu
+        item={item}
+        canWrite={canWrite}
+        explorationId={explorationId}
+        getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+        showFilters={showFilters}
+        onToggleShowFilter={onToggleShowFilter}
+        onArchiveGroup={onArchiveGroup}
+      />
     </Box>
   );
 }
 
-function ExplorationThreadMenu({
+function ExplorationGroupMenu({
   item,
   canWrite,
+  explorationId,
+  getSelectedEntityIdUrl,
+  showFilters,
+  onToggleShowFilter,
+  onArchiveGroup,
 }: {
   item: ITreeNodeItem<ExplorationTreeHeading>;
   canWrite: boolean;
+  explorationId: ExplorationId;
+  getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  showFilters: ExplorationShowFilters;
+  onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
+  onArchiveGroup: (groupId: string | number) => void;
 }) {
   const [cancelThread] = useCancelExplorationThreadMutation();
   const [restartExploration] = useRestartExplorationMutation();
   const [sendToast] = useToast();
 
   const handleCancelThread = useCallback(
-    async (explorationId: ExplorationId, threadId: ExplorationThreadId) => {
+    async (threadId: ExplorationThreadId) => {
       const { error } = await cancelThread({ explorationId, threadId });
       if (error) {
         sendToast({
@@ -380,69 +420,118 @@ function ExplorationThreadMenu({
       }
       trackExplorationStopped(explorationId);
     },
-    [cancelThread, sendToast],
+    [cancelThread, explorationId, sendToast],
   );
 
-  const handleRestart = useCallback(
-    async (explorationId: ExplorationId) => {
-      const { error } = await restartExploration(explorationId);
-      if (error) {
-        sendToast({
-          message: t`Failed to restart`,
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
-        });
-        return;
-      }
-      trackExplorationRestarted(explorationId);
-    },
-    [restartExploration, sendToast],
-  );
+  const handleRestart = useCallback(async () => {
+    const { error } = await restartExploration(explorationId);
+    if (error) {
+      sendToast({
+        message: t`Failed to restart`,
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+      });
+      return;
+    }
+    trackExplorationRestarted(explorationId);
+  }, [restartExploration, explorationId, sendToast]);
 
-  if (!item.data?.explorationId || !item.data?.thread) {
-    return null;
-  }
-  const { explorationId, thread } = item.data;
-  const menuItems = [];
+  const handleCopyLink = useCallback(() => {
+    const entity = pickInitialSidebarEntity(item.children ?? []);
+    if (entity == null) {
+      return;
+    }
+    const url = getSelectedEntityIdUrl(entity);
+    navigator.clipboard.writeText(`${window.location.origin}${url}`);
+    sendToast({ icon: "check", message: t`Copied link` });
+  }, [item.children, getSelectedEntityIdUrl, sendToast]);
 
-  if (canWrite && thread.completed_at == null) {
-    menuItems.push(
-      <Menu.Item
-        key="stop"
-        onClick={() => handleCancelThread(explorationId, thread.id)}
-      >
-        {t`Stop running`}
-      </Menu.Item>,
-    );
-  }
-
-  if (canWrite && thread.canceled_at != null) {
-    menuItems.push(
-      <Menu.Item key="restart" onClick={() => handleRestart(explorationId)}>
-        {t`Restart`}
-      </Menu.Item>,
-    );
-  }
-
-  if (menuItems.length === 0) {
-    return null;
-  }
+  // The stop/restart actions only make sense for investigation groups, which
+  // carry a thread; metric group folders don't.
+  const thread = item.data?.thread;
+  const canStop = canWrite && thread != null && thread.completed_at == null;
+  const canRestart = canWrite && thread != null && thread.canceled_at != null;
 
   return (
     <Menu>
       <Menu.Target>
         <ActionIcon
+          className={S.groupMenuTrigger}
           size="1rem"
           c="icon-primary"
+          aria-label={t`Group actions`}
           onClick={(e) => e.stopPropagation()}
         >
           <Icon name="ellipsis" size="1rem" />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
-        {menuItems}
+        <Menu.Item leftSection={<Icon name="link" />} onClick={handleCopyLink}>
+          {t`Copy link`}
+        </Menu.Item>
+
+        <Menu.Sub>
+          <Menu.Sub.Target>
+            <Menu.Sub.Item leftSection={<Icon name="eye" />}>
+              {t`Show`}
+            </Menu.Sub.Item>
+          </Menu.Sub.Target>
+          <Menu.Sub.Dropdown>
+            <ShowFilterItem
+              label={t`Unread`}
+              checked={showFilters.unread}
+              onToggle={() => onToggleShowFilter("unread")}
+            />
+            <ShowFilterItem
+              label={t`Hidden`}
+              checked={showFilters.hidden}
+              onToggle={() => onToggleShowFilter("hidden")}
+            />
+            <ShowFilterItem
+              label={t`Potentially interesting`}
+              checked={showFilters.interesting}
+              onToggle={() => onToggleShowFilter("interesting")}
+            />
+          </Menu.Sub.Dropdown>
+        </Menu.Sub>
+
+        <Menu.Item
+          leftSection={<Icon name="archive" />}
+          onClick={() => onArchiveGroup(item.id)}
+        >
+          {t`Archive`}
+        </Menu.Item>
+
+        {canStop && (
+          <Menu.Item onClick={() => handleCancelThread(thread.id)}>
+            {t`Stop running`}
+          </Menu.Item>
+        )}
+        {canRestart && (
+          <Menu.Item onClick={handleRestart}>{t`Restart`}</Menu.Item>
+        )}
       </Menu.Dropdown>
     </Menu>
+  );
+}
+
+function ShowFilterItem({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Menu.Item
+      closeMenuOnClick={false}
+      leftSection={<Icon name={checked ? "check" : "empty"} />}
+      onClick={onToggle}
+    >
+      {label}
+    </Menu.Item>
   );
 }
 

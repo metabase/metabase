@@ -15,7 +15,6 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
 import { trackExplorationTimelineChanged } from "metabase/explorations/analytics";
 import { PotentiallyInterestingMarker } from "metabase/explorations/components/PotentiallyInterestingMarker";
-import { setExplorationPageHidden } from "metabase/explorations/hidden-pages";
 import {
   getAdjacentById,
   shouldIgnoreKeyboardEvent,
@@ -51,6 +50,7 @@ interface ActionToolbarProps {
   interestingTimelineIds?: ReadonlySet<TimelineId>;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
+  onHidePage?: (pageId: number) => void;
 }
 
 export function ActionToolbar({
@@ -65,6 +65,7 @@ export function ActionToolbar({
   interestingTimelineIds,
   onPreviousPage,
   onNextPage,
+  onHidePage,
 }: ActionToolbarProps) {
   const [setPageStarred] = useSetPageStarredMutation();
 
@@ -109,10 +110,10 @@ export function ActionToolbar({
   }, [sendToast]);
 
   const handleHide = useCallback(() => {
-    setExplorationPageHidden(explorationId, page.id, true);
+    onHidePage?.(page.id);
     sendToast({ icon: "check", message: t`Item hidden` });
     onNextPage?.();
-  }, [explorationId, page.id, sendToast, onNextPage]);
+  }, [onHidePage, page.id, sendToast, onNextPage]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

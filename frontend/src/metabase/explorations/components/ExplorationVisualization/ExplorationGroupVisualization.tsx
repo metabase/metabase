@@ -76,6 +76,7 @@ interface ExplorationGroupVisualizationProps {
   wasCommentsSidebarOpen: boolean;
   onPreviousPage?: () => void;
   onNextPage?: () => void;
+  onHidePage?: (pageId: number) => void;
 }
 
 interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGroupVisualizationProps {
@@ -170,6 +171,7 @@ function ExplorationGroupVisualizationChart({
   wasCommentsSidebarOpen,
   onPreviousPage,
   onNextPage,
+  onHidePage,
 }: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
@@ -477,6 +479,7 @@ function ExplorationGroupVisualizationChart({
           interestingTimelineIds={interestingTimelineIds}
           onPreviousPage={onPreviousPage}
           onNextPage={onNextPage}
+          onHidePage={onHidePage}
         />
       </Stack>
       {isCommentsSidebarOpen && (

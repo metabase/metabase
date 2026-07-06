@@ -14,6 +14,7 @@ import { Api } from "metabase/api/api";
 import { idTag } from "metabase/api/tags";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { Box, Group, Stack } from "metabase/ui";
@@ -39,6 +40,7 @@ import {
   ExplorationSidebar,
   ExplorationTitle,
 } from "../components/ExplorationSidebar";
+import type { ExplorationTreeNode } from "../components/ExplorationSidebar/utils";
 import {
   getExplorationSidebarTabsInfo,
   getExplorationSidebarTree,
@@ -53,7 +55,19 @@ import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
+import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "../constants";
 import { setCurrentExploration } from "../explorations.slice";
+import {
+  getHiddenExplorationPageIds,
+  setExplorationPageHidden,
+} from "../hidden-pages";
+import {
+  type ExplorationShowFilters,
+  getArchivedExplorationGroupIds,
+  getExplorationShowFilters,
+  setExplorationGroupArchived,
+  setExplorationShowFilters,
+} from "../sidebar-preferences";
 import { type ExplorationSidebarTab, isExplorationSidebarTab } from "../types";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -117,6 +131,31 @@ function getFirstThreadPageId(thread: ExplorationThread): string | null {
     }
   }
   return null;
+}
+
+// Drops archived group headings (and any heading left empty as a result) from
+// the sidebar tree. Archived group ids live in localStorage.
+function filterArchivedGroups(
+  nodes: ITreeNodeItem<ExplorationTreeNode>[],
+  archivedGroupIds: ReadonlySet<string>,
+): ITreeNodeItem<ExplorationTreeNode>[] {
+  return nodes
+    .filter(
+      (node) =>
+        node.data?.type !== "heading" || !archivedGroupIds.has(String(node.id)),
+    )
+    .map((node) =>
+      node.children
+        ? {
+            ...node,
+            children: filterArchivedGroups(node.children, archivedGroupIds),
+          }
+        : node,
+    )
+    .filter(
+      (node) =>
+        node.data?.type !== "heading" || (node.children?.length ?? 0) > 0,
+    );
 }
 
 export function ExplorationPage({
@@ -212,14 +251,81 @@ export function ExplorationPage({
     );
   }, [exploration, commentsData?.comments]);
 
+  // Group "..." menu preferences, persisted to localStorage per exploration.
+  const explorationIdNum = Number(params.id);
+  const [archivedGroupIds, setArchivedGroupIds] = useState<ReadonlySet<string>>(
+    () => getArchivedExplorationGroupIds(explorationIdNum),
+  );
+  const [showFilters, setShowFilters] = useState<ExplorationShowFilters>(() =>
+    getExplorationShowFilters(explorationIdNum),
+  );
+  const [hiddenPageIds, setHiddenPageIds] = useState<ReadonlySet<string>>(() =>
+    getHiddenExplorationPageIds(explorationIdNum),
+  );
+
+  const handleHidePage = useCallback(
+    (pageId: string | number) => {
+      setExplorationPageHidden(explorationIdNum, pageId, true);
+      setHiddenPageIds((prev) => new Set(prev).add(String(pageId)));
+    },
+    [explorationIdNum],
+  );
+
+  const handleArchiveGroup = useCallback(
+    (groupId: string | number) => {
+      setExplorationGroupArchived(explorationIdNum, groupId, true);
+      setArchivedGroupIds((prev) => new Set(prev).add(String(groupId)));
+      sendToast({ icon: "check", message: t`Group archived` });
+    },
+    [explorationIdNum, sendToast],
+  );
+
+  const handleToggleShowFilter = useCallback(
+    (key: keyof ExplorationShowFilters) => {
+      setShowFilters((prev) => {
+        const next = { ...prev, [key]: !prev[key] };
+        setExplorationShowFilters(explorationIdNum, next);
+        return next;
+      });
+    },
+    [explorationIdNum],
+  );
+
   const tree = useMemo(() => {
     if (!exploration) {
       return [];
     }
-    const treeItemFilter =
+    const baseFilter =
       explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
-    return getExplorationSidebarTree(exploration, treeItemFilter);
-  }, [exploration, selectedSidebarTab, explorationSidebarTabsInfo]);
+    const treeItemFilter = (node: ITreeNodeItem<ExplorationTreeNode>) => {
+      if (!baseFilter(node)) {
+        return false;
+      }
+      if (node.data?.type === "page") {
+        const isHidden = hiddenPageIds.has(node.data.page_id);
+        if (isHidden && !showFilters.hidden) {
+          return false;
+        }
+        if (
+          showFilters.interesting &&
+          (node.data.interestingness_score ?? 0) <
+            QUERY_INTERESTINGNESS_SCORE_THRESHOLD
+        ) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const built = getExplorationSidebarTree(exploration, treeItemFilter);
+    return filterArchivedGroups(built, archivedGroupIds);
+  }, [
+    exploration,
+    selectedSidebarTab,
+    explorationSidebarTabsInfo,
+    hiddenPageIds,
+    showFilters,
+    archivedGroupIds,
+  ]);
 
   // Selection comes from the URL. When the URL has no entity yet
   // (e.g. user landed on `/explorations/:id` directly), fall back to
@@ -570,6 +676,9 @@ export function ExplorationPage({
             setSelectedEntityId={setSelectedEntityId}
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
             isOpen={isSidebarOpen}
+            showFilters={showFilters}
+            onToggleShowFilter={handleToggleShowFilter}
+            onArchiveGroup={handleArchiveGroup}
           />
           {selectedPage && (
             <ExplorationGroupVisualization
@@ -593,6 +702,7 @@ export function ExplorationPage({
                 previousPageId != null ? goToPreviousPage : undefined
               }
               onNextPage={nextPageId != null ? goToNextPage : undefined}
+              onHidePage={handleHidePage}
             />
           )}
           {selectedDocument && (

@@ -11,6 +11,7 @@ import {
   within,
 } from "__support__/ui";
 import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
+import { DEFAULT_SHOW_FILTERS } from "metabase/explorations/sidebar-preferences";
 import {
   createBlock,
   createExploration,
@@ -147,6 +148,9 @@ function setup({
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       isOpen
+      showFilters={DEFAULT_SHOW_FILTERS}
+      onToggleShowFilter={jest.fn()}
+      onArchiveGroup={jest.fn()}
     />
   );
 
@@ -274,6 +278,9 @@ describe("ExplorationSidebar", () => {
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
         isOpen
+        showFilters={DEFAULT_SHOW_FILTERS}
+        onToggleShowFilter={jest.fn()}
+        onArchiveGroup={jest.fn()}
       />
     );
 
@@ -361,6 +368,9 @@ describe("ExplorationSidebar", () => {
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
           isOpen
+          showFilters={DEFAULT_SHOW_FILTERS}
+          onToggleShowFilter={jest.fn()}
+          onArchiveGroup={jest.fn()}
         />
       );
       const { rerender } = renderWithProviders(
@@ -812,10 +822,17 @@ describe("ExplorationSidebar", () => {
       ).toBeInTheDocument();
     });
 
-    it("does not offer Stop running when the user lacks write access", () => {
+    it("does not offer Stop running when the user lacks write access", async () => {
       setup({ queries: [pendingQuery], canWrite: false });
 
-      expect(findThreadMenuButton()).toBeUndefined();
+      const threadHeading = findThreadMenuButton();
+      expect(threadHeading).toBeDefined();
+
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Stop running/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("calls restart when Restart is clicked on a canceled thread", async () => {
@@ -840,24 +857,41 @@ describe("ExplorationSidebar", () => {
       });
     });
 
-    it("does not offer Restart when the thread completed without being canceled", () => {
+    it("does not offer Restart when the thread completed without being canceled", async () => {
       setup({
         queries: [pendingQuery],
         thread: { completed_at: "2026-04-30T00:01:00Z" },
       });
 
-      // Neither Stop (completed) nor Restart (not canceled) — so no thread menu at all.
-      expect(findThreadMenuButton()).toBeUndefined();
+      const threadHeading = findThreadMenuButton();
+      expect(threadHeading).toBeDefined();
+
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      // Neither Stop (completed) nor Restart (not canceled) is offered.
+      expect(
+        screen.queryByRole("menuitem", { name: /Stop running/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Restart/ }),
+      ).not.toBeInTheDocument();
     });
 
-    it("does not offer Restart when the user lacks write access", () => {
+    it("does not offer Restart when the user lacks write access", async () => {
       setup({
         queries: [pendingQuery],
         thread: canceledThread,
         canWrite: false,
       });
 
-      expect(findThreadMenuButton()).toBeUndefined();
+      const threadHeading = findThreadMenuButton();
+      expect(threadHeading).toBeDefined();
+
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Restart/ }),
+      ).not.toBeInTheDocument();
     });
   });
 

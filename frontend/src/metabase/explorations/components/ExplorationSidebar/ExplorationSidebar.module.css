@@ -42,6 +42,17 @@
   color: var(--mb-color-brand);
 }
 
+/* The group "..." menu trigger is revealed on row hover, or while its menu is
+ * open (Mantine sets aria-expanded on the target). */
+.groupMenuTrigger {
+  visibility: hidden;
+}
+
+.treeRow:hover .groupMenuTrigger,
+.groupMenuTrigger[aria-expanded="true"] {
+  visibility: visible;
+}
+
 /* Animated gradient swept across the glyphs to signal a still-generating item. */
 .shimmerText {
   --shimmer-spread: 48px;
