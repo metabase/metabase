@@ -96,7 +96,7 @@
                                      (u.humanization/name->human-readable-name :simple new-name)
                                      (:display-name old-tag))]
               (-> old-tag
-                  (dissoc :card-id #_:snippet-name #_:snippet-id) ; NOCOMMIT
+                  #_(dissoc :card-id :snippet-name :snippet-id) ; NOCOMMIT
                   (assoc :display-name new-display-name
                          :name         new-name))))]
     (mapv (fn [{tag-name :name, :as tag}]

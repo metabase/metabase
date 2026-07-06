@@ -222,11 +222,13 @@
   "If `template-tags` is a sequence, convert it to an (ordered) map."
   [template-tags]
   (letfn [(normalize-template-tag-sequence [tags]
-            (into #?(:clj (ordered-map/ordered-map) :cljs {})
+            (into #?(:clj (ordered-map/ordered-map) :cljs {}) ; NOCOMMIT -- consider whether ordered map is important.
                   (map (juxt :name identity))
                   tags))]
-    (cond-> template-tags
-      (sequential? template-tags) normalize-template-tag-sequence)))
+    (cond
+      (sequential? template-tags)   (normalize-template-tag-sequence template-tags)
+      #?(:clj (map? template-tags)) #?(:clj (into (ordered-map/ordered-map) template-tags))
+      :else                         template-tags)))
 
 ;; TODO -- make this schema JS-only
 (mr/def ::template-tag-map

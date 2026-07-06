@@ -61,7 +61,9 @@
                                      (filter snippet-tag?)
                                      (map (juxt :snippet-name identity)))
                             old-tags)
-        new-tags (lib/recognize-template-tags (:content snippet))
+        new-tags (into {}
+                       (map (juxt :name identity))
+                       (lib/recognize-template-tags (:content snippet)))
         set-snippet-id (fn [{:keys [snippet-name] :as tag}]
                          ;; Check for exact match in database:
                          (if-let [snippet-id (t2/select-one-fn :id :model/NativeQuerySnippet
