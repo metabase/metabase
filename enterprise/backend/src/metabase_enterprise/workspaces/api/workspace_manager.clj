@@ -28,7 +28,9 @@
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
+   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]
+   ;; git branch the child's initial import reads from; omitted = the repo's default branch
+   [:base_branch  {:optional true} ms/NonBlankString]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -59,9 +61,11 @@
 
 (def ^:private WorkspaceResponse
   [:map {:closed true}
-   [:id          ms/PositiveInt]
-   [:name        ms/NonBlankString]
-   [:creator     [:maybe CreatorResponse]]
+   [:id            ms/PositiveInt]
+   [:name          ms/NonBlankString]
+   [:creator       [:maybe CreatorResponse]]
+   [:base_branch   {:optional true} [:maybe :string]]
+   [:target_branch {:optional true} [:maybe :string]]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
    ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
@@ -82,7 +86,7 @@
 
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :creator :created_at :updated_at :databases])
+          (select-keys [:id :name :creator :base_branch :target_branch :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 

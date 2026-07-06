@@ -86,13 +86,16 @@
 
 (defn create-workspace!
   "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
-  The param map must supply `:creator_id`. Returns the created Workspace with
-  `:databases` and `:creator` hydrated."
-  [{:keys [name creator_id databases]}]
+  The param map must supply `:creator_id`. Optional `:base_branch` /
+  `:target_branch` record the child's git-sync binding (see the config builder).
+  Returns the created Workspace with `:databases` and `:creator` hydrated."
+  [{:keys [name creator_id databases base_branch target_branch]}]
   (t2/with-transaction [_conn]
     (let [workspace-id (t2/insert-returning-pk! :model/Workspace
-                                                {:name       name
-                                                 :creator_id creator_id})]
+                                                {:name          name
+                                                 :creator_id    creator_id
+                                                 :base_branch   base_branch
+                                                 :target_branch target_branch})]
       (when (seq databases)
         (t2/insert! :model/WorkspaceDatabase
                     (map #(with-workspace-database-defaults % workspace-id) databases)))

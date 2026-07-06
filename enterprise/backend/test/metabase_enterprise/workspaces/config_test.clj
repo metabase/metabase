@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.config :as config]
+   [metabase-enterprise.workspaces.core :as ws.core]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -242,3 +243,49 @@
                  (first samples))))
         (testing "sample entry is NOT also marked as a stub"
           (is (not (:is_stub (first samples)))))))))
+
+(deftest build-workspace-config-git-settings-section-test
+  (mt/with-temp [:model/Workspace {ws-id :id} {:name          "gitty"
+                                               :creator_id    (mt/user->id :crowberto)
+                                               :target_branch "ws-gitty"}]
+    (testing "no git remote configured on the parent -> no :settings section"
+      (mt/with-temporary-setting-values [remote-sync-url nil]
+        (is (not (contains? (:config (config/build-workspace-config ws-id)) :settings)))))
+    (testing "parent git settings flow into the child's :settings section, branch = target_branch, always read-write"
+      (mt/with-temporary-setting-values [remote-sync-url   "https://github.com/acme/mb-content.git"
+                                         remote-sync-token "ghp_secret"]
+        (is (= {:remote-sync-enabled true
+                :remote-sync-url     "https://github.com/acme/mb-content.git"
+                :remote-sync-token   "ghp_secret"
+                :remote-sync-type    "read-write"
+                :remote-sync-branch  "ws-gitty"}
+               (get-in (config/build-workspace-config ws-id) [:config :settings])))))))
+
+(deftest build-workspace-config-api-keys-section-test
+  (mt/with-temp [:model/Workspace {ws-id :id} {:name       "gitty"
+                                               :creator_id (mt/user->id :crowberto)}]
+    (testing "no :api-keys section without the mint-time opts (the parent cannot reproduce the key)"
+      (is (not (contains? (:config (config/build-workspace-config ws-id)) :api-keys))))
+    (testing "create orchestration supplies the freshly-minted key -> all-users api-keys entry"
+      (is (= [{:name    "workspace gitty agent key"
+               :key     "mb_0123456789abcdef"
+               :creator "admin@child.test"
+               :group   "all-users"}]
+             (get-in (config/build-workspace-config ws-id {:api-key       "mb_0123456789abcdef"
+                                                           :creator-email "admin@child.test"})
+                     [:config :api-keys]))))))
+
+(deftest create-workspace-names-target-branch-test
+  (testing "ws.core/create-workspace! names target_branch ws-<slug> and records base_branch"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [ws (ws.core/create-workspace! {:name         "My Cool Workspace"
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids []})]
+        (is (= "ws-my_cool_workspace" (:target_branch ws)))
+        (is (nil? (:base_branch ws))))
+      (let [ws (ws.core/create-workspace! {:name         "branchy"
+                                           :creator_id   (mt/user->id :crowberto)
+                                           :database_ids []
+                                           :base_branch  "develop"})]
+        (is (= "ws-branchy" (:target_branch ws)))
+        (is (= "develop" (:base_branch ws)))))))

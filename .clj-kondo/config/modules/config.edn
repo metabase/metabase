@@ -3682,6 +3682,7 @@
            sql-tools
            util
            workspaces
+           enterprise/remote-sync
            enterprise/serialization}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database

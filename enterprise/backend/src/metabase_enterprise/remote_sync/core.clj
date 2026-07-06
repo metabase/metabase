@@ -19,7 +19,10 @@
 (p/import-vars
  [source]
  [source.p
-  ->ingestable])
+  ->ingestable]
+ [settings
+  remote-sync-url
+  remote-sync-token])
 
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.

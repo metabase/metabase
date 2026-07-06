@@ -39,6 +39,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
@@ -208,8 +209,12 @@
    known schemas as
    `input_schemas`, and provision each database (blocking). Everything runs in a
    single transaction, so a provisioning failure rolls back the workspace and its
-   database rows. Returns the created workspace, hydrated."
-  [{:keys [name creator_id database_ids]}]
+   database rows. Returns the created workspace, hydrated.
+
+   Git binding: the export branch (`:target_branch`) is named `ws-<slug>` here at
+   create; `:base_branch` (what the child's initial import reads from) is taken
+   from the params and left nil for \"the repo's default branch\"."
+  [{:keys [name creator_id database_ids base_branch]}]
   (let [databases (mapv (fn [db-id]
                           (let [database (assert-database-exists db-id)]
                             (assert-database-eligible-for-workspaces database)
@@ -217,9 +222,11 @@
                              :input_schemas (workspace-database/database-input-schemas database)}))
                         database_ids)]
     (t2/with-transaction [_conn]
-      (let [ws (workspace/create-workspace! {:name       name
-                                             :creator_id creator_id
-                                             :databases  databases})]
+      (let [ws (workspace/create-workspace! {:name          name
+                                             :creator_id    creator_id
+                                             :databases     databases
+                                             :base_branch   base_branch
+                                             :target_branch (str "ws-" (u/slugify name))})]
         (doseq [{wsd-id :id} (:databases ws)]
           (provisioning/provision-single! wsd-id))
         (workspace/get-workspace (:id ws))))))
