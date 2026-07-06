@@ -5,7 +5,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.normalize :as lib.normalize]))
 
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the

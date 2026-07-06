@@ -755,11 +755,9 @@
 
 (mr/def ::native-query-snippet
   [:map
-   [:lib/type [:= :metadata/native-query-snippet]]
-   [:id       ::lib.schema.id/native-query-snippet]
-   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tags]]]])
-;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
-
+   [:lib/type      [:= :metadata/native-query-snippet]]
+   [:id            ::lib.schema.id/native-query-snippet]
+   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]])
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 (mr/def ::table

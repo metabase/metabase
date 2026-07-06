@@ -29,7 +29,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [some select-keys mapv empty? #?(:clj for)]]
-   [weavejester.dependency :as dep]))
+   [weavejester.dependency :as dep]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _x]
@@ -450,13 +451,14 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
-(defn- template-tag-stages
-  [template-tags]
-  (for [{:keys [card-id snippet-id] tag-type :type} (vals template-tags)
-        :when (#{:card :snippet} tag-type)]
-    (case tag-type
-      :card {:source-card card-id}
-      :snippet {:source-snippet-id snippet-id})))
+(mu/defn- template-tag-stages
+  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map-or-sequence]] ; NOCOMMIT
+  (let [template-tags (lib.normalize/normalize ::lib.schema.template-tag/template-tags template-tags)]
+    (for [{:keys [card-id snippet-id] tag-type :type} template-tags
+          :when                                       (#{:card :snippet} tag-type)]
+      (case tag-type
+        :card    {:source-card card-id}
+        :snippet {:source-snippet-id snippet-id}))))
 
 (defn- stage-seq* [query-fragment]
   (cond

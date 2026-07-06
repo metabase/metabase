@@ -12,7 +12,8 @@
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [weavejester.dependency :as dep])
+   [weavejester.dependency :as dep]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -48,16 +49,17 @@
    graph :- :map
    init-query :- ::lib.schema/query]
   (letfn [(card-subquery-graph [mp graph card-id]
-            (let [card-query (fetch-card-query mp card-id)
-                  card-ids (concat (lib/native-query-card-ids card-query)
-                                   (lib/all-source-card-ids card-query))
+            (let [card-query  (fetch-card-query mp card-id)
+                  card-ids    (concat (lib/native-query-card-ids card-query)
+                                      (lib/all-source-card-ids card-query))
                   snippet-ids (lib/native-query-snippet-ids card-query)]
               (subquery-graph* mp graph ::card card-id card-ids snippet-ids)))
           (snippet-subquery-graph [mp graph snippet-id]
-            (let [snippet (fetch-snippet mp snippet-id)
-                  snippet-template-tags (:template-tags snippet)
-                  card-ids (lib/template-tags->card-ids snippet-template-tags)
-                  snippet-ids (lib/template-tags->snippet-ids snippet-template-tags)]
+            (let [snippet               (fetch-snippet mp snippet-id)
+                  ;; convert snippet template tags (still stored as a map at the time of this writing) to list
+                  snippet-template-tags (lib/normalize ::lib.schema.template-tag/template-tags (:template-tags snippet))
+                  card-ids              (lib/template-tags->card-ids snippet-template-tags)
+                  snippet-ids           (lib/template-tags->snippet-ids snippet-template-tags)]
               (subquery-graph* mp graph ::snippet snippet-id card-ids snippet-ids)))
           (subquery-graph* [mp graph node-type node-id card-ids snippet-ids]
             (as-> graph <>
@@ -73,7 +75,7 @@
               (snippet-subquery-graph mp
                                       (dep/depend graph [node-type id] [::snippet nested-snippet-id])
                                       nested-snippet-id)))]
-    (let [card-ids (lib/native-query-card-ids init-query)
+    (let [card-ids    (lib/native-query-card-ids init-query)
           snippet-ids (lib/native-query-snippet-ids init-query)]
       (subquery-graph* metadata-providerable
                        graph
