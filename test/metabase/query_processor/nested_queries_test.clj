@@ -2113,7 +2113,8 @@
               mp     (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries mp0 [card-q])
               cols   (mt/cols (qp/process-query (lib/query mp (lib.metadata/card mp 1))))]
           (is (= [(mt/id :orders :id)] (map :id cols)))
-          (is (= ["id"] (map (comp u/lower-case-en :name) cols))))))))
+          (is (= [(u/lower-case-en (:name (lib.metadata/field mp0 (mt/id :orders :id))))]
+                 (map (comp u/lower-case-en :name) cols))))))))
 
 ;;; Removing Products.Created At from a source card's join :fields must not shift a downstream filter on the
 ;;; same-named Reviews.Created At column: the filtered count is unchanged.

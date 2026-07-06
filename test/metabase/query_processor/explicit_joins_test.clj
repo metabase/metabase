@@ -27,7 +27,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -1749,13 +1750,16 @@
               products-q (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :products)))
                              (lib/with-fields [(lib.metadata/field mp0 (mt/id :products :id))
                                                (lib.metadata/field mp0 (mt/id :products :category))]))
-              native-q   (lib/native-query mp0 (:query (qp.compile/compile products-q)))
+              compiled   (:query (qp.compile/compile products-q))
+              ;; non-SQL drivers (mongo) compile to a pipeline vector; a saved native query stores its JSON text
+              native-q   (lib/native-query mp0 (cond-> compiled (not (string? compiled)) json/encode))
               mp         (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-q])
               card       (lib.metadata/card mp 1)
               base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               product-id (lib.metadata/field mp (mt/id :orders :product_id))
+              id-name    (u/lower-case-en (:name (lib.metadata/field mp0 (mt/id :products :id))))
               ;; native card columns have no field id -- match by lower-cased name for case-folding drivers
-              card-id    (m/find-first #(= "id" (u/lower-case-en (:name %)))
+              card-id    (m/find-first #(= id-name (u/lower-case-en (:name %)))
                                        (lib/join-condition-rhs-columns base card (lib/ref product-id) nil))
               joined     (lib/join base (-> (lib/join-clause card [(lib/= product-id card-id)])
                                             (lib/with-join-alias "P")
