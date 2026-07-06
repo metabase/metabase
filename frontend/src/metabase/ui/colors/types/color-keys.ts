@@ -8,6 +8,11 @@ import type { ALL_ACCENT_COLOR_NAMES } from "../constants/accents";
  *
  * Both the light and dark theme must define all of these colors.
  *
+ * Token names follow `[category]-[property]-[variant?]-[state?]`. Parts are
+ * joined with `-`; when a single part is two words we join those words
+ * with `_` so it reads as one unit. E.g. background_surface-brand-strong`
+ * is category `background_surface`, property `brand`, variant `strong`.
+ *
  * @inline
  * @category Theming
  */
