@@ -57,9 +57,9 @@
                            (t2/select-pk->fn :common_name :model/User :id [:in ids])
                            {})]
     (for [{:keys [id model last_used_at created_at creator_id] entity-name :name} rows
-          :let  [et (model->entity-type model)]
-          :when et]
-      {:entity-type         et
+          :let  [etype (model->entity-type model)]
+          :when etype]
+      {:entity-type         etype
        :entity-id           id
        :finding-type        :stale
        ;; freeze the scan-time activity anchor (D17): `last_used_at` for cards, `last_viewed_at` for
@@ -127,16 +127,16 @@
     (mapv #(assoc % :scope-collection-id (get lookup [(:entity-type %) (:entity-id %)])) findings)))
 
 (def ^:private insert-batch-size
-  "Rows per INSERT. Postgres caps a prepared statement at 65,535 bind parameters; at ~6 columns/row a
-  single all-rows insert overflows past ~10k findings (observed on the stats DB). 1000 keeps us well
-  under (mirrors `mark-stale-batch-size` in the deps module)."
+  "Rows per INSERT. Postgres caps a prepared statement at 65,535 bind parameters; at ~11 columns/row a
+  single all-rows insert overflows past ~6k findings. 1000 keeps us well under (mirrors
+  `mark-stale-batch-size` in the deps module)."
   1000)
 
 (defn- insert-findings!
   "Persist findings as independent **chunk-committed** transactions — each chunk is its own transaction,
   so completed chunks are durable even if a later chunk fails (no single all-rows transaction held open
   for the whole scan). Chunking also keeps each statement under the bind-parameter cap. This is safe to
-  serve mid-write because the serve layer reads latest-per-entity (`api/active-findings`), so a partial
+  serve mid-write because the serve layer reads latest-per-entity (`active-where` in `api.clj`), so a partial
   batch degrades gracefully rather than blanking out un-written entities."
   [scan-id findings]
   (doseq [chunk (partition-all insert-batch-size findings)]

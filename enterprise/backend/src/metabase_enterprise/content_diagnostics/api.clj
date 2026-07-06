@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-diagnostics.api
-  "Content Diagnostics API. Mounted under `premium-handler … :content-diagnostics` (feature-gated) — see
-  `api_routes/routes.clj`. Exposes a synchronous **demo-only** `/scan` trigger and a paginated,
-  batch-hydrated latest-per-entity finding list.
+  "Content Diagnostics API. Intended mount: `premium-handler … :content-diagnostics`; currently mounted
+  UNGATED for the demo — see `api_routes/routes.clj`. Exposes a synchronous **demo-only** `/scan` trigger
+  and a paginated, batch-hydrated latest-per-entity finding list.
 
   Serve shape (the cross-cutting contract every per-finding-type endpoint conforms to): a minimal flat
   identity — `id, finding_type, entity_type, entity_id, detected_at, entity_display_name` — plus a nested
@@ -46,13 +46,9 @@
    [:in :id (latest-per-entity-ids)]])
 
 ;;; ------------------------------ per-caller serve filters (shared) ------------------------------------
-;;; The scan is user-less, so the findings table is a permission-agnostic substrate — every per-caller
-;;; concern is resolved **live at serve time** against each finding entity's *current* collection (never the
-;;; scan-time `scope_collection_id`), mirroring Dependency Diagnostics' live filtering over its async graph.
-;;; Two filters compose, both built per entity-type from `detect/entity-type->model`:
-;;;   1. visibility — `visible-findings-where`, ALWAYS applied (a user sees only content they can read).
-;;;   2. personal collections — `exclude-personal-collections-where`, gated by `include-personal-collections`.
-;;; These are the shared filters every per-finding-type endpoint reuses.
+;;; Per-caller filters, resolved live at serve time against each entity's *current* collection (never the
+;;; scan-time `scope_collection_id`): visibility (always applied) + personal-collection exclusion
+;;; (param-gated). Shared by every per-finding-type endpoint.
 
 (defn- visible-findings-where
   "Keep only findings whose entity is in a collection the **current user** can read — per-caller, live, and
@@ -105,11 +101,9 @@
                                     :where  [:in :collection_id pids]}]]]))))
 
 ;;; ----------------------------------- display hydration (shared layer) --------------------------------
-;;; A finding's display values come from two places. **Denormalized** (frozen at scan time, preferred over
-;;; live hydration — some drift between scans is acceptable): `entity_display_name`, `created_at`,
-;;; `last_active_at`, and the `creator` object (id + name). **Live-hydrated** (still current, batched per
-;;; entity-type — no per-row N+1): the entity `description` and the permission-filtered `collection`
-;;; breadcrumb, neither of which is denormalized. This is the layer each per-finding-type endpoint reuses.
+;;; Display values: name/created_at/last_active_at/creator are DENORMALIZED (frozen at scan time; drift
+;;; between scans is acceptable); description + the collection breadcrumb are live-hydrated, batched per
+;;; entity-type. Shared by every per-finding-type endpoint.
 
 (defn- entity-context
   "For one entity-type's id set → `{entity-id → {:description :collection_id}}`. Only the **non-denormalized**
@@ -294,8 +288,8 @@
        [:threshold-days {:optional true} ms/PositiveInt]
        [:query          {:optional true} :string]]]
   (let [personal-filter    (when-not include-personal-collections (exclude-personal-collections-where))
-        entity-types*      (when entity-types (if (sequential? entity-types) entity-types [entity-types]))
-        entity-type-filter (when-let [types (not-empty entity-types*)] [:in :entity_type (mapv name types)])
+        entity-type-filter (when-let [types (not-empty (u/one-or-many entity-types))]
+                             [:in :entity_type (mapv name types)])
         ;; "less stale than threshold-days" = active more recently than the cutoff → excluded. Never-used
         ;; (`last_active_at` nil) is maximally stale, so it always passes. Mirrors the scan-time cutoff.
         threshold-filter   (when threshold-days

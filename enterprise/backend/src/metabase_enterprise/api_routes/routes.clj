@@ -112,7 +112,7 @@
    ;; superuser-only).
    ;; DEMO (temporary): premium feature gate disabled so the endpoints work without the
    ;; `:content-diagnostics` token feature (not yet issued). Restore the gated mount below to re-enable.
-   ;; "/content-diagnostics"            (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
+   #_#_"/content-diagnostics"        (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
    "/content-diagnostics"            metabase-enterprise.content-diagnostics.api/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
    "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)

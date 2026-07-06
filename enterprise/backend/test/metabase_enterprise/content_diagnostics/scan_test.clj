@@ -7,23 +7,34 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.detect :as detect]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- stale-instant []
-  (t/minus (t/offset-date-time) (t/days 365)))
+(defn- stale-instant
+  "Comfortably past the staleness threshold, whatever its default — derived from the setting so a
+  default change can't silently desync the fixture."
+  []
+  (t/minus (t/offset-date-time) (t/days (+ (cd.settings/content-diagnostics-stale-threshold-days) 30))))
 
 (defn- fresh-instant []
   (t/offset-date-time))
+
+(defn- scope-prefix
+  "Unique per-test entity-name prefix, passed as `:query` so serve assertions only see rows the test
+  seeded — the findings table is shared, so an unscoped list read can see sibling tests' rows."
+  []
+  (str "cd-" (mt/random-name)))
 
 (deftest scan-detects-stale-and-emits-metrics-test
   (mt/with-premium-features #{:content-diagnostics}
     (mt/with-prometheus-system! [_ system]
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
-                       ;; stale: last activity well past the 90-day threshold
+                       ;; stale: last activity well past the threshold
                        :model/Card      {s1 :id} {:collection_id coll-id :last_used_at (stale-instant)}
                        :model/Card      {s2 :id} {:collection_id coll-id :last_used_at (stale-instant)}
                        :model/Card      {s3 :id} {:collection_id coll-id :last_used_at (stale-instant)}
@@ -54,16 +65,16 @@
               (is (empty? (set/intersection found-keys fresh-keys))))
             (testing "persisted findings carry finding_type + scope_collection_id + last_active_at + details"
               (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
-                (is (= :stale (:finding_type row)))
-                ;; scope_collection_id is stamped at scan time from the entity's collection
-                (is (= coll-id (:scope_collection_id row)))
-                ;; details now holds only the threshold; last_active_at is a top-level column
-                (is (= #{:threshold_days} (set (keys (:details row)))))
-                ;; derive from the setting, not a literal — a default change must not silently desync
-                (is (= (cd.settings/content-diagnostics-stale-threshold-days)
-                       (get-in row [:details :threshold_days])))
-                ;; last_active_at frozen from the card's last_used_at (top-level column, not in details)
-                (is (some? (:last_active_at row)))))
+                (is (=? {:finding_type        :stale
+                         ;; scope_collection_id is stamped at scan time from the entity's collection
+                         :scope_collection_id coll-id
+                         ;; threshold derived from the setting, not a literal — a default change must not desync
+                         :details             {:threshold_days (cd.settings/content-diagnostics-stale-threshold-days)}
+                         ;; last_active_at frozen from the card's last_used_at (top-level column, not in details)
+                         :last_active_at      some?}
+                        row))
+                ;; details holds ONLY the threshold
+                (is (= #{:threshold_days} (set (keys (:details row)))))))
             (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
               (let [row (first (filter #(and (= :dashboard (:entity_type %)) (= s4 (:entity_id %))) rows))]
                 (is (some? (:last_active_at row)))))
@@ -73,10 +84,11 @@
                 (is (nil? (:last_active_at row)))))
             (testing "denormalized columns (entity_name/created_at/creator_id/creator_name) are stamped at scan time"
               (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
-                (is (some? (:entity_name row)))
-                (is (some? (:entity_created_at row)))
-                (is (some? (:entity_creator_id row)))
-                (is (some? (:entity_creator_name row)))))
+                (is (=? {:entity_name         some?
+                         :entity_created_at   some?
+                         :entity_creator_id   some?
+                         :entity_creator_name some?}
+                        row))))
             (testing "duration histogram recorded one ok observation"
               (is (<= 1 (:count (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms
                                                  {:status "ok"})))))
@@ -103,14 +115,21 @@
 (deftest scan-error-path-emits-error-metrics-test
   (mt/with-premium-features #{:content-diagnostics}
     (mt/with-prometheus-system! [_ system]
-      (mt/with-dynamic-fn-redefs [detect/detect (fn [] (throw (ex-info "boom" {})))]
-        (is (thrown? Exception (detect/scan!)))
+      (let [ok-scan-emits (atom 0)
+            original-inc! analytics/inc!]
+        (mt/with-dynamic-fn-redefs [detect/detect  (fn [] (throw (ex-info "boom" {})))
+                                    analytics/inc! (fn [metric & [labels :as args]]
+                                                     (when (and (= :metabase-content-diagnostics/scans metric)
+                                                                (= "ok" (:status labels)))
+                                                       (swap! ok-scan-emits inc))
+                                                     (apply original-inc! metric args))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (detect/scan!))))
         (testing "error outcome counter + error duration observation bump"
           (is (pos? (mt/metric-value system :metabase-content-diagnostics/scans {:status "error"})))
           (is (<= 1 (:count (mt/metric-value system :metabase-content-diagnostics/scan-duration-ms
                                              {:status "error"})))))
-        (testing "no ok signal on the error path"
-          (is (zero? (mt/metric-value system :metabase-content-diagnostics/scans {:status "ok"}))))))))
+        (testing "no ok outcome was emitted on the error path (spy pins the call, not the value)"
+          (is (zero? @ok-scan-emits)))))))
 
 (deftest scan-soft-invalidates-superseded-findings-test
   (testing "a fresh scan supersedes prior findings it no longer produces — via soft invalidation, not delete"
@@ -134,7 +153,7 @@
                 (is (every? :invalidated_at rows))))))))))
 
 (deftest serve-latest-per-entity-and-hydration-test
-  (testing "GET /finding serves the latest non-invalidated finding per entity, batch-hydrated"
+  (testing "GET /stale serves the latest non-invalidated finding per entity, batch-hydrated"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -144,20 +163,23 @@
                                                     :creator_id    (mt/user->id :rasta)}]
             ;; rasta reads this collection → the visibility filter scopes `total` to this card's findings
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-            (let [insert     (fn [scan threshold]
+            (let [prefix     (scope-prefix)
+                  card-name  (str prefix " Quarterly Revenue")
+                  insert     (fn [scan threshold]
                                (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                                 {:scan_id             scan
                                                                  :entity_type         :card
                                                                  :entity_id           card-id
                                                                  :finding_type        :stale
                                                                  :last_active_at      (t/offset-date-time 2025 9 1)
-                                                                 :entity_name         "Quarterly Revenue"
+                                                                 :entity_name         card-name
                                                                  :entity_creator_id   (mt/user->id :rasta)
                                                                  :entity_creator_name "Rasta Toucan"
                                                                  :details             {:threshold_days threshold}})))
                   old-id     (insert "scan-old" 30)
                   new-id     (insert "scan-new" 90)
-                  serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")
+                  serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
+                                                    :query prefix)
                   served-ids (fn [resp] (set (map :id (:data resp))))]
               ;; membership assertions (robust to other rows / pagination), not absolute page counts
               (testing "the latest finding is served, the superseded older one is not — and `total` counts only the latest"
@@ -170,7 +192,7 @@
               (testing "the served finding has flat identity + a nested typed details (collection, description, owner, creator)"
                 (let [row (first (filter #(= new-id (:id %)) (:data (serve))))]
                   (testing "entity_display_name served from the denormalized entity_name"
-                    (is (= "Quarterly Revenue" (:entity_display_name row))))
+                    (is (= card-name (:entity_display_name row))))
                   (testing "collection breadcrumb still live-hydrated (not denormalized)"
                     (is (= coll-id (get-in row [:details :collection :id]))))
                   (testing "threshold_days stays in details; last_active_at is hoisted to a top-level property"
@@ -178,9 +200,10 @@
                     (is (some? (:last_active_at row)))
                     (is (not (contains? (:details row) :last_active_at))))
                   (testing "creator served from the denormalized columns (id + common_name, no live hydrate)"
-                    (is (= (mt/user->id :rasta) (get-in row [:details :creator :id])))
-                    (is (= "Rasta Toucan" (get-in row [:details :creator :name])))
-                    (is (= "user" (get-in row [:details :creator :type]))))
+                    (is (=? {:id   (mt/user->id :rasta)
+                             :name "Rasta Toucan"
+                             :type "user"}
+                            (get-in row [:details :creator]))))
                   (testing "card has no owner column → owner is null"
                     (is (nil? (get-in row [:details :owner]))))))
               (testing "invalidating the latest hides the entity AND drops it from total; older row does NOT resurface"
@@ -204,17 +227,19 @@
                            :model/Card       {pers-card :id}  {:collection_id pers-id}]
               ;; rasta can read the regular collection; their own personal collection is always self-visible
               (perms/grant-collection-read-permissions! (perms/all-users-group) reg-id)
-              (let [insert     (fn [card]
+              (let [prefix     (scope-prefix)
+                    insert     (fn [card]
                                  (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                                   {:scan_id      "p-scan"
                                                                    :entity_type  :card
                                                                    :entity_id    card
+                                                                   :entity_name  (str prefix "-" card)
                                                                    :finding_type :stale
                                                                    :details      {}})))
                     reg-fid    (insert reg-card)
                     pers-fid   (insert pers-card)
                     serve      (fn [& kvs] (apply mt/user-http-request :rasta :get 200
-                                                  "ee/content-diagnostics/stale" kvs))
+                                                  "ee/content-diagnostics/stale" :query prefix kvs))
                     served-ids (fn [resp] (set (map :id (:data resp))))]
                 (testing "default (param omitted) → personal-collection finding excluded, regular one served"
                   (let [resp (serve)]
@@ -237,7 +262,7 @@
                     (is (contains? ids pers-fid))))))))))))        ; now in a regular collection → served
 
 (deftest serve-paginates-test
-  (testing "GET /finding honors limit/offset and reports the full active total"
+  (testing "GET /stale honors limit/offset and reports the full active total"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
@@ -246,23 +271,24 @@
                          :model/Card {c1 :id} {:collection_id coll-id}
                          :model/Card {c2 :id} {:collection_id coll-id}
                          :model/Card {c3 :id} {:collection_id coll-id}]
-            ;; grant read so the visibility filter scopes the served set to exactly these 3 (robust on shared CI)
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-            (doseq [cid [c1 c2 c3]]
-              (t2/insert! :model/ContentDiagnosticsFinding
-                          {:scan_id "p" :entity_type :card :entity_id cid
-                           :finding_type :stale :details {}}))
-            (let [page (fn [limit offset]
-                         (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
-                                               :limit limit :offset offset))]
-              (testing "limit caps the page; total reflects the full active set; limit/offset echoed back"
-                (let [r (page 2 0)]
-                  (is (= 2 (count (:data r))))
-                  (is (= 3 (:total r)))
-                  (is (= 2 (:limit r)))
-                  (is (= 0 (:offset r)))))
-              (testing "offset advances to the remainder"
-                (is (= 1 (count (:data (page 2 2)))))))))))))
+            (let [prefix (scope-prefix)]
+              (doseq [cid [c1 c2 c3]]
+                (t2/insert! :model/ContentDiagnosticsFinding
+                            {:scan_id "p" :entity_type :card :entity_id cid
+                             :entity_name (str prefix "-" cid)
+                             :finding_type :stale :details {}}))
+              (let [page (fn [limit offset]
+                           (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
+                                                 :query prefix :limit limit :offset offset))]
+                (testing "limit caps the page; total reflects the full active set; limit/offset echoed back"
+                  (let [r (page 2 0)]
+                    (is (= 2 (count (:data r))))
+                    (is (= 3 (:total r)))
+                    (is (= 2 (:limit r)))
+                    (is (= 0 (:offset r)))))
+                (testing "offset advances to the remainder"
+                  (is (= 1 (count (:data (page 2 2))))))))))))))
 
 (deftest serve-permission-filtered-test
   (testing "GET /stale returns only findings whose entity the current user can read"
@@ -304,16 +330,20 @@
                          :model/Dashboard {dash-id :id} {:collection_id coll-id}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
             ;; card flagged later than the dashboard → detected-at order ≠ entity-type order (each isolable)
-            (let [card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+            (let [prefix   (scope-prefix)
+                  card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "s" :entity_type :card :entity_id card-id
+                                                             :entity_name (str prefix "-" card-id)
                                                              :finding_type :stale :details {}
                                                              :detected_at (t/offset-date-time 2025 6 1)}))
                   dash-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "s" :entity_type :dashboard :entity_id dash-id
+                                                             :entity_name (str prefix "-" dash-id)
                                                              :finding_type :stale :details {}
                                                              :detected_at (t/offset-date-time 2025 1 1)}))
                   order    (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
-                                                               "ee/content-diagnostics/stale" kvs))))]
+                                                               "ee/content-diagnostics/stale"
+                                                               :query prefix kvs))))]
               (testing "sort-column=entity-type — lexical card < dashboard"
                 (is (= [card-fid dash-fid] (order :sort-column "entity-type" :sort-direction "asc")))
                 (is (= [dash-fid card-fid] (order :sort-column "entity-type" :sort-direction "desc"))))
@@ -334,19 +364,29 @@
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
             ;; each attr orders A,B differently so the column under test is isolated
             ;; creator NAME order (Amy < Zoe) is the inverse of creator ID order (5 < 10) → isolates name-sort
-            (let [insert (fn [card nm created creator-id creator-name active]
+            (let [prefix (scope-prefix)
+                  insert (fn [row]
                            (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
-                                                            {:scan_id "s" :entity_type :card :entity_id card
-                                                             :finding_type        :stale :details {}
-                                                             :entity_name         nm
-                                                             :entity_created_at   created
-                                                             :entity_creator_id   creator-id
-                                                             :entity_creator_name creator-name
-                                                             :last_active_at      active})))
-                  a-fid (insert card-a "Alpha" (t/offset-date-time 2025 1 1) 10 "Amy" (t/offset-date-time 2025 6 1))
-                  b-fid (insert card-b "Beta"  (t/offset-date-time 2025 6 1) 5  "Zoe" (t/offset-date-time 2025 1 1))
-                  order (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
-                                                            "ee/content-diagnostics/stale" kvs))))]
+                                                            (merge {:scan_id      "s"
+                                                                    :entity_type  :card
+                                                                    :finding_type :stale
+                                                                    :details      {}}
+                                                                   row))))
+                  a-fid  (insert {:entity_id           card-a
+                                  :entity_name         (str prefix " Alpha")
+                                  :entity_created_at   (t/offset-date-time 2025 1 1)
+                                  :entity_creator_id   10
+                                  :entity_creator_name "Amy"
+                                  :last_active_at      (t/offset-date-time 2025 6 1)})
+                  b-fid  (insert {:entity_id           card-b
+                                  :entity_name         (str prefix " Beta")
+                                  :entity_created_at   (t/offset-date-time 2025 6 1)
+                                  :entity_creator_id   5
+                                  :entity_creator_name "Zoe"
+                                  :last_active_at      (t/offset-date-time 2025 1 1)})
+                  order  (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                             "ee/content-diagnostics/stale"
+                                                             :query prefix kvs))))]
               (testing "name — Alpha < Beta"
                 (is (= [a-fid b-fid] (order :sort-column "name" :sort-direction "asc")))
                 (is (= [b-fid a-fid] (order :sort-column "name" :sort-direction "desc"))))
@@ -368,17 +408,22 @@
                          :model/Dashboard {dash-id :id} {:collection_id coll-id}
                          :model/Document {doc-id :id} {:collection_id coll-id}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-            (let [card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+            (let [prefix   (scope-prefix)
+                  card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "e" :entity_type :card :entity_id card-id
+                                                             :entity_name (str prefix "-" card-id)
                                                              :finding_type :stale :details {}}))
                   dash-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "e" :entity_type :dashboard :entity_id dash-id
+                                                             :entity_name (str prefix "-" dash-id)
                                                              :finding_type :stale :details {}}))
                   doc-fid  (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "e" :entity_type :document :entity_id doc-id
+                                                             :entity_name (str prefix "-" doc-id)
                                                              :finding_type :stale :details {}}))
                   ids      (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
-                                                                   "ee/content-diagnostics/stale" kvs)))))]
+                                                                   "ee/content-diagnostics/stale"
+                                                                   :query prefix kvs)))))]
               (testing "omitted → all entity types"
                 (is (= #{card-fid dash-fid doc-fid} (ids))))
               (testing "single value → only that type"
@@ -401,16 +446,19 @@
                          :model/Card {c-recent :id} {:collection_id coll-id}
                          :model/Card {c-never :id}  {:collection_id coll-id}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-            (let [insert     (fn [card active-at]
+            (let [prefix     (scope-prefix)
+                  insert     (fn [card active-at]
                                (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                                 {:scan_id "t" :entity_type :card :entity_id card
+                                                                 :entity_name (str prefix "-" card)
                                                                  :finding_type :stale :details {}
                                                                  :last_active_at active-at})))
                   old-fid    (insert c-old    (t/minus (t/offset-date-time) (t/days 400)))
                   recent-fid (insert c-recent (t/minus (t/offset-date-time) (t/days 100)))
                   never-fid  (insert c-never  nil)
                   ids        (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
-                                                                     "ee/content-diagnostics/stale" kvs)))))]
+                                                                     "ee/content-diagnostics/stale"
+                                                                     :query prefix kvs)))))]
               (testing "no threshold → all three"
                 (is (= #{old-fid recent-fid never-fid} (ids))))
               (testing "threshold-days=200 → keeps the 400-day-old + never-used, drops the 100-day-old"
@@ -427,24 +475,27 @@
                          :model/Card {c-rev :id}  {:collection_id coll-id}
                          :model/Card {c-cost :id} {:collection_id coll-id}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-            (let [insert   (fn [card nm]
+            (let [prefix   (scope-prefix)
+                  insert   (fn [card nm]
                              (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                               {:scan_id "q" :entity_type :card :entity_id card
-                                                               :finding_type :stale :details {} :entity_name nm})))
+                                                               :finding_type :stale :details {}
+                                                               :entity_name (str prefix " " nm)})))
                   rev-fid  (insert c-rev  "Quarterly Revenue")
                   cost-fid (insert c-cost "Cost Analysis")
                   ids      (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
                                                                    "ee/content-diagnostics/stale" kvs)))))]
+              ;; the no-query/blank cases can't be prefix-scoped (that's what they test) → membership, not
+              ;; exact sets, so rows from other tests on the shared findings table can't break them
               (testing "no query → all findings"
-                (is (= #{rev-fid cost-fid} (ids))))
+                (is (set/subset? #{rev-fid cost-fid} (ids))))
               (testing "substring match, case-insensitive"
-                (is (= #{rev-fid} (ids :query "revenue")))
-                (is (= #{rev-fid} (ids :query "REV")))
-                (is (= #{cost-fid} (ids :query "analysis"))))
+                (is (= #{rev-fid} (ids :query (u/upper-case-en (str prefix " quarterly rev")))))
+                (is (= #{cost-fid} (ids :query (u/lower-case-en (str prefix " cost"))))))
               (testing "no match → empty"
-                (is (empty? (ids :query "zzz"))))
+                (is (empty? (ids :query (str prefix " zzz")))))
               (testing "blank query is a no-op → all findings"
-                (is (= #{rev-fid cost-fid} (ids :query "   ")))))))))))
+                (is (set/subset? #{rev-fid cost-fid} (ids :query "   ")))))))))))
 
 (deftest scan-endpoint-is-feature-gated-test
   (testing "POST /scan runs synchronously for a licensed instance"
