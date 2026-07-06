@@ -158,7 +158,7 @@ function RootItemList() {
             setPath([
               {
                 model: "collection",
-                id: "root", // cmon typescript, trust me
+                id: "root",
                 name: rootCollectionError ? t`Collections` : t`Our analytics`,
               },
             ]);

@@ -607,7 +607,6 @@ const visualizerSlice = createSlice({
         const card = action.payload;
         const index = state.cards.findIndex((c) => c.id === card.id);
 
-        // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
           state.cards[index] = card;
         } else {
@@ -637,9 +636,7 @@ const visualizerSlice = createSlice({
           const { cardId } = action.meta.arg;
           const dataset = action.payload;
 
-          // `any` prevents the "Type instantiation is excessively deep" error
           state.datasets[`card:${cardId}`] = dataset;
-
           state.loadingDatasets[`card:${cardId}`] = false;
         },
       )
