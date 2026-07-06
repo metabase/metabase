@@ -114,10 +114,9 @@ const elements = [
     pattern: "enterprise/frontend/src/embedding/**",
   }),
   createElement({
-    type: "shared",
+    type: "app",
     name: "embedding-sdk-ee",
     pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
-    enforceOutgoing: false,
   }),
   createElement({
     type: "app",
