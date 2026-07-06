@@ -228,8 +228,7 @@
 
 (defmethod excluded-keys :field
   [_object-type]
-  #{:_comesFromEndpoint
-    :database
+  #{:database
     :metrics
     :table})
 

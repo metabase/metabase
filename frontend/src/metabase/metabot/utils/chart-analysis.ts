@@ -19,6 +19,7 @@ const CHART_ANALYSIS_ENABLED = {
   row: true,
   sankey: true,
   scatter: true,
+  treemap: true,
   waterfall: true,
   // disabled
   action: false,
@@ -62,6 +63,7 @@ export const CHART_ANALYSIS_RENDER_FORMATS = {
   row: "svg",
   sankey: "svg",
   scatter: "svg",
+  treemap: "svg",
   waterfall: "svg",
 } as const satisfies { [display in EnabledChartTypes]: "png" | "svg" | "none" };
 

@@ -133,7 +133,7 @@ export function useLibraryTreeTableInstance({
           if (isEmptyStateData(data)) {
             return (
               <Flex align="center" gap="0.25rem" data-testid="empty-state-row">
-                <Text c="text-tertiary" fz="inherit">
+                <Text c="text-disabled" fz="inherit">
                   {data.description}
                 </Text>
                 {!isRemoteSyncReadOnly && (
@@ -155,8 +155,8 @@ export function useLibraryTreeTableInstance({
                   <Group gap="sm" miw={0} align="center">
                     <Text truncate>{row.original.name}</Text>
                     <Group gap="xs">
-                      <Icon name="collection" size={12} c="text-tertiary" />
-                      <Text fz="xs" c="text-tertiary" truncate>
+                      <Icon name="collection" size={12} c="text-disabled" />
+                      <Text fz="xs" c="text-disabled" truncate>
                         {row.original.parentCollectionName}
                       </Text>
                     </Group>

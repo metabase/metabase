@@ -124,6 +124,7 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",
+  usesEChartsRenderer: true,
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),

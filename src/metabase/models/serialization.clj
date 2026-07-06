@@ -1291,7 +1291,7 @@
     [:field (export-mbql-map opts) id]
 
     ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
-    [:field (id :guard pos-int?) (opts :guard (some-fn map? nil?))]
+    [:field (id :guard pos-int?) (opts :guard (or (map? opts) (nil? opts)))]
     [:field (*export-field-fk* id) (export-mbql-map opts)]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
@@ -1381,11 +1381,11 @@
     [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
 
     ;; legacy field refs, still used in parameters and result metadata `field_ref`
-    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (some-fn map? nil))]
+    [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (or (map? opts) (nil? opts)))]
     [:field (*import-field-fk* fully-qualified-name) (some-> opts import-mbql-update-refs)]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
-    [(tag :guard #{:field :field-id "field" "field-id"}) (id :guard vector?)]
+    [#{:field :field-id "field" "field-id"} (id :guard vector?)]
     [:field (*import-field-fk* id) nil]
 
     [#{:metric "metric"} opts (entity-id :guard portable-id?)]
@@ -1789,16 +1789,18 @@
 
 (defn- import-card-dimension-ref
   [s]
-  (if-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:([A-Za-z0-9_\-]{21})_name$" s))]
-    (str "$_card:" (*import-fk* card-id :model/Card) "_name")
-    s))
+  (or (when-let [[_ card-id] (and (string? s) (re-matches #"^\$_card:([A-Za-z0-9_\-]{21})_name$" s))]
+        (when-let [resolved (*import-fk* card-id :model/Card)]
+          (str "$_card:" resolved "_name")))
+      s))
 
 (defn- import-visualizer-source-id
   [source-id]
   (when (string? source-id)
-    (if-let [card-entity-id (second (re-matches #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
-      (str "card:" (*import-fk* card-entity-id :model/Card))
-      source-id)))
+    (or (when-let [card-entity-id (second (re-matches #"^card:([A-Za-z0-9_\-]{21})$" source-id))]
+          (when-let [card-id (*import-fk* card-entity-id :model/Card)]
+            (str "card:" card-id)))
+        source-id)))
 
 (defn import-visualizer-settings
   "Update embedded entity ids to card ids in visualizer dashcard settings"
@@ -1806,20 +1808,26 @@
   (m/update-existing-in
    settings
    [:visualization :columnValuesMapping]
-   (fn [mapping]
-     (into {}
-           (for [[k cols] mapping]
-             (let [updated-cols (cond
-                                  ;; e.g. [{:sourceId "card:..."} ...]
-                                  (and (coll? cols) (map? (first cols)))
-                                  (mapv #(update % :sourceId import-visualizer-source-id) cols)
+   update-vals
+   (fn [cols]
+     (cond
+       ;; e.g. [{:sourceId "card:..."} ...]
+       (and (coll? cols) (map? (first cols)))
+       (mapv #(update % :sourceId import-visualizer-source-id) cols)
 
-                                  ;; e.g. ["$_card:<id>_name"] for funnel dimensions
-                                  (and (coll? cols) (string? (first cols)))
-                                  (mapv import-card-dimension-ref cols)
+       ;; e.g. ["$_card:<id>_name"] for funnel dimensions
+       (and (coll? cols) (string? (first cols)))
+       (mapv import-card-dimension-ref cols)
 
-                                  :else cols)]
-               [k updated-cols]))))))
+       :else cols))))
+
+(defn import-visualizer-settings-lenient
+  "Like [[import-visualizer-settings]], but resolves card references leniently: a dangling reference is
+  left in its portable entity-id form, instead of throwing. Use for paths where a deleted source Card
+  should be treated as a broken section rather than break the whole read."
+  [settings]
+  (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.db/lenient-import-resolver)]
+    (import-visualizer-settings settings)))
 
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`

@@ -45,9 +45,7 @@
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
-    (let [card-name    (or (-> dashcard :visualization_settings :visualization :settings :card.title)
-                           (-> dashcard :visualization_settings :card.title)
-                           (-> card :name))
+    (let [card-name    (render.util/dashcard-title card dashcard)
           image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
           title-href   (if dashcard
@@ -182,6 +180,7 @@
         (#{:smartscalar
            :progress
            :sankey
+           :treemap
            :scalar
            :pie
            :scatter

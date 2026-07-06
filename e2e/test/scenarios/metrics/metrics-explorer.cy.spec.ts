@@ -547,7 +547,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Empty Metric");
 
-      cy.findByRole("heading", { name: "No results!" }).should("be.visible");
+      cy.findByRole("heading", { name: "No results" }).should("be.visible");
     });
   });
 

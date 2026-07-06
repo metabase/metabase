@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
@@ -68,16 +69,22 @@
     (is (contains? tools "ask_for_sql_clarification"))))
 
 (deftest get-tools-for-nlq-profile-test
-  (testing "the general search is always available; the curated search tool only with the semantic-search feature"
-    (mt/with-premium-features #{}
+  (testing "nlq discovers data through the curated library tool when it can serve queries, else general search"
+    ;; Entity retrieval unavailable (no pgvector / OSS): the general `search` fallback is the discovery tool,
+    ;; so the agent is never left with zero ways to find data. The library tool is filtered out.
+    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
       (let [tools (tools-for-profile :nlq)]
         (is (map? tools))
         (is (contains? tools "search"))
         (is (contains? tools "construct_notebook_query"))
         (is (contains? tools "create_chart"))
-        (is (not (contains? tools "search_curated")))))
-    (mt/with-premium-features #{:semantic-search}
-      (is (contains? (tools-for-profile :nlq) "search_curated")))))
+        (is (not (contains? tools "retrieve_library_entities")))))
+    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): the curated library tool
+    ;; replaces general search. Exactly one discovery tool survives capability filtering.
+    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+      (let [tools (tools-for-profile :nlq)]
+        (is (contains? tools "retrieve_library_entities"))
+        (is (not (contains? tools "search")))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools (tools-for-profile :document-generate-content)]

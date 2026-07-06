@@ -1,5 +1,4 @@
-import type { ChangeEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,9 +8,14 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Select } from "metabase/common/components/Select";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import {
+  Combobox,
+  DefaultSelectItem,
+  UnstyledButton,
+  useCombobox,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
@@ -25,7 +29,6 @@ import {
   DatabaseLink,
   DatabaseLinkIcon,
   DatabaseLinkText,
-  SchemaTrigger,
   SchemaTriggerIcon,
   SchemaTriggerText,
   SectionBody,
@@ -127,31 +130,49 @@ interface SchemaSelectProps {
 }
 
 const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
-  const trigger = (
-    <SchemaTrigger>
-      <SchemaTriggerText data-testid="xray-schema-name">
-        {schema}
-      </SchemaTriggerText>
-      <SchemaTriggerIcon name="chevrondown" />
-    </SchemaTrigger>
-  );
-
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      onChange?.(event.target.value);
-    },
-    [onChange],
-  );
+  const combobox = useCombobox();
 
   return (
-    <Select
-      value={schema}
-      options={schemas}
-      optionNameFn={getSchemaOption}
-      optionValueFn={getSchemaOption}
-      onChange={handleChange}
-      triggerElement={trigger}
-    />
+    <Combobox
+      store={combobox}
+      position="bottom-start"
+      width={300}
+      onOptionSubmit={(value) => {
+        onChange?.(value);
+        combobox.closeDropdown();
+      }}
+    >
+      <Combobox.Target>
+        <UnstyledButton
+          display="inline-flex"
+          mx="sm"
+          style={{ alignItems: "center", outline: "none" }}
+          onClick={() => combobox.toggleDropdown()}
+        >
+          <SchemaTriggerText data-testid="xray-schema-name">
+            {schema}
+          </SchemaTriggerText>
+          <SchemaTriggerIcon name="chevrondown" />
+        </UnstyledButton>
+      </Combobox.Target>
+      <Combobox.Dropdown>
+        <Combobox.Options>
+          {schemas.map((schemaOption) => (
+            <Combobox.Option
+              key={schemaOption}
+              value={schemaOption}
+              selected={schemaOption === schema}
+              p={0}
+            >
+              <DefaultSelectItem
+                value={schemaOption}
+                selected={schemaOption === schema}
+              />
+            </Combobox.Option>
+          ))}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 };
 
@@ -191,8 +212,4 @@ const getMessages = (count: number) => {
     .map((index) => options[index % options.length])
     .sample(count)
     .value();
-};
-
-const getSchemaOption = (schema: string) => {
-  return schema;
 };

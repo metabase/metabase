@@ -7,7 +7,7 @@
   color: var(--mb-color-text-primary);
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
-    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background_surface-hover);
+    color: var(--mb-color-text-brand-hover);
   }
 }

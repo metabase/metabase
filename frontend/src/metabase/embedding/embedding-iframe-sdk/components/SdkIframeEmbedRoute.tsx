@@ -20,11 +20,10 @@ import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/d
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { createSnowplowTracker } from "metabase/analytics";
-import { api } from "metabase/api/client";
+import type { OnBeforeRequestHandler } from "metabase/api/client";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserId } from "metabase/selectors/user";
@@ -47,9 +46,7 @@ import {
 
 let _embedReferrer: string | undefined;
 
-const embedReferrerHandler = async (
-  config: OnBeforeRequestHandlerConfig,
-): Promise<OnBeforeRequestHandlerConfig | void> => {
+const embedReferrerHandler: OnBeforeRequestHandler = async (config) => {
   if (_embedReferrer) {
     return {
       ...config,
@@ -62,10 +59,9 @@ const embedReferrerHandler = async (
   }
 };
 
-// Register once — uses a named function ref so it can't be pushed twice
-if (!api.beforeRequestHandlers.includes(embedReferrerHandler)) {
-  api.beforeRequestHandlers.push(embedReferrerHandler);
-}
+// Install the iframe embed-referrer handler into its plugin slot.
+PLUGIN_EMBEDDING_IFRAME_SDK.onBeforeRequestHandlers.embedReferrer =
+  embedReferrerHandler;
 
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.

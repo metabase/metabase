@@ -4,7 +4,7 @@
 
   .FooterButtonGroup {
     .Button {
-      border: 1px solid var(--mb-color-background-primary);
+      border: 1px solid var(--mb-color-background_page-primary);
 
       /* compatibility with Button.Group */
       &:not(:last-of-type) {

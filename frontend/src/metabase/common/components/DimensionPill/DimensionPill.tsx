@@ -127,7 +127,7 @@ export function DimensionPill({
           onClick={isInteractive ? () => setIsOpen(true) : undefined}
         >
           <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />
-          <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
+          <Text size="sm" lh={1} c={isEmpty ? "text-disabled" : undefined}>
             {pillLabel}
           </Text>
         </Flex>

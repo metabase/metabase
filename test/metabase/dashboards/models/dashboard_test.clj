@@ -9,6 +9,8 @@
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.queries.models.parameter-card :as parameter-card]
+   [metabase.stale-test :as stale-test]
+   [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -416,6 +418,32 @@
                                                            [:card [:map
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
+
+(deftest find-stale-query-test
+  (testing "the Dashboard `find-stale-query` method selects stale dashboards and applies the model's own exclusions"
+    (mt/with-temp [:model/Collection {col-id :id} {}
+                   :model/Dashboard {stale-id :id}    (stale-test/stale-dashboard {:name "stale" :collection_id col-id})
+                   :model/Dashboard {fresh-id :id}    {:name "fresh" :collection_id col-id
+                                                       :last_viewed_at (stale-test/datetime-months-ago 1)}
+                   :model/Dashboard {archived-id :id} (stale-test/stale-dashboard {:name "archived" :collection_id col-id
+                                                                                   :archived true})]
+      (let [stale-ids (fn [] (set (map :id (t2/query (staleness/find-stale-query
+                                                      :model/Dashboard
+                                                      {:collection-ids #{col-id}
+                                                       :cutoff-date    (stale-test/date-months-ago 6)})))))]
+        (testing "a stale, unarchived dashboard is returned; recent and archived dashboards are not"
+          (let [ids (stale-ids)]
+            (is (contains? ids stale-id))
+            (is (not (contains? ids fresh-id)))
+            (is (not (contains? ids archived-id)))))
+        (testing "a publicly shared dashboard is excluded only when public sharing is enabled"
+          (mt/with-temp [:model/Dashboard {public-id :id} (stale-test/stale-dashboard
+                                                           {:name "public" :collection_id col-id
+                                                            :public_uuid (str (random-uuid))})]
+            (tu/with-temporary-setting-values [enable-public-sharing false]
+              (is (contains? (stale-ids) public-id)))
+            (tu/with-temporary-setting-values [enable-public-sharing true]
+              (is (not (contains? (stale-ids) public-id))))))))))
 
 (deftest ^:parallel hydrate-resolved-params-model-test
   (mt/with-temp
