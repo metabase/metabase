@@ -63,20 +63,26 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
-    markChartSaved: (
-      state,
-      action: PayloadAction<{
-        entityId: string;
-        cardId: number;
-        location?: SavedEntityLocation;
-      }>,
-    ) => {
-      const { entityId, cardId, location } = action.payload;
-      state.savedChartCardIds[entityId] = cardId;
-      if (location) {
-        state.savedChartLocations[entityId] = location;
-      }
-    },
+    markChartSaved: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          entityId: string;
+          cardId: number;
+          location?: SavedEntityLocation;
+        }>,
+      ) => {
+        const { entityId, cardId, location } = action.payload;
+        const prevState = convo.state ?? {};
+        convo.state = {
+          ...prevState,
+          savedCharts: {
+            ...(prevState.savedCharts ?? {}),
+            [entityId]: { card_id: cardId, ...(location ? { location } : {}) },
+          },
+        };
+      },
+    ),
     // CONVERSATION REDUCERS
     addDeveloperMessage: convoReducer(
       (convo, action: ConvoPayloadAction<{ message: string }>) => {

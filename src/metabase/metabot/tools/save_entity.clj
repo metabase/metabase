@@ -150,6 +150,11 @@
                             ""
                             (str "Tell the user it was saved and share this link: "
                                  (te/link question-name link)))]
+      ;; Record the save in agent memory so it round-trips into the persisted
+      ;; conversation state (`MetabotConversation.state.savedCharts`).
+      (when shared/*memory-atom*
+        (swap! shared/*memory-atom* assoc-in [:state :savedCharts chart_id]
+               {:card_id (:id card) :location location}))
       {:output            (str "<result>\nSaved as card " (:id card)
                                " in " (:name location) ".\n</result>\n"
                                "<instructions>\n" instruction-text "\n</instructions>")
@@ -160,6 +165,8 @@
        :data-parts        [(streaming/entity-saved-part
                             {:entity_id chart_id
                              :card_id   (:id card)
+                             :name      question-name
+                             :card_url  (channel.urls/card-path (:id card))
                              :location  location})]})
     (catch Exception e
       (log/error e "Error saving entity")

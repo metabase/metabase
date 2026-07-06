@@ -40,9 +40,29 @@
             (is (= "entity_saved" (:data-type part)))
             (is (= "c-1" (get-in part [:data :entity_id])))
             (is (= (:id card) (get-in part [:data :card_id])))
+            (is (= "Venues by price" (get-in part [:data :name])))
+            (is (= (str "/question/" (:id card)) (get-in part [:data :card_url])))
             (is (= {:type "collection" :id (:id coll) :name "Sales analytics"
                     :url (str "/collection/" (:id coll))}
                    (get-in part [:data :location])))))))))
+
+(deftest records-save-in-conversation-state-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {:name "Sales analytics"}]
+        (let [memory (chart-memory)]
+          (binding [shared/*memory-atom* memory]
+            (save-entity/save-entity-tool
+             {:chart_id    "c-1"
+              :name        "Venues by price"
+              :description "Count of venues grouped by price."
+              :destination {:target_type "collection" :collection_id (:id coll)}}))
+          (testing "records the saved card + location in agent memory so it persists in the conversation"
+            (let [saved (get-in @memory [:state :savedCharts "c-1"])]
+              (is (some? (:card_id saved)))
+              (is (= {:type "collection" :id (:id coll) :name "Sales analytics"
+                      :url (str "/collection/" (:id coll))}
+                     (:location saved))))))))))
 
 (deftest save-to-root-collection-test
   (mt/with-current-user (mt/user->id :crowberto)
