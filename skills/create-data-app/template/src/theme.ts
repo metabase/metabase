@@ -3,7 +3,7 @@ import type { MetabaseTheme } from "@metabase/embedding-sdk-react";
 export const sdkTheme: MetabaseTheme = {
   colors: {
     brand: "#4D96FF",
-    "brand-hover": "#4D96FF",
+    "brand-hover": "#EAF4FF",
     positive: "#4D96FF",
     charts: ["#4D96FF"],
     background: "white",
