@@ -1,10 +1,11 @@
-import type { ReactNode, Ref } from "react";
-import { forwardRef } from "react";
+import { useField } from "formik";
+import type { ChangeEvent, ReactNode, Ref } from "react";
+import { forwardRef, useCallback } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { FormTextarea } from "metabase/forms/components/FormTextarea";
+import { Textarea } from "metabase/ui";
 
 type FormTextareaWidgetProps = ActionFormFieldProps & {
   actions?: ReactNode;
@@ -14,6 +15,7 @@ type FormTextareaWidgetProps = ActionFormFieldProps & {
 
 export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
   {
+    name,
     title,
     description,
     actions,
@@ -21,11 +23,30 @@ export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
     options,
     type,
     field,
+    nullable,
     ...props
   }: FormTextareaWidgetProps,
   ref: Ref<HTMLTextAreaElement>,
 ) {
   const id = useUniqueId();
+  const [{ value }, { error, touched }, { setValue, setTouched }] =
+    useField(name);
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = event.target.value;
+      if (newValue === "") {
+        setValue(nullable ? null : undefined);
+      } else {
+        setValue(newValue);
+      }
+    },
+    [nullable, setValue],
+  );
+
+  const handleBlur = useCallback(() => {
+    setTouched(true);
+  }, [setTouched]);
 
   return (
     <FormField
@@ -33,9 +54,20 @@ export const FormTextareaWidget = forwardRef(function FormTextareaWidget(
       actions={actions}
       description={description}
       htmlFor={id}
+      error={touched ? error : undefined}
       optional={optional}
     >
-      <FormTextarea ref={ref} id={id} minRows={5} {...props} />
+      <Textarea
+        {...props}
+        ref={ref}
+        id={id}
+        name={name}
+        value={value ?? ""}
+        error={touched && Boolean(error)}
+        minRows={5}
+        onChange={handleChange}
+        onBlur={handleBlur}
+      />
     </FormField>
   );
 });
