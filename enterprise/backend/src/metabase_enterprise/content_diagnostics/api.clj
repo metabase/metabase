@@ -60,7 +60,7 @@
   entity-type against the entity's current `collection_id` via `collection/visible-collection-filter-clause`,
   which reads `api/*current-user-id*` / `api/*is-superuser?*`. A finding whose `entity_type` has no
   collection model is **not** kept (fail-closed — nothing to gate on; all current stale types are
-  collection-bound card/dashboard)."
+  collection-bound card/dashboard/document)."
   []
   (into [:or]
         (for [[etype model] detect/entity-type->model]
@@ -114,10 +114,13 @@
 (defn- entity-context
   "For one entity-type's id set → `{entity-id → {:description :collection_id}}`. Only the **non-denormalized**
   display fields are hydrated live — the `description` and the `collection_id` that feeds the breadcrumb;
-  name + creator are served from the finding's denormalized columns (no `:name`/`:creator` hydrate)."
+  name + creator are served from the finding's denormalized columns (no `:name`/`:creator` hydrate).
+  `document` has no description column, so its context carries only `collection_id` (served `description: nil`)."
   [entity-type ids]
   (when-let [model (detect/entity-type->model entity-type)]
-    (m/index-by :id (t2/select [model :id :description :collection_id] :id [:in (set ids)]))))
+    (let [cols (cond-> [:id :collection_id]
+                 (not= entity-type :document) (conj :description))]
+      (m/index-by :id (t2/select (into [model] cols) :id [:in (set ids)])))))
 
 (defn- collection-breadcrumbs
   "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
@@ -164,7 +167,7 @@
                :details             (merge details
                                            {:collection  (get breadcrumbs (:collection_id entity))
                                             :description (:description entity)
-                                            ;; card/dashboard have no owner column → null.
+                                            ;; card/dashboard/document have no owner column → null.
                                             :owner       nil
                                             ;; creator denormalized (id + common_name) — no live :creator hydrate.
                                             :creator     (when entity_creator_id
@@ -235,9 +238,9 @@
    :last-used-at :last_active_at})
 
 (def ^:private stale-entity-types
-  "Entity types the `stale` finding type covers per spec. `card`/`dashboard` emit today; `document`/
-  `transform` are reserved — the enum accepts them now so the filter is forward-compatible (they simply
-  match no rows until their stale coverage lands)."
+  "Entity types the `stale` finding type covers per spec. `card`/`dashboard`/`document` emit today;
+  `transform` is reserved — the enum accepts it now so the filter is forward-compatible (it simply
+  matches no rows until its stale coverage lands)."
   #{:card :dashboard :document :transform})
 
 ;;; ------------------------------------------------ endpoints ------------------------------------------

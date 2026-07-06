@@ -24,7 +24,8 @@
   "Content Diagnostics entity-types → their Toucan models. Single source of truth: the API's display
   hydration and the scan's candidate→finding mapping both derive from this (inverse below)."
   {:card      :model/Card
-   :dashboard :model/Dashboard})
+   :dashboard :model/Dashboard
+   :document  :model/Document})
 
 (def ^:private model->entity-type
   "Inverse of [[entity-type->model]] — `find-candidates` returns `:model` keywords like `:model/Card`."
@@ -35,12 +36,16 @@
 ;;;   {:entity-type <kw> :entity-id <int> :finding-type <kw> :details <map>}
 
 (defn stale-checker
-  "Instance-wide stale Card/Dashboard candidates as finding maps (reuses the EE stale module)."
+  "Instance-wide stale Card/Dashboard/Document candidates as finding maps (reuses the EE stale module).
+  `:models` is passed explicitly (derived from [[entity-type->model]]) because `find-candidates` defaults
+  to Card+Dashboard only — Document is opt-in. Documents can also surface via the never-used arm of their
+  stale query (never viewed + created before the cutoff), arriving with a nil `last_used_at`."
   []
   (let [threshold (cd.settings/content-diagnostics-stale-threshold-days)
         cutoff    (t/minus (t/local-date) (t/days threshold))
         {:keys [rows]} (stale.impl/find-candidates
                         {:collection-ids :all
+                         :models         (set (vals entity-type->model))
                          :cutoff-date    cutoff
                          :limit          nil
                          :offset         nil
@@ -95,11 +100,10 @@
 ;;; ----------------------------------------------- scan ------------------------------------------------
 
 (defn- count-scannable
-  "Size of the candidate universe the checkers swept (non-archived Cards + Dashboards) — the denominator
-  for the findings/entities topline."
+  "Size of the candidate universe the checkers swept (non-archived rows of every covered model) — the
+  denominator for the findings/entities topline."
   []
-  (+ (t2/count :model/Card :archived false)
-     (t2/count :model/Dashboard :archived false)))
+  (transduce (map #(t2/count % :archived false)) + (vals entity-type->model)))
 
 (defn- scope-collection-id-lookup
   "Batched `{[entity-type entity-id] → collection_id}` for the findings' entities — **one** query per

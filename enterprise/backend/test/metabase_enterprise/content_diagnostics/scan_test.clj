@@ -29,11 +29,17 @@
                        :model/Card      {s3 :id} {:collection_id coll-id :last_used_at (stale-instant)}
                        :model/Dashboard {s4 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
                        :model/Dashboard {s5 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
+                       :model/Document  {s6 :id} {:collection_id coll-id :last_viewed_at (stale-instant)}
+                       ;; never-used arm (documents only): never viewed (nil last_viewed_at, view_count 0)
+                       ;; + created before the cutoff
+                       :model/Document  {s7 :id} {:collection_id coll-id :created_at (stale-instant)}
                        ;; fresh: used just now — must NOT be flagged
                        :model/Card      {f1 :id} {:collection_id coll-id :last_used_at (fresh-instant)}
-                       :model/Dashboard {f2 :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}]
-          (let [stale-keys #{[:card s1] [:card s2] [:card s3] [:dashboard s4] [:dashboard s5]}
-                fresh-keys #{[:card f1] [:dashboard f2]}
+                       :model/Dashboard {f2 :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}
+                       :model/Document  {f3 :id} {:collection_id coll-id :last_viewed_at (fresh-instant)}]
+          (let [stale-keys #{[:card s1] [:card s2] [:card s3] [:dashboard s4] [:dashboard s5]
+                             [:document s6] [:document s7]}
+                fresh-keys #{[:card f1] [:dashboard f2] [:document f3]}
                 result     (detect/scan!)
                 rows       (t2/select :model/ContentDiagnosticsFinding :scan_id (:scan_id result))
                 found-keys (set (map (juxt :entity_type :entity_id) rows))]
@@ -61,6 +67,10 @@
             (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
               (let [row (first (filter #(and (= :dashboard (:entity_type %)) (= s4 (:entity_id %))) rows))]
                 (is (some? (:last_active_at row)))))
+            (testing "never-used document (never viewed, created before the cutoff) lands with nil last_active_at"
+              (let [row (first (filter #(and (= :document (:entity_type %)) (= s7 (:entity_id %))) rows))]
+                (is (some? row))
+                (is (nil? (:last_active_at row)))))
             (testing "denormalized columns (entity_name/created_at/creator_id/creator_name) are stamped at scan time"
               (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
                 (is (some? (:entity_name row)))
@@ -355,7 +365,8 @@
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
                          :model/Card {card-id :id} {:collection_id coll-id}
-                         :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+                         :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                         :model/Document {doc-id :id} {:collection_id coll-id}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
             (let [card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "e" :entity_type :card :entity_id card-id
@@ -363,17 +374,22 @@
                   dash-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "e" :entity_type :dashboard :entity_id dash-id
                                                              :finding_type :stale :details {}}))
+                  doc-fid  (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            {:scan_id "e" :entity_type :document :entity_id doc-id
+                                                             :finding_type :stale :details {}}))
                   ids      (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
                                                                    "ee/content-diagnostics/stale" kvs)))))]
               (testing "omitted → all entity types"
-                (is (= #{card-fid dash-fid} (ids))))
+                (is (= #{card-fid dash-fid doc-fid} (ids))))
               (testing "single value → only that type"
                 (is (= #{card-fid} (ids :entity-types "card")))
-                (is (= #{dash-fid} (ids :entity-types "dashboard"))))
+                (is (= #{dash-fid} (ids :entity-types "dashboard")))
+                ;; also exercises document hydration (no description column → served description: nil)
+                (is (= #{doc-fid} (ids :entity-types "document"))))
               (testing "multiple values → union of the given types"
                 (is (= #{card-fid dash-fid} (ids :entity-types ["card" "dashboard"]))))
               (testing "a reserved type with no findings → empty"
-                (is (empty? (ids :entity-types "document")))))))))))
+                (is (empty? (ids :entity-types "transform")))))))))))
 
 (deftest serve-threshold-days-filter-test
   (testing "GET /stale threshold-days drops findings less stale than the cutoff; never-used always passes"

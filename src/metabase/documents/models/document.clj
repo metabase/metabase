@@ -172,7 +172,9 @@
   {:select [:document.id
             [[:inline "Document"] :model]
             [:document.name :name]
-            [:document.last_viewed_at :last_used_at]
+            ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
+            ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
+            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
             [:document.created_at :created_at]
             [:document.creator_id :creator_id]]
    :from :document
