@@ -479,16 +479,8 @@ export const sendAgentRequest = createAsyncThunk<
                 });
               })
               .with({ type: "data-entity_saved" }, (part) => {
-                // Flip the inline chart's header to "Saved" and render a small
-                // "Chart X saved to Y" confirmation block in the conversation.
-                dispatch(
-                  markChartSaved({
-                    agentId,
-                    entityId: part.data.entity_id,
-                    cardId: part.data.card_id,
-                    location: part.data.location,
-                  }),
-                );
+                // Render the "Chart X saved to Y" confirmation block. The inline
+                // chart's "Saved" header derives from the presence of this part.
                 pushDataPart({ type: "data_part", part });
               })
               .with(

@@ -215,18 +215,11 @@ describe("MetabotInlineChart", () => {
       fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
         name: "create-card",
       });
-      const { store } = setup();
+      setup();
 
       const modal = await openSaveModal();
       await submitSaveModal(modal);
 
-      await waitFor(() => {
-        expect(
-          store.getState().metabot.conversations.omnibot?.state?.savedCharts[
-            "card-1"
-          ]?.card_id,
-        ).toBe(99);
-      });
       await waitFor(() => {
         expect(
           screen.queryByRole("button", { name: "Save" }),
@@ -235,21 +228,17 @@ describe("MetabotInlineChart", () => {
       expect(await screen.findByText("Saved")).toBeInTheDocument();
     });
 
-    it("shows a short 'Saved' link (not the folder name) after saving", async () => {
+    it("shows a short 'Saved' link (not the folder name) when a save data part exists", async () => {
       const { store } = setup();
 
       act(() => {
         store.dispatch(
           markChartSaved({
             agentId: "omnibot",
-            entityId: "card-1",
-            cardId: 99,
-            location: {
-              type: "collection",
-              id: 5,
-              name: "Sales analytics",
-              url: "/collection/5",
-            },
+            entity_id: "card-1",
+            card_id: 99,
+            name: "Orders by month",
+            location: { type: "collection", id: 5, name: "Sales analytics" },
           }),
         );
       });

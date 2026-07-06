@@ -41,9 +41,7 @@
             (is (= "c-1" (get-in part [:data :entity_id])))
             (is (= (:id card) (get-in part [:data :card_id])))
             (is (= "Venues by price" (get-in part [:data :name])))
-            (is (= (str "/question/" (:id card)) (get-in part [:data :card_url])))
-            (is (= {:type "collection" :id (:id coll) :name "Sales analytics"
-                    :url (str "/collection/" (:id coll))}
+            (is (= {:type "collection" :id (:id coll) :name "Sales analytics"}
                    (get-in part [:data :location])))))))))
 
 (deftest records-save-in-conversation-state-test
@@ -60,8 +58,7 @@
           (testing "records the saved card + location in agent memory so it persists in the conversation"
             (let [saved (get-in @memory [:state :savedCharts "c-1"])]
               (is (some? (:card_id saved)))
-              (is (= {:type "collection" :id (:id coll) :name "Sales analytics"
-                      :url (str "/collection/" (:id coll))}
+              (is (= {:type "collection" :id (:id coll) :name "Sales analytics"}
                      (:location saved))))))))))
 
 (deftest save-to-root-collection-test
@@ -71,7 +68,7 @@
             card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
         (testing "an explicit null collection_id saves to the root collection"
           (is (nil? (:collection_id card)))
-          (is (= "/collection/root" (get-in result [:data-parts 0 :data :location :url]))))))))
+          (is (nil? (get-in result [:data-parts 0 :data :location :id]))))))))
 
 (deftest save-to-personal-collection-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -93,8 +90,7 @@
             (is (= (:id dash) (:dashboard_id card)))
             (is (t2/exists? :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))))
           (testing "the location points at the dashboard"
-            (is (= {:type "dashboard" :id (:id dash) :name "Ops"
-                    :url (str "/dashboard/" (:id dash))}
+            (is (= {:type "dashboard" :id (:id dash) :name "Ops"}
                    (get-in result [:data-parts 0 :data :location])))))))))
 
 (deftest unknown-chart-test

@@ -48,7 +48,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-navigate_to" }, () => true)
     .with({ type: "data-code_edit" }, () => true)
     .with({ type: "data-generated_entity" }, () => true)
-    .with({ type: "data-entity_saved" }, () => true)
+    .with({ type: "data-entity_saved" }, (part) => part.data.location != null)
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .exhaustive();
