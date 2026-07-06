@@ -87,7 +87,7 @@ function setup(
 // options live in a separate `listbox`, so scope pill assertions to the list.
 const getPills = () => within(screen.getByRole("list"));
 const getRemoveButtons = () =>
-  screen.queryAllByRole("button", { name: "Remove" });
+  screen.queryAllByRole("button", { name: /^Remove / });
 
 // True when `a` precedes `b` in DOM order.
 const isBefore = (a: Element, b: Element) =>
@@ -116,9 +116,12 @@ describe("GroupsMultiSelect", () => {
   it("removes a non-default group via its pill", async () => {
     const { onChange } = setup([ALL_USERS.id, ADMINISTRATORS.id]);
 
-    // All Users stays locked, so the only remove control is Administrators'.
+    // All Users stays locked, so Administrators has the only remove control,
+    // and its label names the group so pills stay distinguishable.
     expect(getRemoveButtons()).toHaveLength(1);
-    await userEvent.click(getRemoveButtons()[0]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Administrators" }),
+    );
 
     expect(onChange).toHaveBeenLastCalledWith([ALL_USERS.id]);
   });

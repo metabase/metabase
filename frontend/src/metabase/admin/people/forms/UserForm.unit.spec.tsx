@@ -158,7 +158,7 @@ describe("UserForm", () => {
 
       // foo (id 3) is the only removable selected group; All Users is locked.
       await userEvent.click(
-        await screen.findByRole("button", { name: "Remove" }),
+        await screen.findByRole("button", { name: "Remove foo" }),
       );
 
       await userEvent.click(
@@ -184,7 +184,9 @@ describe("UserForm", () => {
         within(await screen.findByRole("list")).getByText("All Users"),
       ).toBeInTheDocument();
       // ...but without a remove control, so only foo (non-default) is removable.
-      expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
+      expect(screen.getAllByRole("button", { name: /^Remove / })).toHaveLength(
+        1,
+      );
     });
   });
 
