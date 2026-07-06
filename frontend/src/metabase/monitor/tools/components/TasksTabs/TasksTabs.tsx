@@ -1,62 +1,48 @@
-import { push } from "react-router-redux";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import {
+  type MonitorHeaderTab,
+  MonitorHeaderTabs,
+} from "metabase/monitor/components/MonitorHeaderTabs";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
-import { useDispatch } from "metabase/redux";
-import { type WithRouterProps, withRouter } from "metabase/router";
-import { Flex, Icon, Stack, Tabs, Tooltip } from "metabase/ui";
+import { Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-type TabConfig = {
-  value: string;
-  label: string;
+import S from "./TasksTabs.module.css";
+
+type TasksTabsProps = {
+  children: ReactNode;
 };
 
-type TasksTabsProps = WithRouterProps & {
-  children: React.ReactNode;
-};
-
-const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
-  const tabs: TabConfig[] = [
-    { value: Urls.monitorTasksList(), label: t`Tasks` },
-    { value: Urls.monitorTasksRuns(), label: t`Runs` },
+export const TasksTabs = ({ children }: TasksTabsProps) => {
+  const tabs: MonitorHeaderTab[] = [
+    { label: t`Tasks`, to: Urls.monitorTasksList() },
+    { label: t`Runs`, to: Urls.monitorTasksRuns() },
   ];
-  const DEFAULT_TAB = tabs[0].value;
-  const dispatch = useDispatch();
-  const activeTab =
-    tabs.find(({ value }) => value === location.pathname)?.value ?? DEFAULT_TAB;
-
-  const handleTabChange = (value: string | null) => {
-    if (value) {
-      dispatch(push(value));
-    }
-  };
 
   return (
-    <Stack gap="lg">
-      <Flex align="center" gap="xs">
-        <MonitorHeaderTitle>{t`Troubleshooting logs`}</MonitorHeaderTitle>
-        <Tooltip
-          label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
-        >
-          <Icon name="info" size="1rem" />
-        </Tooltip>
-      </Flex>
-      <SettingsSection>
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List>
-            {tabs.map((tab) => (
-              <Tabs.Tab key={tab.value} value={tab.value}>
-                {tab.label}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </Tabs>
+    <Flex h="100%" wrap="nowrap">
+      <Stack className={S.main} flex={1} gap="md">
+        <Stack gap="md">
+          <Flex align="center" gap="xs">
+            <MonitorHeaderTitle>{t`Troubleshooting logs`}</MonitorHeaderTitle>
+            <Tooltip
+              label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+              events={{ hover: true, focus: true, touch: false }}
+            >
+              <Icon
+                name="info"
+                size="1rem"
+                tabIndex={0}
+                aria-label={t`About troubleshooting logs`}
+              />
+            </Tooltip>
+          </Flex>
+          <MonitorHeaderTabs tabs={tabs} />
+        </Stack>
         {children}
-      </SettingsSection>
-    </Stack>
+      </Stack>
+    </Flex>
   );
 };
-
-export const TasksTabs = withRouter(TasksTabsBase);

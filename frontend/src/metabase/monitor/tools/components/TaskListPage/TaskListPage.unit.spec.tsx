@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import {
   act,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
@@ -42,6 +43,7 @@ const setup = ({
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupUniqueTasksEndpoint(["task-a", "task-b"]);
+  mockGetBoundingClientRect({ width: 100, height: 100 });
 
   if (error) {
     fetchMock.get("path:/api/task", { status: 500 });
@@ -50,12 +52,19 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskListPage} />,
+    <Route path={PATHNAME} component={TaskListPage}>
+      <Route path=":taskId" />
+    </Route>,
     {
       initialRoute: `${location.pathname}${location.search}`,
       withRouter: true,
     },
   );
+};
+
+const getLastTaskCallUrl = () => {
+  const calls = fetchMock.callHistory.calls("path:/api/task");
+  return calls[calls.length - 1]?.url;
 };
 
 describe("TaskListPage", () => {
@@ -67,39 +76,33 @@ describe("TaskListPage", () => {
     jest.useRealTimers();
   });
 
-  it("should show loading and empty state", async () => {
+  it("should show empty state", async () => {
     setup();
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
-    expect(screen.getByText("No results")).toBeInTheDocument();
+    expect(await screen.findByText("No results")).toBeInTheDocument();
   });
 
-  it("should show loading and results state", async () => {
+  it("should show results state", async () => {
     setup({
       tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
     });
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
+    expect(await screen.findByText("A task")).toBeInTheDocument();
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
-    expect(screen.getByText("A task")).toBeInTheDocument();
   });
 
   it("should show error state", async () => {
     setup({ error: true });
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    await waitForLoaderToBeRemoved();
+    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
     expect(screen.queryByText("A task")).not.toBeInTheDocument();
-    expect(screen.getByText("An error occurred")).toBeInTheDocument();
   });
 
   it("should not show pagination controls if there's only 1 page", async () => {
     setup();
 
-    await waitForLoaderToBeRemoved();
+    await screen.findByText("No results");
     expect(
       screen.queryByRole("button", { name: "Previous page" }),
     ).not.toBeInTheDocument();
@@ -126,9 +129,9 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
 
     expect(previousPage).toBeDisabled();
@@ -175,6 +178,25 @@ describe("TaskListPage", () => {
     expect(history?.getCurrentLocation().search).toEqual("");
   });
 
+  it("should show the total results count below the table", async () => {
+    setup({
+      tasksResponse: createMockTasksResponse({
+        data: [createMockTask()],
+        total: 75,
+        limit: 50,
+        offset: 0,
+      }),
+    });
+
+    await screen.findByText("A task");
+
+    const pagination = screen.getByRole("navigation", { name: "pagination" });
+    expect(
+      within(pagination).getByTestId("pagination-total"),
+    ).toHaveTextContent("75");
+    expect(pagination).toHaveTextContent("1 - 1");
+  });
+
   it("should reset pagination on task filter change", async () => {
     const { history } = setup({
       tasksResponse: createMockTasksResponse({
@@ -193,9 +215,9 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
     const taskPicker = screen.getByPlaceholderText("Filter by task");
 
@@ -248,9 +270,9 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
     const taskStatusPicker = screen.getByPlaceholderText("Filter by status");
 
@@ -288,6 +310,7 @@ describe("TaskListPage", () => {
   it("should reset pagination on sorting change", async () => {
     const { history } = setup({
       tasksResponse: createMockTasksResponse({
+        data: [createMockTask()],
         total: 75,
         limit: 50,
         offset: 0,
@@ -303,11 +326,11 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const previousPage = screen.getByRole("button", { name: "Previous page" });
+    const previousPage = await screen.findByRole("button", {
+      name: "Previous page",
+    });
     const nextPage = screen.getByRole("button", { name: "Next page" });
-    const startedAtHeader = screen.getByRole("button", {
+    const startedAtHeader = screen.getByRole("columnheader", {
       name: /Started at/,
     });
 
@@ -455,7 +478,9 @@ describe("TaskListPage", () => {
   });
 
   it("should allow to sort tasks list", async () => {
-    const { history } = setup();
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
+    });
 
     await waitFor(() => {
       expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
@@ -466,15 +491,18 @@ describe("TaskListPage", () => {
     ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
-    await waitForLoaderToBeRemoved();
-
-    const startedAtHeader = screen.getByRole("button", { name: /Started at/ });
-    const endedAtHeader = screen.getByRole("button", { name: /Ended at/ });
-    const durationHeader = screen.getByRole("button", { name: /Duration/ });
+    const startedAtHeader = await screen.findByRole("columnheader", {
+      name: /Started at/,
+    });
 
     expect(startedAtHeader).toBeInTheDocument();
-    expect(endedAtHeader).toBeInTheDocument();
-    expect(durationHeader).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: /Ended at/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: /Duration/ }),
+    ).toBeInTheDocument();
+    expect(startedAtHeader).toHaveAttribute("aria-sort", "descending");
     expect(
       within(startedAtHeader).getByRole("img", { name: "chevrondown icon" }),
     ).toBeInTheDocument();
@@ -482,8 +510,15 @@ describe("TaskListPage", () => {
 
     await userEvent.click(startedAtHeader);
 
+    await waitFor(() => {
+      expect(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).toHaveAttribute("aria-sort", "ascending");
+    });
     expect(
-      within(startedAtHeader).getByRole("img", { name: "chevronup icon" }),
+      within(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).getByRole("img", { name: "chevronup icon" }),
     ).toBeInTheDocument();
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
@@ -496,10 +531,20 @@ describe("TaskListPage", () => {
     });
     expect(history?.getCurrentLocation().search).toEqual("?sort_direction=asc");
 
-    await userEvent.click(endedAtHeader);
+    await userEvent.click(
+      screen.getByRole("columnheader", { name: /Ended at/ }),
+    );
 
+    await waitFor(() => {
+      expect(
+        screen.getByRole("columnheader", { name: /Ended at/ }),
+      ).toHaveAttribute("aria-sort", "ascending");
+    });
     expect(
-      within(endedAtHeader).getByRole("img", { name: "chevronup icon" }),
+      within(screen.getByRole("columnheader", { name: /Ended at/ })).getByRole(
+        "img",
+        { name: "chevronup icon" },
+      ),
     ).toBeInTheDocument();
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
@@ -515,10 +560,20 @@ describe("TaskListPage", () => {
       "?sort_column=ended_at&sort_direction=asc",
     );
 
-    await userEvent.click(durationHeader);
+    await userEvent.click(
+      screen.getByRole("columnheader", { name: /Duration/ }),
+    );
 
+    await waitFor(() => {
+      expect(
+        screen.getByRole("columnheader", { name: /Duration/ }),
+      ).toHaveAttribute("aria-sort", "ascending");
+    });
     expect(
-      within(durationHeader).getByRole("img", { name: "chevronup icon" }),
+      within(screen.getByRole("columnheader", { name: /Duration/ })).getByRole(
+        "img",
+        { name: "chevronup icon" },
+      ),
     ).toBeInTheDocument();
     expect(
       fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
@@ -533,6 +588,63 @@ describe("TaskListPage", () => {
     });
     expect(history?.getCurrentLocation().search).toEqual(
       "?sort_column=duration&sort_direction=asc",
+    );
+  });
+
+  it("should toggle sort direction when clicking the active sorted column", async () => {
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
+    });
+
+    const startedAtHeader = await screen.findByRole("columnheader", {
+      name: /Started at/,
+    });
+    expect(startedAtHeader).toHaveAttribute("aria-sort", "descending");
+
+    await userEvent.click(startedAtHeader);
+    await waitFor(() => {
+      expect(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).toHaveAttribute("aria-sort", "ascending");
+    });
+    expect(getLastTaskCallUrl()).toEqual(
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
+    );
+
+    await userEvent.click(
+      screen.getByRole("columnheader", { name: /Started at/ }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).toHaveAttribute("aria-sort", "descending");
+    });
+    expect(
+      within(
+        screen.getByRole("columnheader", { name: /Started at/ }),
+      ).getByRole("img", { name: "chevrondown icon" }),
+    ).toBeInTheDocument();
+    expect(getLastTaskCallUrl()).toEqual(
+      "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
+    );
+    act(() => {
+      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
+    });
+    expect(history?.getCurrentLocation().search).toEqual("");
+  });
+
+  it("should navigate to task details when a row is clicked", async () => {
+    const { history } = setup({
+      tasksResponse: createMockTasksResponse({
+        data: [createMockTask({ id: 123 })],
+      }),
+    });
+
+    const row = await screen.findByTestId("task");
+    await userEvent.click(row);
+
+    expect(history?.getCurrentLocation().pathname).toBe(
+      Urls.monitorTaskDetails(123),
     );
   });
 
@@ -558,7 +670,9 @@ describe("TaskListPage", () => {
     const taskPicker = screen.getByPlaceholderText("Filter by task");
 
     expect(taskPicker).toBeInTheDocument();
-    expect(taskPicker).toHaveValue("task-b");
+    await waitFor(() => {
+      expect(taskPicker).toHaveValue("task-b");
+    });
   });
 
   it("accepts status query param", async () => {
@@ -617,9 +731,7 @@ describe("TaskListPage", () => {
       }),
     });
 
-    await waitForLoaderToBeRemoved();
-
-    const row = screen.getByTestId("task");
+    const row = await screen.findByTestId("task");
     const startedAtElement = within(row).getByTestId("started-at");
     const endedAtElement = within(row).getByTestId("ended-at");
     expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
@@ -639,9 +751,7 @@ describe("TaskListPage", () => {
       }),
     });
 
-    await waitForLoaderToBeRemoved();
-
-    const row = screen.getByTestId("task");
+    const row = await screen.findByTestId("task");
     const startedAtElement = within(row).getByTestId("started-at");
     await userEvent.hover(startedAtElement);
 

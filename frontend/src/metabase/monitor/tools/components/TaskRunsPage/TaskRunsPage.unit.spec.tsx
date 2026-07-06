@@ -3,10 +3,12 @@ import fetchMock from "fetch-mock";
 
 import { setupTaskRunsEndpoints } from "__support__/server-mocks";
 import {
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -34,8 +36,12 @@ const setup = ({
     setupTaskRunsEndpoints(taskRunsResponse);
   }
 
+  mockGetBoundingClientRect({ width: 100, height: 100 });
+
   return renderWithProviders(
-    <Route path={PATHNAME} component={TaskRunsPage} />,
+    <Route path={PATHNAME} component={TaskRunsPage}>
+      <Route path=":runId" />
+    </Route>,
     {
       initialRoute,
       withRouter: true,
@@ -71,9 +77,7 @@ describe("TaskRunsPage", () => {
       }),
     });
 
-    await waitForLoaderToBeRemoved();
-
-    const startedAtElement = screen.getByTestId("started-at");
+    const startedAtElement = await screen.findByTestId("started-at");
     const endedAtElement = screen.getByTestId("ended-at");
     expect(startedAtElement).toHaveTextContent("March 4, 2023, 1:45 AM");
     expect(endedAtElement).toHaveTextContent("March 4, 2023, 1:46 AM");
@@ -92,12 +96,43 @@ describe("TaskRunsPage", () => {
       }),
     });
 
-    await waitForLoaderToBeRemoved();
-
-    const startedAtElement = screen.getByTestId("started-at");
+    const startedAtElement = await screen.findByTestId("started-at");
     await userEvent.hover(startedAtElement);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
+  });
+
+  it("should show the total results count below the table", async () => {
+    setup({
+      taskRunsResponse: createMockTaskRunsResponse({
+        data: [createMockTaskRun()],
+        total: 75,
+        limit: 50,
+        offset: 0,
+      }),
+    });
+    await waitForLoaderToBeRemoved();
+
+    const pagination = screen.getByRole("navigation", { name: "pagination" });
+    expect(
+      within(pagination).getByTestId("pagination-total"),
+    ).toHaveTextContent("75");
+    expect(pagination).toHaveTextContent("1 - 1");
+  });
+
+  it("should navigate to run details when a row is clicked", async () => {
+    const { history } = setup({
+      taskRunsResponse: createMockTaskRunsResponse({
+        data: [createMockTaskRun({ id: 55 })],
+      }),
+    });
+
+    const row = await screen.findByTestId("task-run");
+    await userEvent.click(row);
+
+    expect(history?.getCurrentLocation().pathname).toBe(
+      Urls.monitorTaskRunDetails(55),
+    );
   });
 
   describe("started-at filter with include-today", () => {

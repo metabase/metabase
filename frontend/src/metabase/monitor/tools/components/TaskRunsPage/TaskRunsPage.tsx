@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
 import { useListTaskRunsQuery } from "metabase/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { type WithRouterProps, withRouter } from "metabase/router";
-import { Flex } from "metabase/ui";
+import { Center, Flex, Group } from "metabase/ui";
 
 import { toBackendStartedAt } from "../../utils";
 import { TaskRunTypePicker } from "../RunTypePicker";
@@ -57,68 +58,77 @@ const TaskRunsPageBase = ({ location }: WithRouterProps) => {
 
   return (
     <TasksTabs>
-      <Flex gap="md" justify="space-between">
-        <Flex gap="md">
-          <TaskRunTypePicker
-            value={runType}
-            onChange={(runType) =>
-              patchUrlState({
-                "run-type": runType,
+      <Group gap="md" align="center" wrap="wrap">
+        <TaskRunTypePicker
+          value={runType}
+          onChange={(runType) =>
+            patchUrlState({
+              "run-type": runType,
+              "entity-type": null,
+              "entity-id": null,
+              page: 0,
+            })
+          }
+        />
+
+        <TaskRunDatePicker
+          value={startedAt}
+          includeToday={includeToday}
+          placeholder={t`Filter by started at`}
+          onChange={(nextStartedAt, nextIncludeToday) =>
+            patchUrlState({
+              "started-at": nextStartedAt,
+              "include-today": nextIncludeToday,
+              ...(nextStartedAt !== startedAt && {
                 "entity-type": null,
                 "entity-id": null,
-                page: 0,
-              })
-            }
-          />
+              }),
+              page: 0,
+            })
+          }
+        />
 
-          <TaskRunDatePicker
-            value={startedAt}
-            includeToday={includeToday}
-            placeholder={t`Filter by started at`}
-            onChange={(nextStartedAt, nextIncludeToday) =>
-              patchUrlState({
-                "started-at": nextStartedAt,
-                "include-today": nextIncludeToday,
-                ...(nextStartedAt !== startedAt && {
-                  "entity-type": null,
-                  "entity-id": null,
-                }),
-                page: 0,
-              })
-            }
-          />
+        <TaskRunEntityPicker
+          runType={runType}
+          startedAt={startedAt}
+          includeToday={includeToday}
+          value={entityValue}
+          onChange={(entity) =>
+            patchUrlState({
+              "entity-type": entity?.entityType ?? null,
+              "entity-id": entity?.entityId ?? null,
+              page: 0,
+            })
+          }
+        />
 
-          <TaskRunEntityPicker
-            runType={runType}
-            startedAt={startedAt}
-            includeToday={includeToday}
-            value={entityValue}
-            onChange={(entity) =>
-              patchUrlState({
-                "entity-type": entity?.entityType ?? null,
-                "entity-id": entity?.entityId ?? null,
-                page: 0,
-              })
-            }
-          />
+        <TaskRunStatusPicker
+          value={status}
+          onChange={(status) => patchUrlState({ status, page: 0 })}
+        />
+      </Group>
 
-          <TaskRunStatusPicker
-            value={status}
-            onChange={(status) => patchUrlState({ status, page: 0 })}
+      {error != null ? (
+        <Center flex={1}>
+          <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+        </Center>
+      ) : (
+        <TaskRunsTable taskRuns={taskRuns} isLoading={isLoading} />
+      )}
+
+      {!isLoading && error == null && (
+        <Flex justify="end">
+          <PaginationControls
+            page={page}
+            pageSize={PAGE_SIZE}
+            itemsLength={taskRuns.length}
+            total={total}
+            showTotal
+            onPreviousPage={() => patchUrlState({ page: page - 1 })}
+            onNextPage={() => patchUrlState({ page: page + 1 })}
           />
         </Flex>
-
-        <PaginationControls
-          onPreviousPage={() => patchUrlState({ page: page - 1 })}
-          onNextPage={() => patchUrlState({ page: page + 1 })}
-          page={page}
-          pageSize={PAGE_SIZE}
-          itemsLength={taskRuns.length}
-          total={total}
-        />
-      </Flex>
-
-      <TaskRunsTable taskRuns={taskRuns} isLoading={isLoading} error={error} />
+      )}
     </TasksTabs>
   );
 };
