@@ -828,6 +828,19 @@
                     (:user_group_memberships resp)))
             (is (true? (:is_superuser resp)))))))))
 
+(deftest create-user-invite-target-validation-test
+  (testing "POST /api/user rejects a malformed invite_target"
+    (let [base {:first_name "Cam" :last_name "Era" :email (mt/random-email)}]
+      (testing "type outside the dashboard/question enum"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "collection" :id 1 :name "Q3"})))
+      (testing "non-positive id"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "dashboard" :id 0 :name "Q3"})))
+      (testing "blank name"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "dashboard" :id 1 :name ""}))))))
+
 (deftest create-user-set-groups-test
   (testing "POST /api/user"
     (mt/with-premium-features #{}
@@ -931,7 +944,8 @@
 (deftest create-user-mixed-case-email-2
   (testing "POST /api/user/:id"
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
-      (is (=? {:errors {:email "Email address already in use."}}
+      (is (=? {:errors     {:email "Email address already in use."}
+               :error_code "email-already-in-use"}
               (mt/user-http-request :crowberto :post 400 "user"
                                     {:first_name "Something"
                                      :last_name "Random"
