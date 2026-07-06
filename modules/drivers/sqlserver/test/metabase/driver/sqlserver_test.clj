@@ -133,6 +133,37 @@
                                                     :port               1433
                                                     :additional-options "trustServerCertificate=false"})))))
 
+(deftest ^:parallel reject-details-with-dangerous-additional-options-test
+  (mt/test-driver :sqlserver
+    (let [details (:details (mt/db))]
+      (testing "db details with potentially dangerous additional options are rejected"
+        (are [bad-option] (let [bad-opts-details (assoc details :additional-options bad-option)
+                                bad-host-details (update details :host str ";" bad-option)]
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-opts-details)))
+                            (is (thrown-with-msg? java.lang.Exception
+                                                  #"Potentially dangerous keys in connection details"
+                                                  (driver/can-connect? :sqlserver bad-host-details))))
+          "socketFactoryClass=bad.Factory"
+          "socketFactoryConstructorArg=bad"
+          "trustManagerClass=bad.TrustManager"
+          "trustManagerConstructorArg=/etc/passwd"
+          "accessTokenCallbackClass=bad.Callback"
+          "socketfactoryclass=bad.Factory"
+          "SOCKETFACTORYCLASS=bad.Factory"
+          "socketFactoryClass=bad.Factory;socketFactoryConstructorArg=bad"
+          "socketFactoryClass=bad.Factory;trustServerCertificate=false"
+          "trustServerCertificate=false;socketFactoryClass=bad.Factory"))
+      (testing "db details without potentially dangerous options are accepted"
+        (are [options] (let [details (assoc details :additional-options options)]
+                         (is (true? (driver/can-connect? :sqlserver details))))
+          nil
+          ""
+          " "
+          "trustServerCertificate=false"
+          "trustStore=/path/to/store;trustStorePassword=password;trustStoreType=pkcs12")))))
+
 (deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "

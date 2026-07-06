@@ -93,16 +93,13 @@
 
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [_driver _db & _args]
-  (fn [rf]
-    (let [fields (volatile! (transient []))]
-      (fn
-        ([] (rf))
-        ([result]
-         (let [filtered (remove-duplicate-fields (persistent! @fields))]
-           (rf (reduce rf result filtered))))
-        ([result field]
-         (vswap! fields conj! field)
-         result)))))
+  ;; `describe-fields-sql` orders by [table-schema table-name database-position], so each table's columns arrive
+  ;; contiguously. A duplicate-column key is (table-schema, table-name, name) -- by definition all its occurrences are
+  ;; within a single table -- so we can dedup per table with `partition-by` rather than buffering the entire result
+  ;; set. This bounds memory to one table's columns (the per-table streaming contract) and is otherwise identical to a
+  ;; global dedup.
+  (comp (partition-by (juxt :table-schema :table-name))
+        (mapcat remove-duplicate-fields)))
 
 ;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
 (defmethod driver/dynamic-database-types-lookup :redshift
@@ -376,7 +373,7 @@
      (quote-literal-for-connection conn s))))
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr
    (sql.qp/->honeysql driver arg)
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
@@ -385,14 +382,14 @@
    [:raw (quote-literal-for-database driver (driver-api/database (driver-api/metadata-provider)) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
-  [driver [_ arg pattern replacement]]
+  [driver [_ _opts arg pattern replacement]]
   [:replace
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver pattern)
    (sql.qp/->honeysql driver replacement)])
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   ;; concat() only takes 2 args, so generate multiple concats if we have more,
   ;; e.g. [:concat :x :y :z] => [:concat [:concat :x :y] :z] => concat(concat(x, y), z)
   (->> args
@@ -404,7 +401,7 @@
                nil)))
 
 (defmethod sql.qp/->honeysql [:redshift :avg]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:avg [:cast (sql.qp/->honeysql driver field) :float]])
 
 (defmethod sql.qp/->integer :redshift
@@ -418,7 +415,7 @@
   [:datediff [:raw (name unit)] x y])
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)
         _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
@@ -430,7 +427,7 @@
     (sql.qp/datetime-diff driver unit x y)))
 
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
-  [driver [_ amount unit]]
+  [driver [_ _opts amount unit]]
   (driver-api/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
 (defmethod sql.qp/->honeysql [:redshift java.time.LocalDate]
@@ -509,7 +506,7 @@
   (h2x/- (extract :epoch y) (extract :epoch x)))
 
 (defmethod sql.qp/->honeysql [:redshift ::sql.qp/expression-literal-text-value]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast :text)))
 
@@ -909,11 +906,15 @@
                        (format "ALTER USER %s WITH PASSWORD '%s'" quoted-user (:password read-user))
                        (format "CREATE USER %s WITH PASSWORD '%s'" quoted-user (:password read-user)))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          ;; Schema-level grant only (Redshift's two schema privileges):
+          ;;   USAGE  - access the schema
+          ;;   CREATE - create tables in it
+          ;; Table DML comes from ownership (the user owns the tables it creates), so we skip
+          ;; `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES` (that only covers tables created
+          ;; by the admin connection, which never happens on the transform path).
           (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS %s" quoted-schema)
                        user-sql
-                       (format "GRANT ALL PRIVILEGES ON SCHEMA %s TO %s" quoted-schema quoted-user)
-                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT ALL ON TABLES TO %s"
-                               quoted-schema quoted-user)]]
+                       (format "GRANT USAGE, CREATE ON SCHEMA %s TO %s" quoted-schema quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)

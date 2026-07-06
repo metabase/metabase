@@ -209,6 +209,13 @@
                                   {"host"   "mbtest.poom.dev"
                                    "origin" "HTTPS://example.com"})]
         (is (= 200 (:status response)))
+        (is (some? (get-in response [:headers "Mcp-Session-Id"]))))))
+  (testing "a trailing slash on a configured MCP CORS origin has no effect (#75839)"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-custom-origins "http://127.0.0.1:6274/"]
+      (let [response (mcp-request (jsonrpc-request "initialize")
+                                  {"host"   "mbtest.poom.dev"
+                                   "origin" "http://127.0.0.1:6274"})]
+        (is (= 200 (:status response)))
         (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
 
 (deftest mcp-enabled-setting-test
@@ -264,16 +271,20 @@
 
 (def ^:private all-tool-names
   #{"construct_query"
+    "construct_native_query"
     "create_collection"
     "create_dashboard"
+    "create_metric"
     "create_question"
     "execute_query"
+    "execute_question"
     "execute_sql"
     "query"
     "read_resource"
     "render_drill_through"
     "search"
     "update_dashboard"
+    "update_metric"
     "update_question"
     "visualize_query"})
 
@@ -651,10 +662,10 @@
    below) — the test compares this set against the Agent API-backed tools and
    fails when they diverge, ensuring no Agent API tool ships without a basic
    invocation check."
-  #{"search" "construct_query" "query" "execute_query" "execute_sql"
+  #{"search" "construct_query" "construct_native_query" "query" "execute_query" "execute_sql"
     "read_resource"
-    "create_question" "create_dashboard"
-    "update_question" "update_dashboard" "create_collection"})
+    "create_question" "execute_question" "create_metric" "create_dashboard"
+    "update_question" "update_metric" "update_dashboard" "create_collection"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -677,9 +688,15 @@
                                 :stages   [{:lib/type     "mbql.stage/mbql"
                                             :source-table [db-name "PUBLIC" "ORDERS"]
                                             :limit        5}]}
+                ;; A metric needs exactly one aggregation — `create_metric` rejects a plain query.
+                metric-query   {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :aggregation  [["count" {}]]}]}
                 ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
                 ;; assertion in `call-tool` fails partway through the sequence.
                 question-id    (atom nil)
+                metric-id      (atom nil)
                 dash-id        (atom nil)
                 coll-id        (atom nil)]
             (try
@@ -687,6 +704,10 @@
                     _              (call-tool session-id "search" {:term_queries ["orders"]})
                     ;; Query construction + execution
                     construct-data (call-tool session-id "construct_query" {:query orders-query})
+                    native-data    (call-tool session-id "construct_native_query"
+                                              {:database_id (mt/id)
+                                               :sql         "SELECT 1"})
+                    _              (is (uuid? (parse-uuid (:query_handle native-data))))
                     _              (call-tool session-id "query" {:query orders-query})
                     _              (call-tool session-id "execute_query"
                                               {:query_handle (:query_handle construct-data)})
@@ -712,6 +733,17 @@
                     _              (call-tool session-id "update_question"
                                               {:id          (:id question-data)
                                                :description "Smoke updated description"})
+                    metric-handle  (call-tool session-id "construct_query" {:query metric-query})
+                    metric-data    (call-tool session-id "create_metric"
+                                              {:name         "Smoke Metric Card"
+                                               :query_handle (:query_handle metric-handle)})
+                    _              (reset! metric-id (:id metric-data))
+                    _              (is (= "scalar" (:display metric-data)))
+                    _              (call-tool session-id "update_metric"
+                                              {:id          (:id metric-data)
+                                               :description "Smoke updated metric"})
+                    _              (call-tool session-id "execute_question"
+                                              {:id (:id question-data)})
                     dash-data      (call-tool session-id "create_dashboard"
                                               {:name "Smoke Dashboard"})
                     _              (reset! dash-id (:id dash-data))
@@ -725,6 +757,7 @@
                 (reset! coll-id (:id coll-data)))
               (finally
                 (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+                (when-let [mid @metric-id]   (t2/delete! :model/Card :id mid))
                 (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
                 (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 

@@ -24,6 +24,7 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/common/hooks/use-memoized-callback";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
@@ -43,7 +44,6 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -795,7 +795,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         <Flex h="100%">
           <ErrorMessage
             type="noRows"
-            title={t`No results!`}
+            title={t`No results`}
             message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
             action={undefined}
           />

@@ -8,6 +8,7 @@
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
@@ -1388,3 +1389,161 @@
               (first (:channel/email pulse-results))
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
+
+(defn- pdf->text
+  "All text extracted from the rendered PDF `bytes`. Card titles/headings are drawn as native, selectable text, so a
+  card that was rendered leaves its title here and an omitted card leaves nothing."
+  ^String [^bytes pdf-bytes]
+  (with-open [doc (org.apache.pdfbox.Loader/loadPDF pdf-bytes)]
+    (.getText (org.apache.pdfbox.text.PDFTextStripper.) doc)))
+
+(deftest dashboard-pdf-hides-empty-cards-test
+  (testing "PDF export omits a dashcard with `card.hide_empty` when it has no results, leaving its grid space blank (UXW-4706)"
+    (mt/with-temp [:model/Card          {full-id :id}  {:name "Has Data Card" :dataset_query (mt/mbql-query venues)}
+                   :model/Card          {empty-id :id} {:name          "Hidden Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Hide-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id full-id  :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 8 :size_x 8 :size_y 4
+                                           :visualization_settings {:card.hide_empty true}}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Has Data Card")
+            "the card with results is rendered")
+        (is (not (str/includes? text "Hidden Empty Card"))
+            "the empty card with card.hide_empty is omitted from the PDF"))))
+  (testing "an empty card WITHOUT card.hide_empty is still rendered (shows the no-results placeholder)"
+    (mt/with-temp [:model/Card          {empty-id :id} {:name          "Shown Empty Card"
+                                                        :dataset_query (assoc-in (mt/mbql-query venues) [:query :limit] 0)}
+                   :model/Dashboard     {dashboard-id :id} {:name "Show-empty PDF"}
+                   :model/DashboardCard _ {:dashboard_id dashboard-id :card_id empty-id :row 0 :col 0 :size_x 8 :size_y 4}
+                   :model/User          {user-id :id} {}]
+      (let [text (pdf->text (channel.render/render-dashboard-to-pdf dashboard-id user-id []))]
+        (is (str/includes? text "Shown Empty Card")
+            "without the setting, the empty card still appears")
+        (is (str/includes? text "No results")
+            "and shows the no-results placeholder rather than being hidden")))))
+
+(deftest dashboard-sub-include-pdf-test
+  (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
+    (let [render-args (atom nil)]
+      ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                      (reset! render-args {:dashboard-id dashboard-id
+                                           :user-id      user-id
+                                           :parameters   parameters
+                                           :parts        parts})
+                      (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"
+                                                         :details      {:include_pdf true}}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (testing "renderer is called with the subscription's dashboard id and resolved parameters"
+              (is (= dashboard-id (:dashboard-id @render-args)))
+              (is (= [] (:parameters @render-args))))
+            (testing "the already-executed dashboard parts are handed to the renderer so queries aren't re-run"
+              (is (some #(= :card (:type %))
+                        (:parts @render-args))))
+            (let [message  (:message (first (:channel/email pulse-results)))
+                  pdf-part (some #(when (= "application/pdf" (:content-type %)) %) message)]
+              (testing "the PDF attachment is named after the dashboard"
+                (is (= "Aviary KPIs.pdf" (:file-name pdf-part)))
+                (is (= java.net.URL (class (:content pdf-part)))))
+              (testing "the email still includes its HTML body and the chart image"
+                (is (some #(= "image/png" (:content-type %)) message))
+                (is (some #(= "text/html; charset=utf-8" (:type %)) message))))))))))
+
+(deftest dashboard-sub-no-pdf-by-default-test
+  (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
+    (let [called? (atom false)]
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [& _] (reset! called? true) (byte-array 0))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (is (false? @called?))
+            (is (= (rasta-dashsub-message
+                    {:message [{"Aviary KPIs" true}
+                               pulse.test-util/png-attachment]})
+                   (mt/summarize-multipart-single-email
+                    (first (:channel/email pulse-results))
+                    #"Aviary KPIs")))))))))
+
+(deftest dashboard-sub-slack-include-pdf-test
+  (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general" :include_pdf true}}]
+        (let [render-args (atom nil)]
+          (with-redefs [channel.render/render-dashboard-to-pdf
+                        (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id
+                                               :parameters parameters :parts parts})
+                          (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+            (pulse.test-util/slack-test-setup!
+             (let [results (pulse.test-util/with-captured-channel-send-messages!
+                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                   msg     (first (:channel/slack results))]
+               (testing "renderer is called with the subscription's dashboard id"
+                 (is (= dashboard-id (:dashboard-id @render-args))))
+               (testing "the slack message carries the rendered PDF"
+                 (is (bytes? (-> msg :pdf :bytes)))
+                 (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))
+               (testing "it's a single message: no chart-image blocks, title/link ride along as the PDF caption"
+                 (is (empty? (:blocks msg)))
+                 (is (str/includes? (-> msg :pdf :comment) "Aviary KPIs")))))))))))
+
+(deftest dashboard-sub-slack-no-pdf-sends-images-test
+  (testing "Without :include_pdf, Slack still sends chart images and no PDF"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}}]
+        (pulse.test-util/slack-test-setup!
+         (let [results (pulse.test-util/with-captured-channel-send-messages!
+                         (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+               msg     (first (:channel/slack results))]
+           (is (nil? (:pdf msg)))
+           (is (some #(= "image" (:type %)) (:blocks msg)))))))))

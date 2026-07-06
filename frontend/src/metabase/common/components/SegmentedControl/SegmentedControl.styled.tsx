@@ -17,7 +17,7 @@ type ColorProps = {
 };
 
 function getDefaultBorderColor() {
-  return darken(color("border"), 0.1);
+  return darken(color("border-neutral"), 0.1);
 }
 
 const COLORS = {

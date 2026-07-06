@@ -96,24 +96,23 @@
        (:database query)
        (boolean (can-run-method query card-type))))
 
-(defmulti can-save-method
+(defmulti can-save?-method
   "Returns whether the query can be saved based on first stage :lib/type."
   {:arglists '([query card-type])}
   (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
-(defmethod can-save-method :default
+(defmethod can-save?-method :default
   [_query _card-type]
   true)
 
-;;; TODO FIXME -- boolean functions should end in `?`
-(mu/defn can-save :- :boolean
+(mu/defn can-save? :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
   [query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
        (can-run query card-type)
-       (boolean (can-save-method query card-type))))
+       (boolean (can-save?-method query card-type))))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
@@ -128,7 +127,7 @@
   [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (match/match-many x
                        [:field
-                        (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
+                        (opts :guard (and (map? opts) (not (and (:base-type opts) (:effective-type opts)))))
                         (id :guard (and (integer? id) (pos? id)))]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]

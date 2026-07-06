@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { checkNotNull } from "metabase/utils/types";
+import type { ChartNestedSettingColumnsProps } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import type { ChartNestedSettingSeriesProps } from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { chartSettingNestedSettings } from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 import type {
@@ -38,7 +39,9 @@ export type NestedSettingsOptions<
     object: T,
   ) => VisualizationSettingsDefinitions;
   getInheritedSettingsForObject?: (object: T) => VisualizationSettings;
-  component?: React.ComponentType<ChartNestedSettingSeriesProps>;
+  component?:
+    | React.ComponentType<ChartNestedSettingSeriesProps>
+    | React.ComponentType<ChartNestedSettingColumnsProps>;
   getExtraProps?: (
     series: Series,
     settings: VisualizationSettings,

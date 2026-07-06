@@ -5,7 +5,7 @@ jest.mock("embedding-sdk-bundle/analytics/component-events", () => ({
 
 jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
   initSdkTracker: jest.fn(),
-  trackSdkEvent: jest.fn(),
+  trackSdkSimpleEvent: jest.fn(),
   getSdkAuthMethod: jest.fn(),
   getSdkLocaleUsed: jest.fn(),
 }));
@@ -19,7 +19,7 @@ import { renderHook } from "@testing-library/react";
 import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-events";
 import {
   initSdkTracker,
-  trackSdkEvent,
+  trackSdkSimpleEvent,
 } from "embedding-sdk-bundle/analytics/snowplow";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
@@ -29,7 +29,7 @@ import { deriveAuthMethod, useInitSdkTracker } from "./tracker";
 
 const mockUseIsTrackingEnabled = jest.mocked(useIsTrackingEnabled);
 const mockInitSdkTracker = jest.mocked(initSdkTracker);
-const mockTrackSdkEvent = jest.mocked(trackSdkEvent);
+const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
 
 function makeStore() {
   return { dispatch: jest.fn(), getState: jest.fn() } as any;
@@ -115,14 +115,17 @@ describe("useInitSdkTracker", () => {
     expect(store.dispatch).toHaveBeenCalledWith(setSdkTrackerReady(true));
   });
 
-  it("fires the init beacon only on first initialization", () => {
+  it("fires embedding_sdk_initialized beacon only on first initialization", () => {
     mockUseIsTrackingEnabled.mockReturnValue(true);
     mockInitSdkTracker.mockReturnValue(true);
     const store = makeStore();
 
     renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
-    expect(mockTrackSdkEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackSdkSimpleEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackSdkSimpleEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "embedding_sdk_initialized" }),
+    );
   });
 
   it("does not fire the init beacon when tracker was already initialized", () => {
@@ -132,6 +135,6 @@ describe("useInitSdkTracker", () => {
 
     renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
-    expect(mockTrackSdkEvent).not.toHaveBeenCalled();
+    expect(mockTrackSdkSimpleEvent).not.toHaveBeenCalled();
   });
 });

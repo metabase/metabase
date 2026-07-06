@@ -138,7 +138,8 @@
     :model/MetabotFeedback
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
-    :model/MetabotPrompt]
+    :model/MetabotPrompt
+    :model/OsiAiContext]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit
@@ -382,7 +383,8 @@
     :model/FieldUserSettings
     :model/QueryAction
     :model/MetabotConversation
-    :model/ModelIndexValue})
+    :model/ModelIndexValue
+    :model/OsiAiContext})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

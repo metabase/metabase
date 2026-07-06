@@ -1,12 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Button } from "metabase/common/components/Button";
-
 export const SectionRoot = styled.div`
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const SectionHeader = styled.div`
@@ -28,10 +26,4 @@ export const SectionTitle = styled.div`
 export const SectionDescription = styled.div`
   color: var(--mb-color-text-secondary);
   margin-top: 0.5rem;
-`;
-
-export const SectionButton = styled(Button)`
-  color: var(--mb-color-core-brand);
-  width: 2.5rem;
-  height: 2.5rem;
 `;

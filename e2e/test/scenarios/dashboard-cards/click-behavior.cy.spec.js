@@ -248,7 +248,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("No available targets").should("exist");
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       cy.intercept(
         "GET",
@@ -313,7 +313,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -369,7 +369,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTimeParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -442,7 +442,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -518,7 +518,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("not.exist");
       cy.button("Done").should("be.enabled").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -557,11 +557,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.editDashboard();
       H.getDashboardCard().realHover().icon("click").click();
+
+      // Wait for the click behavior sidebar to finish loading the target
+      // dashboard before saving. The `migrateDeletedTab` effect that falls the
+      // now-invalid tabId back to the first tab — which is what dirties the
+      // dashboard and triggers the save request — only runs once the target
+      // dashboard has loaded. Asserting the tab selector is absent passes
+      // trivially before that load, so we anchor on a positive signal first.
+      cy.get("aside")
+        .findByText("Pass values to this dashboard's filters (optional)")
+        .should("be.visible");
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
         .should("not.exist");
-      cy.button("Done").should("be.enabled").click();
-      H.saveDashboard({ waitMs: 250 });
+      cy.get("aside").button("Done").should("be.enabled").click();
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -693,7 +703,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
 
@@ -784,7 +794,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextWithDefaultParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -850,7 +860,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionDestination();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       cy.intercept(
         "GET",
@@ -895,7 +905,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionCreatedAtParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findByTestId("qb-filters-panel").should(
@@ -942,7 +952,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionQuantityParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.wait("@dataset");
@@ -1019,7 +1029,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       H.onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL);
@@ -1070,7 +1080,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
@@ -1132,7 +1142,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addNumericParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -1189,7 +1199,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("contain.text", COUNT_COLUMN_NAME);
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       H.editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
@@ -1197,7 +1207,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .click();
       cy.get("aside").button("Remove").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -1252,7 +1262,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTimeParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -1371,7 +1381,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       })();
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 500 });
+      H.saveDashboard();
 
       (function testDashboardDestinationClick() {
         cy.log("it handles 'Count' column click");
@@ -1495,7 +1505,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.text", "1 column has custom behavior");
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       getTableCell(COLUMN_INDEX.COUNT)
         .should("have.text", String(POINT_COUNT))
@@ -1613,7 +1623,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.text", "2 columns have custom behavior");
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       (function testUpdateDashboardFiltersClick() {
         cy.log("it handles 'Count' column click");
@@ -2148,7 +2158,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       H.getDashboardCard()
         .findAllByText("Created at: May 2025 - 1")
@@ -2167,7 +2177,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       // queryBuilderMain()
       //   .findByText("There was a problem with your question")
       //   .should("not.exist");
-      // queryBuilderMain().findByText("No results!").should("be.visible");
+      // queryBuilderMain().findByText("No results").should("be.visible");
 
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
@@ -2312,7 +2322,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.popover().findByText(FILTER_MAPPING_COLUMN).click();
 
     cy.get("aside").button("Done").click();
-    H.saveDashboard({ waitMs: 250 });
+    H.saveDashboard();
 
     // test click behavior routing to same dashboard, different tab
     getTableCell(1).click();
@@ -2699,7 +2709,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").button("Done").click();
 
       H.saveDashboard({ awaitRequest: false });
-      cy.wait("@saveDashboard-getDashboard");
+      cy.wait("@saveDashboard-getDashboardMetadata");
 
       clickLineChartPoint();
 
@@ -2917,10 +2927,7 @@ const testChangingBackToDefaultBehavior = () => {
   cy.get("aside").findByText("Open the Metabase drill-through menu").click();
   cy.get("aside").button("Done").click();
 
-  H.saveDashboard({ waitMs: 250 });
-  // this is necessary due to query params being reset after saving dashboard
-  // with filter applied, which causes dashcard to be refetched
-  cy.wait(1);
+  H.saveDashboard();
 
   clickLineChartPoint();
   assertDrillThroughMenuOpen();

@@ -150,7 +150,7 @@ const UserMemberRow = ({
       {canRemove ? (
         <Box component="td" ta="right">
           <UnstyledButton onClick={() => onMembershipRemove(member)}>
-            <Icon name="close" c="text-tertiary" size={16} />
+            <Icon name="close" c="text-disabled" size={16} />
           </UnstyledButton>
         </Box>
       ) : null}
@@ -170,7 +170,7 @@ const ApiKeyMemberRow = ({ member }: { member: Member }) => (
     <Box component="td" ta="right">
       <Link to="/admin/settings/authentication/api-keys">
         <Tooltip label={t`API keys`} position="left">
-          <Icon name="link" c="text-tertiary" size={16} />
+          <Icon name="link" c="text-disabled" size={16} />
         </Tooltip>
       </Link>
     </Box>

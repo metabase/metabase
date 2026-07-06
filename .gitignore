@@ -92,6 +92,7 @@ cypress.env.json
 /resources/metabase/config/modules.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
+!/resources/sample-database.*
 /resources/version.properties
 /screenshots
 /sqlite.db
@@ -190,3 +191,6 @@ __pycache__/
 .claude/scheduled_tasks.lock
 .playwright-mcp
 .ci_reports/
+
+# dependency-cruiser output
+dependency-graph.json

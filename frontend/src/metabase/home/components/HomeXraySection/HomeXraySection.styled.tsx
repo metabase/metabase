@@ -28,13 +28,6 @@ export const DatabaseLinkText = styled.span`
   font-weight: bold;
 `;
 
-export const SchemaTrigger = styled.span`
-  display: flex;
-  align-items: center;
-  margin: 0 0.5rem;
-  cursor: pointer;
-`;
-
 export const SchemaTriggerIcon = styled(Icon)`
   color: var(--mb-color-core-brand);
   width: 0.625rem;

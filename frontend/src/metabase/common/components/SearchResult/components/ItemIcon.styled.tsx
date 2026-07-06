@@ -24,7 +24,7 @@ export const IconWrapper = styled.div<{
   archived: boolean;
   type: SearchModel;
 }>`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: ${({ theme }) => theme.radius.sm};
   display: flex;
   align-items: center;
@@ -34,5 +34,5 @@ export const IconWrapper = styled.div<{
   color: ${({ active, archived, type }) =>
     getColorForIconWrapper(active, archived, type)};
   flex-shrink: 0;
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
 `;

@@ -3,7 +3,6 @@ import {
   JWT_SHARED_SECRET,
   embedModalEnableEmbedding,
   entityPickerModal,
-  getParametersContainer,
 } from "e2e/support/helpers";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
@@ -310,9 +309,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         cy.button("Unpublish").should("be.visible");
 
-        getParametersContainer()
-          .findByLabelText("Text")
-          .should("contain.text", "Disabled");
+        H.assertEmbeddingParameter("Text", "Disabled");
 
         getEmbedSidebar().within(() => {
           cy.findByText("Back").click();
@@ -333,13 +330,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         cy.button("Unpublish").should("be.visible");
 
-        getParametersContainer()
-          .findByLabelText("Text1")
-          .should("contain.text", "Editable");
+        H.assertEmbeddingParameter("Text1", "Editable");
 
-        getParametersContainer()
-          .findByLabelText("Text2")
-          .should("contain.text", "Disabled");
+        H.assertEmbeddingParameter("Text2", "Disabled");
 
         H.setEmbeddingParameter("Text1", "Locked");
 
@@ -364,9 +357,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         cy.button("Unpublish").should("be.visible");
 
-        getParametersContainer()
-          .findByLabelText("Text")
-          .should("contain.text", "Disabled");
+        H.assertEmbeddingParameter("Text", "Disabled");
       });
     });
 

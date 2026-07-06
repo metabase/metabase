@@ -33,7 +33,6 @@ import { syncHistoryWithStore } from "react-router-redux";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
-import { api } from "metabase/api/client";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
@@ -45,6 +44,7 @@ import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { getBasename, setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
@@ -54,15 +54,13 @@ import registerVisualizations from "metabase/visualizations/register";
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
 import { getStore } from "./store";
+import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
-// remove trailing slash
-const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
-
-api.basename = BASENAME;
+setBasename(window.MetabaseRoot);
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
 const browserHistory = useRouterHistory(createHistory)({
-  basename: BASENAME,
+  basename: getBasename(),
 });
 
 initializePlugins();
@@ -74,10 +72,7 @@ function _init(reducers, getRoutes, callback) {
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
-    beforeSend: (_type, payload) => ({
-      ...payload,
-      data: { ...payload.data, user_id: getUserId(store.getState()) },
-    }),
+    getUserId: () => getUserId(store.getState()),
   });
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
@@ -97,15 +92,17 @@ function _init(reducers, getRoutes, callback) {
     <MetabaseReduxProvider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
-          <AppThemeProvider>
-            <GlobalStyles />
-            {createPortal(<PortalContainer />, document.body)}
-            <MetabotProvider>
-              <HistoryProvider history={syncedHistory}>
-                <RouterProvider>{routes}</RouterProvider>
-              </HistoryProvider>
-            </MetabotProvider>
-          </AppThemeProvider>
+          <OverlayStackProvider>
+            <AppThemeProvider>
+              <GlobalStyles />
+              {createPortal(<PortalContainer />, document.body)}
+              <MetabotProvider>
+                <HistoryProvider history={syncedHistory}>
+                  <RouterProvider>{routes}</RouterProvider>
+                </HistoryProvider>
+              </MetabotProvider>
+            </AppThemeProvider>
+          </OverlayStackProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </MetabaseReduxProvider>,

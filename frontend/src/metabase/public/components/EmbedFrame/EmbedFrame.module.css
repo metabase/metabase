@@ -21,10 +21,10 @@ body:where(:global(.mb-wrapper)) {
 .ParameterPanel.IsSticky {
   background-color: color-mix(
     in srgb,
-    var(--mb-color-background-primary),
+    var(--mb-color-background_page-primary),
     var(--mb-color-bg-dashboard) 15%
   );
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 /**
@@ -46,13 +46,13 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-primary-inverse) 65%,
     transparent
   );
-  --mb-color-text-tertiary: color-mix(
+  --mb-color-text-disabled: color-mix(
     in srgb,
     var(--mb-color-text-primary-inverse) 45%,
     transparent
   );
-  --mb-color-background-secondary: var(
-    --mb-color-background-tertiary-inverseer
+  --mb-color-background_page-secondary: var(
+    --mb-color-background_page-tertiary-inverse
   );
 }
 
@@ -60,7 +60,7 @@ body:where(:global(.mb-wrapper)) {
   .ParameterPanel.IsSticky {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent 15%
     );
     border-bottom-color: transparent;

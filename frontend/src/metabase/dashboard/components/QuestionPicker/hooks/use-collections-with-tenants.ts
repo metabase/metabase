@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";

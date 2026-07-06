@@ -114,6 +114,10 @@
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
 
+(def ^:private default-openai-llm-metabot-model
+  "Default OpenAI model used for Metabot when no explicit model is selected."
+  "gpt-5.4")
+
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
   (str "anthropic/" default-anthropic-llm-metabot-model))
@@ -125,6 +129,7 @@
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "openai"                               default-openai-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -243,7 +248,7 @@
     (validate-direct-provider! value)))
 
 (defsetting llm-metabot-provider
-  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
+  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4-5`.")
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider

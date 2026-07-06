@@ -58,12 +58,11 @@ export const RootSnippetsCollectionMenu = ({
           {t`View archived snippets`}
         </Menu.Item>
       </Menu.Dropdown>
-      {showPermissionsModal && (
-        <SnippetCollectionPermissionsModal
-          collectionId={collectionId}
-          onClose={togglePermissionsModal}
-        />
-      )}
+      <SnippetCollectionPermissionsModal
+        opened={showPermissionsModal}
+        collectionId={collectionId}
+        onClose={togglePermissionsModal}
+      />
     </Menu>
   );
 };

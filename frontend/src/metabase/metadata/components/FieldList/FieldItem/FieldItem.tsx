@@ -79,7 +79,9 @@ const FieldItemBase = ({
   return (
     <Card
       aria-label={field.display_name}
-      bg={active ? "background-brand" : "background-primary"}
+      bg={
+        active ? "background_surface-brand-subtle" : "background_page-primary"
+      }
       c="text-secondary"
       className={cx(S.card, {
         [S.active]: active,
@@ -108,7 +110,7 @@ const FieldItemBase = ({
       >
         <Group
           align="center"
-          c="text-tertiary"
+          c="text-disabled"
           flex="0 0 auto"
           gap={0}
           maw="100%"

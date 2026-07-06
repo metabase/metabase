@@ -37,6 +37,7 @@
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
+           "OsiAiContext"
            "PythonLibrary"
            "Setting"
            "Transform"
