@@ -422,10 +422,10 @@
           (is (t2/exists? :model/Sandbox :table_id (mt/id :people) :group_id gid)))
         (testing "the graph still surfaces :sandboxed view-data under EE"
           (mt/with-premium-features #{:advanced-permissions :sandboxes}
-            (is (= :sandboxed (get-in (data-perms.graph/api-graph)
-                                      [:groups gid (mt/id) :view-data "PUBLIC" (mt/id :orders)])))
-            (is (= :sandboxed (get-in (data-perms.graph/api-graph)
-                                      [:groups gid (mt/id) :view-data "PUBLIC" (mt/id :people)])))))))))
+            (is (=? {(mt/id :orders) :sandboxed
+                     (mt/id :people) :sandboxed}
+                    (get-in (data-perms.graph/api-graph)
+                            [:groups gid (mt/id) :view-data "PUBLIC"])))))))))
 
 (deftest oss-edit-create-queries-on-blocked-row-test
   (testing "PUT /api/permissions/graph in OSS: a create-queries-only edit on a :blocked database returns 200 and bumps view-data to :unrestricted"

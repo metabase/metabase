@@ -210,8 +210,8 @@
                                                             :details {:value "#work" :channel_id "C001"}}]}]}
               created       (mt/user-http-request :crowberto :post 200 "notification" notification)
               slack-details (-> created :handlers first :recipients first :details)]
-          (is (= "#work" (:value slack-details)))
-          (is (= "C001" (:channel_id slack-details))))))))
+          (is (=? {:value "#work" :channel_id "C001"}
+                  slack-details)))))))
 
 (deftest create-notification-error-test
   (testing "require auth"

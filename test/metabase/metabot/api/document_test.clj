@@ -91,8 +91,9 @@
           (let [response (mt/user-http-request :crowberto
                                                :post 200 "metabot/document/generate-content"
                                                {:instructions "chart it"})]
-            (is (nil? (:error response)))
-            (is (= "Orders by day" (get-in response [:draft_card :name])))))))))
+            (is (=? {:error      nil
+                     :draft_card {:name "Orders by day"}}
+                    response))))))))
 
 (deftest generate-content-snowplow-test
   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]

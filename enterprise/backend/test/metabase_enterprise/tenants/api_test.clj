@@ -816,9 +816,9 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Collection {shared-id :id} {:namespace collection/shared-tenant-ns}]
           (mt/with-model-cleanup [:model/Collection]
-            (let [resp (mt/user-http-request :crowberto :post 200 "collection/"
-                                             {:name            (mt/random-name)
-                                              :parent_id       shared-id
-                                              :authority_level "official"})]
-              (is (= "official" (:authority_level resp)))
-              (is (= (name collection/shared-tenant-ns) (:namespace resp))))))))))
+            (is (=? {:authority_level "official"
+                     :namespace       (name collection/shared-tenant-ns)}
+                    (mt/user-http-request :crowberto :post 200 "collection/"
+                                          {:name            (mt/random-name)
+                                           :parent_id       shared-id
+                                           :authority_level "official"})))))))))

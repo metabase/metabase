@@ -224,8 +224,7 @@
                     price-index (->> result :data :cols
                                      (keep-indexed (fn [i col] (when (= "PRICE" (u/upper-case-en (:name col))) i)))
                                      first)]
-                (is (= "completed" (:status result)))
-                (is (pos? (:row_count result)))
+                (is (=? {:status "completed" :row_count pos-int?} result))
                 (is (< (:row_count result) full-count) "sanity: some rows filtered")
                 (is (every? #(= 4 (nth % price-index)) (mt/rows result))
                     "every returned row has price = 4, per the sandbox filter")))

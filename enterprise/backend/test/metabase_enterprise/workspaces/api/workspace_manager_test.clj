@@ -144,11 +144,11 @@
                                                :input_schemas    ["public"]
                                                :status           :provisioned}]
       (testing "returns application/x-yaml with an attachment Content-Disposition"
-        (let [{:keys [status headers]} (mt/user-http-request-full-response
-                                        :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config"))]
-          (is (= 200 status))
-          (is (= "application/x-yaml" (get headers "Content-Type")))
-          (is (= "attachment; filename=\"config.yml\"" (get headers "Content-Disposition")))))
+        (is (=? {:status  200
+                 :headers {"Content-Type"        "application/x-yaml"
+                           "Content-Disposition" "attachment; filename=\"config.yml\""}}
+                (mt/user-http-request-full-response
+                 :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))))
       (testing "409 when a database is not :provisioned"
         (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
         (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))

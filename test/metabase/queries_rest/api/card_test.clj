@@ -5069,8 +5069,9 @@
                                          :visualization_settings {:list.columns ["ID"]}
                                          :dataset_query           query}]
           (let [newcard (mt/user-http-request :rasta :post 200 (format "card/%d/copy" (u/the-id card)))]
-            (is (= "list" (:display newcard)))
-            (is (= {:list.columns ["ID"]} (:visualization_settings newcard)))))))))
+            (is (=? {:display                "list"
+                     :visualization_settings {:list.columns ["ID"]}}
+                    newcard))))))))
 
 (deftest ^:parallel model-metadata-settings-override-preserved-test
   (testing "Column-level :settings overrides (e.g. show_mini_bar) persist through result_metadata PUT"

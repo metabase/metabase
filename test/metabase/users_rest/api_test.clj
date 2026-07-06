@@ -1768,9 +1768,10 @@
       (mt/with-fake-inbox
         (let [email (mt/random-email)
               resp  (mt/user-http-request :crowberto :post 200 "user" {:email email})]
-          (is (nil? (:first_name resp)))
-          (is (nil? (:last_name resp)))
-          (is (= email (:email resp))))))))
+          (is (=? {:first_name nil
+                   :last_name  nil
+                   :email      email}
+                  resp)))))))
 
 (deftest update-blank-name-rejected-test
   (testing "PUT /api/user/:id rejects a blank/whitespace first_name (#46449)"

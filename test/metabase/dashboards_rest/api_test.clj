@@ -6013,8 +6013,8 @@
               (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived true})))
       (is (= collection-id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)))
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id) {:archived false})
-      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dashboard-id)))
-      (is (= collection-id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))))
+      (is (=? {:archived false :collection_id collection-id}
+              (t2/select-one :model/Dashboard :id dashboard-id))))))
 
 (deftest copy-dashboard-permission-model-test
   (testing "POST /api/dashboard/:id/copy needs only read-on-source + create-on-destination"
@@ -6207,8 +6207,8 @@
                    :model/Dashboard {dashboard-id :id} {:archived true}]
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dashboard-id)
                             {:collection_id collection-id :archived false})
-      (is (false? (t2/select-one-fn :archived :model/Dashboard :id dashboard-id)))
-      (is (= collection-id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))))
+      (is (=? {:archived false :collection_id collection-id}
+              (t2/select-one :model/Dashboard :id dashboard-id))))))
 
 (deftest two-temporal-unit-params-same-field-different-breakouts-test
   (testing "dashboard/public/embed persistence for two parameter_mappings on the same field, disambiguated by :temporal-unit (#46536, #46776)"
@@ -6293,16 +6293,14 @@
         (doseq [embedding-type ["guest-embed" "static-legacy"]]
           (let [resp (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
                                            {:enable_embedding true :embedding_type embedding-type})]
-            (is (true? (:enable_embedding resp)))
-            (is (= embedding-type (:embedding_type resp)))
+            (is (=? {:enable_embedding true :embedding_type embedding-type} resp))
             (is (= embedding-type (t2/select-one-fn :embedding_type :model/Dashboard :id (u/the-id dashboard)))))))
       (testing "embedding_params persists alongside embedding_type guest-embed (EMB-1884)"
         (mt/with-temp [:model/Dashboard dashboard {}]
           (let [resp (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
                                            {:enable_embedding true :embedding_type "guest-embed"
                                             :embedding_params {:downloads "enabled"}})]
-            (is (= "guest-embed" (:embedding_type resp)))
-            (is (= {:downloads "enabled"} (:embedding_params resp)))))))))
+            (is (=? {:embedding_type "guest-embed" :embedding_params {:downloads "enabled"}} resp))))))))
 
 (deftest dashcard-action-execution-additional-types-test
   (testing "implicit actions correctly coerce/persist additional column types, including on MySQL"

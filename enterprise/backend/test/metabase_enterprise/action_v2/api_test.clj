@@ -506,16 +506,18 @@
               (let [{:keys [outputs]} (action-v2.tu/create-rows! table-id [{:d "2020-02-15" :dt "2020-02-15T11:35:00"}])]
                 (is (= 1 (count outputs)))
                 (is (= (qp-state) (map :row outputs)))
-                (is (re-find #"2020-02-15" (str (:d (first (qp-state))))))
-                (is (re-find #"2020-02-15T11:35:00" (str (:dt (first (qp-state))))))))
+                (is (=? {:d  #(re-find #"2020-02-15" (str %))
+                         :dt #(re-find #"2020-02-15T11:35:00" (str %))}
+                        (first (qp-state))))))
             (testing "update returns the same coerced output that the QP would return"
               (let [[{id :id}]        (map :row (:outputs (action-v2.tu/create-rows! table-id [{:d nil :dt nil}])))
                     _                 (is (some? id))
                     {:keys [outputs]} (action-v2.tu/update-rows! table-id [{:id id :d "2021-06-20" :dt "2021-06-20T08:15:00"}])
                     updated-qp-row    (first (filter (comp #{id} :id) (qp-state)))]
                 (is (= [updated-qp-row] (map :row outputs)))
-                (is (re-find #"2021-06-20" (str (:d updated-qp-row))))
-                (is (re-find #"2021-06-20T08:15:00" (str (:dt updated-qp-row))))))))))))
+                (is (=? {:d  #(re-find #"2021-06-20" (str %))
+                         :dt #(re-find #"2021-06-20T08:15:00" (str %))}
+                        updated-qp-row))))))))))
 
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{actions-feature-flag}

@@ -904,8 +904,9 @@
         (let [earlier-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :asc]]})]
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity :card :id card-id :revision_id earlier-id})
-          (is (= original-names (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id))))
-          (is (= {} (t2/select-one-fn :visualization_settings :model/Card :id card-id))))))))
+          (is (=? {:result_metadata        (mapv (fn [name] {:display_name name}) original-names)
+                   :visualization_settings {}}
+                  (t2/select-one :model/Card :id card-id))))))))
 
 (deftest revert-restores-card-type-test
   (testing "Reverting a Card revision restores a previous :type (e.g. model <-> question)"
