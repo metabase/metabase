@@ -11,6 +11,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import * as actions from "metabase/reference/reference";
 import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
+import { withRouteProps } from "metabase/router";
 import type { User } from "metabase-types/api";
 
 import type { ClearStateProps, FetchProps } from "../reference";
@@ -95,7 +96,9 @@ class SegmentQuestionsContainer extends Component<SegmentQuestionsContainerProps
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(SegmentQuestionsContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(SegmentQuestionsContainer as unknown as React.ComponentType),
+);

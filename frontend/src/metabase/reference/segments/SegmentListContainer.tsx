@@ -9,6 +9,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
+import { withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -80,7 +81,9 @@ class SegmentListContainer extends Component<SegmentListContainerProps> {
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(SegmentListContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(SegmentListContainer as unknown as React.ComponentType),
+);

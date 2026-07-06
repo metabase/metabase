@@ -8,6 +8,7 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import DatabaseDetail from "metabase/reference/databases/DatabaseDetail";
 import * as actions from "metabase/reference/reference";
+import { withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -85,7 +86,9 @@ class DatabaseDetailContainer extends Component<DatabaseDetailContainerProps> {
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(DatabaseDetailContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(DatabaseDetailContainer as unknown as React.ComponentType),
+);
