@@ -747,7 +747,8 @@
 
 (defn batch-collapse-permissions!
   "Rewrites table-level `:perms/view-data` rows as db-level rows wherever doing so cannot change any
-  effective permission, across the whole instance. Two set-based statements:
+  effective permission, across the given databases (no-op when `db-ids` is empty). Two set-based
+  statements:
 
   1. For each (group, db) pair with no db-level view-data row whose table-level rows ALL carry
      [[collapsed-view-data-value]] — including rows referencing inactive tables, so collapsing never
@@ -769,49 +770,58 @@
   (#76077) was all view-data rows.
 
   Idempotent. Caller must hold the permissions cluster lock for the affected database(s)."
-  []
-  (t2/query {:insert-into [[:data_permissions [:group_id :perm_type :db_id :perm_value]]
-                           {:select    [:dp.group_id :dp.perm_type :dp.db_id [[:min :dp.perm_value]]]
-                            :from      [[:data_permissions :dp]]
-                            :left-join [[:metabase_table :mt] [:= :mt.id :dp.table_id]]
-                            :join      [[{:select   [:db_id [[:count :*] :n]]
-                                          :from     [:metabase_table]
-                                          :where    [:= :active true]
-                                          :group-by [:db_id]} :tc]
-                                        [:= :tc.db_id :dp.db_id]]
-                            :where     [:and
-                                        [:= :dp.perm_type view-data-type-name]
-                                        [:not= :dp.table_id nil]
-                                        [:not [:exists {:select [[[:inline 1]]]
-                                                        :from   [[:data_permissions :dbp]]
-                                                        :where  [:and
-                                                                 [:= :dbp.group_id :dp.group_id]
-                                                                 [:= :dbp.db_id :dp.db_id]
-                                                                 [:= :dbp.perm_type :dp.perm_type]
-                                                                 [:= :dbp.table_id nil]]}]]]
-                            :group-by  [:dp.group_id :dp.perm_type :dp.db_id :tc.n]
-                            :having    [:and
-                                        [:= [:count [:distinct :dp.perm_value]] [:inline 1]]
-                                        [:= [:min :dp.perm_value]
-                                         (u/qualified-name collapsed-view-data-value)]
-                                        [:= [:count [:distinct [:case [:= :mt.active true]
-                                                                :dp.table_id]]]
-                                         :tc.n]]}]})
-  (t2/query {:delete-from :data_permissions
-             :where [:in :id {:select [:id]
-                              :from   [[{:select [:dp.id]
-                                         :from   [[:data_permissions :dp]]
-                                         :join   [[:data_permissions :dbp]
-                                                  [:and
-                                                   [:= :dbp.group_id :dp.group_id]
-                                                   [:= :dbp.db_id :dp.db_id]
-                                                   [:= :dbp.perm_type :dp.perm_type]
-                                                   [:= :dbp.perm_value :dp.perm_value]
-                                                   [:= :dbp.table_id nil]]]
-                                         :where  [:and
-                                                  [:= :dp.perm_type view-data-type-name]
-                                                  [:not= :dp.table_id nil]]} :redundant]]}]})
-  nil)
+  [db-ids]
+  (when (seq db-ids)
+    (let [collapsible (t2/query {:select    [:dp.group_id :dp.db_id]
+                                 :from      [[(t2/table-name :model/DataPermissions) :dp]]
+                                 :left-join [[(t2/table-name :model/Table) :mt] [:= :mt.id :dp.table_id]]
+                                 :join      [[{:select   [:db_id [[:count :*] :n]]
+                                               :from     [(t2/table-name :model/Table)]
+                                               :where    [:and
+                                                          [:in :db_id db-ids]
+                                                          [:= :active true]]
+                                               :group-by [:db_id]} :tc]
+                                             [:= :tc.db_id :dp.db_id]]
+                                 :where     [:and
+                                             [:= :dp.perm_type view-data-type-name]
+                                             [:not= :dp.table_id nil]
+                                             [:in :dp.db_id db-ids]
+                                             [:not [:exists {:select [[[:inline 1]]]
+                                                             :from   [[(t2/table-name :model/DataPermissions) :dbp]]
+                                                             :where  [:and
+                                                                      [:= :dbp.group_id :dp.group_id]
+                                                                      [:= :dbp.db_id :dp.db_id]
+                                                                      [:= :dbp.perm_type :dp.perm_type]
+                                                                      [:= :dbp.table_id nil]]}]]]
+                                 :group-by  [:dp.group_id :dp.db_id :tc.n]
+                                 :having    [:and
+                                             [:= [:count [:distinct :dp.perm_value]] [:inline 1]]
+                                             [:= [:min :dp.perm_value]
+                                              (u/qualified-name collapsed-view-data-value)]
+                                             [:= [:count [:distinct [:case [:= :mt.active true]
+                                                                     :dp.table_id]]]
+                                              :tc.n]]})]
+      (batch-insert-permissions!
+       (for [{group-id :group_id db-id :db_id} collapsible]
+         {:group_id   group-id
+          :db_id      db-id
+          :perm_type  :perms/view-data
+          :perm_value collapsed-view-data-value})))
+    (let [redundant-ids (map :id (t2/query {:select [:dp.id]
+                                            :from   [[(t2/table-name :model/DataPermissions) :dp]]
+                                            :join   [[(t2/table-name :model/DataPermissions) :dbp]
+                                                     [:and
+                                                      [:= :dbp.group_id :dp.group_id]
+                                                      [:= :dbp.db_id :dp.db_id]
+                                                      [:= :dbp.perm_type :dp.perm_type]
+                                                      [:= :dbp.perm_value :dp.perm_value]
+                                                      [:= :dbp.table_id nil]]]
+                                            :where  [:and
+                                                     [:= :dp.perm_type view-data-type-name]
+                                                     [:not= :dp.table_id nil]
+                                                     [:in :dp.db_id db-ids]]}))]
+      (batch-delete-permissions! redundant-ids))
+    nil))
 
 (mu/defn save-permission-changes!
   "Applies a `{:to-delete [row-id ...] :to-insert [row-map ...]}` diff to `data_permissions`, then runs
@@ -823,7 +833,7 @@
                                      [:to-insert {:optional true} [:maybe [:sequential :map]]]]]
   (batch-delete-permissions! to-delete)
   (batch-insert-permissions! to-insert)
-  (batch-collapse-permissions!))
+  (batch-collapse-permissions! (into #{} (keep :db_id) to-insert)))
 
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.
