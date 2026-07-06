@@ -221,7 +221,7 @@
   - `output-target` — the redirected `:target` (passed through to the artifact).
   - `opts`          — map with:
     - `:db`           — the `:model/Database` row (for the driver keyword).
-    - `:input-tables` — the `required-input-tables` vector (needed for the MBQL
+    - `:input-tables` — vector of table-info maps (needed for the MBQL
                         override, which keys overrides by table id). Required for
                         MBQL transforms; ignored for native.
 

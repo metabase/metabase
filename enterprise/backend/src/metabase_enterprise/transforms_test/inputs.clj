@@ -3,20 +3,14 @@
 
   Two public entry points:
 
-  - [[required-input-tables]] — compute a transform's required input tables,
+  - [[resolve-table-dep]] — resolve one raw dependency spec to a table-info map,
     fail-closed.
   - [[match-fixtures]] — verify the provided fixture keys cover exactly the
-    required tables.
-
-  ## Supported transform types
-
-  Only `:query`-type transforms (native SQL and MBQL) are supported. Python
-  transforms and any other source type throw `::errors/unsupported-transform-type`."
+    required tables."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.transforms-test.errors :as errors]
-   [metabase.transforms-base.interface :as transforms-base.i]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -24,11 +18,6 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Internal helpers
 ;;; ---------------------------------------------------------------------------
-
-(defn- source-type
-  "Extract the transform source type as a keyword."
-  [transform]
-  (-> transform :source :type keyword))
 
 (defn- field->column
   "Convert a :model/Field row to a column descriptor `{:name :base-type :nullable?}`."
@@ -115,69 +104,15 @@
 ;;; Public API
 ;;; ---------------------------------------------------------------------------
 
-(defn required-input-tables
-  "Compute the required input tables for `transform`, fail-closed.
-
-  Arguments:
-  - `transform` — a transform value (map with `:source` key; may be a DB row or
-    a hand-constructed test value).
-
-  Returns a vector of table-info maps, one per required input table:
-  ```
-  [{:id      <app-DB Table id>
-    :schema  <string>
-    :name    <string>
-    :columns [{:name <string> :base-type <kw> :nullable? <bool>} ...]}
-   ...]
-  ```
-
-  Throws `ex-info` with typed `:error-type` in ex-data on any failure:
-  - `::errors/unsupported-transform-type` — source type is not `:query` (e.g. `:python`).
-  - `::errors/cannot-determine-inputs`   — dependency extraction threw.
-  - `::errors/table-not-found`           — a dep spec resolved to no synced Table.
-  - `::errors/transform-dep-not-supported` — a dep on another transform's output."
-  [transform]
-  (let [stype (source-type transform)]
-    (when (not= :query stype)
-      (throw (ex-info
-              (str "Transform source type " (pr-str stype)
-                   " is not supported in test runs."
-                   " Only :query transforms (native SQL and MBQL) are supported.")
-              {:error-type      ::errors/unsupported-transform-type
-               :source-type     stype}))))
-  ;; Extract deps strictly: any exception from table-dependencies is wrapped.
-  ;; Source-card MBQL transforms ({:source-table "card__N"}) are resolved
-  ;; transitively here by table-dependencies (via qp.preprocess); deps come back
-  ;; as {:table <physical-id>}, resolved normally — no special-casing needed.
-  (let [raw-deps (try
-                   (transforms-base.i/table-dependencies transform)
-                   (catch Throwable e
-                     (throw (ex-info
-                             (str "Cannot determine input tables for this transform."
-                                  " Dependency extraction failed: " (.getMessage e))
-                             {:error-type ::errors/cannot-determine-inputs}
-                             e))))]
-    ;; Resolve each dep spec to a full table-info. resolve-table-dep throws on failure.
-    (mapv resolve-table-dep raw-deps)))
-
 (defn match-fixtures
   "Verify that `provided-fixture-keys` (a set of table ids) covers exactly the
-  tables in `required-tables`, then return a match plan.
+  tables in `required-tables`. Validation only — returns nil.
 
   Arguments:
-  - `required-tables`      — the output of [[required-input-tables]]; a vector of
-                             table-info maps (each has at least `:id`, `:schema`,
-                             `:name`).
+  - `required-tables`      — a vector of table-info maps (each has at least
+                             `:id`, `:schema`, `:name`).
   - `provided-fixture-keys` — a set of table ids (integers) from the multipart
                               request, keyed by `input-<table-id>`.
-
-  Returns a vector of match entries on success:
-  ```
-  [{:table-id   <integer>   ; app-DB Table id
-    :fixture-key <integer>  ; same as :table-id (fixture keyed by table id)
-    :table-info  <map>}     ; the full table-info from required-tables
-   ...]
-  ```
 
   Throws `ex-info` with typed `:error-type`:
   - `::errors/missing-fixtures`     — one or more required tables have no fixture.
@@ -205,9 +140,4 @@
                    (str/join ", " (sort unknown-keys)))
               {:error-type   ::errors/unknown-fixture-keys
                :unknown-keys unknown-keys})))
-    ;; Happy path: all required tables covered, no unknown keys.
-    (mapv (fn [tbl]
-            {:table-id    (:id tbl)
-             :fixture-key (:id tbl)
-             :table-info  tbl})
-          required-tables)))
+    nil))

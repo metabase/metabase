@@ -1122,20 +1122,27 @@
                  {"expected" expected-f})))))))))
 
 (deftest subgraph-inputs-cannot-determine-inputs-422-test
-  (testing "GET /inputs — cannot-determine-inputs error → 422"
-    (with-single-native-transform [{:keys [t]} "SELECT user_id FROM orders"]
-      (mt/with-dynamic-fn-redefs
-        [chain/subgraph-input-tables
-         (fn [& _]
-           (throw (ex-info "Cannot determine inputs for this transform."
-                           {:error-type :metabase-enterprise.transforms-test.errors/cannot-determine-inputs})))]
-        (let [resp (mt/user-http-request
-                    :crowberto :get 422 (tu/inputs-url (:id t)))]
-          (testing "status is error"
-            (is (= "error" (:status resp))))
-          (testing "error type is cannot-determine-inputs"
-            (is (string? (get-in resp [:error :type])))
-            (is (str/includes? (get-in resp [:error :type]) "cannot-determine-inputs"))))))))
+  (testing "GET /inputs — a transform whose dependency extraction genuinely fails → 422"
+    ;; A realistic decayed reference: an MBQL transform sourced on a card that has
+    ;; since been deleted. `table-dependencies` throws at preprocess time ("Card N
+    ;; does not exist") — no stubbing anywhere in this test.
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card card {:dataset_query (tu/table-query (mt/id :orders))}]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Transform t
+                         {:source {:type  :query
+                                   :query (lib/query mp (lib.metadata/card mp (:id card)))}
+                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+            (t2/delete! :model/Card :id (:id card))
+            (let [resp (mt/user-http-request
+                        :crowberto :get 422 (tu/inputs-url (:id t)))]
+              (testing "status is error"
+                (is (= "error" (:status resp))))
+              (testing "error type is cannot-determine-inputs"
+                (is (string? (get-in resp [:error :type])))
+                (is (str/includes? (get-in resp [:error :type]) "cannot-determine-inputs")))
+              (testing "message names the decayed reference"
+                (is (str/includes? (:message resp) "Dependency extraction failed"))))))))))
 
 (deftest subgraph-inputs-permissions-403-test
   (testing "GET /inputs — user without read access → 403"

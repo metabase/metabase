@@ -1,164 +1,11 @@
 (ns metabase-enterprise.transforms-test.inputs-test
-  "Tests for strict input resolution: required-input-tables and match-fixtures."
+  "Tests for strict input resolution: resolve-table-dep and match-fixtures."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-test.errors :as errors]
-   [metabase-enterprise.transforms-test.inputs :as inputs]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase-enterprise.transforms-test.inputs :as inputs]))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------------------------------------------
-;;; Helpers
-;;; ---------------------------------------------------------------------------
-
-(defn- make-native-transform
-  "Build a minimal native-SQL transform value (not a DB row) with the given SQL,
-  against the current test database."
-  [sql]
-  {:source {:type :query
-            :query (lib/native-query (mt/metadata-provider) sql)}})
-
-(defn- make-mbql-transform
-  "Build a minimal MBQL transform value over a single table."
-  [table-id]
-  (let [mp (mt/metadata-provider)]
-    {:source {:type  :query
-              :query (lib/query mp (lib.metadata/table mp table-id))}}))
-
-(defn- make-python-transform
-  "Build a stub python transform (not :query type)."
-  []
-  {:source {:type :python}})
-
-;;; ---------------------------------------------------------------------------
-;;; required-input-tables — happy paths
-;;; ---------------------------------------------------------------------------
-
-(deftest required-input-tables-mbql-single-table-test
-  (testing "MBQL transform with a single source table returns one table-info entry"
-    (mt/test-drivers #{:postgres}
-      (mt/dataset test-data
-        (let [table-id (mt/id :orders)
-              xf       (make-mbql-transform table-id)
-              result   (inputs/required-input-tables xf)]
-          (is (= 1 (count result)))
-          (let [tbl (first result)]
-            (is (= table-id (:id tbl)))
-            (is (string? (:schema tbl)))
-            (is (string? (:name tbl)))
-            (is (vector? (:columns tbl)))
-            (is (every? #(and (string? (:name %))
-                              (keyword? (:base-type %))
-                              (contains? % :nullable?))
-                        (:columns tbl)))))))))
-
-(deftest required-input-tables-mbql-join-test
-  (testing "MBQL transform with a two-table join returns both tables"
-    (mt/test-drivers #{:postgres}
-      (mt/dataset test-data
-        (let [mp        (mt/metadata-provider)
-              orders    (lib.metadata/table mp (mt/id :orders))
-              products  (lib.metadata/table mp (mt/id :products))
-              orders-q  (lib/query mp orders)
-              o-prod-id (first (filter #(= "product_id" (:name %))
-                                       (lib/visible-columns orders-q)))
-              p-id      (first (filter #(and (= "id" (:name %))
-                                             (= (:id products) (:table-id %)))
-                                       (lib/visible-columns (lib/query mp products))))
-              join-q    (-> orders-q
-                            (lib/join (lib/join-clause products [(lib/= o-prod-id p-id)]))
-                            (lib/aggregate (lib/count)))
-              join-xf   {:source {:type :query :query join-q}}
-              result    (inputs/required-input-tables join-xf)]
-          (is (= 2 (count result)))
-          (is (= #{(mt/id :orders) (mt/id :products)}
-                 (set (map :id result)))))))))
-
-(deftest required-input-tables-native-sql-test
-  (testing "Native SQL transform returns the referenced synced table"
-    (mt/test-drivers #{:postgres}
-      (mt/dataset test-data
-        (let [xf     (make-native-transform "SELECT id, user_id FROM orders LIMIT 10")
-              result (inputs/required-input-tables xf)]
-          (is (= 1 (count result)))
-          (let [tbl (first result)]
-            (is (= (mt/id :orders) (:id tbl)))
-            (is (string? (:schema tbl)))
-            (is (= "orders" (:name tbl)))))))))
-
-(deftest required-input-tables-columns-shape-test
-  (testing "Each table-info carries a column schema"
-    (mt/test-drivers #{:postgres}
-      (mt/dataset test-data
-        (let [xf     (make-mbql-transform (mt/id :orders))
-              result (inputs/required-input-tables xf)
-              tbl    (first result)]
-          (is (every? (fn [col]
-                        (and (string? (:name col))
-                             (keyword? (:base-type col))
-                             (boolean? (:nullable? col))))
-                      (:columns tbl)))
-          ;; orders.id is NOT NULL → nullable? false
-          (let [id-col (first (filter #(= "id" (:name %)) (:columns tbl)))]
-            (is (some? id-col))
-            (is (= false (:nullable? id-col)))))))))
-
-;;; ---------------------------------------------------------------------------
-;;; required-input-tables — source-card (transitive dep resolution)
-;;; ---------------------------------------------------------------------------
-
-(deftest required-input-tables-source-card-transitive-test
-  (testing "Source-card transform: deps resolve transitively through the card to physical tables"
-    (mt/test-drivers #{:postgres}
-      (mt/dataset test-data
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card card {:name          "test-orders-card"
-                                           :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                           :display       "table"
-                                           :visualization_settings {}}]
-            (let [card-source-xf {:source {:type  :query
-                                           :query (lib/query mp (lib.metadata/card mp (:id card)))}}
-                  result         (inputs/required-input-tables card-source-xf)]
-              ;; The card queries orders → we should get orders as the physical dep
-              (is (= 1 (count result)))
-              (is (= (mt/id :orders) (:id (first result)))))))))))
-
-;;; ---------------------------------------------------------------------------
-;;; required-input-tables — error cases
-;;; ---------------------------------------------------------------------------
-
-(deftest required-input-tables-non-query-type-throws-test
-  (testing "Non-:query source type throws a typed 'not supported' error"
-    (let [xf (make-python-transform)
-          e  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported"
-                                   (inputs/required-input-tables xf)))]
-      (is (= ::errors/unsupported-transform-type (-> e ex-data :error-type))))))
-
-(deftest required-input-tables-extraction-failure-throws-test
-  (testing "Any dependency-extraction failure throws a typed error (never returns silent #{})"
-    ;; A source-card transform whose card has since been deleted causes
-    ;; ExceptionInfo during preprocess. We use a real DB so preprocess actually runs.
-    (mt/test-drivers #{:postgres}
-      (mt/dataset test-data
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card doomed
-                         {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
-            ;; prepare-for-serialization strips the attached metadata provider (the
-            ;; stored shape), so extraction re-resolves the card and finds it gone
-            ;; instead of hitting the build-time cache.
-            (let [xf {:source {:type  :query
-                               :query (-> (lib/query mp (lib.metadata/card mp (:id doomed)))
-                                          lib/prepare-for-serialization)}}]
-              (t2/delete! :model/Card :id (:id doomed))
-              (let [e (is (thrown? clojure.lang.ExceptionInfo
-                                   (inputs/required-input-tables xf)))]
-                (is (= ::errors/cannot-determine-inputs (-> e ex-data :error-type)))
-                ;; Must carry the cause
-                (is (some? (ex-cause e)))))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; resolve-table-dep — error cases
@@ -193,21 +40,15 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest match-fixtures-happy-path-test
-  (testing "All required tables covered by provided fixture keys → returns match plan"
-    ;; Build fake table-info structs (required-input-tables output shape)
+  (testing "All required tables covered by provided fixture keys → validates silently (nil)"
     (let [tables [{:id 10 :schema "public" :name "orders"   :columns []}
                   {:id 20 :schema "public" :name "products" :columns []}]
-          keys   #{10 20}
-          plan   (inputs/match-fixtures tables keys)]
-      (is (= 2 (count plan)))
-      ;; Each entry maps table-info → fixture key
-      (is (= #{10 20} (set (map :table-id plan))))
-      (is (every? #(= (:table-id %) (:fixture-key %)) plan)))))
+          keys   #{10 20}]
+      (is (nil? (inputs/match-fixtures tables keys))))))
 
 (deftest match-fixtures-empty-transform-test
-  (testing "Transform with no required tables + no fixture keys → empty plan (not an error)"
-    (let [plan (inputs/match-fixtures [] #{})]
-      (is (= [] plan)))))
+  (testing "No required tables + no fixture keys → validates silently (not an error)"
+    (is (nil? (inputs/match-fixtures [] #{})))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; match-fixtures — error cases

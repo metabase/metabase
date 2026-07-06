@@ -131,6 +131,39 @@
           dep)))
 
 ;;; ---------------------------------------------------------------------------
+;;; Typed dependency extraction
+;;; ---------------------------------------------------------------------------
+
+(defn- table-dependencies!
+  "`transforms-base.i/table-dependencies` under the test-run error contract: any
+  throw becomes `::errors/cannot-determine-inputs`, carrying the transform id and
+  the original exception as cause."
+  [transform]
+  (try
+    (transforms-base.i/table-dependencies transform)
+    (catch Throwable e
+      (throw (ex-info
+              (str "Cannot determine input tables for transform " (:id transform)
+                   ". Dependency extraction failed: " (ex-message e))
+              {:error-type   ::errors/cannot-determine-inputs
+               :transform-id (:id transform)}
+              e)))))
+
+(defn- assert-extractions-ok!
+  "`transform-ordering` swallows per-node `table-dependencies` throws, recording
+  the node in `failed` and treating it as dependency-less — which would silently
+  misshape the slice. Fail closed instead: re-run extraction on the first failed
+  node so the throw carries the real cause (deterministic — same snapshot)."
+  [failed id->transform]
+  (when-let [id (first (sort failed))]
+    (table-dependencies! (id->transform id))
+    ;; Reachable only if the re-run stopped failing between the walk and here.
+    (throw (ex-info (str "Cannot determine input tables: dependency extraction failed"
+                         " for transform(s) " (pr-str (vec (sort failed))) ".")
+                    {:error-type    ::errors/cannot-determine-inputs
+                     :transform-ids (vec (sort failed))}))))
+
+;;; ---------------------------------------------------------------------------
 ;;; Public entry points
 ;;; ---------------------------------------------------------------------------
 
@@ -149,9 +182,13 @@
        :leaf-deps #{raw-dep-maps}}       ; boundary inputs needing fixtures
 
   Throws `ex-info` with `:error-type ::errors/sources-not-ancestors` when any selected
-  source does not feed the target (fail closed — no degenerate slice)."
+  source does not feed the target (fail closed — no degenerate slice), or
+  `::errors/cannot-determine-inputs` when dependency extraction fails for any node
+  in the target's upstream closure."
   [target-id source-ids all-transforms]
-  (let [{deps :dependencies} (ordering/transform-ordering [target-id] all-transforms)
+  (let [id->transform (u/index-by :id all-transforms)
+        {deps :dependencies failed :failed} (ordering/transform-ordering [target-id] all-transforms)
+        _ (assert-extractions-ok! failed id->transform)
         {:keys [slice order bad-sources]} (compute-slice deps source-ids #{target-id})]
     (when (seq bad-sources)
       (throw (ex-info
@@ -161,12 +198,11 @@
               {:error-type  ::errors/sources-not-ancestors
                :bad-sources bad-sources
                :target-id   target-id})))
-    (let [id->transform (u/index-by :id all-transforms)
-          producer-of   (ordering/dependency-producer-map all-transforms)]
+    (let [producer-of (ordering/dependency-producer-map all-transforms)]
       {:slice     slice
        :order     order
        :leaf-deps (leaf-deps slice
-                             #(transforms-base.i/table-dependencies (id->transform %))
+                             #(table-dependencies! (id->transform %))
                              producer-of)})))
 
 (defn resolve-card-subgraph
@@ -194,9 +230,11 @@
 
   Throws `ex-info` with `:error-type ::errors/sources-not-ancestors` when a selected
   source feeds none of the card's producing transforms — the same fail-closed
-  contract as [[resolve-subgraph]]."
+  contract as [[resolve-subgraph]] — or `::errors/cannot-determine-inputs` when
+  dependency extraction fails for any node in the seeds' upstream closure."
   [card source-ids all-transforms]
   (let [card-table-ids (card-refs/card->tables card)
+        id->transform  (u/index-by :id all-transforms)
         producer-of    (ordering/dependency-producer-map all-transforms)
         ;; Classify each physical table the card reads: nil-producer tables are
         ;; immediate fixture leaves; produced tables seed the slice.
@@ -205,7 +243,8 @@
         (group-by (fn [tid] (some? (producer-of {:table tid}))) card-table-ids)
         seed-ids           (into #{} (keep (fn [tid] (producer-of {:table tid}))) seed-table-ids)
         ;; Walk the seed transforms' upstream closure, then apply the source-id cutoff.
-        {deps :dependencies} (ordering/transform-ordering (vec seed-ids) all-transforms)
+        {deps :dependencies failed :failed} (ordering/transform-ordering (vec seed-ids) all-transforms)
+        _ (assert-extractions-ok! failed id->transform)
         {:keys [slice order bad-sources]} (compute-slice deps source-ids seed-ids)]
     (when (seq bad-sources)
       (throw (ex-info
@@ -219,9 +258,8 @@
                :card-id     (:id card)})))
     ;; fixtures = card's raw boundary tables + slice's leaf deps.
     (let [card-fixtures  (into #{} (map (fn [tid] {:table tid})) boundary-table-ids)
-          id->transform  (u/index-by :id all-transforms)
           chain-fixtures (leaf-deps slice
-                                    #(transforms-base.i/table-dependencies (id->transform %))
+                                    #(table-dependencies! (id->transform %))
                                     producer-of)]
       {:slice     slice
        :order     order
