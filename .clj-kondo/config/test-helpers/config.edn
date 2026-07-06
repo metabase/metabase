@@ -34,7 +34,7 @@
      next.jdbc/execute!
      ;; Definitely thread safe
      metabase.test.util.dynamic-redefs/patch-vars!
-     ;; a pure (throw (ex-info …)); the ! marks the non-local exit, not mutation
+     ;; Throws an exception:
      metabase-enterprise.transforms-test.resolve/cannot-test-run!
      ;; TODO: most of these symbols shouldn't be here, we should go through them and
      ;; find the functions/macros that use them and make sure their names end with !

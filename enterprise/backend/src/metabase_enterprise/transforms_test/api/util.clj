@@ -72,15 +72,54 @@
   selection — the degenerate case equivalent to a single-transform test run).
   Throws 400 on malformed JSON or a non-positive-int element."
   [sources-part]
-  (if (nil? sources-part)
-    #{}
-    (let [ids (part->json sources-part json/decode
-                          (tru "Malformed ''sources'' part: not valid JSON.") nil)]
-      (when-not (and (sequential? ids) (every? #(and (int? %) (pos? %)) ids))
-        (throw (ex-info (tru "''sources'' must be a JSON array of positive transform ids.")
+  (let [validate-ids! (fn [ids]
+                        (when-not (and (sequential? ids)
+                                       (every? pos-int? ids))
+                          (throw (ex-info (tru "''sources'' must be a JSON array of positive transform ids.")
+                                          {:status-code 400
+                                           :sources     ids}))))]
+    (if (nil? sources-part)
+      #{}
+      (let [ids (part->json sources-part json/decode
+                            (tru "Malformed ''sources'' part: not valid JSON.") nil)]
+        (validate-ids! ids)
+        (set ids)))))
+
+(defn- ->parse-kv*
+  [reserved]
+  (fn parse-kv [acc k v]
+    (let [validate-table-id!
+          (fn [table-id]
+            (when-not (and table-id (pos? table-id))
+              (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
+                              {:status-code 400
+                               :part-name   k}))))
+          validate-tempfile!
+          (fn [tempfile]
+            ;; A plain form field has no :tempfile; letting nil through NPEs at CSV-read time.
+            (when (nil? tempfile)
+              (throw (ex-info (tru "Multipart part ''{0}'' must be a file upload." k)
+                              {:status-code 400
+                               :part-name   k}))))]
+      (cond
+        ;; Reserved keys handled separately — skip.
+        (contains? reserved k)
+        acc
+
+        ;; input-<positive-int> pattern.
+        (re-matches #"input-(\d+)" k)
+        (let [[_ id-str] (re-matches #"input-(\d+)" k)
+              table-id   (parse-long id-str)
+              tempfile   (when (map? v) (:tempfile v))
+              _          (validate-table-id! table-id)
+              _          (validate-tempfile! tempfile)]
+          (assoc acc table-id tempfile))
+
+        ;; Anything else is unknown.
+        :else
+        (throw (ex-info (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
                         {:status-code 400
-                         :sources     ids})))
-      (set ids))))
+                         :part-name   k}))))))
 
 (defn parse-input-table-ids
   "Extract input fixture files from the multipart params.
@@ -89,37 +128,9 @@
   (`expected`, `options`, plus any `extra-reserved`) are skipped; anything else
   throws a 400 naming the offending part."
   [multipart-params extra-reserved]
-  (let [reserved (into #{"expected" "options"} extra-reserved)]
-    (reduce-kv
-     (fn [acc k v]
-       (cond
-         ;; Reserved keys handled separately — skip.
-         (contains? reserved k)
-         acc
-
-         ;; input-<positive-int> pattern.
-         (re-matches #"input-(\d+)" k)
-         (let [[_ id-str] (re-matches #"input-(\d+)" k)
-               table-id   (parse-long id-str)
-               tempfile   (when (map? v) (:tempfile v))]
-           (when-not (and table-id (pos? table-id))
-             (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
-                             {:status-code 400
-                              :part-name   k})))
-           ;; A plain form field has no :tempfile; letting nil through NPEs at CSV-read time.
-           (when (nil? tempfile)
-             (throw (ex-info (tru "Multipart part ''{0}'' must be a file upload." k)
-                             {:status-code 400
-                              :part-name   k})))
-           (assoc acc table-id tempfile))
-
-         ;; Anything else is unknown.
-         :else
-         (throw (ex-info (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
-                         {:status-code 400
-                          :part-name   k}))))
-     {}
-     multipart-params)))
+  (let [reserved (into #{"expected" "options"} extra-reserved)
+        parse-kv (->parse-kv* reserved)]
+    (reduce-kv parse-kv {} multipart-params)))
 
 (defn parse-test-run-options
   "Parse the optional `options` JSON multipart part.
@@ -129,17 +140,54 @@
 
   Throws 400 on malformed JSON or unknown keys."
   [options-part]
-  (if (nil? options-part)
-    {}
-    (let [opts (part->json options-part json/decode+kw
-                           (tru "Malformed ''options'' part: not valid JSON.") nil)]
-      (when-let [unknown (seq (remove #{:ignore_columns} (keys opts)))]
-        (throw (ex-info (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
-                        {:status-code 400
-                         :unknown-keys unknown})))
-      (cond-> {}
-        (:ignore_columns opts)
-        (assoc :ignore-columns (set (:ignore_columns opts)))))))
+  (let [validate-keys! (fn [opts]
+                         (when-let [unknown (seq (remove #{:ignore_columns} (keys opts)))]
+                           (throw (ex-info (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
+                                           {:status-code  400
+                                            :unknown-keys unknown}))))]
+    (if (nil? options-part)
+      {}
+      (let [opts (part->json options-part json/decode+kw
+                             (tru "Malformed ''options'' part: not valid JSON.") nil)]
+        (validate-keys! opts)
+        (cond-> {}
+          (:ignore_columns opts)
+          (assoc :ignore-columns (set (:ignore_columns opts))))))))
+
+(defn- parse-assertion-entry
+  [entry]
+  (let [nonblank-string? (fn [x]
+                           (and (string? x) (not (str/blank? x))))
+        validate-name!
+        (fn [n]
+          (when-not (nonblank-string? n)
+            (throw (ex-info (tru "Each assertion must have a non-empty ''name'' string.")
+                            {:status-code 400
+                             :error-type  ::errors/assertions-parse-error
+                             :entry       entry}))))
+        validate-sql!
+        (fn [s]
+          (when-not (nonblank-string? s)
+            (throw (ex-info (tru "Each assertion must have a non-empty ''sql'' string.")
+                            {:status-code 400
+                             :error-type  ::errors/assertions-parse-error
+                             :entry       entry}))))
+        validate-severity!
+        (fn [sev]
+          (when-not (#{"error" "warn"} sev)
+            (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
+                            {:status-code 400
+                             :error-type  ::errors/assertions-parse-error
+                             :severity    sev}))))]
+    (let [n   (get entry "name")
+          s   (get entry "sql")
+          sev (get entry "severity" "error")]
+      (validate-name! n)
+      (validate-sql! s)
+      (validate-severity! sev)
+      {:name     n
+       :sql      s
+       :severity (keyword sev)})))
 
 (defn parse-assertions
   "Parse the `assertions` JSON multipart part.
@@ -151,49 +199,33 @@
   (name, sql), unknown severity, or duplicate names (counts and results are
   keyed by name downstream)."
   [assertions-part]
-  (if (nil? assertions-part)
-    []
-    (let [data (part->json assertions-part json/decode
-                           (tru "Malformed ''assertions'' part: not valid JSON.")
-                           {:error-type ::errors/assertions-parse-error})]
-      (when-not (sequential? data)
-        (throw (ex-info (tru "''assertions'' must be a JSON array.")
-                        {:status-code 400
-                         :error-type  ::errors/assertions-parse-error})))
-      (let [parsed (mapv (fn [entry]
-                           (let [n   (get entry "name")
-                                 s   (get entry "sql")
-                                 sev (get entry "severity" "error")]
-                             (when (or (nil? n) (not (string? n)) (str/blank? n))
-                               (throw (ex-info (tru "Each assertion must have a non-empty ''name'' string.")
-                                               {:status-code 400
-                                                :error-type  ::errors/assertions-parse-error
-                                                :entry       entry})))
-                             (when (or (nil? s) (not (string? s)) (str/blank? s))
-                               (throw (ex-info (tru "Each assertion must have a non-empty ''sql'' string.")
-                                               {:status-code 400
-                                                :error-type  ::errors/assertions-parse-error
-                                                :entry       entry})))
-                             (when-not (#{"error" "warn"} sev)
-                               (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
-                                               {:status-code 400
-                                                :error-type  ::errors/assertions-parse-error
-                                                :severity    sev})))
-                             {:name     n
-                              :sql      s
-                              :severity (keyword sev)}))
-                         data)
-            dupes  (->> (map :name parsed)
-                        frequencies
-                        (keep (fn [[n cnt]] (when (> cnt 1) n)))
-                        sort)]
-        (when (seq dupes)
-          (throw (ex-info (tru "Duplicate assertion name(s): {0}. Assertion names must be unique."
-                               (str/join ", " dupes))
-                          {:status-code     400
-                           :error-type      ::errors/assertions-parse-error
-                           :duplicate-names (vec dupes)})))
-        parsed))))
+  (let [validate-array!
+        (fn [data]
+          (when-not (sequential? data)
+            (throw (ex-info (tru "''assertions'' must be a JSON array.")
+                            {:status-code 400
+                             :error-type  ::errors/assertions-parse-error}))))
+        validate-unique-names!
+        (fn [parsed]
+          (let [dupes (->> (map :name parsed)
+                           frequencies
+                           (keep (fn [[n cnt]] (when (> cnt 1) n)))
+                           sort)]
+            (when (seq dupes)
+              (throw (ex-info (tru "Duplicate assertion name(s): {0}. Assertion names must be unique."
+                                   (str/join ", " dupes))
+                              {:status-code     400
+                               :error-type      ::errors/assertions-parse-error
+                               :duplicate-names (vec dupes)})))))]
+    (if (nil? assertions-part)
+      []
+      (let [data (part->json assertions-part json/decode
+                             (tru "Malformed ''assertions'' part: not valid JSON.")
+                             {:error-type ::errors/assertions-parse-error})]
+        (validate-array! data)
+        (let [parsed (mapv parse-assertion-entry data)]
+          (validate-unique-names! parsed)
+          parsed)))))
 
 (defn run-record->response
   "Convert a successful run-record (from `run-chain-test!` / `run-card-chain-test!`)
