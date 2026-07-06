@@ -1264,10 +1264,14 @@
         (do-test!
          {:card   {:dataset_query query}
           :assert {:email (fn [_ [email]] (is (true? (has-branding? email))))}}))
-      (mt/with-premium-features #{:whitelabel}
-        (do-test!
-         {:card   {:dataset_query query}
-          :assert {:email (fn [_ [email]] (is (false? (has-branding? email))))}})))))
+      ;; Whitelabeling is only wired up in EE builds (`enable-whitelabeling?` is gated on
+      ;; `config/ee-available?`), so `:whitelabel` can never hide the footer on OSS builds.
+      ;; The EE app-db jobs run this same file with EE on the classpath and cover the hidden case.
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:whitelabel}
+         (do-test!
+          {:card   {:dataset_query query}
+           :assert {:email (fn [_ [email]] (is (false? (has-branding? email))))}}))))))
 
 (deftest multi-series-test
   (mt/with-temp

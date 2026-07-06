@@ -96,12 +96,22 @@
        ~@body)))
 
 (defn table-rows
+  "Fetch all rows of `table-name` in the current test database.
+
+   The lookup is scoped to the current test database (`(mt/id)`) and to the schema of the `transforms_products`
+   table (the schema all transform test targets are created in). This avoids matching an unrelated `Table` row with
+   the same bare name that may exist under a different database/schema, e.g. shared datasets on drivers like
+   Redshift where multiple concurrent test runs' tables can share a name."
   [table-name]
-  (->>
-   (mt/rows (mt/process-query {:database (mt/id)
-                               :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
-                               :type     :query}))
-   (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x)))))
+  (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+    (->>
+     (mt/rows (mt/process-query {:database (mt/id)
+                                 :query    {:source-table (t2/select-one-pk :model/Table
+                                                                            :db_id  (mt/id)
+                                                                            :schema schema
+                                                                            :name   table-name)}
+                                 :type     :query}))
+     (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x))))))
 
 (defn parse-timestamp
   "Parse a local datetime and convert it to a ZonedDateTime in the default timezone."

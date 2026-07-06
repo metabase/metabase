@@ -901,7 +901,9 @@
                     {:result_metadata        (mapv #(assoc % :display_name "EDITED") original-metadata)
                      :visualization_settings {:some_setting true}})
         (create-card-revision! card-id false :crowberto)
-        (let [earlier-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :asc]]})]
+        ;; order by :id (monotonic), not :timestamp -- on Postgres `now()` is frozen for the whole test
+        ;; transaction, so consecutive revisions here can tie on :timestamp and pick the wrong revision.
+        (let [earlier-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity :card :id card-id :revision_id earlier-id})
           (is (=? {:result_metadata        (mapv (fn [name] {:display_name name}) original-names)
@@ -914,7 +916,9 @@
       (create-card-revision! card-id true :crowberto)
       (t2/update! :model/Card :id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
-      (let [earlier-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :asc]]})]
+      ;; order by :id (monotonic), not :timestamp -- see comment above in
+      ;; revert-model-restores-metadata-and-viz-settings-test.
+      (let [earlier-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
         (mt/user-http-request :crowberto :post 200 "revision/revert"
                               {:entity :card :id card-id :revision_id earlier-id})
         (is (= :question (t2/select-one-fn :type :model/Card :id card-id)))))))

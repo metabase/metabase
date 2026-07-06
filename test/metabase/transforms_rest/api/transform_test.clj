@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -1932,10 +1933,18 @@
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (mt/with-data-analyst-role! (mt/user->id :lucky)
               (with-transform-cleanup! [table-name "field_filter_default_output"]
-                (let [mp           (mt/metadata-provider)
-                      category-col (lib.metadata/field mp (mt/id :transforms_products :category))
+                (let [mp                                  (mt/metadata-provider)
+                      category-col                        (lib.metadata/field mp (mt/id :transforms_products :category))
+                      [source-schema source-table-name]    (t2/select-one-fn (juxt :schema :name) :model/Table
+                                                                             (mt/id :transforms_products))
+                      ;; Qualify the FROM clause with its schema so that drivers which require the WHERE clause's
+                      ;; field-filter substitution (a fully qualified `schema.table.column` reference) to agree with
+                      ;; the table expression named in FROM (e.g. ClickHouse) can resolve the query. An unqualified
+                      ;; `FROM transforms_products` combined with a qualified WHERE reference is invalid there.
+                      qualified-source-table              (sql.u/quote-name driver/*driver* :table
+                                                                            source-schema source-table-name)
                       query        (lib/with-template-tags
-                                     (lib/native-query mp "SELECT * FROM transforms_products WHERE {{ cat }}")
+                                     (lib/native-query mp (format "SELECT * FROM %s WHERE {{ cat }}" qualified-source-table))
                                      {"cat" {:id "cat" :name "cat" :display-name "Cat"
                                              :type :dimension :widget-type :string/=
                                              :dimension (lib/ref category-col)

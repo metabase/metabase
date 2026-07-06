@@ -454,7 +454,9 @@
 
 (deftest replace-model-with-transform-dependent-shapes-test
   (testing "POST /replace-model-with-transform correctly handles every dependent shape"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    ;; one of the dependent shapes is a question that joins the model (rather than sourcing from it), so drivers
+    ;; also need :left-join support
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
       (mt/with-premium-features #{:dependencies}
         (let [mp     (mt/metadata-provider)
               schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]

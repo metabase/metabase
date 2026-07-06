@@ -345,6 +345,10 @@
                                       :target_id doc-id)))))))
 
 (deftest multiple-emoji-reactions-test
+  ;; Relies on comment_reaction.emoji using an exact (not linguistic) collation on MySQL/MariaDB -- see
+  ;; migration v63.2026-07-06T00:00:00. Under the table's original utf8mb4_unicode_ci collation, distinct
+  ;; supplementary-plane emoji like 👍 and 🎉 compared as equal, so the second POST below looked like a
+  ;; toggle-off of the first reaction instead of a new one.
   (testing "POST /api/comment/:comment-id/reaction supports multiple distinct emoji on the same comment"
     (mt/with-temp [:model/Document {doc-id :id}     {}
                    :model/Comment  {comment-id :id} {:target_id doc-id}]

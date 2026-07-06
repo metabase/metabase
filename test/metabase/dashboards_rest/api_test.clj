@@ -6331,9 +6331,12 @@
                             ;; some drivers return the date with a (midnight) time component attached, so only
                             ;; compare the date portion
                             :type/Date (str/starts-with? (str actual) value)
-                            ;; this DECIMAL column has no explicit scale, so per the SQL standard it's cast/rounded
-                            ;; to a whole number (scale 0) on insert
-                            :type/Decimal (== (Math/round (double value)) actual)
+                            ;; this DECIMAL column has no explicit scale, so per the SQL standard it's
+                            ;; driver-dependent whether it's cast/rounded to a whole number (scale 0, e.g.
+                            ;; MySQL) or persisted at full precision (e.g. Postgres NUMERIC) -- accept either
+                            ;; driver-faithful outcome
+                            :type/Decimal (or (== (Math/round (double value)) actual)
+                                              (< (Math/abs (- (double value) (double actual))) 1e-6))
                             (== value actual))
                           (format "%s was persisted with the correct coerced value (expected %s, got %s)"
                                   field-name (pr-str value) (pr-str actual))))))))))))))

@@ -397,35 +397,9 @@
                (do-perm-put "permissions/graph?force=false" 409)))
         (do-perm-put "permissions/graph?force=true" 200)))))
 
-(deftest oss-preserves-sandboxed-view-data-test
-  (testing "PUT /api/permissions/graph in OSS preserves stored EE sandbox config on rows it never surfaces"
-    (mt/with-model-cleanup [:model/Sandbox]
-      (mt/with-temp [:model/PermissionsGroup {gid :id} {}
-                     :model/Card {cid1 :id} {}
-                     :model/Card {cid2 :id} {}]
-        (mt/with-premium-features #{:advanced-permissions :sandboxes}
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (-> (data-perms.graph/api-graph)
-               (assoc-in [:groups gid (mt/id) :view-data]
-                         {"PUBLIC" {(mt/id :orders) :sandboxed (mt/id :people) :sandboxed}})
-               (assoc :sandboxes [{:table_id (mt/id :orders) :group_id gid :card_id cid1 :attribute_remappings {"foo" 1}}
-                                  {:table_id (mt/id :people) :group_id gid :card_id cid2 :attribute_remappings {"foo" 1}}]))))
-        (mt/with-premium-features #{}
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (assoc-in (data-perms.graph/api-graph)
-                     [:groups gid (mt/id) :create-queries]
-                     {"PUBLIC" {(mt/id :orders) :query-builder}})))
-        (testing "both sandbox rows survive the OSS create-queries edit"
-          (is (t2/exists? :model/Sandbox :table_id (mt/id :orders) :group_id gid))
-          (is (t2/exists? :model/Sandbox :table_id (mt/id :people) :group_id gid)))
-        (testing "the graph still surfaces :sandboxed view-data under EE"
-          (mt/with-premium-features #{:advanced-permissions :sandboxes}
-            (is (=? {(mt/id :orders) :sandboxed
-                     (mt/id :people) :sandboxed}
-                    (get-in (data-perms.graph/api-graph)
-                            [:groups gid (mt/id) :view-data "PUBLIC"])))))))))
+;; NOTE: `oss-preserves-sandboxed-view-data-test` lives in
+;; `metabase-enterprise.sandbox.api.permissions-test`: it references the EE-only `:model/Sandbox` model,
+;; which is not on the OSS classpath. It exercises OSS-token graph semantics under `with-premium-features #{}`.
 
 (deftest oss-edit-create-queries-on-blocked-row-test
   (testing "PUT /api/permissions/graph in OSS: a create-queries-only edit on a :blocked database returns 200 and bumps view-data to :unrestricted"

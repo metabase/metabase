@@ -7,6 +7,8 @@
    [metabase.channel.impl.email :as email.impl]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
@@ -194,7 +196,9 @@
     (notification.tu/with-notification-testing-setup!
       (notification.tu/with-card-notification
         [notification {:card         {:name          "Orders question"
-                                      :dataset_query (mt/mbql-query orders {:limit 1})}
+                                      :dataset_query (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                           (lib/limit 1)))}
                        :subscriptions [{:type          :notification-subscription/cron
                                         :cron_schedule "0 0 0 * * ? *"}]
                        :handlers      [{:channel_type :channel/email
@@ -207,6 +211,10 @@
           (testing "branding link is present without whitelabel"
             (mt/with-premium-features #{}
               (is (str/includes? (render!) "Made with"))))
-          (testing "branding link is hidden with whitelabel"
-            (mt/with-premium-features #{:whitelabel}
-              (is (not (str/includes? (render!) "Made with"))))))))))
+          ;; Whitelabeling is only wired up in EE builds (`enable-whitelabeling?` is gated on
+          ;; `config/ee-available?`), so `:whitelabel` can never hide the footer on OSS builds.
+          ;; The EE app-db jobs run this same file with EE on the classpath and cover the hidden case.
+          (mt/when-ee-evailable
+           (testing "branding link is hidden with whitelabel"
+             (mt/with-premium-features #{:whitelabel}
+               (is (not (str/includes? (render!) "Made with")))))))))))
