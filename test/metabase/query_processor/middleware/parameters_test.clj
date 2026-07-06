@@ -505,16 +505,15 @@
 
 (deftest ^:parallel temporal-expression-parameter-test
   (testing "a temporal (date) param mapped to an [:expression] custom column compiles to a temporal filter (#17775, #34955)"
-    (let [mp    meta/metadata-provider
-          query (-> (lib/query mp (meta/table-metadata :orders))
-                    (lib/expression "CC Date" (meta/field-metadata :orders :created-at))
-                    (assoc :parameters
-                           [{:id     "c77842b9"
-                             :target [:dimension
-                                      [:expression "CC Date" {:base-type :type/DateTimeWithLocalTZ}]
-                                      {:stage-number 0}]
-                             :type   :date/range
-                             :value  "2026-01-01~2026-03-31"}]))]
+    (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                  (lib/expression q "CC Date" (meta/field-metadata :orders :created-at))
+                  (assoc q :parameters
+                         [{:id     "c77842b9"
+                           :target [:dimension
+                                    (lib/->legacy-MBQL (lib/expression-ref q "CC Date"))
+                                    {:stage-number 0}]
+                           :type   :date/range
+                           :value  "2026-01-01~2026-03-31"}]))]
       (is (=? {:stages [{:filters [[:between
                                     {}
                                     [:expression {} "CC Date"]

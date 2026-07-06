@@ -547,13 +547,13 @@
                                                     (lib/visible-columns q))]))]
       (doseq [v [true false]]
         (testing (format "value = %s" (pr-str v))
-          (is (=? {:query {:filter [:= [:expression "Bool"] v]}}
+          (is (=? {:query {:filter [:= [:expression "Bool" {:base-type :type/Boolean}] v]}}
                   (expand-parameters
                    (-> (lib.convert/->legacy-MBQL query)
                        (assoc :parameters
                               [{:type   :boolean/=
                                 :value  [v]
-                                :target [:dimension [:expression "Bool"]]}]))))))))))
+                                :target [:dimension (lib.convert/->legacy-MBQL (lib/expression-ref query "Bool"))]}]))))))))))
 
 (deftest ^:parallel duplicate-temporal-unit-params-same-breakout-test
   ;; NOTE: this pins CURRENT product behavior. The documented intent for #44684 is for the LAST param to take priority

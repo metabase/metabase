@@ -1221,12 +1221,11 @@
 
 (deftest ^:parallel multi-join-display-names-survive-nesting-test
   (testing "#40635 multi-join column display names are preserved after wrapping as a nested (card) query"
-    (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                     (lib/join (-> (lib/join-clause (meta/table-metadata :products)
-                                                    [(lib/= (meta/field-metadata :orders :product-id)
-                                                            (meta/field-metadata :products :id))])
+    (let [base   (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
+                                                    (lib/suggested-join-conditions q (meta/table-metadata :products)))
                                    (lib/with-join-fields [(meta/field-metadata :products :id)])))
-                     (lib/join (-> (lib/join-clause (meta/table-metadata :products)
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
                                                     [(lib/= (meta/field-metadata :orders :user-id)
                                                             (meta/field-metadata :products :id))])
                                    (lib/with-join-fields [(meta/field-metadata :products :id)]))))

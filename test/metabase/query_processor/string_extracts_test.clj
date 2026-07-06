@@ -197,12 +197,11 @@
         (let [mp     (mt/metadata-provider)
               people (lib.metadata/table mp (mt/id :people))
               city   (lib.metadata/field mp (mt/id :people :city))
-              query  (-> (lib/query mp people)
-                         (lib/expression "L" (lib/length city)))
-              query  (-> query
-                         (lib/filter (lib/!= (lib/expression-ref query "L") 3))
-                         (lib/with-fields [city])
-                         (lib/limit 200))
+              query  (as-> (lib/query mp people) q
+                       (lib/expression q "L" (lib/length city))
+                       (lib/filter q (lib/!= (lib/expression-ref q "L") 3))
+                       (lib/with-fields q [city])
+                       (lib/limit q 200))
               rows   (mt/rows (qp/process-query query))]
           (is (seq rows))
           (is (not-any? #(= 3 (count (first %))) rows)))))))
@@ -210,22 +209,21 @@
 (deftest ^:parallel string-function-escape-literals-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
     (mt/dataset test-data
-      (let [mp      (mt/metadata-provider)
-            venues  (lib.metadata/table mp (mt/id :venues))
-            ven-id  (lib.metadata/field mp (mt/id :venues :id))
-            venname (lib.metadata/field mp (mt/id :venues :name))
-            extract (fn [expr]
-                      (let [q (-> (lib/query mp venues)
-                                  (lib/expression "test" expr))
-                            q (-> q
-                                  (lib/with-fields [(lib/expression-ref q "test")])
-                                  (lib/order-by ven-id :asc)
-                                  (lib/limit 1))]
-                        (ffirst (mt/rows (qp/process-query q)))))]
+      (let [mp          (mt/metadata-provider)
+            venues      (lib.metadata/table mp (mt/id :venues))
+            venues-id   (lib.metadata/field mp (mt/id :venues :id))
+            venues-name (lib.metadata/field mp (mt/id :venues :name))
+            extract     (fn [expr]
+                          (let [q (as-> (lib/query mp venues) q
+                                    (lib/expression q "test" expr)
+                                    (lib/with-fields q [(lib/expression-ref q "test")])
+                                    (lib/order-by q venues-id :asc)
+                                    (lib/limit q 1))]
+                            (ffirst (mt/rows (qp/process-query q)))))]
         (testing "#53527 a double-quote replacement literal strips the quote"
           (is (= "ab" (extract (lib/replace "a\"b" "\"" "")))))
         (testing "#56596 a `\\s` whitespace class keeps its backslash and captures a leading space"
-          (is (= " Medicine" (extract (lib/regex-match-first venname "\\s.*")))))))))
+          (is (= " Medicine" (extract (lib/regex-match-first venues-name "\\s.*")))))))))
 
 (deftest ^:parallel url-extractions-test
   (testing "`:domain`, `:subdomain`, `:host`, and `:path` extractions from URLs should work correctly"

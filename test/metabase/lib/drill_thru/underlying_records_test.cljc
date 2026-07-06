@@ -1040,11 +1040,12 @@
             source-card and filters the single clicked day (#54108)"
     (let [mp         (lib.tu/metadata-provider-with-mock-cards)
           card       (:orders/native (lib.tu/mock-cards))
-          created    (m/find-first #(= (:name %) "CREATED_AT")
-                                   (lib/breakoutable-columns (lib/query mp card)))
-          query      (-> (lib/query mp card)
-                         (lib/aggregate (lib/count))
-                         (lib/breakout (lib/with-temporal-bucket created :day)))
+          query      (as-> (lib/query mp card) q
+                       (lib/aggregate q (lib/count))
+                       (lib/breakout q (lib/with-temporal-bucket
+                                         (m/find-first #(= (:name %) "CREATED_AT")
+                                                       (lib/breakoutable-columns q))
+                                         :day)))
           cols       (lib/returned-columns query)
           count-col  (m/find-first #(= (:name %) "count") cols)
           _          (is (some? count-col))

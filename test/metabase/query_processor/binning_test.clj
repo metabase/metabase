@@ -154,9 +154,10 @@
 (deftest ^:parallel post-aggregation-filter-on-same-column-breakouts-test
   (testing "a later stage can filter on each of two disambiguated same-column breakout columns (metabase#46536, metabase#46776)"
     (let [mp         (mt/metadata-provider)
+          base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           total      (m/find-first #(= (:id %) (mt/id :orders :total))
-                                   (lib/breakoutable-columns (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
-          unfiltered (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                   (lib/breakoutable-columns base))
+          unfiltered (-> base
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-binning total {:strategy :num-bins, :num-bins 10}))
                          (lib/breakout (lib/with-binning total {:strategy :num-bins, :num-bins 50}))

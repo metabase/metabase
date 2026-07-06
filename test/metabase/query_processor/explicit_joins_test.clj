@@ -1863,7 +1863,7 @@
               cols     (lib/returned-columns base)
               id       (col-of cols (mt/id :orders :id))
               user-id  (col-of cols (mt/id :orders :user_id))
-              prod-id  (col-of cols (mt/id :orders :product_id))
+              product-id (col-of cols (mt/id :orders :product_id))
               model-rows (mt/rows
                           (qp/process-query
                            (-> base
@@ -1871,7 +1871,7 @@
                                               card
                                               [(lib/= (lib/+ id user-id)
                                                       (lib/+ (lib/with-join-alias id "m")
-                                                             (lib/with-join-alias prod-id "m")))])
+                                                             (lib/with-join-alias product-id "m")))])
                                              (lib/with-join-alias "m")
                                              (lib/with-join-fields :all)))
                                (lib/filter (lib/<= id 5)))))

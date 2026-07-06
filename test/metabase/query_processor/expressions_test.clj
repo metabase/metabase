@@ -1354,11 +1354,12 @@
     (mt/dataset test-data
       (let [mp         (mt/metadata-provider)
             orders     (lib.metadata/table mp (mt/id :orders))
+            oq         (lib/query mp orders)
             created-at (lib.metadata/field mp (mt/id :orders :created_at))
             discount   (lib.metadata/field mp (mt/id :orders :discount))
             id         (lib.metadata/field mp (mt/id :orders :id))]
         (testing "absolute range filter on a date passthrough expression runs"
-          (let [query (as-> (lib/query mp orders) q
+          (let [query (as-> oq q
                         (lib/expression q "CustomDate" created-at)
                         (lib/filter q (lib/between (lib/expression-ref q "CustomDate")
                                                    "2019-01-01" "2019-06-30"))
@@ -1366,9 +1367,9 @@
             (is (seq (mt/rows (qp/process-query query))))))
         (testing "#16273 relative-date filter on a case()-typed date expression runs"
           (let [products-created (m/find-first #(= (mt/id :products :created_at) (:id %))
-                                               (lib/visible-columns (lib/query mp orders)))
+                                               (lib/visible-columns oq))
                 _        (assert (some? products-created))
-                query    (as-> (lib/query mp orders) q
+                query    (as-> oq q
                            (lib/expression q "MiscDate" (lib/case [[(lib/> discount 0) created-at]]
                                                           products-created))
                            (lib/filter q (lib.options/update-options
@@ -1386,11 +1387,11 @@
         (let [mp          (mt/metadata-provider)
               orders      (lib.metadata/table mp (mt/id :orders))
               created-at  (lib.metadata/field mp (mt/id :orders :created_at))
-              products-id (m/find-first #(= (mt/id :products :id) (:id %))
-                                        (lib/visible-columns (lib/query mp orders)))
-              _           (assert (some? products-id))
               base        (-> (lib/query mp orders)
                               (lib/expression "OneisOne" (lib/* 1 1)))
+              products-id (m/find-first #(= (mt/id :products :id) (:id %))
+                                        (lib/visible-columns base))
+              _           (assert (some? products-id))
               query       (-> base
                               (lib/aggregate (lib/distinct products-id))
                               (lib/aggregate (lib/sum (lib/expression-ref base "OneisOne")))

@@ -807,10 +807,11 @@
       (mt/dataset test-data
         (let [mp    (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        (lib/expression "Quantity_2" (lib.metadata/field mp (mt/id :orders :quantity)))
-                        (assoc :parameters [{:type   :number/=
-                                             :target [:dimension [:expression "Quantity_2"]]
-                                             :value  [14]}]))]
+                        (lib/expression "Quantity_2" (lib.metadata/field mp (mt/id :orders :quantity))))
+              query (assoc query :parameters [{:type   :number/=
+                                               :target [:dimension (lib.convert/->legacy-MBQL
+                                                                    (lib/expression-ref query "Quantity_2"))]
+                                               :value  [14]}])]
           (is (= 1
                  (count (mt/rows (qp/process-query query))))))))))
 

@@ -9,7 +9,6 @@
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -521,15 +520,20 @@
   ([query]
    (expand** meta/metadata-provider query))
   ([mp
-    {:keys [parameters], :as query} :- [:map
-                                        [:native [:map
-                                                  [:query some?]]]]]
+    {:keys [parameters], :as query} :- [:or
+                                        [:map
+                                         [:lib/type [:= :mbql/query]]]
+                                        [:map
+                                         [:native [:map
+                                                   [:query some?]]]]]]
    (driver/with-driver :h2
-     (-> (lib/query
-          mp
-          (merge {:database (meta/id)
-                  :type     :native}
-                 query))
+     (-> (if (:lib/type query)
+           (lib/query mp (dissoc query :parameters))
+           (lib/query
+            mp
+            (merge {:database (meta/id)
+                    :type     :native}
+                   query)))
          (lib/update-query-stage 0 (fn [stage]
                                      (-> stage
                                          (update :parameters concat parameters)
@@ -543,7 +547,9 @@
   ([query]
    (expand* meta/metadata-provider query))
   ([mp query]
-   (-> (expand** mp (mbql.normalize/normalize query))
+   (-> (expand** mp (if (:lib/type query)
+                      query
+                      (mbql.normalize/normalize query)))
        :native
        (select-keys [:query :params :template-tags])
        (update :params vec))))
@@ -1238,28 +1244,30 @@
                 :params [#t "2016-07-01"]}
                (expand*
                 mp
-                {:native     {:query         "SELECT * FROM checkins WHERE {{date}};"
-                              :template-tags {"date" {:name         "date"
-                                                      :display-name "Checkin Date"
-                                                      :type         :dimension
-                                                      :widget-type  :date/all-options
-                                                      :dimension    (lib.convert/->legacy-MBQL
-                                                                     (lib/ref (lib.metadata/field mp (meta/id :checkins :date))))}}}
-                 :parameters [{:type :date/single, :target [:dimension [:template-tag "date"]], :value "2016-07-01"}]})))))))
+                (-> (lib/native-query mp "SELECT * FROM checkins WHERE {{date}};")
+                    (lib/with-template-tags
+                      {"date" {:name         "date"
+                               :display-name "Checkin Date"
+                               :type         :dimension
+                               :widget-type  :date/all-options
+                               :dimension    (lib/ref (lib.metadata/field mp (meta/id :checkins :date)))}})
+                    (assoc :parameters [{:type   :date/single
+                                         :target [:dimension [:template-tag "date"]]
+                                         :value  "2016-07-01"}])))))))))
 
 (deftest ^:parallel field-filter-string-default-test
   (testing "a required category field filter with a string default (no user input) filters on the default value (#15444)"
     (is (= {:query  "SELECT count(*) FROM PRODUCTS WHERE (\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" = ?)"
             :params ["Doohickey"]}
-           (expand* {:native {:query         "SELECT count(*) FROM PRODUCTS WHERE {{cat}}"
-                              :template-tags {"cat" {:name         "cat"
-                                                     :display-name "Cat"
-                                                     :type         :dimension
-                                                     :dimension    (lib.convert/->legacy-MBQL
-                                                                    (lib/ref (meta/field-metadata :products :category)))
-                                                     :widget-type  :string/=
-                                                     :required     true
-                                                     :default      ["Doohickey"]}}}})))))
+           (expand* (-> (lib/native-query meta/metadata-provider "SELECT count(*) FROM PRODUCTS WHERE {{cat}}")
+                        (lib/with-template-tags
+                          {"cat" {:name         "cat"
+                                  :display-name "Cat"
+                                  :type         :dimension
+                                  :dimension    (lib/ref (meta/field-metadata :products :category))
+                                  :widget-type  :string/=
+                                  :required     true
+                                  :default      ["Doohickey"]}})))))))
 
 (deftest ^:parallel newlines-test
   (testing "Make sure queries with newlines are parsed correctly (#11526)"

@@ -1176,11 +1176,10 @@
 
 (deftest ^:parallel explicit-join-in-card-plus-outer-implicit-join-stay-separate-test
   (testing "#33972 an implicitly-joined Products.Category carried by a source card and an outer explicit Products.Category join stay distinct"
-    (let [card-q (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                     (lib/aggregate (lib/count))
-                     (lib/breakout (m/find-first #(= (:id %) (meta/id :products :category))
-                                                 (lib/breakoutable-columns
-                                                  (lib/query meta/metadata-provider (meta/table-metadata :orders))))))
+    (let [card-q (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                   (lib/aggregate q (lib/count))
+                   (lib/breakout q (m/find-first #(= (:id %) (meta/id :products :category))
+                                                 (lib/breakoutable-columns q))))
           mp     (lib.tu/metadata-provider-with-card-from-query 1 card-q)
           outer  (-> (lib/query mp (lib.metadata/card mp 1))
                      (lib/join (-> (lib/join-clause (meta/table-metadata :products)

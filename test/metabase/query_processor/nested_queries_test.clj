@@ -1819,15 +1819,15 @@
 
 (defn- do-with-native-source-card
   "Compile `source-query` (a lib query) to native SQL per-driver, expose it as a saved native card with result
-  metadata, and invoke `f` with the nested lib query over the card plus the card's second returned column (taken
-  positionally from [[lib/returned-columns]], never matched by a hardcoded column-name literal)."
+  metadata, and invoke `f` with the nested lib query over the card plus the seq of the card's returned columns
+  (each test picks the column it needs by destructuring/name, never by a hardcoded column-name literal)."
   [source-query f]
   (let [mp      (lib.metadata/->metadata-provider source-query)
         native  (-> source-query qp.compile/compile :query)
         mp+card (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                  mp [(lib/native-query mp native)])
         nested  (lib/query mp+card (lib.metadata/card mp+card 1))]
-    (f nested (second (lib/returned-columns nested)))))
+    (f nested (lib/returned-columns nested))))
 
 ;;; A nested query over a saved native question can group by / aggregate one of the native card's result columns.
 (deftest ^:parallel aggregate-over-native-card-result-column-test
@@ -1842,7 +1842,7 @@
                (lib/aggregate (lib/count))
                (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))
                (lib/limit 100))
-           (fn [nested cnt-col]
+           (fn [nested [_product-id cnt-col]]
              (let [rows (mt/rows (qp/process-query (lib/aggregate nested (lib/avg cnt-col))))]
                (is (= 1 (count rows)))
                (is (number? (ffirst rows)))))))))))
@@ -1854,13 +1854,11 @@
     (testing "outer filter keeps the source-field breakout column (#11561)"
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
-              people-id (m/find-first #(and (= (mt/id :people :id) (:id %))
-                                            (= (mt/id :orders :user_id) (:fk-field-id %)))
-                                      (lib/breakoutable-columns
-                                       (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
               query     (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) q
                           (lib/aggregate q (lib/count))
-                          (lib/breakout q people-id)
+                          (lib/breakout q (m/find-first #(and (= (mt/id :people :id) (:id %))
+                                                              (= (mt/id :orders :user_id) (:fk-field-id %)))
+                                                        (lib/breakoutable-columns q)))
                           (lib/append-stage q)
                           (lib/filter q (lib/= (m/find-first #(= "count" (u/lower-case-en (:name %)))
                                                              (lib/filterable-columns q))
@@ -1880,7 +1878,7 @@
            (-> (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
                (lib/with-fields [(lib.metadata/field mp (mt/id :reviews :id))
                                  (lib.metadata/field mp (mt/id :reviews :rating))]))
-           (fn [nested rating-col]
+           (fn [nested [_id rating-col]]
              (let [rows (mt/formatted-rows [int int]
                                            (qp/process-query (lib/filter nested (lib/= rating-col 4))))]
                (is (seq rows))
@@ -1898,7 +1896,7 @@
            (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))
                                  (lib.metadata/field mp (mt/id :orders :created_at))]))
-           (fn [nested created-col]
+           (fn [nested [_id created-col]]
              (let [rows (mt/formatted-rows [identity int]
                                            (qp/process-query
                                             (-> nested
@@ -1918,7 +1916,7 @@
            (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
                (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))
                                  (lib.metadata/field mp (mt/id :people :source))]))
-           (fn [nested source-col]
+           (fn [nested [_id source-col]]
              (is (= [[5]]
                     (mt/formatted-rows [int]
                                        (qp/process-query (lib/aggregate nested (lib/distinct source-col)))))))))))))
@@ -2132,14 +2130,14 @@
                         prod-created  (lib.metadata/field mp0 (mt/id :products :created_at))
                         rev-rating    (lib.metadata/field mp0 (mt/id :reviews :rating))
                         rev-created   (lib.metadata/field mp0 (mt/id :reviews :created_at))
-                        rev-productid (lib.metadata/field mp0 (mt/id :reviews :product_id))
+                        rev-product-id (lib.metadata/field mp0 (mt/id :reviews :product_id))
                         products-join (-> (lib/join-clause products-t (lib/suggested-join-conditions orders products-t))
                                           (lib/with-join-alias "Products")
                                           (lib/with-join-fields (if include-products-created-at?
                                                                   [prod-category prod-created]
                                                                   [prod-category])))
                         reviews-join  (-> (lib/join-clause (lib.metadata/table mp0 (mt/id :reviews))
-                                                           [(lib/= product-id rev-productid)])
+                                                           [(lib/= product-id rev-product-id)])
                                           (lib/with-join-alias "Reviews")
                                           (lib/with-join-fields [rev-rating rev-created]))
                         card-q        (-> orders
