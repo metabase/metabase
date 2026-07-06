@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 
 import { FormField } from "metabase/common/components/FormField";
-import { Radio } from "metabase/common/components/Radio";
 import { darken } from "metabase/ui/colors";
 
 export const FormFieldContainer = styled.div`
@@ -21,14 +20,6 @@ export const EditorContainer = styled(ContentContainer)`
   display: flex;
   padding: 1rem 1rem 0.85rem 0.85rem;
   gap: var(--mantine-spacing-sm);
-
-  ${Radio.RadioGroupVariants.join(", ")} {
-    margin-top: 10px;
-  }
-
-  ${Radio.RadioContainerVariants.join(", ")} {
-    padding: 4px 10px;
-  }
 `;
 
 export const Column = styled.div<{ full?: boolean }>`

@@ -9,6 +9,7 @@
    [metabase.stale-test :refer [with-stale-items
                                 stale-dashboard
                                 stale-card
+                                stale-document
                                 date-months-ago
                                 datetime-months-ago]]
    [metabase.test :as mt]
@@ -18,13 +19,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- find-candidates
+  "Like [[stale/find-candidates]] but with `:rows` projected to their `:id`/`:model` identity. These tests
+  assert which items are found and in what order; the denormalized row attrs (`:name`, `:last_used_at`,
+  `:created_at`, `:creator_id`) are not their concern."
+  [args]
+  (update (stale/find-candidates args) :rows (partial mapv #(select-keys % [:id :model]))))
+
 (deftest can-find-stale-dashboards
   (mt/with-temp [:model/Dashboard {id :id} (stale-dashboard
                                             {:name "My Stale Dashboard"
                                              :collection_id nil})]
     (is (= [{:id id :model :model/Dashboard}]
            (:rows
-            (stale/find-candidates
+            (find-candidates
              {:collection-ids #{nil}
               :cutoff-date    (date-months-ago 6)
               :limit          10
@@ -37,13 +45,98 @@
                                            :collection_id nil}]
     (is (= [{:id id :model :model/Card}]
            (:rows
-            (stale/find-candidates
+            (find-candidates
              {:collection-ids #{nil}
               :cutoff-date    (date-months-ago 6)
               :limit          10
               :offset         0
               :sort-column    :name
               :sort-direction :asc}))))))
+
+(deftest can-find-stale-documents
+  (mt/with-temp [:model/Document {id :id} (stale-document
+                                           {:name "My Stale Document"
+                                            :collection_id nil})]
+    (let [base {:collection-ids #{nil}
+                :cutoff-date    (date-months-ago 6)
+                :limit          10
+                :offset         0
+                :sort-column    :name
+                :sort-direction :asc}]
+      (testing "a stale document is found when documents are searched"
+        (is (= [{:id id :model :model/Document}]
+               (:rows (find-candidates (assoc base :models #{:model/Document}))))))
+      (testing "documents are not part of the default model set"
+        (is (not-any? #(= (:id %) id)
+                      (:rows (find-candidates base))))))))
+
+(deftest publicly-shared-documents-are-excluded
+  (mt/with-temp [:model/Collection {col-id :id} {}
+                 :model/Document {doc-id1 :id} (stale-document {:name          "A"
+                                                                :collection_id col-id
+                                                                :public_uuid   (str (random-uuid))})
+                 :model/Document {doc-id2 :id} (stale-document {:name          "B"
+                                                                :collection_id col-id})]
+    (let [rows #(:rows (find-candidates {:collection-ids #{col-id}
+                                         :cutoff-date    (date-months-ago 6)
+                                         :limit          10
+                                         :offset         0
+                                         :sort-column    :name
+                                         :sort-direction :asc
+                                         :models         #{:model/Document}}))]
+      (testing "when public sharing is disabled, publicly shared documents are still returned"
+        (mt/with-temporary-setting-values [enable-public-sharing false]
+          (is (= [{:id doc-id1 :model :model/Document}
+                  {:id doc-id2 :model :model/Document}]
+                 (rows)))))
+      (testing "when public sharing is enabled, publicly shared documents are excluded"
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (is (= [{:id doc-id2 :model :model/Document}]
+                 (rows))))))))
+
+(deftest never-viewed-documents-created-before-cutoff-are-stale
+  ;; A serdes import restores the old `created_at` but :skip's `last_viewed_at`/`view_count`
+  ;; (make-spec "Document", document.clj), so an imported never-viewed doc has an OLD created_at
+  ;; yet a fresh `last_viewed_at` — only the `view_count = 0 AND created_at <= cutoff` arm catches
+  ;; it; the `last_viewed_at <= cutoff` arm can't.
+  (mt/with-temp [:model/Document {never-viewed-id :id} {:name           "Never viewed, created before cutoff"
+                                                        :collection_id  nil
+                                                        :view_count     0
+                                                        :last_viewed_at (datetime-months-ago 1)
+                                                        :created_at     (datetime-months-ago 7)}
+                 :model/Document {viewed-id :id} {:name           "Viewed recently, created before cutoff"
+                                                  :collection_id  nil
+                                                  :view_count     1
+                                                  :last_viewed_at (datetime-months-ago 1)
+                                                  :created_at     (datetime-months-ago 7)}]
+    (let [ids (into #{}
+                    (map :id)
+                    (:rows (find-candidates
+                            {:collection-ids #{nil}
+                             :cutoff-date    (date-months-ago 6)
+                             :limit          100
+                             :offset         0
+                             :sort-column    :name
+                             :sort-direction :asc
+                             :models         #{:model/Document}})))]
+      (testing "a never-viewed document created before the cutoff is stale despite a recent last_viewed_at"
+        (is (contains? ids never-viewed-id)))
+      (testing "a document viewed after the cutoff is not stale"
+        (is (not (contains? ids viewed-id)))))))
+
+(deftest documents-in-non-standard-collection-types-are-excluded
+  (mt/with-temp [:model/Collection {col-id :id} {:type "instance-analytics"}
+                 :model/Document _ (stale-document {:name "Doc" :collection_id col-id})]
+    (is (= {:rows [] :total 0}
+           (find-candidates
+            {:collection-ids #{col-id}
+             :cutoff-date    (date-months-ago 6)
+             :limit          10
+             :offset         0
+             :sort-column    :name
+             :sort-direction :asc
+             :models         #{:model/Document}}))
+        "should not include documents in non-standard collections")))
 
 (deftest results-can-be-sorted
   (mt/with-temp [:model/Dashboard {id1 :id} {:name "Z"
@@ -58,7 +151,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id1 :model :model/Dashboard}]
                (:rows
-                (stale/find-candidates
+                (find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -70,7 +163,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id3 :model :model/Dashboard}]
                (:rows
-                (stale/find-candidates
+                (find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -83,7 +176,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id1 :model :model/Dashboard}]
                (:rows
-                (stale/find-candidates
+                (find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -95,7 +188,7 @@
                 {:id id2 :model :model/Dashboard}
                 {:id id3 :model :model/Dashboard}]
                (:rows
-                (stale/find-candidates
+                (find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
@@ -109,7 +202,7 @@
     (testing "limits"
       (is (= [{:id id1 :model :model/Dashboard}]
              (:rows
-              (stale/find-candidates
+              (find-candidates
                {:collection-ids #{nil}
                 :cutoff-date    (date-months-ago 6)
                 :limit          1
@@ -119,7 +212,7 @@
     (testing "offsets"
       (is (= [{:id id2 :model :model/Dashboard}]
              (:rows
-              (stale/find-candidates
+              (find-candidates
                {:collection-ids #{nil}
                 :cutoff-date    (date-months-ago 6)
                 :limit          1
@@ -128,7 +221,7 @@
                 :sort-direction :asc})))))
     (testing "total"
       (is (= 2 (:total
-                (stale/find-candidates
+                (find-candidates
                  {:collection-ids #{nil}
                   :cutoff-date    (date-months-ago 6)
                   :limit          1
@@ -145,7 +238,7 @@
                                                                :name "B"})]
     (is (= []
            (:rows
-            (stale/find-candidates
+            (find-candidates
              {:collection-ids #{nil}
               :cutoff-date    (date-months-ago 6)
               :limit          10
@@ -155,7 +248,7 @@
         "should not include dashboards from the collection")
     (is (= {:rows [{:model :model/Dashboard :id id-1}]
             :total 1}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id-1}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -164,7 +257,7 @@
              :sort-direction :asc})))
     (is (= {:rows [{:model :model/Dashboard :id id-2}]
             :total 1}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id-2}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -174,7 +267,7 @@
     (is (= {:rows [{:model :model/Dashboard :id id-1}
                    {:model :model/Dashboard :id id-2}]
             :total 2}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id-1 col-id-2}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -198,7 +291,7 @@
       (are [expected cutoff-date]
            (= expected
               (:total
-               (stale/find-candidates
+               (find-candidates
                 {:collection-ids #{col-id}
                  :cutoff-date    (LocalDate/parse cutoff-date)
                  :limit          10
@@ -237,7 +330,7 @@
                                        :status              "verified"})
     (is (= {:rows  [{:id id1 :model :model/Card}]
             :total 1}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -252,7 +345,7 @@
                  :model/Dashboard _ (stale-dashboard {:name "Dash" :collection_id col-id})]
     (is (= {:rows  []
             :total 0}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -295,7 +388,7 @@
                         {:id card-id3 :model :model/Card}
                         {:id dash-id3 :model :model/Dashboard}]
                 :total 6}
-               (stale/find-candidates
+               (find-candidates
                 {:collection-ids #{col-id}
                  :cutoff-date    (date-months-ago 6)
                  :limit          10
@@ -308,7 +401,7 @@
         (is (= {:rows [{:id card-id3 :model :model/Card}
                        {:id dash-id3 :model :model/Dashboard}]
                 :total 2}
-               (stale/find-candidates
+               (find-candidates
                 {:collection-ids #{col-id}
                  :cutoff-date    (date-months-ago 6)
                  :limit          10
@@ -331,7 +424,7 @@
                                      :position 0}]
     (is (= {:rows  [{:model :model/Card :id card-2-id}]
             :total 1}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -351,7 +444,7 @@
                                  :dashboard_id dash-id}]
     (is (= {:rows []
             :total 0}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10
@@ -368,7 +461,7 @@
       (t2/update! :model/Card :id gtap-card-id {:last_used_at (datetime-months-ago 7)})
       (is (= {:rows []
               :total 0}
-             (stale/find-candidates
+             (find-candidates
               {:collection-ids #{nil}
                :cutoff-date    (date-months-ago 6)
                :limit          10
@@ -378,13 +471,37 @@
       (t2/delete! :model/Sandbox :card_id gtap-card-id)
       (is (= {:rows [{:model :model/Card :id gtap-card-id}]
               :total 1}
-             (stale/find-candidates
+             (find-candidates
               {:collection-ids #{nil}
                :cutoff-date    (date-months-ago 6)
                :limit          10
                :offset         0
                :sort-column    :name
                :sort-direction :asc}))))))
+
+(deftest models-arg-selects-which-models-are-searched
+  (with-stale-items [:model/Card {card-id :id} {:name "A card" :collection_id nil}
+                     :model/Dashboard {dash-id :id} {:name "B dash" :collection_id nil}]
+    (let [base {:collection-ids #{nil}
+                :cutoff-date    (date-months-ago 6)
+                :limit          10
+                :offset         0
+                :sort-column    :name
+                :sort-direction :asc}
+          rows #(:rows (find-candidates %))]
+      (testing "default (no :models) searches Card + Dashboard"
+        (is (= [{:id card-id :model :model/Card}
+                {:id dash-id :model :model/Dashboard}]
+               (rows base))))
+      (testing "explicit :models restricts the search to the given models"
+        (is (= [{:id card-id :model :model/Card}]
+               (rows (assoc base :models #{:model/Card}))))
+        (is (= [{:id dash-id :model :model/Dashboard}]
+               (rows (assoc base :models #{:model/Dashboard})))))
+      (testing "a model with no registered staleness method fails loud (no silent drop)"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No staleness method registered for"
+                              (rows (assoc base :models #{:model/Card :model/Collection}))))))))
 
 (deftest things-that-are-already-archived-do-not-appear
   (mt/with-temp [:model/Collection {col-id :id} {}
@@ -396,7 +513,7 @@
                                             :archived       true})]
     (is (= {:rows []
             :total 0}
-           (stale/find-candidates
+           (find-candidates
             {:collection-ids #{col-id}
              :cutoff-date    (date-months-ago 6)
              :limit          10

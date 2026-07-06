@@ -1,8 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
 import { IndexRoute, Route, type RouteComponent } from "react-router";
 
-import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
-import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -67,19 +65,6 @@ export function getDataStudioRoutes(
           </Route>
         ) : (
           <Route path="dependencies" component={DependenciesUpsellPage} />
-        )}
-        {PLUGIN_DEPENDENCIES.isEnabled ? (
-          <Route
-            path="dependency-diagnostics"
-            component={DependencyDiagnosticsSectionLayout}
-          >
-            {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
-          </Route>
-        ) : (
-          <Route
-            path="dependency-diagnostics"
-            component={DependencyDiagnosticsUpsellPage}
-          />
         )}
         {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
           <Route path="schema-viewer">

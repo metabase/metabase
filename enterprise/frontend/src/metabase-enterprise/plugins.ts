@@ -33,6 +33,7 @@ import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
+import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
 import { initializePlugin as initializeTools } from "./monitor/tools";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
@@ -59,52 +60,54 @@ import { initializePlugin as initializeWritableConnection } from "./writable_con
 /**
  * Initialize all enterprise plugins that use hasPremiumFeature.
  * Must be called after token features are available.
+ * (Let's try to keep the list sorted alphabetically).
  */
 export function initializePlugins() {
-  initializeTools();
-  initializeSandboxes();
+  initializeAdvancedPermissions();
+  initializeAiControls();
+  initializeApplicationPermissions();
+  initializeAuditApp();
   initializeAuth();
   initializeCaching();
+  initializeCleanUp();
   initializeCollections();
   initializeContentTranslation();
   initializeContentVerification();
   initializeCustomViz();
+  initializeDatabaseReplication();
   initializeDatabaseRouting();
-  initializeRemoteSync();
-  initializeReplacement();
-  initializeWhitelabel();
+  initializeDependencies();
   initializeEmbedding();
-  initializeEmbeddingSdk();
   initializeEmbeddingIframeSdk();
   initializeEmbeddingIframeSdkSetup();
-  initializeSnippets();
-  initializeSmtpOverride();
-  initializeSharing();
-  initializeModeration();
-  initializeAdvancedPermissions();
-  initializeAuditApp();
-  initializeMetabot();
-  initializeModelPersistence();
+  initializeEmbeddingSdk();
   initializeFeatureLevelPermissions();
-  initializeApplicationPermissions();
   initializeGroupManagers();
   initializeLibrary();
-  initializeUploadManagement();
+  initializeMetabot();
+  initializeModelPersistence();
+  initializeModeration();
+  initializeMonitorDependencyDiagnostics();
+  initializeRemoteSync();
+  initializeReplacement();
   initializeResourceDownloads();
-  initializeUserProvisioning();
-  initializeCleanUp();
-  initializeDatabaseReplication();
-  initializeTableEditing();
-  initializeDependencies();
+  initializeSandboxes();
   initializeSchemaViewer();
   initializeSecurityCenter();
   initializeSemanticSearch();
+  initializeSharing();
+  initializeSmtpOverride();
+  initializeSnippets();
+  initializeSupport();
+  initializeTableEditing();
+  initializeTenants?.();
+  initializeTools();
   initializeTransforms();
   initializeTransformsInspector();
   initializeTransformsPython();
-  initializeSupport();
-  initializeTenants?.();
-  initializeWritableConnection();
+  initializeUploadManagement();
+  initializeUserProvisioning();
+  initializeWhitelabel();
   initializeWorkspaces();
-  initializeAiControls();
+  initializeWritableConnection();
 }

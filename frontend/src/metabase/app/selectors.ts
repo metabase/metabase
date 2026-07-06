@@ -35,6 +35,10 @@ export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
 });
 
+export const getIsMonitorApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/monitor");
+});
+
 export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
   return path.startsWith("/explore");
 });
@@ -69,6 +73,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
   /^\/data-studio/,
+  /^\/monitor/,
   /\/model\/.*\/query/,
   /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,
@@ -185,6 +190,7 @@ export const getIsAppBarVisible = createSelector(
     getRouterHash,
     getIsAdminApp,
     getIsDataStudioApp,
+    getIsMonitorApp,
     getIsEditingDashboard,
     getIsEmbeddingIframe,
     getIsEmbeddedAppBarVisible,
@@ -195,6 +201,7 @@ export const getIsAppBarVisible = createSelector(
     hash,
     isAdminApp,
     isDataStudioApp,
+    isMonitorApp,
     isEditingDashboard,
     isEmbedded,
     isEmbeddedAppBarVisible,
@@ -206,6 +213,7 @@ export const getIsAppBarVisible = createSelector(
       (isEmbedded && !isEmbeddedAppBarVisible) ||
       isAdminApp ||
       isDataStudioApp ||
+      isMonitorApp ||
       isEditingDashboard ||
       isFullscreen
     ) {

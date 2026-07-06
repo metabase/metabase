@@ -156,11 +156,11 @@ export const SmallGenericError = forwardRef<
     >
       <Tooltip label={tooltipMessage}>
         {isEmbeddingIframe ? (
-          <Icon name="warning" size={32} c="text-tertiary" />
+          <Icon name="warning" size={32} c="text-disabled" />
         ) : (
           <Button
-            leftSection={<Icon name="warning" size={32} c="text-tertiary" />}
-            color="text-tertiary"
+            leftSection={<Icon name="warning" size={32} c="text-disabled" />}
+            color="text-disabled"
             onClick={openModal}
             variant="subtle"
           />

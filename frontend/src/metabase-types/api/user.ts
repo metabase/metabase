@@ -193,6 +193,11 @@ export type UserKeyValue =
       value: boolean;
     }
   | {
+      namespace: "monitor";
+      key: "isNavbarOpened";
+      value: boolean;
+    }
+  | {
       namespace: "dependency_diagnostics";
       key: string;
       value: DependencyDiagnosticsUserParams;

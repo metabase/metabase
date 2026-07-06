@@ -37,11 +37,11 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   ForeignKey,
   RowValues,
@@ -56,7 +56,7 @@ import { extractData, getActionItems, getModelId } from "./utils";
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;
   columns: DatasetColumn[];
-  columnsSettings: (OptionsType | undefined)[];
+  columnsSettings: (ColumnSettings | undefined)[];
   query: Lib.Query | undefined;
   row: RowValues | undefined;
   rowId: string | number;
