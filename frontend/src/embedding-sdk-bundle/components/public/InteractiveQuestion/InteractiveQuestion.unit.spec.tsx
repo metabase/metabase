@@ -209,7 +209,7 @@ describe("InteractiveQuestion", () => {
     ).toBeVisible();
   });
 
-  it("should render an ad hoc question from a dataset query object", async () => {
+  it("should render an ad hoc question from a query-only card object", async () => {
     const { state } = setupSdkState();
 
     setupNotificationChannelsEndpoints({ email: { configured: false } });
@@ -230,11 +230,13 @@ describe("InteractiveQuestion", () => {
 
     renderWithSDKProviders(
       <InteractiveQuestion
-        query={{
-          type: "query",
-          database: TEST_DB.id,
-          query: { "source-table": TEST_TABLE.id },
-          parameters: [],
+        card={{
+          query: {
+            type: "query",
+            database: TEST_DB.id,
+            query: { "source-table": TEST_TABLE.id },
+            parameters: [],
+          },
         }}
       />,
       {
