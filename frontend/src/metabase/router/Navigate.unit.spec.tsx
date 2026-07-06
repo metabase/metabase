@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { Route } from "react-router";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { Navigate } from "./Navigate";
+import { Route } from "./react-router";
 
 // Stable references: `<Navigate>` keeps `state` raw in its effect deps (like v7),
 // so a fresh object literal each render would re-navigate and loop.
