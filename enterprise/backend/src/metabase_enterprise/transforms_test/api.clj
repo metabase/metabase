@@ -53,13 +53,14 @@
         (throw e)))))
 
 (defn- run-test-run!
-  "Shared POST body for both target types. Parses the multipart contract, then
-  calls the target-specific holes with one `:model/Transform` snapshot shared
-  between the permission check and the run:
+  "Parse the multipart contract, check the run is allowed, and execute it via
+  two caller-supplied fns. Both receive `all-transforms`, one snapshot of every
+  `:model/Transform`:
 
-  - `(slice-transforms source-ids all-transforms)` — the transforms the run exercises.
-  - `(run source-ids fixtures-by-id expected-file opts all-transforms)` — the run
-    itself, returning a run record.
+  - `(slice-transforms source-ids all-transforms)` — the transforms the run
+    exercises; these must pass the permission check.
+  - `(run source-ids fixtures-by-id expected-file opts all-transforms)` — the
+    run itself, returning a run record.
 
   Returns an HTTP response map; typed test-run errors become error responses,
   other exceptions propagate."
@@ -85,12 +86,14 @@
           :body   (api-util/run-record->response
                    (run source-ids fixtures-by-id expected-file opts all-transforms))})))))
 
-(defn- inputs-response
-  "Shared GET body for both target types, with one `:model/Transform` snapshot
-  shared between the permission check and the leaf query:
+(defn- inputs-response!
+  "Resolve the boundary leaf input tables via two caller-supplied fns. Both
+  receive `all-transforms`, one snapshot of every `:model/Transform`:
 
-  - `(slice-transforms all-transforms)` — the transforms the run would exercise.
-  - `(input-tables all-transforms)` — the boundary leaf table-infos.
+  - `(slice-transforms all-transforms)` — the transforms the run would
+    exercise; these must pass the permission check.
+  - `(input-tables all-transforms)` — the boundary leaf table-infos,
+    `{:keys [id schema name columns]}` maps.
 
   Returns an HTTP response map; typed test-run errors become error responses,
   other exceptions propagate."
@@ -108,11 +111,12 @@
   "Run a synchronous *chained* (sub-graph) test run whose target is identified by
   `target-type` (`transform` | `card`) and `id`.
 
-  The multipart contract, response shape, and error→HTTP mapping match the
-  transform-target run: parts `sources` (optional JSON id array), `input-<table-id>`
-  (one CSV per boundary leaf), `expected` (CSV), `options` (optional JSON;
-  `ignore_columns`). The required leaves are what `GET …/subgraph-inputs` returns
-  for the same `(target-type, id, sources)` selection.
+  Multipart parts: `sources` (optional JSON id array), `input-<table-id>`
+  (one CSV per boundary leaf), `expected` (CSV), `assertions` (JSON array of
+  `{name, sql, severity}`), `options` (optional JSON; `ignore_columns`). At
+  least one of `expected` or `assertions` is required. The required leaves are
+  what `GET …/subgraph-inputs` returns for the same `(target-type, id, sources)`
+  selection.
 
   `card` covers questions, models, and metric cards (`:type :metric`). Read access
   to the target is enforced (`read-check` Transform or Card)."
@@ -158,13 +162,13 @@
     (case target-type
       "transform"
       (do (api/read-check :model/Transform id)
-          (inputs-response
+          (inputs-response!
            {:slice-transforms (partial transform-slice-transforms id source-ids)
             :input-tables     (partial test-run.core/subgraph-input-tables id source-ids)}))
 
       "card"
       (let [card (api/read-check :model/Card id)]
-        (inputs-response
+        (inputs-response!
          {:slice-transforms (partial card-slice-transforms card source-ids)
           :input-tables     (partial test-run.core/card-subgraph-input-tables card source-ids)})))))
 
