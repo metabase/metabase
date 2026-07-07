@@ -281,11 +281,11 @@
                         :type          :question
                         :name          "Orders question"
                         :dataset_query (mt/mbql-query orders {:limit 3})}]
-          (let [calls (atom 0)
-                orig  (mt/original-fn #'entity-details/related-tables)]
-            (mt/with-dynamic-fn-redefs [entity-details/related-tables (fn [& args]
+          (let [calls (atom 0)]
+            ;; `related-tables` should never be invoked, so the redef only needs to count calls.
+            (mt/with-dynamic-fn-redefs [entity-details/related-tables (fn [& _args]
                                                                         (swap! calls inc)
-                                                                        (apply orig args))]
+                                                                        nil)]
               (let [output (-> (entity-details/get-report-details {:report-id card-id})
                                :structured-output)]
                 (is (=? {:id card-id :type :question} output))
@@ -301,11 +301,11 @@
                         :type          :question
                         :name          "Orders question"
                         :dataset_query (mt/mbql-query orders {:limit 3})}]
-          (let [calls (atom 0)
-                orig  (mt/original-fn #'lib/available-metrics)]
-            (mt/with-dynamic-fn-redefs [lib/available-metrics (fn [& args]
+          (let [calls (atom 0)]
+            ;; `available-metrics` should never be invoked, so the redef only needs to count calls.
+            (mt/with-dynamic-fn-redefs [lib/available-metrics (fn [& _args]
                                                                 (swap! calls inc)
-                                                                (apply orig args))]
+                                                                nil)]
               (let [output (-> (entity-details/get-report-details {:report-id card-id})
                                :structured-output)]
                 (is (=? {:id card-id :type :question} output))
