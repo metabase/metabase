@@ -27,6 +27,7 @@
    [metabase.config.core :as config]
    [metabase.content-verification.init]
    [metabase.dashboards.init]
+   [metabase.dependencies.init]
    [metabase.documents.init]
    [metabase.driver.init]
    [metabase.eid-translation.init]

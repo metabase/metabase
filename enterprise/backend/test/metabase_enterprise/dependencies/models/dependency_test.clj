@@ -3,8 +3,8 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.dependencies.models.dependency :as deps.graph]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.queries.models.card :as card]

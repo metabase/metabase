@@ -11,10 +11,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(def ^:private compile-query
-  "See [[metabase.dependencies.native/compile-query]]."
-  deps.native/compile-query)
-
 (defn- has-substitutable-template-tags?
   "Returns true if the query has any card or table template tags that need
    placeholder substitution before compilation."
@@ -79,7 +75,7 @@
             (-> query
                 (assoc-in [:stages 0 :native] modified-sql)
                 (assoc-in [:stages 0 :template-tags] remaining-tags))]
-        (compile-query modified-query)))))
+        (deps.native/compile-query modified-query)))))
 
 (defn- table-placeholder?
   "True if table-name is a table placeholder (e.g. \"mb__validat_table__65478\")."
@@ -274,8 +270,8 @@
                   errors
                   (fallback-enrich driver compiled errors)))
               ;; Fallback: cards with placeholder collision
-              (driver/validate-native-query-fields driver (compile-query query)))
-            (let [compiled (compile-query query)
+              (driver/validate-native-query-fields driver (deps.native/compile-query query)))
+            (let [compiled (deps.native/compile-query query)
                   errors   (validate-with-sources driver compiled false)]
               (if (empty? errors)
                 errors
@@ -289,10 +285,6 @@
    query  :- ::lib.schema/query]
   (when-not (has-table-template-tags? query)
     (let [compiled (if (has-substitutable-template-tags? query)
-                     (or (compile-toplevel-query query) (compile-query query))
-                     (compile-query query))]
+                     (or (compile-toplevel-query query) (deps.native/compile-query query))
+                     (deps.native/compile-query query))]
       (driver/native-result-metadata driver compiled))))
-
-(def native-query-deps
-  "See [[metabase.dependencies.native/native-query-deps]]."
-  deps.native/native-query-deps)

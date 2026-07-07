@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
+   [metabase.dependencies.native :as deps.native]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -66,20 +67,20 @@
            (->> (lib.metadata/card mp 4)
                 :dataset-query
                 (lib-be/normalize-query mp)
-                (deps.native-validation/native-query-deps driver))))
+                (deps.native/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}}
            (->> (lib.metadata/card mp 5)
                 :dataset-query
                 (lib-be/normalize-query mp)
-                (deps.native-validation/native-query-deps driver))))
+                (deps.native/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}
              {:snippet 1}}
            (->> (lib.metadata/card mp 6)
                 :dataset-query
                 (lib-be/normalize-query mp)
-                (deps.native-validation/native-query-deps driver))))
+                (deps.native/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}
              {:snippet 1}
@@ -87,7 +88,7 @@
            (->> (lib.metadata/card mp 7)
                 :dataset-query
                 (lib-be/normalize-query mp)
-                (deps.native-validation/native-query-deps driver))))
+                (deps.native/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:table (meta/id :orders)}
              {:card 1}
@@ -95,7 +96,7 @@
            (->> (lib.metadata/card mp 9)
                 :dataset-query
                 (lib-be/normalize-query mp)
-                (deps.native-validation/native-query-deps driver))))))
+                (deps.native/native-query-deps driver))))))
 
 (deftest ^:parallel validate-bad-queries-test
   (testing "validate-native-query handles nonsense queries"
@@ -627,6 +628,6 @@
                        driver
                        (lib/native-query mp "SELECT * FROM ORDERS")))))
           (testing "native-query-deps doesn't throw (backfill path)"
-            (is (set? (deps.native-validation/native-query-deps
+            (is (set? (deps.native/native-query-deps
                        driver
                        (lib/native-query mp "SELECT * FROM ORDERS"))))))))))

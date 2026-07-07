@@ -1,8 +1,8 @@
 (ns metabase-enterprise.dependencies.findings
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
-   [metabase.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
+   [metabase.dependencies.dependency-types :as deps.dependency-types]
    [metabase.dependencies.models.dependency :as models.dependency]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]

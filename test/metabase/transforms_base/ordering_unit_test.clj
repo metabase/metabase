@@ -54,6 +54,32 @@
         (is (= {:dependencies {1 #{2} 2 #{1}} :not-found #{} :failed #{}}
                (ordering/transform-ordering #{1} [(tx 1 #{2}) (tx 2 #{1})])))))))
 
+(deftest stored-deps-are-preferred-over-live-computation-test
+  (testing "a transform carrying :stored-deps never has table-dependencies invoked for it"
+    (with-redefs [transforms-base.i/table-dependencies
+                  (fn [transform]
+                    (throw (ex-info "live computation should not happen" {:id (:id transform)})))]
+      (testing "stored-or-live-deps returns the stored value as-is"
+        (is (= #{{:table 100}} (ordering/stored-or-live-deps {:id 2 :stored-deps #{{:table 100}}}))))
+      (testing "an empty (non-nil) stored value means \"no dependencies\", not \"unknown\""
+        (is (= #{} (ordering/stored-or-live-deps {:id 1 :stored-deps #{}}))))
+      (testing "transform-ordering walks a fully-hydrated closure without live computation"
+        (is (= {:dependencies {1 #{} 2 #{1}} :not-found #{} :failed #{}}
+               (ordering/transform-ordering #{2} [(assoc (tx 1 #{}) :stored-deps #{})
+                                                  (assoc (tx 2 #{}) :stored-deps #{{:table 100}})]))))
+      (testing "stored deps of the {:transform id} form resolve directly"
+        (is (= {:dependencies {1 #{} 2 #{1}} :not-found #{} :failed #{}}
+               (ordering/transform-ordering #{2} [(assoc (tx 1 #{}) :stored-deps #{})
+                                                  (assoc (tx 2 #{}) :stored-deps #{{:transform 1}})])))))))
+
+(deftest stored-deps-mixed-with-live-computation-test
+  (testing "transforms without :stored-deps fall back to live computation within the same walk"
+    (with-redefs [transforms-base.i/table-dependencies :test-deps]
+      (is (= {:dependencies {1 #{} 2 #{1} 3 #{2}} :not-found #{} :failed #{}}
+             (ordering/transform-ordering #{3} [(tx 1 #{})
+                                                (assoc (tx 2 #{}) :stored-deps #{{:table 100}})
+                                                (tx 3 #{2})]))))))
+
 (deftest transform-ordering-catches-per-transform-failures-test
   (testing "per-transform dep-extraction failures are caught, captured in :failed, and treated as no deps"
     (testing "failure on a start-id: the transform becomes a leaf, its supposed deps are not visited"

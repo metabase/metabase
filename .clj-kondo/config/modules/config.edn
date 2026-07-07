@@ -794,6 +794,39 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Graphy"
+   :api  #{metabase.dependencies.core
+           metabase.dependencies.init
+           metabase.dependencies.models.dependency}
+   :uses #{app-db
+           database-routing
+           documents
+           driver
+           events
+           graph
+           lib
+           lib-be
+           models
+           premium-features
+           query-processor
+           settings
+           task
+           transforms-base
+           util}
+   :friends #{enterprise/dependencies}
+   :model-exports #{:model/Dependency
+                    :model/DependencyStatus}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Document
+                    :model/Measure
+                    :model/NativeQuerySnippet
+                    :model/Sandbox
+                    :model/Segment
+                    :model/Table
+                    :model/Transform}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
@@ -2373,6 +2406,7 @@
            channel
            collections
            database-routing
+           dependencies
            driver
            events
            lib
@@ -2443,6 +2477,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
+           dependencies
            models
            request
            transforms
@@ -3102,12 +3137,12 @@
    :api  #{metabase-enterprise.dependencies.analysis
            metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init
-           metabase-enterprise.dependencies.models.dependency}
+           metabase-enterprise.dependencies.init}
    :uses #{api
            app-db
            collections
            database-routing
+           dependencies
            documents
            driver
            events
@@ -3366,6 +3401,7 @@
    :uses #{analytics
            api
            app-db
+           dependencies
            events
            lib
            lib-be

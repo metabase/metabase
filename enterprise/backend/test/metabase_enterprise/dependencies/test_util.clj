@@ -1,7 +1,7 @@
 (ns metabase-enterprise.dependencies.test-util
   (:require
    [medley.core :as m]
-   [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase.dependencies.task.backfill :as dependencies.backfill]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

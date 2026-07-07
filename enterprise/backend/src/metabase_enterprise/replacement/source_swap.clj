@@ -11,10 +11,10 @@
   performance problem here, that would be a good optimization step. In practice most swaps don't change queries
   (the table was already upgraded and the query references are the same), so this is rarely an issue."
   (:require
-   [metabase.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.api.common :as api]
+   [metabase.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as vs]

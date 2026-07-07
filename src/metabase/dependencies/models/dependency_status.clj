@@ -1,9 +1,9 @@
 (ns metabase.dependencies.models.dependency-status
   (:require
    [java-time.api :as t]
+   [metabase.app-db.core :as app-db]
    [metabase.dependencies.dependency-types :as deps.dependency-types]
    [metabase.dependencies.models.dependency :as models.dependency]
-   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

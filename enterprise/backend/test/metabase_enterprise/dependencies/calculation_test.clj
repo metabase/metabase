@@ -1,7 +1,9 @@
 (ns metabase-enterprise.dependencies.calculation-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.calculation :as calculation]
+   ;; loaded for its EE calculate-deps* defmethods
+   [metabase-enterprise.dependencies.calculation]
+   [metabase.dependencies.calculation :as calculation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
