@@ -72,8 +72,6 @@ export type GeneratedCard = {
 
 export type GeneratedEntity = GeneratedCard;
 
-// No name: the part is persisted, so the FE fetches the container's current
-// name at render time rather than baking in a label that goes stale on rename.
 export type SavedEntityLocation =
   | { type: "collection"; id: number | null }
   | { type: "dashboard"; id: number };

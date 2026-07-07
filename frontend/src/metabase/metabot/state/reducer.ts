@@ -62,9 +62,6 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
-    // Session cache of {generated chart id -> saved card id}, populated by both the
-    // manual Save button and streamed `entity_saved` parts. The durable truth is the
-    // card's provenance columns; the inline chart verifies this cache against them.
     markChartSaved: (
       state,
       action: PayloadAction<{ entityId: string; cardId: number }>,

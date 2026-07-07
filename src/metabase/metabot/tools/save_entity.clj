@@ -86,8 +86,6 @@
                  :visualization_settings {}
                  :collection_id          collection-id}
                 {:id api/*current-user-id*})]
-      ;; The location carries no name: the FE resolves the current one at render
-      ;; time, so a later rename can't leave a stale label in the persisted part.
       {:card          card
        :location      {:type "collection" :id collection-id}
        :location-name (collection-name collection-id)
