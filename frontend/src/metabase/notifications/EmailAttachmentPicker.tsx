@@ -22,7 +22,7 @@ import S from "./EmailAttachmentPicker.module.css";
 
 const DEFAULT_ATTACHMENT_TYPE: AttachmentType = "csv";
 
-type AttachmentType = "csv" | "xlsx";
+type AttachmentType = "csv" | "xlsx" | "ods";
 
 function getCardIdPair(card: SubscriptionSupportingCard): string {
   return card.id + "|" + card.dashboard_card_id;
@@ -33,7 +33,11 @@ function getAttachmentTypeFor(
 ): AttachmentType | null {
   if (cards.some((c) => c.include_xls)) {
     return "xlsx";
-  } else if (cards.some((c) => c.include_csv)) {
+  }
+  if (cards.some((c) => c.include_ods)) {
+    return "ods";
+  }
+  if (cards.some((c) => c.include_csv)) {
     return "csv";
   }
   return null;
@@ -69,7 +73,7 @@ function calculateStateFromCards(
   pulse: DraftDashboardSubscription,
 ) {
   const selectedCards = cards.filter(
-    (card) => card.include_csv || card.include_xls,
+    (card) => card.include_csv || card.include_xls || card.include_ods,
   );
   return {
     isEnabled: selectedCards.length > 0,
@@ -150,7 +154,7 @@ export function EmailAttachmentPicker({
 
   const updatePulseCards = useCallback(
     /*
-     * Reaches into the parent component (via setPulse) to update its pulsecard's include_{csv,xls} values
+     * Reaches into the parent component (via setPulse) to update its pulsecard's include_{csv,xls,ods} values
      * based on this component's state.
      */
     (
@@ -159,6 +163,7 @@ export function EmailAttachmentPicker({
       options: ExportOptionsState,
     ) => {
       const isXls = attachmentType === "xlsx";
+      const isOds = attachmentType === "ods";
       const isCsv = attachmentType === "csv";
 
       setSelectedAttachmentType(attachmentType);
@@ -169,6 +174,7 @@ export function EmailAttachmentPicker({
           ...card,
           include_csv: cardIds.has(getCardIdPair(card)) && isCsv,
           include_xls: cardIds.has(getCardIdPair(card)) && isXls,
+          include_ods: cardIds.has(getCardIdPair(card)) && isOds,
           format_rows: isCsv && options.isFormattingEnabled,
           pivot_results: card.display === "pivot" && options.isPivotingEnabled,
         })),
@@ -292,10 +298,10 @@ export function EmailAttachmentPicker({
 
   const setAttachmentType = useCallback(
     /*
-     * Called when the attachment type toggle (csv/xls) is clicked
+     * Called when the attachment type toggle (csv/xlsx/ods) is clicked
      */
     (format: ExportFormat) => {
-      if (format === "csv" || format === "xlsx") {
+      if (format === "csv" || format === "xlsx" || format === "ods") {
         updatePulseCards(format, selectedCardIds, exportOptions);
       }
     },
@@ -436,7 +442,7 @@ export function EmailAttachmentPicker({
           <Box py="1rem">
             <ExportSettingsWidget
               selectedFormat={selectedAttachmentType}
-              formats={["csv", "xlsx"]}
+              formats={["csv", "xlsx", "ods"]}
               isFormattingEnabled={isFormattingEnabled}
               isPivotingEnabled={isPivotingEnabled}
               canConfigureFormatting={selectedAttachmentType === "csv"}

@@ -704,8 +704,8 @@ describe("#39152 sharing an unsaved question", () => {
             H.modal()
               .findByLabelText(
                 resource === "dashboard"
-                  ? "Results (csv, xlsx, json, png)"
-                  : "Download (csv, xlsx, json, png)",
+                  ? "Results (csv, xlsx, ods, json, png)"
+                  : "Download (csv, xlsx, ods, json, png)",
               )
               .click({ force: true });
 
@@ -787,8 +787,8 @@ describe("#39152 sharing an unsaved question", () => {
               // Disable results download
               cy.findByLabelText(
                 resource === "dashboard"
-                  ? "Results (csv, xlsx, json, png)"
-                  : "Download (csv, xlsx, json, png)",
+                  ? "Results (csv, xlsx, ods, json, png)"
+                  : "Download (csv, xlsx, ods, json, png)",
               ).click({ force: true });
 
               cy.findByTestId("embed-backend")

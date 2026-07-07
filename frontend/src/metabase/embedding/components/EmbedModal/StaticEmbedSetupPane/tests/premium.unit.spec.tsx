@@ -118,8 +118,8 @@ describe("Static Embed Setup phase - EE, with token", () => {
 
         const downloadLabel =
           resourceType === "dashboard"
-            ? "Results (csv, xlsx, json, png)"
-            : "Download (csv, xlsx, json, png)";
+            ? "Results (csv, xlsx, ods, json, png)"
+            : "Download (csv, xlsx, ods, json, png)";
 
         expect(screen.getByText(downloadLabel)).toBeVisible();
         expect(screen.getByLabelText(downloadLabel)).toBeChecked();

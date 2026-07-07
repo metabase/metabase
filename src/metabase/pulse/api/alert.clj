@@ -40,6 +40,7 @@
                             (select-keys card [:name :description :collection_id :display])
                             {:format_rows       true
                              :include_xls       false
+                             :include_ods       false
                              :include_csv       true
                              :pivot_results     false
                              :dashboard_id      nil

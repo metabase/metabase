@@ -105,8 +105,8 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
           cy.findByText(
             object === "dashboard"
-              ? "Results (csv, xlsx, json, png)"
-              : "Download (csv, xlsx, json, png)",
+              ? "Results (csv, xlsx, ods, json, png)"
+              : "Download (csv, xlsx, ods, json, png)",
           ).should("not.exist");
           cy.findByRole("button", { name: "Export as PDF" }).should(
             "not.exist",

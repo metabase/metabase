@@ -284,12 +284,12 @@
                                                      additonal-honeysql))]
              [k count])))
 
-(defn- num-notifications-with-xls-or-csv-cards
-  "Return the number of Notifications that satisfy `where-conditions` that have at least one PulseCard with `include_xls` or
-  `include_csv`.
+(defn- num-notifications-with-csv-xls-or-ods-cards
+  "Return the number of Notifications that satisfy `where-conditions` that have at least one PulseCard with `include_xls`,
+  `include_csv`, or `include_ods`.
 
      ;; Pulses only (filter out Alerts)
-     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
+     (num-notifications-with-csv-xls-or-ods-cards [:= :alert_condition nil])"
   [& where-conditions]
   (-> (app-db/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
                      :from      [:pulse]
@@ -298,7 +298,8 @@
                                  [:and
                                   [:or
                                    [:= :pulse_card.include_csv true]
-                                   [:= :pulse_card.include_xls true]]]
+                                   [:= :pulse_card.include_xls true]
+                                   [:= :pulse_card.include_ods true]]]
                                  where-conditions)})
       first
       :count))
@@ -310,7 +311,7 @@
   (let [pulse-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:= :pulse.alert_condition nil]}]
     {:pulses               (t2/count :model/Pulse :alert_condition nil)
      ;; "Table Cards" are Cards that include a Table you can download
-     :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
+     :with_table_cards     (num-notifications-with-csv-xls-or-ods-cards [:= :alert_condition nil])
      :pulse_types          (db-frequencies :model/PulseChannel :channel_type  pulse-conditions)
      :pulse_schedules      (db-frequencies :model/PulseChannel :schedule_type pulse-conditions)
      :num_pulses_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id (dissoc pulse-conditions :left-join))))
@@ -320,7 +321,7 @@
 (defn- alert-metrics []
   (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
     {:alerts               (t2/count :model/Pulse :alert_condition [:not= nil])
-     :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
+     :with_table_cards     (num-notifications-with-csv-xls-or-ods-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count :model/Pulse :alert_condition [:not= nil], :alert_first_only true)
      :above_goal           (t2/count :model/Pulse :alert_condition [:not= nil], :alert_above_goal true)
      :alert_types          (db-frequencies :model/PulseChannel :channel_type alert-conditions)

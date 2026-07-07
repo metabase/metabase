@@ -122,6 +122,38 @@
                            "Longitude" "118.26100000° W",
                            "Price" 2.0}]
                          (basic-actual-results* export-format query)))
+            ;; ODS applies format_rows to coordinates like CSV/JSON; numeric columns stay typed in cells.
+            :ods (is (= [{"ID" 1.0,
+                          "Name" "Red Medicine",
+                          "Category ID" 4.0,
+                          "Latitude" "10.06460000° N",
+                          "Longitude" "165.37400000° W",
+                          "Price" 3.0}
+                         {"ID" 2.0,
+                          "Name" "Stout Burgers & Beers",
+                          "Category ID" 11.0,
+                          "Latitude" "34.09960000° N",
+                          "Longitude" "118.32900000° W",
+                          "Price" 2.0}
+                         {"ID" 3.0,
+                          "Name" "The Apple Pan",
+                          "Category ID" 11.0,
+                          "Latitude" "34.04060000° N",
+                          "Longitude" "118.42800000° W",
+                          "Price" 2.0}
+                         {"ID" 4.0,
+                          "Name" "Wurstküche",
+                          "Category ID" 29.0,
+                          "Latitude" "33.99970000° N",
+                          "Longitude" "118.46500000° W",
+                          "Price" 2.0}
+                         {"ID" 5.0,
+                          "Name" "Brite Spot Family Restaurant",
+                          "Category ID" 20.0,
+                          "Latitude" "34.07780000° N",
+                          "Longitude" "118.26100000° W",
+                          "Price" 2.0}]
+                        (basic-actual-results* export-format query)))
             (is (=? (expected-results* export-format query)
                     (basic-actual-results* export-format query)))))))))
 
@@ -141,7 +173,8 @@
 (deftest ^:parallel utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
   ;; CSVs round decimals to 2 digits without viz-settings so are not identical to results from expected-results*
-  (doseq [export-format (disj qp.schema/export-formats :xlsx :csv)]
+  ;; ODF XML cannot represent some supplementary-plane characters used in the emoji native-query test.
+  (doseq [export-format (disj qp.schema/export-formats :xlsx :csv :ods)]
     (testing (u/colorize :yellow export-format)
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
@@ -206,6 +239,10 @@
   [_ results _]
   (first results))
 
+(defmethod first-row-map :ods
+  [_ results _]
+  (first results))
+
 (defmethod first-row-map :csv
   [_ [_ row] col-names]
   (zipmap col-names row))
@@ -261,6 +298,7 @@
                   :time-tz        "07:23:18.331Z"}
 
                  :xlsx
+                 ;; XLSX uses Apache POI date cells; Docjure parses them back as java.util.Date.
                  {:date           #inst "2019-11-01T00:00:00.000-00:00"
                   :datetime       #inst "2019-11-01T00:23:18.331-00:00"
                   :datetime-ltz   #inst "2019-11-01T07:23:18.331-00:00"
@@ -270,7 +308,18 @@
                   ;; java.util.Dates by default when parsing an XLSX doc, they have the date info here.
                   :time           #inst "1899-12-31T00:23:18.000-00:00"
                   :time-ltz       #inst "1899-12-31T07:23:18.000-00:00"
-                  :time-tz        #inst "1899-12-31T07:23:18.000-00:00"})))
+                  :time-tz        #inst "1899-12-31T07:23:18.000-00:00"}
+
+                 :ods
+                 ;; ODS stores temporal values as ISO-8601 strings rather than native date cells.
+                 {:date           "2019-11-01T00:00:00"
+                  :datetime       "2019-11-01T00:23:18.331"
+                  :datetime-ltz   "2019-11-01T07:23:18.331"
+                  :datetime-tz    "2019-11-01T07:23:18.331"
+                  :datetime-tz-id "2019-11-01T07:23:18.331"
+                  :time           "00:23:18.331"
+                  :time-ltz       "07:23:18.331"
+                  :time-tz        "07:23:18.331"})))
             (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
               (test-results
                (case export-format
@@ -297,6 +346,7 @@
                   :time-tz        "23:23:18.331-08:00"}
 
                  :xlsx
+                 ;; XLSX uses Apache POI date cells; Docjure parses them back as java.util.Date.
                  {:date           #inst "2019-11-01T00:00:00.000-00:00"
                   :datetime       #inst "2019-11-01T00:23:18.331-00:00"
                   :datetime-ltz   #inst "2019-11-01T00:23:18.331-00:00"
@@ -304,7 +354,18 @@
                   :datetime-tz-id #inst "2019-11-01T00:23:18.331-00:00"
                   :time           #inst "1899-12-31T00:23:18.000-00:00"
                   :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
-                  :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
+                  :time-tz        #inst "1899-12-31T23:23:18.000-00:00"}
+
+                 :ods
+                 ;; ODS stores temporal values as ISO-8601 strings rather than native date cells.
+                 {:date           "2019-11-01T00:00:00"
+                  :datetime       "2019-11-01T00:23:18.331"
+                  :datetime-ltz   "2019-11-01T00:23:18.331"
+                  :datetime-tz    "2019-11-01T00:23:18.331"
+                  :datetime-tz-id "2019-11-01T00:23:18.331"
+                  :time           "00:23:18.331"
+                  :time-ltz       "23:23:18.331"
+                  :time-tz        "23:23:18.331"})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Export E2E tests                                                   |
@@ -344,7 +405,7 @@
                   :dataset
                   (let [results (mt/user-http-request user :post expected-status
                                                       (format "dataset/%s" (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      {:request-options {:as (if (#{:xlsx :ods} export-format) :byte-array :string)}}
                                                       {:format_rows            true
                                                        :query                  query-json
                                                        :visualization_settings viz-settings-json})]
@@ -353,7 +414,7 @@
                   :card
                   (let [results (mt/user-http-request user :post expected-status
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      {:request-options {:as (if (#{:xlsx :ods} export-format) :byte-array :string)}}
                                                       {:format_rows true})]
                     ((-> assertions export-format) results))
 
@@ -364,7 +425,7 @@
                                                               (u/the-id dashcard)
                                                               (u/the-id card)
                                                               (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      {:request-options {:as (if (#{:xlsx :ods} export-format) :byte-array :string)}}
                                                       {:format_rows true})]
                     ((-> assertions export-format) results))
 
@@ -372,13 +433,13 @@
                   :public
                   (let [results (mt/user-http-request user :get expected-status
                                                       (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (#{:xlsx :ods} export-format) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
                   :embed
                   (let [results (mt/user-http-request user :get expected-status
                                                       (embed-test/card-query-url card (str "/" (name export-format)))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (#{:xlsx :ods} export-format) :byte-array :string)}})]
                     ((-> assertions export-format) results)))))))))))
 
 (defn- parse-json-results
