@@ -13,7 +13,6 @@ import { resetConversation } from "metabase/metabot/state";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
@@ -68,10 +67,6 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     { id: "library", label: t`Library`, icon: "repository" },
     { id: "monitor", label: t`Monitor`, icon: "gauge" },
   ];
-
-  const lastUsedDatabaseId = useSelector((state) =>
-    getSetting(state, "last-used-native-database-id"),
-  );
 
   const { data: collectionsTree = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,
@@ -131,11 +126,10 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
           DEPRECATED_RAW_MBQL_type: "native",
           creationType: "native_question",
           cardType: "question",
-          DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId ?? undefined,
         }),
       ),
     );
-  }, [dispatch, lastUsedDatabaseId]);
+  }, [dispatch]);
 
   // Resizable width, clamped to [MIN_WIDTH, MAX_WIDTH] and persisted locally.
   const [width, setWidth] = useState(() => {

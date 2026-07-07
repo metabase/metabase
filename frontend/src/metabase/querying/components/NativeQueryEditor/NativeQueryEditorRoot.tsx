@@ -359,7 +359,7 @@ export const NativeQueryEditorRoot = forwardRef<
                   query={question.query()}
                   proposedQuery={proposedQuestion?.query()}
                   readOnly={readOnly}
-                  autoFocus={!isNewQuerySqlPage}
+                  autoFocus={question.databaseId() != null}
                   placeholder={placeholder}
                   highlightedLineNumbers={highlightedLineNumbers}
                   extensions={extensions}

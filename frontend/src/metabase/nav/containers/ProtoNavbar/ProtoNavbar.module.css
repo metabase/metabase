@@ -111,7 +111,9 @@
 
 .headerQueryButton {
   border: none;
-  background: var(--mb-color-core-brand, #1871bf);
+  border-radius: var(--xs-radius, 6px);
+  background: var(--Ocean-60, #1871bf);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
   color: var(--mb-color-text-primary-inverse, #fff);
 }
 
