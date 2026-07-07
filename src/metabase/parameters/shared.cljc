@@ -211,8 +211,8 @@
     * missing value key => default"
   [parameter]
   (let [value (get parameter :value (:default parameter))]
-    (when-not (and (coll? value) (empty? value))
-      value)))
+    (cond-> value
+      (coll? value) not-empty)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."
