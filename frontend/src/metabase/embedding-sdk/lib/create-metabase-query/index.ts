@@ -1,13 +1,16 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { isTableInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import {
+  type TableQueryInput,
+  isQueryInput,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TestQuerySpec } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import type { TableQueryInput } from "./input-types";
-import { validateTableQueryInput } from "./validation";
+import { loadReferencedMetricMetadata } from "./metric-metadata";
+import { validateQueryInput } from "./validation";
 
 export type ResolveDatasetQuery = (
   store: SdkStore,
@@ -15,15 +18,15 @@ export type ResolveDatasetQuery = (
 
 export const resolveDatasetQuery: ResolveDatasetQuery =
   (store) => async (input: TableQueryInput) => {
-    if (!isTableInput(input)) {
+    if (!isQueryInput(input)) {
       throw new Error(
-        'Table query object creation requires a source reference like `{ type: "table", id }`.',
+        'Query object creation requires a source reference like `{ type: "table", id }`.',
       );
     }
 
-    validateTableQueryInput(input);
+    validateQueryInput(input);
 
-    await store.dispatch(fetchTableMetadata({ id: input.source.id }));
+    await loadSourceMetadata(store, input);
 
     return resolveQueryFromLoadedMetadata(
       input,
@@ -35,9 +38,9 @@ function resolveQueryFromLoadedMetadata(
   input: TableQueryInput,
   metadata: Lib.Metadata,
 ) {
-  if (!isTableInput(input)) {
+  if (!isQueryInput(input)) {
     throw new Error(
-      'Table query object creation requires a source reference like `{ type: "table", id }`.',
+      'Query object creation requires a source reference like `{ type: "table", id }`.',
     );
   }
 
@@ -47,6 +50,11 @@ function resolveQueryFromLoadedMetadata(
   return Lib.toJsQuery(
     Lib.createTestQuery(provider, { stages: [input] } satisfies TestQuerySpec),
   );
+}
+
+async function loadSourceMetadata(store: SdkStore, input: TableQueryInput) {
+  await store.dispatch(fetchTableMetadata({ id: input.source.id }));
+  await loadReferencedMetricMetadata(store, input);
 }
 
 function getTableDatabaseId(tableId: number, metadata: Lib.Metadata) {

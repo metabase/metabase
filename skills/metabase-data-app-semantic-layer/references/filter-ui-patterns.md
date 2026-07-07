@@ -6,14 +6,14 @@ Use these patterns when building custom filter bars for data apps.
 
 Before writing controls, map each filter to the dashboard. Keep this contract small and concrete:
 
-| Filter | Runtime options query | Raw value | Applies to | Unsupported sections |
-| ------ | --------------------- | --------- | ---------- | -------------------- |
-| Franchise | breakout on franchise id/name | franchise id | orders, revenue, inventory | none |
-| Plan | breakout on plan | plan text | orders | revenue, inventory |
+| Filter    | Runtime options query         | Raw value    | Applies to                        | Unsupported sections |
+| --------- | ----------------------------- | ------------ | --------------------------------- | -------------------- |
+| Franchise | breakout on franchise id/name | franchise id | orders, revenue Metric, inventory | none                 |
+| Plan      | breakout on plan              | plan text    | orders                            | revenue, inventory   |
 
 If a filter has unsupported sections, either make it section-scoped or do not render it as a global dashboard filter. Do not show duplicate date controls for the same page unless both visibly affect different labeled sections.
 
-For every rendered card or table, build filters from that table query's generated fields. Do not reuse a filter array built for a different table.
+For every rendered card or table, build filters from that query source's generated table fields or compatible Metric dimensions. Do not reuse a filter array built for a different table.
 
 Before rendering a filter, answer:
 
@@ -25,12 +25,33 @@ Before rendering a filter, answer:
 
 ## Runtime Categorical Options
 
-Query options from Metabase at runtime with a breakout on the same generated table field used by the filter.
+Query options from Metabase at runtime with a breakout on the same generated table field or compatible Metric dimension used by the filter.
 
-- Run a `useMetabaseQuery` breakout on the same table field used by `filter(...)`, then derive a deduped option list from returned rows.
-- Prefer querying options from the same table used by the charts so the option list stays compatible with the filter.
+- Run a `useMetabaseQuery` breakout on the same table field or Metric dimension used by `filter(...)`, then derive a deduped option list from returned rows.
+- Prefer querying options from the same source used by the charts so the option list stays compatible with the filter.
 - Treat categorical labels as runtime values unless the user explicitly provides a closed enum. Field names in the generated schema are not value lists.
 - Use a searchable picker/combobox for entity filters and long runtime option lists.
+
+For Metric-backed cards, use the table source plus generated Metric aggregation. Use the generated Metric dimension in both the options query and the visible card query when the dimension belongs to that table source:
+
+```ts
+const ordersTable = schema.tables.orders;
+const revenueMetric = schema.metrics.revenue;
+const franchiseDimension = revenueMetric.dimensions.orders.franchiseId;
+
+const { data: optionData } = useMetabaseQuery<typeof ordersTable>({
+  source: ordersTable,
+  aggregations: [revenueMetric],
+  breakouts: [breakout(franchiseDimension)],
+});
+
+const revenueFilters =
+  selectedFranchise === "all"
+    ? []
+    : [filter(franchiseDimension, "=", selectedFranchise)];
+```
+
+Do not use source-card Metrics in table-source filter queries. Wait for saved-question source support, then pair those Metrics with `source: schema.questions.<question>` instead.
 
 For entity filters, keep display labels and raw values separate:
 
