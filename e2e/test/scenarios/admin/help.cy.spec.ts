@@ -2,14 +2,14 @@ import dayjs from "dayjs";
 
 const { H } = cy;
 
-describe("scenarios > admin > tools > help", { tags: "@OSS" }, () => {
+describe("scenarios > admin > help", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should link `Get help` to help", () => {
-    cy.visit("/admin/tools/help");
+    cy.visit("/admin/help");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
@@ -24,7 +24,7 @@ describe("scenarios > admin > tools > help", { tags: "@OSS" }, () => {
   });
 });
 
-describe("scenarios > admin > tools > help (EE)", () => {
+describe("scenarios > admin > help (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -32,7 +32,7 @@ describe("scenarios > admin > tools > help (EE)", () => {
   });
 
   it("should link `Get Help` to help-premium", () => {
-    cy.visit("/admin/tools/help");
+    cy.visit("/admin/help");
 
     cy.findByTestId("admin-layout-content")
       .findByText("Get help")
@@ -45,7 +45,7 @@ describe("scenarios > admin > tools > help (EE)", () => {
   });
 });
 
-describe("scenarios > admin > tools > help > helping hand", () => {
+describe("scenarios > admin > help > helping hand", () => {
   const executeCreateGrantAccessFlow = (
     durationOption?: "96 hours" | "48 hours" | "24 hours",
     ticket?: string,
@@ -90,7 +90,7 @@ describe("scenarios > admin > tools > help > helping hand", () => {
   });
 
   it("should only display the `Helping hand` section for cloud customers", () => {
-    cy.visit("/admin/tools/help");
+    cy.visit("/admin/help");
     cy.findByRole("heading", { name: "Helping hand" }).should("not.exist");
 
     H.activateToken("pro-self-hosted");
@@ -108,7 +108,7 @@ describe("scenarios > admin > tools > help > helping hand", () => {
 
   it("should allow creating a new access grant", () => {
     H.activateToken("pro-cloud");
-    cy.visit("/admin/tools/help");
+    cy.visit("/admin/help");
 
     cy.findByTestId("access-grant-list-table").should("not.exist");
 
@@ -122,7 +122,7 @@ describe("scenarios > admin > tools > help > helping hand", () => {
 
   it("allow creating an access grant with a ticket number and custom notes", () => {
     H.activateToken("pro-cloud");
-    cy.visit("/admin/tools/help");
+    cy.visit("/admin/help");
 
     executeCreateGrantAccessFlow("48 hours", "TICKET-999", "Custom notes");
 
@@ -138,7 +138,7 @@ describe("scenarios > admin > tools > help > helping hand", () => {
 
   it("should disallow more than one active access grant", () => {
     H.activateToken("pro-cloud");
-    cy.visit("/admin/tools/help");
+    cy.visit("/admin/help");
 
     executeCreateGrantAccessFlow();
 
@@ -151,7 +151,7 @@ describe("scenarios > admin > tools > help > helping hand", () => {
 
   it("can revoke an access grant", () => {
     H.activateToken("pro-cloud");
-    cy.visit("/admin/tools/help");
+    cy.visit("/admin/help");
 
     executeCreateGrantAccessFlow();
     cy.button("Request a helping hand").should("be.disabled");
