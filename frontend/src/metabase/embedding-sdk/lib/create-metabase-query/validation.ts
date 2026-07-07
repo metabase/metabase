@@ -1,9 +1,18 @@
-import type { TableQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import { isMetricReference } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import {
+  isMetricReference,
+  type QueryInput,
+  type QuestionQueryInput,
+  type TableQueryInput,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { MetricSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
 
-export function validateQueryInput(input: TableQueryInput) {
+export function validateQueryInput(input: QueryInput) {
+  if (isQuestionQueryInput(input)) {
+    validateQuestionInput(input);
+    return;
+  }
+
   validateLimit(input.limit);
   validateTableScopedInputs(input);
 }
@@ -15,6 +24,24 @@ function validateLimit(limit: number | undefined) {
 
   if (!Number.isInteger(limit) || limit <= 0) {
     throw new Error("Table query limit must be a positive integer.");
+  }
+}
+
+function isQuestionQueryInput(input: QueryInput): input is QuestionQueryInput {
+  return input.source.type === "card";
+}
+
+function validateQuestionInput(input: QuestionQueryInput) {
+  const extraKeys = Object.keys(input).filter(
+    (key) => key !== "source" && key !== "enabled",
+  );
+
+  if (extraKeys.length > 0) {
+    throw new Error(
+      `Saved question queries only support source and enabled, but received ${extraKeys.join(
+        ", ",
+      )}.`,
+    );
   }
 }
 
@@ -128,7 +155,7 @@ function isCountAggregation(value: unknown) {
   );
 }
 
-function isGroupedQuery(input: QueryInput) {
+function isGroupedQuery(input: TableQueryInput) {
   return Boolean(input.aggregations?.length || input.breakouts?.length);
 }
 
@@ -176,7 +203,7 @@ function getColumns(value: unknown) {
 }
 
 function isBreakoutReference(
-  breakouts: QueryInput["breakouts"] | undefined,
+  breakouts: TableQueryInput["breakouts"] | undefined,
   value: unknown,
 ) {
   if (!isObject(value)) {
@@ -206,8 +233,9 @@ function getSourceFieldId(value: unknown): number | undefined {
 }
 
 function validateMetricAggregation(metric: MetricSchema, tableId: number) {
-  // Source-card Metrics need a saved-question source so Lib scopes metric
-  // dimensions to the card stage. EMB-2045 will add that source path:
+  // Source-card Metrics need query composition over saved-question sources so
+  // Lib can scope metric dimensions to the card stage. Saved-question sources
+  // currently support source-only shortcuts, so reject source-card Metrics here.
   if (metric.sourceCardId != null) {
     throw new Error(
       "Table query metric aggregations cannot use source-card Metrics. Use a saved question source for source-card Metrics.",
