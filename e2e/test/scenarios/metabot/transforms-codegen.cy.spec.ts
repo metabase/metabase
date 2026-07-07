@@ -76,7 +76,7 @@ const assertAcceptRejectUI = (opts: { visible: boolean }) => {
 
 describe(
   "scenarios > metabot > transforms codegen",
-  { viewportWidth: 1600, viewportHeight: 1200 },
+  { tags: "@external", viewportWidth: 1600, viewportHeight: 1200 },
   () => {
     beforeEach(() => {
       H.restore("postgres-writable");

@@ -1479,7 +1479,7 @@ describe("issue 52484", () => {
   });
 });
 
-describe("issue 40396", { tags: "@external " }, () => {
+describe("issue 40396", { tags: "@external" }, () => {
   const tableName = "many_data_types";
 
   beforeEach(() => {
@@ -1936,7 +1936,7 @@ describe("issue 55678", () => {
   });
 });
 
-describe("issue 14595", () => {
+describe("issue 14595", { tags: "@external" }, () => {
   const dialect = "postgres";
   const tableName = "many_data_types";
 

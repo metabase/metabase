@@ -506,7 +506,7 @@ union all select 'Medium length category', 30 as count`;
   });
 });
 
-describe("issue 55853", () => {
+describe("issue 55853", { tags: "@external" }, () => {
   const questionDetails = {
     name: "55853",
     database: WRITABLE_DB_ID,

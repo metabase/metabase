@@ -23,7 +23,7 @@ const EDITABLE_SOURCE_TABLE_NAME_REGEX = new RegExp("Many Data Types", "i");
 const INLINE_EDIT_TEST_TABLE_NAME = "editing_test";
 const DEFAULT_FIELD = "UUID";
 
-describe("scenarios > table-editing", () => {
+describe("scenarios > table-editing", { tags: "@external" }, () => {
   beforeEach(() => {
     resetSnowplow();
 

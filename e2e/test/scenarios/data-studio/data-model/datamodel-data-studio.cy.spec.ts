@@ -126,7 +126,7 @@ describe("scenarios > data studio > datamodel", () => {
       },
     );
 
-    describe("Extra info about tables", () => {
+    describe("Extra info about tables", { tags: "@external" }, () => {
       const databaseName = "Writable Postgres12";
       const domesticSchema = "Domestic";
       const wildSchema = "Wild";
@@ -356,7 +356,7 @@ describe("scenarios > data studio > datamodel", () => {
         cy.get<TableId>("@ingestedTableId").then(expectTableNotVisible);
       });
 
-      it("should filter unused tables only", () => {
+      it("should filter unused tables only", { tags: "@external" }, () => {
         H.restore("postgres-writable");
         H.activateToken("pro-self-hosted");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });

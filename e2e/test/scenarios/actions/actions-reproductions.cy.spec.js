@@ -237,7 +237,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   });
 });
 
-describe("issue 51020", () => {
+describe("issue 51020", { tags: "@external" }, () => {
   function setupDashboard({ questionName, modelName, columnName }) {
     H.newButton("Dashboard").click();
     H.modal().findByLabelText("Name").type("Dash");

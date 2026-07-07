@@ -54,7 +54,7 @@ function buildDocumentWithCustomVizCard(cardId: CardId): DocumentContent {
   };
 }
 
-describe("admin > custom visualizations", () => {
+describe("admin > custom visualizations", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
@@ -1576,7 +1576,7 @@ describe("admin > custom visualizations", () => {
   });
 });
 
-describe("sandbox", () => {
+describe("sandbox", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();

@@ -3,7 +3,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 const { H } = cy;
 const { TablePicker } = H.DataModel;
 
-describe("Search", () => {
+describe("Search", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.signInAsAdmin();
     H.restore("postgres-writable");

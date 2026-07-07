@@ -228,7 +228,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it("dashboards + mbql query + id parameters", { tags: "external" }, () => {
+  it("dashboards + mbql query + id parameters", { tags: "@external" }, () => {
     function setupDashboard({
       tableName,
       baseType,

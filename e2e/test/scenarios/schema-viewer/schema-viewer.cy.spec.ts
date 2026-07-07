@@ -330,168 +330,174 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
   });
 });
 
-describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, one-to-one, cross-schema FK)", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
-    cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
-    H.queryWritableDB(SV_SETUP_SQL, "postgres");
-    H.resyncDatabase({
-      dbId: WRITABLE_DB_ID,
-      tables: SV_REQUIRED_TABLES,
-      retrigger: true,
+describe(
+  "scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, one-to-one, cross-schema FK)",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
+      H.queryWritableDB(SV_SETUP_SQL, "postgres");
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tables: SV_REQUIRED_TABLES,
+        retrigger: true,
+      });
     });
-  });
 
-  after(() => {
-    H.queryWritableDB(
-      "DROP SCHEMA IF EXISTS sv_test CASCADE; DROP SCHEMA IF EXISTS sv_extra CASCADE;",
-      "postgres",
-    );
-  });
-
-  it("drills into a multi-schema DB via the picker, renders self-ref + one-to-one + cross-schema edges, expands an off-canvas FK target, and persists the expansion", () => {
-    cy.log("Capture writable-DB table IDs created by the setup SQL");
-    H.getTableId({
-      databaseId: WRITABLE_DB_ID,
-      name: "users",
-      schema: SV_SCHEMA,
-    }).as("usersId");
-    H.getTableId({
-      databaseId: WRITABLE_DB_ID,
-      name: "profiles",
-      schema: SV_SCHEMA,
-    }).as("profilesId");
-    H.getTableId({
-      databaseId: WRITABLE_DB_ID,
-      name: "categories",
-      schema: SV_SCHEMA,
-    }).as("categoriesId");
-    H.getTableId({
-      databaseId: WRITABLE_DB_ID,
-      name: "products",
-      schema: SV_SCHEMA,
-    }).as("productsId");
-    H.getTableId({
-      databaseId: WRITABLE_DB_ID,
-      name: "lookup",
-      schema: SV_EXTRA_SCHEMA,
-    }).as("lookupId");
-
-    cy.log("Bare URL — picker auto-opens with both databases listed");
-    cy.visit(BASE_URL);
-    H.miniPicker().findByText("Sample Database").should("be.visible");
-    H.miniPicker().findByText("Writable Postgres12").should("be.visible");
-
-    cy.log("Multi-schema DB drills into the schema list (no auto-nav)");
-    H.miniPicker().findByText("Writable Postgres12").click();
-    H.miniPicker().findByText(SV_SCHEMA).should("be.visible");
-    H.miniPicker().findByText(SV_EXTRA_SCHEMA).should("be.visible");
-
-    cy.log(`Click ${SV_SCHEMA} → navigates and ERD loads`);
-    H.miniPicker().findByText(SV_SCHEMA).click();
-    cy.wait("@erd");
-    cy.url()
-      .should("include", `database-id=${WRITABLE_DB_ID}`)
-      .and("include", `schema=${SV_SCHEMA}`);
-
-    cy.log("All four sv_test tables render as nodes");
-    cy.get<TableId>("@usersId").then((id) =>
-      tableNode(id).should("be.visible"),
-    );
-    cy.get<TableId>("@profilesId").then((id) =>
-      tableNode(id).should("be.visible"),
-    );
-    cy.get<TableId>("@categoriesId").then((id) =>
-      tableNode(id).should("be.visible"),
-    );
-    cy.get<TableId>("@productsId").then((id) =>
-      tableNode(id).should("be.visible"),
-    );
-
-    cy.log(
-      "Schema-bounded BFS: cross-schema lookup is NOT a node yet — it surfaces only as an FK pointer on products",
-    );
-    cy.get<TableId>("@lookupId").then((id) =>
-      tableNode(id).should("not.exist"),
-    );
-
-    cy.log(
-      "Edges visible: users<->profiles (one-to-one) and categories self-ref. Cross-schema FK has no edge until expansion",
-    );
-    cy.get(".react-flow__edge").should("have.length", 2);
-
-    cy.log(
-      "Clicking the profiles.user_id FK (target on canvas) selects the connecting edge",
-    );
-    cy.get<TableId>("@profilesId").then((id) =>
-      tableNode(id).findByText("user_id").click(),
-    );
-    cy.findAllByTestId("schema-viewer-edge-path")
-      .filter('[style*="stroke-width: 2"]')
-      .should("have.length", 1);
-
-    cy.log(
-      "Click the cross-schema FK on products.lookup_id — adds sv_extra.lookup to the canvas",
-    );
-    cy.get<TableId>("@productsId").then((id) =>
-      tableNode(id).findByText("lookup_id").click({ force: true }),
-    );
-    cy.wait("@erd");
-    cy.get<TableId>("@lookupId").then((id) => {
-      tableNode(id).should("be.visible");
-      assertNodeInViewport(id);
-    });
-    cy.log("Edge count grows by one (products → lookup edge added)");
-    cy.get(".react-flow__edge").should("have.length", 3);
-
-    cy.log(
-      "Reload — the expanded lookup table persists via UKV (URL stays untouched, canvas keeps the table)",
-    );
-    cy.reload();
-    cy.wait("@erd");
-    cy.get<TableId>("@lookupId").then((id) => {
-      tableNode(id).should("be.visible");
-    });
-    cy.get(".react-flow__edge").should("have.length", 3);
-
-    cy.log(
-      "URL precedence: visit the same context with table-ids=<other> — URL must win, the UKV-saved lookup is ignored",
-    );
-    H.getTableId({
-      databaseId: WRITABLE_DB_ID,
-      name: "other",
-      schema: SV_EXTRA_SCHEMA,
-    }).as("otherId");
-    cy.get<TableId>("@otherId").then((otherId) => {
-      cy.visit(
-        `${BASE_URL}?database-id=${WRITABLE_DB_ID}&schema=${SV_SCHEMA}&table-ids=${otherId}`,
+    after(() => {
+      H.queryWritableDB(
+        "DROP SCHEMA IF EXISTS sv_test CASCADE; DROP SCHEMA IF EXISTS sv_extra CASCADE;",
+        "postgres",
       );
     });
-    cy.wait("@erd").then(({ request }) => {
+
+    it("drills into a multi-schema DB via the picker, renders self-ref + one-to-one + cross-schema edges, expands an off-canvas FK target, and persists the expansion", () => {
+      cy.log("Capture writable-DB table IDs created by the setup SQL");
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: "users",
+        schema: SV_SCHEMA,
+      }).as("usersId");
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: "profiles",
+        schema: SV_SCHEMA,
+      }).as("profilesId");
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: "categories",
+        schema: SV_SCHEMA,
+      }).as("categoriesId");
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: "products",
+        schema: SV_SCHEMA,
+      }).as("productsId");
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: "lookup",
+        schema: SV_EXTRA_SCHEMA,
+      }).as("lookupId");
+
+      cy.log("Bare URL — picker auto-opens with both databases listed");
+      cy.visit(BASE_URL);
+      H.miniPicker().findByText("Sample Database").should("be.visible");
+      H.miniPicker().findByText("Writable Postgres12").should("be.visible");
+
+      cy.log("Multi-schema DB drills into the schema list (no auto-nav)");
+      H.miniPicker().findByText("Writable Postgres12").click();
+      H.miniPicker().findByText(SV_SCHEMA).should("be.visible");
+      H.miniPicker().findByText(SV_EXTRA_SCHEMA).should("be.visible");
+
+      cy.log(`Click ${SV_SCHEMA} → navigates and ERD loads`);
+      H.miniPicker().findByText(SV_SCHEMA).click();
+      cy.wait("@erd");
+      cy.url()
+        .should("include", `database-id=${WRITABLE_DB_ID}`)
+        .and("include", `schema=${SV_SCHEMA}`);
+
+      cy.log("All four sv_test tables render as nodes");
+      cy.get<TableId>("@usersId").then((id) =>
+        tableNode(id).should("be.visible"),
+      );
+      cy.get<TableId>("@profilesId").then((id) =>
+        tableNode(id).should("be.visible"),
+      );
+      cy.get<TableId>("@categoriesId").then((id) =>
+        tableNode(id).should("be.visible"),
+      );
+      cy.get<TableId>("@productsId").then((id) =>
+        tableNode(id).should("be.visible"),
+      );
+
+      cy.log(
+        "Schema-bounded BFS: cross-schema lookup is NOT a node yet — it surfaces only as an FK pointer on products",
+      );
+      cy.get<TableId>("@lookupId").then((id) =>
+        tableNode(id).should("not.exist"),
+      );
+
+      cy.log(
+        "Edges visible: users<->profiles (one-to-one) and categories self-ref. Cross-schema FK has no edge until expansion",
+      );
+      cy.get(".react-flow__edge").should("have.length", 2);
+
+      cy.log(
+        "Clicking the profiles.user_id FK (target on canvas) selects the connecting edge",
+      );
+      cy.get<TableId>("@profilesId").then((id) =>
+        tableNode(id).findByText("user_id").click(),
+      );
+      cy.findAllByTestId("schema-viewer-edge-path")
+        .filter('[style*="stroke-width: 2"]')
+        .should("have.length", 1);
+
+      cy.log(
+        "Click the cross-schema FK on products.lookup_id — adds sv_extra.lookup to the canvas",
+      );
+      cy.get<TableId>("@productsId").then((id) =>
+        tableNode(id).findByText("lookup_id").click({ force: true }),
+      );
+      cy.wait("@erd");
+      cy.get<TableId>("@lookupId").then((id) => {
+        tableNode(id).should("be.visible");
+        assertNodeInViewport(id);
+      });
+      cy.log("Edge count grows by one (products → lookup edge added)");
+      cy.get(".react-flow__edge").should("have.length", 3);
+
+      cy.log(
+        "Reload — the expanded lookup table persists via UKV (URL stays untouched, canvas keeps the table)",
+      );
+      cy.reload();
+      cy.wait("@erd");
+      cy.get<TableId>("@lookupId").then((id) => {
+        tableNode(id).should("be.visible");
+      });
+      cy.get(".react-flow__edge").should("have.length", 3);
+
+      cy.log(
+        "URL precedence: visit the same context with table-ids=<other> — URL must win, the UKV-saved lookup is ignored",
+      );
+      H.getTableId({
+        databaseId: WRITABLE_DB_ID,
+        name: "other",
+        schema: SV_EXTRA_SCHEMA,
+      }).as("otherId");
       cy.get<TableId>("@otherId").then((otherId) => {
-        expect(
-          request.url,
-          "ERD request should carry the URL-supplied table-ids",
-        ).to.include(`table-ids=${otherId}`);
+        cy.visit(
+          `${BASE_URL}?database-id=${WRITABLE_DB_ID}&schema=${SV_SCHEMA}&table-ids=${otherId}`,
+        );
       });
-      cy.get<TableId>("@lookupId").then((lookupId) => {
-        expect(
-          request.url,
-          "ERD request must NOT include the UKV-saved table-ids",
-        ).to.not.include(`table-ids=${lookupId}`);
+      cy.wait("@erd").then(({ request }) => {
+        cy.get<TableId>("@otherId").then((otherId) => {
+          expect(
+            request.url,
+            "ERD request should carry the URL-supplied table-ids",
+          ).to.include(`table-ids=${otherId}`);
+        });
+        cy.get<TableId>("@lookupId").then((lookupId) => {
+          expect(
+            request.url,
+            "ERD request must NOT include the UKV-saved table-ids",
+          ).to.not.include(`table-ids=${lookupId}`);
+        });
       });
+      cy.log(
+        "Canvas reflects URL precedence: `other` is shown, `lookup` is not",
+      );
+      cy.get<TableId>("@otherId").then((id) =>
+        tableNode(id).should("be.visible"),
+      );
+      cy.get<TableId>("@lookupId").then((id) =>
+        tableNode(id).should("not.exist"),
+      );
     });
-    cy.log("Canvas reflects URL precedence: `other` is shown, `lookup` is not");
-    cy.get<TableId>("@otherId").then((id) =>
-      tableNode(id).should("be.visible"),
-    );
-    cy.get<TableId>("@lookupId").then((id) =>
-      tableNode(id).should("not.exist"),
-    );
-  });
-});
+  },
+);
 
 describe("scenarios > schema-viewer (entry points + loader/error states)", () => {
   beforeEach(() => {

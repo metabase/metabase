@@ -78,228 +78,234 @@ const BROKEN_DEPENDENTS = [
   ...BROKEN_MODEL_DEPENDENTS,
 ];
 
-describe("scenarios > dependencies > broken list", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-    createContent();
-    H.resetSnowplow();
-  });
-
-  afterEach(() => {
-    dropTransformTable();
-    H.expectNoBadSnowplowEvents();
-  });
-
-  describe("analysis", () => {
-    it("should show broken dependencies", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      checkList({
-        visibleEntities: BROKEN_DEPENDENCIES,
-        hiddenEntities: BROKEN_DEPENDENTS,
-      });
+describe(
+  "scenarios > dependencies > broken list",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      createContent();
+      H.resetSnowplow();
     });
-  });
 
-  describe("selecting entities", () => {
-    it("should show sidebar for broken dependents and trigger snowplow event", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-
-      cy.log("table dependents");
-      H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
-      checkSidebar({
-        title: TABLE_DISPLAY_NAME,
-        transform: TABLE_TRANSFORM,
-        missingColumns: ["score"],
-        brokenDependents: BROKEN_TABLE_DEPENDENTS,
-      });
-      H.expectUnstructuredSnowplowEvent({
-        event: "dependency_diagnostics_entity_selected",
-        triggered_from: "broken",
-        event_detail: "table",
-      });
-
-      cy.log("question dependents");
-      H.DependencyDiagnostics.list().findByText(TABLE_BASED_QUESTION).click();
-      checkSidebar({
-        title: TABLE_BASED_QUESTION,
-        missingColumns: ["PRICE"],
-        brokenDependents: BROKEN_QUESTION_DEPENDENTS,
-      });
-
-      cy.log("model dependents");
-      H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
-      checkSidebar({
-        title: TABLE_BASED_MODEL,
-        missingColumns: ["AMOUNT"],
-        brokenDependents: BROKEN_MODEL_DEPENDENTS,
-      });
-
-      cy.log("snowplow event when dependency graph link is clicked");
-      cy.findByRole("link", { name: "View in dependency graph" }).click();
-      H.expectUnstructuredSnowplowEvent({
-        event: "dependency_entity_selected",
-        triggered_from: "diagnostics-broken-list",
-        event_detail: "card",
-      });
+    afterEach(() => {
+      dropTransformTable();
+      H.expectNoBadSnowplowEvents();
     });
-  });
 
-  describe("search", () => {
-    it("should search for entities", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      H.DependencyDiagnostics.searchInput().type(TABLE_DISPLAY_NAME);
-      checkList({
-        visibleEntities: [TABLE_DISPLAY_NAME],
-        hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
-      });
-    });
-  });
-
-  describe("filtering", () => {
-    it("should filter entities by type", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      H.DependencyDiagnostics.filterButton().click();
-      H.popover().within(() => {
-        cy.findByText("Table").click();
-        cy.findByText("Question").click();
-        cy.findByText("Model").click();
-      });
-
-      cy.log("only tables");
-      H.popover().findByText("Table").click();
-      checkList({
-        visibleEntities: BROKEN_TABLE_DEPENDENCIES,
-        hiddenEntities: [
-          ...BROKEN_QUESTION_DEPENDENCIES,
-          ...BROKEN_MODEL_DEPENDENCIES,
-        ],
-      });
-
-      cy.log("only questions");
-      H.popover().within(() => {
-        cy.findByText("Table").click();
-        cy.findByText("Question").click();
-      });
-      checkList({
-        visibleEntities: BROKEN_QUESTION_DEPENDENCIES,
-        hiddenEntities: [
-          ...BROKEN_TABLE_DEPENDENCIES,
-          ...BROKEN_MODEL_DEPENDENCIES,
-        ],
-      });
-
-      cy.log("only models");
-      H.popover().within(() => {
-        cy.findByText("Question").click();
-        cy.findByText("Model").click();
-      });
-      checkList({
-        visibleEntities: BROKEN_MODEL_DEPENDENCIES,
-        hiddenEntities: [
-          ...BROKEN_TABLE_DEPENDENCIES,
-          ...BROKEN_QUESTION_DEPENDENCIES,
-        ],
+    describe("analysis", () => {
+      it("should show broken dependencies", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        checkList({
+          visibleEntities: BROKEN_DEPENDENCIES,
+          hiddenEntities: BROKEN_DEPENDENTS,
+        });
       });
     });
 
-    it("should filter entities by location", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      H.DependencyDiagnostics.filterButton().click();
-      H.popover().within(() => {
-        cy.findByText("Include items in personal collections").click();
-      });
-      checkList({
-        visibleEntities: [
-          ...BROKEN_TABLE_DEPENDENCIES,
-          ...BROKEN_MODEL_DEPENDENCIES,
-        ],
-        hiddenEntities: BROKEN_QUESTION_DEPENDENCIES,
-      });
-    });
-  });
+    describe("selecting entities", () => {
+      it("should show sidebar for broken dependents and trigger snowplow event", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
 
-  describe("sorting", () => {
-    it("should sort by name", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      H.DependencyDiagnostics.searchInput().type("test");
+        cy.log("table dependents");
+        H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
+        checkSidebar({
+          title: TABLE_DISPLAY_NAME,
+          transform: TABLE_TRANSFORM,
+          missingColumns: ["score"],
+          brokenDependents: BROKEN_TABLE_DEPENDENTS,
+        });
+        H.expectUnstructuredSnowplowEvent({
+          event: "dependency_diagnostics_entity_selected",
+          triggered_from: "broken",
+          event_detail: "table",
+        });
 
-      cy.log("sorted by name by default");
-      checkListSorting({
-        visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
-      });
+        cy.log("question dependents");
+        H.DependencyDiagnostics.list().findByText(TABLE_BASED_QUESTION).click();
+        checkSidebar({
+          title: TABLE_BASED_QUESTION,
+          missingColumns: ["PRICE"],
+          brokenDependents: BROKEN_QUESTION_DEPENDENTS,
+        });
 
-      cy.log("sorted by name ascending");
-      H.DependencyDiagnostics.list().findByText("Dependency").click();
-      checkListSorting({
-        visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
-      });
+        cy.log("model dependents");
+        H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
+        checkSidebar({
+          title: TABLE_BASED_MODEL,
+          missingColumns: ["AMOUNT"],
+          brokenDependents: BROKEN_MODEL_DEPENDENTS,
+        });
 
-      cy.log("sorted by name descending");
-      H.DependencyDiagnostics.list().findByText("Dependency").click();
-      checkListSorting({
-        visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_NAME].reverse(),
-      });
-    });
-
-    it("should sort by location", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      H.DependencyDiagnostics.searchInput().type("test");
-
-      cy.log("sorted by location ascending");
-      H.DependencyDiagnostics.list().findByText("Location").click();
-      checkListSorting({
-        visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_LOCATION,
-      });
-
-      cy.log("sorted by location descending");
-      H.DependencyDiagnostics.list().findByText("Location").click();
-      checkListSorting({
-        visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_LOCATION].reverse(),
+        cy.log("snowplow event when dependency graph link is clicked");
+        cy.findByRole("link", { name: "View in dependency graph" }).click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "dependency_entity_selected",
+          triggered_from: "diagnostics-broken-list",
+          event_detail: "card",
+        });
       });
     });
 
-    it("should sort by dependents errors", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      H.DependencyDiagnostics.searchInput().type("test");
-
-      cy.log("sorted by dependents errors ascending");
-      H.DependencyDiagnostics.list().findByText("Problems").click();
-      checkListSorting({
-        visibleEntities: [
-          ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
-        ].reverse(),
-      });
-
-      cy.log("sorted by dependents errors descending");
-      H.DependencyDiagnostics.list().findByText("Problems").click();
-      checkListSorting({
-        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
+    describe("search", () => {
+      it("should search for entities", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        H.DependencyDiagnostics.searchInput().type(TABLE_DISPLAY_NAME);
+        checkList({
+          visibleEntities: [TABLE_DISPLAY_NAME],
+          hiddenEntities: [TABLE_BASED_QUESTION, TABLE_BASED_MODEL],
+        });
       });
     });
 
-    it("should sort by dependents with errors", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      H.DependencyDiagnostics.searchInput().type("test");
+    describe("filtering", () => {
+      it("should filter entities by type", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        H.DependencyDiagnostics.filterButton().click();
+        H.popover().within(() => {
+          cy.findByText("Table").click();
+          cy.findByText("Question").click();
+          cy.findByText("Model").click();
+        });
 
-      cy.log("sorted by dependents with errors ascending");
-      H.DependencyDiagnostics.list().findByText("Broken dependents").click();
-      checkListSorting({
-        visibleEntities: [
-          ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
-        ].reverse(),
+        cy.log("only tables");
+        H.popover().findByText("Table").click();
+        checkList({
+          visibleEntities: BROKEN_TABLE_DEPENDENCIES,
+          hiddenEntities: [
+            ...BROKEN_QUESTION_DEPENDENCIES,
+            ...BROKEN_MODEL_DEPENDENCIES,
+          ],
+        });
+
+        cy.log("only questions");
+        H.popover().within(() => {
+          cy.findByText("Table").click();
+          cy.findByText("Question").click();
+        });
+        checkList({
+          visibleEntities: BROKEN_QUESTION_DEPENDENCIES,
+          hiddenEntities: [
+            ...BROKEN_TABLE_DEPENDENCIES,
+            ...BROKEN_MODEL_DEPENDENCIES,
+          ],
+        });
+
+        cy.log("only models");
+        H.popover().within(() => {
+          cy.findByText("Question").click();
+          cy.findByText("Model").click();
+        });
+        checkList({
+          visibleEntities: BROKEN_MODEL_DEPENDENCIES,
+          hiddenEntities: [
+            ...BROKEN_TABLE_DEPENDENCIES,
+            ...BROKEN_QUESTION_DEPENDENCIES,
+          ],
+        });
       });
 
-      cy.log("sorted by dependents with errors descending");
-      H.DependencyDiagnostics.list().findByText("Broken dependents").click();
-      checkListSorting({
-        visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+      it("should filter entities by location", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        H.DependencyDiagnostics.filterButton().click();
+        H.popover().within(() => {
+          cy.findByText("Include items in personal collections").click();
+        });
+        checkList({
+          visibleEntities: [
+            ...BROKEN_TABLE_DEPENDENCIES,
+            ...BROKEN_MODEL_DEPENDENCIES,
+          ],
+          hiddenEntities: BROKEN_QUESTION_DEPENDENCIES,
+        });
       });
     });
-  });
-});
+
+    describe("sorting", () => {
+      it("should sort by name", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        H.DependencyDiagnostics.searchInput().type("test");
+
+        cy.log("sorted by name by default");
+        checkListSorting({
+          visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
+        });
+
+        cy.log("sorted by name ascending");
+        H.DependencyDiagnostics.list().findByText("Dependency").click();
+        checkListSorting({
+          visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_NAME,
+        });
+
+        cy.log("sorted by name descending");
+        H.DependencyDiagnostics.list().findByText("Dependency").click();
+        checkListSorting({
+          visibleEntities: [...BROKEN_DEPENDENCIES_SORTED_BY_NAME].reverse(),
+        });
+      });
+
+      it("should sort by location", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        H.DependencyDiagnostics.searchInput().type("test");
+
+        cy.log("sorted by location ascending");
+        H.DependencyDiagnostics.list().findByText("Location").click();
+        checkListSorting({
+          visibleEntities: BROKEN_DEPENDENCIES_SORTED_BY_LOCATION,
+        });
+
+        cy.log("sorted by location descending");
+        H.DependencyDiagnostics.list().findByText("Location").click();
+        checkListSorting({
+          visibleEntities: [
+            ...BROKEN_DEPENDENCIES_SORTED_BY_LOCATION,
+          ].reverse(),
+        });
+      });
+
+      it("should sort by dependents errors", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        H.DependencyDiagnostics.searchInput().type("test");
+
+        cy.log("sorted by dependents errors ascending");
+        H.DependencyDiagnostics.list().findByText("Problems").click();
+        checkListSorting({
+          visibleEntities: [
+            ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
+          ].reverse(),
+        });
+
+        cy.log("sorted by dependents errors descending");
+        H.DependencyDiagnostics.list().findByText("Problems").click();
+        checkListSorting({
+          visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS,
+        });
+      });
+
+      it("should sort by dependents with errors", () => {
+        H.DependencyDiagnostics.visitBrokenDependencies();
+        H.DependencyDiagnostics.searchInput().type("test");
+
+        cy.log("sorted by dependents with errors ascending");
+        H.DependencyDiagnostics.list().findByText("Broken dependents").click();
+        checkListSorting({
+          visibleEntities: [
+            ...BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+          ].reverse(),
+        });
+
+        cy.log("sorted by dependents with errors descending");
+        H.DependencyDiagnostics.list().findByText("Broken dependents").click();
+        checkListSorting({
+          visibleEntities: BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS,
+        });
+      });
+    });
+  },
+);
 
 function createContent() {
   createTransform();

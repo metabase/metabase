@@ -93,6 +93,36 @@ jobs:
     uses: ./.github/workflows/uberjar.yml
     secrets: inherit
 
+  # Dev CLJS bundle for the e2e jobs' Cypress preprocessor. Built once here —
+  # in parallel with the much slower uberjar build the e2e jobs also wait on —
+  # instead of ~50 times in every e2e chunk.
+  build-cljs:
+    name: Compile CLJS
+    needs: [create-test-plan]
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.e2e_all == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+      - name: Upload compiled CLJS
+        uses: actions/upload-artifact@v7
+        with:
+          name: compiled-cljs
+          path: target/cljs_dev
+          if-no-files-found: error
+          # "Re-run all jobs" rebuilds within the same run; replace the
+          # previous attempt's artifact instead of failing on the name clash.
+          overwrite: true
+          # long enough for "re-run failed jobs" on a stale run, which
+          # downloads this artifact instead of rebuilding
+          retention-days: 1
+
   backend-tests:
     if: ${{ !cancelled() && needs.create-test-plan.result == 'success' }}
     needs: [create-test-plan]
@@ -133,20 +163,22 @@ jobs:
       skip-custom-viz: ${{ needs.create-test-plan.outputs.custom_viz_all != 'true' }}
 
   e2e-tests:
-    needs: [create-test-plan, uberjar]
-    # Skip e2e tests when the uberjar build failed or was cancelled — the
-    # downstream tests can't fetch a missing artifact, and we don't want to
-    # mask the uberjar failure with a wave of misleading e2e errors. We still
-    # enter the workflow when uberjar is `skipped` (docs-only PRs), because
-    # the inner `skip` input handles that path and reports the required
-    # `e2e-tests-result` check as success. When the uberjar genuinely failed,
-    # this whole job is skipped, the inner required checks never report, and
-    # branch protection blocks the merge as pending.
+    needs: [create-test-plan, uberjar, build-cljs]
+    # Skip e2e tests when the uberjar or CLJS build failed or was cancelled —
+    # the downstream tests can't fetch a missing artifact, and we don't want to
+    # mask the build failure with a wave of misleading e2e errors. We still
+    # enter the workflow when those builds are `skipped` (docs-only PRs,
+    # non-e2e changes), because the inner `skip` input handles that path and
+    # reports the required `e2e-tests-result` check as success. When a build
+    # genuinely failed, this whole job is skipped, the inner required checks
+    # never report, and branch protection blocks the merge as pending.
     if: |
       always() && !cancelled() &&
       needs.create-test-plan.result == 'success' &&
       needs.uberjar.result != 'failure' &&
-      needs.uberjar.result != 'cancelled'
+      needs.uberjar.result != 'cancelled' &&
+      needs.build-cljs.result != 'failure' &&
+      needs.build-cljs.result != 'cancelled'
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:

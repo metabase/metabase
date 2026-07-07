@@ -103,308 +103,315 @@ const MODELS_SORTED_BY_LOCATION = [
   MODEL_FOR_DASHBOARD_PARAMETER_SOURCE,
 ];
 
-describe("scenarios > dependencies > unreferenced list", () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: TABLE_NAME });
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    H.updateSetting("transforms-enabled", true);
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
-    cy.viewport(1600, 1400);
-    H.resetSnowplow();
-  });
+describe(
+  "scenarios > dependencies > unreferenced list",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: TABLE_NAME });
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
+      cy.viewport(1600, 1400);
+      H.resetSnowplow();
+    });
 
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
 
-  describe("analysis", () => {
-    it("should show unreferenced entities", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
+    describe("analysis", () => {
+      it("should show unreferenced entities", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.list().within(() => {
+          ENTITY_NAMES.forEach((name) => {
+            cy.findByText(name).should("be.visible");
+          });
+        });
+      });
+
+      it("should not show referenced entities", () => {
+        setupEntities({ withReferences: true });
+        // These entities are referenced, so they should never appear in the
+        // unreferenced list — we can't poll for their presence. Wait for the
+        // global backfill so the analysis has run before asserting their absence.
+        H.waitForBackfillComplete();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.list().within(() => {
+          ENTITY_NAMES.forEach((name) => {
+            cy.findByText(name).should("not.exist");
+          });
         });
       });
     });
 
-    it("should not show referenced entities", () => {
-      setupEntities({ withReferences: true });
-      // These entities are referenced, so they should never appear in the
-      // unreferenced list — we can't poll for their presence. Wait for the
-      // global backfill so the analysis has run before asserting their absence.
-      H.waitForBackfillComplete();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("not.exist");
+    describe("search", () => {
+      it("should search for entities", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.searchInput().type(
+          MODEL_FOR_QUESTION_DATA_SOURCE,
+        );
+        checkList({
+          visibleEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
+          hiddenEntities: [MODEL_FOR_MODEL_DATA_SOURCE],
+        });
+      });
+
+      it("should search for entities with type filters", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.searchInput().type("tag");
+        checkList({
+          visibleEntities: [
+            MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+            SNIPPET_FOR_SNIPPET_TAG,
+          ],
+          hiddenEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
+        });
+
+        H.DependencyDiagnostics.filterButton().click();
+        H.popover().findByText("Snippet").click();
+        checkList({
+          visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
+          hiddenEntities: [SNIPPET_FOR_SNIPPET_TAG],
         });
       });
     });
-  });
 
-  describe("search", () => {
-    it("should search for entities", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type(
-        MODEL_FOR_QUESTION_DATA_SOURCE,
-      );
-      checkList({
-        visibleEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
-        hiddenEntities: [MODEL_FOR_MODEL_DATA_SOURCE],
+    describe("filters", () => {
+      it("should filter entities by type", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        checkList({ visibleEntities: ENTITY_NAMES });
+
+        H.DependencyDiagnostics.filterButton().click();
+        H.popover().findByText("Model").click();
+        checkList({ hiddenEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
+
+        H.popover().findByText("Segment").click();
+        checkList({
+          hiddenEntities: [
+            MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+            SEGMENT_FOR_QUESTION_FILTER,
+          ],
+        });
+
+        H.popover().findByText("Metric").click();
+        checkList({
+          hiddenEntities: [
+            MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
+            SEGMENT_FOR_QUESTION_FILTER,
+            METRIC_FOR_QUESTION_AGGREGATION,
+          ],
+        });
+
+        H.popover().findByText("Model").click();
+        checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
+      });
+
+      it("should persist filter changes after page reload", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        checkList({ visibleEntities: MODEL_NAMES });
+
+        H.DependencyDiagnostics.filterButton().click();
+        H.popover().findByText("Model").click();
+        checkList({ hiddenEntities: MODEL_NAMES });
+
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        checkList({
+          visibleEntities: METRIC_NAMES,
+          hiddenEntities: MODEL_NAMES,
+        });
+      });
+
+      it("should filter by location", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        checkList({
+          visibleEntities: [
+            MODEL_FOR_MODEL_DATA_SOURCE,
+            MODEL_FOR_METRIC_DATA_SOURCE,
+            SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+          ],
+        });
+
+        H.DependencyDiagnostics.filterButton().click();
+        H.popover().findByText("Include items in personal collections").click();
+        checkList({
+          visibleEntities: [
+            MODEL_FOR_MODEL_DATA_SOURCE,
+            SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+          ],
+          hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
+        });
+
+        H.popover().findByText("Include items in personal collections").click();
+        checkList({
+          visibleEntities: [
+            MODEL_FOR_MODEL_DATA_SOURCE,
+            MODEL_FOR_METRIC_DATA_SOURCE,
+            SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+          ],
+        });
       });
     });
 
-    it("should search for entities with type filters", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type("tag");
-      checkList({
-        visibleEntities: [
-          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
-          SNIPPET_FOR_SNIPPET_TAG,
-        ],
-        hiddenEntities: [MODEL_FOR_QUESTION_DATA_SOURCE],
+    describe("sorting", () => {
+      it("should sort by name", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.searchInput().type("Model for");
+
+        cy.log("sorted by name by default");
+        checkListSorting({
+          visibleEntities: MODELS_SORTED_BY_NAME,
+        });
+
+        cy.log("sorted by name ascending");
+        H.DependencyDiagnostics.list().findByText("Name").click();
+        checkListSorting({
+          visibleEntities: MODELS_SORTED_BY_NAME,
+        });
+
+        cy.log("sorted by name descending");
+        H.DependencyDiagnostics.list().findByText("Name").click();
+        checkListSorting({
+          visibleEntities: [...MODELS_SORTED_BY_NAME].reverse(),
+        });
       });
 
-      H.DependencyDiagnostics.filterButton().click();
-      H.popover().findByText("Snippet").click();
-      checkList({
-        visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
-        hiddenEntities: [SNIPPET_FOR_SNIPPET_TAG],
-      });
-    });
-  });
+      it("should sort by location", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.searchInput().type("Model for");
 
-  describe("filters", () => {
-    it("should filter entities by type", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      checkList({ visibleEntities: ENTITY_NAMES });
+        cy.log("sorted by location ascending");
+        H.DependencyDiagnostics.list().findByText("Location").click();
+        checkListSorting({
+          visibleEntities: MODELS_SORTED_BY_LOCATION,
+        });
 
-      H.DependencyDiagnostics.filterButton().click();
-      H.popover().findByText("Model").click();
-      checkList({ hiddenEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
-
-      H.popover().findByText("Segment").click();
-      checkList({
-        hiddenEntities: [
-          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
-          SEGMENT_FOR_QUESTION_FILTER,
-        ],
+        cy.log("sorted by location descending");
+        H.DependencyDiagnostics.list().findByText("Location").click();
+        checkListSorting({
+          visibleEntities: [...MODELS_SORTED_BY_LOCATION].reverse(),
+        });
       });
 
-      H.popover().findByText("Metric").click();
-      checkList({
-        hiddenEntities: [
-          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
-          SEGMENT_FOR_QUESTION_FILTER,
-          METRIC_FOR_QUESTION_AGGREGATION,
-        ],
-      });
+      it("should persist sorting changes after page reload", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.searchInput().type("Model for");
 
-      H.popover().findByText("Model").click();
-      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
-    });
+        H.DependencyDiagnostics.list().findByText("Location").click();
+        checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
 
-    it("should persist filter changes after page reload", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      checkList({ visibleEntities: MODEL_NAMES });
-
-      H.DependencyDiagnostics.filterButton().click();
-      H.popover().findByText("Model").click();
-      checkList({ hiddenEntities: MODEL_NAMES });
-
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      checkList({ visibleEntities: METRIC_NAMES, hiddenEntities: MODEL_NAMES });
-    });
-
-    it("should filter by location", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      checkList({
-        visibleEntities: [
-          MODEL_FOR_MODEL_DATA_SOURCE,
-          MODEL_FOR_METRIC_DATA_SOURCE,
-          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        ],
-      });
-
-      H.DependencyDiagnostics.filterButton().click();
-      H.popover().findByText("Include items in personal collections").click();
-      checkList({
-        visibleEntities: [
-          MODEL_FOR_MODEL_DATA_SOURCE,
-          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        ],
-        hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
-      });
-
-      H.popover().findByText("Include items in personal collections").click();
-      checkList({
-        visibleEntities: [
-          MODEL_FOR_MODEL_DATA_SOURCE,
-          MODEL_FOR_METRIC_DATA_SOURCE,
-          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        ],
-      });
-    });
-  });
-
-  describe("sorting", () => {
-    it("should sort by name", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type("Model for");
-
-      cy.log("sorted by name by default");
-      checkListSorting({
-        visibleEntities: MODELS_SORTED_BY_NAME,
-      });
-
-      cy.log("sorted by name ascending");
-      H.DependencyDiagnostics.list().findByText("Name").click();
-      checkListSorting({
-        visibleEntities: MODELS_SORTED_BY_NAME,
-      });
-
-      cy.log("sorted by name descending");
-      H.DependencyDiagnostics.list().findByText("Name").click();
-      checkListSorting({
-        visibleEntities: [...MODELS_SORTED_BY_NAME].reverse(),
+        H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.searchInput().type("Model for");
+        checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
       });
     });
 
-    it("should sort by location", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type("Model for");
+    describe("selecting entities", () => {
+      it("should show the sidebar for supported entities and trigger snowplow event", () => {
+        setupEntities();
+        waitForUnreferencedAnalysis();
+        H.DependencyDiagnostics.visitUnreferencedEntities();
 
-      cy.log("sorted by location ascending");
-      H.DependencyDiagnostics.list().findByText("Location").click();
-      checkListSorting({
-        visibleEntities: MODELS_SORTED_BY_LOCATION,
-      });
+        H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "dependency_diagnostics_entity_selected",
+          triggered_from: "unreferenced",
+          event_detail: "table",
+        });
+        checkSidebar({
+          title: TABLE_DISPLAY_NAME,
+          location: DATABASE_NAME,
+          description: TABLE_DESCRIPTION,
+          owner: `${USERS.admin.first_name} ${USERS.admin.last_name}`,
+          fields: ["ID", "UUID"],
+        });
 
-      cy.log("sorted by location descending");
-      H.DependencyDiagnostics.list().findByText("Location").click();
-      checkListSorting({
-        visibleEntities: [...MODELS_SORTED_BY_LOCATION].reverse(),
-      });
-    });
+        H.DependencyDiagnostics.list()
+          .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
+          .click();
+        checkSidebar({
+          title: MODEL_FOR_QUESTION_DATA_SOURCE,
+          location: "Our analytics",
+          createdBy: "Bobby Tables",
+          fields: ["User ID"],
+        });
 
-    it("should persist sorting changes after page reload", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type("Model for");
+        H.DependencyDiagnostics.list()
+          .findByText(MODEL_FOR_MODEL_DATA_SOURCE)
+          .click();
+        checkSidebar({
+          title: MODEL_FOR_MODEL_DATA_SOURCE,
+          location: "First collection",
+          createdBy: "Bobby Tables",
+        });
 
-      H.DependencyDiagnostics.list().findByText("Location").click();
-      checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
+        H.DependencyDiagnostics.list()
+          .findByText(SEGMENT_FOR_QUESTION_FILTER)
+          .click();
+        checkSidebar({
+          title: SEGMENT_FOR_QUESTION_FILTER,
+          location: "Orders",
+          createdBy: "Bobby Tables",
+        });
 
-      H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.searchInput().type("Model for");
-      checkListSorting({ visibleEntities: MODELS_SORTED_BY_LOCATION });
-    });
-  });
+        H.DependencyDiagnostics.list()
+          .findByText(METRIC_FOR_QUESTION_AGGREGATION)
+          .click();
+        checkSidebar({
+          title: METRIC_FOR_QUESTION_AGGREGATION,
+          location: "Our analytics",
+          createdBy: "Bobby Tables",
+        });
 
-  describe("selecting entities", () => {
-    it("should show the sidebar for supported entities and trigger snowplow event", () => {
-      setupEntities();
-      waitForUnreferencedAnalysis();
-      H.DependencyDiagnostics.visitUnreferencedEntities();
+        H.DependencyDiagnostics.list()
+          .findByText(METRIC_FOR_MODEL_AGGREGATION)
+          .click();
+        checkSidebar({
+          title: METRIC_FOR_MODEL_AGGREGATION,
+          location: "First collection",
+          createdBy: "Bobby Tables",
+        });
 
-      H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
-      H.expectUnstructuredSnowplowEvent({
-        event: "dependency_diagnostics_entity_selected",
-        triggered_from: "unreferenced",
-        event_detail: "table",
-      });
-      checkSidebar({
-        title: TABLE_DISPLAY_NAME,
-        location: DATABASE_NAME,
-        description: TABLE_DESCRIPTION,
-        owner: `${USERS.admin.first_name} ${USERS.admin.last_name}`,
-        fields: ["ID", "UUID"],
-      });
+        H.DependencyDiagnostics.list()
+          .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
+          .click();
+        checkSidebar({
+          title: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+          location: "SQL snippets",
+          createdBy: "Bobby Tables",
+        });
 
-      H.DependencyDiagnostics.list()
-        .findByText(MODEL_FOR_QUESTION_DATA_SOURCE)
-        .click();
-      checkSidebar({
-        title: MODEL_FOR_QUESTION_DATA_SOURCE,
-        location: "Our analytics",
-        createdBy: "Bobby Tables",
-        fields: ["User ID"],
-      });
-
-      H.DependencyDiagnostics.list()
-        .findByText(MODEL_FOR_MODEL_DATA_SOURCE)
-        .click();
-      checkSidebar({
-        title: MODEL_FOR_MODEL_DATA_SOURCE,
-        location: "First collection",
-        createdBy: "Bobby Tables",
-      });
-
-      H.DependencyDiagnostics.list()
-        .findByText(SEGMENT_FOR_QUESTION_FILTER)
-        .click();
-      checkSidebar({
-        title: SEGMENT_FOR_QUESTION_FILTER,
-        location: "Orders",
-        createdBy: "Bobby Tables",
-      });
-
-      H.DependencyDiagnostics.list()
-        .findByText(METRIC_FOR_QUESTION_AGGREGATION)
-        .click();
-      checkSidebar({
-        title: METRIC_FOR_QUESTION_AGGREGATION,
-        location: "Our analytics",
-        createdBy: "Bobby Tables",
-      });
-
-      H.DependencyDiagnostics.list()
-        .findByText(METRIC_FOR_MODEL_AGGREGATION)
-        .click();
-      checkSidebar({
-        title: METRIC_FOR_MODEL_AGGREGATION,
-        location: "First collection",
-        createdBy: "Bobby Tables",
-      });
-
-      H.DependencyDiagnostics.list()
-        .findByText(SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG)
-        .click();
-      checkSidebar({
-        title: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        location: "SQL snippets",
-        createdBy: "Bobby Tables",
-      });
-
-      cy.log("snowplow event when dependency graph link is clicked");
-      cy.findByRole("link", { name: "View in dependency graph" }).click();
-      H.expectUnstructuredSnowplowEvent({
-        event: "dependency_entity_selected",
-        triggered_from: "diagnostics-unreferenced-list",
-        event_detail: "snippet",
+        cy.log("snowplow event when dependency graph link is clicked");
+        cy.findByRole("link", { name: "View in dependency graph" }).click();
+        H.expectUnstructuredSnowplowEvent({
+          event: "dependency_entity_selected",
+          triggered_from: "diagnostics-unreferenced-list",
+          event_detail: "snippet",
+        });
       });
     });
-  });
-});
+  },
+);
 
 function setupEntities({
   withReferences = false,

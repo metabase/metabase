@@ -123,7 +123,7 @@ describe("Native SQL generation", () => {
     });
   });
 
-  describe("multi-db", () => {
+  describe("multi-db", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore("postgres-12");
       cy.signInAsAdmin();

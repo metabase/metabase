@@ -83,6 +83,12 @@ jobs:
           METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: ./.github/scripts/setup-python-runner.sh
 
+      # The QA database containers (postgres/mysql/mongo) are only needed by
+      # tagged tests: @external ones run in dedicated chunks, and the special
+      # jobs (mongo/python/oss-subset) and smart runs with explicit spec lists
+      # keep everything since their spec set isn't statically known. Regular
+      # auto-split chunks exclude those tags (see grepTags below), so they
+      # skip pulling and booting the heavy QA database images.
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
@@ -92,9 +98,9 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
-          postgres: true
-          mysql: true
-          mongo: true
+          postgres: ${{ inputs.specs != '' || contains(inputs.tags, '@external') }}
+          mysql: ${{ inputs.specs != '' || contains(inputs.tags, '@external') }}
+          mongo: ${{ inputs.specs != '' }}
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact
@@ -125,8 +131,14 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
-      - name: Compile CLJS
-        run: bun run build-pure:cljs
+      # Built once by the `build-cljs` job in run-tests.yml instead of
+      # compiling in every chunk. The Cypress rspack preprocessor resolves the
+      # `cljs/` alias to this directory.
+      - name: Get compiled CLJS
+        uses: actions/download-artifact@v8
+        with:
+          name: compiled-cljs
+          path: target/cljs_dev
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
@@ -140,10 +152,16 @@ jobs:
       # steps below. DEV-1999.
       - uses: ./.github/actions/resolve-job-id
 
+      # Chunks only generate the snapshots their containers can serve (see
+      # "Prepare Docker containers" above): regular chunks skip the whole QA
+      # database creator (qa-db.cy.snap.js), @external chunks skip just its
+      # mongo part. Smart runs (specs != '') start every container, so they
+      # generate everything.
       - name: Generate database snapshots
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: node e2e/runner/run_cypress_ci.js snapshot
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot ${{ (inputs.specs == '' && !contains(inputs.tags, '@external') && '--expose grepTags=-@external') || (inputs.specs == '' && '--expose grepTags=-@mongo') || '' }}
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         id: split-e2e
@@ -162,7 +180,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --expose grepTags="-@mongo+-@python+-@OSS+-@skip" \
+            --expose grepTags="${{ inputs.tags && format('{0}+-@skip', inputs.tags) || '-@external+-@mongo+-@python+-@OSS+-@skip' }}" \
             --spec "$SPEC_PATH"
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines

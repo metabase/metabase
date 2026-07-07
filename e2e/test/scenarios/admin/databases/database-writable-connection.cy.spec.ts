@@ -29,162 +29,168 @@ const TRANSFORM_TABLE_NAME = "transform_table";
 
 const ORDERS_TABLE_NAME = "ORDERS";
 
-describe("scenarios > admin > databases > writable connection", () => {
-  beforeEach(() => {
-    H.restore("mysql-writable");
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    createUser(READ_ONLY_USER);
-    setupTableData();
-  });
-
-  afterEach(() => {
-    dropUser(READ_ONLY_USER);
-    dropTable(ORDERS_TABLE_NAME);
-    dropTable(TRANSFORM_TABLE_NAME);
-  });
-
-  it("should be able to create, edit, and remove a writable connection", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    createWritableConnection(DEFAULT_USER);
-    updateWritableConnection(READ_ONLY_USER);
-    removeWritableConnection();
-    getWritableConnectionInfoSection()
-      .findByText("Add writable connection")
-      .should("exist");
-  });
-
-  it("should validate writable connection details on save", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    getWritableConnectionInfoSection()
-      .findByText("Add writable connection")
-      .click();
-    fillInCredentials({
-      username: "invalid",
-      password: "invalid",
+describe(
+  "scenarios > admin > databases > writable connection",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("mysql-writable");
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+      createUser(READ_ONLY_USER);
+      setupTableData();
     });
 
-    cy.button("Save").click();
-    cy.findByRole("alert").should(
-      "contain.text",
-      "Metabase tried, but couldn't connect",
-    );
-  });
-
-  it("should show up-to-date connection health status", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    createWritableConnection(READ_ONLY_USER);
-    getMainConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
-    });
-    getWritableConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    afterEach(() => {
+      dropUser(READ_ONLY_USER);
+      dropTable(ORDERS_TABLE_NAME);
+      dropTable(TRANSFORM_TABLE_NAME);
     });
 
-    dropUser(READ_ONLY_USER);
-    visitDatabase(WRITABLE_DB_ID);
-    getMainConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    it("should be able to create, edit, and remove a writable connection", () => {
+      visitDatabase(WRITABLE_DB_ID);
+      createWritableConnection(DEFAULT_USER);
+      updateWritableConnection(READ_ONLY_USER);
+      removeWritableConnection();
+      getWritableConnectionInfoSection()
+        .findByText("Add writable connection")
+        .should("exist");
     });
-    getWritableConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should(
+
+    it("should validate writable connection details on save", () => {
+      visitDatabase(WRITABLE_DB_ID);
+      getWritableConnectionInfoSection()
+        .findByText("Add writable connection")
+        .click();
+      fillInCredentials({
+        username: "invalid",
+        password: "invalid",
+      });
+
+      cy.button("Save").click();
+      cy.findByRole("alert").should(
         "contain.text",
-        "Could not connect",
+        "Metabase tried, but couldn't connect",
       );
     });
-  });
 
-  it("should be able to run transforms with a writable connection", () => {
-    visitDatabase(WRITABLE_DB_ID);
+    it("should show up-to-date connection health status", () => {
+      visitDatabase(WRITABLE_DB_ID);
+      createWritableConnection(READ_ONLY_USER);
+      getMainConnectionInfoSection().within(() => {
+        getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+      });
+      getWritableConnectionInfoSection().within(() => {
+        getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+      });
 
-    createTransform().then(({ body: transform }) => {
-      updateMainConnection(READ_ONLY_USER);
-      H.runTransformAndWaitForFailure(transform.id);
-
-      createWritableConnection(DEFAULT_USER);
-      H.runTransformAndWaitForSuccess(transform.id);
-    });
-  });
-
-  it("should be able to run transforms via a job with a writable connection", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    updateMainConnection(READ_ONLY_USER);
-    createWritableConnection(DEFAULT_USER);
-
-    H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
-      createTransform({ tagIds: [tag.id] });
-      H.createTransformJob({
-        schedule: "* * * * * ? *", // every second
-        tag_ids: [tag.id],
+      dropUser(READ_ONLY_USER);
+      visitDatabase(WRITABLE_DB_ID);
+      getMainConnectionInfoSection().within(() => {
+        getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+      });
+      getWritableConnectionInfoSection().within(() => {
+        getDatabaseConnectionHealthInfo().should(
+          "contain.text",
+          "Could not connect",
+        );
       });
     });
-    H.waitForSucceededTransformRuns();
-  });
 
-  it("should be able to use model actions with a writable connection", () => {
-    visitDatabase(WRITABLE_DB_ID);
+    it("should be able to run transforms with a writable connection", () => {
+      visitDatabase(WRITABLE_DB_ID);
 
-    cy.log("Model actions should be enabled for this db");
-    cy.findByLabelText("Model actions").should("be.checked");
+      createTransform().then(({ body: transform }) => {
+        updateMainConnection(READ_ONLY_USER);
+        H.runTransformAndWaitForFailure(transform.id);
 
-    createModelWithAction().then((action) => {
+        createWritableConnection(DEFAULT_USER);
+        H.runTransformAndWaitForSuccess(transform.id);
+      });
+    });
+
+    it("should be able to run transforms via a job with a writable connection", () => {
+      visitDatabase(WRITABLE_DB_ID);
       updateMainConnection(READ_ONLY_USER);
-      runAction(action.id).then(expectFailure);
+      createWritableConnection(DEFAULT_USER);
+
+      H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+        createTransform({ tagIds: [tag.id] });
+        H.createTransformJob({
+          schedule: "* * * * * ? *", // every second
+          tag_ids: [tag.id],
+        });
+      });
+      H.waitForSucceededTransformRuns();
+    });
+
+    it("should be able to use model actions with a writable connection", () => {
+      visitDatabase(WRITABLE_DB_ID);
+
+      cy.log("Model actions should be enabled for this db");
+      cy.findByLabelText("Model actions").should("be.checked");
+
+      createModelWithAction().then((action) => {
+        updateMainConnection(READ_ONLY_USER);
+        runAction(action.id).then(expectFailure);
+
+        createWritableConnection(DEFAULT_USER);
+        runAction(action.id).then(expectSuccess);
+      });
+    });
+
+    it("should be able to use model persistence with a writable connection", () => {
+      enableGlobalModelPersistence();
+
+      visitDatabase(WRITABLE_DB_ID);
+      enableModelPersistence();
+
+      createModel().then((model) => {
+        enablePersistenceForModel(model.id);
+
+        updateMainConnection(READ_ONLY_USER);
+        refreshModelPersistenceAndAwaitError(model.id);
+
+        createWritableConnection(DEFAULT_USER);
+        refreshModelPersistenceAndAwaitSuccess(model.id);
+
+        // Regression for metabase#74449: the Persist model data toggle must
+        // reflect the mutation result without a page reload (persistModel
+        // returns HTTP 204, and the UI relies on RTK cache invalidation to
+        // refetch the persisted state).
+        cy.visit(`/model/${model.id}`);
+        H.openQuestionActions("Edit settings");
+        cy.findByLabelText("Persist model data").should("be.checked").click();
+        cy.findByLabelText("Persist model data")
+          .should("not.be.checked")
+          .click();
+        cy.findByLabelText("Persist model data").should("be.checked");
+      });
+    });
+
+    it("should be able to use table editing with a writable connection", () => {
+      visitDatabase(WRITABLE_DB_ID);
+      enableTableEditing();
+
+      updateMainConnection(READ_ONLY_USER);
+      performTableEdit().then(expectFailure);
 
       createWritableConnection(DEFAULT_USER);
-      runAction(action.id).then(expectSuccess);
+      performTableEdit().then(expectSuccess);
     });
-  });
 
-  it("should be able to use model persistence with a writable connection", () => {
-    enableGlobalModelPersistence();
-
-    visitDatabase(WRITABLE_DB_ID);
-    enableModelPersistence();
-
-    createModel().then((model) => {
-      enablePersistenceForModel(model.id);
+    it("should be possible to use uploads with a writable connection", () => {
+      H.enableUploads("mysql");
+      visitDatabase(WRITABLE_DB_ID);
 
       updateMainConnection(READ_ONLY_USER);
-      refreshModelPersistenceAndAwaitError(model.id);
+      performUpload().then(expectFailure);
 
       createWritableConnection(DEFAULT_USER);
-      refreshModelPersistenceAndAwaitSuccess(model.id);
-
-      // Regression for metabase#74449: the Persist model data toggle must
-      // reflect the mutation result without a page reload (persistModel
-      // returns HTTP 204, and the UI relies on RTK cache invalidation to
-      // refetch the persisted state).
-      cy.visit(`/model/${model.id}`);
-      H.openQuestionActions("Edit settings");
-      cy.findByLabelText("Persist model data").should("be.checked").click();
-      cy.findByLabelText("Persist model data").should("not.be.checked").click();
-      cy.findByLabelText("Persist model data").should("be.checked");
+      performUpload().then(expectSuccess);
     });
-  });
-
-  it("should be able to use table editing with a writable connection", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    enableTableEditing();
-
-    updateMainConnection(READ_ONLY_USER);
-    performTableEdit().then(expectFailure);
-
-    createWritableConnection(DEFAULT_USER);
-    performTableEdit().then(expectSuccess);
-  });
-
-  it("should be possible to use uploads with a writable connection", () => {
-    H.enableUploads("mysql");
-    visitDatabase(WRITABLE_DB_ID);
-
-    updateMainConnection(READ_ONLY_USER);
-    performUpload().then(expectFailure);
-
-    createWritableConnection(DEFAULT_USER);
-    performUpload().then(expectSuccess);
-  });
-});
+  },
+);
 
 function createTransform({ tagIds = [] }: { tagIds?: TransformTagId[] } = {}) {
   return H.createTransform({

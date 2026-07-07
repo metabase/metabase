@@ -800,7 +800,77 @@ describe("scenarios - embedding hub", () => {
           .should("have.attr", "aria-checked", "true");
       });
 
-      it("shows autocomplete suggestions for organization_id based on selected field values", () => {
+      it(
+        "shows autocomplete suggestions for organization_id based on selected field values",
+        { tags: ["@external"] },
+        () => {
+          H.restore("postgres-12");
+          cy.signInAsAdmin();
+          H.activateToken("pro-self-hosted");
+
+          cy.visit("/admin/embedding/setup-guide/permissions");
+
+          cy.log("enable tenants and create shared collection");
+          H.main()
+            .findByRole("button", {
+              name: "Enable tenants and create shared collection",
+            })
+            .click();
+
+          cy.log("wait for tenants to be enabled");
+          H.main()
+            .findByRole("listitem", {
+              name: "Enable multi-tenant user strategy",
+              timeout: 10_000,
+            })
+            .icon("check")
+            .should("exist");
+
+          cy.log("complete the move-dashboard step");
+          H.main()
+            .findByRole("button", { name: "Create a sample dashboard" })
+            .click();
+
+          cy.log("use row and column level security");
+          H.main()
+            .findByRole("radio", { name: /Row and column level security/ })
+            .scrollIntoView()
+            .click();
+
+          H.main()
+            .findByRole("button", { name: "Use row and column level security" })
+            .scrollIntoView()
+            .click();
+
+          cy.log("pick orders table");
+          H.main().findByText("Pick a table").click();
+          H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+          H.miniPicker().findByText("Orders").click();
+
+          H.main().findByPlaceholderText("Pick a column").click();
+          H.popover().findByText("User ID").click();
+          H.main().findByRole("button", { name: "Next" }).click();
+
+          cy.log("autocomplete dropdown should show matching user id values");
+          H.main().findByPlaceholderText("e.g. 1").type("1");
+
+          H.popover().within(() => {
+            cy.findAllByRole("option").should("have.length.at.least", 8);
+
+            // The ID differs across run, so let's only do one assertion here.
+            cy.findByRole("option", { name: "1" }).should("exist");
+          });
+        },
+      );
+    });
+
+    // Needs its own test case, as the RLS selected table and columns
+    // are only populated when the user goes through the "Select data" step
+    // in the UI. Without it, the data permissions description won't show.
+    it(
+      "shows RLS data permissions description in summary",
+      { tags: ["@external"] },
+      () => {
         H.restore("postgres-12");
         cy.signInAsAdmin();
         H.activateToken("pro-self-hosted");
@@ -839,316 +909,263 @@ describe("scenarios - embedding hub", () => {
           .scrollIntoView()
           .click();
 
-        cy.log("pick orders table");
+        cy.log("pick Orders table and User ID column");
         H.main().findByText("Pick a table").click();
         H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
         H.miniPicker().findByText("Orders").click();
 
         H.main().findByPlaceholderText("Pick a column").click();
         H.popover().findByText("User ID").click();
+
+        cy.intercept("PUT", "/api/permissions/graph").as(
+          "updatePermissionsGraph",
+        );
+        H.main().findByRole("button", { name: "Next" }).click();
+        cy.wait("@updatePermissionsGraph");
+
+        cy.log("navigate to create tenants step");
+        H.main().findByRole("listitem", { name: "Create tenants" }).click();
+
+        cy.log("should show dynamic description with the selected column name");
+        H.main()
+          .contains("Enter a value that matches the User ID column.")
+          .should("be.visible");
+
+        cy.log("fill out the tenant form");
+        H.main().within(() => {
+          cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+          cy.findByPlaceholderText("e.g. 1").type("42");
+          cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+        });
+
+        H.main().findByRole("button", { name: "Create tenants" }).click();
+
+        cy.log("success toast should show");
+        H.undoToast()
+          .findByText("Tenants created successfully")
+          .should("be.visible");
+
+        cy.log("data permissions description should show in summary");
+        H.main()
+          .contains(
+            "All users in Acme Corp can view rows in the Orders table where User ID field equals 42.",
+          )
+          .should("be.visible");
+      },
+    );
+
+    it(
+      "should create sandboxes for multiple tables via row-level security setup",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-12");
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
+
+        cy.intercept("PUT", "/api/permissions/graph").as(
+          "updatePermissionsGraph",
+        );
+
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log("steps 3, 4, and 5 should be locked initially");
+        H.main().within(() => {
+          cy.findByRole("listitem", { name: "Select data to make available" })
+            .icon("lock")
+            .should("exist");
+
+          cy.findByRole("listitem", { name: "Create tenants" })
+            .icon("lock")
+            .should("exist");
+
+          cy.findByRole("listitem", { name: "Summary" })
+            .icon("lock")
+            .should("exist");
+        });
+
+        H.main()
+          .findByRole("button", {
+            name: "Enable tenants and create shared collection",
+          })
+          .click();
+
+        cy.log("wait for tenants to be enabled");
+        H.main()
+          .findByRole("listitem", {
+            name: "Enable multi-tenant user strategy",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+
+        cy.log("complete the move-dashboard step");
+        H.main()
+          .findByRole("button", { name: "Create a sample dashboard" })
+          .click();
+
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", { name: "Use row and column level security" })
+          .scrollIntoView()
+          .click();
+
+        cy.log("pick first table and column");
+        H.main().findByText("Pick a table").click();
+
+        cy.log("Our analytics should be hidden in the table picker");
+        H.miniPicker().findByText("Our analytics").should("not.exist");
+        cy.log("Sample Database should be hidden in the table picker");
+        H.miniPicker().findByText("Sample Database").should("not.exist");
+
+        H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+        H.miniPicker().findByText("Orders").click();
+
+        H.main().findByPlaceholderText("Pick a column").click();
+        H.popover().findByText("User ID").click();
+
+        cy.log("pick second table and column");
+        H.main().findByText("Add table").click();
+        H.main().findAllByText("Pick a table").first().click();
+
+        H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+
+        cy.log("orders should be hidden as it's already selected");
+        H.miniPicker().findByText("Orders").should("not.exist");
+
+        H.miniPicker().findByText("People").click();
+
+        H.main()
+          .findAllByPlaceholderText("Pick a column")
+          .should("have.length", 2)
+          .last()
+          .click();
+
+        H.popover().findByText("ID").click();
+
+        cy.log("create sandbox");
         H.main().findByRole("button", { name: "Next" }).click();
 
-        cy.log("autocomplete dropdown should show matching user id values");
-        H.main().findByPlaceholderText("e.g. 1").type("1");
+        cy.log("wait for sandbox creation to complete");
+        cy.wait("@updatePermissionsGraph");
 
-        H.popover().within(() => {
-          cy.findAllByRole("option").should("have.length.at.least", 8);
+        cy.log("no error toast should appear");
+        H.undoToast().should("not.exist");
 
-          // The ID differs across run, so let's only do one assertion here.
-          cy.findByRole("option", { name: "1" }).should("exist");
-        });
-      });
-    });
+        // We verify permissions via API rather than UI because:
+        // 1. The admin permissions UI is complex and would add significant test time
+        // 2. This test focuses on the onboarding flow, not the permissions UI
+        cy.log("access policies should be created");
+        H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+          (ordersTableId) => {
+            H.getTableId({ databaseId: WRITABLE_DB_ID, name: "people" }).then(
+              (peopleTableId) => {
+                cy.request("GET", "/api/mt/gtap").should((response) => {
+                  const policies = response.body;
+                  expect(policies.length).to.be.at.least(2);
 
-    // Needs its own test case, as the RLS selected table and columns
-    // are only populated when the user goes through the "Select data" step
-    // in the UI. Without it, the data permissions description won't show.
-    it("shows RLS data permissions description in summary", () => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
+                  const orderPolicy = policies.find(
+                    (policy: { table_id: number }) =>
+                      policy.table_id === ordersTableId,
+                  );
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+                  const peoplePolicy = policies.find(
+                    (policy: { table_id: number }) =>
+                      policy.table_id === peopleTableId,
+                  );
 
-      cy.log("enable tenants and create shared collection");
-      H.main()
-        .findByRole("button", {
-          name: "Enable tenants and create shared collection",
-        })
-        .click();
+                  expect(orderPolicy).to.exist;
+                  expect(peoplePolicy).to.exist;
 
-      cy.log("wait for tenants to be enabled");
-      H.main()
-        .findByRole("listitem", {
-          name: "Enable multi-tenant user strategy",
-          timeout: 10_000,
-        })
-        .icon("check")
-        .should("exist");
+                  expect(orderPolicy.attribute_remappings).to.have.property(
+                    "organization_id",
+                  );
 
-      cy.log("complete the move-dashboard step");
-      H.main()
-        .findByRole("button", { name: "Create a sample dashboard" })
-        .click();
-
-      cy.log("use row and column level security");
-      H.main()
-        .findByRole("radio", { name: /Row and column level security/ })
-        .scrollIntoView()
-        .click();
-
-      H.main()
-        .findByRole("button", { name: "Use row and column level security" })
-        .scrollIntoView()
-        .click();
-
-      cy.log("pick Orders table and User ID column");
-      H.main().findByText("Pick a table").click();
-      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
-      H.miniPicker().findByText("Orders").click();
-
-      H.main().findByPlaceholderText("Pick a column").click();
-      H.popover().findByText("User ID").click();
-
-      cy.intercept("PUT", "/api/permissions/graph").as(
-        "updatePermissionsGraph",
-      );
-      H.main().findByRole("button", { name: "Next" }).click();
-      cy.wait("@updatePermissionsGraph");
-
-      cy.log("navigate to create tenants step");
-      H.main().findByRole("listitem", { name: "Create tenants" }).click();
-
-      cy.log("should show dynamic description with the selected column name");
-      H.main()
-        .contains("Enter a value that matches the User ID column.")
-        .should("be.visible");
-
-      cy.log("fill out the tenant form");
-      H.main().within(() => {
-        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
-        cy.findByPlaceholderText("e.g. 1").type("42");
-        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
-      });
-
-      H.main().findByRole("button", { name: "Create tenants" }).click();
-
-      cy.log("success toast should show");
-      H.undoToast()
-        .findByText("Tenants created successfully")
-        .should("be.visible");
-
-      cy.log("data permissions description should show in summary");
-      H.main()
-        .contains(
-          "All users in Acme Corp can view rows in the Orders table where User ID field equals 42.",
-        )
-        .should("be.visible");
-    });
-
-    it("should create sandboxes for multiple tables via row-level security setup", () => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
-      cy.intercept("PUT", "/api/permissions/graph").as(
-        "updatePermissionsGraph",
-      );
-
-      cy.visit("/admin/embedding/setup-guide/permissions");
-
-      cy.log("steps 3, 4, and 5 should be locked initially");
-      H.main().within(() => {
-        cy.findByRole("listitem", { name: "Select data to make available" })
-          .icon("lock")
-          .should("exist");
-
-        cy.findByRole("listitem", { name: "Create tenants" })
-          .icon("lock")
-          .should("exist");
-
-        cy.findByRole("listitem", { name: "Summary" })
-          .icon("lock")
-          .should("exist");
-      });
-
-      H.main()
-        .findByRole("button", {
-          name: "Enable tenants and create shared collection",
-        })
-        .click();
-
-      cy.log("wait for tenants to be enabled");
-      H.main()
-        .findByRole("listitem", {
-          name: "Enable multi-tenant user strategy",
-          timeout: 10_000,
-        })
-        .icon("check")
-        .should("exist");
-
-      cy.log("complete the move-dashboard step");
-      H.main()
-        .findByRole("button", { name: "Create a sample dashboard" })
-        .click();
-
-      H.main()
-        .findByRole("radio", { name: /Row and column level security/ })
-        .scrollIntoView()
-        .click();
-
-      H.main()
-        .findByRole("button", { name: "Use row and column level security" })
-        .scrollIntoView()
-        .click();
-
-      cy.log("pick first table and column");
-      H.main().findByText("Pick a table").click();
-
-      cy.log("Our analytics should be hidden in the table picker");
-      H.miniPicker().findByText("Our analytics").should("not.exist");
-      cy.log("Sample Database should be hidden in the table picker");
-      H.miniPicker().findByText("Sample Database").should("not.exist");
-
-      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
-      H.miniPicker().findByText("Orders").click();
-
-      H.main().findByPlaceholderText("Pick a column").click();
-      H.popover().findByText("User ID").click();
-
-      cy.log("pick second table and column");
-      H.main().findByText("Add table").click();
-      H.main().findAllByText("Pick a table").first().click();
-
-      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
-
-      cy.log("orders should be hidden as it's already selected");
-      H.miniPicker().findByText("Orders").should("not.exist");
-
-      H.miniPicker().findByText("People").click();
-
-      H.main()
-        .findAllByPlaceholderText("Pick a column")
-        .should("have.length", 2)
-        .last()
-        .click();
-
-      H.popover().findByText("ID").click();
-
-      cy.log("create sandbox");
-      H.main().findByRole("button", { name: "Next" }).click();
-
-      cy.log("wait for sandbox creation to complete");
-      cy.wait("@updatePermissionsGraph");
-
-      cy.log("no error toast should appear");
-      H.undoToast().should("not.exist");
-
-      // We verify permissions via API rather than UI because:
-      // 1. The admin permissions UI is complex and would add significant test time
-      // 2. This test focuses on the onboarding flow, not the permissions UI
-      cy.log("access policies should be created");
-      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
-        (ordersTableId) => {
-          H.getTableId({ databaseId: WRITABLE_DB_ID, name: "people" }).then(
-            (peopleTableId) => {
-              cy.request("GET", "/api/mt/gtap").should((response) => {
-                const policies = response.body;
-                expect(policies.length).to.be.at.least(2);
-
-                const orderPolicy = policies.find(
-                  (policy: { table_id: number }) =>
-                    policy.table_id === ordersTableId,
-                );
-
-                const peoplePolicy = policies.find(
-                  (policy: { table_id: number }) =>
-                    policy.table_id === peopleTableId,
-                );
-
-                expect(orderPolicy).to.exist;
-                expect(peoplePolicy).to.exist;
-
-                expect(orderPolicy.attribute_remappings).to.have.property(
-                  "organization_id",
-                );
-
-                expect(peoplePolicy.attribute_remappings).to.have.property(
-                  "organization_id",
-                );
-              });
-
-              cy.request(
-                "GET",
-                `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
-              ).should((response) => {
-                const graph = response.body;
-
-                const permissions =
-                  graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
-                expect(permissions).to.exist;
-
-                expect(permissions["view-data"].public).to.deep.equal({
-                  [ordersTableId]: "sandboxed",
-                  [peopleTableId]: "sandboxed",
+                  expect(peoplePolicy.attribute_remappings).to.have.property(
+                    "organization_id",
+                  );
                 });
 
-                expect(permissions["create-queries"].public).to.deep.equal({
-                  [ordersTableId]: "query-builder",
-                  [peopleTableId]: "query-builder",
+                cy.request(
+                  "GET",
+                  `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+                ).should((response) => {
+                  const graph = response.body;
+
+                  const permissions =
+                    graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
+                  expect(permissions).to.exist;
+
+                  expect(permissions["view-data"].public).to.deep.equal({
+                    [ordersTableId]: "sandboxed",
+                    [peopleTableId]: "sandboxed",
+                  });
+
+                  expect(permissions["create-queries"].public).to.deep.equal({
+                    [ordersTableId]: "query-builder",
+                    [peopleTableId]: "query-builder",
+                  });
                 });
-              });
-            },
-          );
-        },
-      );
+              },
+            );
+          },
+        );
 
-      H.main()
-        .findByRole("listitem", {
-          name: "Select data to make available",
-          timeout: 10_000,
-        })
-        .icon("check")
-        .should("exist");
-    });
+        H.main()
+          .findByRole("listitem", {
+            name: "Select data to make available",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+      },
+    );
 
-    it("should update existing sandboxes when changing column selection", () => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
+    it(
+      "should update existing sandboxes when changing column selection",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-12");
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
 
-      cy.intercept("PUT", "/api/permissions/graph").as(
-        "updatePermissionsGraph",
-      );
+        cy.intercept("PUT", "/api/permissions/graph").as(
+          "updatePermissionsGraph",
+        );
 
-      // We use API setup here instead of clicking through the UI because:
-      // 1. This test verifies the UPDATE flow (not CREATE), which requires a sandbox to already exist
-      // 2. The sandbox can only be created after tenants are enabled (which creates the all-external-users group)
-      // 3. Using API calls is cleaner for test data preparation than clicking through UI twice
-      cy.log("enable tenants to create the all-external-users");
-      H.updateSetting("use-tenants", true);
+        // We use API setup here instead of clicking through the UI because:
+        // 1. This test verifies the UPDATE flow (not CREATE), which requires a sandbox to already exist
+        // 2. The sandbox can only be created after tenants are enabled (which creates the all-external-users group)
+        // 3. Using API calls is cleaner for test data preparation than clicking through UI twice
+        cy.log("enable tenants to create the all-external-users");
+        H.updateSetting("use-tenants", true);
 
-      cy.log("create shared collection with a dashboard");
-      cy.request("POST", "/api/collection", {
-        name: "Shared collection",
-        parent_id: null,
-        namespace: "shared-tenant-collection",
-      }).then(({ body: collection }) => {
-        H.createDashboard({
-          name: "Test Dashboard",
-          collection_id: collection.id,
+        cy.log("create shared collection with a dashboard");
+        cy.request("POST", "/api/collection", {
+          name: "Shared collection",
+          parent_id: null,
+          namespace: "shared-tenant-collection",
+        }).then(({ body: collection }) => {
+          H.createDashboard({
+            name: "Test Dashboard",
+            collection_id: collection.id,
+          });
         });
-      });
 
-      cy.log("create an existing sandbox for Orders table via API");
-      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
-        (ordersTableId) => {
-          cy.wrap(ordersTableId).as("ordersTableId");
+        cy.log("create an existing sandbox for Orders table via API");
+        H.getTableId({ databaseId: WRITABLE_DB_ID, name: "orders" }).then(
+          (ordersTableId) => {
+            cy.wrap(ordersTableId).as("ordersTableId");
 
-          H.getFieldId({ tableId: ordersTableId, name: "user_id" }).then(
-            (userIdFieldId) => {
-              H.getFieldId({ tableId: ordersTableId, name: "product_id" }).then(
-                (productIdFieldId) => {
+            H.getFieldId({ tableId: ordersTableId, name: "user_id" }).then(
+              (userIdFieldId) => {
+                H.getFieldId({
+                  tableId: ordersTableId,
+                  name: "product_id",
+                }).then((productIdFieldId) => {
                   cy.wrap(productIdFieldId).as("productIdFieldId");
 
                   cy.request("GET", "/api/permissions/group").then(
@@ -1171,87 +1188,87 @@ describe("scenarios - embedding hub", () => {
                       });
                     },
                   );
-                },
-              );
-            },
-          );
-        },
-      );
-
-      cy.visit("/admin/embedding/setup-guide/permissions");
-
-      cy.log("wait for checklist data to load before interacting with steps");
-      H.main()
-        .findByRole("listitem", {
-          name: /Enable multi-tenant user strategy/,
-          timeout: 10_000,
-        })
-        .should("have.attr", "data-completed", "true");
-
-      cy.log("open the data segregation strategy step");
-      H.main()
-        .findByText("Which data segregation strategy does your database use?")
-        .scrollIntoView()
-        .click();
-
-      cy.log("select row and column level security strategy");
-      H.main()
-        .findByRole("radio", { name: /Row and column level security/ })
-        .scrollIntoView()
-        .click();
-
-      H.main()
-        .findByRole("button", { name: "Use row and column level security" })
-        .scrollIntoView()
-        .click();
-
-      cy.log("Select the same Orders table");
-      H.main().findByText("Pick a table").click();
-      H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
-      H.miniPicker().findByText("Orders").click();
-
-      cy.log("select Product ID column instead of User ID");
-      H.main().findByPlaceholderText("Pick a column").click();
-      H.popover().findByText("Product ID").click();
-      H.main().findByRole("button", { name: "Next" }).click();
-
-      cy.log("wait for sandbox update to complete");
-      cy.wait("@updatePermissionsGraph");
-
-      cy.log("error toast should not appear");
-      H.undoToast().should("not.exist");
-
-      cy.log("sandbox should be updated and not created");
-      cy.get<number>("@ordersTableId").then((ordersTableId) => {
-        cy.get<number>("@productIdFieldId").then((productIdFieldId) => {
-          cy.request("GET", "/api/mt/gtap").should((response) => {
-            const policies = response.body;
-
-            const orderPolicies = policies.filter(
-              (policy: { table_id: number }) =>
-                policy.table_id === ordersTableId,
+                });
+              },
             );
+          },
+        );
 
-            // should only have one sandbox for Orders table
-            expect(orderPolicies.length).to.equal(1);
+        cy.visit("/admin/embedding/setup-guide/permissions");
 
-            const [orderPolicy] = orderPolicies;
-            const tenantFieldRef =
-              orderPolicy.attribute_remappings.organization_id;
+        cy.log("wait for checklist data to load before interacting with steps");
+        H.main()
+          .findByRole("listitem", {
+            name: /Enable multi-tenant user strategy/,
+            timeout: 10_000,
+          })
+          .should("have.attr", "data-completed", "true");
 
-            expect(tenantFieldRef[1][1]).to.equal(productIdFieldId);
+        cy.log("open the data segregation strategy step");
+        H.main()
+          .findByText("Which data segregation strategy does your database use?")
+          .scrollIntoView()
+          .click();
+
+        cy.log("select row and column level security strategy");
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", { name: "Use row and column level security" })
+          .scrollIntoView()
+          .click();
+
+        cy.log("Select the same Orders table");
+        H.main().findByText("Pick a table").click();
+        H.miniPicker().findByText(NON_SAMPLE_DB_NAME).click();
+        H.miniPicker().findByText("Orders").click();
+
+        cy.log("select Product ID column instead of User ID");
+        H.main().findByPlaceholderText("Pick a column").click();
+        H.popover().findByText("Product ID").click();
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("wait for sandbox update to complete");
+        cy.wait("@updatePermissionsGraph");
+
+        cy.log("error toast should not appear");
+        H.undoToast().should("not.exist");
+
+        cy.log("sandbox should be updated and not created");
+        cy.get<number>("@ordersTableId").then((ordersTableId) => {
+          cy.get<number>("@productIdFieldId").then((productIdFieldId) => {
+            cy.request("GET", "/api/mt/gtap").should((response) => {
+              const policies = response.body;
+
+              const orderPolicies = policies.filter(
+                (policy: { table_id: number }) =>
+                  policy.table_id === ordersTableId,
+              );
+
+              // should only have one sandbox for Orders table
+              expect(orderPolicies.length).to.equal(1);
+
+              const [orderPolicy] = orderPolicies;
+              const tenantFieldRef =
+                orderPolicy.attribute_remappings.organization_id;
+
+              expect(tenantFieldRef[1][1]).to.equal(productIdFieldId);
+            });
           });
         });
-      });
 
-      H.main()
-        .findByRole("listitem", {
-          name: "Select data to make available",
-          timeout: 10_000,
-        })
-        .icon("check")
-        .should("exist");
-    });
+        H.main()
+          .findByRole("listitem", {
+            name: "Select data to make available",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+      },
+    );
 
     it(
       "should block schemas without selected tables in RLS setup",
@@ -1417,45 +1434,50 @@ describe("scenarios - embedding hub", () => {
       });
     });
 
-    it("should configure connection impersonation for selected databases", function () {
-      H.addPostgresDatabase("QA Postgres12");
+    it(
+      "should configure connection impersonation for selected databases",
+      { tags: ["@external"] },
+      function () {
+        H.addPostgresDatabase("QA Postgres12");
 
-      cy.get<number>("@postgresID").then((postgresId) => {
-        cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.get<number>("@postgresID").then((postgresId) => {
+          cy.visit("/admin/embedding/setup-guide/permissions");
 
-        H.main()
-          .findByRole("radio", { name: /Connection impersonation/ })
-          .scrollIntoView()
-          .click();
+          H.main()
+            .findByRole("radio", { name: /Connection impersonation/ })
+            .scrollIntoView()
+            .click();
 
-        H.main()
-          .findByRole("button", { name: "Use connection impersonation" })
-          .scrollIntoView()
-          .click();
+          H.main()
+            .findByRole("button", { name: "Use connection impersonation" })
+            .scrollIntoView()
+            .click();
 
-        cy.log("select database");
-        H.main().findByPlaceholderText("Pick a database").click();
-        H.popover().findByText("QA Postgres12").click();
+          cy.log("select database");
+          H.main().findByPlaceholderText("Pick a database").click();
+          H.popover().findByText("QA Postgres12").click();
 
-        cy.log("database should be selected in the multi-select pill");
-        H.main().findAllByLabelText("Remove").should("have.length", 1);
-        H.main().findByText("QA Postgres12").should("be.visible");
+          cy.log("database should be selected in the multi-select pill");
+          H.main().findAllByLabelText("Remove").should("have.length", 1);
+          H.main().findByText("QA Postgres12").should("be.visible");
 
-        cy.log("setup connection impersonation for the database");
-        H.main().findByRole("button", { name: "Next" }).click();
+          cy.log("setup connection impersonation for the database");
+          H.main().findByRole("button", { name: "Next" }).click();
 
-        cy.log("step should be marked as complete");
-        H.main()
-          .findByRole("listitem", {
-            name: "Select data to make available",
-            timeout: 10_000,
-          })
-          .icon("check")
-          .should("exist");
+          cy.log("step should be marked as complete");
+          H.main()
+            .findByRole("listitem", {
+              name: "Select data to make available",
+              timeout: 10_000,
+            })
+            .icon("check")
+            .should("exist");
 
-        cy.log("connection impersonation policy should be created");
-        cy.request("GET", "/api/ee/advanced-permissions/impersonation").should(
-          (response) => {
+          cy.log("connection impersonation policy should be created");
+          cy.request(
+            "GET",
+            "/api/ee/advanced-permissions/impersonation",
+          ).should((response) => {
             const policies = response.body;
             expect(policies.length).to.be.at.least(1);
 
@@ -1465,25 +1487,25 @@ describe("scenarios - embedding hub", () => {
 
             expect(postgresPolicy).to.exist;
             expect(postgresPolicy.attribute).to.equal("database_role");
-          },
-        );
+          });
 
-        cy.log("permission graph should have impersonated view-data");
-        cy.request(
-          "GET",
-          `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
-        ).should((response) => {
-          const graph = response.body;
+          cy.log("permission graph should have impersonated view-data");
+          cy.request(
+            "GET",
+            `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+          ).should((response) => {
+            const graph = response.body;
 
-          const permissions =
-            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId as number];
+            const permissions =
+              graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][postgresId as number];
 
-          expect(permissions).to.exist;
-          expect(permissions["view-data"]).to.equal("impersonated");
-          expect(permissions["create-queries"]).to.equal("query-builder");
+            expect(permissions).to.exist;
+            expect(permissions["view-data"]).to.equal("impersonated");
+            expect(permissions["create-queries"]).to.equal("query-builder");
+          });
         });
-      });
-    });
+      },
+    );
 
     it("should show 'no compatible databases' message when only Sample Database exists", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
@@ -1511,61 +1533,65 @@ describe("scenarios - embedding hub", () => {
         .should("have.attr", "href", "/admin/databases/create");
     });
 
-    it("should show disabled database with tooltip when database does not support connection impersonation", function () {
-      H.addPostgresDatabase("QA Postgres12");
+    it(
+      "should show disabled database with tooltip when database does not support connection impersonation",
+      { tags: ["@external"] },
+      function () {
+        H.addPostgresDatabase("QA Postgres12");
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/admin/embedding/setup-guide/permissions");
 
-      H.main()
-        .findByRole("radio", { name: /Connection impersonation/ })
-        .scrollIntoView()
-        .click();
+        H.main()
+          .findByRole("radio", { name: /Connection impersonation/ })
+          .scrollIntoView()
+          .click();
 
-      H.main()
-        .findByRole("button", { name: "Use connection impersonation" })
-        .scrollIntoView()
-        .click();
+        H.main()
+          .findByRole("button", { name: "Use connection impersonation" })
+          .scrollIntoView()
+          .click();
 
-      cy.log("open the database picker dropdown");
-      H.main().findByPlaceholderText("Pick a database").click();
+        cy.log("open the database picker dropdown");
+        H.main().findByPlaceholderText("Pick a database").click();
 
-      H.popover().findByText("Sample Database").should("be.visible");
+        H.popover().findByText("Sample Database").should("be.visible");
 
-      cy.log(
-        "sample database should have the info icon (does not support connection impersonation)",
-      );
-      H.popover()
-        .findByText("Sample Database")
-        .parent()
-        .icon("info")
-        .should("exist");
+        cy.log(
+          "sample database should have the info icon (does not support connection impersonation)",
+        );
+        H.popover()
+          .findByText("Sample Database")
+          .parent()
+          .icon("info")
+          .should("exist");
 
-      H.popover().findByText("QA Postgres12").should("be.visible");
+        H.popover().findByText("QA Postgres12").should("be.visible");
 
-      cy.log(
-        "postgres should not have the info icon (supports connection impersonation)",
-      );
-      H.popover()
-        .findByText("QA Postgres12")
-        .parent()
-        .icon("info")
-        .should("not.exist");
+        cy.log(
+          "postgres should not have the info icon (supports connection impersonation)",
+        );
+        H.popover()
+          .findByText("QA Postgres12")
+          .parent()
+          .icon("info")
+          .should("not.exist");
 
-      cy.log("clicking disabled database should not close dropdown");
-      H.popover().findByText("Sample Database").click();
-      H.popover().should("be.visible");
+        cy.log("clicking disabled database should not close dropdown");
+        H.popover().findByText("Sample Database").click();
+        H.popover().should("be.visible");
 
-      cy.log("hover over the info icon to see tooltip");
-      H.popover()
-        .findByText("Sample Database")
-        .parent()
-        .icon("info")
-        .trigger("mouseenter");
+        cy.log("hover over the info icon to see tooltip");
+        H.popover()
+          .findByText("Sample Database")
+          .parent()
+          .icon("info")
+          .trigger("mouseenter");
 
-      H.tooltip()
-        .findByText("This database doesn't support connection impersonation")
-        .should("be.visible");
-    });
+        H.tooltip()
+          .findByText("This database doesn't support connection impersonation")
+          .should("be.visible");
+      },
+    );
 
     it("creates a tenant with database_role attribute when using connection impersonation", () => {
       cy.visit("/admin/embedding/setup-guide/permissions");
@@ -1617,95 +1643,103 @@ describe("scenarios - embedding hub", () => {
         .should("be.visible");
     });
 
-    it("reopens the create tenants step after changing the segregation strategy", () => {
-      H.addPostgresDatabase("QA Postgres12");
+    it(
+      "reopens the create tenants step after changing the segregation strategy",
+      { tags: ["@external"] },
+      () => {
+        H.addPostgresDatabase("QA Postgres12");
 
-      cy.log("pre-complete RLS and create a tenant");
-      cy.sandboxTable({
-        table_id: STATIC_ORDERS_ID,
-        group_id: ALL_EXTERNAL_USERS_GROUP_ID,
-      });
-      cy.request("POST", "/api/ee/tenant", {
-        name: "Legacy Tenant",
-        slug: "legacy-tenant",
-        attributes: {
-          organization_id: "legacy-org",
-        },
-      });
+        cy.log("pre-complete RLS and create a tenant");
+        cy.sandboxTable({
+          table_id: STATIC_ORDERS_ID,
+          group_id: ALL_EXTERNAL_USERS_GROUP_ID,
+        });
+        cy.request("POST", "/api/ee/tenant", {
+          name: "Legacy Tenant",
+          slug: "legacy-tenant",
+          attributes: {
+            organization_id: "legacy-org",
+          },
+        });
 
-      cy.intercept("PUT", "/api/permissions/graph").as(
-        "updatePermissionsGraph",
-      );
-      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+        cy.intercept("PUT", "/api/permissions/graph").as(
+          "updatePermissionsGraph",
+        );
+        cy.intercept("GET", "/api/ee/embedding-hub/checklist").as(
+          "getChecklist",
+        );
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/admin/embedding/setup-guide/permissions");
 
-      cy.log(
-        "wait for checklist to load and page to settle on the summary step",
-      );
-      H.main()
-        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
-        .should("have.attr", "aria-current", "step");
+        cy.log(
+          "wait for checklist to load and page to settle on the summary step",
+        );
+        H.main()
+          .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+          .should("have.attr", "aria-current", "step");
 
-      cy.log("reopen the strategy step and switch to connection impersonation");
-      H.main()
-        .findByRole("listitem", {
-          name: "Which data segregation strategy does your database use?",
-        })
-        .click();
+        cy.log(
+          "reopen the strategy step and switch to connection impersonation",
+        );
+        H.main()
+          .findByRole("listitem", {
+            name: "Which data segregation strategy does your database use?",
+          })
+          .click();
 
-      H.main()
-        .findByRole("radio", { name: /Connection impersonation/ })
-        .scrollIntoView()
-        .click();
+        H.main()
+          .findByRole("radio", { name: /Connection impersonation/ })
+          .scrollIntoView()
+          .click();
 
-      H.main()
-        .findByRole("button", { name: "Use connection impersonation" })
-        .scrollIntoView()
-        .click();
+        H.main()
+          .findByRole("button", { name: "Use connection impersonation" })
+          .scrollIntoView()
+          .click();
 
-      cy.log("complete the new select-data step");
-      H.main().findByPlaceholderText("Pick a database").click();
-      H.popover().findByText("QA Postgres12").click();
-      H.main().findByRole("button", { name: "Next" }).click();
+        cy.log("complete the new select-data step");
+        H.main().findByPlaceholderText("Pick a database").click();
+        H.popover().findByText("QA Postgres12").click();
+        H.main().findByRole("button", { name: "Next" }).click();
 
-      cy.wait("@updatePermissionsGraph");
+        cy.wait("@updatePermissionsGraph");
 
-      cy.log("create tenants should reopen instead of skipping to summary");
-      H.main()
-        .findByRole("listitem", {
-          name: "Create tenants",
-          timeout: 10_000,
-        })
-        .should("have.attr", "aria-current", "step");
+        cy.log("create tenants should reopen instead of skipping to summary");
+        H.main()
+          .findByRole("listitem", {
+            name: "Create tenants",
+            timeout: 10_000,
+          })
+          .should("have.attr", "aria-current", "step");
 
-      H.main()
-        .findByRole("listitem", { name: "Summary" })
-        .should("not.have.attr", "aria-current", "step");
+        H.main()
+          .findByRole("listitem", { name: "Summary" })
+          .should("not.have.attr", "aria-current", "step");
 
-      cy.log("creating a new tenant should go to summary");
-      H.main().within(() => {
-        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
-        cy.findByPlaceholderText("tenant_role").type("acme_role");
-        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
-      });
+        cy.log("creating a new tenant should go to summary");
+        H.main().within(() => {
+          cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+          cy.findByPlaceholderText("tenant_role").type("acme_role");
+          cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+        });
 
-      H.main().findByRole("button", { name: "Create tenants" }).click();
+        H.main().findByRole("button", { name: "Create tenants" }).click();
 
-      H.undoToast()
-        .findByText("Tenants created successfully")
-        .should("be.visible");
+        H.undoToast()
+          .findByText("Tenants created successfully")
+          .should("be.visible");
 
-      H.main()
-        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
-        .should("have.attr", "aria-current", "step");
+        H.main()
+          .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+          .should("have.attr", "aria-current", "step");
 
-      H.main()
-        .contains(
-          "All users in Acme Corp will connect using the acme_role database role.",
-        )
-        .should("be.visible");
-    });
+        H.main()
+          .contains(
+            "All users in Acme Corp will connect using the acme_role database role.",
+          )
+          .should("be.visible");
+      },
+    );
   });
 
   describe("database routing create tenants step", () => {

@@ -11,7 +11,7 @@ const LOCAL_GIT_URL = "file://" + H.LOCAL_GIT_PATH + "/.git";
 
 const REMOTE_QUESTION_NAME = "Remote Sync Test Question";
 
-describe("Remote Sync", () => {
+describe("Remote Sync", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetSnowplow();

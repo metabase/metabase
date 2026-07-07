@@ -31,8 +31,6 @@ describe("scenarios > question > native subquery", () => {
         }).then(({ body: { id: questionId3 } }) => {
           cy.wrap(questionId3).as("toplevelQuestionId");
           cy.visit(`/question/${questionId3}`);
-          // Refresh the state, so previously created questions need to be loaded again.
-          cy.reload();
           cy.findByText("Open Editor").click();
           // placing the cursor inside an existing template tag should open the data reference
           H.NativeEditor.focus().type("{leftarrow}{leftarrow}");
@@ -74,7 +72,6 @@ describe("scenarios > question > native subquery", () => {
         });
 
         H.startNewNativeQuestion();
-        cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
         H.NativeEditor.focus();
 
         cy.wait(200); // This reduces flakiness
@@ -132,9 +129,6 @@ describe("scenarios > question > native subquery", () => {
         }).then(({ body: { id: questionId3 } }) => {
           cy.wrap(questionId3).as("toplevelQuestionId");
           cy.visit(`/question/${questionId3}`);
-
-          // Refresh the state, so previously created questions need to be loaded again.
-          cy.reload();
           cy.findByText("Open Editor").click();
           H.NativeEditor.focus().type(" ").type("a_unique");
 

@@ -7,15 +7,19 @@ import {
   snapshot,
 } from "e2e/support/helpers";
 
+// Split per database so CI chunks can skip the snapshots for containers they
+// don't start (e.g. the @external chunks run postgres/mysql but not mongo).
 describe("qa databases snapshots", { tags: "@external" }, () => {
-  it("creates snapshots for supported qa databases", () => {
-    // Mongo
+  it("creates snapshots for mongo", { tags: "@mongo" }, () => {
     restoreAndAuthenticate();
 
     addMongoDatabase();
     snapshot("mongo-5");
 
-    // Postgres
+    restore("blank");
+  });
+
+  it("creates snapshots for postgres", () => {
     restoreAndAuthenticate();
 
     addPostgresDatabase();
@@ -24,7 +28,10 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
     convertToWritable("postgres");
     snapshot("postgres-writable");
 
-    // MySQL
+    restore("blank");
+  });
+
+  it("creates snapshots for mysql", () => {
     restoreAndAuthenticate();
 
     addMySQLDatabase({});

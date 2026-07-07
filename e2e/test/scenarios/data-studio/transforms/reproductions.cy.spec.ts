@@ -7,7 +7,7 @@ const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
 const TARGET_SCHEMA = "Schema A";
 
-describe("issue #68378", () => {
+describe("issue #68378", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
@@ -36,7 +36,7 @@ describe("issue #68378", () => {
   });
 });
 
-describe("issue GDGT-1776", () => {
+describe("issue GDGT-1776", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "empty_schema" });
@@ -85,7 +85,7 @@ describe("issue GDGT-1776", () => {
   });
 });
 
-describe("issue GDGT-1774", () => {
+describe("issue GDGT-1774", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -135,7 +135,7 @@ describe("issue GDGT-1774", () => {
   });
 });
 
-describe("issue UXW-3160", () => {
+describe("issue UXW-3160", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
@@ -174,7 +174,7 @@ describe("issue UXW-3160", () => {
   });
 });
 
-describe("issue 69904", () => {
+describe("issue 69904", { tags: "@external" }, () => {
   const TRANSFORM_TARGET_TABLE = "deleted_transform_table";
 
   beforeEach(() => {
@@ -211,7 +211,7 @@ describe("issue 69904", () => {
   });
 });
 
-describe("issue GDGT-2429", () => {
+describe("issue GDGT-2429", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
