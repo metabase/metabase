@@ -17,7 +17,7 @@ export function ErroringQuestionsFilterBar({
   onFiltersChange,
 }: ErroringQuestionsFilterBarProps) {
   return (
-    <Group gap="md" align="center" wrap="nowrap">
+    <Group gap="md" align="center" wrap="wrap">
       <FilterInput
         flex={2}
         placeholder={t`Error contents`}

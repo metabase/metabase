@@ -45,10 +45,10 @@ export const DEFAULT_SORTING: ErroringQuestionsSorting = {
 
 /**
  * The legacy audit "internal" query shape. It is not representable in the
- * DatasetQuery union (OpaqueDatasetQuery is branded), so the query is built
- * with this type and cast once at the return boundary. `database` must be
- * OMITTED entirely: internal queries are exempt from it, but the QP schema
- * rejects an explicit null.
+ * DatasetQuery union (OpaqueDatasetQuery is branded), so queries are built with
+ * this type and converted through the single `toDatasetQuery` boundary below.
+ * `database` must be OMITTED entirely: internal queries are exempt from it, but
+ * the QP schema rejects an explicit null.
  */
 type InternalDatasetQuery = {
   type: "internal";
@@ -58,19 +58,24 @@ type InternalDatasetQuery = {
   offset?: number;
 };
 
+// Single documented cast site: an InternalDatasetQuery isn't assignable to the
+// branded DatasetQuery union, but `/api/dataset` accepts it. The typed input
+// keeps the payload shape honest; the cast is confined here.
+const toDatasetQuery = (query: InternalDatasetQuery): DatasetQuery =>
+  query as unknown as DatasetQuery;
+
 export function getErroringQuestionsQuery(
   { errorFilter, dbFilter, collectionFilter }: ErroringQuestionsFilters,
   { column, direction }: ErroringQuestionsSorting,
   page: number,
 ): DatasetQuery {
-  const query: InternalDatasetQuery = {
+  return toDatasetQuery({
     type: "internal",
     fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
     args: [errorFilter, dbFilter, collectionFilter, column, direction],
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
-  };
-  return query as unknown as DatasetQuery;
+  });
 }
 
 export function getErroringQuestionsCountQuery({
@@ -78,12 +83,11 @@ export function getErroringQuestionsCountQuery({
   dbFilter,
   collectionFilter,
 }: ErroringQuestionsFilters): DatasetQuery {
-  const query: InternalDatasetQuery = {
+  return toDatasetQuery({
     type: "internal",
     fn: "metabase-enterprise.audit-app.pages.queries/bad-table-count",
     args: [errorFilter, dbFilter, collectionFilter],
-  };
-  return query as unknown as DatasetQuery;
+  });
 }
 
 export function getErroringQuestionsTotal(dataset: Dataset): number | null {

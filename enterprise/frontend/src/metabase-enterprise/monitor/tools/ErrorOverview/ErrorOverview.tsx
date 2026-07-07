@@ -56,8 +56,11 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     () => getErroringQuestionsCountQuery(filters),
     [filters],
   );
-  const { data: countData, refetch: refetchCount } =
-    useAbortableAdhocQuery(countQuery);
+  const {
+    data: countData,
+    error: countError,
+    refetch: refetchCount,
+  } = useAbortableAdhocQuery(countQuery);
   const [runCardQuery] = useLazyGetCardQueryQuery();
 
   const questions = useMemo(
@@ -65,7 +68,10 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     [data],
   );
   const total = countData == null ? null : getErroringQuestionsTotal(countData);
-  const pageError = error ?? data?.error;
+  // Fold the companion count query's failure into the page error too: without
+  // it a failing count would silently drop `total` to null and make the
+  // pagination controls vanish with no signal.
+  const pageError = error ?? data?.error ?? countError ?? countData?.error;
 
   const selectedCardIds = Object.entries(rowSelection)
     .filter(([, isSelected]) => isSelected)

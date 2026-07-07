@@ -91,7 +91,7 @@ export const ErroringQuestionsTable = ({
       data-testid="erroring-questions-table"
     >
       {isLoading ? (
-        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
+        <TreeTableSkeleton showCheckboxes columnWidths={COLUMN_WIDTHS} />
       ) : (
         <TreeTable
           instance={treeTableInstance}

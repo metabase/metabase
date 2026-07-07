@@ -57,6 +57,50 @@
                      mt/rows
                      ffirst))))))))
 
+(deftest bad-table-count-filter-clauses-test
+  (testing "bad-table-count honors the db-name and collection-name filters, not just the error filter"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database   {db-a :id} {:name "erroring-db-alpha"}
+                     :model/Database   {db-b :id} {:name "erroring-db-beta"}
+                     :model/Collection {coll-a :id} {:name "Erroring Collection Alpha"}
+                     ;; two erroring cards sharing a unique error marker (so they can be
+                     ;; isolated from any other erroring cards in the app DB) but living in
+                     ;; different databases/collections
+                     :model/Card {card-a :id} {:name          "Filter card A"
+                                               :database_id   db-a
+                                               :collection_id coll-a}
+                     ;; null collection -> "Our Analytics" fallback, different database
+                     :model/Card {card-b :id} {:name        "Filter card B"
+                                               :database_id db-b}
+                     :model/QueryExecution _ (merge query-execution-defaults
+                                                    {:card_id     card-a
+                                                     :executor_id (mt/user->id :crowberto)
+                                                     :error       "shared-filter-marker-qq"})
+                     :model/QueryExecution _ (merge query-execution-defaults
+                                                    {:card_id     card-b
+                                                     :executor_id (mt/user->id :crowberto)
+                                                     :started_at  #t "2026-03-03T13:00:00Z"
+                                                     :error       "shared-filter-marker-qq"})]
+        (letfn [(cnt [& args]
+                  (-> (run-query ::queries/bad-table-count :args (vec args)) mt/rows ffirst))
+                (rows-cnt [& args]
+                  (count (mt/rows (run-query ::queries/bad-table
+                                             :args (vec (concat args [nil nil]))))))]
+          (testing "no db/collection filter matches both erroring cards"
+            (is (= 2 (cnt "shared-filter-marker-qq" nil nil))))
+          (testing "the db-name filter narrows the count to the matching database"
+            (is (= 1 (cnt "shared-filter-marker-qq" "erroring-db-alpha" nil)))
+            (testing "and the count matches the number of bad-table rows"
+              (is (= (rows-cnt "shared-filter-marker-qq" "erroring-db-alpha" nil)
+                     (cnt "shared-filter-marker-qq" "erroring-db-alpha" nil)))))
+          (testing "the collection-name filter narrows the count to the matching collection"
+            (is (= 1 (cnt "shared-filter-marker-qq" nil "Erroring Collection Alpha")))
+            (testing "and the count matches the number of bad-table rows"
+              (is (= (rows-cnt "shared-filter-marker-qq" nil "Erroring Collection Alpha")
+                     (cnt "shared-filter-marker-qq" nil "Erroring Collection Alpha")))))
+          (testing "the null-collection card is reachable via the Our Analytics fallback name"
+            (is (= 1 (cnt "shared-filter-marker-qq" nil "Our Analytics")))))))))
+
 (deftest bad-table-no-duplicate-cards-test
   (testing "cards aren't duplicated when executions across cards share a started_at (latest_qe joins on card_id, not timestamp alone)"
     (mt/test-helpers-set-global-values!

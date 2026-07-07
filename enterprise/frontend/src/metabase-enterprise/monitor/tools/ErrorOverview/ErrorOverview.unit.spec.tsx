@@ -194,8 +194,70 @@ describe("ErrorOverview", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("passes debounced filter values to the query and resets the page", async () => {
-    await setup();
+  it("surfaces an internal-query error returned in the dataset body (200/202 with data.error)", async () => {
+    mockGetBoundingClientRect({ width: 100, height: 100 });
+    // the /api/dataset call succeeds at the HTTP layer but the internal audit
+    // query failed, so the error rides in the dataset body
+    fetchMock.post("path:/api/dataset", (call) => {
+      const body = JSON.parse(String(call.options.body));
+      return body.fn === COUNT_FN
+        ? createCountResponse(0)
+        : createMockDataset({
+            status: "failed",
+            error: "Internal audit query blew up",
+          });
+    });
+
+    renderWithProviders(<Route path="/" component={ErrorOverview} />, {
+      withRouter: true,
+    });
+
+    expect(
+      await screen.findByText("Internal audit query blew up"),
+    ).toBeInTheDocument();
+    // the filter bar and table are hidden in the error state
+    expect(
+      screen.queryByPlaceholderText("Error contents"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("erroring-questions-table"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("surfaces a count-query failure so pagination never silently disappears", async () => {
+    mockGetBoundingClientRect({ width: 100, height: 100 });
+    // the rows query succeeds but the companion count query fails
+    fetchMock.post("path:/api/dataset", (call) => {
+      const body = JSON.parse(String(call.options.body));
+      return body.fn === COUNT_FN
+        ? { status: 500, body: { message: "Count query failed" } }
+        : createDatasetResponse([{ id: 1 }]);
+    });
+
+    renderWithProviders(<Route path="/" component={ErrorOverview} />, {
+      withRouter: true,
+    });
+
+    expect(await screen.findByText("Count query failed")).toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("Error contents"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("passes debounced filter values to the query and resets to the first page", async () => {
+    // start deep-linked on page 2 so the reset is observable
+    const { history } = await setup({
+      questions: Array.from({ length: PAGE_SIZE }, (_, index) => ({
+        id: index + 1,
+      })),
+      total: 120,
+      initialRoute: "/?page=2",
+    });
+
+    await waitFor(async () => {
+      const query = await getLastDatasetQuery();
+      expect(query.offset).toBe(PAGE_SIZE * 2);
+    });
 
     await userEvent.type(
       await screen.findByPlaceholderText("Error contents"),
@@ -214,6 +276,16 @@ describe("ErrorOverview", () => {
     await waitFor(async () => {
       const countQuery = await getLastDatasetQuery(COUNT_FN);
       expect(countQuery.args).toEqual(["timeout", "pg", ""]);
+    });
+
+    // filtering resets pagination: the rows query goes back to offset 0 and the
+    // page param is dropped from the URL
+    await waitFor(async () => {
+      const query = await getLastDatasetQuery();
+      expect(query.offset).toBe(0);
+    });
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().search).toBe("");
     });
   });
 
@@ -288,6 +360,43 @@ describe("ErrorOverview", () => {
     await waitFor(() => {
       expect(getDatasetCalls().length).toBeGreaterThan(datasetCallsBefore);
     });
+  });
+
+  it("recovers when one of the bulk rerun requests fails", async () => {
+    // card 7 fails, card 8 succeeds — the whole batch must still settle
+    fetchMock.post("express:/api/card/7/query", {
+      status: 500,
+      body: { message: "rerun boom" },
+    });
+    fetchMock.post("express:/api/card/8/query", createMockDataset());
+    await setup({ questions: [{ id: 7 }, { id: 8 }] });
+
+    await screen.findAllByTestId("erroring-question");
+    await userEvent.click(screen.getByLabelText("Select all"));
+    expect(await screen.findByText("2 questions selected")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rerun Selected" }),
+    );
+
+    // both endpoints are attempted even though one fails
+    await waitFor(() => {
+      const rerunCalls = fetchMock.callHistory.calls(
+        "express:/api/card/:cardId/query",
+      );
+      expect(rerunCalls).toHaveLength(2);
+    });
+
+    // the UI recovers: the batch settles, selection clears and the bulk bar
+    // closes rather than staying stuck with a disabled button
+    await waitFor(() => {
+      expect(
+        screen.queryByText("2 questions selected"),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: "Rerun Selected" }),
+    ).not.toBeInTheDocument();
   });
 
   it("paginates outside the table showing the total count and syncs the page to the URL", async () => {
