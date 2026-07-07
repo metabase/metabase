@@ -63,6 +63,23 @@ function validateTableScopedInputs(input: TableQueryInput) {
   input.breakouts?.forEach((breakout) => {
     validateGeneratedTableReference(breakout, tableId, "Table query breakouts");
   });
+
+  input.orderBys?.forEach((orderBy) => {
+    if (isAggregationResultReference(input.aggregations, orderBy)) {
+      return;
+    }
+
+    if (
+      isGroupedQuery(input) &&
+      !isBreakoutReference(input.breakouts, orderBy)
+    ) {
+      throw new Error(
+        "Table query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
+      );
+    }
+
+    validateGeneratedTableReference(orderBy, tableId, "Table query orderBys");
+  });
 }
 
 function validateGeneratedTableReference(
@@ -99,6 +116,77 @@ function getFirstOperatorArg(value: unknown) {
   }
 
   return value.args[0];
+}
+
+function isCountAggregation(value: unknown) {
+  return (
+    isObject(value) &&
+    value.type === "operator" &&
+    value.operator === "count" &&
+    Array.isArray(value.args) &&
+    value.args.length === 0
+  );
+}
+
+function isGroupedQuery(input: QueryInput) {
+  return Boolean(input.aggregations?.length || input.breakouts?.length);
+}
+
+function isAggregationResultReference(
+  aggregations: readonly unknown[] | undefined,
+  value: unknown,
+) {
+  if (
+    !isObject(value) ||
+    value.type !== "column" ||
+    typeof value.name !== "string"
+  ) {
+    return false;
+  }
+
+  return getAggregationResultColumnNames(aggregations).includes(value.name);
+}
+
+function getAggregationResultColumnNames(
+  aggregations: readonly unknown[] | undefined,
+) {
+  return (aggregations ?? []).flatMap((aggregation) => {
+    if (isCountAggregation(aggregation)) {
+      return ["count"];
+    }
+
+    const columns = getColumns(aggregation);
+
+    if (!columns) {
+      return [];
+    }
+
+    return columns.flatMap((column) =>
+      isObject(column) && typeof column.name === "string" ? [column.name] : [],
+    );
+  });
+}
+
+function getColumns(value: unknown) {
+  if (!isObject(value) || !("columns" in value)) {
+    return null;
+  }
+
+  return Array.isArray(value.columns) ? value.columns : null;
+}
+
+function isBreakoutReference(
+  breakouts: QueryInput["breakouts"] | undefined,
+  value: unknown,
+) {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return (breakouts ?? []).some(
+    (breakout) =>
+      fieldsMatch(breakout, value) && bucketOptionsMatch(breakout, value),
+  );
 }
 
 function getTableId(value: unknown): number | undefined {
@@ -155,4 +243,53 @@ function getMetricAllowedTableIds(metric: MetricSchema) {
   }
 
   return null;
+}
+
+function fieldsMatch(left: unknown, right: Record<string, unknown>) {
+  if (!isObject(left)) {
+    return false;
+  }
+
+  const leftTableId = getTableId(left);
+  const rightTableId = getTableId(right);
+  const leftFieldId = typeof left.fieldId === "number" ? left.fieldId : null;
+  const rightFieldId = typeof right.fieldId === "number" ? right.fieldId : null;
+  const leftSourceFieldId = getSourceFieldId(left);
+  const rightSourceFieldId = getSourceFieldId(right);
+
+  return (
+    leftTableId === rightTableId &&
+    leftSourceFieldId === rightSourceFieldId &&
+    ((leftFieldId != null && leftFieldId === rightFieldId) ||
+      left.name === right.name)
+  );
+}
+
+function bucketOptionsMatch(left: unknown, right: Record<string, unknown>) {
+  if (!isObject(left)) {
+    return false;
+  }
+
+  return (
+    left.unit === right.unit &&
+    binningOptionsMatch(left.binning, right.binning) &&
+    left.bins === right.bins &&
+    left.binWidth === right.binWidth
+  );
+}
+
+function binningOptionsMatch(left: unknown, right: unknown) {
+  if (left == null || right == null) {
+    return left == null && right == null;
+  }
+
+  if (!isObject(left) || !isObject(right)) {
+    return false;
+  }
+
+  return (
+    left.strategy === right.strategy &&
+    left["num-bins"] === right["num-bins"] &&
+    left["bin-width"] === right["bin-width"]
+  );
 }

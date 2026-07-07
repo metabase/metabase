@@ -568,6 +568,13 @@
   (when (integer? field-id)
     (t2/select-one-fn :table_id :model/Field :id field-id)))
 
+(defn- dimension-table-id
+  [{:keys [field_id] :as dimension}]
+  (let [field-id (or field_id (some-> dimension :sources first :field-id))]
+    (or (:table_id dimension)
+        (:table-id dimension)
+        (field-table-id field-id))))
+
 (defn- dimension-schema
   ([dimension metric-id]
    (dimension-schema dimension metric-id {}))
@@ -579,7 +586,7 @@
     table-source-name-by-id]
    (let [dimension-id (or (:id dimension) field_id)
          field-id     (or field_id (some-> dimension :sources first :field-id))
-         table-id     (or (:table_id dimension) (:table-id dimension) (field-table-id field-id))
+         table-id     (dimension-table-id dimension)
          column       (if (:sources dimension)
                         (persisted-dimension->column dimension)
                         dimension)]
@@ -714,14 +721,12 @@
    card]
   (let [result-column (or (some-> (metric-result-column card) column-schema)
                           (fallback-metric-column details))
-        dimensions    (or (seq (metric-dimensions details))
-                          (:queryable-dimensions details))
+        source-card-id-value (source-card-id card)
+        dimensions    (cond->> (or (seq (metric-dimensions details))
+                                   (:queryable-dimensions details))
+                        source-card-id-value (remove (comp integer? dimension-table-id)))
         table-ids     (->> dimensions
-                           (keep (fn [{:keys [field_id] :as dimension}]
-                                   (let [field-id (or field_id (some-> dimension :sources first :field-id))]
-                                     (or (:table_id dimension)
-                                         (:table-id dimension)
-                                         (field-table-id field-id)))))
+                           (keep dimension-table-id)
                            (filter integer?)
                            distinct)
         table-rows              (readable-table-source-rows table-ids)
@@ -742,7 +747,7 @@
       :columns    [result-column]}
      :databaseId (:database_id card)
      :sourceTableId (source-table-id card)
-     :sourceCardId (source-card-id card)
+     :sourceCardId source-card-id-value
      :entityId portable_entity_id
      :description description
      :verified (when verified true)

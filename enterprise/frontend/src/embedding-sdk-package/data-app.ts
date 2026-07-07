@@ -18,13 +18,16 @@ export {
   aggregations,
   breakout,
   filter,
+  orderBy,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
 export type {
   MetabaseBreakout,
+  MetabaseOrderBy,
   MetabaseQueryOptions,
   MetabaseQueryObject,
+  OrderByDirection,
   UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
