@@ -1,19 +1,21 @@
+import type { DataAppTestEnv } from "e2e/support/assets/data-apps/renders-interactive-question/src/test-env";
+
 import { getIframeBody } from "./e2e-embedding-helpers";
 
-type MockDataAppOptions = {
+type MockDataAppOptions<TestEnv> = {
   /** Display name (iframe title + admin list); defaults to the fixture dir name. */
   displayName?: string;
   /** `allowed_hosts` served in the bundle response header. */
   allowedHosts?: string[];
   /**
-   * Arbitrary config a fixture reads at runtime, so it doesn't hard-code values
-   * that track the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized
-   * and prepended to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`;
-   * since the bundle is evaluated as one script in the sandbox realm, the app
-   * reads it as a plain global. Each fixture defines its own shape (see the
-   * fixture's `test-env.ts`).
+   * Config a fixture reads at runtime, so it doesn't hard-code values that track
+   * the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized and prepended
+   * to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`; since the
+   * bundle is evaluated as one script in the sandbox realm, the app reads it as a
+   * plain global. Typed by the fixture's `test-env.ts` (`DataAppTestEnv` by
+   * default); pass another fixture's type as `TestEnv` if it differs.
    */
-  testEnv?: unknown;
+  testEnv?: TestEnv;
 };
 
 function dataAppMeta(
@@ -40,9 +42,9 @@ function dataAppMeta(
 /**
  * Set up a data app for the current test
  */
-export const mockDataApp = (
+export const mockDataApp = <TestEnv = DataAppTestEnv>(
   appName: string,
-  options: MockDataAppOptions = {},
+  options: MockDataAppOptions<TestEnv> = {},
 ) => {
   const slug = appName;
   const displayName = options.displayName ?? appName;
