@@ -5,11 +5,13 @@ import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { TableBrowser } from "metabase/browse/tables/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { findDatabaseByName } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -31,13 +33,13 @@ const DatabaseName = ({ id }: { id: DatabaseId | null | undefined }) => {
 
 const BrowseSchemasContainer = ({
   schemas,
+  dbId,
   params,
 }: {
   schemas: Schema[];
+  dbId: DatabaseId;
   params: any;
 }) => {
-  const { slug } = params;
-  const dbId = Urls.extractEntityId(slug);
   return (
     <Flex
       className={S.browseContainer}
@@ -94,11 +96,32 @@ const BrowseSchemasContainer = ({
   );
 };
 
+const BrowseSchemasByDatabaseName = ({
+  name,
+  params,
+}: {
+  name: string;
+  params: { slug: string };
+}) => {
+  const { data, isLoading, error } = useListDatabasesQuery();
+  const database = findDatabaseByName(data?.data ?? [], name);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (!database) {
+    return <NotFound />;
+  }
+
+  return <BrowseSchemasForDatabase dbId={database.id} params={params} />;
+};
+
 export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
   const dbId = Urls.extractEntityId(params.slug);
 
   if (dbId == null) {
-    return <NotFound />;
+    return <BrowseSchemasByDatabaseName name={params.slug} params={params} />;
   }
 
   return <BrowseSchemasForDatabase dbId={dbId} params={params} />;
@@ -118,5 +141,8 @@ const BrowseSchemasForDatabase = ({
   }
 
   const schemas: Schema[] = (data ?? []).map((name) => ({ id: name, name }));
-  return <BrowseSchemasContainer schemas={schemas} params={params} />;
+
+  return (
+    <BrowseSchemasContainer schemas={schemas} dbId={dbId} params={params} />
+  );
 };
