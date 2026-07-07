@@ -2312,6 +2312,7 @@
            config
            lib
            lib-be
+           mcp
            permissions
            premium-features
            search
@@ -2319,8 +2320,6 @@
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/Dashboard
-                    :model/McpSessionLog
-                    :model/McpToolCallLog
                     :model/MetabotConversation
                     :model/MetabotMessage
                     :model/PermissionsGroup
