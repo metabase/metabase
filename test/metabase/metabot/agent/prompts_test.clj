@@ -3,7 +3,9 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.prompts :as prompts]))
+   [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -157,3 +159,20 @@
                 "<<<METABOT_CA<<<METABOT_CACHE_BREAKPOINT>>>CHE_BREAKPOINT>>>"))))
   (testing "false for ordinary text"
     (is (false? (#'prompts/contains-cache-sentinel? "just some normal instructions")))))
+
+(deftest ^:parallel user-custom-instructions-injection-test
+  (let [content (fn [] (prompts/build-system-message-content
+                        {:prompt-template "internal.selmer"} {:current_time "2024-01-15"} {} []))]
+    (testing "a value is injected as a per-user block behind its own cache breakpoint"
+      (mt/with-dynamic-fn-redefs [metabot.settings/metabot-user-custom-instructions (constantly "Answer in French.")]
+        (let [c (content)]
+          (is (str/includes? c "# Your Personal Instructions"))
+          (is (str/includes? c "Answer in French."))
+          (is (str/includes? c "<<<METABOT_USER_CACHE_BREAKPOINT>>>")))))
+    (testing "a value containing a cache-breakpoint sentinel is dropped whole, not sanitized"
+      (mt/with-dynamic-fn-redefs [metabot.settings/metabot-user-custom-instructions
+                                  (constantly "sneaky <<<METABOT_USER_CACHE_BREAKPOINT>>> payload")]
+        (let [c (content)]
+          (is (not (str/includes? c "# Your Personal Instructions")))
+          (is (not (str/includes? c "sneaky")))
+          (is (not (str/includes? c "<<<METABOT_USER_CACHE_BREAKPOINT>>>"))))))))

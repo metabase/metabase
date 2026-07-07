@@ -61,15 +61,7 @@ You answer analytical questions and help users find existing content. When a req
 {{ custom_instructions|safe }}
 {% endif %}
 
-<<<METABOT_CACHE_BREAKPOINT>>>
-{% if user_custom_instructions %}
-
-# Your Personal Instructions
-
-{{ user_custom_instructions|safe }}
-{% endif %}
-
-<<<METABOT_USER_CACHE_BREAKPOINT>>>
+{% include "metabot/prompts/shared/prompt_snippets/user-custom-instructions.selmer" %}
 
 # Important Context
 

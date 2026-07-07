@@ -1,0 +1,11 @@
+{# The sentinels are cache-breakpoint markers split by
+   metabase.metabot.self.claude/system->cached-content-blocks — not decoration; don't remove them. #}
+<<<METABOT_CACHE_BREAKPOINT>>>
+{% if user_custom_instructions %}
+
+# Your Personal Instructions
+
+{{ user_custom_instructions|safe }}
+
+<<<METABOT_USER_CACHE_BREAKPOINT>>>
+{% endif %}

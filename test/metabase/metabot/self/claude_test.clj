@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
@@ -421,9 +422,12 @@
           templates  (->> (.listFiles system-dir)
                           (filter #(re-find #"\.selmer$" (.getName ^java.io.File %))))]
       (doseq [^java.io.File f templates]
-        (let [body  (slurp f)
+        ;; Count sentinels in the rendered output: the sentinel now lives in an
+        ;; `{% include %}`d snippet, so it's absent from the raw file.
+        (let [raw   (slurp f)
+              body  (prompts/render-system-prompt raw {})
               n     (count (re-seq #"<<<METABOT_CACHE_BREAKPOINT>>>" body))
-              has-volatile? (some #(re-find % body)
+              has-volatile? (some #(re-find % raw)
                                   [#"\{\{\s*current_time\s*\}\}"
                                    #"\{%\s*if\s+recent_views\s*%\}"
                                    #"\{%\s*if\s+current_user_info\s*%\}"
