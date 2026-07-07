@@ -128,12 +128,14 @@
     (str (str/upper-case (subs s 0 1)) (subs s 1))))
 
 (defn- block-explore-filter-value
-  "For an \"Explore further\" block (its metric selections carry an `:explore_filter`), the clicked
-   segment value as a display string, capitalized — e.g. `Texas`. Prefixed onto every chart title
-   in the block. Returns nil for a normal block."
+  "For an \"Explore further\" block (its metric selections carry `:explore_filters`), the clicked
+   segment values as a display string, capitalized and joined — e.g. `Texas / 2024`. Prefixed onto
+   every chart title in the block. Returns nil for a normal block."
   [block]
-  (when-let [{:keys [value]} (some :explore_filter (:metrics block))]
-    (capitalize-first (str value))))
+  (when-let [filters (seq (:explore_filters (first (:metrics block))))]
+    (->> filters
+         (map #(capitalize-first (str (:value %))))
+         (str/join " / "))))
 
 ;;; ------------------------------------------ scoring ------------------------------------------
 

@@ -77,13 +77,13 @@ export const explorationApi = Api.injectEndpoints({
         ]),
     }),
     exploreFurther: builder.mutation<Exploration, ExploreFurtherRequest>({
-      query: ({ explorationId, ...body }) => ({
+      query: ({ id, ...body }) => ({
         method: "POST",
-        url: `/api/exploration/${explorationId}/explore-further`,
+        url: `/api/exploration/${id}/explore-further`,
         body,
       }),
-      invalidatesTags: (_, error, { explorationId }) =>
-        invalidateTags(error, [idTag("exploration", explorationId)]),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("exploration", id)]),
     }),
     restartExploration: builder.mutation<Exploration, ExplorationId>({
       query: (id) => ({

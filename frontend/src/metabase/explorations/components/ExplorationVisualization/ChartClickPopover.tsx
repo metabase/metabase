@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
@@ -14,50 +14,28 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import type { ClickObject } from "metabase/visualizations/types";
 import type {
   DocumentContent,
   ExplorationId,
   ExplorationPageNode,
   IconName,
-  RowValue,
 } from "metabase-types/api";
 
 import S from "./ChartClickPopover.module.css";
-
-/** A clicked chart segment: the value to drill on, a display label, and screen coordinates. */
-export interface ChartClickTarget {
-  value: RowValue;
-  label: string;
-  // Display name of the dimension the value belongs to (e.g. "State"), for the comment pill.
-  columnName?: string;
-  x: number;
-  y: number;
-}
+import { getExploreFurtherFilters } from "./utils";
 
 interface ChartClickPopoverProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
-  target: ChartClickTarget;
+  clicked: ClickObject;
   onClose: () => void;
-}
-
-/** Only scalars survive the round-trip to the backend filter; coerce anything else to a string. */
-function toScalar(value: RowValue): string | number | boolean | null {
-  if (
-    value == null ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return value;
-  }
-  return String(value);
 }
 
 export function ChartClickPopover({
   explorationId,
   page,
-  target,
+  clicked,
   onClose,
 }: ChartClickPopoverProps) {
   const [mode, setMode] = useState<"menu" | "comment">("menu");
@@ -67,11 +45,33 @@ export function ChartClickPopover({
 
   const pageId = String(page.id);
 
+  const exploreFilters = getExploreFurtherFilters(clicked);
+
+  const { x, y } = useMemo(() => {
+    if (clicked.event) {
+      return {
+        x: clicked.event.clientX,
+        y: clicked.event.clientY,
+      };
+    }
+    if (clicked.element) {
+      const rect = clicked.element.getBoundingClientRect();
+      return {
+        x: rect.left,
+        y: rect.top,
+      };
+    }
+    return {
+      x: 0,
+      y: 0,
+    };
+  }, [clicked]);
+
   const handleExploreFurther = async () => {
     const { error } = await exploreFurther({
-      explorationId,
+      id: explorationId,
       page_id: page.id,
-      value: toScalar(target.value),
+      explore_filters: exploreFilters,
     });
     if (error) {
       sendToast({
@@ -80,7 +80,7 @@ export function ChartClickPopover({
         message: t`Couldn't start a new investigation`,
       });
     } else {
-      sendToast({ icon: "bolt", message: t`Exploring ${target.label}…` });
+      sendToast({ icon: "bolt", message: t`Exploring further…` });
     }
     onClose();
   };
@@ -94,10 +94,10 @@ export function ChartClickPopover({
       content,
       // Capture the clicked element in the comment context (same pattern as timelines) so the
       // thread can render a pill showing which segment the comment is about.
-      context: {
-        segment_value: toScalar(target.value),
-        segment_column: target.columnName ?? null,
-      },
+      // context: {
+      //   segment_value: toScalar(target.value),
+      //   segment_column: target.columnName ?? null,
+      // },
     });
     if (error) {
       sendToast({
@@ -124,7 +124,7 @@ export function ChartClickPopover({
       }}
     >
       <Popover.Target>
-        <Box pos="fixed" left={target.x} top={target.y} w={0} h={0} />
+        <Box pos="fixed" left={x} top={y} w={0} h={0} />
       </Popover.Target>
       <Popover.Dropdown p={mode === "menu" ? "xs" : "sm"}>
         {mode === "menu" ? (
@@ -149,7 +149,7 @@ export function ChartClickPopover({
           >
             <CommentEditor
               className={S.commentEditor}
-              placeholder={t`Comment on ${target.label}…`}
+              placeholder={t`Comment on this…`}
               onSubmit={handleAddComment}
               autoFocus="end"
             />

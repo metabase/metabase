@@ -6,6 +6,7 @@ import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
+import type { ClickObject } from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
@@ -18,6 +19,7 @@ import type {
   CardDisplayType,
   Dataset,
   DatasetColumn,
+  ExplorationExploreFilter,
   ExplorationQuery,
   RowValue,
   RowValues,
@@ -477,27 +479,46 @@ export function getInterestingTimelineIds(
  * Drives the auto-default selection on threads where the user hasn't
  * manually picked a timeline yet.
  */
-/**
- * Pull the segment value a chart click should scope an "Explore further" drill to. A page keys
- * off a single dimension, so we want the value of that dimension: for a plain breakdown that's
- * the only clicked dimension, and for a time-series broken out by a series dimension we prefer
- * the non-temporal dimension (the series, e.g. "Open") over the time axis. Falls back to the
- * raw clicked value. Returns `undefined` when there's nothing filterable to drill on.
- */
-export function getClickedSegmentValue(clicked: {
-  value?: RowValue;
-  dimensions?: { value: RowValue; column: DatasetColumn }[];
-}): { value: RowValue; column?: DatasetColumn } | undefined {
-  const dimensions = clicked.dimensions ?? [];
-  if (dimensions.length > 0) {
-    const nonTemporal = dimensions.find((d) => !isDate(d.column));
-    const picked = nonTemporal ?? dimensions[0];
-    return { value: picked.value, column: picked.column };
+export function getMostInterestingTimelineId(
+  queries: ExplorationQuery[],
+  availableTimelineIds: ReadonlySet<TimelineId>,
+): TimelineId | null {
+  if (availableTimelineIds.size === 1) {
+    const id = availableTimelineIds.values().next().value;
+    if (id) {
+      return id;
+    }
   }
-  if (clicked.value !== undefined) {
-    return { value: clicked.value };
+
+  let best: { id: TimelineId; score: number } | null = null;
+  for (const [id, score] of getMaxTimelineInterestingness(queries)) {
+    if (!availableTimelineIds.has(id)) {
+      continue;
+    }
+    if (score < TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD) {
+      continue;
+    }
+    if (best == null || score > best.score) {
+      best = { id, score };
+    }
   }
-  return undefined;
+  return best?.id ?? null;
+}
+
+export function getExploreFurtherFilters(
+  clicked: ClickObject,
+): ExplorationExploreFilter[] {
+  return (clicked.dimensions ?? [])
+    .map(({ column, value }) => {
+      if (column.field_ref != null) {
+        return {
+          field_ref: column.field_ref,
+          value: value,
+        };
+      }
+      return undefined;
+    })
+    .filter((f) => f != null);
 }
 
 /**
@@ -526,30 +547,4 @@ export function getSegmentHover(
     }
   }
   return undefined;
-}
-
-export function getMostInterestingTimelineId(
-  queries: ExplorationQuery[],
-  availableTimelineIds: ReadonlySet<TimelineId>,
-): TimelineId | null {
-  if (availableTimelineIds.size === 1) {
-    const id = availableTimelineIds.values().next().value;
-    if (id) {
-      return id;
-    }
-  }
-
-  let best: { id: TimelineId; score: number } | null = null;
-  for (const [id, score] of getMaxTimelineInterestingness(queries)) {
-    if (!availableTimelineIds.has(id)) {
-      continue;
-    }
-    if (score < TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD) {
-      continue;
-    }
-    if (best == null || score > best.score) {
-      best = { id, score };
-    }
-  }
-  return best?.id ?? null;
 }

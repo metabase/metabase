@@ -1,10 +1,11 @@
 import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { RowValue } from "./dataset";
 import type { DocumentId } from "./document";
 import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
 import type { Metric } from "./metric";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery } from "./query";
+import type { DatasetQuery, DimensionReference } from "./query";
 import type { SegmentId } from "./segment";
 import type { Timeline, TimelineEvent, TimelineId } from "./timeline";
 import type { UserId } from "./user";
@@ -125,14 +126,16 @@ export interface CreateExplorationRequest {
   }[];
 }
 
+export type ExplorationExploreFilter = {
+  field_ref: DimensionReference;
+  value: RowValue;
+};
+
 export interface ExploreFurtherRequest {
-  explorationId: ExplorationId;
+  id: ExplorationId;
   // The clicked chart's page: its block (metric + dimensions) is copied into the new thread.
   page_id: number;
-  // The clicked segment value the copied charts are filtered to.
-  value: string | number | boolean | null;
-  // Optional override for the auto-generated thread name.
-  name?: string;
+  explore_filters: ExplorationExploreFilter[];
 }
 
 export interface UpdateExplorationRequest {

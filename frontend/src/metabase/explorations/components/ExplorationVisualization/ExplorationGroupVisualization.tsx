@@ -47,7 +47,7 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
-import { ChartClickPopover, type ChartClickTarget } from "./ChartClickPopover";
+import { ChartClickPopover } from "./ChartClickPopover";
 import {
   ChartCommentAvatars,
   type SegmentComment,
@@ -58,7 +58,7 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
 import {
   type LegendItem,
   buildSeriesGroup,
-  getClickedSegmentValue,
+  getExploreFurtherFilters,
   getSegmentHover,
 } from "./utils";
 
@@ -170,24 +170,11 @@ function ExplorationGroupVisualizationChart({
   const dispatch = useDispatch();
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
 
-  const [clickTarget, setClickTarget] = useState<ChartClickTarget | null>(null);
+  const [clicked, setClicked] = useState<ClickObject | null>(null);
 
   const handleVisualizationClick = useCallback(
     (clicked: ClickObject | null) => {
-      if (!clicked?.event) {
-        return;
-      }
-      const segment = getClickedSegmentValue(clicked);
-      if (segment == null || segment.value == null) {
-        return;
-      }
-      setClickTarget({
-        value: segment.value,
-        label: String(segment.value),
-        columnName: segment.column?.display_name,
-        x: clicked.event.clientX,
-        y: clicked.event.clientY,
-      });
+      setClicked(clicked);
     },
     [],
   );
@@ -453,12 +440,12 @@ function ExplorationGroupVisualizationChart({
             />
           )}
         </Box>
-        {clickTarget && (
+        {clicked && (
           <ChartClickPopover
             explorationId={explorationId}
             page={page}
-            target={clickTarget}
-            onClose={() => setClickTarget(null)}
+            clicked={clicked}
+            onClose={() => setClicked(null)}
           />
         )}
         <ActionToolbar
@@ -624,7 +611,7 @@ const EXPLORE_FURTHER_ACTION: CustomClickAction = {
 
 const EXPLORE_CLICK_MODE: ClickActionsMode = {
   actionsForClick: (clicked) =>
-    getClickedSegmentValue(clicked)?.value != null
+    getExploreFurtherFilters(clicked).length > 0
       ? [EXPLORE_FURTHER_ACTION]
       : [],
 };

@@ -414,14 +414,13 @@
   `with-current-user creator-id` binding so the LLM calls see the creator's
   metabot permissions / usage limits. The mid-run `ExceptionInfo` safety net routes a
   perms/usage change to a skip via [[mid-run-skip!]]."
-  [{:keys [thread-id thread creator-id collection-id done-queries prepped
+  [{:keys [thread-id thread creator-id done-queries prepped
            selections timelines]}]
   (request/with-current-user creator-id
     (try
       (b/cond
-        :let [placeholder-doc  (or (find-placeholder-doc thread-id)
-                                   (create-placeholder-doc! thread-id creator-id collection-id))
-              breakouts        (common/group-breakouts prepped)
+        :when-let [placeholder-doc (find-placeholder-doc thread-id)]
+        :let [breakouts        (common/group-breakouts prepped)
               breakouts-by-rep (u/index-by :rep-id breakouts)
               p1               (run-curation-phase! {:thread-id        thread-id
                                                      :thread           thread
@@ -566,7 +565,6 @@
       (run-phases! {:thread-id     thread-id
                     :thread        thread
                     :creator-id    creator-id
-                    :collection-id (:collection_id exploration)
                     :done-queries  done-queries
                     :prepped       prepped
                     :selections    selections

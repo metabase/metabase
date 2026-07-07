@@ -186,16 +186,18 @@
 
 (defn- insert-thread-default-documents!
   "Insert the default Scratchpad doc, plus an AI-summary placeholder when configured."
-  [thread-id coll-id]
-  (t2/insert! :model/Document
-              {:name                  default-document-name
-               :document              {:type "doc" :content []}
-               :content_type          documents/prose-mirror-content-type
-               :creator_id            api/*current-user-id*
-               :collection_id         coll-id
-               :exploration_thread_id thread-id})
-  (when (ai-summary/current-user-can-create-ai-summary?)
-    (ai-summary/create-placeholder-doc! thread-id api/*current-user-id* coll-id)))
+  ([thread-id coll-id]
+   (insert-thread-default-documents! thread-id coll-id {}))
+  ([thread-id coll-id {:keys [include-ai-summary?] :or {include-ai-summary? true}}]
+   (t2/insert! :model/Document
+               {:name                  default-document-name
+                :document              {:type "doc" :content []}
+                :content_type          documents/prose-mirror-content-type
+                :creator_id            api/*current-user-id*
+                :collection_id         coll-id
+                :exploration_thread_id thread-id})
+   (when (and include-ai-summary? (ai-summary/current-user-can-create-ai-summary?))
+     (ai-summary/create-placeholder-doc! thread-id api/*current-user-id* coll-id))))
 
 (defn- positional-rows
   "Stamp `:exploration_thread_id` and a 0-based `:position` onto each row in `rows`."
@@ -471,15 +473,20 @@
    [:blocks        {:optional true} [:maybe [:sequential BlockSelection]]]
    [:timeline_ids  {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
+(def ^:private ExploreFilterSpec
+  "One segment filter stamped onto a block metric selection's `:explore_filters` vector."
+  [:map
+   [:field_ref [:sequential :any]]
+   [:value     :any]])
+
 (def ^:private ExploreFurther
   "Body schema for `POST /api/exploration/:id/explore-further`. `page_id` is the clicked chart's
   page — its block (metric selection + dimensions) is copied verbatim so the new thread re-runs
-  the same charts — and `value` is the clicked segment the copy is scoped to. `name` overrides
-  the auto-generated thread name."
+  the same charts. `explore_filters` is appended to each copied metric selection's existing
+  `:explore_filters`."
   [:map
-   [:page_id ms/PositiveInt]
-   [:value   :any]
-   [:name    {:optional true} [:maybe :string]]])
+   [:page_id         ms/PositiveInt]
+   [:explore_filters [:sequential ExploreFilterSpec]]])
 
 (def ^:private UpdateExploration
   "Body schema for `PUT /api/exploration/:id`. All fields are optional; only the keys the client
@@ -582,30 +589,25 @@
   "Start a follow-up investigation scoped to a clicked chart segment.
 
   The user clicked a bar/point on the chart for `page_id`; we copy that page's block (its metric
-  selection + the same dimensions) into a brand-new thread and stamp each metric selection with an
-  `:explore_filter` `{:dimension_id ... :value ...}`. The background planner then materializes the
-  same set of charts, but every query is scoped to `[<page dimension> = <value>]` (see
+  selection + the same dimensions) into a brand-new thread and append each `explore_filters`
+  entry onto every metric selection's `:explore_filters` vector. The background planner then
+  materializes the same set of charts, but every query is scoped to those filters (see
   `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new
   thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [page_id value name]} :- ExploreFurther]
+   {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
     (api/write-check exploration)
     (let [page          (api/check-404 (t2/select-one :model/ExplorationPage :id page_id))
           block         (api/check-404 (t2/select-one :model/ExplorationBlock
                                                       :id (:exploration_block_id page)))
           src-thread-id (:exploration_thread_id block)
-          ;; A page keys off exactly one card + dimension + query_type, so these describe the
-          ;; clicked breakout. The query_type tells `build-row-context` how to bucket the filter
-          ;; column so a click on e.g. an "Hour of day" bar filters the right bucket, not the raw
-          ;; datetime.
-          dim-id        (:dimension_id page)
-          query-type    (t2/select-one-fn :query_type :model/ExplorationQuery :page_id page_id)
           card-id       (:card_id (first (:metrics block)))
           card-name     (when card-id (t2/select-one-fn :name :model/Card :id card-id))
-          filter-spec   {:dimension_id dim-id :value value :query_type query-type}
-          metrics'      (mapv #(assoc % :explore_filter filter-spec) (:metrics block))
+          filter-value  (:value (last explore_filters))
+          metrics'      (mapv #(update % :explore_filters (fnil into []) explore_filters)
+                              (:metrics block))
           timeline-ids  (t2/select-fn-vec :timeline_id :model/ExplorationThreadTimeline
                                           :exploration_thread_id src-thread-id
                                           {:order-by [[:position :asc] [:id :asc]]})
@@ -618,11 +620,10 @@
         (let [thread (first (t2/insert-returning-instances!
                              :model/ExplorationThread
                              {:exploration_id id
-                              :name           (or (not-empty name)
-                                                  (explore-further-thread-name card-name value))
+                              :name           (explore-further-thread-name card-name filter-value)
                               :position       next-position}))
               tid    (:id thread)]
-          (insert-thread-default-documents! tid coll-id)
+          (insert-thread-default-documents! tid coll-id {:include-ai-summary? false})
           (t2/insert! :model/ExplorationBlock
                       {:exploration_thread_id tid
                        :type                  (:type block)
