@@ -131,6 +131,7 @@ describe("issue 14636", () => {
   });
 
   it("filtering should work", () => {
+    const total = 57;
     cy.visit("/monitor/tasks/list?status=success&task=field+values+scanning");
 
     cy.findByPlaceholderText("Filter by task").should(
@@ -168,11 +169,13 @@ describe("issue 14636", () => {
       .click();
     cy.location("search").should("eq", "");
     cy.wait("@first");
-    cy.findAllByTestId("task").should("have.length", 50);
     cy.findByLabelText("pagination").findByText("1 - 50").should("be.visible");
+    cy.visit("/monitor/tasks/list?page=1");
+    cy.findByLabelText("pagination")
+      .findByText(`51 - ${total}`)
+      .should("be.visible");
 
     cy.log("should reset pagination when changing filters");
-    cy.visit("/monitor/tasks/list?page=1");
     getFilterByStatus().click();
     H.popover().findByText("Success").click();
     cy.location("search").should("eq", "?status=success");
