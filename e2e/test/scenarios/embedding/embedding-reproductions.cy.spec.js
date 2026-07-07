@@ -1,6 +1,11 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  DATA_GROUP_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import { defer } from "metabase/utils/promise";
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, FEEDBACK, FEEDBACK_ID } =
@@ -1676,6 +1681,47 @@ describe("issue 57028", () => {
     H.popover().within(() => {
       cy.findByPlaceholderText("Search the list").should("be.visible");
       cy.findAllByRole("checkbox").its("length").should("be.greaterThan", 0);
+    });
+  });
+});
+
+describe("issue 77135", () => {
+  it("should add/remove columns via viz settings for a user with query-builder-only permission (EMB-2057)", () => {
+    H.prepareSdkIframeEmbedTest({
+      withToken: "bleeding-edge",
+      signOut: false,
+    });
+
+    cy.updatePermissionsGraph({
+      [DATA_GROUP_ID]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
+      },
+    });
+
+    cy.updateCollectionGraph({
+      [DATA_GROUP_ID]: { root: "read" },
+    });
+
+    cy.signIn("nocollection");
+
+    H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript({})}
+      <metabase-question question-id="${ORDERS_QUESTION_ID}" />
+    `);
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      H.tableInteractive().findByText("Tax").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByRole("button", { name: /Add or remove columns/ }).click();
+
+      cy.findByLabelText("Tax").should("be.checked").click();
+
+      H.tableInteractive().findByText("Tax").should("not.exist");
     });
   });
 });
