@@ -10,7 +10,7 @@ runs:
     - run: env
       shell: bash
 
-    - run: echo ${{ fromJSON(github) }}
+    - run: echo ${{ github }}
       shell: bash
 
     - name: Prepare Node.js
