@@ -131,7 +131,7 @@ function EmptyState() {
 
 function ErrorState({ error }: { error: string }) {
   return (
-    <Stack gap="sm" h="100%" p="md" c="error" className={S.error}>
+    <Stack gap="sm" h="100%" p="md" c="feedback-negative" className={S.error}>
       <Group fw="bold" gap="sm">
         <Icon name="warning" />
         {t`Error`}
@@ -157,7 +157,12 @@ function ResultsFooter({
   if (executionResult.error) {
     return (
       <Flex className={S.footer} gap="xs" align="center" px="md" py="md">
-        <Icon size="1rem" style={{ flexShrink: 0 }} name="warning" c="error" />
+        <Icon
+          size="1rem"
+          style={{ flexShrink: 0 }}
+          name="warning"
+          c="feedback-negative"
+        />
         <Text
           c="text-primary"
           ml="xs"
@@ -177,7 +182,7 @@ function ResultsFooter({
         size="1rem"
         style={{ flexShrink: 0 }}
         name="check_filled"
-        c="success"
+        c="feedback-positive"
       />
       <Text fw="bold" c="text-primary" lh="xs">{t`Done`}</Text>
       <Text

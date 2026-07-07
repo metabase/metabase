@@ -128,6 +128,19 @@
                                           [:segment 2]
                                           [:> $price 1]]]]]})))))))
 
+(deftest ^:parallel segment-in-case-expression-test
+  (testing "a :segment reference nested inside a :case custom expression is expanded (#24922)"
+    (qp.store/with-metadata-provider mock-metadata-provider
+      (is (=? {:query {:expressions
+                       {"CC" [:case
+                              [[[:= [:field (meta/id :venues :name) {:base-type :type/Text}] "abc"]
+                                "Segment"]]
+                              {:default "Other"}]}}}
+              (expand-macros
+               (lib.convert/->legacy-MBQL
+                (-> (lib/query mock-metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "CC" (lib/case [[(lib/segment 1) "Segment"]] "Other"))))))))))
+
 (deftest ^:parallel expand-macros-in-nested-queries-test
   (testing "expand-macros should expand things in the correct nested level (#12507)"
     (qp.store/with-metadata-provider mock-metadata-provider

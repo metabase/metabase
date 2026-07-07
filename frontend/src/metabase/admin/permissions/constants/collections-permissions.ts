@@ -8,18 +8,18 @@ export const COLLECTION_OPTIONS: Record<string, PermissionOption> = {
     label: t`Curate`,
     value: DataPermissionValue.WRITE,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
   read: {
     label: t`View`,
     value: DataPermissionValue.READ,
     icon: "eye",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
   none: {
     label: t`No access`,
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
 };
