@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
@@ -896,33 +896,52 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        },
-        type: "metric",
-        name: "Revenue",
+    H.createCardWithTestQuery({
+      name: "Revenue",
+      type: "metric",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [
+                  { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
+                ],
+              },
+            ],
+          },
+        ],
       },
-      {
-        wrapId: true,
-        idAlias: "metricId",
-      },
-    );
+    }).then((card) => {
+      cy.wrap(card.id).as("metricId");
+    });
 
     cy.get("@metricId").then((metricId) => {
       const questionDetails = {
-        query: {
-          "source-table": ORDERS_ID,
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "metric", id: metricId }],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "CREATED_AT",
+                  sourceName: "ORDERS",
+                  unit: "month",
+                },
+              ],
+            },
           ],
-          aggregation: ["metric", metricId],
         },
       };
 
-      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.createCardWithTestQuery(questionDetails).then(H.visitCard);
 
       H.openNotebook();
 
@@ -936,31 +955,45 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     "should be possible to sort by metric (metabase#8283,metabase#42392)",
     { tags: "@skip" },
     () => {
-      H.createQuestion(
-        {
-          name: "Revenue",
-          description: "Sum of orders subtotal",
-          type: "metric",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-          },
+      H.createCardWithTestQuery({
+        name: "Revenue",
+        description: "Sum of orders subtotal",
+        type: "metric",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [
+                    { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
+                  ],
+                },
+              ],
+            },
+          ],
         },
-        {
-          wrapId: true,
-          idAlias: "metricId",
-        },
-      );
+      }).then((card) => {
+        cy.wrap(card.id).as("metricId");
+      });
 
       cy.get("@metricId").then((metricId) => {
         const questionDetails = {
-          query: {
-            "source-table": `card__${metricId}`,
-            aggregation: ["metric", metricId],
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [
+              {
+                source: { type: "card", id: metricId },
+                aggregations: [{ type: "metric", id: metricId }],
+              },
+            ],
           },
         };
 
-        H.createQuestion(questionDetails, { visitQuestion: true });
+        H.createCardWithTestQuery(questionDetails).then(H.visitCard);
 
         H.openNotebook();
 
