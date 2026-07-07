@@ -1,7 +1,31 @@
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import * as Urls from "metabase/urls";
-import type { Collection, CollectionType } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionType,
+  DatabaseId,
+  SchemaName,
+  TableId,
+} from "metabase-types/api";
+
+type HierarchyLeafData = {
+  id: number;
+  table_id: TableId;
+  databaseId: DatabaseId;
+  schemaName: SchemaName;
+};
+
+function isHierarchyLeafData(data: unknown): data is HierarchyLeafData {
+  return (
+    typeof data === "object" &&
+    data != null &&
+    "databaseId" in data &&
+    "schemaName" in data &&
+    "table_id" in data &&
+    "id" in data
+  );
+}
 
 export function getAccessibleCollection(
   rootCollection: Collection,
@@ -35,6 +59,22 @@ export const getTreeRowHref = (row: { original: TreeItem }): string | null => {
   }
   if (treeItem.model === "table") {
     return Urls.dataStudioTable(entityId);
+  }
+  if (treeItem.model === "segment" && isHierarchyLeafData(treeItem.data)) {
+    return Urls.dataStudioDataModelSegment({
+      databaseId: treeItem.data.databaseId,
+      schemaName: treeItem.data.schemaName,
+      tableId: treeItem.data.table_id,
+      segmentId: treeItem.data.id,
+    });
+  }
+  if (treeItem.model === "measure" && isHierarchyLeafData(treeItem.data)) {
+    return Urls.dataStudioDataModelMeasure({
+      databaseId: treeItem.data.databaseId,
+      schemaName: treeItem.data.schemaName,
+      tableId: treeItem.data.table_id,
+      measureId: treeItem.data.id,
+    });
   }
   return null;
 };

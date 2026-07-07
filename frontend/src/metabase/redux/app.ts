@@ -5,6 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import { LOCATION_CHANGE, push } from "react-router-redux";
 
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
@@ -91,6 +92,11 @@ const isNavbarOpen = handleActions(
       prevState: boolean,
       { payload }: LocationChangeAction,
     ) => {
+      // The prototype nav never auto-closes on navigation.
+      if (PROTO_NAV_ENABLED) {
+        return prevState;
+      }
+
       if (payload.state?.preserveNavbarState) {
         return prevState;
       }

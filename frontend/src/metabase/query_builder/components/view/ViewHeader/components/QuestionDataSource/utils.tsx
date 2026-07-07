@@ -1,6 +1,7 @@
 import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -56,25 +57,47 @@ export function getDataSourceParts({
   const metadata = question.metadata();
   const database = metadata.database(Lib.databaseID(query));
 
+  const table = !isNative
+    ? metadata.table(Lib.sourceTableOrCardId(query))
+    : (question.legacyNativeQuery() as NativeQuery).table();
+
   if (database) {
+    const databaseHref =
+      database.id >= 0
+        ? PROTO_NAV_ENABLED &&
+          table != null &&
+          !isVirtualCardId(table.id) &&
+          table.schema_name != null
+          ? Urls.dataStudioData({
+              databaseId: database.id,
+              schemaName: table.schema_name,
+            })
+          : Urls.browseDatabase(database)
+        : undefined;
+
     parts.push({
       icon: !subHead ? "database" : undefined,
       name: database.displayName(),
-      href: database.id >= 0 ? Urls.browseDatabase(database) : undefined,
+      href: databaseHref,
       model: "database",
     });
   }
 
-  const table = !isNative
-    ? metadata.table(Lib.sourceTableOrCardId(query))
-    : (question.legacyNativeQuery() as NativeQuery).table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {
       parts.push({
         model: "schema",
         name: table.schema_name,
-        href: database.id >= 0 ? Urls.browseSchema(table) : undefined,
+        href:
+          database.id >= 0
+            ? PROTO_NAV_ENABLED
+              ? Urls.dataStudioData({
+                  databaseId: database.id,
+                  schemaName: table.schema_name,
+                })
+              : Urls.browseSchema(table)
+            : undefined,
       });
     }
   }

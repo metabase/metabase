@@ -3,39 +3,62 @@
 }
 
 .SegmentedControlLabel {
-  color: var(--mb-color-text-primary);
-  line-height: 1;
+  border-radius: 6px;
+  color: var(--mb-color-text-secondary);
+  font-weight: 500;
+  line-height: 1rem;
 
-  &:hover {
-    color: var(--mb-color-core-brand);
+  &:hover:where(:not([data-active], [data-disabled], [data-read-only])) {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  &:active:where(:not([data-active], [data-disabled], [data-read-only])) {
+    background-color: var(--mb-color-background_surface-primary-pressed);
   }
 
   &[data-disabled] {
     &,
-    &:hover {
-      color: var(--mb-color-text-disabled);
+    &:hover,
+    &:active {
+      color: var(--mb-color-text-tertiary);
+      background-color: transparent;
     }
   }
 
   &[data-active] {
     &,
-    &:hover {
+    &:hover,
+    &:active {
       color: var(--sc-active-text-color);
+      background-color: transparent;
     }
+  }
+
+  /* Active pill radius is 6px; root stays at 10px via --sc-radius */
+  &::before {
+    border-radius: 6px;
   }
 }
 
 .SegmentedControl_Control {
-  &:not(:first-of-type) {
-    border-color: var(--mb-color-border-neutral);
+  border: none !important;
+
+  &::before {
+    display: none;
   }
 }
 
 .SegmentedControlInput {
   &:disabled + label {
     &,
-    &:hover {
-      color: var(--mb-color-text-disabled);
+    &:hover,
+    &:active {
+      color: var(--mb-color-text-tertiary);
+      background-color: transparent;
     }
   }
+}
+
+.SegmentedControlIndicator {
+  border-radius: 6px;
 }

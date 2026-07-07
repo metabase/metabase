@@ -98,6 +98,12 @@ describe("urls > data-studio", () => {
     it("should return library URL", () => {
       expect(dataStudioLibrary()).toBe("/data-studio/library");
     });
+
+    it("should return library URL with a section filter", () => {
+      expect(dataStudioLibrary({ library: "tables" })).toBe(
+        "/data-studio/library?library=tables",
+      );
+    });
   });
 
   describe("dataStudioTable", () => {

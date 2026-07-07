@@ -5,12 +5,14 @@ import { t } from "ttag";
 
 import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
 import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
+import { isNewQuerySqlIdle } from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useSelector } from "metabase/redux";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { getLocation } from "metabase/selectors/routing";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
@@ -100,6 +102,8 @@ export function ViewTitleHeaderRightSide({
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+  const { pathname } = useSelector(getLocation);
+  const hideNewQuerySqlChrome = isNewQuerySqlIdle(pathname, question);
 
   const hasExploreResultsLink =
     canExploreResults(question) &&
@@ -109,6 +113,7 @@ export function ViewTitleHeaderRightSide({
   // to save it as a new question (based on that model/metric). In other words, at this point
   // the `type` field is set to "question".
   const hasSaveButton =
+    !hideNewQuerySqlChrome &&
     !isModelOrMetric &&
     isDirty &&
     !question.isArchived() &&

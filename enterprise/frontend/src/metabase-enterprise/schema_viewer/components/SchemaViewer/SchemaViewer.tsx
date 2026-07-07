@@ -11,6 +11,7 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import {
   Box,
   Button,
@@ -301,9 +302,11 @@ export function SchemaViewer({
           </Group>
         </Panel>
 
-        <Panel position="top-right">
-          <AppSwitcher className={S.appSwitcher} />
-        </Panel>
+        {!PROTO_NAV_ENABLED && (
+          <Panel position="top-right">
+            <AppSwitcher className={S.appSwitcher} />
+          </Panel>
+        )}
 
         {nodes.length > 0 && (
           <Panel position="bottom-left">

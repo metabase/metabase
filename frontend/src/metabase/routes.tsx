@@ -43,12 +43,17 @@ import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
+  PROTO_NAV_ENABLED,
+  ProtoHome,
+} from "metabase/nav/containers/ProtoNavbar";
+import {
   PLUGIN_COLLECTIONS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
+import { NewQueryPage } from "metabase/query_builder/components/NewQueryPage";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import type { State } from "metabase/redux/store";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -151,7 +156,7 @@ export const getRoutes = (store: AppStore) => {
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
             path="/"
-            component={HomePage}
+            component={PROTO_NAV_ENABLED ? ProtoHome : HomePage}
             onEnter={(nextState, replace) => {
               const page = PLUGIN_LANDING_PAGE.getLandingPage();
               if (page && page !== "/") {
@@ -276,6 +281,9 @@ export const getRoutes = (store: AppStore) => {
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path="ask" component={MetabotQueryBuilder} />
+            <Route path="new" component={NewQueryPage} />
+            <Route path="new/notebook" component={NewQueryPage} />
+            <Route path="new/sql" component={NewQueryPage} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />

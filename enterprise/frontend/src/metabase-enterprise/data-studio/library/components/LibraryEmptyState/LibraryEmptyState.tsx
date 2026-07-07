@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useDispatch } from "metabase/redux";
 import {
   Button,
   Card,
@@ -15,71 +15,130 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useCreateLibraryMutation } from "metabase-enterprise/api";
-import type { IconName } from "metabase-types/api";
+import type { Collection, IconName } from "metabase-types/api";
 
-export function LibraryEmptyState() {
-  const [createLibrary, { isLoading, isSuccess }] = useCreateLibraryMutation();
-  const { sendSuccessToast } = useMetadataToasts();
+export type LibraryEmptyStateSection = "tables" | "metrics";
+
+type Props = {
+  section?: LibraryEmptyStateSection;
+  onPublishTable?: () => void;
+};
+
+function getSectionContent(section: LibraryEmptyStateSection) {
+  if (section === "metrics") {
+    return {
+      title: t`Metrics`,
+      description: t`Metrics are standardized calculations with known dimensions. Create them in the Library so your team analyzes data consistently.`,
+      actionLabel: t`Create a metric`,
+      features: [
+        {
+          icon: "metric" as const,
+          title: t`Standardized calculations`,
+          description: t`Define metrics once and reuse them across questions and dashboards`,
+        },
+        {
+          icon: "verified_round" as const,
+          title: t`High trust`,
+          description: t`Default to reliable definitions your data team prescribes`,
+        },
+      ],
+    };
+  }
+
+  return {
+    title: t`Published tables`,
+    description: t`Published tables are cleaned, pre-transformed data sources ready for exploring. Publish them to the Library so everyone can start from trusted data.`,
+    actionLabel: t`Publish a table`,
+    features: [
+      {
+        icon: "table" as const,
+        title: t`Ready to explore`,
+        description: t`Cleaned, pre-transformed data sources ready for exploring`,
+      },
+      {
+        icon: "verified_round" as const,
+        title: t`High trust`,
+        description: t`Default to reliable sources your data team prescribes`,
+      },
+    ],
+  };
+}
+
+function getMetricsCollectionId(library: Collection) {
+  return library.children?.find(
+    (collection) => collection.type === "library-metrics",
+  )?.id;
+}
+
+export function LibraryEmptyState({
+  section = "tables",
+  onPublishTable,
+}: Props) {
+  const dispatch = useDispatch();
+  const [createLibrary, { isLoading }] = useCreateLibraryMutation();
   const [error, setError] = useState<string | null>(null);
+  const content = getSectionContent(section);
 
-  const handleSubmit = async () => {
+  const ensureLibrary = async () => {
+    return createLibrary().unwrap();
+  };
+
+  const handlePrimaryAction = async () => {
     try {
       setError(null);
-      const collection = await createLibrary().unwrap();
-      sendSuccessToast(t`Library created`);
-      trackDataStudioLibraryCreated(collection.id);
+      const library = await ensureLibrary();
+
+      if (section === "metrics") {
+        dispatch(
+          push(
+            Urls.newDataStudioMetric({
+              collectionId: getMetricsCollectionId(library),
+            }),
+          ),
+        );
+        return;
+      }
+
+      onPublishTable?.();
     } catch (error) {
       setError(getErrorMessage(error));
     }
   };
-
-  if (isSuccess) {
-    return null;
-  }
 
   return (
     <Card bg="background_page-primary" p={48} maw={640} mx="auto" withBorder>
       <Stack gap="3rem">
         <Stack gap="md">
           <Stack gap="sm">
-            <Title order={3}>{t`A source of truth for analytics`}</Title>
+            <Title order={3}>{content.title}</Title>
             <Text c="text-secondary" lh="1.25rem">
-              {t`The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses.`}
+              {content.description}
             </Text>
           </Stack>
           <Stack gap="sm">
             <Group gap="sm">
               <Button
                 variant="filled"
-                onClick={handleSubmit}
+                onClick={handlePrimaryAction}
                 loading={isLoading}
-              >{t`Create my Library`}</Button>
+              >
+                {content.actionLabel}
+              </Button>
             </Group>
             {error && <Text c="error">{error}</Text>}
           </Stack>
         </Stack>
         <SimpleGrid cols={2} spacing="sm">
-          <FeatureCard
-            icon="table"
-            title={t`Tables`}
-            description={t`Cleaned, pre-transformed data sources ready for exploring`}
-          />
-          <FeatureCard
-            icon="metric"
-            title={t`Metrics`}
-            description={t`Standardized calculations with known dimensions`}
-          />
-          <FeatureCard
-            icon="git_branch"
-            title={t`Version control`}
-            description={t`Sync your Library to Git`}
-          />
-          <FeatureCard
-            icon="verified_round"
-            title={t`High trust`}
-            description={t`Default to reliable sources your data team prescribes`}
-          />
+          {content.features.map((feature) => (
+            <FeatureCard
+              key={feature.title}
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+            />
+          ))}
         </SimpleGrid>
       </Stack>
     </Card>

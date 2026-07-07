@@ -53,11 +53,12 @@ export function useLibraryCollectionTree(
     Map<CollectionId, CollectionItem[]>
   >(new Map());
   const loadingIds = useRef(new Set<string>());
+  const collectionId = collection?.id;
 
   useEffect(() => {
     setLoadedCollections(new Map());
     loadingIds.current = new Set();
-  }, [collection]);
+  }, [collectionId]);
 
   const loadCollectionItems = useCallback(
     async (collectionId: CollectionId) => {
