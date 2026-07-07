@@ -27,6 +27,7 @@ import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
+import { createMetabaseQuery } from "metabase/embedding-sdk/lib/create-metabase-query";
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
@@ -56,6 +57,7 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   StaticDashboard,
   StaticQuestion,
   getSdkStore,
+  createMetabaseQuery,
   createDashboard,
   getApplicationName,
   getAvailableFonts,

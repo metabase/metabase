@@ -108,6 +108,7 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
     query,
     card,
     questionId,
+    token,
     title,
     withDownloads,
     isSaveEnabled,
@@ -160,6 +161,7 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
     <SdkQuestion
       {...rest}
       questionId={resolvedQuestionId}
+      token={token}
       title={title}
       withDownloads={withDownloads}
       isSaveEnabled={isSaveEnabled}
