@@ -37,6 +37,11 @@
   :encryption :no
   :audit      :getter)
 
+(defn- explicit-transforms-enabled
+  "Returns the :transforms-enabled setting if explicitly set, otherwise nil."
+  []
+  (setting/get-value-of-type :boolean :transforms-enabled))
+
 (defn- cloud-enabled-transforms?
   "Whether a cloud instance has enabled transforms.
    If a cloud instance has the transforms token feature, then they've gone through the upsell and enabled transforms.
@@ -51,14 +56,13 @@
   Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs."
   :type       :boolean
   :visibility :authenticated
-  :export?    false
+  :export?    true
   :audit      :getter
   :getter (fn []
-            (let [v (setting/get-value-of-type :boolean :transforms-enabled)]
-              ;; if the setting is set (whether true or false), use it, otherwise use the token feature for cloud
-              (if (some? v)
-                v
-                (cloud-enabled-transforms?)))))
+            ;; if the setting is set (whether true or false), use it, otherwise use the token feature for cloud
+            (if-some [v (explicit-transforms-enabled)]
+              v
+              (cloud-enabled-transforms?))))
 
 (setting/defsetting transforms-setup-complete
   (deferred-tru "Whether transforms setup is complete.")
@@ -68,11 +72,9 @@
   :audit      :getter
   :can-read-from-env? false
   :getter (fn []
-            (let [v (setting/get-value-of-type :boolean :transforms-enabled)]
-              ;; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature for cloud
-              (if (some? v)
-                true
-                (cloud-enabled-transforms?)))))
+            ;; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature for cloud
+            (or (some? (explicit-transforms-enabled))
+                (cloud-enabled-transforms?))))
 
 (setting/defsetting transforms-meter-locked
   (deferred-tru "True when the customer''s active transforms meter is locked (trial quota exhausted).")
