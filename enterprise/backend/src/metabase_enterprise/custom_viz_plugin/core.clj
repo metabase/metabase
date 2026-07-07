@@ -3,7 +3,15 @@
   (:require
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as models.custom-viz-plugin]
    [metabase.premium-features.core :refer [defenterprise]]))
+
+(defenterprise resolve-enabled-plugin
+  "Enterprise implementation: look up an enabled plugin by `identifier`, excluding
+   the bundle blob (re-fetched lazily from the cache by [[resolve-bundle]])."
+  :feature :custom-viz
+  [identifier]
+  (models.custom-viz-plugin/select-one-non-blob :identifier identifier :enabled true))
 
 (defenterprise resolve-bundle
   "Enterprise implementation: resolve the JS bundle for a plugin."

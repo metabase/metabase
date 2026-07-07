@@ -30,8 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -501,15 +500,10 @@
   "If the card has a custom:* display type, resolve the plugin's JS bundle for static rendering."
   [card]
   (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (let [plugin
-          ;; do not load the (potentially multi-MB) :bundle blob just to read the metadata;
-          ;; resolve-bundle re-fetches the bundle bytes from the cache as needed.
-          (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :bundle_hash :dev_bundle_url]
-                         :identifier identifier :enabled true)]
-      (when-let [content (some-> plugin
-                                 custom-viz-plugin/resolve-bundle
-                                 :content)]
-        [{:identifier identifier :source content}]))))
+    (when-let [content (some-> (custom-viz-plugin/resolve-enabled-plugin identifier)
+                               custom-viz-plugin/resolve-bundle
+                               :content)]
+      [{:identifier identifier :source content}])))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.

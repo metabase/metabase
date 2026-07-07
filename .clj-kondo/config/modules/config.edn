@@ -492,6 +492,7 @@
            appearance
            collections
            config
+           custom-viz-plugin
            dashboards
            driver
            events
@@ -687,6 +688,11 @@
   {:team "UX West"
    :api  #{}
    :uses :any}
+
+  custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase.custom-viz-plugin.core}
+   :uses #{premium-features}}
 
   dashboards
   {:team "UX West"
