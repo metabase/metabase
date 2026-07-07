@@ -149,6 +149,27 @@ describe("MetabotNavPane", () => {
     expect(screen.queryByText("Conversations")).not.toBeInTheDocument();
   });
 
+  it("keeps MCP analytics (and the upsell Stats) available when AI features are disabled", async () => {
+    // Regression guard: `ai-features-enabled?` must gate only the Metabot children, never the
+    // `audit_app`-gated MCP analytics child or the upsell stub.
+    setup({
+      aiControlsEnabled: false,
+      auditAppEnabled: true,
+      aiFeaturesEnabled: false,
+    });
+
+    await userEvent.click(await screen.findByText("Auditing"));
+
+    expect(
+      await screen.findByRole("link", { name: "MCP analytics" }),
+    ).toHaveAttribute("href", "/admin/metabot/usage-auditing/mcp");
+    expect(screen.getByRole("link", { name: /Usage stats/ })).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing",
+    );
+    expect(screen.queryByText("Conversations")).not.toBeInTheDocument();
+  });
+
   it("shows usage auditing with Stats, Conversations and MCP analytics when ai controls is available", async () => {
     setup({
       aiControlsEnabled: true,

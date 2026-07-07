@@ -12,21 +12,19 @@ export function getMetabotAnalyticsNavItems() {
 }
 
 /**
- * The admin "Auditing" nav folder. The plugin only registers this under the `audit_app`
- * feature, so the folder (and its `audit_app`-only MCP child) appears whenever `audit_app` is
- * present. The Metabot "Usage stats"/Conversations children require `ai_controls`; without it an
- * upsell-gem "Usage stats" stub is shown instead.
+ * The admin "Auditing" nav folder, registered under `audit_app`, so the folder and its
+ * `audit_app`-gated MCP child appear whenever `audit_app` is present. The Metabot "Usage
+ * stats"/Conversations children additionally need `ai-features-enabled?` and `ai_controls`;
+ * without `ai_controls` an upsell-gem "Usage stats" stub is shown instead. `ai-features-enabled?`
+ * gates only the Metabot children — never the folder, the upsell, or the MCP child.
  */
 function MetabotAnalyticsNavItems() {
   const isConfigured = useSetting("llm-metabot-configured?");
   const areAiFeaturesEnabled = useSetting("ai-features-enabled?");
   const mcpEnabled = useSetting("mcp-enabled?");
-
-  if (!areAiFeaturesEnabled) {
-    return null;
-  }
-
   const hasAiControls = hasPremiumFeature("ai_controls");
+
+  const showMetabotStats = areAiFeaturesEnabled && hasAiControls;
 
   return (
     <AdminNavItem
@@ -35,7 +33,7 @@ function MetabotAnalyticsNavItems() {
       folderPattern="usage-auditing"
       disabled={!isConfigured}
     >
-      {hasAiControls ? (
+      {showMetabotStats ? (
         <>
           <AdminNavItem
             label={t`Usage stats`}
@@ -49,11 +47,13 @@ function MetabotAnalyticsNavItems() {
           />
         </>
       ) : (
-        <AdminNavItem
-          label={t`Usage stats`}
-          path="/admin/metabot/usage-auditing"
-          rightSection={<UpsellGem.New size={14} />}
-        />
+        !hasAiControls && (
+          <AdminNavItem
+            label={t`Usage stats`}
+            path="/admin/metabot/usage-auditing"
+            rightSection={<UpsellGem.New size={14} />}
+          />
+        )
       )}
       <McpAnalyticsNavItem mcpEnabled={mcpEnabled} />
     </AdminNavItem>
