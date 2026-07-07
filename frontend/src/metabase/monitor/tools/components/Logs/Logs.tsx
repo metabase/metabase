@@ -7,6 +7,10 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import {
+  createLogFormatter,
+  getAllProcessUUIDs,
+} from "metabase/monitor/components/LogsViewer/utils";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Link, withRouter } from "metabase/router";
 import {
@@ -23,12 +27,7 @@ import { openSaveDialog } from "metabase/utils/dom";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
-import {
-  createLogFormatter,
-  filterLogs,
-  getAllProcessUUIDs,
-  urlStateConfig,
-} from "./utils";
+import { filterLogs, urlStateConfig } from "./utils";
 
 interface LogsProps {
   children?: ReactNode;

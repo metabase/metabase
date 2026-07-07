@@ -8,6 +8,7 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LogsViewer } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { Link } from "metabase/router";
 import {
@@ -27,7 +28,6 @@ import { openSaveDialog } from "metabase/utils/dom";
 import type { Database } from "metabase-types/api";
 
 import { formatTaskDetails, getFilename } from "../../utils";
-import { LogsViewer } from "../Logs/LogsViewer";
 import { TaskStatusBadge } from "../TaskStatusBadge";
 
 import S from "./TaskDetailsPage.module.css";

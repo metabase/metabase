@@ -4,7 +4,8 @@ export interface Log {
   fqns: string;
   msg: string;
   level: string;
-  exception: any;
+  // Serialized stack-frame strings when the log carries a throwable, otherwise null (see logger/core.clj event->log-data)
+  exception: string[] | null;
 }
 
 export interface MetabaseInfo {
