@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
+import { getMetabotConversation } from "metabase/metabot/state";
 
 import {
   assertConversation,
@@ -220,5 +221,38 @@ describe("metabot > tool calls", () => {
       ["user", "Who is your favorite?"],
       ["agent", "You, but don't tell anyone."],
     ]);
+  });
+
+  it("should mark unresolved tool calls as ended when a request is aborted", async () => {
+    const { store } = setup();
+
+    const [pause1] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield {
+            type: "tool-input-available",
+            toolCallId: "test",
+            toolName: "test",
+            input: {},
+          };
+          await pause1.promise;
+        })(),
+      ),
+    });
+    await enterChatMessage("hi");
+    await userEvent.click(await stopResponseButton());
+    pause1.resolve();
+    await waitFor(() => {
+      const { messages } = getMetabotConversation(store.getState(), "omnibot");
+      expect(messages).toContainEqual(
+        expect.objectContaining({
+          type: "tool_call",
+          status: "ended",
+          is_error: true,
+          result: "Tool execution interrupted by user",
+        }),
+      );
+    });
   });
 });

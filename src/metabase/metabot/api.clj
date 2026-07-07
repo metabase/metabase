@@ -25,7 +25,6 @@
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.provider-util :as provider-util]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
@@ -260,7 +259,7 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug eval_session_id parent_message_id retry_message_id]} request-info]
+  [{:keys [metabot_id profile_id message context conversation_id state debug eval_session_id parent_message_id retry_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -278,7 +277,8 @@
             (metabot.persistence/start-turn! conversation_id profile-id message
                                              :hostname hostname
                                              :pii-info pii-info
-                                             :delete-message-ids message-ids))]
+                                             :delete-message-ids message-ids))
+          history (metabot.persistence/history conversation_id)]
       (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
       (native-agent-streaming-request
        {:metabot-id       metabot-id
@@ -332,7 +332,6 @@
             [:conversation_id ms/UUIDString]
             [:parent_message_id {:optional true} [:maybe ms/UUIDString]]
             [:retry_message_id {:optional true} [:maybe ms/UUIDString]]
-            [:history [:maybe ::metabot.schema/messages]]
             [:state [:map
                      [:queries {:optional true} [:map-of :string :any]]
                      [:charts {:optional true} [:map-of :string :any]]

@@ -6,7 +6,6 @@ import { logout } from "metabase/redux/auth";
 import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,
-  MetabotHistory,
   MetabotSuggestedTransform,
   SuggestedTransform,
 } from "metabase-types/api";
@@ -77,7 +76,6 @@ export const metabot = createSlice({
         const { id, message, agentId, ...rest } = action.payload;
         // Unjustified type cast. FIXME
         convo.messages.push({ id, role: "user", ...rest, message } as any);
-        convo.history.push({ id, role: "user", content: message });
       },
     ),
     addAgentMessage: convoReducer(
@@ -225,11 +223,6 @@ export const metabot = createSlice({
         if (messageIndex > -1) {
           convo.messages = convo.messages.slice(0, messageIndex);
         }
-
-        const historyIndex = convo.history.findLastIndex((h) => id === h.id);
-        if (historyIndex > -1) {
-          convo.history = convo.history.slice(0, historyIndex);
-        }
       },
     ),
     setIsProcessing: convoReducer(
@@ -329,7 +322,6 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<{
         messages: MetabotChatMessage[];
-        history: MetabotHistory;
         state: any;
         suggestedTransforms: MetabotSuggestedTransform[];
         activeToolCalls: MetabotToolCall[];
@@ -343,7 +335,6 @@ export const metabot = createSlice({
 
       const {
         messages,
-        history,
         state: snapshotState,
         suggestedTransforms,
         activeToolCalls,
@@ -351,7 +342,6 @@ export const metabot = createSlice({
       } = action.payload;
 
       convo.messages = castDraft(messages ?? []);
-      convo.history = history ?? [];
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
       convo.conversationId = conversationId ?? uuid();
@@ -375,7 +365,6 @@ export const metabot = createSlice({
         const convo = getRequestConversation(state, action);
         if (convo) {
           convo.state = { ...(action.payload?.state ?? {}) };
-          convo.history = action.payload?.history?.slice() ?? [];
           convo.activeToolCalls = [];
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
@@ -388,19 +377,8 @@ export const metabot = createSlice({
           // aborted requests needs special state adjustments
           if (action.payload?.type === "abort") {
             convo.state = { ...(action.payload?.state ?? {}) };
-            convo.history = action.payload?.history?.slice() ?? [];
             appendAgentTurnAborted(convo);
             if (action.payload.unresolved_tool_calls.length > 0) {
-              // update history w/ synthetic tool_result entries for each unresolved tool call
-              // as having a tool_call without a matching tool_result is invalid
-              const syntheticToolResults =
-                action.payload.unresolved_tool_calls.map((tc) => ({
-                  role: "tool" as const,
-                  content: "Tool execution interrupted by user",
-                  tool_call_id: tc.toolCallId,
-                }));
-              convo.history.push(...syntheticToolResults);
-
               // update message state so that unresolved tools are marked as ended
               convo.messages.forEach((msg) => {
                 if (msg.type === "tool_call" && msg.status === "started") {

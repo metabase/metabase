@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
+import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
@@ -231,6 +232,48 @@ describe("metabot > ui", () => {
 
     expect(firstParagraph).toBeInTheDocument();
     expect(secondParagraph).toBeInTheDocument();
+  });
+
+  it("should warn the chat is getting long w/ ability to clear it", async () => {
+    const { store } = setup();
+    const longMsg = "x".repeat(LONG_CONVO_MSG_LENGTH_THRESHOLD / 2);
+
+    act(() => {
+      store.dispatch(
+        metabotActions.addUserMessage({
+          id: "1",
+          type: "text",
+          message: longMsg,
+          agentId: "omnibot",
+        }),
+      );
+    });
+    expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/This chat is getting long/),
+    ).not.toBeInTheDocument();
+
+    act(() => {
+      store.dispatch(
+        metabotActions.addUserMessage({
+          id: "2",
+          type: "text",
+          message: longMsg,
+          agentId: "omnibot",
+        }),
+      );
+    });
+    expect(
+      await screen.findByText(/This chat is getting long/),
+    ).toBeInTheDocument();
+    await userEvent.click(await screen.findByTestId("metabot-reset-long-chat"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/This chat is getting long/),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {

@@ -166,7 +166,7 @@ describe("Native SQL generation", () => {
       });
       generateButton().click();
       cy.wait("@metabotAgent").then(({ request }) => {
-        expect(request.body.history).to.have.length.greaterThan(0);
+        expect(request.body.parent_message_id).to.be.a("string");
         expect(request.body.message).to.include(
           "User rejected the following suggestion:\n\nSELECT * FROM users",
         );
@@ -180,7 +180,7 @@ describe("Native SQL generation", () => {
       H.NativeEditor.selectDataSource("QA Postgres12");
       inlinePrompt().should("be.visible");
 
-      // send a prompt, req.body.history should be empty
+      // changing the database starts a fresh conversation, so there's no parent
       inlinePromptInput().click();
       cy.realType("select something", { pressDelay: 10 });
       H.mockMetabotResponse({
@@ -188,7 +188,7 @@ describe("Native SQL generation", () => {
       });
       generateButton().click();
       cy.wait("@metabotAgent").then(({ request }) => {
-        expect(request.body.history).to.have.length(0);
+        expect(request.body.parent_message_id).to.be.undefined;
       });
 
       // should get a valid response back
@@ -208,7 +208,7 @@ describe("Native SQL generation", () => {
       });
       generateButton().click();
       cy.wait("@metabotAgent").then(({ request }) => {
-        expect(request.body.history).to.have.length(0);
+        expect(request.body.parent_message_id).to.be.undefined;
       });
       acceptButton().should("be.visible");
 

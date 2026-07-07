@@ -39,9 +39,8 @@
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (with-redefs [config/is-dev? true]
-        (let [conversation-id    (str (random-uuid))
-              question           {:role "user" :content "Test native streaming"}
-              historical-message {:role "user" :content "previous message"}]
+        (let [conversation-id (str (random-uuid))
+              question        {:role "user" :content "Test native streaming"}]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                               (mut/mock-llm-response
                                                                [{:type :start :id "msg-1"}
@@ -55,7 +54,6 @@
                                                      {:message         (:content question)
                                                       :context         {}
                                                       :conversation_id conversation-id
-                                                      :history         [historical-message]
                                                       :state           {}})
                       lines    (->> (str/split-lines response)
                                     (filter #(str/starts-with? % "data: ")))
@@ -191,7 +189,6 @@
                                       {:message         "Test closure"
                                        :context         {}
                                        :conversation_id conversation-id
-                                       :history         []
                                        :state           {}})]
                         (.read ^java.io.InputStream (:body response)) ;; start the handler
                         ;; Close the underlying client, not the body stream: closing the body would
@@ -240,7 +237,6 @@
                                                    {:message         "go"
                                                     :context         {}
                                                     :conversation_id (str (random-uuid))
-                                                    :history         []
                                                     :state           {}})]
                 (u/poll {:thunk       #(deref stored-kwargs)
                          :done?       some?
@@ -757,7 +753,6 @@
                         {:message "Test"
                          :context {}
                          :conversation_id (str (random-uuid))
-                         :history []
                          :state {}}))))
     (testing "/feedback"
       (is (= "Unauthenticated"
@@ -812,7 +807,6 @@
       (let [base-request {:message         "Test"
                           :context         {}
                           :conversation_id (str (random-uuid))
-                          :history         []
                           :state           {}}]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -917,7 +911,6 @@
                                                     {:message         "first"
                                                      :context         {}
                                                      :conversation_id conversation-id
-                                                     :history         []
                                                      :state           {}})
               stale-id        (streamed-message-id first-response)]
           (is (string? stale-id))
@@ -925,14 +918,12 @@
                                 {:message            "second"
                                  :context            {}
                                  :conversation_id    conversation-id
-                                 :history            []
                                  :state              {}
                                  :parent_message_id  stale-id})
           (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
                                 {:message            "third"
                                  :context            {}
                                  :conversation_id    conversation-id
-                                 :history            []
                                  :state              {}
                                  :parent_message_id  stale-id}))))))
 
@@ -945,13 +936,11 @@
                                 {:message         "first"
                                  :context         {}
                                  :conversation_id conversation-id
-                                 :history         []
                                  :state           {}})
           (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
                                 {:message         "second"
                                  :context         {}
                                  :conversation_id conversation-id
-                                 :history         []
                                  :state           {}}))))))
 
 (defn- agent-request
@@ -959,7 +948,6 @@
   (merge {:message         message
           :context         {}
           :conversation_id conversation-id
-          :history         []
           :state           {}}
          extra))
 
@@ -1032,6 +1020,82 @@
             (let [rows (conversation-rows conversation-id)]
               (is (= 1 (count (remove :deleted_at (filter #(= :user (:role %)) rows)))))
               (is (= 2 (count (filter :deleted_at rows)))))))))))
+
+(defn- input-messages
+  "The `[role text]` of each message-shaped part in an LLM request's `:input`,
+  in order — skips tool and preload parts. Lets a test assert the exact
+  reconstructed turn sequence (roles, order, content) rather than substrings."
+  [request]
+  (keep (fn [part]
+          (cond
+            (:role part)           [(:role part) (:content part)]
+            (= :text (:type part)) [:assistant (:text part)]))
+        (:input request)))
+
+(defn- with-captured-llm-requests!
+  "Runs `thunk` with the provider mocked, appending each provider-call opts map
+  to `requests` and replying with `reply-text`."
+  [requests reply-text thunk]
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [opts]
+                                    (swap! requests conj opts)
+                                    (mut/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type :text :text reply-text}
+                                      {:type  :usage :usage {:promptTokens 1 :completionTokens 1}
+                                       :model "test-model" :id "msg-1"}]))]
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (thunk))))))
+
+(deftest agent-streaming-reconstructs-prior-turn-for-the-llm-test
+  (testing "a follow-up turn reconstructs the prior prompt + reply from the DB and sends them to the LLM"
+    (let [requests (atom [])]
+      (with-captured-llm-requests!
+        requests "prior-assistant-reply"
+        (fn []
+          (let [conversation-id (str (random-uuid))
+                first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      (agent-request conversation-id "prior-user-prompt"))
+                parent-id       (streamed-message-id first-response)]
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "follow-up-prompt"
+                                                 :parent_message_id parent-id))
+            (let [msgs (input-messages (last @requests))]
+              (is (= 2 (count @requests)))
+              (is (= [[:user "prior-user-prompt"]
+                      [:assistant "prior-assistant-reply"]]
+                     (take 2 msgs))
+                  "prior turn replayed with the right roles, order, and content")
+              (is (= 3 (count msgs))
+                  "exactly prior user + prior assistant + new prompt — no duplicated turns")
+              (is (= :user (first (nth msgs 2))))
+              (is (str/includes? (second (nth msgs 2)) "follow-up-prompt")
+                  "the new prompt is the final user message"))))))))
+
+(deftest agent-streaming-retry-excludes-superseded-reply-from-llm-test
+  (testing "after a retry the regenerated call does not replay the superseded reply"
+    (let [requests (atom [])]
+      (with-captured-llm-requests!
+        requests "superseded-reply"
+        (fn []
+          (let [conversation-id (str (random-uuid))
+                first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      (agent-request conversation-id "the-question"))
+                user-ext-id     (streamed-user-message-id first-response)]
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "the-question"
+                                                 :retry_message_id user-ext-id))
+            (let [msgs (input-messages (last @requests))]
+              (is (= 2 (count @requests)))
+              (is (= 1 (count msgs))
+                  "only the retried prompt is sent — the superseded reply is not replayed")
+              (is (= :user (first (first msgs))))
+              (is (str/includes? (second (first msgs)) "the-question")
+                  "the retried prompt is still sent")
+              (is (not-any? (fn [[_ text]] (str/includes? (str text) "superseded-reply")) msgs)
+                  "the superseded reply is excluded from the reconstructed history"))))))))
 
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
@@ -1309,6 +1373,8 @@
           test-metabot-id metabot.config/embedded-metabot-id]
       (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
                                   api/check-conversation-access!        (constantly nil)
+                                  metabot.persistence/leaf-external-id  (constantly nil)
+                                  metabot.persistence/history           (constantly [])
                                   metabot.persistence/start-turn!       (fn [& _]
                                                                           {:assistant-msg-id 1
                                                                            :assistant-external-id "ext-id"})
@@ -1321,7 +1387,6 @@
                                   :profile_id      nil
                                   :message         "test message"
                                   :context         {}
-                                  :history         []
                                   :conversation_id (str (random-uuid))
                                   :state           {}
                                   :debug           false}
@@ -1340,7 +1405,6 @@
                                   :profile_id      nil
                                   :message         "hi"
                                   :context         {}
-                                  :history         []
                                   :conversation_id conversation-id
                                   :state           {}
                                   :debug           false}
@@ -1380,7 +1444,6 @@
                                   :profile_id      nil
                                   :message         "hi"
                                   :context         {}
-                                  :history         []
                                   :conversation_id conversation-id
                                   :state           {}
                                   :debug           false}
@@ -1451,7 +1514,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
@@ -1465,7 +1527,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
@@ -1478,7 +1539,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (nil? (:embedding_hostname convo)))
@@ -1491,7 +1551,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "Mozilla/5.0 (TestAgent)" (:user_agent convo)))
@@ -1503,7 +1562,6 @@
                                           {:message         "hello"
                                            :context         {}
                                            :conversation_id conversation-id
-                                           :history         []
                                            :state           {}})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (nil? (:user_agent           convo)))
@@ -1523,7 +1581,6 @@
                             {:message         "test message"
                              :context         {}
                              :conversation_id (str (random-uuid))
-                             :history         []
                              :state           {}}))))
 
 ;;; ------------------------------------------------ Bedrock settings ------------------------------------------------

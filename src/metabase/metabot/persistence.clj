@@ -7,6 +7,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.settings :as metabot.settings]
@@ -15,6 +16,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDateTime OffsetDateTime ZoneOffset)))
@@ -165,9 +167,9 @@
                  (if prev (rf result prev) result)))))))))
 
 (defn live-messages
-  "A conversation's non-deleted messages in reader order, as slim maps (no `:data`)."
+  "A conversation's non-deleted messages in reader order (created_at, id)."
   [conversation-id]
-  (t2/select [:model/MetabotMessage :id :external_id :conversation_id :role :error :finished :created_at]
+  (t2/select :model/MetabotMessage
              :conversation_id conversation-id
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
@@ -407,6 +409,88 @@
   [conversation-id]
   (:external_id (leaf-message conversation-id)))
 
+(defn tool-part->llm-messages
+  "A stored v2 tool part → LLM history pair: the assistant tool call plus its
+  tool result. An unresolved (`input-available`) call is paired with a
+  synthetic interrupted result by default, so an aborted turn's partial content
+  stays replayable rather than being silently dropped. Pass
+  `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
+  calls and gets assistant text from its own thread copy)."
+  ([part] (tool-part->llm-messages part nil))
+  ([part {:keys [on-unresolved]}]
+   (when (schema.v2/tool-part? part)
+     (let [{:keys [state input output errorText toolCallId]} part
+           content (case state
+                     "output-available" (str (if (map? output) (:output output) output))
+                     "output-error"     (or errorText "Tool execution failed")
+                     "input-available"  (when-not (= on-unresolved :skip)
+                                          "Tool execution interrupted by user")
+                     nil)]
+       (when content
+         [{:role       :assistant
+           :tool_calls [{:id        toolCallId
+                         :name      (schema.v2/tool-part-name part)
+                         :arguments (if (string? input)
+                                      input
+                                      (json/encode (or input {})))}]}
+          {:role         :tool
+           :tool_call_id toolCallId
+           :content      content}])))))
+
+(defn- replayable-assistant-row?
+  "Drops errored replies and in-flight placeholders (`finished` nil); keeps
+  successful and aborted (`finished` false) replies."
+  [{:keys [error finished]}]
+  (and (nil? error)
+       (some? finished)))
+
+(defn- user-row->llm-message
+  [{:keys [data]}]
+  {:role    :user
+   :content (->> data
+                 (filter schema.v2/text-part?)
+                 (map :text)
+                 str/join)})
+
+(defn- assistant-row->llm-messages
+  [{:keys [data]}]
+  (into []
+        (mapcat (fn [part]
+                  (cond
+                    (schema.v2/text-part? part)
+                    (when-not (str/blank? (:text part))
+                      [{:role :assistant :content (:text part)}])
+
+                    (schema.v2/tool-part? part)
+                    (tool-part->llm-messages part))))
+        data))
+
+(defn- rows->turns
+  [rows]
+  (reduce (fn [turns row]
+            (if (or (= :user (:role row)) (empty? turns))
+              (conj turns [row])
+              (update turns (dec (count turns)) conj row)))
+          []
+          rows))
+
+(defn- turn->llm-messages
+  [turn-rows]
+  (let [user-row (first (filter #(= :user (:role %)) turn-rows))
+        reply    (last (filter #(= :assistant (:role %)) turn-rows))]
+    (when (and reply (replayable-assistant-row? reply))
+      (concat (when user-row [(user-row->llm-message user-row)])
+              (when reply (assistant-row->llm-messages reply))))))
+
+(mu/defn history :- ::metabot.schema/messages
+  "Reconstruct a conversation's LLM message history from its live
+  `metabot_message` rows: errored and in-flight turns are dropped, aborted
+  turns replay their partial content."
+  [conversation-id :- :string]
+  (into []
+        (mapcat turn->llm-messages)
+        (rows->turns (live-messages conversation-id))))
+
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
@@ -425,41 +509,40 @@
    messages as `:externalId` — the stable key for feedback; the per-block `:id`
    stays unique."
   [row-role external-id part]
-  (let [part-type (:type part)]
-    (cond
-      (= "text" part-type)
-      (if (= :user row-role)
-        {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
-        (cond-> {:id      (str (random-uuid))
-                 :role    "agent"
-                 :type    "text"
-                 :message (:text part)}
-          external-id (assoc :externalId external-id)))
+  (cond
+    (schema.v2/text-part? part)
+    (if (= :user row-role)
+      {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
+      (cond-> {:id      (str (random-uuid))
+               :role    "agent"
+               :type    "text"
+               :message (:text part)}
+        external-id (assoc :externalId external-id)))
 
-      (schema.v2/tool-part? part)
-      (cond-> {:id     (:toolCallId part)
-               :role   "agent"
-               :type   "tool_call"
-               :name   (schema.v2/tool-part-name part)
-               :args   (when-let [i (:input part)] (if (string? i) i (json/encode i)))
-               :status "ended"}
-        (= "output-available" (:state part))
-        (assoc :result (when (some? (:output part)) (json/encode (:output part))) :is_error false)
+    (schema.v2/tool-part? part)
+    (cond-> {:id     (:toolCallId part)
+             :role   "agent"
+             :type   "tool_call"
+             :name   (schema.v2/tool-part-name part)
+             :args   (when-let [i (:input part)] (if (string? i) i (json/encode i)))
+             :status "ended"}
+      (= "output-available" (:state part))
+      (assoc :result (when (some? (:output part)) (json/encode (:output part))) :is_error false)
 
-        ;; errored calls store no output — :result stays nil, matching the
-        ;; pre-v2 chat shape the FE renders
-        (= "output-error" (:state part))
-        (assoc :result nil :is_error true))
+      ;; errored calls store no output — :result stays nil, matching the
+      ;; pre-v2 chat shape the FE renders
+      (= "output-error" (:state part))
+      (assoc :result nil :is_error true))
 
-      (and (string? part-type) (str/starts-with? part-type "data-"))
-      (cond-> {:id   (str (random-uuid))
-               :role "agent"
-               :type "data_part"
-               :part {:type part-type
-                      :data (:data part)}}
-        external-id (assoc :externalId external-id))
+    (schema.v2/data-part? part)
+    (cond-> {:id   (str (random-uuid))
+             :role "agent"
+             :type "data_part"
+             :part {:type (:type part)
+                    :data (:data part)}}
+      external-id (assoc :externalId external-id))
 
-      :else nil)))
+    :else nil))
 
 (defn- decode-error
   "JSON-decode a row's `:error` column value (a string written by

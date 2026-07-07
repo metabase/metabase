@@ -144,11 +144,6 @@ describe("processChatResponse", () => {
         error: "boom",
       },
     ]);
-    expect(result.history).toContainEqual({
-      role: "tool",
-      content: "boom",
-      tool_call_id: "x",
-    });
   });
 
   it("should call onToolInputStart for tool-input-start events", async () => {
@@ -191,7 +186,8 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("should stitch text deltas into a single history entry", async () => {
+  it("should forward each text delta to onTextPart", async () => {
+    const config = getMockedCallbacks();
     const mockStream = createMockSSEStream([
       { type: "text-start", id: "t1" },
       { type: "text-delta", id: "t1", delta: "You, but " },
@@ -199,10 +195,9 @@ describe("processChatResponse", () => {
       { type: "text-end", id: "t1" },
     ]);
 
-    const result = await processChatResponse(mockStream, expectNoStreamedError);
-    expect(result.history).toEqual([
-      { content: "You, but don't tell anyone.", role: "assistant" },
-    ]);
+    await processChatResponse(mockStream, config);
+    expect(config.onTextPart).toHaveBeenNthCalledWith(1, "You, but ");
+    expect(config.onTextPart).toHaveBeenNthCalledWith(2, "don't tell anyone.");
   });
 
   it("should resolve with partial response for aborted requests", async () => {
