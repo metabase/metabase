@@ -36,23 +36,17 @@ function getOriginalArgs<T>(action: UnknownAction): T | undefined {
 function getOriginalDocument(originalState: State, id: number) {
   // RTK Query selector requires RootState type, but our State type is compatible
   const selector = documentApi.endpoints.getDocument.select({ id });
-  return selector(originalState as Parameters<typeof selector>[0])?.data;
+  return selector(originalState)?.data;
 }
 
 function getOriginalDashboard(originalState: State, id: DashboardId) {
   const selector = dashboardApi.endpoints.getDashboard.select({ id });
-  return (
-    selector(originalState as Parameters<typeof selector>[0])?.data ||
-    originalState.entities.dashboards[id]
-  );
+  return selector(originalState)?.data || originalState.entities.dashboards[id];
 }
 
 function getOriginalCard(originalState: State, id: CardId) {
   const selector = cardApi.endpoints.getCard.select({ id });
-  return (
-    selector(originalState as Parameters<typeof selector>[0])?.data ||
-    originalState.entities.questions[id]
-  );
+  return selector(originalState)?.data || originalState.entities.questions[id];
 }
 
 function getOriginalCollection(originalState: State, id: CollectionId) {

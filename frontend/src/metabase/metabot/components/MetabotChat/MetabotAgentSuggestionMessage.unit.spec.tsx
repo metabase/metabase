@@ -8,7 +8,6 @@ import { createMockState } from "metabase/redux/store/mocks";
 import type {
   MetabotSuggestedTransform,
   MetabotTransformInfo,
-  SuggestedTransform,
 } from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
@@ -59,7 +58,7 @@ const createMockTransformSuggestionMessage = (overrides: {
     part: {
       type: "transform_suggestion",
       version: 1,
-      value: value as SuggestedTransform,
+      value: value,
     },
     metadata: {
       editorTransform: overrides.payload.editorTransform,

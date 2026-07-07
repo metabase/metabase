@@ -44,7 +44,7 @@
 .ModalErrorMessage {
   color: var(--mb-color-text-secondary);
   padding: 1rem;
-  border: 1px solid var(--mb-color-error);
+  border: 1px solid var(--mb-color-feedback-negative);
   border-radius: 0.5rem;
 }
 

@@ -7,7 +7,6 @@ import type {
   ExpressionDefinitionEntry,
   ExpressionSubToken,
   MetricDefinitionEntry,
-  MetricExpressionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDimensionBreakoutState,
@@ -67,7 +66,7 @@ function makeExpressionEntry(
   tokens: ExpressionSubToken[],
 ): ExpressionDefinitionEntry {
   return {
-    id: `expression:${name}` as MetricExpressionId,
+    id: `expression:${name}`,
     type: "expression",
     name,
     tokens,

@@ -96,7 +96,7 @@ export const ModelPersistenceConfiguration = () => {
     } catch (e) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`An error occurred`,
       });
     } finally {

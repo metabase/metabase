@@ -361,11 +361,7 @@ describe("SmartScalar > utils", () => {
             "scalar.comparisons": [comparison],
           };
 
-          const isValid = isComparisonValid(
-            comparison,
-            multiSeries,
-            settings as VisualizationSettings,
-          );
+          const isValid = isComparisonValid(comparison, multiSeries, settings);
 
           expect(isValid).toBe(true);
         });
@@ -420,11 +416,7 @@ describe("SmartScalar > utils", () => {
             "scalar.comparisons": [comparison],
           };
 
-          const isValid = isComparisonValid(
-            comparison,
-            multiSeries,
-            settings as VisualizationSettings,
-          );
+          const isValid = isComparisonValid(comparison, multiSeries, settings);
 
           expect(isValid).toBe(false);
         });
@@ -467,7 +459,7 @@ describe("SmartScalar > utils", () => {
             ["2019-11-01", 300],
           ];
           const isValid = isComparisonValid(
-            comparison as SmartScalarComparisonStaticNumber,
+            comparison,
             series({ rows, insights: [] }),
             settings,
           );

@@ -108,7 +108,7 @@ const setup = (options: SetupOptions = {}) => {
         parameters: props.parameters,
         onParametersChange: props.onParametersChange,
       }),
-    { initialProps: { parameters, onParametersChange } as RenderProps },
+    { initialProps: { parameters, onParametersChange } },
   );
 
   const updateSelectors = (next: Partial<typeof selectorState>) => {
