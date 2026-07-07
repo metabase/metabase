@@ -1,21 +1,25 @@
 import type {
-  SdkQuestionId,
-  SqlParameterValues,
-} from "embedding-sdk-bundle/types";
+  BooleanFilterOperator,
+  DefaultFilterOperator,
+  ExcludeDateFilterOperator,
+  FilterOperator as LibFilterOperator,
+  StringFilterOperator as LibStringFilterOperator,
+  NumberFilterOperator,
+  SpecificDateFilterOperator,
+  TimeFilterOperator,
+} from "metabase-lib/common";
 import type { TemporalUnit } from "metabase-types/api";
 
 import type {
   FieldSchema,
   InferSchema,
   QueryData,
-  QuestionSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SchemaValue,
   TableSchema,
 } from "../data-schema";
 
-export type ID = string | number;
 type Values<T> = T[keyof T];
 type UnionToIntersection<TUnion> = (
   TUnion extends unknown ? (value: TUnion) => void : never
@@ -26,54 +30,53 @@ type UnionToIntersection<TUnion> = (
 type FieldValues<TEntity> = TEntity extends {
   fields?: infer TFields;
 }
-  ? NonNullable<TFields> extends readonly FieldSchema[]
-    ? NonNullable<TFields>[number]
-    : Values<NonNullable<TFields>>
+  ? Values<NonNullable<TFields>>
   : never;
 
-type MetricDimensionValues<TEntity> = TEntity extends {
-  dimensions?: infer TDimensions;
-}
-  ? Values<NonNullable<TDimensions>> extends infer TDimensionGroup
-    ? TDimensionGroup extends unknown
-      ? Values<TDimensionGroup>
-      : never
+type FieldNames<TEntity> =
+  FieldValues<TEntity> extends { name: infer TName } ? TName : string;
+
+type SegmentIds<TEntity> = TEntity extends { segments?: infer TSegments }
+  ? Values<NonNullable<TSegments>> extends { id: infer TId }
+    ? TId
     : never
   : never;
 
-type DimensionValues<TEntity> =
-  | FieldValues<TEntity>
-  | MetricDimensionValues<TEntity>;
+type MeasureIds<TEntity> = TEntity extends { measures?: infer TMeasures }
+  ? Values<NonNullable<TMeasures>> extends { id: infer TId }
+    ? TId
+    : never
+  : never;
 
-type DimensionInput<TEntity> = [DimensionValues<TEntity>] extends [never]
-  ? string | FieldSchema
-  : DimensionValues<TEntity>;
-
-export type MetricReference<TMappedTableId extends number = number> = {
-  id: ID;
-  databaseId?: ID;
-  sourceTableId?: ID;
-  sourceCardId?: ID;
-  mappedTableIds: readonly TMappedTableId[];
-  columns?: readonly SchemaColumn[];
-  dimensions?: Record<string, Record<string, FieldSchema>>;
+type SourceQuerySpec<TTable> = {
+  type: "table";
+  id: TTable extends { id: infer TId extends number } ? TId : number;
+  databaseId: number;
 };
 
-export type SegmentReference<TTableId extends number = number> = {
-  kind: "segment";
-  id: number;
-  tableId: TTableId;
+export type SegmentReference<TTable = unknown> = {
+  type: "segment";
+  id: [SegmentIds<TTable>] extends [never] ? number : SegmentIds<TTable>;
+  tableId?: TTable extends { id: infer TId extends number } ? TId : number;
 };
 
-export type MeasureReference<TTableId extends number = number> = {
-  kind: "measure";
-  id: number;
-  tableId: TTableId;
+export type MeasureReference<TTable = unknown> = {
+  type: "measure";
+  id: [MeasureIds<TTable>] extends [never] ? number : MeasureIds<TTable>;
+  tableId?: TTable extends { id: infer TId extends number } ? TId : number;
   columns?: readonly SchemaColumn[];
+};
+
+export type FieldReference<TTable = unknown> = Omit<FieldSchema, "tableId"> & {
+  type: "column";
+  name: [FieldNames<TTable>] extends [never] ? string : FieldNames<TTable>;
+  tableId: TTable extends { id: infer TId extends number } ? TId : number;
 };
 
 export type CountAggregation = {
-  type: "count";
+  type: "operator";
+  operator: "count";
+  args: [];
 };
 
 export type CountAggregationSchema = CountAggregation & {
@@ -100,9 +103,31 @@ export type FieldAggregation<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
 > = {
-  type: TOperator;
-  dimension: TDimension;
+  type: "operator";
+  operator: TOperator;
+  args: readonly [TDimension];
 };
+
+export type FieldAggregationSchema<
+  TOperator extends FieldAggregationOperator = FieldAggregationOperator,
+  TDimension = unknown,
+  TJavaScriptType extends SchemaJavaScriptType = "number",
+> = FieldAggregation<TOperator, TDimension> & {
+  columns: readonly [
+    {
+      name: TOperator extends "distinct" ? "count" : TOperator;
+      displayName: string;
+      jsType: TJavaScriptType;
+    },
+  ];
+};
+
+type AnyAggregation<TTable = unknown> =
+  | CountAggregation
+  | CountAggregationSchema
+  | FieldAggregation<FieldAggregationOperator, FieldReference<TTable>>
+  | FieldAggregationSchema<FieldAggregationOperator, FieldReference<TTable>>
+  | MeasureReference<TTable>;
 
 type AggregationDimensionWithJavaScriptType<
   TDimension,
@@ -127,131 +152,20 @@ export type OrderableAggregationDimension<TDimension> =
     "string" | "number" | "boolean" | "Date"
   >;
 
-type FieldAggregationColumnJavaScriptType<
-  TOperator extends FieldAggregationOperator,
-  TDimension,
-> = TOperator extends "min" | "max"
-  ? TDimension extends { jsType?: infer TJavaScriptType }
-    ? Extract<
-        NonNullable<TJavaScriptType>,
-        "string" | "number" | "boolean" | "Date"
-      > extends never
-      ? "number"
-      : Extract<
-          NonNullable<TJavaScriptType>,
-          "string" | "number" | "boolean" | "Date"
-        >
-    : "number"
-  : "number";
-
-type FieldAggregationColumnName<TOperator extends FieldAggregationOperator> =
-  TOperator extends "distinct" ? "count" : TOperator;
-
-export type FieldAggregationSchema<
-  TOperator extends FieldAggregationOperator = FieldAggregationOperator,
-  TDimension = unknown,
-  TJavaScriptType extends SchemaJavaScriptType =
-    FieldAggregationColumnJavaScriptType<TOperator, TDimension>,
-> = FieldAggregation<TOperator, TDimension> & {
-  columns: readonly [
-    {
-      name: FieldAggregationColumnName<TOperator>;
-      displayName: string;
-      jsType: TJavaScriptType;
-    },
-  ];
-};
-
-type AnyAggregation<TDimension = unknown> =
-  | CountAggregation
-  | CountAggregationSchema
-  | FieldAggregation<FieldAggregationOperator, TDimension>
-  | FieldAggregationSchema<FieldAggregationOperator, TDimension>;
-
-type TableId<TTable> = TTable extends { id: infer TId extends number }
-  ? TId
-  : number;
-
-type MappedTableId<TMetric> = TMetric extends {
-  mappedTableIds?: readonly number[];
-}
-  ? NonNullable<TMetric["mappedTableIds"]>[number]
-  : number;
-
-type SegmentForMetric<TMetric> = SegmentReference<MappedTableId<TMetric>>;
-
-type MeasureForMetric<TMetric> = MeasureReference<MappedTableId<TMetric>>;
-
-type MetricDimensionFilterForMetric<TMetric> = [
-  MetricDimensionValues<TMetric>,
-] extends [never]
-  ? MetabaseMetricDimensionFilter
-  : MetabaseDimensionFilterForDimension<MetricDimensionValues<TMetric>>;
-
-type MetricBreakoutForMetric<TMetric> = [
-  MetricDimensionValues<TMetric>,
-] extends [never]
-  ? MetabaseMetricBreakout
-  : MetabaseBreakoutObjectForDimension<MetricDimensionValues<TMetric>>;
-
 export type FilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "is-empty"
-  | "not-empty"
-  | "is-null"
-  | "not-null"
+  | Exclude<LibFilterOperator, "inside">
   | "time-interval";
 
 type UnaryFilterOperator = "is-empty" | "not-empty" | "is-null" | "not-null";
-
 type BetweenFilterOperator = "between";
-
-type StringFilterOperator =
-  | "="
-  | "!="
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "is-empty"
-  | "not-empty"
-  | "is-null"
-  | "not-null";
-
-type NumberFilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "between"
-  | "is-null"
-  | "not-null";
-
-type BooleanFilterOperator = "=" | "is-null" | "not-null";
-
+type StringFilterOperator = LibStringFilterOperator | DefaultFilterOperator;
 type DateFilterOperator =
-  | "="
-  | "!="
-  | ">"
+  | SpecificDateFilterOperator
+  | ExcludeDateFilterOperator
+  | TimeFilterOperator
   | ">="
-  | "<"
   | "<="
-  | "between"
-  | "time-interval"
-  | "is-null"
-  | "not-null";
+  | "time-interval";
 
 type FilterOperatorForDimension<TDimension> = TDimension extends {
   jsType?: infer TJavaScriptType;
@@ -282,32 +196,40 @@ export type ValueFilterOperatorForDimension<TDimension> = Exclude<
   UnaryFilterOperator | BetweenFilterOperator
 >;
 
-type MetabaseDimensionFilterForDimension<TDimension> =
-  TDimension extends unknown
-    ? {
-        dimension: TDimension;
-        operator: FilterOperatorForDimension<TDimension>;
-        value?: unknown;
-        values?: readonly unknown[];
-      }
-    : never;
-
-/** @notExported FilterOperatorForDimension */
 export type MetabaseDimensionFilterForOperator<
   TDimension,
   TOperator extends FilterOperatorForDimension<TDimension>,
 > = {
-  dimension: TDimension;
+  type: "operator";
   operator: TOperator;
-  value?: unknown;
-  values?: readonly unknown[];
+  args: readonly [
+    TDimension,
+    ...{
+      type: "literal";
+      value: FilterLiteralValue;
+    }[],
+  ];
 };
 
-type BreakoutBinning = {
-  strategy: "default" | "bin-width" | "num-bins";
-  "bin-width"?: number;
-  "num-bins"?: number;
-};
+type MetabaseDimensionFilterForDimension<TDimension> =
+  TDimension extends unknown
+    ? {
+        type: "operator";
+        operator: FilterOperatorForDimension<TDimension>;
+        args: readonly [
+          TDimension,
+          ...{
+            type: "literal";
+            value: FilterLiteralValue;
+          }[],
+        ];
+      }
+    : never;
+
+export type MetabaseDimensionFilter<TEntity = unknown> =
+  MetabaseDimensionFilterForDimension<FieldReference<TEntity>>;
+
+export type FilterLiteralValue = string | number | bigint | boolean;
 
 type DateBucketDimension<TDimension> = TDimension extends unknown
   ? TDimension extends { jsType?: infer TJavaScriptType }
@@ -325,165 +247,76 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
     : never
   : never;
 
-/**
- * @notExported BreakoutBinning
- * @notExported DateBucketDimension
- */
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? {
-      binning?: BreakoutBinning;
-    }
-  : {
-      bucket?: TemporalUnit;
-      binning?: BreakoutBinning;
-    };
+  ? { binning?: BinningOptions } & BinningOptionsInput
+  : { unit?: TemporalUnit; binning?: BinningOptions } & BinningOptionsInput;
 
-type MetabaseBreakoutForDimension<TDimension> =
-  | TDimension
-  | MetabaseBreakoutObjectForDimension<TDimension>;
-
-type MetabaseBreakoutObjectForDimension<TDimension> =
+export type MetabaseBreakoutObjectForDimension<TDimension> =
   | ([DateBucketDimension<TDimension>] extends [never]
       ? never
-      : {
-          dimension: DateBucketDimension<TDimension>;
-          bucket?: TemporalUnit;
-          binning?: BreakoutBinning;
-        })
+      : DateBucketDimension<TDimension> & {
+          unit?: TemporalUnit;
+          binning?: BinningOptions;
+        } & BinningOptionsInput)
   | ([NonDateBucketDimension<TDimension>] extends [never]
       ? never
-      : {
-          dimension: NonDateBucketDimension<TDimension>;
-          binning?: BreakoutBinning;
-        });
+      : NonDateBucketDimension<TDimension> & {
+          binning?: BinningOptions;
+        } & BinningOptionsInput);
 
-/**
- * @notExported DimensionInput
- * @notExported DimensionValues
- * @notExported MetabaseBreakoutForDimension
- */
-export type MetabaseBreakout<TEntity = unknown> = [
-  DimensionValues<TEntity>,
-] extends [never]
-  ?
-      | DimensionInput<TEntity>
-      | {
-          dimension: DimensionInput<TEntity>;
-          bucket?: TemporalUnit;
-          binning?: {
-            strategy: "default" | "bin-width" | "num-bins";
-            "bin-width"?: number;
-            "num-bins"?: number;
-          };
-        }
-  : MetabaseBreakoutForDimension<DimensionValues<TEntity>>;
+export type MetabaseBreakout<TTable = unknown> =
+  | FieldReference<TTable>
+  | MetabaseBreakoutObjectForDimension<FieldReference<TTable>>;
 
-/**
- * @notExported DimensionInput
- * @notExported DimensionValues
- * @notExported MetabaseDimensionFilterForDimension
- */
-export type MetabaseDimensionFilter<TEntity = unknown> = [
-  DimensionValues<TEntity>,
-] extends [never]
-  ? {
-      dimension: DimensionInput<TEntity>;
-      operator: FilterOperator;
-      value?: unknown;
-      values?: readonly unknown[];
-    }
-  : MetabaseDimensionFilterForDimension<DimensionValues<TEntity>>;
+type BinningOptionsInput =
+  | { bins?: number | "auto"; binWidth?: never }
+  | { binWidth?: number | "auto"; bins?: never };
 
-export type MetabaseMetricBreakout<TDimension = FieldSchema> =
-  MetabaseBreakoutForDimension<TDimension>;
+export type BinningOptions =
+  | { strategy: "default" }
+  | { strategy: "num-bins"; "num-bins": number }
+  | { strategy: "bin-width"; "bin-width": number };
 
-export type MetabaseMetricDimensionFilter =
-  MetabaseDimensionFilterForDimension<FieldSchema>;
-
-export type QuestionQuery<TQuestion> = {
-  questionId: SdkQuestionId;
-  table?: never;
-  tableId?: never;
-  metricId?: never;
-  metric?: never;
-  parameters?: TQuestion extends QuestionSchema
-    ? SqlParameterValues
-    : SqlParameterValues;
+type TableQueryBase<TTable> = {
+  source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
+  fields?: readonly FieldReference<TTable>[];
+  filters?: readonly (
+    | SegmentReference<TTable>
+    | MetabaseDimensionFilterForDimension<FieldReference<TTable>>
+  )[];
+  limit?: number;
   enabled?: boolean;
-};
-
-type TableReference<TTable> =
+} & (
   | {
-      table: TTable extends TableSchema ? TTable : TableSchema;
-      tableId?: never;
-      databaseId?: never;
+      breakouts?: undefined;
+      aggregations?: readonly AnyAggregation<TTable>[];
     }
   | {
-      table?: never;
-      tableId: ID;
-      databaseId?: ID;
-    };
+      breakouts: readonly MetabaseBreakout<TTable>[];
+      aggregations: readonly [
+        AnyAggregation<TTable>,
+        ...AnyAggregation<TTable>[],
+      ];
+    }
+);
 
-export type TableQuery<TTable> = TableReference<TTable> & {
-  questionId?: never;
-  metricId?: never;
-  metric?: never;
-  filters?: TTable extends TableSchema
-    ? readonly (
-        | SegmentReference<TableId<TTable>>
-        | MetabaseDimensionFilter<TTable>
-      )[]
-    : readonly unknown[];
-  aggregations?: TTable extends TableSchema
-    ? readonly (
-        | MeasureReference<TableId<TTable>>
-        | AnyAggregation<FieldValues<TTable>>
-      )[]
-    : readonly (MeasureReference | AnyAggregation)[];
-  measures?: TTable extends TableSchema
-    ? readonly MeasureReference<TableId<TTable>>[]
-    : readonly MeasureReference[];
-  breakouts?: TTable extends TableSchema
-    ? readonly MetabaseBreakout<TTable>[]
-    : readonly MetabaseBreakout[];
-  enabled?: boolean;
-};
+type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
+  breakouts: readonly [unknown, ...unknown[]];
+}
+  ? TQuery extends { aggregations: readonly [unknown, ...unknown[]] }
+    ? unknown
+    : { aggregations: readonly [unknown, ...unknown[]] }
+  : unknown;
 
-export type MetricQuery<TMetric> = {
-  metric: TMetric extends MetricReference
-    ? MetricReference<MappedTableId<TMetric>>
-    : MetricReference;
-  questionId?: never;
-  table?: never;
-  tableId?: never;
-  metricId?: never;
-  filters?: TMetric extends MetricReference
-    ? readonly (
-        | SegmentForMetric<TMetric>
-        | MetricDimensionFilterForMetric<TMetric>
-      )[]
-    : readonly unknown[];
-  measures?: TMetric extends MetricReference
-    ? readonly MeasureForMetric<TMetric>[]
-    : readonly MeasureReference[];
-  breakouts?: TMetric extends MetricReference
-    ? readonly MetricBreakoutForMetric<TMetric>[]
-    : readonly MetabaseBreakout[];
-  enabled?: boolean;
-};
+export type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
+  RequireAggregationsForBreakouts<TQuery>;
 
-/**
- * @notExported MeasureReference
- * @notExported QuestionQuery
- * @notExported TableQuery
- * @notExported MetricQuery
- */
-export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> =
-  | QuestionQuery<TEntity>
-  | TableQuery<TEntity>
-  | MetricQuery<TEntity>;
+export type MetabaseQueryOptions<
+  TEntity = unknown,
+  _TSchema = unknown,
+> = TableQuery<TEntity>;
 
 type EmptyRow = Record<never, never>;
 
@@ -495,87 +328,54 @@ type RowsFromColumns<TColumn> = [TColumn] extends [never]
   ? EmptyRow
   : UnionToIntersection<TColumn extends unknown ? ColumnRow<TColumn> : never>;
 
-type BreakoutDimension<TBreakout> = TBreakout extends {
-  dimension: infer TDimension;
-}
-  ? TDimension
-  : TBreakout;
-
 type TupleElement<TValue> = TValue extends readonly unknown[]
-  ? number extends TValue["length"]
-    ? never
-    : TValue[number]
+  ? TValue[number]
+  : never;
+
+type QueryFieldColumns<TQuery> = TQuery extends { fields?: infer TFields }
+  ? TupleElement<NonNullable<TFields>>
   : never;
 
 type QueryBreakoutColumns<TQuery> = TQuery extends {
   breakouts?: infer TBreakouts;
 }
-  ? BreakoutDimension<TupleElement<NonNullable<TBreakouts>>>
-  : never;
-
-type QueryMeasureColumns<TQuery> = TQuery extends {
-  measures?: infer TMeasures;
-}
-  ? TupleElement<NonNullable<TMeasures>> extends {
-      columns: infer TColumns;
-    }
-    ? TupleElement<NonNullable<TColumns>>
-    : never
+  ? TupleElement<NonNullable<TBreakouts>>
   : never;
 
 type QueryAggregationColumns<TQuery> = TQuery extends {
   aggregations?: infer TAggregations;
 }
   ? TupleElement<NonNullable<TAggregations>> extends infer TAggregation
-    ? TAggregation extends {
-        columns: infer TColumns;
-      }
+    ? TAggregation extends { columns: infer TColumns }
       ? TupleElement<NonNullable<TColumns>>
       : TAggregation extends CountAggregation
         ? CountAggregationColumn
-        : TAggregation extends FieldAggregationSchema
-          ? TupleElement<NonNullable<TAggregation["columns"]>>
-          : TAggregation extends FieldAggregation<infer TOperator>
-            ? FieldAggregationSchema<TOperator>["columns"][number]
-            : never
+        : never
     : never
   : never;
 
-type QueryDefaultAggregationColumns<TQuery> =
-  "aggregations" extends keyof TQuery
-    ? never
-    : "measures" extends keyof TQuery
-      ? never
-      : TQuery extends { breakouts: readonly unknown[] }
-        ? CountAggregationColumn
-        : never;
+type DefaultTableColumns<TEntity, TQuery> = TQuery extends { fields: unknown }
+  ? never
+  : TEntity extends { fields?: infer TFields }
+    ? Values<NonNullable<TFields>>
+    : never;
 
-/** @notExported InferQuerySchema */
-type InferQuerySchema<TEntity, TQuery> = InferSchema<
-  TEntity,
-  Record<string, unknown>
-> &
+type InferQuerySchema<TEntity, TQuery> = InferSchema<TEntity, EmptyRow> &
   RowsFromColumns<
+    | DefaultTableColumns<TEntity, TQuery>
+    | QueryFieldColumns<TQuery>
     | QueryBreakoutColumns<TQuery>
-    | QueryMeasureColumns<TQuery>
     | QueryAggregationColumns<TQuery>
-    | QueryDefaultAggregationColumns<TQuery>
   >;
 
-type InferQueryEntity<TQuery> = TQuery extends { metric: infer TMetric }
-  ? TMetric
-  : TQuery extends { table: infer TTable }
-    ? TTable
-    : undefined;
+type InferQueryEntity<TQuery> = TQuery extends { source: infer TTable }
+  ? TTable
+  : undefined;
 
 type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
   ? InferQueryEntity<TQuery>
   : TEntity;
 
-/**
- * @notExported InferQuerySchema
- * @notExported QueryData
- */
 export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
   data: QueryData<InferQuerySchema<TEntity, TQuery>> | null;
   isLoading: boolean;
@@ -583,16 +383,14 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
   refetch: () => Promise<void>;
 };
 
-/**
- * @notExported QueryEntity
- * @notExported QuestionSchema
- * @notExported TableSchema
- */
 export type UseMetabaseQuery = <
-  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
-    undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
-  const TQuery = unknown,
+  const TQuery extends MetabaseQueryOptions<TEntity, TSchema> =
+    MetabaseQueryOptions<TEntity, TSchema>,
 >(
-  query: TQuery & MetabaseQueryOptions<QueryEntity<TEntity, TQuery>, TSchema>,
+  query: TQuery &
+    (TQuery extends { source: unknown }
+      ? RequireAggregationsForBreakouts<TQuery>
+      : unknown),
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery>;
