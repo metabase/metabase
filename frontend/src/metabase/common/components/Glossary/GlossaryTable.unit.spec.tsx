@@ -10,7 +10,7 @@ function makeItem(overrides: Partial<GlossaryItem> = {}): GlossaryItem {
     id: overrides.id ?? 1,
     term: overrides.term ?? "Alpha",
     definition: overrides.definition ?? "First",
-  } as GlossaryItem;
+  };
 }
 
 describe("GlossaryTable", () => {

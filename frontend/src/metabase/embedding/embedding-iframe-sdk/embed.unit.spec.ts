@@ -195,7 +195,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       defineMetabaseConfig({
         invalidKey1: "value1",
         invalidKey2: "value2",
-      } as any);
+      });
     }).toThrow("invalidKey1 is not a valid configuration name");
   });
 

@@ -3,10 +3,13 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.template.handlebars :as handlebars]
    [metabase.notification.models :as models.notification]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- nullify-timestamp
   [data]
@@ -35,6 +38,19 @@
                  (notification.seed/seed-notification!))))
         (testing "it equals to the data before "
           (is (= before (get-notifications-data))))))))
+
+(deftest seeded-template-paths-resolve-test
+  (testing "every seeded handlebars-resource :path resolves through the template loader"
+    (let [loader (handlebars/default-loader)
+          paths  (for [notification @@#'notification.seed/default-notifications
+                       handler      (:handlers notification)
+                       :let         [details (get-in handler [:template :details])]
+                       :when        (= "email/handlebars-resource" (:type details))]
+                   (:path details))]
+      (is (seq paths) "seed must contain handlebars-resource templates, else this test proves nothing")
+      (doseq [path paths]
+        (testing path
+          (is (some? (.sourceAt loader path))))))))
 
 (deftest sync-notification!-test
   (let [internal-id       (mt/random-name)
@@ -87,6 +103,8 @@
       (is (= :replace (check-change (assoc-in test-notification [:subscriptions 0 :event_name] :event/user-uninvited)))))
     (testing ":replace if template changed"
       (is (= :replace (check-change (assoc-in test-notification [:handlers 0 :template :name] "new name")))))
+    (testing ":replace if template :details :path changes"
+      (is (= :replace (check-change (assoc-in test-notification [:handlers 0 :template :details :path] "renamed_template")))))
     (testing ":replace if handlers.active changed"
       (is (= :replace (check-change (assoc-in test-notification [:handlers 0 :active] not)))))
     (testing ":replace if recipients changed"

@@ -16,7 +16,6 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import type {
-  ChannelApiResponse,
   Notification,
   NotificationChannel,
   UserListResult,
@@ -582,7 +581,7 @@ function setup({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
     http: { configured: isHttpSetup },
-  } as ChannelApiResponse["channels"]);
+  });
 
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });

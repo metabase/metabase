@@ -645,7 +645,10 @@ describe("getDependencyGroupTypeInfo", () => {
     },
     {
       groupType: "sandbox",
-      expected: { label: "Row and column security rule", color: "error" },
+      expected: {
+        label: "Row and column security rule",
+        color: "feedback-negative",
+      },
     },
   ])("should get type info for $groupType", ({ groupType, expected }) => {
     expect(getDependencyGroupTypeInfo(groupType)).toEqual(expected);

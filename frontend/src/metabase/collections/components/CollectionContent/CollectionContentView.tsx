@@ -165,7 +165,7 @@ export const CollectionContentView = ({
       if (rejected.length > 1) {
         sendToast({
           message: t`Please upload files individually`,
-          toastColor: "error",
+          toastColor: "feedback-negative",
           icon: "warning",
         });
         return;
@@ -186,7 +186,7 @@ export const CollectionContentView = ({
 
       sendToast({
         message: errorMessage,
-        toastColor: "error",
+        toastColor: "feedback-negative",
         icon: "warning",
       });
     },

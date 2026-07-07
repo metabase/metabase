@@ -34,6 +34,6 @@ export const StepInfoList = styled.ul`
 `;
 
 export const StepError = styled.div`
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   margin-top: 0.5rem;
 `;

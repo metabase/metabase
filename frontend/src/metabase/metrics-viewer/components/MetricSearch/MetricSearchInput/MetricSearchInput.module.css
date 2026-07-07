@@ -32,16 +32,16 @@
 
 .cmErrorUnderline {
   text-decoration: underline wavy;
-  text-decoration-color: var(--mb-color-error);
+  text-decoration-color: var(--mb-color-feedback-negative);
   text-decoration-skip-ink: none;
 }
 
 .cmErrorTooltip {
   padding: 4px 8px;
   font-size: 0.75rem;
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   background: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-error);
+  border: 1px solid var(--mb-color-feedback-negative);
   border-radius: var(--mantine-radius-sm, 4px);
   max-width: 20rem;
   white-space: normal;

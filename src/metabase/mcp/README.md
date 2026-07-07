@@ -63,6 +63,9 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:sql:execute`       | `execute_sql`                                                                                                  |
 | `agent:question:create`   | `create_question`                                                                                              |
 | `agent:question:update`   | `update_question` (also covers "move card to collection")                                                      |
+| `agent:question:execute`  | `execute_question`                                                                                             |
+| `agent:metric:create`     | `create_metric`                                                                                                |
+| `agent:metric:update`     | `update_metric` (also covers "move metric to collection")                                                      |
 | `agent:dashboard:create`  | `create_dashboard`                                                                                             |
 | `agent:dashboard:update`  | `update_dashboard`                                                                                             |
 | `agent:collection:create` | `create_collection`                                                                                            |
@@ -97,11 +100,14 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | `query`           | Query a table or metric directly. Supports pagination via continuation tokens.                                                                                                                 |
 | `execute_query`   | Execute a previously constructed query and return results with column metadata.                                                                                                                |
 | `execute_sql`     | Execute a raw SQL query against a database. Requires the user to have native-query permission on the target database. Can be disabled instance-wide via the `mcp-execute-sql-enabled` setting. |
+| `execute_question` | Run a saved question by id and return its rows + column metadata. Runs under the caller's permissions. Parameterized questions are not supported (returns an error). |
 
 ### Write
 
 | Tool                | Description                                                                                                       |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `create_metric`     | Save a query as a reusable metric. Accepts a `query_handle` from `construct_query`. The query needs one aggregation and at most one date grouping. |
+| `update_metric`     | Update a saved metric. Patch semantics. Setting `collection_id` moves it; setting `archived` archives it. A replacement `query` must still be a valid metric. |
 | `create_question`   | Save a query as a named question (card). Accepts a `query_handle` from `construct_query` (MBQL) or `construct_native_query` (native SQL). Saving native requires native-query DB permission. |
 | `update_question`   | Update a saved question. Patch semantics. Setting `collection_id` moves the card. Setting `archived` archives it. Replacing the query accepts a `construct_query` or `construct_native_query` handle. |
 | `create_dashboard`  | Create a new dashboard, optionally populated with saved questions (auto-positioned on the grid).                  |

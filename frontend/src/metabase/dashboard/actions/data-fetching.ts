@@ -54,6 +54,7 @@ import type {
   Card,
   CardId,
   DashCardId,
+  Dashboard,
   DashboardCard,
   DashboardId,
   Dataset,
@@ -673,11 +674,22 @@ export const fetchDashboard = createAsyncThunk(
     {
       dashId,
       queryParams,
-      options: { preserveParameters = false, clearCache = true } = {},
+      options: {
+        preserveParameters = false,
+        clearCache = true,
+        prefetchedDashboard,
+      } = {},
     }: {
       dashId: DashboardId;
       queryParams: ParameterValuesMap;
-      options?: { preserveParameters?: boolean; clearCache?: boolean };
+      options?: {
+        preserveParameters?: boolean;
+        clearCache?: boolean;
+        // A fully-hydrated dashboard already in hand (e.g. the response from
+        // saving). When provided, skip the GET and use it directly so we don't
+        // re-fetch what the server just returned.
+        prefetchedDashboard?: Dashboard;
+      };
     },
     { getState, dispatch, rejectWithValue },
   ) => {
@@ -773,6 +785,17 @@ export const fetchDashboard = createAsyncThunk(
         // @ts-expect-error
         result = expandInlineDashboard(dashId);
         dashId = result.id = String(dashId);
+      } else if (prefetchedDashboard) {
+        // The dashboard was just handed to us (e.g. a save response), so skip
+        // the GET. We still warm the query metadata cache exactly as the normal
+        // path does (served from cache via forceRefetch: false).
+        await runRtkEndpoint(
+          { id: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          dashboardApi.endpoints.getDashboardQueryMetadata,
+          { forceRefetch: false },
+        );
+        result = prefetchedDashboard;
       } else {
         const [response] = await Promise.all([
           runRtkEndpoint(

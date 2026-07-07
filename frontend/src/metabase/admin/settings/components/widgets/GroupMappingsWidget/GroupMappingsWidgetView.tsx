@@ -231,7 +231,7 @@ export function GroupMappingsWidgetView({
         )}
       </Flex>
       {saveError && (
-        <Text c="error" fw="bold" m="sm">
+        <Text c="feedback-negative" fw="bold" m="sm">
           {saveError}
         </Text>
       )}

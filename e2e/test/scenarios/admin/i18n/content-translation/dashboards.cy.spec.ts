@@ -338,7 +338,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
       H.visitEmbeddedPage(
         {
-          resource: { dashboard: ORDERS_DASHBOARD_ID as number },
+          resource: { dashboard: ORDERS_DASHBOARD_ID },
           params: {},
         },
         {

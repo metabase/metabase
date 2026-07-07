@@ -2422,7 +2422,9 @@ function getComparisonChangeProperties({
   if (changeType === "decrease") {
     return {
       changeArrowIconName: CHANGE_ARROW_ICONS.ARROW_DOWN,
-      changeColor: flipColor ? colors.success : colors.error,
+      changeColor: flipColor
+        ? colors["feedback-positive"]
+        : colors["feedback-negative"],
       changeType: CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
     };
   }
@@ -2430,7 +2432,9 @@ function getComparisonChangeProperties({
   if (changeType === "increase") {
     return {
       changeArrowIconName: CHANGE_ARROW_ICONS.ARROW_UP,
-      changeColor: flipColor ? colors.error : colors.success,
+      changeColor: flipColor
+        ? colors["feedback-negative"]
+        : colors["feedback-positive"],
       changeType: CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
     };
   }

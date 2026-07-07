@@ -45,14 +45,14 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "background-hover": [],
   "background-disabled": ["background-disabled", "background_surface-disabled"],
   "background-light": ["background-secondary", "background_page-secondary"],
-  shadow: ["shadow"],
-  positive: ["success"],
-  negative: ["danger"],
-  "text-white": ["text-primary-inverse", "white"],
-  error: ["error"],
+  shadow: ["shadow", "shadow-default"],
+  positive: ["success", "feedback-positive"],
+  negative: ["danger", "feedback-negative"],
+  "text-white": ["text-primary-inverse", "white", "core-white"],
+  error: ["error", "feedback-negative"],
   "background-error": ["background-error", "background_surface-error"],
   "text-hover": ["text-hover", "text-brand-hover"],
-  focus: ["focus"],
+  focus: ["focus", "input-focus"],
 };
 
 /**
@@ -69,7 +69,10 @@ export const SDK_MISSING_COLORS_FALLBACK: Partial<
  * These colors must never be changed.
  * For example, the blue Metabase brand color.
  **/
-export const SDK_UNCHANGEABLE_COLORS: ColorName[] = ["metabase-brand"];
+export const SDK_UNCHANGEABLE_COLORS: ColorName[] = [
+  "metabase-brand",
+  "core-metabase_brand",
+];
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
   keyof NonNullable<MetabaseComponentTheme["tooltip"]>,
