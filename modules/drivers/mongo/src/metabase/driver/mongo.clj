@@ -174,16 +174,31 @@
   7)
 
 (defn ^:dynamic *sample-stages*
-  "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
+  "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes.
+
+  Combines the first `start-n` documents (sorted by `_id` ascending) with the last `end-n` documents (sorted by
+  `_id` descending). This used to be implemented with `$unionWith`, but that stage isn't supported by some
+  MongoDB-compatible databases (e.g. Amazon DocumentDB), so instead we grab an arbitrary anchor document and use
+  two uncorrelated `$lookup`s against the same collection to fetch the two batches, recombine them
+  with `$concatArrays`, and then `$unwind`/`$replaceRoot` back into a stream of documents."
   [collection-name sample-size]
   (let [start-n       (quot sample-size 2)
         end-n         (- sample-size start-n)]
-    [{"$sort" {"_id" 1}}
-     {"$limit" start-n}
-     {"$unionWith"
-      {"coll" collection-name
+    [{"$limit" 1}
+     {"$project" {"_id" 0}}
+     {"$lookup"
+      {"from" collection-name
+       "pipeline" [{"$sort" {"_id" 1}}
+                   {"$limit" start-n}]
+       "as" "start"}}
+     {"$lookup"
+      {"from" collection-name
        "pipeline" [{"$sort" {"_id" -1}}
-                   {"$limit" end-n}]}}]))
+                   {"$limit" end-n}]
+       "as" "end"}}
+     {"$project" {"docs" {"$concatArrays" ["$start" "$end"]}}}
+     {"$unwind" "$docs"}
+     {"$replaceRoot" {"newRoot" "$docs"}}]))
 
 (def ^:private unwind-stages
   "Sequence of stages repeated in _search_ phase of [[describe-table-pipeline]]
