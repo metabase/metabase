@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms-test.assertions-test
   "Tests for the assertion evaluation subsystem
   ([[metabase-enterprise.transforms-test.assertions]]). Some are pure (no database); the
-  `:postgres`-gated tests run the full round-trip through `run-assertions!`."
+  driver-gated tests run the full round-trip through `run-assertions!`."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms-test.fixtures :as fixtures]
    [metabase-enterprise.transforms-test.resolve :as resolve]
    [metabase-enterprise.transforms-test.scratch :as scratch]
+   [metabase-enterprise.transforms-test.test-util :as tu]
    [metabase.driver.connection :as driver.conn]
    [metabase.query-processor.core :as qp]
    [metabase.sql-tools.core :as sql-tools]
@@ -220,12 +221,12 @@
   clean up the scratch table in a finally."
   [fixture-csv f]
   (mt/with-premium-features #{}
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [db-id       (mt/id)
               db          (t2/select-one :model/Database :id db-id)
               driver      (keyword (:engine db))
-              schema      "public"
+              schema      (tu/test-schema)
               nonce       (scratch/new-nonce)
               orders-info {:id      (mt/id :orders)
                            :schema  schema

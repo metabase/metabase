@@ -271,7 +271,9 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- list-tables-in-schema
-  "Return a seq of table-name strings in `schema` on `db-id`."
+  "Return a seq of table-name strings in namespace `schema` on `db-id` — a real
+  schema, or the catalog on engines where `information_schema.table_schema`
+  holds the database (MySQL)."
   [db-id ^String schema]
   ;; information_schema rather than driver/describe-database: the latter lists the
   ;; whole database (every schema) via a full DB-level driver call; a scoped
@@ -291,7 +293,9 @@
 
 (defn cleanup-all-test-tables!
   "Drop every test scratch table in `schema` older than `:min-age-seconds`
-  (default 3600), judged by the name-encoded timestamp alone. Non-test names and
+  (default 3600), judged by the name-encoded timestamp alone. `schema` is the
+  namespace to sweep: a schema string, or the catalog on engines whose
+  namespace travels in the `:db` slot (MySQL). Non-test names and
   younger tables are left untouched; per-table drop is best-effort (logs, continues).
 
   Returns `{:dropped [...] :skipped-young [...] :non-matching-count <int>
@@ -315,18 +319,28 @@
      (list-tables-in-schema db-id schema))))
 
 (defn sweep-old-test-tables!
-  "Reap old test scratch tables in `schema`, best-effort. Never throws; returns nil."
+  "Reap old test scratch tables, best-effort. Never throws; returns nil.
+
+  Sweeps `schema` when non-blank, else the driver's `:db`-slot catalog. With
+  neither, skips: an unscoped information_schema sweep could list tables in
+  namespaces this connection should not touch."
   ([db-id db ^String schema]
    (sweep-old-test-tables! db-id db schema {}))
   ([db-id db ^String schema opts]
-   (try
-     (let [report (cleanup-all-test-tables! db-id db schema opts)]
-       (when (seq (:dropped report))
-         (log/infof "sweep-old-test-tables! reaped %d orphaned scratch table(s) in schema %s: %s"
-                    (count (:dropped report)) schema (pr-str (:dropped report))))
-       (when (seq (:drop-errors report))
-         (log/warnf "sweep-old-test-tables! encountered %d drop error(s) in schema %s: %s"
-                    (count (:drop-errors report)) schema (pr-str (:drop-errors report)))))
-     (catch Throwable e
-       (log/warn e "sweep-old-test-tables! failed; continuing without sweep for schema" schema)))
+   (let [driver     (keyword (:engine db))
+         namespace* (if (str/blank? schema)
+                      (driver.sql/db-slot-value driver db)
+                      schema)]
+     (if (str/blank? namespace*)
+       (log/debug "sweep-old-test-tables!: no schema or catalog to scope the sweep; skipping.")
+       (try
+         (let [report (cleanup-all-test-tables! db-id db namespace* opts)]
+           (when (seq (:dropped report))
+             (log/infof "sweep-old-test-tables! reaped %d orphaned scratch table(s) in %s: %s"
+                        (count (:dropped report)) namespace* (pr-str (:dropped report))))
+           (when (seq (:drop-errors report))
+             (log/warnf "sweep-old-test-tables! encountered %d drop error(s) in %s: %s"
+                        (count (:drop-errors report)) namespace* (pr-str (:drop-errors report)))))
+         (catch Throwable e
+           (log/warn e "sweep-old-test-tables! failed; continuing without sweep for" namespace*)))))
    nil))

@@ -268,12 +268,12 @@
   "Malli schema for a single entry in the inputs response.
 
   `:table_id` — app-DB Table id (integer); the key to use in `input-<table-id>` multipart parts.
-  `:schema`   — DB schema string (e.g. \"public\").
+  `:schema`   — DB schema string (e.g. \"public\"), or nil on engines without schemas.
   `:name`     — physical table name string (e.g. \"orders\").
   `:columns`  — ordered list of column name strings the fixture CSV header must contain."
   [:map {:closed true}
    [:table_id pos-int?]
-   [:schema   :string]
+   [:schema   [:maybe :string]]
    [:name     :string]
    [:columns  [:sequential :string]]])
 

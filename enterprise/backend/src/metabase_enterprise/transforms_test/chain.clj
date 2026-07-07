@@ -13,6 +13,7 @@
 
   Errors are typed `ex-info` carrying `:error-type`."
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-test.assertions :as assertions]
    [metabase-enterprise.transforms-test.card-refs :as card-refs]
@@ -85,9 +86,13 @@
 
 (defn- scratch-schema
   "Schema in which to create a run's scratch tables: the anchor transform's
-  target schema, else \"public\"."
+  target schema. Nil — schemaless engines, or engines whose namespace travels
+  in the `:db` slot (e.g. MySQL) — means bare table names in the connection's
+  default namespace, matching production transform targets."
   [transform]
-  (or (-> transform :target :schema) "public"))
+  (let [schema (-> transform :target :schema)]
+    (when-not (str/blank? schema)
+      schema)))
 
 (defn- run-node!
   "Resolve, guard, and execute a single transform node against the accumulated

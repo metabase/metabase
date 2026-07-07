@@ -98,7 +98,7 @@
            db-id#             (mt/id)
            mp#                (mt/metadata-provider)]
        (mt/with-temp [:model/Table ~tbl-sym
-                      {:db_id  db-id# :schema "public"
+                      {:db_id  db-id# :schema (tu/test-schema)
                        :name   ~enriched-name-sym :active true}
                       :model/Field ~f1
                       {:table_id  (:id ~tbl-sym) :name "total"
@@ -108,7 +108,7 @@
                        :base_type :type/Text  :position 1 :active true}
                       :model/Transform ~t1-sym
                       {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
-                       :target          {:schema "public" :type "table"
+                       :target          {:schema (tu/test-schema) :type "table"
                                          :name   ~enriched-name-sym}
                        :target_table_id (:id ~tbl-sym)}]
          ~@body))))
@@ -120,12 +120,12 @@
 (deftest card-chain-native-passed-test
   (testing "native card aggregating enriched passes against correct expected CSV"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")
+                before-scratch (tu/count-test-scratch-tables db-id)
                 before-runs    (t2/count :model/TransformRun)]
             (with-enrich-topology [t1 _tbl enriched-name]
               (let [card   (native-agg-card db-id enriched-name)
@@ -144,7 +144,7 @@
                   (is (empty? (get-in result [:diff :extra-rows])))
                   (is (empty? (get-in result [:diff :cell-mismatches]))))
                 (testing "all scratch tables cleaned up (2 leaves + 1 node output)"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id))))
                 (testing "no TransformRun row created"
                   (is (= before-runs (t2/count :model/TransformRun))))))))))))
 
@@ -155,12 +155,12 @@
 (deftest card-chain-native-failed-test
   (testing "wrong expected CA count → failed with a named diff, scratch still cleaned"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id)]
             (with-enrich-topology [t1 _tbl enriched-name]
               (let [card   (native-agg-card db-id enriched-name)
                     result (chain/run-card-chain-test!
@@ -175,7 +175,7 @@
                           (seq (get-in result [:diff :extra-rows]))
                           (seq (get-in result [:diff :cell-mismatches])))))
                 (testing "scratch cleaned up even on a failed diff"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id))))))))))))
 
 ;;; ===========================================================================
 ;;; Native card: ignore_columns honored
@@ -184,7 +184,7 @@
 (deftest card-chain-ignore-columns-test
   (testing "ignore_columns: revenue excluded from both sides → passes even with wrong revenue"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
@@ -209,12 +209,12 @@
 (deftest card-chain-mbql-passed-test
   (testing "MBQL card (COUNT(*) over enriched) passes against correct expected CSV"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")
+                before-scratch (tu/count-test-scratch-tables db-id)
                 ;; 4 fixture orders → enriched has 4 rows → COUNT = 4
                 expected-csv   "count\n4\n"]
             (with-enrich-topology [t1 tbl _enriched-name]
@@ -230,7 +230,7 @@
                 (testing "run order contains t1"
                   (is (= [(:id t1)] (:order result))))
                 (testing "all scratch tables cleaned up"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id))))))))))))
 
 ;;; ===========================================================================
 ;;; MBQL card: failed (wrong expected value)
@@ -239,12 +239,12 @@
 (deftest card-chain-mbql-failed-test
   (testing "MBQL card with wrong expected COUNT → failed with diff, scratch cleaned"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")
+                before-scratch (tu/count-test-scratch-tables db-id)
                 wrong-csv      "count\n99\n"]
             (with-enrich-topology [t1 tbl _enriched-name]
               (let [card   (mbql-count-card db-id (:id tbl))
@@ -260,7 +260,7 @@
                           (seq (get-in result [:diff :extra-rows]))
                           (seq (get-in result [:diff :cell-mismatches])))))
                 (testing "scratch cleaned up on failed diff"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id))))))))))))
 
 ;;; ===========================================================================
 ;;; Safety: verify fails closed when card refs an unmapped table
@@ -269,7 +269,7 @@
 (deftest card-chain-unmapped-table-fails-closed-test
   (testing "card SQL references a non-synced table → ::cannot-test-run"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
@@ -310,7 +310,7 @@
 (deftest card-chain-cleanup-inside-transform-connection-test
   (testing "all cleanup! calls occur inside with-transform-connection (card target)"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
@@ -340,7 +340,7 @@
 (deftest card-subgraph-input-tables-test
   (testing "card-subgraph-input-tables returns leaf table-infos for a card target"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
@@ -352,7 +352,7 @@
                 (testing "both leaf tables (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :id infos)))))
                 (testing "each descriptor carries schema, name, and column headers"
-                  (is (every? (fn [d] (and (string? (:schema d))
+                  (is (every? (fn [d] (and ((some-fn nil? string?) (:schema d))
                                            (string? (:name d))
                                            (seq (:columns d))))
                               infos)))))))))))
@@ -364,7 +364,7 @@
 (deftest card-chain-no-real-table-test
   (testing "card target run: enriched scratch table is cleaned; no production table persists"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
@@ -413,12 +413,12 @@
 (deftest card-chain-metric-passed-test
   (testing "metric card (SUM over enriched) passes against correct expected CSV"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id)]
             (with-enrich-topology [t1 tbl _enriched-name]
               (let [;; total field was created by with-enrich-topology as position 0
                     total-field-id (t2/select-one-fn :id :model/Field
@@ -436,7 +436,7 @@
                 (testing "run order contains t1"
                   (is (= [(:id t1)] (:order result))))
                 (testing "all scratch tables cleaned up"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id))))))))))))
 
 ;;; ===========================================================================
 ;;; Metric card: failed (wrong expected value)
@@ -445,12 +445,12 @@
 (deftest card-chain-metric-failed-test
   (testing "metric card with wrong expected SUM → failed with diff, scratch cleaned"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id)]
             (with-enrich-topology [t1 tbl _enriched-name]
               (let [total-field-id (t2/select-one-fn :id :model/Field
                                                      :table_id (:id tbl)
@@ -468,7 +468,7 @@
                           (seq (get-in result [:diff :extra-rows]))
                           (seq (get-in result [:diff :cell-mismatches])))))
                 (testing "scratch cleaned up on failed diff"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id))))))))))))
 
 ;;; ===========================================================================
 ;;; Metric card: card-subgraph-input-tables
@@ -477,7 +477,7 @@
 (deftest card-chain-metric-subgraph-inputs-test
   (testing "card-subgraph-input-tables works for a metric card target"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id     (mt/id)
                 orders-id (mt/id :orders)
@@ -492,7 +492,7 @@
                 (testing "both leaf tables (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :id infos)))))
                 (testing "each descriptor carries schema, name, and column headers"
-                  (is (every? (fn [d] (and (string? (:schema d))
+                  (is (every? (fn [d] (and ((some-fn nil? string?) (:schema d))
                                            (string? (:name d))
                                            (seq (:columns d))))
                               infos)))))))))))

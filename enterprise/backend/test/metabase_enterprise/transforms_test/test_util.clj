@@ -12,10 +12,12 @@
   fixtures that are load-bearing for its hand-derived expectations."
   (:require
    [metabase-enterprise.transforms-test.execute :as execute]
+   [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp.core]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
   (:import
    (java.io File)))
 
@@ -81,16 +83,35 @@
 ;;; Warehouse invariant helpers
 ;;; ---------------------------------------------------------------------------
 
+(defn test-schema
+  "Schema of the current driver's test-data tables: e.g. \"public\" on postgres,
+  nil on engines whose namespace travels in the `:db` slot (MySQL) or that have
+  no schemas."
+  []
+  (t2/select-one-fn :schema :model/Table :id (mt/id :orders)))
+
+(defn scratch-namespace
+  "The information_schema.table_schema value scratch tables land under for
+  `db-id`: the test-data schema, else the driver's `:db`-slot catalog."
+  [db-id]
+  (or (test-schema)
+      (let [db (t2/select-one :model/Database :id db-id)]
+        (driver.sql/db-slot-value (keyword (:engine db)) db))))
+
 (defn count-test-scratch-tables
-  "Count mb_transform_temp_table_test_* tables in `schema` via information_schema."
-  [db-id schema]
-  (let [result (qp.core/process-query
-                (execute/native-query db-id
-                                      (str "SELECT COUNT(*) FROM information_schema.tables"
-                                           " WHERE table_schema = ?"
-                                           " AND table_name LIKE 'mb_transform_temp_table_test_%'")
-                                      [schema]))]
-    (-> result (get-in [:data :rows]) first first int)))
+  "Count mb_transform_temp_table_test_* tables via information_schema, in
+  namespace `schema` — nil (or the 1-arity) means the current driver's scratch
+  namespace."
+  ([db-id]
+   (count-test-scratch-tables db-id nil))
+  ([db-id schema]
+   (let [result (qp.core/process-query
+                 (execute/native-query db-id
+                                       (str "SELECT COUNT(*) FROM information_schema.tables"
+                                            " WHERE table_schema = ?"
+                                            " AND table_name LIKE 'mb_transform_temp_table_test_%'")
+                                       [(or schema (scratch-namespace db-id))]))]
+     (-> result (get-in [:data :rows]) first first int))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; HTTP helpers

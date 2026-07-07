@@ -1,14 +1,16 @@
-(ns metabase-enterprise.transforms-test.resolve-test
+(ns ^:mb/driver-tests metabase-enterprise.transforms-test.resolve-test
   "Tests for metabase-enterprise.transforms-test.resolve.
 
   `rewrite-native-sql` and the four-guard `verify` only parse, so they are tested
-  directly with no DB. `resolve-test-transform` end-to-end (compile + rewrite/override
-  + verify) needs a real metadata provider, so those tests are gated under postgres
-  with `mt/dataset test-data`."
+  directly with no DB (:postgres as a fixed dialect). `resolve-test-transform`
+  end-to-end (compile + rewrite/override + verify) needs a real metadata
+  provider, so those tests are driver-gated with `mt/dataset test-data`."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-test.errors :as errors]
    [metabase-enterprise.transforms-test.resolve :as resolve]
+   [metabase-enterprise.transforms-test.test-util :as tu]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.core :as sql-tools]
@@ -337,15 +339,15 @@
 
 (deftest resolve-native-happy-path-test
   (testing "resolve-test-transform native path: compile + rewrite + verify -> artifact"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               transform (native-transform mp "SELECT id FROM orders")
-              mapping   {{:schema "public" :table "orders"}
-                         {:schema "public" :table "scratch_orders_xyz"}}
-              target    {:schema "public" :table "out_xyz"}
+              mapping   {{:schema (tu/test-schema) :table "orders"}
+                         {:schema (tu/test-schema) :table "scratch_orders_xyz"}}
+              target    {:schema (tu/test-schema) :table "out_xyz"}
               art       (resolve/resolve-test-transform transform mapping target {:db (mt/db)})]
-          (is (= :postgres (:driver art)))
+          (is (= driver/*driver* (:driver art)))
           (is (= (sql-tools/parser-backend) (:parser-backend art)))
           (is (= target (:target art)))
           ;; :compiled carried intact (qp.compile/compile shape), only :query updated
@@ -356,13 +358,13 @@
 (deftest resolve-native-table-qualified-column-fails-closed-test
   (testing "native SQL with table-qualified columns (SELECT orders.id FROM orders) fails
             closed via guard 3 — the accepted, documented limitation"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               transform (native-transform mp "SELECT orders.id FROM orders")
-              mapping   {{:schema "public" :table "orders"}
-                         {:schema "public" :table "scratch_orders_xyz"}}
-              target    {:schema "public" :table "out_xyz"}]
+              mapping   {{:schema (tu/test-schema) :table "orders"}
+                         {:schema (tu/test-schema) :table "scratch_orders_xyz"}}
+              target    {:schema (tu/test-schema) :table "out_xyz"}]
           ;; FROM rewrites to scratch, but `orders.id` qualifier dangles -> guard 3.
           (is (cannot-test-run?
                #(resolve/resolve-test-transform transform mapping target {:db (mt/db)})
@@ -376,27 +378,27 @@
 
 (deftest resolve-mbql-single-table-aggregation-test
   (testing "MBQL single-table aggregation compiles under the override -> only scratch refs"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               orders    (lib.metadata/table mp (mt/id :orders))
               q         (-> (lib/query mp orders) (lib/aggregate (lib/count)))
               transform (mbql-transform q)
-              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]
-              mapping   {{:schema "public" :table "orders"}
-                         {:schema "public" :table "scratch_orders_abc"}}
-              target    {:schema "public" :table "out_abc"}
+              inputs    [{:id (mt/id :orders) :schema (tu/test-schema) :name "orders"}]
+              mapping   {{:schema (tu/test-schema) :table "orders"}
+                         {:schema (tu/test-schema) :table "scratch_orders_abc"}}
+              target    {:schema (tu/test-schema) :table "out_abc"}
               art       (resolve/resolve-test-transform transform mapping target
                                                         {:db (mt/db) :input-tables inputs})
               sql       (:query (:compiled art))]
           (is (re-find #"scratch_orders_abc" sql))
           (is (not (re-find #"\"orders\"" sql)))
           ;; verify passed (resolve would have thrown otherwise) — assert directly too
-          (is (string? (resolve/verify :postgres mapping sql))))))))
+          (is (string? (resolve/verify driver/*driver* mapping sql))))))))
 
 (deftest resolve-mbql-two-table-join-test
   (testing "MBQL two-table join compiles to scratch refs for both physical tables"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               orders    (lib.metadata/table mp (mt/id :orders))
@@ -406,11 +408,11 @@
               q         (-> (lib/query mp orders)
                             (lib/join (lib/join-clause products [(lib/= opid pid)])))
               transform (mbql-transform q)
-              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}
-                         {:id (mt/id :products) :schema "public" :name "products"}]
-              mapping   {{:schema "public" :table "orders"}   {:schema "public" :table "scratch_orders_j"}
-                         {:schema "public" :table "products"} {:schema "public" :table "scratch_products_j"}}
-              target    {:schema "public" :table "out_j"}
+              inputs    [{:id (mt/id :orders) :schema (tu/test-schema) :name "orders"}
+                         {:id (mt/id :products) :schema (tu/test-schema) :name "products"}]
+              mapping   {{:schema (tu/test-schema) :table "orders"}   {:schema (tu/test-schema) :table "scratch_orders_j"}
+                         {:schema (tu/test-schema) :table "products"} {:schema (tu/test-schema) :table "scratch_products_j"}}
+              target    {:schema (tu/test-schema) :table "out_j"}
               art       (resolve/resolve-test-transform transform mapping target
                                                         {:db (mt/db) :input-tables inputs})
               sql       (:query (:compiled art))]
@@ -421,7 +423,7 @@
 
 (deftest resolve-mbql-order-by-test
   (testing "MBQL with ORDER BY: every qualifier (incl. ORDER BY) points at scratch"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               orders    (lib.metadata/table mp (mt/id :orders))
@@ -431,10 +433,10 @@
                             (lib/breakout uid)
                             (lib/order-by uid))
               transform (mbql-transform q)
-              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]
-              mapping   {{:schema "public" :table "orders"}
-                         {:schema "public" :table "scratch_orders_ob"}}
-              target    {:schema "public" :table "out_ob"}
+              inputs    [{:id (mt/id :orders) :schema (tu/test-schema) :name "orders"}]
+              mapping   {{:schema (tu/test-schema) :table "orders"}
+                         {:schema (tu/test-schema) :table "scratch_orders_ob"}}
+              target    {:schema (tu/test-schema) :table "out_ob"}
               art       (resolve/resolve-test-transform transform mapping target
                                                         {:db (mt/db) :input-tables inputs})
               sql       (:query (:compiled art))]
@@ -446,7 +448,7 @@
 (deftest resolve-mbql-incomplete-mapping-fails-closed-test
   (testing "MBQL with an incomplete override map (a joined table left unmapped) fails closed
             via guards 2+3"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               orders    (lib.metadata/table mp (mt/id :orders))
@@ -457,10 +459,10 @@
                             (lib/join (lib/join-clause products [(lib/= opid pid)])))
               transform (mbql-transform q)
               ;; only orders is provided in input-tables and mapping; products is left real
-              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]
-              mapping   {{:schema "public" :table "orders"}
-                         {:schema "public" :table "scratch_orders_inc"}}
-              target    {:schema "public" :table "out_inc"}]
+              inputs    [{:id (mt/id :orders) :schema (tu/test-schema) :name "orders"}]
+              mapping   {{:schema (tu/test-schema) :table "orders"}
+                         {:schema (tu/test-schema) :table "scratch_orders_inc"}}
+              target    {:schema (tu/test-schema) :table "out_inc"}]
           ;; products survives -> guard 2 (not subset) and/or guard 3 (token survives) fires
           (is (cannot-test-run?
                #(resolve/resolve-test-transform transform mapping target

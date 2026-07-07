@@ -42,21 +42,21 @@
 
 (defn- do-with-t1-t2-chain [f]
   (mt/with-premium-features #{:dependencies}
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [enriched-name (mt/random-name)
               target-name   (mt/random-name)
               mp            (mt/metadata-provider)]
           (mt/with-temp [:model/Transform t1
                          {:source {:type :query :query (lib/native-query mp tu/enrich-sql)}
-                          :target {:schema "public" :type "table" :name enriched-name}}
+                          :target {:schema (tu/test-schema) :type "table" :name enriched-name}}
                          :model/Transform t2
                          {:source {:type :query :query (lib/native-query mp (tu/aggregate-sql enriched-name))}
-                          :target {:schema "public" :type "table" :name target-name}}]
+                          :target {:schema (tu/test-schema) :type "table" :name target-name}}]
             (f {:t1            t1
                 :t2            t2
                 :db-id         (mt/id)
-                :schema        "public"
+                :schema        (tu/test-schema)
                 :orders-id     (mt/id :orders)
                 :people-id     (mt/id :people)
                 :enriched-name enriched-name
@@ -72,15 +72,15 @@
 
 (defn- do-with-single-native-transform [sql f]
   (mt/with-premium-features #{:dependencies}
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform t
                          {:source {:type :query :query (lib/native-query mp sql)}
-                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+                          :target {:schema (tu/test-schema) :type "table" :name (mt/random-name)}}]
             (f {:t         t
                 :db-id     (mt/id)
-                :schema    "public"
+                :schema    (tu/test-schema)
                 :orders-id (mt/id :orders)
                 :people-id (mt/id :people)})))))))
 
@@ -191,7 +191,7 @@
         (testing "both leaf tables (orders, people) are returned"
           (is (= #{orders-id people-id} (set (map :table_id resp)))))
         (testing "each descriptor carries schema, name, and column headers"
-          (is (every? (fn [d] (and (string? (:schema d))
+          (is (every? (fn [d] (and ((some-fn nil? string?) (:schema d))
                                    (string? (:name d))
                                    (seq (:columns d))))
                       resp)))))))
@@ -223,7 +223,7 @@
       (mt/with-temp [:model/Transform t3
                      {:source {:type :query :query (lib/native-query (mt/metadata-provider)
                                                                      "SELECT id FROM orders")}
-                      :target {:schema "public" :type "table" :name (mt/random-name)}}]
+                      :target {:schema (tu/test-schema) :type "table" :name (mt/random-name)}}]
         (with-temp-csv-files [orders-f   tu/orders-rows
                               people-f   tu/people-rows
                               expected-f tu/correct-expected-csv]
@@ -255,10 +255,10 @@
          db-id#         (mt/id)
          mp#            (mt/metadata-provider)]
      (mt/with-temp [:model/Table tbl#
-                    {:db_id db-id# :schema "public" :name enriched-name# :active true}
+                    {:db_id db-id# :schema (tu/test-schema) :name enriched-name# :active true}
                     :model/Transform ~t1-sym
                     {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
-                     :target          {:schema "public" :type "table" :name enriched-name#}
+                     :target          {:schema (tu/test-schema) :type "table" :name enriched-name#}
                      :target_table_id (:id tbl#)}
                     :model/Card ~card-sym
                     {:dataset_query (lib/native-query mp# (tu/aggregate-sql enriched-name#))}]
@@ -267,7 +267,7 @@
 (deftest card-subgraph-inputs-endpoint-test
   (testing "GET card inputs returns the card's boundary leaf tables"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
@@ -277,7 +277,7 @@
                 (testing "both leaves (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :table_id resp)))))
                 (testing "each descriptor carries schema, name, and column headers"
-                  (is (every? (fn [d] (and (string? (:schema d))
+                  (is (every? (fn [d] (and ((some-fn nil? string?) (:schema d))
                                            (string? (:name d))
                                            (seq (:columns d))))
                               resp)))))))))))
@@ -285,10 +285,10 @@
 (deftest card-subgraph-test-run-endpoint-passed-test
   (testing "POST card subgraph runs a card target over the chain → 200 passed"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
-                schema         "public"
+                schema         (tu/test-schema)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
                 before-scratch (tu/count-test-scratch-tables db-id schema)]
@@ -316,7 +316,7 @@
 (deftest card-subgraph-test-run-endpoint-failed-test
   (testing "POST card subgraph with wrong expected CSV → 200 failed"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
@@ -360,7 +360,7 @@
            db-id#         (mt/id)
            mp#            (mt/metadata-provider)]
        (mt/with-temp [:model/Table tbl#
-                      {:db_id db-id# :schema "public" :name enriched-name# :active true}
+                      {:db_id db-id# :schema (tu/test-schema) :name enriched-name# :active true}
                       :model/Field ~f-total
                       {:table_id  (:id tbl#) :name "total"
                        :base_type :type/Float :position 0 :active true}
@@ -369,7 +369,7 @@
                        :base_type :type/Text  :position 1 :active true}
                       :model/Transform ~t1-sym
                       {:source          {:type :query :query (lib/native-query mp# tu/enrich-sql)}
-                       :target          {:schema "public" :type "table" :name enriched-name#}
+                       :target          {:schema (tu/test-schema) :type "table" :name enriched-name#}
                        :target_table_id (:id tbl#)}
                       :model/Card ~card-sym
                       {:database_id   db-id#
@@ -384,7 +384,7 @@
 (deftest card-mbql-subgraph-inputs-endpoint-test
   (testing "GET card/inputs for a stored MBQL card returns the leaf tables"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [orders-id (mt/id :orders)
                 people-id (mt/id :people)]
@@ -394,7 +394,7 @@
                 (testing "both leaves (orders, people) are returned"
                   (is (= #{orders-id people-id} (set (map :table_id resp)))))
                 (testing "each descriptor carries schema, name, and column headers"
-                  (is (every? (fn [d] (and (string? (:schema d))
+                  (is (every? (fn [d] (and ((some-fn nil? string?) (:schema d))
                                            (string? (:name d))
                                            (seq (:columns d))))
                               resp)))))))))))
@@ -402,12 +402,12 @@
 (deftest card-mbql-subgraph-test-run-endpoint-passed-test
   (testing "POST card/subgraph for a stored MBQL card → 200 passed"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id)]
             (with-enrich-mbql-card [t1 card]
               (with-temp-csv-files [orders-f   tu/orders-rows
                                     people-f   tu/people-rows
@@ -423,17 +423,17 @@
                     (is (= "passed" (:status resp))
                         (str "Expected passed; body: " (pr-str resp))))
                   (testing "no scratch tables remain"
-                    (is (= before-scratch (tu/count-test-scratch-tables db-id "public")))))))))))))
+                    (is (= before-scratch (tu/count-test-scratch-tables db-id)))))))))))))
 
 (deftest card-mbql-subgraph-test-run-endpoint-failed-test
   (testing "POST card/subgraph for a stored MBQL card with wrong expected CSV → 200 failed"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id)]
             (with-enrich-mbql-card [t1 card]
               (with-temp-csv-files [orders-f   tu/orders-rows
                                     people-f   tu/people-rows
@@ -449,7 +449,7 @@
                     (is (= "failed" (:status resp))
                         (str "Expected failed; body: " (pr-str resp))))
                   (testing "no scratch tables remain even on failure"
-                    (is (= before-scratch (tu/count-test-scratch-tables db-id "public")))))))))))))
+                    (is (= before-scratch (tu/count-test-scratch-tables db-id)))))))))))))
 
 (deftest card-target-read-check-test
   (testing "card target enforces read-check :model/Card — no collection access → 403"
@@ -553,12 +553,12 @@
 (deftest card-chain-assertion-cte-binding-test
   (testing "run-card-chain-test! with assertions via CTE binding — no extra scratch table"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
-                before-scratch (tu/count-test-scratch-tables db-id "public")]
+                before-scratch (tu/count-test-scratch-tables db-id)]
             (with-enrich-card [t1 card]
               (let [result (chain/run-card-chain-test!
                             card #{(:id t1)}
@@ -574,7 +574,7 @@
                 (testing "assertion status is :passed"
                   (is (= :passed (get-in result [:assertions 0 :status]))))
                 (testing "no extra scratch tables remain (CTE binding creates no tables)"
-                  (is (= before-scratch (tu/count-test-scratch-tables db-id "public"))))))))))))
+                  (is (= before-scratch (tu/count-test-scratch-tables db-id))))))))))))
 
 ;;; ===========================================================================
 ;;; HTTP endpoint wires assertions
@@ -834,10 +834,10 @@
   ;; t1's output, and t2's registered-but-failed output).
   (testing "a node failing mid-slice leaves no scratch tables behind"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id          (mt/id)
-                schema         "public"
+                schema         (tu/test-schema)
                 mp             (mt/metadata-provider)
                 orders-id      (mt/id :orders)
                 people-id      (mt/id :people)
@@ -903,7 +903,7 @@
 (deftest subgraph-single-node-seed-creates-missing-target-schema-test
   (testing "single-node run-chain-test! seeds a transform whose target schema does not exist yet"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (let [db-id        (mt/id)
                 fresh-schema (str "ttr_" (mt/random-name))
@@ -1105,13 +1105,13 @@
 
 (deftest subgraph-transform-target-feature-flag-402-test
   (testing "POST /subgraph for a transform target with feature disabled → 402"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform t
                          {:source {:type :query
                                    :query (lib/native-query mp "SELECT 1 AS x")}
-                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+                          :target {:schema (tu/test-schema) :type "table" :name (mt/random-name)}}]
             (with-temp-csv-files [expected-f "x\n1\n"]
               (mt/with-dynamic-fn-redefs
                 [transforms.core/check-feature-enabled!
@@ -1133,7 +1133,7 @@
           (mt/with-temp [:model/Transform t
                          {:source {:type  :query
                                    :query (lib/query mp (lib.metadata/card mp (:id card)))}
-                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+                          :target {:schema (tu/test-schema) :type "table" :name (mt/random-name)}}]
             (t2/delete! :model/Card :id (:id card))
             (let [resp (mt/user-http-request
                         :crowberto :get 422 (tu/inputs-url (:id t)))]
@@ -1198,13 +1198,13 @@
 
 (deftest subgraph-inputs-feature-flag-402-test
   (testing "GET /inputs — feature not enabled → 402"
-    (mt/test-drivers #{:postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform t
                          {:source {:type :query
                                    :query (lib/native-query mp "SELECT 1 AS x")}
-                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+                          :target {:schema (tu/test-schema) :type "table" :name (mt/random-name)}}]
             (mt/with-dynamic-fn-redefs
               [transforms.core/check-feature-enabled!
                (fn [_] (throw (ex-info "Premium features required."
@@ -1215,7 +1215,7 @@
 (deftest subgraph-requires-dependencies-feature-402-test
   (testing "POST /subgraph — the :dependencies capability gate rejects with 402 for both target types"
     (mt/with-premium-features #{}
-      (mt/test-drivers #{:postgres}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset test-data
           (with-enrich-card [t1 card]
             (with-temp-csv-files [expected-f tu/correct-expected-csv]

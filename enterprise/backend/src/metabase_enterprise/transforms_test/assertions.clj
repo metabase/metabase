@@ -119,6 +119,8 @@
 (defn- build-sample-sql
   "Build the SQL that fetches a capped sample of failing rows for one assertion."
   [output-sql clean-sql]
+  ;; LIMIT parses on every :transforms/table engine except SQL Server (TOP);
+  ;; there fetch-sample! degrades to a nil sample. Counts are unaffected.
   (str "WITH test_output AS (" output-sql ")\n"
        "SELECT * FROM (" clean-sql ") __sample LIMIT " sample-cap))
 
