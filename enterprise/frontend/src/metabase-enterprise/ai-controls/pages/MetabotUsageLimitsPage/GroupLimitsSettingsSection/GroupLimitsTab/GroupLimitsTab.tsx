@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { isEmpty } from "underscore";
 
-import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isDefaultGroup } from "metabase/common/utils/groups";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Group, NumberInput, Stack, Text } from "metabase/ui";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";

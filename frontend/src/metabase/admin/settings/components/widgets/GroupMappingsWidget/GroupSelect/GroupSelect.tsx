@@ -1,14 +1,14 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
+import { GroupSummary } from "metabase/common/components/GroupSummary";
 import {
   canEditMembership,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
+} from "metabase/common/utils/groups";
 import {
   Box,
   Checkbox,

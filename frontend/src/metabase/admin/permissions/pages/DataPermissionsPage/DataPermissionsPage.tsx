@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import type { Route } from "react-router";
 import { useAsync } from "react-use";
 
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import {
   skipToken,
   useGetDatabaseMetadataQuery,
   useListDatabasesQuery,
   useListPermissionsGroupsQuery,
 } from "metabase/api";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";

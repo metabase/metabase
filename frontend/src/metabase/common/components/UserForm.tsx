@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
+import { MembershipSelect } from "metabase/common/components/MembershipSelect";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import {
   Form,
   FormErrorMessage,

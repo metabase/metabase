@@ -3,6 +3,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { MembershipSelect } from "metabase/common/components/MembershipSelect";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -28,7 +29,6 @@ import type {
 
 import { userToColor } from "../colors";
 
-import { MembershipSelect } from "./MembershipSelect";
 import { ReactivateUserButton } from "./ReactivateUserButton";
 
 const enablePasswordLoginKey = "enable-password-login";
