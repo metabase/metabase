@@ -26,6 +26,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.transforms-rest.api.transform]
@@ -1150,6 +1151,50 @@
       (mt/with-temp [:model/Transform t {}]
         (mt/user-http-request
          :rasta :get 403 (tu/inputs-url (:id t)))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Native create-queries gate — read access alone must not buy warehouse work
+;;; ---------------------------------------------------------------------------
+
+(deftest transform-target-native-perms-403-test
+  (testing "transform target: read access without native create-queries → early 403"
+    (with-single-native-transform [{:keys [t db-id schema]} "SELECT user_id FROM orders"]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :query-builder
+          (let [before-scratch (tu/count-test-scratch-tables db-id schema)]
+            (testing "GET /inputs → 403"
+              (mt/user-http-request :lucky :get 403 (tu/inputs-url (:id t))))
+            (with-temp-csv-files [expected-f "user_id\n1\n"]
+              (testing "POST /run → 403"
+                (mt/user-http-request
+                 :lucky :post 403 (tu/test-run-url (:id t))
+                 tu/multipart-content-type
+                 {"expected" expected-f})))
+            (testing "the 403 fired before any warehouse work — no scratch tables created"
+              (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))))
+
+(deftest transform-target-native-perms-allowed-test
+  (testing "transform target: non-admin WITH native create-queries passes the gate"
+    (with-single-native-transform [{:keys [t db-id orders-id]} "SELECT user_id FROM orders"]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/create-queries :query-builder-and-native
+          (let [resp (mt/user-http-request :lucky :get 200 (tu/inputs-url (:id t)))]
+            (is (= [orders-id] (mapv :table_id resp)))))))))
+
+(deftest card-target-native-perms-403-test
+  (testing "card target: collection read without native create-queries → early 403"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card card {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                        "SELECT 1 AS n")}]
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder
+          (testing "GET /inputs → 403"
+            (mt/user-http-request :rasta :get 403 (tu/card-inputs-url (:id card))))
+          (with-temp-csv-files [expected-f "n\n1\n"]
+            (testing "POST /run → 403"
+              (mt/user-http-request
+               :rasta :post 403 (tu/card-test-run-url (:id card))
+               tu/multipart-content-type
+               {"expected" expected-f}))))))))
 
 (deftest subgraph-inputs-feature-flag-402-test
   (testing "GET /inputs — feature not enabled → 402"

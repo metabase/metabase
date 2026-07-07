@@ -10,11 +10,26 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- check-native-query-perms!
+  "Throw 403 unless the current user holds native create-queries permission on
+  `db-id`. A test run executes raw SQL — rewritten transforms, compiled cards,
+  user assertions — against that database, so it requires the same permission
+  as the SQL editor. nil `db-id` passes: the run itself fails typed
+  (`::errors/missing-database-id`)."
+  [db-id]
+  (when db-id
+    (api/check-403
+     (= (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db-id)
+        :query-builder-and-native))))
 
 (defn- check-test-run-allowed!
   "Throw a 402 unless every transform the run exercises has its per-type feature
@@ -118,8 +133,9 @@
   what `GET …/inputs` returns for the same `(target-type, id, sources)`
   selection.
 
-  `card` covers questions, models, and metric cards (`:type :metric`). Read access
-  to the target is enforced (`read-check` Transform or Card)."
+  `card` covers questions, models, and metric cards (`:type :metric`). Enforced
+  before any warehouse work: read access to the target (`read-check` Transform or
+  Card) and native create-queries permission on the target's database."
   {:multipart true}
   [{:keys [target-type id]} :- [:map
                                 [:target-type [:enum "transform" "card"]]
@@ -129,14 +145,16 @@
    {{:as multipart-params} :multipart-params}]
   (case target-type
     "transform"
-    (do (api/read-check :model/Transform id)
-        (run-test-run!
-         multipart-params
-         {:slice-transforms (partial transform-slice-transforms id)
-          :run              (partial chain/run-chain-test! id)}))
+    (let [transform (api/read-check :model/Transform id)]
+      (check-native-query-perms! (transforms-base.u/transform-source-database transform))
+      (run-test-run!
+       multipart-params
+       {:slice-transforms (partial transform-slice-transforms id)
+        :run              (partial chain/run-chain-test! id)}))
 
     "card"
     (let [card (api/read-check :model/Card id)]
+      (check-native-query-perms! (lib/database-id (:dataset_query card)))
       (run-test-run!
        multipart-params
        {:slice-transforms (partial card-slice-transforms card)
@@ -152,7 +170,10 @@
   sources from the repeatable `sources` query param.
 
   A vector of `{table_id, schema, name, columns}` descriptors — one fixture CSV per
-  entry is required for `POST …/run`. Same shape for both target types."
+  entry is required for `POST …/run`. Same shape for both target types.
+
+  Enforced: read access to the target (`read-check` Transform or Card) and native
+  create-queries permission on the target's database."
   [{:keys [target-type id]} :- [:map
                                 [:target-type [:enum "transform" "card"]]
                                 [:id ms/PositiveInt]]
@@ -161,13 +182,15 @@
   (let [source-ids (set sources)]
     (case target-type
       "transform"
-      (do (api/read-check :model/Transform id)
-          (inputs-response!
-           {:slice-transforms (partial transform-slice-transforms id source-ids)
-            :input-tables     (partial chain/subgraph-input-tables id source-ids)}))
+      (let [transform (api/read-check :model/Transform id)]
+        (check-native-query-perms! (transforms-base.u/transform-source-database transform))
+        (inputs-response!
+         {:slice-transforms (partial transform-slice-transforms id source-ids)
+          :input-tables     (partial chain/subgraph-input-tables id source-ids)}))
 
       "card"
       (let [card (api/read-check :model/Card id)]
+        (check-native-query-perms! (lib/database-id (:dataset_query card)))
         (inputs-response!
          {:slice-transforms (partial card-slice-transforms card source-ids)
           :input-tables     (partial chain/card-subgraph-input-tables card source-ids)})))))
