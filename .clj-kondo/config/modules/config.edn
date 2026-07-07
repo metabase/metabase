@@ -1352,6 +1352,12 @@
                     :model/Measure
                     :model/Table}}
 
+  custom-migrations
+  {:team "UX West"
+   :api  #{metabase.custom-migrations.init}
+   :uses #{sample-data
+           util}}
+
   model-persistence
   {:team "Graphy"
    :api  #{metabase.model-persistence.api

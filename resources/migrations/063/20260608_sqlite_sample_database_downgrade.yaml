@@ -11,4 +11,4 @@ databaseChangeLog:
       validCheckSum: ANY
       changes:
         - customChange:
-            class: "metabase.sample_data.downgrade.RestoreH2SampleDatabaseOnDowngrade"
+            class: "metabase.custom_migrations.sample_database_downgrade.RestoreH2SampleDatabaseOnDowngrade"
