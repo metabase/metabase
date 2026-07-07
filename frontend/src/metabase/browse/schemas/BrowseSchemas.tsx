@@ -103,11 +103,11 @@ const BrowseSchemasByDatabaseName = ({
   name: string;
   params: { slug: string };
 }) => {
-  const { data, isLoading } = useListDatabasesQuery();
+  const { data, isLoading, error } = useListDatabasesQuery();
   const database = findDatabaseByName(data?.data ?? [], name);
 
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading />;
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   if (!database) {
