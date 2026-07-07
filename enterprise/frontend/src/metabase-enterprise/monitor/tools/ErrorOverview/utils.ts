@@ -78,21 +78,20 @@ export function getErroringQuestionsQuery(
   });
 }
 
-export function getErroringQuestionsCountQuery({
-  errorFilter,
-  dbFilter,
-  collectionFilter,
-}: ErroringQuestionsFilters): DatasetQuery {
-  return toDatasetQuery({
-    type: "internal",
-    fn: "metabase-enterprise.audit-app.pages.queries/bad-table-count",
-    args: [errorFilter, dbFilter, collectionFilter],
-  });
-}
-
-export function getErroringQuestionsTotal(dataset: Dataset): number | null {
-  const value = dataset.data.rows[0]?.[0];
-  return typeof value === "number" ? value : null;
+/**
+ * Total row count for the current filters, read from the `total_count`
+ * `COUNT(*) OVER ()` column that rides on the `bad-table` rows response.
+ * An empty result set carries no rows, so the total is 0.
+ */
+export function getErroringQuestionsTotal(dataset: Dataset): number {
+  const index = dataset.data.cols.findIndex(
+    (col) => col.name === "total_count",
+  );
+  if (index === -1 || dataset.data.rows.length === 0) {
+    return 0;
+  }
+  const value = dataset.data.rows[0][index];
+  return typeof value === "number" ? value : 0;
 }
 
 export function getErroringQuestions(dataset: Dataset): ErroringQuestion[] {

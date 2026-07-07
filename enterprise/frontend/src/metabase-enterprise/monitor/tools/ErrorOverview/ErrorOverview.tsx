@@ -28,7 +28,6 @@ import {
   DEFAULT_SORTING,
   PAGE_SIZE,
   getErroringQuestions,
-  getErroringQuestionsCountQuery,
   getErroringQuestionsQuery,
   getErroringQuestionsTotal,
   urlStateConfig,
@@ -52,26 +51,16 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
   // flash) while the next request runs.
   const { data, error, isFetching, isLoading, refetch } =
     useAbortableAdhocQuery(query);
-  const countQuery = useMemo(
-    () => getErroringQuestionsCountQuery(filters),
-    [filters],
-  );
-  const {
-    data: countData,
-    error: countError,
-    refetch: refetchCount,
-  } = useAbortableAdhocQuery(countQuery);
   const [runCardQuery] = useLazyGetCardQueryQuery();
 
   const questions = useMemo(
     () => (data == null ? [] : getErroringQuestions(data)),
     [data],
   );
-  const total = countData == null ? null : getErroringQuestionsTotal(countData);
-  // Fold the companion count query's failure into the page error too: without
-  // it a failing count would silently drop `total` to null and make the
-  // pagination controls vanish with no signal.
-  const pageError = error ?? data?.error ?? countError ?? countData?.error;
+  // The total for the current filters rides on the rows response as a
+  // `COUNT(*) OVER ()` column, so pagination needs no separate count query.
+  const total = data == null ? null : getErroringQuestionsTotal(data);
+  const pageError = error ?? data?.error;
 
   const selectedCardIds = Object.entries(rowSelection)
     .filter(([, isSelected]) => isSelected)
@@ -99,7 +88,6 @@ const ErrorOverviewBase = ({ location }: WithRouterProps) => {
     setIsRerunning(false);
     setRowSelection({});
     refetch();
-    refetchCount();
   };
 
   return (

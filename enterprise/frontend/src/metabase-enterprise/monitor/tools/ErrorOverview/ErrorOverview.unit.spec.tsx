@@ -41,9 +41,12 @@ const COLUMN_NAMES = [
   "num_dashboards",
   "user_name",
   "updated_at",
+  // COUNT(*) OVER () — the full total for the current filters rides on each row
+  "total_count",
 ];
 
-function createDatasetResponse(questions: QuestionRow[]) {
+function createDatasetResponse(questions: QuestionRow[], total?: number) {
+  const totalCount = total ?? questions.length;
   const rows: RowValue[][] = questions.map((question) => [
     question.id,
     question.name ?? `Question ${question.id}`,
@@ -57,6 +60,7 @@ function createDatasetResponse(questions: QuestionRow[]) {
     2,
     "John Doe",
     "2026-06-30T10:00:00Z",
+    totalCount,
   ]);
 
   return createMockDataset({
@@ -68,33 +72,12 @@ function createDatasetResponse(questions: QuestionRow[]) {
   });
 }
 
-const ROWS_FN = "metabase-enterprise.audit-app.pages.queries/bad-table";
-const COUNT_FN = "metabase-enterprise.audit-app.pages.queries/bad-table-count";
-
-function createCountResponse(total: number) {
-  return createMockDataset({
-    data: createMockDatasetData({
-      cols: [createMockColumn({ name: "count" })],
-      rows: [[total]],
-    }),
-    row_count: 1,
-  });
-}
-
 const getDatasetCalls = () => fetchMock.callHistory.calls("path:/api/dataset");
 
-async function getDatasetQueries(fn: string) {
-  const bodies = await Promise.all(
-    getDatasetCalls().map(async (call) =>
-      JSON.parse(String(await call.options.body)),
-    ),
-  );
-  return bodies.filter((body) => body.fn === fn);
-}
-
-async function getLastDatasetQuery(fn: string = ROWS_FN) {
-  const queries = await getDatasetQueries(fn);
-  return queries[queries.length - 1];
+async function getLastDatasetQuery() {
+  const calls = getDatasetCalls();
+  const call = calls[calls.length - 1];
+  return JSON.parse(String(await call.options.body));
 }
 
 type SetupOpts = {
@@ -118,12 +101,10 @@ async function setup({
       body: { message: "Audit query failed" },
     });
   } else {
-    fetchMock.post("path:/api/dataset", (call) => {
-      const body = JSON.parse(String(call.options.body));
-      return body.fn === COUNT_FN
-        ? createCountResponse(total ?? questions.length)
-        : createDatasetResponse(questions);
-    });
+    fetchMock.post(
+      "path:/api/dataset",
+      createDatasetResponse(questions, total),
+    );
   }
 
   const utils = renderWithProviders(
@@ -165,15 +146,8 @@ describe("ErrorOverview", () => {
     expect(within(row).getByText("Our Analytics")).toBeInTheDocument();
     expect(within(row).getByText("Sample Database")).toBeInTheDocument();
 
-    // a companion unpaged count query powers the pagination total
-    await waitFor(async () => {
-      expect(await getLastDatasetQuery(COUNT_FN)).toBeDefined();
-    });
-    const countQuery = await getLastDatasetQuery(COUNT_FN);
-    expect(countQuery.args).toEqual(["", "", ""]);
-    expect("limit" in countQuery).toBe(false);
-
-    // single page of results → pagination is hidden
+    // single page of results → pagination is hidden (no separate count query)
+    expect(getDatasetCalls()).toHaveLength(1);
     expect(
       screen.queryByRole("navigation", { name: "pagination" }),
     ).not.toBeInTheDocument();
@@ -198,15 +172,13 @@ describe("ErrorOverview", () => {
     mockGetBoundingClientRect({ width: 100, height: 100 });
     // the /api/dataset call succeeds at the HTTP layer but the internal audit
     // query failed, so the error rides in the dataset body
-    fetchMock.post("path:/api/dataset", (call) => {
-      const body = JSON.parse(String(call.options.body));
-      return body.fn === COUNT_FN
-        ? createCountResponse(0)
-        : createMockDataset({
-            status: "failed",
-            error: "Internal audit query blew up",
-          });
-    });
+    fetchMock.post(
+      "path:/api/dataset",
+      createMockDataset({
+        status: "failed",
+        error: "Internal audit query blew up",
+      }),
+    );
 
     renderWithProviders(<Route path="/" component={ErrorOverview} />, {
       withRouter: true,
@@ -221,26 +193,6 @@ describe("ErrorOverview", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("erroring-questions-table"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("surfaces a count-query failure so pagination never silently disappears", async () => {
-    mockGetBoundingClientRect({ width: 100, height: 100 });
-    // the rows query succeeds but the companion count query fails
-    fetchMock.post("path:/api/dataset", (call) => {
-      const body = JSON.parse(String(call.options.body));
-      return body.fn === COUNT_FN
-        ? { status: 500, body: { message: "Count query failed" } }
-        : createDatasetResponse([{ id: 1 }]);
-    });
-
-    renderWithProviders(<Route path="/" component={ErrorOverview} />, {
-      withRouter: true,
-    });
-
-    expect(await screen.findByText("Count query failed")).toBeInTheDocument();
-    expect(
-      screen.queryByPlaceholderText("Error contents"),
     ).not.toBeInTheDocument();
   });
 
@@ -272,10 +224,6 @@ describe("ErrorOverview", () => {
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
       expect(query.args).toEqual(["timeout", "pg", "", "last_run_at", "desc"]);
-    });
-    await waitFor(async () => {
-      const countQuery = await getLastDatasetQuery(COUNT_FN);
-      expect(countQuery.args).toEqual(["timeout", "pg", ""]);
     });
 
     // filtering resets pagination: the rows query goes back to offset 0 and the

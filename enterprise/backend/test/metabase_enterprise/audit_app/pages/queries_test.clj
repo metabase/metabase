@@ -23,8 +23,15 @@
                                 :fn   (u/qualified-name query-type)}
                                additional-query-params)))))
 
-(deftest bad-table-count-test
-  (testing "bad-table-count returns the number of failing questions matching the filters"
+(defn- bad-table-total
+  "The `COUNT(*) OVER ()` total that rides on the bad-table rows as the last
+  column (0 when the filtered set is empty and no rows come back)."
+  [& args]
+  (let [rows (mt/rows (run-query ::queries/bad-table :args (vec args)))]
+    (if (seq rows) (last (first rows)) 0)))
+
+(deftest bad-table-total-count-test
+  (testing "bad-table carries a total_count matching the filtered set"
     ;; audit internal queries read the app DB outside the with-temp transaction,
     ;; so the fixtures must be committed for real
     (mt/test-helpers-set-global-values!
@@ -35,30 +42,23 @@
                                                      :executor_id (mt/user->id :crowberto)
                                                      :error       "unique-broken-table-xyz not found"})
                      ;; different started_at from the erroring card's execution: the legacy
-                     ;; latest_qe CTE joins on started_at alone, so equal timestamps across
+                     ;; latest_qe CTE joined on started_at alone, so equal timestamps across
                      ;; cards would duplicate rows
                      :model/QueryExecution _ (merge query-execution-defaults
                                                     {:card_id     ok-card-id
                                                      :executor_id (mt/user->id :crowberto)
                                                      :started_at  #t "2026-01-01T11:00:00Z"})]
         (testing "an error filter matching only the erroring card"
-          (is (= [[1]]
-                 (mt/rows (run-query ::queries/bad-table-count
-                                     :args ["unique-broken-table-xyz" nil nil])))))
-        (testing "an error filter matching nothing"
-          (is (= [[0]]
-                 (mt/rows (run-query ::queries/bad-table-count
-                                     :args ["no-such-error-substring-abc" nil nil])))))
-        (testing "the count matches the number of bad-table rows"
+          (is (= 1 (bad-table-total "unique-broken-table-xyz" nil nil nil nil))))
+        (testing "an error filter matching nothing -> no rows -> total 0"
+          (is (= 0 (bad-table-total "no-such-error-substring-abc" nil nil nil nil))))
+        (testing "the total matches the number of returned rows"
           (is (= (count (mt/rows (run-query ::queries/bad-table
                                             :args ["unique-broken-table-xyz" nil nil nil nil])))
-                 (-> (run-query ::queries/bad-table-count
-                                :args ["unique-broken-table-xyz" nil nil])
-                     mt/rows
-                     ffirst))))))))
+                 (bad-table-total "unique-broken-table-xyz" nil nil nil nil))))))))
 
-(deftest bad-table-count-filter-clauses-test
-  (testing "bad-table-count honors the db-name and collection-name filters, not just the error filter"
+(deftest bad-table-total-count-filter-clauses-test
+  (testing "the bad-table total_count honors the db-name and collection-name filters, not just the error filter"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Database   {db-a :id} {:name "erroring-db-alpha"}
                      :model/Database   {db-b :id} {:name "erroring-db-beta"}
@@ -81,25 +81,14 @@
                                                      :executor_id (mt/user->id :crowberto)
                                                      :started_at  #t "2026-03-03T13:00:00Z"
                                                      :error       "shared-filter-marker-qq"})]
-        (letfn [(cnt [& args]
-                  (-> (run-query ::queries/bad-table-count :args (vec args)) mt/rows ffirst))
-                (rows-cnt [& args]
-                  (count (mt/rows (run-query ::queries/bad-table
-                                             :args (vec (concat args [nil nil]))))))]
-          (testing "no db/collection filter matches both erroring cards"
-            (is (= 2 (cnt "shared-filter-marker-qq" nil nil))))
-          (testing "the db-name filter narrows the count to the matching database"
-            (is (= 1 (cnt "shared-filter-marker-qq" "erroring-db-alpha" nil)))
-            (testing "and the count matches the number of bad-table rows"
-              (is (= (rows-cnt "shared-filter-marker-qq" "erroring-db-alpha" nil)
-                     (cnt "shared-filter-marker-qq" "erroring-db-alpha" nil)))))
-          (testing "the collection-name filter narrows the count to the matching collection"
-            (is (= 1 (cnt "shared-filter-marker-qq" nil "Erroring Collection Alpha")))
-            (testing "and the count matches the number of bad-table rows"
-              (is (= (rows-cnt "shared-filter-marker-qq" nil "Erroring Collection Alpha")
-                     (cnt "shared-filter-marker-qq" nil "Erroring Collection Alpha")))))
-          (testing "the null-collection card is reachable via the Our Analytics fallback name"
-            (is (= 1 (cnt "shared-filter-marker-qq" nil "Our Analytics")))))))))
+        (testing "no db/collection filter matches both erroring cards"
+          (is (= 2 (bad-table-total "shared-filter-marker-qq" nil nil nil nil))))
+        (testing "the db-name filter narrows the count to the matching database"
+          (is (= 1 (bad-table-total "shared-filter-marker-qq" "erroring-db-alpha" nil nil nil))))
+        (testing "the collection-name filter narrows the count to the matching collection"
+          (is (= 1 (bad-table-total "shared-filter-marker-qq" nil "Erroring Collection Alpha" nil nil))))
+        (testing "the null-collection card is reachable via the Our Analytics fallback name"
+          (is (= 1 (bad-table-total "shared-filter-marker-qq" nil "Our Analytics" nil nil))))))))
 
 (deftest bad-table-no-duplicate-cards-test
   (testing "cards aren't duplicated when executions across cards share a started_at (latest_qe joins on card_id, not timestamp alone)"
@@ -122,7 +111,5 @@
             (testing "exactly one row, for the erroring card only (buggy join returns two)"
               (is (= 1 (count rows)))
               (is (= [erroring-id] (map first rows))))
-            (testing "the count query agrees"
-              (is (= [[1]]
-                     (mt/rows (run-query ::queries/bad-table-count
-                                         :args ["collision-error-marker-abc" nil nil])))))))))))
+            (testing "and the total_count agrees"
+              (is (= 1 (bad-table-total "collision-error-marker-abc" nil nil nil nil))))))))))
