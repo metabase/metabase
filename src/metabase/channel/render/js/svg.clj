@@ -106,12 +106,11 @@
   `(do-with-static-viz-context (fn [~binding-name] ~@body)))
 
 (defn do-with-untrusted-static-viz-context
-  "Impl for [[with-untrusted-static-viz-context]]. Renders untrusted custom-viz plugin code in a fresh
-  `SandboxPolicy/UNTRUSTED` GraalVM isolate context (see [[js.engine/untrusted-plugin-context]]) with the
-  static-viz bundle loaded, then disposes it. Unlike [[do-with-static-viz-context]] this is NOT pooled:
-  each render gets a clean, fully-isolated context, so no context tainting is needed, and the isolate's
-  VM-enforced CPU/heap limits replace the old manual render timeout. The shared isolate engine's parsed-source
-  cache keeps re-loading the bundle cheap across renders."
+  "Impl for [[with-untrusted-static-viz-context]]. Loads the static-viz bundle into a fresh
+  `SandboxPolicy/UNTRUSTED` isolate context ([[js.engine/untrusted-plugin-context]]), runs `f`, then disposes it.
+  Unpooled unlike [[do-with-static-viz-context]] — each render gets a clean context (no tainting), and the
+  isolate's VM-enforced CPU/heap limits replace the old manual render timeout; the shared engine's parsed-source
+  cache keeps bundle reloads cheap."
   [f]
   (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context))]
     (try
