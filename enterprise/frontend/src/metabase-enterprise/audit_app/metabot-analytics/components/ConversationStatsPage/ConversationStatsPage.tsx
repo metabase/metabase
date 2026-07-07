@@ -408,7 +408,7 @@ export function DataComplexityHeader() {
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: getErrorMessage(
           error,
           t`Could not recompute data complexity.`,

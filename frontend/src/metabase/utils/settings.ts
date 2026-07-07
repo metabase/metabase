@@ -58,7 +58,7 @@ class MetabaseSettings {
    */
   on(key: SettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
-    this._listeners[key]!.push(callback);
+    this._listeners[key].push(callback);
   }
 
   /**

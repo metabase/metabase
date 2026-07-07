@@ -8,7 +8,6 @@ import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { ChannelApiResponse, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -55,7 +54,7 @@ const setup = ({
   setupNotificationChannelsEndpoints({
     email: { configured: hasEmailSetup },
     slack: { configured: hasSlackSetup },
-  } as ChannelApiResponse["channels"]);
+  });
 
   const { store } = renderWithProviders(
     <Route
@@ -81,12 +80,12 @@ const setup = ({
       withRouter: true,
       storeInitialState: {
         currentUser: isEnterprise
-          ? ({
+          ? {
               ...currentUser,
               permissions: {
                 can_access_subscription: canManageSubscriptions ?? false,
               },
-            } as User)
+            }
           : currentUser,
         ...(isEnterprise && {
           settings: mockSettings(

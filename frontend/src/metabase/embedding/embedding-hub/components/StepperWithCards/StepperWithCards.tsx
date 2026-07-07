@@ -147,10 +147,13 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                                       <Group gap="xs">
                                         <Icon
                                           name="check"
-                                          c="success-secondary"
+                                          c="feedback-positive-selected"
                                           size={12}
                                         />
-                                        <Text size="sm" c="success-secondary">
+                                        <Text
+                                          size="sm"
+                                          c="feedback-positive-selected"
+                                        >
                                           {t`Done`}
                                         </Text>
                                       </Group>

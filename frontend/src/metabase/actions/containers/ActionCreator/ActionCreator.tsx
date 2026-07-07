@@ -25,7 +25,6 @@ import type {
   DatabaseId,
   WritebackAction,
   WritebackActionId,
-  WritebackQueryAction,
 } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
@@ -103,7 +102,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         ...action,
         ...values,
         visualization_settings: formSettings,
-      } as WritebackQueryAction).unwrap();
+      }).unwrap();
 
       // Sync the editor state with data from save modal form
       handleActionChange(values);

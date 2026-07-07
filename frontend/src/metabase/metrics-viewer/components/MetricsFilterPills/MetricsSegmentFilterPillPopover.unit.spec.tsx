@@ -39,7 +39,7 @@ jest.mock("../FilterPopover/FilterPopoverContent", () => ({
         onClick={() => {
           onSourceDefinitionChange(definitionSources[0], {
             __after: "filter-popover-apply",
-          } as unknown);
+          });
           onFilterApplied();
         }}
       >

@@ -100,7 +100,7 @@ export const getOrRefreshGuestSession = createAsyncThunk(
     refreshGuestSessionPromise = dispatch(
       refreshGuestSession({
         authConfig,
-        expiredToken: currentToken!,
+        expiredToken: currentToken,
       }),
     );
 

@@ -210,7 +210,7 @@ function TransformLink({ table }: { table: Table }) {
   if (!transform) {
     return (
       <Box
-        c="error"
+        c="feedback-negative"
         className={S.transformLink}
         fz="sm"
       >{t`Transform does not exist anymore`}</Box>

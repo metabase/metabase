@@ -34,8 +34,8 @@ function setup({
   );
 
   setupNotificationChannelsEndpoints({
-    email: { configured: emailConfigured } as any,
-    slack: { configured: slackConfigured } as any,
+    email: { configured: emailConfigured },
+    slack: { configured: slackConfigured },
   });
 
   fetchMock.get("path:/api/ee/security-center", {

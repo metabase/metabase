@@ -46,7 +46,7 @@ export const useGetCurrentResource = ({
 
       await dispatch(
         fetchDashboard({
-          dashId: dashboardId as number,
+          dashId: dashboardId,
           queryParams: {},
         }),
       );

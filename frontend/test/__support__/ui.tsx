@@ -170,7 +170,7 @@ export function getTestStoreAndWrapper({
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
-    initialState = _.pick(initialState, ...publicReducerNames) as State;
+    initialState = _.pick(initialState, ...publicReducerNames);
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,

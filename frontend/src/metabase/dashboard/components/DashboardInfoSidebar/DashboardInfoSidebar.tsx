@@ -206,7 +206,7 @@ const OverviewTab = ({
           onBlur={handleDescriptionBlur}
         />
         {!!descriptionError && (
-          <Text color="error" size="xs" mt="xs">
+          <Text color="feedback-negative" size="xs" mt="xs">
             {descriptionError}
           </Text>
         )}

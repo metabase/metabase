@@ -162,7 +162,7 @@ describe("getDataFocusSidebar", () => {
 
     it("returns flat list of tables for a schemaless database", () => {
       const sidebarData = getDataFocusSidebar(
-        state as any,
+        state,
         getRouteProps({ databaseId: "3" }),
       );
 

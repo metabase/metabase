@@ -62,7 +62,7 @@ export function SecurityCenterBanner() {
     <Banner
       contentGroupProps={{ wrap: "nowrap" }}
       icon="warning_round_filled"
-      bg="error"
+      bg="feedback-negative"
       body={<Text lh="inherit">{body}</Text>}
       py="md"
     />

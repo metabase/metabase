@@ -44,7 +44,7 @@ export const setup = async ({
   if (hasUsageAnalyticsPermission) {
     setupAuditInfoEndpoint();
   } else {
-    setupAuditInfoEndpoint({ auditInfo: {} as any });
+    setupAuditInfoEndpoint({ auditInfo: {} });
   }
   setupEnterprisePlugins();
 

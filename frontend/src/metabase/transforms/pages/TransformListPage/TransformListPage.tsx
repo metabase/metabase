@@ -46,7 +46,7 @@ import {
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
-import { type NamedUser, getUserName } from "metabase/utils/user";
+import { getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -216,7 +216,7 @@ export const TransformListPage = ({
           const hasUserName = owner?.first_name || owner?.last_name;
 
           if (hasUserName) {
-            const displayName = getUserName(owner as NamedUser);
+            const displayName = getUserName(owner);
             return <Ellipsified>{displayName}</Ellipsified>;
           }
 

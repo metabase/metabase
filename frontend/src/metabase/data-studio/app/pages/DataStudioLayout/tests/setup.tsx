@@ -99,12 +99,14 @@ const setupNavbarEndpoints = (isOpened = true) => {
 
 interface StoreStateOptions {
   isAdmin?: boolean;
+  canAccessTransforms?: boolean;
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
 const createStoreState = ({
   isAdmin = true,
+  canAccessTransforms = false,
   remoteSyncSettings = {},
   tokenFeatures,
 }: StoreStateOptions = {}) => {
@@ -116,6 +118,7 @@ const createStoreState = ({
       permissions: {
         can_access_data_model: isAdmin,
         can_access_db_details: false,
+        can_access_transforms: canAccessTransforms,
       },
     }),
     settings: mockSettings({
@@ -129,6 +132,7 @@ interface SetupOpts {
   remoteSyncEnabled?: boolean;
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
+  canAccessTransforms?: boolean;
   currentWorkspace?: CurrentWorkspace | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
@@ -142,6 +146,7 @@ export const setup = ({
   remoteSyncEnabled = true,
   remoteSyncBranch = null,
   isAdmin = true,
+  canAccessTransforms = false,
   currentWorkspace = null,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
@@ -189,6 +194,7 @@ export const setup = ({
 
   const state = createStoreState({
     isAdmin,
+    canAccessTransforms,
     remoteSyncSettings,
     tokenFeatures,
   });

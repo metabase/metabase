@@ -45,7 +45,7 @@ export const setup = async ({
   setupPerformanceEndpoints([]);
   setupModelPersistenceEndpoints([
     getMockModelCacheInfo({
-      card_id: card.id as number,
+      card_id: card.id,
       state: "persisted",
     }),
   ]);

@@ -78,7 +78,7 @@ function getJoinedTabledDimensionInfo(
 }
 
 function getSegmentInfo(displayName: string): SegmentDisplayInfo {
-  return { displayName } as SegmentDisplayInfo;
+  return { displayName };
 }
 
 beforeEach(() => {

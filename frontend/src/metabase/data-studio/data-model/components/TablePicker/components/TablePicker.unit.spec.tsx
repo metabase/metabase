@@ -645,8 +645,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   if (!textElement) {
     return null;
   }
-  return (textElement.closest('[data-testid="tree-item"]') ??
-    null) as HTMLElement | null;
+  return textElement.closest('[data-testid="tree-item"]') ?? null;
 }
 
 async function clickItem(

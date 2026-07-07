@@ -311,7 +311,7 @@ function assertSuccessfullUpdateToast() {
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "success")
+    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully updated");
 }
 
@@ -321,7 +321,7 @@ function assertSuccessfullDeleteToast() {
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "success")
+    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully deleted");
 }
 

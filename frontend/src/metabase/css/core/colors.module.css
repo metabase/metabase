@@ -31,17 +31,17 @@
 
 /** Non-whitelabeled Metabase brand color */
 .textMetabaseBrand {
-  color: var(--mb-color-metabase-brand);
+  color: var(--mb-color-core-metabase_brand);
 }
 
 .textSuccess {
-  color: var(--mb-color-success);
+  color: var(--mb-color-feedback-positive);
 }
 
 /* error */
 
 .textError {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }
 
 .textSlate {

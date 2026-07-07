@@ -68,7 +68,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   return (
     <Group gap="2.5rem" w="20rem">
       <Group gap="0.5rem">
-        <Icon name="warning" c="danger" size={12} />
+        <Icon name="warning" c="feedback-negative" size={12} />
         <Text
           c="text-primary-inverse"
           fw={700}

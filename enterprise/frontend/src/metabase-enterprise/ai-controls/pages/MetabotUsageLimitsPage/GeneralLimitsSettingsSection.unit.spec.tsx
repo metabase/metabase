@@ -15,12 +15,19 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 import { GeneralLimitsSettingsSection } from "./GeneralLimitsSettingsSection";
 
+type SetupOpts = {
+  limitType?: MetabotLimitType;
+  limitPeriod?: MetabotLimitPeriod;
+  quotaMessage?: string;
+  instanceMaxUsage?: number | null;
+};
+
 function setup({
-  limitType = "tokens" as MetabotLimitType,
-  limitPeriod = "monthly" as MetabotLimitPeriod,
+  limitType = "tokens",
+  limitPeriod = "monthly",
   quotaMessage = "",
   instanceMaxUsage = null as number | null,
-} = {}) {
+}: SetupOpts = {}) {
   setupPropertiesEndpoints(
     createMockSettings({
       "metabot-limit-unit": limitType,

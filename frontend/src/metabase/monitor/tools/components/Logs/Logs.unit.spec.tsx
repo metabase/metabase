@@ -74,7 +74,7 @@ describe("Logs", () => {
         if (callCount === 1) {
           return new Promise<unknown>((res) => {
             resolveFirst = res;
-          }) as Promise<any>;
+          });
         }
         return [log];
       });

@@ -10,7 +10,7 @@ import {
   createMockDashboardState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import type { Dashboard, User } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -62,7 +62,7 @@ const setupState = ({
   setupNotificationChannelsEndpoints({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
-  } as any);
+  });
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
@@ -83,7 +83,7 @@ const setupState = ({
       permissions: {
         can_access_subscription: canManageSubscriptions,
       },
-    } as User,
+    },
     dashboard: createMockDashboardState(dashboardState),
   });
 };

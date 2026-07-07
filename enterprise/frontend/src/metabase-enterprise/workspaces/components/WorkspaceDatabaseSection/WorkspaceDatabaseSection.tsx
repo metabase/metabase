@@ -52,7 +52,7 @@ export function WorkspaceDatabaseSection({
     if (error) {
       sendToast({
         message: t`Failed to enable Workspaces`,
-        toastColor: "error",
+        toastColor: "feedback-negative",
         icon: "warning",
       });
     }
@@ -71,7 +71,7 @@ export function WorkspaceDatabaseSection({
         if (error) {
           sendToast({
             message: t`Failed to remove connection`,
-            toastColor: "error",
+            toastColor: "feedback-negative",
           });
         }
       },
@@ -137,7 +137,11 @@ export function WorkspaceDatabaseSection({
                     : t`Add admin connection`}
                 </Button>
                 {hasAdminConnection && (
-                  <Button variant="filled" color="error" onClick={handleRemove}>
+                  <Button
+                    variant="filled"
+                    color="feedback-negative"
+                    onClick={handleRemove}
+                  >
                     {t`Remove admin connection`}
                   </Button>
                 )}

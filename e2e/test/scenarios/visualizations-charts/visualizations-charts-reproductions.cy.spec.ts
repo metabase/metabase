@@ -550,12 +550,12 @@ describe("issue 55853", () => {
         const axisTitle: Array<{ text: string; element: HTMLElement }> = [];
 
         $texts.each((i, el) => {
-          const text = (el as HTMLElement).textContent?.trim() || "";
+          const text = el.textContent?.trim() || "";
           if (text.includes("%") && text !== "value") {
-            percentTexts.push({ text, element: el as HTMLElement });
+            percentTexts.push({ text, element: el });
           }
           if (text === "value") {
-            axisTitle.push({ text, element: el as HTMLElement });
+            axisTitle.push({ text, element: el });
           }
         });
 

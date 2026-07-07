@@ -44,8 +44,7 @@ function DataPermissionsPage({
   const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
   const databases = useSelector(
     (state) =>
-      (getMetadataUnfiltered(state).databasesList() as Database[]) ??
-      EMPTY_DATABASE_LIST,
+      getMetadataUnfiltered(state).databasesList() ?? EMPTY_DATABASE_LIST,
   );
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},
