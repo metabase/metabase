@@ -1,9 +1,7 @@
 (ns metabase.transforms-rest.api.transform-dag-run
-  "`/api/transform-dag-run` routes: operations on a single manual DAG-reprocess run (the
-  `transform_dag_run` table) — its member transform runs and canceling it. Rows come from the
-  unified runs listing (`GET /api/transform/runs`, `run_type = dag`); per-transform DAG endpoints
-  (triggering a run and previewing it) live on `/api/transform/:id/...` in
-  [[metabase.transforms-rest.api.transform]]."
+  "`/api/transform-dag-run` routes: operations on a single manual DAG-reprocess run — listing its
+  member transform runs and canceling it. Triggering and previewing a DAG run live on
+  `/api/transform/:id/...` in [[metabase.transforms-rest.api.transform]]."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -20,8 +18,8 @@
   [:upstream :downstream])
 
 (def DagRunTransformRunResponse
-  "A member transform run of a DAG run — a `transform_run` row (linked via `dag_run_id`), hydrated
-  with its transform, the same shape a job run's member runs use."
+  "A member transform run of a DAG run, hydrated with its transform — the same shape as a job run's
+  member runs."
   [:map {:closed true}
    [:id pos-int?]
    [:transform_id [:maybe pos-int?]]
@@ -43,8 +41,7 @@
    [:checkpoint_hi_value {:optional true} [:maybe :string]]])
 
 (api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential DagRunTransformRunResponse]
-  "Get the transform runs that made up a specific DAG run (the drill-down of a `dag` row in the
-  unified runs listing)."
+  "Get the transform runs that made up a specific DAG run."
   [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
   (api/check-data-analyst)
   (api/check-404 (t2/select-one :model/TransformDagRun :id run-id))

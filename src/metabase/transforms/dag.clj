@@ -98,8 +98,7 @@
 
 (defn dag-run-transforms
   "Return the transforms a DAG reprocess from `transform-id` would run, in planned execution order.
-  Used to preview the run in a confirmation dialog before committing to it. `direction` is as in
-  [[run-dag!]]."
+  `direction` is as in [[run-dag!]]."
   [transform-id direction]
   (-> (dag-run-plan transform-id direction) :plan :order vec))
 

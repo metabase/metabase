@@ -232,10 +232,10 @@
       (update :data #(map transforms-base.u/present-run %))))
 
 (def ^:private RunSummaryResponse
-  "One row of the unified collection-level Runs listing. A row is a job run, a manual DAG-reprocess
-  run, or a standalone transform run (one not belonging to a job/DAG run). Identified by
-  `(run_type, id)`; `entity_id` is the associated job/transform id (for building drill-down URLs) and
-  `name` its name (nil if it was deleted). `direction` is set only for DAG runs."
+  "One row of the unified runs listing: a job run, a manual DAG-reprocess run, or a standalone
+  transform run (one not belonging to a job/DAG run). Identified by `(run_type, id)`; `entity_id`
+  is the id of the associated job/transform and `name` its name (nil if it was deleted).
+  `direction` is set only for DAG runs."
   [:map {:closed true}
    [:run_type [:enum :job :dag :transform]]
    [:id pos-int?]
@@ -255,14 +255,12 @@
                                          [:limit pos-int?]
                                          [:offset :int]
                                          [:total :int]]
-  "Paginated unified run history for the Runs page (the default, collection-level tab). Each row is a
-  top-level run — a job run, a manual DAG-reprocess run, or a standalone transform run (a transform
-  run not part of any job/DAG run) — never a member run of a job/DAG. Use `GET /run` for the
-  low-level per-transform-run tab.
+  "Paginated unified run history: every row is a root run — a job run, a manual DAG-reprocess run,
+  or a standalone transform run — never a member run of a job/DAG (those are listed by `GET /run`
+  and the per-run `transform-runs` endpoints).
 
-  `types` selects which kinds to include (`job`/`dag`/`transform`; all by default). `transform-ids`
-  narrows to runs that ran any of the given transforms (a job/DAG run whose members include one, or
-  those transforms' own standalone runs). The other filters mirror `GET /run`."
+  `types` selects which kinds to include (all by default); `transform-ids` narrows to runs that ran
+  any of the given transforms. The remaining filters work as in `GET /run`."
   [_route-params
    query-params :-
    [:map
@@ -420,8 +418,8 @@
 (api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
                                                                     [:id pos-int?]
                                                                     [:name :string]]]
-  "Preview the transforms a DAG reprocess from this transform would run, in execution order.
-  Used to populate the confirmation dialog before triggering [[run-dag!]] via `POST /:id/run-dag`."
+  "Preview the transforms a DAG reprocess from this transform would run (see `POST /:id/run-dag`),
+  in execution order."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (api/read-check :model/Transform id)

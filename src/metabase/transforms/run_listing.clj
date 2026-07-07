@@ -1,16 +1,13 @@
 (ns metabase.transforms.run-listing
-  "The unified, collection-level \"Runs\" listing that backs the default tab of the Runs page. A single
-  paged view over the three kinds of *root* run:
+  "A single paged listing over the three kinds of root run:
 
-  - a scheduled/manual **job run**       (`transform_job_run`)
-  - a manual **DAG-reprocess run**       (`transform_dag_run`)
-  - a standalone **transform run**       (`transform_run` not belonging to a job or DAG run — i.e.
-                                          a \"DAG with a single node\", triggered from one transform)
+  - a job run                  (`transform_job_run`)
+  - a manual DAG-reprocess run (`transform_dag_run`)
+  - a standalone transform run (`transform_run` not belonging to a job or DAG run)
 
-  Member transform runs that belong to a job or DAG run are deliberately excluded here — they surface
-  only when you drill into their parent run. Because ids are per-table, a row is identified by the
-  `(run_type, id)` pair, and `entity_id` points at the associated job/transform so the FE can build
-  the drill-down URL."
+  Member transform runs that belong to a job or DAG run are excluded — they are reachable through
+  their parent run. Because ids are per-table, a row is identified by the `(run_type, id)` pair;
+  `entity_id` is the id of the associated job/transform."
   (:require
    [medley.core :as m]
    [metabase.transforms.models.util :as transforms.models.u]
@@ -19,16 +16,14 @@
 (set! *warn-on-reflection* true)
 
 (def run-types
-  "The `run_type` discriminator values the unified listing can return."
+  "The `run_type` discriminator values a listing row can have."
   [:job :dag :transform])
 
 ;;; ---------------------------------------------- Per-source subqueries ----------------------------------------------
 
-;; Every branch projects the SAME column list in the SAME order so they union cleanly. `entity_id` is
-;; the associated job/transform id; `direction` is DAG-only; job runs have no `user_id` column and
-;; standalone transform runs / DAG runs are surfaced with their `run_method` (DAG runs are always
-;; manual). Timestamps and status/run_method/direction come back raw (strings) and are keywordized in
-;; the API layer via `present-run-summary`.
+;; Each branch must project the same columns in the same order for the UNION ALL to line up;
+;; `[nil :col]` fills in columns a table lacks (job runs have no `user_id`, only DAG runs have a
+;; `direction`, and DAG runs are always manual).
 
 (defn- job-run-subquery [transform-ids]
   {:select [[[:inline "job"] :run_type]
@@ -91,17 +86,15 @@
                   (:transform types) (conj (transform-run-subquery transform-ids)))}))
 
 (defn paged-run-summaries
-  "Return a page of the unified collection-level run listing, in the FE-conventional
-  `{:data :limit :offset :total}` envelope. Rows are raw (see the ns docstring); the API layer
-  keywordizes and hydrates run names.
+  "Return a page of root runs as a `{:data :limit :offset :total}` envelope. Rows are raw — see
+  [[hydrate-run-names]] and [[present-run-summary]].
 
-  Filter semantics follow the low-level transform-run listing
-  (`metabase.transforms.models.transform-run/paged-runs`). Options:
-  - `:types`          subset of [[run-types]] (as keywords) to include; nil/empty means all three
-  - `:statuses`       restrict to any of these status strings
-  - `:run-methods`    restrict to any of these triggers (`\"manual\"`/`\"cron\"`)
-  - `:start-time`     QP-style date range string constraining `start_time`
-  - `:end-time`       QP-style date range string constraining `end_time`
+  Options (filter semantics match [[metabase.transforms.models.transform-run/paged-runs]]):
+  - `:types`          subset of [[run-types]] to include; nil/empty means all three
+  - `:statuses`       match any of these status strings
+  - `:run-methods`    match any of these triggers (`\"manual\"`/`\"cron\"`)
+  - `:start-time`     date range string (as in the QP date parameters) constraining `start_time`
+  - `:end-time`       likewise for `end_time`
   - `:transform-ids`  only runs that ran any of these transforms (job/DAG runs whose members include
                       one, or the standalone runs of them)
   - `:sort-column`    `\"start_time\"` / `\"end_time\"`
@@ -113,7 +106,7 @@
         inner      (union-subquery types transform-ids)
         where      (into [:and] (remove nil?)
                          [(when (seq statuses)    [:in :status (set statuses)])
-                          ;; optimization: started-only queries can use the is_active partial index
+                          ;; started ⇒ still active, as in the per-table run listings
                           (when (= (set statuses) #{"started"}) [:= :is_active true])
                           (when (seq run-methods) [:in :run_method (set run-methods)])
                           (when start-time        (transforms.models.u/timestamp-constraint :start_time start-time))
@@ -131,8 +124,8 @@
      :total  (:count (first (t2/query (merge base {:select [[[:count :*] :count]]}))))}))
 
 (defn hydrate-run-names
-  "Assoc a `:name` on each raw summary row (from [[paged-run-summaries]]): the job name for job runs,
-  else the seed/target transform name. Names may be nil when the underlying job/transform was deleted."
+  "Assoc a `:name` on each raw summary row: the job name for job runs, else the transform name. Nil
+  when the underlying job/transform was deleted."
   [rows]
   (let [by-type   (group-by :run_type rows)
         job-ids   (seq (map :entity_id (get by-type "job")))
@@ -146,9 +139,7 @@
          rows)))
 
 (defn present-run-summary
-  "Keywordize the discriminator columns of a raw summary row. Timestamp localization is left to the
-  API layer (via `transforms-base.util/localize-run-timestamps`) to keep this model namespace free of
-  a cross-module dependency."
+  "Keywordize the discriminator columns of a raw summary row."
   [row]
   (-> row
       (update :run_type keyword)
