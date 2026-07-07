@@ -19,7 +19,7 @@
  */
 
 const ERROR_MESSAGE =
-  "Type casts (`as T`) must be preceded by a comment explaining why the cast is necessary. Use `// Legacy type cast. FIXME` if you are adding a comment on a boy-scout basis to a pre-existing cast.";
+  "Type casts (`as T`) must be preceded by a comment explaining why the cast is necessary.";
 
 // A cast is anchored to the nearest ancestor that is a direct child of one of
 // these containers — i.e. the enclosing statement or class member. A comment
