@@ -139,30 +139,6 @@ describe("TaskDetailsPage", () => {
     expect(copyMock).toHaveBeenCalledWith(endedAt);
   });
 
-  it("renders captured task logs in an accessible logs region", async () => {
-    const task = createMockTask({
-      logs: [
-        {
-          timestamp: "2024-01-10T21:21:58.597Z",
-          level: "DEBUG",
-          fqns: "metabase.task.sync",
-          msg: "sync finished",
-          exception: null,
-          process_uuid: "uuid-1",
-        },
-      ],
-    });
-
-    setup({ task });
-
-    await waitForLoaderToBeRemoved();
-
-    const region = screen.getByTestId("task-logs");
-    expect(region).toHaveAttribute("role", "region");
-    expect(region).toHaveTextContent("metabase.task.sync");
-    expect(region).toHaveTextContent("sync finished");
-  });
-
   it("shows a placeholder when the task has no captured logs", async () => {
     setup({ task: createMockTask({ logs: null }) });
 

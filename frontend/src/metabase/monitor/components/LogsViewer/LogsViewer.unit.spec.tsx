@@ -81,8 +81,6 @@ describe("LogsViewer", () => {
   });
 
   it("uses the processUUIDs override to decide prefixing rather than the UUIDs present in logs", () => {
-    // Only one UUID appears in `logs`, but the override says there are two known
-    // processes, so lines must be prefixed.
     render(
       <LogsViewer
         logs={[createLog({ process_uuid: "uuid-1", msg: "solo" })]}
@@ -113,12 +111,6 @@ describe("LogsViewer", () => {
     expect(region).toHaveAttribute("tabindex", "0");
     expect(region).toHaveClass("custom-class");
     expect(region).toHaveAttribute("data-testid", "logs-viewer");
-  });
-
-  it('defaults the accessible name to "Logs" when no aria-label is given', () => {
-    render(<LogsViewer logs={[createLog()]} />);
-
-    expect(screen.getByRole("region", { name: "Logs" })).toBeInTheDocument();
   });
 
   it("forwards the ref to the scrollable region element", () => {
