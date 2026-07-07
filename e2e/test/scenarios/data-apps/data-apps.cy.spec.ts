@@ -1,4 +1,9 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
 const { H } = cy;
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > data apps", () => {
   beforeEach(() => {
@@ -8,8 +13,13 @@ describe("scenarios > data apps", () => {
   });
 
   it("lists a data app and renders it in its sandboxed iframe with real SDK data", () => {
+    const ordersTable = { tableId: ORDERS_ID, databaseId: SAMPLE_DB_ID };
     H.mockDataApp("renders-interactive-question", {
       displayName: "Renders Interactive Question",
+      testEnv: {
+        scalarQuery: { ...ordersTable, aggregations: [{ type: "count" }] },
+        questionQuery: ordersTable,
+      },
     });
 
     cy.visit("/admin/settings/data-apps");

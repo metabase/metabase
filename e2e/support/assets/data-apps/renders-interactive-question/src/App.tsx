@@ -4,15 +4,13 @@ import {
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 
-const ordersTable = { tableId: 5, databaseId: 1 };
+import { getTestEnv } from "./test-env";
 
 export default function App() {
-  const ordersCount = useMetabaseQuery({
-    ...ordersTable,
-    aggregations: [{ type: "count" }],
-  });
+  const { scalarQuery, questionQuery } = getTestEnv();
+  const ordersCount = useMetabaseQuery(scalarQuery);
   const totalOrders = ordersCount.data?.rawRows?.[0]?.[0];
-  const ordersQuery = useMetabaseQueryObject(ordersTable);
+  const ordersQuery = useMetabaseQueryObject(questionQuery);
 
   return (
     <div

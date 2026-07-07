@@ -5,9 +5,17 @@ type MockDataAppOptions = {
   displayName?: string;
   /** `allowed_hosts` served in the bundle response header. */
   allowedHosts?: string[];
+  /**
+   * Arbitrary config a fixture reads at runtime, so it doesn't hard-code values
+   * that track the Cypress snapshot (e.g. sample-DB ids). It's JSON-serialized
+   * and prepended to the served bundle as `globalThis.__METABASE_DATA_APP_TEST_ENV__`;
+   * since the bundle is evaluated as one script in the sandbox realm, the app
+   * reads it as a plain global. Each fixture defines its own shape (see the
+   * fixture's `test-env.ts`).
+   */
+  testEnv?: unknown;
 };
 
-/** A materialized-data-app metadata row, as `/api/data-app/:slug` returns it. */
 function dataAppMeta(
   slug: string,
   displayName: string,
@@ -30,29 +38,22 @@ function dataAppMeta(
 }
 
 /**
- * Set up a data app for the current test without going through remote-sync/git.
- *
- * Builds the fixture `appName` (its committed `src/` layered over the
- * `create-data-app` template) with the Vite API — so the template + real build
- * are still exercised — then mocks the data-app API so the app can be listed,
- * opened, and rendered as if it had been synced:
- *
- *   GET /api/data-app                -> [app]            (admin list)
- *   GET /api/data-app/repo-status    -> { configured }   (admin page)
- *   GET /api/data-app/:slug          -> app metadata      (drives AppView)
- *   GET /api/data-app/:slug/bundle   -> the built bundle  (drives the iframe)
- *
- * The materialization + serving these stub out are covered by the backend
- * tests; this keeps the browser-only path real: build -> `/embed/data-app/:slug`
- * shell -> fetch bundle -> Near-Membrane sandbox -> host provider -> render.
- *
- * Reused across data-app cases: each case commits only its `src/`, and passes
- * its fixture dir name as `appName` (which is also the slug).
+ * Set up a data app for the current test
  */
-export function mockDataApp(appName: string, options: MockDataAppOptions = {}) {
+export const mockDataApp = (
+  appName: string,
+  options: MockDataAppOptions = {},
+) => {
   const slug = appName;
   const displayName = options.displayName ?? appName;
   const allowedHosts = options.allowedHosts ?? [];
+
+  // Prelude runs in the sandbox realm before the bundle's factory, so the app
+  // can read the injected config as a global (see MockDataAppOptions.testEnv).
+  const prelude =
+    options.testEnv !== undefined
+      ? `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(options.testEnv)};\n`
+      : "";
 
   return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
     const app = dataAppMeta(slug, displayName, allowedHosts);
@@ -68,24 +69,18 @@ export function mockDataApp(appName: string, options: MockDataAppOptions = {}) {
           "content-type": "text/javascript",
           "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
         },
-        body: bundleCode,
+        body: prelude + bundleCode,
       },
     );
 
     return cy.wrap({ slug, displayName }, { log: false });
   });
-}
+};
 
-/** Open a data app at `/data-app/:slug`. */
 export function openDataApp(slug: string) {
   return cy.visit(`/data-app/${slug}`);
 }
 
-/**
- * The body of a data app's sandboxed iframe, selected by its display name (the
- * host sets the iframe `title` to the app's display name). Same-origin, so
- * Cypress can reach into it.
- */
 export function dataAppIframe(displayName: string) {
   return getIframeBody(`iframe[title="${displayName}"]`);
 }
