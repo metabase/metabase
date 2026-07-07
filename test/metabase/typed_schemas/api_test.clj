@@ -222,6 +222,39 @@
        {:id 247})
       (is (= 1 @table-select-count)))))
 
+(deftest source-card-metric-schema-omits-mapped-table-dimensions-test
+  (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
+                typed-schemas.api/table-source-names (constantly {10 "employee_store_roster"})
+                typed-schemas.api/metric-dimensions
+                (constantly [{:id   "count-dimension-uuid"
+                              :name "count"}
+                             {:id             "store-name-dimension-uuid"
+                              :name           "store_name"
+                              :display-name   "Store Name"
+                              :effective-type :type/Text
+                              :table-id       10
+                              :sources        [{:type :field, :field-id 42}]}])]
+    (is (= {:type         "metric"
+            :key          "storesWithOver5Employees"
+            :id           259
+            :name         "Stores with Over 5 Employees"
+            :columns      [{:name "Stores with Over 5 Employees"
+                            :displayName "Stores with Over 5 Employees"
+                            :jsType "unknown"}]
+            :sourceCardId 258
+            :dimensions   {"count" {:type        "column"
+                                    :name        "count"
+                                    :displayName "count"
+                                    :jsType      "unknown"
+                                    :key         "count"
+                                    :id          "count-dimension-uuid"
+                                    :metricId    259}}}
+           (#'typed-schemas.api/metric-schema
+            {:id   259
+             :name "Stores with Over 5 Employees"}
+            {:id            259
+             :dataset_query {:stages [{:source-card 258}]}})))))
+
 (deftest measure-schema-uses-result-column-test
   (testing "measure result columns come from the measure definition when available"
     (with-redefs [typed-schemas.api/measure-result-column

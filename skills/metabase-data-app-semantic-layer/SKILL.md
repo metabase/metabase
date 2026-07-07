@@ -14,7 +14,7 @@ Keep the semantic layer and presentation layer separate.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
-- Build queries with `source: schema.tables.<name>`, generated `fields`, generated `segments`, generated `measures`, generated Metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; Metrics are aggregation expressions, not query sources.
+- Build queries with `source: schema.tables.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
 - Prefer semantically rich table queries over shallow table dumps. Use curated table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
@@ -30,7 +30,7 @@ Keep the semantic layer and presentation layer separate.
 - When wrapping an SDK-rendered question in a card or section that already has its own title, pass `title={false}` to the SDK question component to avoid duplicate generated question titles.
 - `useMetabaseQueryObject(...)` returns `{ query, error, isLoading }`. Pass only the `query` property as `card={{ query }}` to `InteractiveQuestion` or `StaticQuestion`; never pass the whole hook result as `card.query`.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. For typed `data.rows`, use literal keys such as `row.count` or generated field names such as `row[ordersTable.fields.createdAt.name]`. Use `data.columns` with `rawRows` or after explicitly narrowing a key; do not index typed rows with arbitrary `string` values from `data.columns`.
-- Do not cast query objects to `Parameters<typeof useMetabaseQuery>[0]`. That erases the generated table/Metric validation. Use `useMetabaseQuery<typeof table>(...)`, or type a reusable query object with `satisfies MetabaseQueryOptions<typeof table>`.
+- Do not cast query objects to `Parameters<typeof useMetabaseQuery>[0]`. That erases the generated table/metric validation. Use `useMetabaseQuery<typeof table>(...)`, or type a reusable query object with `satisfies MetabaseQueryOptions<typeof table>`.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess table keys, field keys, or column names from the Metabase API, business intuition, or old mock data; only use entries actually emitted in `src/metabase.data.ts`.
 - Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
 - Before claiming the work is done or preparing a final handoff, run a TypeScript type-only check and report the command/result. If the check fails, fix the type errors before any final summary.
@@ -42,8 +42,8 @@ If the schema file already exists, use it. If it is missing or stale, treat sche
 Before generating, make sure the user has explicitly chosen the library scope the app needs:
 
 - `includeDataLibrary=true` for the whole `Library / Data` tree.
-- `includeMetricLibrary=true` for the whole `Library / Metrics` tree.
-- `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or Metrics library subcollections.
+- `includeMetricLibrary=true` for the whole `Library / metrics` tree.
+- `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
 - `database=<name-or-id>` when the app should use tables from one database.
 
 If the user did not already choose a library scope, stop and ask what they want. Warn before exporting the whole instance: including everything is noisy, bloats context, and makes agents more likely to pick irrelevant entities.
@@ -94,15 +94,15 @@ import {
   aggregations,
   breakout,
   filter,
+  orderBy,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 import schema from "../metabase.data";
 
 const ordersTable = schema.tables.orders;
-type OrdersTable = typeof ordersTable;
 
-const { data, isLoading, error } = useMetabaseQuery<OrdersTable>({
+const { data, isLoading, error } = useMetabaseQuery({
   source: ordersTable,
   filters: [
     ordersTable.segments.completed,
@@ -110,18 +110,21 @@ const { data, isLoading, error } = useMetabaseQuery<OrdersTable>({
   ],
   aggregations: [aggregations.sum(ordersTable.fields.amount)],
   breakouts: [breakout(ordersTable.fields.createdAt, { unit: "month" })],
+  orderBys: [orderBy(ordersTable.fields.createdAt, "desc", { unit: "month" })],
   limit: 100,
 });
 ```
 
+For direct row access, prefer letting `useMetabaseQuery(...)` infer the query shape from the inline query object. If you need a reusable query object and table ownership checks, type the object with `satisfies MetabaseQueryOptions<OrdersTable>`, then pass it to `useMetabaseQuery(query)`. Avoid forcing the hook generic on selected-field queries when you need precise row keys from `data.rows`.
+
 Use keyed schema objects:
 
 - Tables: `source: schema.tables.<table>`
-- Metrics: `schema.metrics.<metric>` inside `aggregations`
+- metrics: `schema.metrics.<metric>` inside `aggregations`
 - Fields: `schema.tables.<table>.fields.<field>`
 - Segments: `schema.tables.<table>.segments.<segment>`
 - Measures: `schema.tables.<table>.measures.<measure>`
-- Metric dimensions: `schema.metrics.<metric>.dimensions.<group>.<dimension>`
+- metric dimensions: `schema.metrics.<metric>.dimensions.<group>.<dimension>`
 
 Do not pass raw dimension strings like `"created_at"` or `"segment"`.
 
@@ -131,9 +134,8 @@ For a table query, pass the generated table object as `source`:
 
 ```ts
 const recordsTable = schema.tables.records;
-type RecordsTable = typeof recordsTable;
 
-const { data } = useMetabaseQuery<RecordsTable>({
+const { data } = useMetabaseQuery({
   source: recordsTable,
   fields: [recordsTable.fields.id, recordsTable.fields.status],
 });
@@ -142,7 +144,7 @@ const { data } = useMetabaseQuery<RecordsTable>({
 For grouped table summaries, include at least one aggregation:
 
 ```ts
-useMetabaseQuery<RecordsTable>({
+useMetabaseQuery({
   source: recordsTable,
   filters: [
     recordsTable.segments.activeRecords,
@@ -150,13 +152,14 @@ useMetabaseQuery<RecordsTable>({
   ],
   aggregations: [recordsTable.measures.totalAmount],
   breakouts: [breakout(recordsTable.fields.createdAt, { unit: "month" })],
+  orderBys: [orderBy(recordsTable.fields.createdAt, "desc", { unit: "month" })],
 });
 ```
 
 For basic aggregations without a curated measure, use the `aggregations` helpers:
 
 ```ts
-useMetabaseQuery<RecordsTable>({
+useMetabaseQuery({
   source: recordsTable,
   aggregations: [
     aggregations.count(),
@@ -166,35 +169,39 @@ useMetabaseQuery<RecordsTable>({
 });
 ```
 
-Table fields, segments, measures, filters, and breakouts must come from the queried table. Pass the table schema generic (`useMetabaseQuery<RecordsTable>`) so TypeScript can validate the query.
+When using the same helper more than once, Metabase may return numbered runtime keys such as `sum`, `sum_2`, and `sum_3`. TypeScript only models the base helper key today. For custom KPI code that intentionally uses repeated same-kind aggregations, read through `data.columns` or cast the row to `Record<string, unknown>` before accessing numbered keys. Prefer curated measures or separate queries when that is clearer.
 
-Sorting helpers are not available in this PR stage. Let Metabase's default visualization ordering stand, or choose a table/measure/breakout that naturally produces the desired order.
+Table fields, segments, measures, filters, breakouts, and orderBys must come from the queried table. For reusable query objects, use `satisfies MetabaseQueryOptions<RecordsTable>` so TypeScript can validate the query while preserving precise row keys.
 
-## Metric aggregation recipes
+## metric aggregation recipes
 
-For a metric-backed query, pass the generated table object as `source` and the generated Metric object in `aggregations`:
+For a metric-backed query, pass the generated table object as `source` and the generated metric object in `aggregations`:
 
 ```ts
 const ordersTable = schema.tables.orders;
 const revenueMetric = schema.metrics.revenue;
-type OrdersTable = typeof ordersTable;
 
-const { data } = useMetabaseQuery<OrdersTable>({
+const { data } = useMetabaseQuery({
   source: ordersTable,
   aggregations: [revenueMetric],
 });
 ```
 
-Use generated metric dimensions for filters and breakouts in queries that aggregate the owning Metric. Dimensions from the metric's source table work directly. Dimensions from related tables also work when the generated field includes `sourceFieldId`; prefer those related-table dimensions for readable labels instead of grouping by raw foreign key IDs:
+Use generated metric dimensions for filters and breakouts in queries that aggregate the owning metric. Dimensions from the metric's source table work directly. Dimensions from related tables also work when the generated field includes `sourceFieldId`; prefer those related-table dimensions for readable labels instead of grouping by raw foreign key IDs:
 
 ```ts
-useMetabaseQuery<OrdersTable>({
+useMetabaseQuery({
   source: ordersTable,
   aggregations: [revenueMetric],
   filters: [filter(revenueMetric.dimensions.orders.status, "=", "paid")],
   breakouts: [
     breakout(revenueMetric.dimensions.orders.createdAt, { unit: "month" }),
     breakout(revenueMetric.dimensions.franchises.name),
+  ],
+  orderBys: [
+    orderBy(revenueMetric.dimensions.orders.createdAt, "desc", {
+      unit: "month",
+    }),
   ],
 });
 
@@ -205,10 +212,10 @@ breakout(revenueMetric.dimensions.franchises.name);
 breakout(revenueMetric.dimensions.orders.franchiseId);
 ```
 
-Metric-backed table queries can include helper aggregations over generated metric dimensions. They can also use compatible saved Segments and Measures from the table source when the generated schema exposes them:
+Queries backed by metrics can include helper aggregations over generated metric dimensions. They can also use compatible saved Segments and Measures from the table source when the generated schema exposes them:
 
 ```ts
-useMetabaseQuery<OrdersTable>({
+useMetabaseQuery({
   source: ordersTable,
   filters: [schema.tables.orders.segments.completed],
   aggregations: [
@@ -220,12 +227,12 @@ useMetabaseQuery<OrdersTable>({
 });
 ```
 
-Metric aggregations must belong to the table source. Do not use source-card metrics in table-source queries. Metric dimensions are scoped to their owning Metric: if a query uses `revenueMetric.dimensions.*` in filters, helper aggregations, or breakouts, it must also include `revenueMetric` in `aggregations`. Do not use metric dimensions as standalone table fields for unrelated `count()` or table-measure queries. Metric dimensions must also resolve to the table source. Pass the table schema generic (`useMetabaseQuery<OrdersTable>`) so TypeScript can validate the query.
+A metric aggregation must belong to the table source. Do not use source-card metrics in table-source queries. Generated metric dimensions are scoped to their owning metric: if a query uses `revenueMetric.dimensions.*` in filters, helper aggregations, breakouts, or orderBys, it must also include `revenueMetric` in `aggregations`. Do not use metric dimensions as standalone table fields for unrelated `count()` or table-measure queries. Generated metric dimensions must also resolve to the table source. For reusable query objects, use `satisfies MetabaseQueryOptions<typeof ordersTable>` so TypeScript can validate the query while preserving precise row keys.
 
 ## SDK-rendered views
 
-Table fields, segments, measure aggregations, and metric aggregations must come from the queried table. Metric dimensions used in filters, helper aggregations, and breakouts must resolve to the queried table and belong to a metric included in the same query's `aggregations`.
-When table queries use `fields`, `segments`, `aggregations`, or `breakouts`, pass the table schema generic (`useMetabaseQuery<RecordsTable>`) so TypeScript can validate the query.
+Table fields, segments, measure aggregations, and metric aggregations must come from the queried table. Generated metric dimensions used in filters, helper aggregations, breakouts, and orderBys must resolve to the queried table and belong to a metric included in the same query's `aggregations`.
+When table queries use `fields`, `segments`, `aggregations`, `breakouts`, or `orderBys`, prefer inline inference or a reusable query object with `satisfies MetabaseQueryOptions<typeof recordsTable>` so TypeScript can validate the query without losing precise result-row keys.
 
 ## Interactive Metabase Views
 
@@ -234,6 +241,8 @@ Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the
 `useMetabaseQueryObject` supports generated table queries, including metric aggregations. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization. Do not pass generics to `useMetabaseQueryObject`; it returns `{ query, error, isLoading }`, not query result rows.
 
 The examples below use `return null` for minimal loading and error handling. In a real app, render the app's existing loading or error UI there. Passing `card={{ query }}` is safe while `query` is `null`; do not pass the full `{ query, error, isLoading }` hook result as `card.query`.
+
+When wrapping `useMetabaseQueryObject` in a reusable chart/card component, destructure and render `error`; do not read only `{ query }`, because query-construction failures otherwise look like endless loading. Calling the hook inside that child component is valid React. Do not call hooks directly inside loops, conditions, or callbacks in the parent component.
 
 Wrong/right pattern:
 
@@ -247,7 +256,7 @@ const { query: trendQuery } = useMetabaseQueryObject(querySpec);
 
 Hook typing:
 
-- `useMetabaseQuery<TableSchema>(...)` accepts a generated table source generic and returns typed row data.
+- `useMetabaseQuery(...)` infers typed row data from the generated `source` and query object. For reusable query objects, use `satisfies MetabaseQueryOptions<...>` on the object instead of forcing the hook generic.
 - `useMetabaseQueryObject(...)` accepts no generic and returns `{ query, error, isLoading }`. Pass the `query` property to `card={{ query }}`.
 - Do not use `as Parameters<typeof useMetabaseQuery>[0]` to quiet query typing errors. It hides invalid table fields, metric aggregations, and breakouts. Prefer `useMetabaseQuery<typeof table>(query)` or `const query = { ... } satisfies MetabaseQueryOptions<typeof table>`.
 
@@ -438,9 +447,49 @@ breakout(ordersTable.fields.amount, {
   binning: { strategy: "num-bins", "num-bins": 10 },
 });
 breakout(ordersTable.fields.state);
+
+orderBy(ordersTable.fields.createdAt, "desc", { unit: "month" });
 ```
 
-For metric queries, pass generated Metric dimensions to `filter(...)` and `breakout(...)`:
+Do not hand-write `orderBys` object literals such as `{ field, direction }` or `{ fieldId, direction }`; use `orderBy(...)`. When ordering the same date field used by a date breakout, pass the same `unit` to both `breakout(...)` and `orderBy(...)`.
+
+For top-N grouped summaries, order by the aggregation result, not the raw source field. Store the aggregation helper in a local constant and pass that same constant to both `aggregations` and `orderBy(...)`:
+
+```ts
+const avgQuantity = aggregations.avg(inventoryTable.fields.quantityOnHand);
+
+const { query, error, isLoading } = useMetabaseQueryObject({
+  source: inventoryTable,
+  aggregations: [avgQuantity],
+  breakouts: [breakout(inventoryTable.fields.ingredient)],
+  orderBys: [orderBy(avgQuantity, "desc")],
+  limit: 15,
+});
+```
+
+For user-selectable sorting, build a typed map of allowed generated fields instead of indexing the whole `fields` object:
+
+```ts
+import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-app";
+
+type SortKey = "revenue" | "orders";
+type ScorecardTable = typeof scorecardTable;
+
+type ScorecardField =
+  ScorecardTable["fields"][keyof ScorecardTable["fields"]];
+
+const sortFields = {
+  revenue: scorecardTable.fields.netRevenue,
+  orders: scorecardTable.fields.orders,
+} satisfies Record<SortKey, ScorecardField>;
+
+const query = {
+  source: scorecardTable,
+  orderBys: [orderBy(sortFields[sortKey], "desc")],
+} satisfies MetabaseQueryOptions<ScorecardTable>;
+```
+
+For metric queries, pass generated metric dimensions to `filter(...)` and `breakout(...)`:
 
 ```ts
 filter(revenueMetric.dimensions.orders.status, "=", "paid");
@@ -475,7 +524,7 @@ Before implementing filters, create a filter contract for the visible dashboard.
 
 - For each filter, name the runtime query that provides its options.
 - For each filter, name the raw value used in `filter(...)`.
-- For each card, table, KPI, and trend, name the generated table field or Metric dimension that can receive that filter.
+- For each card, table, KPI, and trend, name the generated table field or metric dimension that can receive that filter.
 - If a filter only applies to one section, keep it section-scoped or omit it from the global filter bar.
 - If a page needs a different date field such as `snapshotDate`, use one visible date control for that page.
 - KPI/detail pairs that describe the same concept should use the same relevant filters.
@@ -488,9 +537,12 @@ For the common memoized date/category filter shape:
 type DatePreset = "30d" | "90d" | "custom" | "all";
 
 const [datePreset, setDatePreset] = useState<DatePreset>("all");
-const [customStart, setCustomStart] = useState("");
-const [customEnd, setCustomEnd] = useState("");
+const [customStart, setCustomStart] = useState<Date | null>(null);
+const [customEnd, setCustomEnd] = useState<Date | null>(null);
 const [status, setStatus] = useState("all");
+
+const toLocalDateString = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 const dateRange = useMemo((): readonly [string, string] | null => {
   if (datePreset === "all") {
@@ -498,7 +550,9 @@ const dateRange = useMemo((): readonly [string, string] | null => {
   }
 
   if (datePreset === "custom") {
-    return customStart && customEnd ? [customStart, customEnd] : null;
+    return customStart && customEnd
+      ? [toLocalDateString(customStart), toLocalDateString(customEnd)]
+      : null;
   }
 
   return getPresetDateRange(datePreset);
@@ -516,6 +570,8 @@ const orderFilters = useMemo(
   [dateRange, status],
 );
 ```
+
+When date picker state uses `Date | null`, convert selected dates with a local `YYYY-MM-DD` formatter before passing them to `filter(..., "between", range)`. Do not use `date.toISOString().split("T")[0]` for local date filters.
 
 ## Result Shape And Charts
 
@@ -551,7 +607,7 @@ When a page feels like a raw table browser, look for schema-backed ways to enric
 
 - Use segments for curated subsets like active, completed, overdue, high-priority, or needs-attention records.
 - Use measures for curated aggregations instead of recalculating everything ad hoc in React.
-- Use Metrics when the schema exposes a curated metric aggregation for the page's core business question.
+- Use metrics when the schema exposes a curated metric aggregation for the page's core business question.
 - Use filters to focus the query on the UI's intent.
 - Use breakouts to create trends, category comparisons, and grouped summaries.
 - If the enriched result is still a sortable/drillable table, render it with SDK visualization components instead of rebuilding table behavior in React.
