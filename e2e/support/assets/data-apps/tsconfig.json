@@ -1,0 +1,16 @@
+{
+  "extends": "../../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "rootDir": "../../../.."
+  },
+  "include": [
+    "../../../../frontend/src/types/**/*.d.ts",
+    "../../../../frontend/src/embedding-sdk-shared/types/*.d.ts",
+    "../../../../frontend/src/metabase/utils/dayjs.ts",
+    "*/src/**/*.ts",
+    "*/src/**/*.tsx"
+  ],
+  "exclude": [".build"]
+}
