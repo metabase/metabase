@@ -50,11 +50,14 @@
                     (map #(assoc (last %) :via via))
                     (serdes/serialization-dependencies model entity))}))
 
-(defn- collect-dependencies
-  "Take the model/ids and return {:visited :deps}.
+(defn- merge-entity-deps
+  "Monoid merging [[entity-deps]] contributions: unions the `:visited` and `:deps` sets. Identity is empty sets."
+  ([] {:visited #{} :deps #{}})
+  ([acc] acc)
+  ([acc contribution] (merge-with into acc contribution)))
 
-  Entities are streamed in batches, not held in memory; the accumulator uses transient sets since an export can walk a
-  lot of entities."
+(defn- collect-dependencies
+  "Take the model/ids and return {:visited :deps}. Entities are streamed in batches, not held in memory."
   [by-model coll-set opts]
   (let [content-models (set serdes.models/content)]
     (transduce
@@ -65,12 +68,7 @@
                 (serdes/extract-query model (merge opts {:collection-set coll-set
                                                          :where          [:in :id batch]}))))
       (map entity-deps))
-     (fn
-       ([] {:visited (transient #{}) :deps (transient #{})})
-       ([acc] {:visited (persistent! (:visited acc)) :deps (persistent! (:deps acc))})
-       ([acc {:keys [visited deps]}]
-        {:visited (reduce conj! (:visited acc) visited)
-         :deps    (reduce conj! (:deps acc) deps)}))
+     merge-entity-deps
      by-model)))
 
 (defn- existing-ids
