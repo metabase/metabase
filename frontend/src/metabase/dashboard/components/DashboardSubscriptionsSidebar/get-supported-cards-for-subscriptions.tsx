@@ -20,6 +20,7 @@ const cardsFromDashboard = (dashboard?: Dashboard) => {
       : card.card.name,
     include_csv: false,
     include_xls: false,
+    include_ods: false,
     dashboard_card_id: card.id,
     dashboard_id: dashboard.id,
     parameter_mappings: card.parameter_mappings,

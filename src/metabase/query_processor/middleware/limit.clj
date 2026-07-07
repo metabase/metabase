@@ -58,9 +58,11 @@
                                                      :native query)))
     (when-not (disable-max-results? query)
       (let [context             (-> query :info :context)
-            download-context?   #{:csv-download :json-download :xlsx-download
+            download-context?   #{:csv-download :json-download :xlsx-download :ods-download
                                   :embedded-csv-download :embedded-json-download :embedded-xlsx-download
-                                  :public-csv-download :public-json-download :public-xlsx-download}
+                                  :embedded-ods-download
+                                  :public-csv-download :public-json-download :public-xlsx-download
+                                  :public-ods-download}
             attachment-context? #{:dashboard-subscription :pulse :notification}
             download-limit      (when (download-context? context) (qp.settings/download-row-limit))
             attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))

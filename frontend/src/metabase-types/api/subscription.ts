@@ -63,6 +63,7 @@ export type SubscriptionSupportingCard = Pick<
 > & {
   include_csv: boolean;
   include_xls: boolean;
+  include_ods: boolean;
   dashboard_card_id: DashCardId;
   dashboard_id: DashboardId;
   parameter_mappings: DashboardCard["parameter_mappings"];

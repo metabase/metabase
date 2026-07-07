@@ -51,6 +51,7 @@ export function createMockAlertCard(opts?: Partial<AlertCard>): AlertCard {
     id: 1,
     include_csv: false,
     include_xls: false,
+    include_ods: false,
     ...opts,
   };
 }

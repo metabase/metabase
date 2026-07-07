@@ -38,7 +38,7 @@ export const DashboardDownloadSettings = ({
         />
 
         <Switch
-          label={t`Results (csv, xlsx, json, png)`}
+          label={t`Results (csv, xlsx, ods, json, png)`}
           labelPosition="left"
           size="sm"
           variant="stretch"
@@ -65,7 +65,7 @@ export const QuestionDownloadSettings = ({
 
   return (
     <Switch
-      label={t`Download (csv, xlsx, json, png)`}
+      label={t`Download (csv, xlsx, ods, json, png)`}
       labelPosition="left"
       size="sm"
       variant="stretch"
