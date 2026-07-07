@@ -137,8 +137,10 @@
     (cond
       (nil? snippet-name) tags
       (seen snippet-name) (recur more-snippet-names seen tags)
-      :else               (let [snippet-tags (->> (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)
-                                                  :template-tags)]
+      :else               (let [snippet-tags-map (->> (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)
+                                                      :template-tags)
+                                snippet-tags     (some->> snippet-tags-map
+                                                          (lib.normalize/normalize ::lib.schema.template-tag/template-tags))]
                             (recur (into more-snippet-names (snippet-names snippet-tags))
                                    (conj seen snippet-name)
                                    (merge-template-tags tags snippet-tags))))))

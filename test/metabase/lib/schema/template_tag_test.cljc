@@ -86,20 +86,22 @@
                                     :dimension    [:field {} 1]
                                     :default      nil})
                                  (range 10)))]
+      ;; map order is only preserved within Lib in the JVM; for FE/JS however we convert to JS objects at
+      ;; the [[metabase.lib.js]] boundary which preserves order outside of Lib
       #?(:clj (is (instance? flatland.ordered.map.OrderedMap m)
                   "should be converted to a map type that preserves order"))
-      (is (= ["parameter_0"
-              "parameter_1"
-              "parameter_2"
-              "parameter_3"
-              "parameter_4"
-              "parameter_5"
-              "parameter_6"
-              "parameter_7"
-              "parameter_8"
-              "parameter_9"]
-             (keys m))
-          "should preserve key order")
+      #?(:clj (is (= ["parameter_0"
+                      "parameter_1"
+                      "parameter_2"
+                      "parameter_3"
+                      "parameter_4"
+                      "parameter_5"
+                      "parameter_6"
+                      "parameter_7"
+                      "parameter_8"
+                      "parameter_9"]
+                     (keys m))
+                  "should preserve key order"))
       (is (=? {"parameter_0" {:widget-type  :category
                               :id           "00000000-0000-0000-0000-000000000000"
                               :name         "parameter_0"

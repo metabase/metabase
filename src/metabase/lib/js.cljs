@@ -2019,7 +2019,8 @@
   (-> tag
       (update :type name)
       (m/update-existing :widget-type #(some-> % u/qualified-name))
-      (m/update-existing :dimension #(some-> % ref->legacy-ref))))
+      (m/update-existing :dimension #(some-> % ref->legacy-ref))
+      (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export with-template-tags
   "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
@@ -2040,10 +2041,12 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (into #js {}
-        (map (fn [{tag-name :name, :as tag}]
-               [(u/qualified-name tag-name) (template-tag-cljs->js tag)]))
-        (lib.core/template-tags a-query)))
+  (reduce
+   (fn [obj {tag-name :name, :as tag}]
+     (doto obj
+       (gobject/set (u/qualified-name tag-name) (template-tag-cljs->js tag))))
+   #js {}
+   (lib.core/template-tags a-query)))
 
 (defn ^:export has-write-permission
   "Returns whether the database targeted by `a-query` has native write permissions.

@@ -163,7 +163,7 @@
           query (lib.js/with-template-tags
                   (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
                   (add-undefined-params (clj->js snippets) snippet-name))]
-      (is (= snippets
+      (is (= (vals snippets)
              (get-in query [:stages 0 :template-tags])))
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
