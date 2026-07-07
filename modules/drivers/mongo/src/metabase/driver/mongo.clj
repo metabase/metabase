@@ -175,7 +175,7 @@
 
 (defn ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
-  [collection-name sample-size]
+  [_collection-name sample-size]
   (let [start-n (quot sample-size 2)
         end-n   (- sample-size start-n)]
     [{"$sort" {"_id" 1}}
@@ -188,10 +188,10 @@
                                           0
                                           {"$subtract" [{"$size" "$docs"} end-n]}]}}}
      {"$project" {"sample-docs" {"$concatArrays"
-                                  ["$head"
-                                   {"$reduce" {"input" {"$slice" ["$docs" "$tail-offset" end-n]}
-                                               "initialValue" []
-                                               "in" {"$concatArrays" [["$$this"] "$$value"]}}}]}}}
+                                 ["$head"
+                                  {"$reduce" {"input" {"$slice" ["$docs" "$tail-offset" end-n]}
+                                              "initialValue" []
+                                              "in" {"$concatArrays" [["$$this"] "$$value"]}}}]}}}
      {"$unwind" "$sample-docs"}
      {"$replaceRoot" {"newRoot" "$sample-docs"}}]))
 
