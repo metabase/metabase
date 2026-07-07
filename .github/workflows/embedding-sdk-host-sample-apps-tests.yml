@@ -378,6 +378,7 @@ jobs:
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-host-app
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
@@ -439,6 +440,15 @@ jobs:
           path: |
             ./cypress
           if-no-files-found: ignore
+
+      - name: Quarantine gate (dry run)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
 
       - name: Fail job if tests failed
         if: ${{ steps.run-e2e-tests.outcome != 'success' }}
