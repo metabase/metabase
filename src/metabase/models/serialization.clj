@@ -86,6 +86,10 @@
 ;; there was no science behind picking 100 as a number
 (def ^:private extract-nested-batch-limit "max amount of entities to fetch nested entities for" 100)
 
+(def query-batch-size
+  "Maximum number of ids per `:in` clause, to stay under database parameter limits."
+  1000)
+
 (mr/def ::model-keyword
   [:and
    qualified-keyword?
@@ -1460,9 +1464,9 @@
   false)
 
 (defn- raw-ref-id?
-  "True if `x` is a raw (numeric) reference id — i.e. an integer, and we're computing serialization deps."
+  "True if `x` is a raw (numeric) reference id — i.e. a positive integer, and we're computing serialization deps."
   [x]
-  (and *serialization?* (int? x)))
+  (and *serialization?* (pos-int? x)))
 
 (defn- ref->db-dep
   "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with

@@ -98,7 +98,7 @@
   (let [analytics-colls (analytics-collection-ids)]
     (if (and (seq card-ids) (seq analytics-colls))
       (into #{}
-            (comp (partition-all 1000)
+            (comp (partition-all serdes/query-batch-size)
                   (mapcat (fn [batch]
                             (t2/select-pks-set :model/Card {:where [:and
                                                                     [:in :id (vec batch)]

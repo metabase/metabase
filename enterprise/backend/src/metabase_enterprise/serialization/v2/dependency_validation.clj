@@ -32,13 +32,9 @@
   (let [entity (t2/select-one [model :collection_id :name] :id id)]
     (format "%s %d (%s from collection %s)" (name model) id (:name entity) (collection-label (:collection_id entity)))))
 
-(def ^:private query-batch-size
-  "Maximum number of ids per `:in` clause, to stay under database parameter limits."
-  1000)
-
 (defn- resize-batch
   [[model batch]]
-  (for [batch (partition-all query-batch-size batch)]
+  (for [batch (partition-all serdes/query-batch-size batch)]
     [model batch]))
 
 (defn- entity-deps
@@ -82,7 +78,7 @@
   [model ids]
   (into #{}
         (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]}))
-        (partition-all query-batch-size (distinct ids))))
+        (partition-all serdes/query-batch-size (distinct ids))))
 
 (def ^:private structural-content-models
   "Content models whose absence from the archive is tolerated on import, so a reference to one is never a completeness
