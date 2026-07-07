@@ -23,7 +23,7 @@
 
 ;;; ----------------------------------------- detect-client (pure) ------------------------------------------
 
-(deftest detect-client-test
+(deftest ^:parallel detect-client-test
   (testing "handshake clientInfo.name maps to a canonical client key"
     (is (= "claude"        (usage/detect-client "claude-ai")))
     (is (= "claude"        (usage/detect-client "Claude")))
@@ -51,7 +51,7 @@
       (is (contains? (conj usage/supported-client-keys "other")
                      (usage/detect-client n))))))
 
-(deftest proxy-probe?-test
+(deftest ^:parallel proxy-probe?-test
   (testing "mcp-remote's throwaway transport-probe handshake is recognized (case-insensitive)"
     (is (true? (usage/proxy-probe? "mcp-remote-fallback-test")))
     (is (true? (usage/proxy-probe? "MCP-Remote-Fallback-Test"))))
@@ -108,7 +108,7 @@
                 (is (nil? (:user_agent row)))))
             (finally (cleanup! sid))))))))
 
-(deftest record-mcp-session!-identity-set-once-test
+(deftest ^:parallel record-mcp-session!-identity-set-once-test
   (testing "a second initialize for the same session id never overwrites identity/PII"
     (mt/with-premium-features #{:audit-app}
       (let [sid (str "test-session-" (mt/random-name))]
@@ -124,7 +124,7 @@
             (is (= (mt/user->id :rasta) (:user_id row))))
           (finally (cleanup! sid)))))))
 
-(deftest record-mcp-session!-ignores-mcp-remote-probe-test
+(deftest ^:parallel record-mcp-session!-ignores-mcp-remote-probe-test
   (testing "mcp-remote's fallback-probe handshake is never recorded as a session"
     (mt/with-premium-features #{:audit-app}
       (let [sid (str "test-probe-" (mt/random-name))]
@@ -137,7 +137,7 @@
 
 ;;; ----------------------------------------- record-mcp-session-end! ---------------------------------------
 
-(deftest record-mcp-session-end!-stamps-ended-at-test
+(deftest ^:parallel record-mcp-session-end!-stamps-ended-at-test
   (mt/with-premium-features #{:audit-app}
     (let [sid (str "test-session-" (mt/random-name))]
       (try
@@ -152,7 +152,7 @@
 
 ;;; ------------------------------------------ record-mcp-tool-call! ----------------------------------------
 
-(deftest record-mcp-tool-call!-writes-row-test
+(deftest ^:parallel record-mcp-tool-call!-writes-row-test
   (mt/with-premium-features #{:audit-app}
     (let [sid (str "test-session-" (mt/random-name))]
       (try
@@ -166,7 +166,7 @@
           (is (= (mt/user->id :rasta) (:user_id row))))
         (finally (cleanup! sid))))))
 
-(deftest record-mcp-tool-call!-missing-session-fallback-test
+(deftest ^:parallel record-mcp-tool-call!-missing-session-fallback-test
   (testing "a tool call whose session row is absent still logs (no FK constraint)"
     (mt/with-premium-features #{:audit-app}
       (let [sid (str "absent-session-" (mt/random-name))]
@@ -219,7 +219,7 @@
 
 ;;; --------------------------------------------- Feature gating --------------------------------------------
 
-(deftest collection-runs-on-ee-without-audit-app-test
+(deftest ^:parallel collection-runs-on-ee-without-audit-app-test
   (testing "collection happens on any EE instance (:feature :none), but PII stays null without :audit-app"
     ;; Without :audit-app the `analytics-pii-retention-enabled` setting reads its default (false)
     ;; and cannot be turned on, so PII is never collected — but non-PII rows still are.
@@ -245,10 +245,10 @@
 
 ;;; ------------------------------------------- Best-effort logging -----------------------------------------
 
-(deftest logging-is-best-effort-test
+(deftest ^:parallel logging-is-best-effort-test
   (testing "a failed write is swallowed and never propagates"
     (mt/with-premium-features #{:audit-app}
-      (with-redefs [t2/insert! (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [t2/insert! (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (usage/record-mcp-tool-call! {:tool-name "query" :user-id 1 :session-id "x"
                                                 :status "success" :duration-ms 1})))
         (is (nil? (usage/record-mcp-session! {:session-id "y" :user-id 1 :client-info {:name "claude"}})))))))
@@ -259,7 +259,7 @@
   (cond-> {:jsonrpc "2.0" :method method :params params}
     id (assoc :id id)))
 
-(deftest three-write-points-integration-test
+(deftest ^:parallel three-write-points-integration-test
   (testing "initialize -> tools/call -> DELETE records session, tool-call, and ended_at"
     ;; Collection runs on any EE instance (:feature :none), so no premium feature is needed here.
     (let [crowberto (mt/user->id :crowberto)
