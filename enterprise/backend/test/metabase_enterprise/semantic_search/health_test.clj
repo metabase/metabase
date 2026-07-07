@@ -102,7 +102,9 @@
          (is (=? {:health 0 :message #".*embedding service unreachable: boom.*"}
                  (semantic.health/index-health-check))))))))
 
-(deftest embedding-service-reachable?-test
+;; ^:sequential: redefs the process-global `get-configured-model` / `get-embedding` via with-redefs, so it
+;; must not run concurrently with other tests (e.g. entity-retrieval-available? reads get-configured-model).
+(deftest ^:sequential embedding-service-reachable?-test
   (testing "a successful embed reads as reachable, and the probe bypasses the circuit breaker"
     (let [saw-bypass (atom nil)]
       ;; get-embedding is a multimethod; with-dynamic-fn-redefs can't patch those, so with-redefs is required.

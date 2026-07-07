@@ -13,7 +13,7 @@
 
 (defn- boom [] (throw (ex-info "embedder down" {:kind :boom})))
 
-(deftest opens-after-threshold-and-fast-fails-test
+(deftest ^:sequential opens-after-threshold-and-fast-fails-test
   (testing "consecutive failures trip the breaker; while open, calls fast-fail with the mapped 502 ex-info"
     ;; A fresh breaker (short threshold, stays open) so the test is isolated from the process-wide default.
     (with-redefs [semantic.embedding/embedder-circuit-breaker
@@ -25,7 +25,7 @@
               (try (call-through (constantly :never)) nil
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
 
-(deftest kill-switch-bypasses-breaker-test
+(deftest ^:sequential kill-switch-bypasses-breaker-test
   (testing "with the breaker disabled the thunk runs directly: raw exception propagates, breaker untouched"
     (with-redefs [semantic.embedding/embedder-circuit-breaker
                   (dh.cb/circuit-breaker {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})]
@@ -34,7 +34,7 @@
                 (try (call-through boom) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))))
         (is (= :closed (circuit-state)) "a bypassed breaker records no failures")))))
 
-(deftest probe-bypass-flag-bypasses-breaker-test
+(deftest ^:sequential probe-bypass-flag-bypasses-breaker-test
   (testing "*bypass-circuit-breaker* runs the thunk directly, without consulting or tripping the breaker"
     (with-redefs [semantic.embedding/embedder-circuit-breaker
                   (dh.cb/circuit-breaker {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})]
@@ -42,7 +42,7 @@
         (is (thrown? clojure.lang.ExceptionInfo (call-through boom)))
         (is (= :closed (circuit-state)))))))
 
-(deftest circuit-open?-respects-kill-switch-test
+(deftest ^:sequential circuit-open?-respects-kill-switch-test
   (testing "embedder-circuit-open? is authoritative only while the breaker is enabled"
     (with-redefs [semantic.embedding/embedder-circuit-breaker
                   (dh.cb/circuit-breaker {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})]
@@ -56,7 +56,7 @@
           (is (false? (semantic.embedding/embedder-circuit-open?)))
           (is (= :open (circuit-state))))))))
 
-(deftest state-change-persists-affected-checks-test
+(deftest ^:sequential state-change-persists-affected-checks-test
   (testing "a breaker state transition persists both embedder-dependent health checks immediately"
     (let [persisted (atom [])]
       (mt/with-dynamic-fn-redefs
