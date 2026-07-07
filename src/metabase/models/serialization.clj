@@ -655,16 +655,10 @@
   nil)
 
 (defmulti serialization-dependencies
-  "Returns the entities that `entity` references and that must be satisfied for `entity` to serialize into a complete,
-  importable archive. Used by export-time validation (not by load — that's [[deserialization-dependencies]], which works on the
-  serialized form and deliberately omits tables/fields because import creates them on the fly).
-
-  `entity` is a raw appdb (Toucan) instance, not a serialized map.
-
-  Returns a seq of dependency maps `{:model \"ModelName\", :id id}`. The caller classifies each by its model — content
-  models (Card, Dashboard, NativeQuerySnippet, …) are satisfied only if they are themselves part of the export, while
-  data-model references (Database, Table, Field, Segment, Measure) are satisfied if the row exists in the source appdb.
-  Either kind of missing reference would become a dangling reference or a malformed portable id in the archive.
+  "The references of a raw appdb `entity` (a Toucan instance, not a serialized map) as a seq of dependency maps
+  `{:model \"ModelName\", :id id}`. Its load-time counterpart is [[deserialization-dependencies]], which runs on the
+  serialized form and omits tables/fields (import creates them on the fly); this one reports them so the export can
+  existence-check them. Consumed by [[metabase-enterprise.serialization.v2.dependency-validation]].
 
   Dispatched on model-name. Default returns `nil`, so only models with references need to implement this."
   {:arglists '([model-name entity])}

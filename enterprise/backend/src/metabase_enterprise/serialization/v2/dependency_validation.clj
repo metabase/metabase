@@ -91,15 +91,9 @@
   #{"Collection"})
 
 (defn- unsatisfied-dependencies
-  "Given collected `deps`, the `visited` set, and `analytics-cards`, returns the deps that won't be satisfied in the
-   archive, each tagged with a `:reason`. Each dep is classified by its model:
-
-   - data-model references (Database, Table, Field, …) must exist in the source appdb, else the export emits a
-     malformed portable id;
-   - content references (Card, Dashboard, …) that still exist in the appdb must be part of the export (or be an
-     analytics card, which resolves on import). A content reference to a *deleted* entity is not a failure: export
-     cannot emit a portable id for a row that is gone, so `fk-elide` simply drops the reference.
-
+  "The `deps` that won't be satisfied in the archive, each tagged with a `:reason` (see the namespace docstring for the
+   data-model vs content classification). Two subtleties are encoded below: a content reference to a *deleted* entity
+   is not a failure (export can't emit a portable id for a gone row, so `fk-elide` just drops it), and
    [[structural-content-models]] references are ignored entirely."
   [deps visited analytics-cards]
   (let [content-models (set serdes.models/content)
@@ -126,15 +120,9 @@
             :missing-in-appdb "is missing from the source database")))
 
 (defn validate-dependencies!
-  "Validates that every entity to be extracted has all of its references satisfied. Logs a warning per unsatisfied
-   reference and, unless `continue-on-error?`, throws to abort the export before any archive is produced.
-
-  Arguments:
-    - `by-model` is a map of `{model-name [ids ...]}`
-
-  Content references must be part of the export (or be analytics cards, which resolve on import); data-model
-  references must exist in the source appdb. A missing reference would otherwise become a dangling reference or a
-  malformed portable id in the archive, breaking the import."
+  "Validates that every entity to be extracted has all of its references satisfied (see the namespace docstring). Logs
+  a warning per unsatisfied reference and, unless `:continue-on-error`, throws to abort the export before any archive
+  is produced. `by-model` is a map of `{model-name [ids ...]}`."
   [by-model coll-set analytics-cards opts]
   (let [{:keys [visited deps]} (collect-dependencies by-model coll-set opts)
         missing                (unsatisfied-dependencies deps visited analytics-cards)]

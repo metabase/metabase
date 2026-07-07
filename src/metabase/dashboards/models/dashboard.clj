@@ -455,10 +455,9 @@
     (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
 (defn- dashboard-deps
-  "The serdes dependencies of a Dashboard, as `:serdes/meta` paths. Expects `:dashcards` (with `:series`) inlined —
-  that's the shape of an ingested Dashboard, and the raw path hydrates them first. The shared `mbql-*`/`*-deps` helpers
-  dispatch on ref shape, so this works for both the serialized and raw forms. Shared by
-  [[serdes/deserialization-dependencies]] and [[serdes/serialization-dependencies]]."
+  "The serdes dependencies of a Dashboard as `:serdes/meta` paths. Expects `:dashcards` (with `:series`) inlined — the
+  ingested shape, which the raw path hydrates first. Works on both the raw and serialized forms (see
+  [[serdes/*serialization?*]]). Shared by [[serdes/deserialization-dependencies]] and [[serdes/serialization-dependencies]]."
   [{:keys [collection_id dashcards parameters]}]
   (->> (map serdes-deps-dashcard dashcards)
        (reduce set/union #{})

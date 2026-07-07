@@ -151,67 +151,56 @@
 
 (deftest dependency-validation-missing-data-ref-test
   (testing "Export aborts when a card references a data-model row that no longer exists in the appdb (GHY-4010)"
-    ;; A field referenced by a card's query is deleted. The card still serializes a portable field reference by
-    ;; looking the row up; with the row gone that reference would be malformed, so the export must fail fast.
+    ;; The card still serializes a portable reference by looking the row up; with the row gone that reference would be
+    ;; malformed, so the export must fail fast. Covered across the reference kinds the old lib-walker-only derivation
+    ;; missed: a Field or Segment in the query, and a Field reachable only through visualization_settings (a
+    ;; JSON-encoded ref the query walkers don't see). (continue-on-error's abort suppression is covered by
+    ;; escape-continue-on-error-test.)
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
                          :model/Database   {db-id :id}    {:engine :postgres}
                          :model/Table      {table-id :id} {:db_id db-id :name "T"}
-                         :model/Field      {field-id :id} {:table_id table-id :name "F" :base_type :type/Integer}
-                         :model/Collection {coll-id :id}  {:name "Target Collection"}
-                         :model/Card        _             {:name          "Field Card"
-                                                           :collection_id coll-id
-                                                           :database_id   db-id
-                                                           :table_id      table-id
-                                                           :query_type    :query
-                                                           :dataset_query {:database db-id
+                         :model/Collection {coll-id :id}  {:name "Target Collection"}]
+        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
+          (doseq [{:keys [label query-filter viz-settings delete! msg-re]}
+                  [{:label        "a Field referenced in the query"
+                    :query-filter (fn [field-id _seg-id] [:> [:field field-id nil] 1])
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :msg-re       #"Field .* is missing from the source database"}
+                   {:label        "a Segment referenced in the query"
+                    :query-filter (fn [_field-id seg-id] [:segment seg-id])
+                    :delete!      (fn [_field-id seg-id] (t2/delete! :model/Segment seg-id))
+                    :msg-re       #"Segment .* is missing from the source database"}
+                   {:label        "a Field referenced only in visualization_settings"
+                    :viz-settings (fn [field-id] {:column_settings {(str "[\"ref\",[\"field\"," field-id ",null]]")
+                                                                    {:column_title "X"}}})
+                    :delete!      (fn [field-id _seg-id] (t2/delete! :model/Field field-id))
+                    :msg-re       #"Field .* is missing from the source database"}]]
+            (testing label
+              (ts/with-temp-dpc [:model/Field   {field-id :id}   {:table_id table-id :name "F" :base_type :type/Integer}
+                                 :model/Segment {segment-id :id} {:table_id table-id :name "Seg" :definition {}}
+                                 :model/Card    _ {:name          "Card"
+                                                   :collection_id coll-id
+                                                   :database_id   db-id
+                                                   :table_id      table-id
+                                                   :query_type    :query
+                                                   :dataset_query (cond-> {:database db-id
                                                                            :type     :query
-                                                                           :query    {:source-table table-id
-                                                                                      :filter       [:> [:field field-id nil] 1]}}}]
-        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
-          (testing "with the field present, the export succeeds"
-            (is (seq (into [] (extract/extract opts)))))
-          (t2/delete! :model/Field field-id)
-          (testing "after the field is deleted, the export aborts and names the missing reference"
-            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-              (extract-aborts! opts)
-              (is (some #(re-find #"missing from the source database" %) (map :message (messages)))
-                  "the warning reports the unsatisfied data-model reference")))
-          ;; continue-on-error only suppresses the abort: the affected card is still serialized (with a malformed ref)
-          ;; and is skipped on import, not at export. See the escape-continue-on-error round-trip test in load-test.
-          (testing "continue-on-error proceeds without aborting the export"
-            (let [extracted (into [] (extract/extract (assoc opts :continue-on-error true)))]
-              (is (some #(= "Collection" (-> % :serdes/meta last :model)) extracted)
-                  "the target collection is still exported under continue-on-error"))))))))
-
-(deftest dependency-validation-missing-segment-ref-test
-  (testing "Export aborts when a card references a Segment that no longer exists (GHY-4010; Segment is a data-model)"
-    ;; Segments/Measures are data-model references, existence-checked like tables/fields. This covers the reference
-    ;; types the old lib-walker-only dependency derivation missed.
-    (mt/with-empty-h2-app-db!
-      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
-                         :model/Database   {db-id :id}      {:engine :postgres}
-                         :model/Table      {table-id :id}   {:db_id db-id :name "T"}
-                         :model/Segment    {segment-id :id} {:table_id table-id :name "Seg" :definition {}}
-                         :model/Collection {coll-id :id}    {:name "Target Collection"}
-                         :model/Card        _               {:name          "Segment Card"
-                                                             :collection_id coll-id
-                                                             :database_id   db-id
-                                                             :table_id      table-id
-                                                             :query_type    :query
-                                                             :dataset_query {:database db-id
-                                                                             :type     :query
-                                                                             :query    {:source-table table-id
-                                                                                        :filter       [:segment segment-id]}}}]
-        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
-          (testing "with the segment present, the export succeeds"
-            (is (seq (into [] (extract/extract opts)))))
-          (t2/delete! :model/Segment segment-id)
-          (testing "after the segment is deleted, the export aborts"
-            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-              (extract-aborts! opts)
-              (is (some #(re-find #"Segment .* is missing from the source database" %) (map :message (messages)))
-                  "the warning reports the unsatisfied Segment reference"))))))))
+                                                                           :query    {:source-table table-id}}
+                                                                    query-filter
+                                                                    (assoc-in [:query :filter]
+                                                                              (query-filter field-id segment-id)))
+                                                   :visualization_settings (if viz-settings
+                                                                             (viz-settings field-id)
+                                                                             {})}]
+                (testing "with the reference present, the export succeeds"
+                  (is (seq (into [] (extract/extract opts)))))
+                (delete! field-id segment-id)
+                (testing "after the reference is deleted, the export aborts and names it"
+                  (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                    (extract-aborts! opts)
+                    (is (some #(re-find msg-re %) (map :message (messages)))
+                        "the warning reports the unsatisfied data-model reference")))))))))))
 
 (deftest serialization-dependencies-content-models-test
   (testing "serialization-dependencies derives export deps from the raw entity for the newly-covered content models (GHY-4010)"
@@ -263,33 +252,3 @@
               (is (= #{[{:model "Collection" :id child-id}]
                        [{:model "Card" :id embed-card-id}]}
                      (deps "Document" doc-id))))))))))
-
-(deftest dependency-validation-viz-settings-field-ref-test
-  (testing "Export aborts when a field referenced only in visualization_settings is deleted (GHY-4010)"
-    ;; column-setting keys are JSON-encoded field refs (parsed via mb.viz) — a reference the query walkers don't see.
-    (mt/with-empty-h2-app-db!
-      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
-                         :model/Database   {db-id :id}    {:engine :postgres}
-                         :model/Table      {table-id :id} {:db_id db-id :name "T"}
-                         :model/Field      {field-id :id} {:table_id table-id :name "F" :base_type :type/Integer}
-                         :model/Collection {coll-id :id}  {:name "Target Collection"}
-                         :model/Card        _             {:name          "Viz Card"
-                                                           :collection_id coll-id
-                                                           :database_id   db-id
-                                                           :table_id      table-id
-                                                           :query_type    :query
-                                                           :dataset_query {:database db-id
-                                                                           :type     :query
-                                                                           :query    {:source-table table-id}}
-                                                           :visualization_settings
-                                                           {:column_settings {(str "[\"ref\",[\"field\"," field-id ",null]]")
-                                                                              {:column_title "X"}}}}]
-        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true :no-transforms true}]
-          (testing "with the field present, the export succeeds"
-            (is (seq (into [] (extract/extract opts)))))
-          (t2/delete! :model/Field field-id)
-          (testing "after the field is deleted, the export aborts on the viz-settings reference"
-            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-              (extract-aborts! opts)
-              (is (some #(re-find #"Field .* is missing from the source database" %) (map :message (messages)))
-                  "the warning reports the unsatisfied Field reference from visualization_settings"))))))))

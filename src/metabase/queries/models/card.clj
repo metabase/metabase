@@ -1419,10 +1419,8 @@
               :enable_embedding    false}})
 
 (defn- card-deps
-  "The serdes dependencies of a Card, as `:serdes/meta` paths. Works on both an ingested (serialized) Card and a raw
-  appdb Card: the shared `mbql-*`/`*-deps` helpers dispatch on ref shape, so on the raw form the referenced Table/Field
-  come through as real ids to existence-check, while on the serialized form only their Database does (Table/Field are
-  synthesized on import). Shared by [[serdes/deserialization-dependencies]] and [[serdes/serialization-dependencies]]."
+  "The serdes dependencies of a Card as `:serdes/meta` paths; works on both the raw and serialized forms (see
+  [[serdes/*serialization?*]]). Shared by [[serdes/deserialization-dependencies]] and [[serdes/serialization-dependencies]]."
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata source_card_id visualization_settings
            dashboard_id document_id]}]
