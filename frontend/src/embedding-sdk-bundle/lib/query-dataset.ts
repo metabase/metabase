@@ -1,4 +1,4 @@
-import { POST } from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import type {
   Dataset,
   DatasetColumn,
@@ -20,7 +20,11 @@ export type QueryDatasetResult = {
 export const queryDataset =
   () =>
   async ({ datasetQuery }: QueryDatasetParams): Promise<QueryDatasetResult> => {
-    const response: Dataset = await POST("/api/dataset")(datasetQuery);
+    const response = (await api.request({
+      method: "POST",
+      url: "/api/dataset",
+      body: datasetQuery,
+    })) as Dataset;
 
     return {
       rowCount: response.row_count ?? null,
