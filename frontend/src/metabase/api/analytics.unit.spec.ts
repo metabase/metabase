@@ -108,17 +108,26 @@ describe("trackFulfilledSearch", () => {
     expect(mockTrackSchemaEvent).toHaveBeenCalledTimes(1);
   });
 
-  it("never schedules a stale out-of-order document response (schedule-time guard)", async () => {
+  it("ignores a stale response without dropping the latest queued event (schedule-time guard)", async () => {
     const request = makeRequest({ context: "document" });
 
-    // A newer request has already started; the older request's response arrives late.
+    // The latest request req-2 fulfills and queues its event.
     registerSearchStarted(request, "req-2");
+    trackFulfilledSearch(request, makeResponse(), 10, "req-2");
+
+    // A stale older response arrives before the debounce fires. The schedule-time guard must drop it
+    // so it can't overwrite the queued req-2 args — otherwise the fire-time guard would then suppress
+    // the overwritten event and lose the legitimate req-2 one entirely.
     trackFulfilledSearch(request, makeResponse(), 10, "req-1");
 
     await wait(SETTLE_WAIT_MS);
     await flushMicrotasks();
 
-    expect(mockTrackSchemaEvent).not.toHaveBeenCalled();
+    expect(mockTrackSchemaEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackSchemaEvent).toHaveBeenCalledWith(
+      "search",
+      expect.objectContaining({ request_id: "req-2" }),
+    );
   });
 
   it("suppresses a queued event when a newer document request starts before it fires (fire-time guard)", async () => {
