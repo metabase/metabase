@@ -43,27 +43,10 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
-// A generated chart is "saved" iff an `entity_saved` data part exists for it in the
-// conversation. The LAST part wins: a chart can be re-saved after its previous card
-// was edited (which severs that card's provenance link).
 export const getSavedChartCardId = (
   state: State,
   entityId: string,
-): number | undefined => {
-  const messages = Object.values(getMetabotState(state).conversations).flatMap(
-    (convo) => convo?.messages ?? [],
-  );
-  const lastSave = messages.findLast(
-    (message) =>
-      message.type === "data_part" &&
-      message.part.type === "data-entity_saved" &&
-      message.part.data.entity_id === entityId,
-  );
-  return lastSave?.type === "data_part" &&
-    lastSave.part.type === "data-entity_saved"
-    ? lastSave.part.data.card_id
-    : undefined;
-};
+): number | undefined => getMetabotState(state).savedChartCardIds[entityId];
 
 export const getMetabotReactionsState = createSelector(
   getMetabotState,

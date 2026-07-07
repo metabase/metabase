@@ -143,6 +143,10 @@ export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
+  /** Session cache of {generated chart id -> saved card id}. The durable record is
+   * the card's Metabot provenance columns; this cache is verified against them and,
+   * once conversations rehydrate, will be seeded from the detail `saved_entities`. */
+  savedChartCardIds: Record<string, number>;
 }
 
 export interface SlashCommand {

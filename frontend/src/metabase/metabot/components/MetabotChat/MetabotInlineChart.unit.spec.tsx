@@ -273,14 +273,7 @@ describe("MetabotInlineChart", () => {
       );
 
       act(() => {
-        store.dispatch(
-          markChartSaved({
-            agentId: "omnibot",
-            entity_id: "card-1",
-            card_id: 99,
-            name: "Orders by month",
-          }),
-        );
+        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
       });
 
       await waitFor(() => {
@@ -296,14 +289,7 @@ describe("MetabotInlineChart", () => {
       const { store } = setup();
 
       act(() => {
-        store.dispatch(
-          markChartSaved({
-            agentId: "omnibot",
-            entity_id: "card-1",
-            card_id: 99,
-            name: "Orders by month",
-          }),
-        );
+        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
       });
 
       expect(
@@ -312,26 +298,17 @@ describe("MetabotInlineChart", () => {
       expect(screen.queryByText("Saved")).not.toBeInTheDocument();
     });
 
-    it("shows a short 'Saved' link (not the folder name) when a save data part exists", async () => {
+    it("shows a short 'Saved' link once the chart is marked saved", async () => {
       setupCardEndpoints(
         createMockCard({ id: 99, metabot_chart_id: "card-1" }),
       );
       const { store } = setup();
 
       act(() => {
-        store.dispatch(
-          markChartSaved({
-            agentId: "omnibot",
-            entity_id: "card-1",
-            card_id: 99,
-            name: "Orders by month",
-            location: { type: "collection", id: 5, name: "Sales analytics" },
-          }),
-        );
+        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
       });
 
       expect(await screen.findByText("Saved")).toBeInTheDocument();
-      expect(screen.queryByText(/Sales analytics/)).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument();
