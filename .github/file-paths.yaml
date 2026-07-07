@@ -95,6 +95,12 @@ frontend_loki_infra: &frontend_loki_infra
   - *shared_ci
   - *frontend_loki_ci
 
+# e2e harness/support code (commands, support file, runner). Not in the
+# instrumented bundle, so it maps to no covered module — a change here forces a
+# full e2e run (see create-test-plan / e2eInfraTouched).
+e2e_infra: &e2e_infra
+  - *shared_e2e
+
 backend_ci: &backend_ci
   - *shared_ci
   - ".github/actions/test-driver/**"

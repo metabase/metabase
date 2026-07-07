@@ -506,3 +506,23 @@
                                                           :start_time (parse-instant "2025-09-01T10:00:00")}]
         (mt/user-http-request :rasta :get 403
                               (str "transform-job/" job-id "/runs/" run-id "/transform-runs"))))))
+
+(deftest built-in-jobs-and-tags-seeded-test
+  (testing "the built-in Hourly/Daily/Weekly/Monthly jobs and tags are pre-seeded (migration data)"
+    ;; Looked up by :name (stable) rather than :entity_id/:built_in_type: editing a built-in job in
+    ;; any way (even flipping :active, see update-all-jobs-active-test) permanently clears
+    ;; :built_in_type per metabase.transforms.models.transform-job's before-update hook ("never
+    ;; translate again"), so :built_in_type is not a stable signal once other tests in this
+    ;; JVM/app-db have exercised the update path on these rows. Names, seeded once in
+    ;; 057_update_migrations.yaml, remain stable.
+    (doseq [[job-name tag-name] [["Hourly job"  "hourly"]
+                                 ["Daily job"   "daily"]
+                                 ["Weekly job"  "weekly"]
+                                 ["Monthly job" "monthly"]]]
+      (let [job (t2/select-one :model/TransformJob :name job-name)
+            tag (t2/select-one :model/TransformTag :name tag-name)]
+        (is (some? job) (str "missing built-in job " job-name))
+        (is (some? tag) (str "missing built-in tag " tag-name))
+        (is (seq (:schedule job)) (str job-name " should carry a schedule"))
+        (is (t2/exists? :model/TransformJobTransformTag :job_id (:id job) :tag_id (:id tag))
+            (str job-name " should be linked to the " tag-name " tag"))))))

@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import type { ComponentProps } from "react";
 import { Route } from "react-router";
 import _ from "underscore";
 
@@ -10,18 +11,33 @@ import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import MetabaseSettings from "metabase/utils/settings";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
+import type {
+  Card,
+  Database,
+  NativeDatasetQuery,
+  StructuredDatasetQuery,
+  UnsavedCard,
+} from "metabase-types/api";
+import {
+  COMMON_DATABASE_FEATURES,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
+  createSavedNativeCard,
+  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { ViewTitleHeader } from "./ViewTitleHeader";
@@ -35,7 +51,7 @@ const HIDDEN_ORDERS_TABLE = createOrdersTable({
   visibility_type: "hidden",
 });
 
-const BASE_GUI_QUESTION = {
+const FILTERED_GUI_QUESTION: Partial<UnsavedCard<StructuredDatasetQuery>> = {
   display: "table",
   visualization_settings: {},
   dataset_query: {
@@ -43,33 +59,11 @@ const BASE_GUI_QUESTION = {
     database: SAMPLE_DB_ID,
     query: {
       "source-table": ORDERS_ID,
-    },
-  },
-};
-
-const FILTERED_GUI_QUESTION = {
-  ...BASE_GUI_QUESTION,
-  dataset_query: {
-    ...BASE_GUI_QUESTION.dataset_query,
-    query: {
-      ...BASE_GUI_QUESTION.dataset_query.query,
       filter: [
         "and",
         ["<", ["field", ORDERS.TOTAL, null], 50],
         ["not-null", ["field", ORDERS.TAX, null]],
       ],
-    },
-  },
-};
-
-const BASE_NATIVE_QUESTION = {
-  display: "table",
-  visualization_settings: {},
-  dataset_query: {
-    type: "native",
-    database: SAMPLE_DB_ID,
-    native: {
-      query: "select * from orders",
     },
   },
 };
@@ -82,33 +76,42 @@ const SAVED_QUESTION = {
   can_write: true,
 };
 
-function getAdHocQuestionCard(overrides) {
-  return { ...BASE_GUI_QUESTION, ...overrides };
+function getAdHocQuestionCard(
+  overrides?: Partial<UnsavedCard<StructuredDatasetQuery>>,
+): UnsavedCard<StructuredDatasetQuery> {
+  return createAdHocCard(overrides);
 }
 
-function getNativeQuestionCard() {
-  return BASE_NATIVE_QUESTION;
+function getNativeQuestionCard(): UnsavedCard<NativeDatasetQuery> {
+  return createAdHocNativeCard();
 }
 
-function getSavedGUIQuestionCard(overrides) {
-  return { ...BASE_GUI_QUESTION, ...SAVED_QUESTION, ...overrides };
+function getSavedGUIQuestionCard(
+  overrides?: Partial<Card<StructuredDatasetQuery>>,
+): Card<StructuredDatasetQuery> {
+  return createSavedStructuredCard({ ...SAVED_QUESTION, ...overrides });
 }
 
-function getSavedNativeQuestionCard(overrides) {
-  return {
-    ...BASE_NATIVE_QUESTION,
-    ...SAVED_QUESTION,
-    ...overrides,
-  };
+function getSavedNativeQuestionCard(
+  overrides?: Partial<Card<NativeDatasetQuery>>,
+): Card<NativeDatasetQuery> {
+  return createSavedNativeCard({ ...SAVED_QUESTION, ...overrides });
 }
 
 function mockSettings({ enableNestedQueries = true } = {}) {
-  MetabaseSettings.get = jest.fn().mockImplementation((key) => {
+  MetabaseSettings.get = jest.fn().mockImplementation((key: string) => {
     if (key === "enable-nested-queries") {
       return enableNestedQueries;
     }
     return false;
   });
+}
+
+interface SetupOpts extends Partial<ComponentProps<typeof ViewTitleHeader>> {
+  card: Card | UnsavedCard;
+  database?: Database | null;
+  settings?: { enableNestedQueries?: boolean };
+  hideOrdersTable?: boolean;
 }
 
 function setup({
@@ -121,7 +124,7 @@ function setup({
   isRunnable = true,
   hideOrdersTable = false,
   ...props
-} = {}) {
+}: SetupOpts) {
   mockSettings(settings);
 
   setupTableEndpoints(ORDERS_TABLE);
@@ -147,8 +150,8 @@ function setup({
 
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
-      databases: [database],
-      questions: [card],
+      databases: database ? [database] : [],
+      questions: "id" in card ? [card] : [],
       tables: hideOrdersTable
         ? [PRODUCTS_TABLE, HIDDEN_ORDERS_TABLE]
         : undefined,
@@ -156,26 +159,42 @@ function setup({
   });
 
   const metadata = getMetadata(storeInitialState);
-  const isSaved = card.id != null;
-  const question = isSaved
-    ? metadata.question(card.id)
-    : new Question(card, metadata);
+  const question =
+    "id" in card
+      ? checkNotNull(metadata.question(card.id))
+      : new Question(card, metadata);
+
+  const viewTitleHeaderProps: ComponentProps<typeof ViewTitleHeader> = {
+    isNavBarOpen: false,
+    isObjectDetail: false,
+    isBookmarked: false,
+    isSaved: false,
+    isModelOrMetric: false,
+    isNativeEditorOpen: false,
+    isShowingSummarySidebar: false,
+    isResultDirty: false,
+    isShowingQuestionInfoSidebar: false,
+    areFiltersExpanded: false,
+    queryBuilderMode: "dataset",
+    isRunning: false,
+    toggleBookmark: jest.fn(),
+    cancelQuery: jest.fn(),
+    onExpandFilters: jest.fn(),
+    onCollapseFilters: jest.fn(),
+    onCloseQuestionInfo: jest.fn(),
+    ...callbacks,
+    ...props,
+    question,
+    isActionListVisible,
+    isAdditionalInfoVisible,
+    isDirty,
+    isRunnable,
+  };
 
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
-        <ViewTitleHeader
-          isRunning={false}
-          {...callbacks}
-          {...props}
-          question={question}
-          isActionListVisible={isActionListVisible}
-          isAdditionalInfoVisible={isAdditionalInfoVisible}
-          isDirty={isDirty}
-          isRunnable={isRunnable}
-        />
-      )}
+      component={() => <ViewTitleHeader {...viewTitleHeaderProps} />}
     />,
     {
       withRouter: true,
@@ -186,15 +205,15 @@ function setup({
   return { question, ...callbacks };
 }
 
-function setupAdHoc(props = {}) {
+function setupAdHoc(props: Partial<SetupOpts> = {}) {
   return setup({ card: getAdHocQuestionCard(), ...props });
 }
 
-function setupNative(props) {
+function setupNative(props?: Partial<SetupOpts>) {
   return setup({ card: getNativeQuestionCard(), ...props });
 }
 
-function setupSavedNative(props = {}) {
+function setupSavedNative(props: Partial<SetupOpts> = {}) {
   const collection = {
     id: "root",
     name: "Our analytics",
@@ -341,7 +360,7 @@ describe("ViewTitleHeader", () => {
           const { setQueryBuilderMode } = setup({
             card,
             queryBuilderMode: "notebook",
-            result: { data: [] },
+            result: createMockDataset(),
           });
           fireEvent.click(screen.getByTestId("notebook-button"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
@@ -431,9 +450,9 @@ describe("ViewTitleHeader", () => {
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", async () => {
     const { question, onOpenModal } = setupAdHoc();
-    const table = question
-      .metadata()
-      .table(Lib.sourceTableOrCardId(question.query()));
+    const table = checkNotNull(
+      question.metadata().table(Lib.sourceTableOrCardId(question.query())),
+    );
     const tableName = table.displayName();
 
     fireEvent.click(await screen.findByText(tableName));
@@ -546,7 +565,7 @@ describe("View Header | native question without write permissions on database (e
 
   it("does not display question database", () => {
     const { question } = setupNative({ database });
-    const databaseName = question.database().displayName();
+    const databaseName = checkNotNull(question.database()).displayName();
     expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
   });
 
@@ -559,7 +578,7 @@ describe("View Header | native question without write permissions on database (e
 describe("View Header | Not saved native question", () => {
   it("does not display question database", () => {
     const { question } = setupNative();
-    const databaseName = question.database().displayName();
+    const databaseName = checkNotNull(question.database()).displayName();
     expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
   });
 
@@ -572,7 +591,7 @@ describe("View Header | Not saved native question", () => {
 describe("View Header | Saved native question", () => {
   it("displays database a question is using", () => {
     const { question } = setupSavedNative();
-    const databaseName = question.database().displayName();
+    const databaseName = checkNotNull(question.database()).displayName();
     expect(screen.getByText(databaseName)).toBeInTheDocument();
   });
 

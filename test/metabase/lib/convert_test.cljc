@@ -1676,3 +1676,23 @@
                                             :type         :dimension
                                             :widget-type  :date/all-options
                                             :dimension    [:field 2 nil]}}}))))
+
+(deftest ^:parallel round-trip-offset-inside-case-inside-aggregation-test
+  (testing "#42377 sum(case([Total] > 0, offset([Total], -1))) survives the legacy <-> pMBQL round-trip"
+    ;; OFFSET retains a random :lib/uuid in its (mbql5-style) options, so exact round-trip equality is not
+    ;; possible; instead assert the conversion happens without an "Error normalizing" exception and that the
+    ;; clause shape is preserved in both directions.
+    (let [legacy {:database 2762
+                  :type     :query
+                  :query    {:aggregation  [[:sum [:case [[[:> [:field 139657 nil] 0]
+                                                           [:offset {} [:field 139657 nil] -1]]]]]]
+                             :breakout     [[:field 139658 nil]]
+                             :source-table 33674}}
+          mbql5  (lib.convert/->mbql5 legacy)]
+      (is (=? {:stages [{:aggregation [[:sum {}
+                                        [:case {}
+                                         [[[:> {} [:field {} 139657] 0]
+                                           [:offset {:lib/uuid string?} [:field {} 139657] -1]]]]]]}]}
+              mbql5))
+      (is (=? legacy (lib.convert/->legacy-MBQL mbql5)))
+      (is (some? (-> mbql5 lib.convert/->legacy-MBQL lib.convert/->mbql5))))))

@@ -1,22 +1,32 @@
-/* eslint-disable react/prop-types */
+import type { ComponentProps } from "react";
 import { t } from "ttag";
 
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { CardId } from "metabase-types/api";
 
 import { ViewTitleHeader } from "../../ViewHeader";
 import { ViewHeading, ViewSection } from "../../ViewSection";
 
 import ViewHeaderContainerS from "./ViewHeaderContainer.module.css";
 
+type ViewHeaderContainerProps = ComponentProps<typeof ViewTitleHeader> & {
+  onUnarchive: (question: Question) => void;
+  onMove: (question: Question, collection: CollectionPickerValueItem) => void;
+  onDeletePermanently: (id: CardId) => void;
+};
+
 const fadeIn = {
   in: { opacity: 1 },
   out: { opacity: 0 },
   transitionProperty: "opacity",
 };
-export const ViewHeaderContainer = (props) => {
+
+export const ViewHeaderContainer = (props: ViewHeaderContainerProps) => {
   const { question, onUnarchive, onMove, onDeletePermanently } = props;
   const query = question.query();
   const card = question.card();
