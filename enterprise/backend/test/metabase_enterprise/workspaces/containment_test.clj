@@ -99,6 +99,9 @@
             (is (sequential? (client/client :get 200 "ee/workspace-manager/" (bearer token))))
             (is (=? {:email "crowberto@metabase.com"}
                     (client/client :get 200 "user/current" (bearer token)))))
+          (testing "session/properties stays reachable (:scope :unchecked) — it serves anonymous
+                    callers, so a scoped token must never be weaker than no token (CLI preflight)"
+            (is (map? (client/client :get 200 "session/properties" (bearer token)))))
           (testing "everything outside the allowlist rejects with scope_not_permitted"
             (doseq [[method url] [[:post "card"]
                                   [:get  "dashboard"]

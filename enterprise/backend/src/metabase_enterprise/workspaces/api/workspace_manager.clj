@@ -104,6 +104,21 @@
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 
+(defn- creator-email-for-child
+  "Email stamped as the `api-keys:` section's `creator:` in the child config. Must
+  be a human admin that exists on the child at boot (the child's apply refuses
+  unknown/non-admin creators — see `advanced-config.file.api-keys`). When the
+  creating credential is itself an api-key, its synthetic `@api-key.invalid` user
+  exists nowhere else, so fall back to the oldest active superuser — the same
+  admin identity HM seeds child instances with (GHY-4063 contract point)."
+  []
+  ;; :type is not in the current-user column set, so fetch it directly
+  (if (= :api-key (t2/select-one-fn :type :model/User :id api/*current-user-id*))
+    (t2/select-one-fn :email :model/User
+                      :is_superuser true :is_active true :type :personal
+                      {:order-by [[:id :asc]]})
+    (:email @api/*current-user*)))
+
 (defn- spawn-instance!
   "Create-orchestration tail for `spawn_instance=true`: mint the agent api-key
   (GHY-4056), build the config.yml with the api-keys + settings sections (GHY-4057),
@@ -117,7 +132,7 @@
   (let [api-key (u.secret/expose (workspace/mint-api-key! ws-id))
         config  (ws.config/build-workspace-config ws-id
                                                   {:api-key       api-key
-                                                   :creator-email (:email @api/*current-user*)})
+                                                   :creator-email (creator-email-for-child)})
         {hm-id :id url :url} (hm-instance/create-instance! {:workspace-id ws-id
                                                             :name         (str "ws-" ws-id)
                                                             :config-yml   (ws.config/config->yaml config)})]
