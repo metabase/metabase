@@ -110,17 +110,32 @@
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
+(defn- eval-session-override
+  "An eval-session id the harness supplies via the `x-eval-session-id` header so it can name (and
+  later fetch) the trace itself — the MCP analogue of metabot's `eval_session_id`. opencode negotiates
+  the `Mcp-Session-Id` internally, so without this the harness can't know which `<uuid>.jsonl` to read.
+
+  Validates through `ait/checked-session-id` — the mint-time boundary, and the single source of truth
+  for the safe-id contract — and maps its throw on an unsafe/over-long id to nil, so a bad header falls
+  back to the Mcp-Session-Id correlator rather than 500ing ahead of `dispatch-request`'s try/catch. The
+  `when-let` guards the absent-header case, so we never reach `checked-session-id`'s nil -> fresh-uuid
+  branch (which would invent a trace file the harness never named)."
+  [request]
+  (when-let [id (get-in request [:headers "x-eval-session-id"])]
+    (try (ait/checked-session-id id) (catch Exception _ nil))))
+
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
-  [{:keys [id method params] :as _msg} session-id token-scopes request-context]
-  ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE): establish a session keyed on the MCP
-  ;; session's UUID correlator so an entire conversation's requests append to one
-  ;; `<uuid>.jsonl`, and open a per-request root span. Tool/resource/agent-api spans nest under
-  ;; it automatically. We key on the UUID prefix (not the full `<uuid>.<base64>` id): it's stable
-  ;; across the conversation AND always filesystem/URL-safe, whereas the full id can carry a
-  ;; base64 payload that `require-valid-session` accepts but `safe-session-id-re` rejects (e.g. `=`
-  ;; padding) — passing that to `with-eval-session` would throw out here, ahead of the try/catch.
-  (ait/with-eval-session (some-> session-id (str/split #"\.") first)
+  [{:keys [id method params] :as _msg} session-id token-scopes request-context eval-session-id]
+  ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE): establish a session and open a per-request root
+  ;; span; tool/resource/agent-api spans nest under it automatically. Key on the harness-supplied
+  ;; `eval-session-id` when given (so it owns the trace file name), else the MCP session's UUID
+  ;; correlator so an entire conversation's requests append to one `<uuid>.jsonl`. We key on the UUID
+  ;; prefix (not the full `<uuid>.<base64>` id): it's stable across the conversation AND always
+  ;; filesystem/URL-safe, whereas the full id can carry a base64 payload that `require-valid-session`
+  ;; accepts but `safe-session-id-re` rejects (e.g. `=` padding) — passing that to `with-eval-session`
+  ;; would throw out here, ahead of the try/catch.
+  (ait/with-eval-session (or eval-session-id (some-> session-id (str/split #"\.") first))
     (ait/eval-span (str "mcp." method) {:mcp/method     method
                                         :mcp/request-id id
                                         :mcp/params     params
@@ -239,9 +254,10 @@
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
   [user-id request]
-  (let [body       (:body request)
-        session-id (get-in request [:headers "mcp-session-id"])
-        batch?     (sequential? body)]
+  (let [body            (:body request)
+        session-id      (get-in request [:headers "mcp-session-id"])
+        eval-session-id (eval-session-override request)
+        batch?          (sequential? body)]
     (cond
       (nil? body)
       (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
@@ -287,7 +303,7 @@
                 ;; (gated PII) alongside client identity — the view no longer joins the session.
                 request-context {:user-agent (get-in request [:headers "user-agent"])
                                  :ip-address (request/ip-address request)}
-                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request) request-context)) messages)]
+                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request) request-context eval-session-id)) messages)]
             (cond
               (empty? responses)
               {:status 202 :headers {} :body ""}

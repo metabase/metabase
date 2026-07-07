@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.macros.scope :as scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -268,6 +269,29 @@
     (let [[session-id _] (initialize!)
           delete-response (mcp-delete {"mcp-session-id" session-id})]
       (is (= 200 (:status delete-response))))))
+
+(deftest eval-session-override-test
+  (testing "the x-eval-session-id header is honored only when it's a safe trace-file name"
+    (let [override #'mcp.api/eval-session-override]
+      (testing "a bare uuid (what the harness mints) is honored"
+        (is (= "1ae768c9-5773-48dd-afca-c75780dae84c"
+               (override {:headers {"x-eval-session-id" "1ae768c9-5773-48dd-afca-c75780dae84c"}}))))
+      (testing "a safe slug is honored"
+        (is (= "evalprobe_1.2" (override {:headers {"x-eval-session-id" "evalprobe_1.2"}}))))
+      (testing "path traversal / unsafe chars are rejected (fall back to the Mcp-Session-Id)"
+        (is (nil? (override {:headers {"x-eval-session-id" "../etc/passwd"}})))
+        (is (nil? (override {:headers {"x-eval-session-id" "a/b"}})))
+        (is (nil? (override {:headers {"x-eval-session-id" ".hidden"}}))))
+      (testing "a value over max-session-id-length is rejected even though every char is safe"
+        ;; 201 chars: regex-safe but one past the real cap — the boundary a looser copy of the
+        ;; contract would wrongly accept (and then 500 downstream in checked-session-id).
+        (is (= 200 ait/max-session-id-length))
+        (is (nil? (override {:headers {"x-eval-session-id" (apply str (repeat 201 "a"))}})))
+        (testing "the id exactly at the cap is honored, returned verbatim"
+          (let [id (apply str (repeat 200 "a"))]
+            (is (= id (override {:headers {"x-eval-session-id" id}}))))))
+      (testing "absent header yields nil"
+        (is (nil? (override {:headers {}})))))))
 
 (def ^:private all-tool-names
   #{"construct_query"

@@ -293,6 +293,11 @@
    _query-params
    {:keys [prompt] :as body} :- ::construct-query-request]
   (let [query (evaluate-external-query-for-execution body)]
+    ;; Record the resolved query for eval tracing (inert unless capturing). The MCP `construct_query`
+    ;; tool only returns an opaque handle, so this span attribute is how an eval harness recovers the
+    ;; agent's actual query off the trace to grade it. `query` is already serialization-ready (no
+    ;; `:lib/metadata`), so it stays small.
+    (ait/record! {:ai/query query})
     (cond-> {:query (-> query json/encode u/encode-base64)}
       prompt (assoc :prompt prompt))))
 
@@ -332,11 +337,11 @@
   ;; target database so a bogus/inaccessible database_id fails here rather than at save time.
   (api/read-check :model/Database database_id)
   ;; Emit MBQL 5 (via `lib/native-query` + `prepare-for-serialization`, same as `construct_query`)
-  (let [mp (lib-be/application-database-metadata-provider database_id)]
-    {:query (-> (lib/native-query mp sql)
-                lib/prepare-for-serialization
-                json/encode
-                u/encode-base64)}))
+  (let [mp    (lib-be/application-database-metadata-provider database_id)
+        query (-> (lib/native-query mp sql) lib/prepare-for-serialization)]
+    ;; See /v2/construct-query: record the resolved query so an eval harness can grade it off the trace.
+    (ait/record! {:ai/query query})
+    {:query (-> query json/encode u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
