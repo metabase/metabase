@@ -81,9 +81,7 @@ const BrowseSchemasContainer = ({
                       key={schema.id}
                       title={schema.name}
                       icon="folder"
-                      to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
-                        schema.name,
-                      )}`}
+                      to={Urls.browseSchemaBySlug(params.slug, schema.name)}
                     />
                   ))}
                 </BrowseGrid>
@@ -97,14 +95,14 @@ const BrowseSchemasContainer = ({
 };
 
 const BrowseSchemasByDatabaseName = ({
-  name,
+  databaseName,
   params,
 }: {
-  name: string;
+  databaseName: string;
   params: { slug: string };
 }) => {
   const { data, isLoading, error } = useListDatabasesQuery();
-  const database = findDatabaseByName(data?.data ?? [], name);
+  const database = findDatabaseByName(data?.data ?? [], databaseName);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -121,7 +119,9 @@ export const BrowseSchemas = ({ params }: { params: { slug: string } }) => {
   const dbId = Urls.extractEntityId(params.slug);
 
   if (dbId == null) {
-    return <BrowseSchemasByDatabaseName name={params.slug} params={params} />;
+    return (
+      <BrowseSchemasByDatabaseName databaseName={params.slug} params={params} />
+    );
   }
 
   return <BrowseSchemasForDatabase dbId={dbId} params={params} />;

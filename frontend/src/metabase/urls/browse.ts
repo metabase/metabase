@@ -30,6 +30,10 @@ export function browseSchema(table: {
   )}`;
 }
 
+export function browseSchemaBySlug(databaseSlug: string, schemaName: string) {
+  return `/browse/databases/${encodeURIComponent(databaseSlug)}/schema/${encodeURIComponent(schemaName)}`;
+}
+
 type DatabaseRef = Pick<Database, "id" | "name">;
 
 // A name that starts with a digit is parsed as an id by the router, so fall back
