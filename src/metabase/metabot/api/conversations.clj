@@ -12,6 +12,8 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.schema :as metabot.schema]
+   [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -55,10 +57,21 @@
 (def ^:private ConversationIdParams
   [:map [:id ms/UUIDString]])
 
+(def ^:private SaveEntityCard
+  [:map
+   [:name                   ms/NonBlankString]
+   [:description            {:optional true} [:maybe :string]]
+   [:dataset_query          :map]
+   [:display                ms/NonBlankString]
+   [:visualization_settings {:optional true} [:maybe :map]]
+   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+
 (def ^:private SaveEntityBody
   [:map
    [:entity_id ms/NonBlankString]
-   [:card_id   ms/PositiveInt]])
+   [:card      SaveEntityCard]])
 
 ;;; ---------------------------------------- Queries ----------------------------------------
 
@@ -133,25 +146,38 @@
   (metabot.persistence/conversation-detail id))
 
 (api.macros/defendpoint :post "/:id/saved-entity"
-  "Record that a generated chart from this conversation was saved as a card.
-
-  Stamps the Metabot provenance columns on the card, mirroring what the agent's
-  `save_entity` tool records at creation time — used by the inline chart's
-  manual Save button, which runs outside any agent turn.
+  "Save a Metabot-generated chart from this conversation as a card, stamping the
+  card's provenance columns in the same request — used by the inline chart's
+  manual Save button, which runs outside any agent turn. Creating and stamping
+  together (rather than stamping after a separate `POST /api/card`) means the
+  card and its provenance cannot desync when the follow-up request is lost.
 
   Accessible to any participant in the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams
    _query-params
-   {:keys [entity_id card_id]} :- SaveEntityBody]
+   {:keys [entity_id card]} :- SaveEntityBody]
   (api/read-check :model/MetabotConversation id)
-  (api/write-check :model/Card card_id)
-  ;; Raw table update: a provenance stamp should not run the Card model's heavy
-  ;; before-update pipeline (query normalization, metadata population).
-  (t2/update! (t2/table-name :model/Card) card_id
-              {:metabot_conversation_id id
-               :metabot_chart_id        entity_id})
-  {:entity_id entity_id
-   :card_id   card_id})
+  ;; Mirror the POST /api/card pre-checks: `create-card!` itself does not check
+  ;; permissions on the query's data or the target container.
+  (query-perms/check-run-permissions-for-query (:dataset_query card))
+  (if (:dashboard_id card)
+    (api/write-check :model/Dashboard (:dashboard_id card))
+    (api/create-check :model/Card {:collection_id (:collection_id card)}))
+  (let [created (queries/create-card!
+                 (-> (select-keys card [:name :description :dataset_query :display
+                                        :visualization_settings :collection_id
+                                        :dashboard_id :dashboard_tab_id])
+                     (update :display keyword)
+                     (update :visualization_settings #(or % {})))
+                 {:id api/*current-user-id*})]
+    ;; Raw table update: a provenance stamp should not run the Card model's heavy
+    ;; before-update pipeline (query normalization, metadata population).
+    (t2/update! (t2/table-name :model/Card) (:id created)
+                {:metabot_conversation_id id
+                 :metabot_chart_id        entity_id})
+    (assoc created
+           :metabot_conversation_id id
+           :metabot_chart_id        entity_id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

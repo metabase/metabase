@@ -190,22 +190,25 @@ describe("MetabotInlineChart", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("creates a card with the chart's query and display on save", async () => {
+    it("saves the chart's card with provenance through the metabot endpoint", async () => {
       setupSaveModalEndpoints();
-      fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
-        name: "create-card",
-        matchPartialBody: true,
-        body: {
-          display: "bar",
-          name: "Orders by month",
-          description: "Monthly count of orders.",
-          dataset_query: datasetQuery,
+      fetchMock.post(
+        "express:/api/metabot/conversations/:id/saved-entity",
+        createMockCard({ id: 99, metabot_chart_id: "card-1" }),
+        {
+          name: "save-entity",
+          matchPartialBody: true,
+          body: {
+            entity_id: "card-1",
+            card: {
+              display: "bar",
+              name: "Orders by month",
+              description: "Monthly count of orders.",
+              dataset_query: datasetQuery,
+            },
+          },
         },
-      });
-      fetchMock.post("express:/api/metabot/conversations/:id/saved-entity", {
-        entity_id: "card-1",
-        card_id: 99,
-      });
+      );
       setupCardEndpoints(
         createMockCard({ id: 99, metabot_chart_id: "card-1" }),
       );
@@ -215,23 +218,15 @@ describe("MetabotInlineChart", () => {
       await submitSaveModal(modal);
 
       await waitFor(() => {
-        expect(fetchMock.callHistory.called("create-card")).toBe(true);
+        expect(fetchMock.callHistory.called("save-entity")).toBe(true);
       });
     });
 
     it("replaces the Save button with a Saved link after saving", async () => {
       setupSaveModalEndpoints();
-      fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
-        name: "create-card",
-      });
       fetchMock.post(
         "express:/api/metabot/conversations/:id/saved-entity",
-        { entity_id: "card-1", card_id: 99 },
-        {
-          name: "record-saved-entity",
-          matchPartialBody: true,
-          body: { entity_id: "card-1", card_id: 99 },
-        },
+        createMockCard({ id: 99, metabot_chart_id: "card-1" }),
       );
       setupCardEndpoints(
         createMockCard({ id: 99, metabot_chart_id: "card-1" }),
@@ -247,9 +242,6 @@ describe("MetabotInlineChart", () => {
         ).not.toBeInTheDocument();
       });
       expect(await screen.findByText("Saved")).toBeInTheDocument();
-      await waitFor(() => {
-        expect(fetchMock.callHistory.called("record-saved-entity")).toBe(true);
-      });
     });
 
     it("points the title at the saved question instead of the ad-hoc URL after saving", async () => {
