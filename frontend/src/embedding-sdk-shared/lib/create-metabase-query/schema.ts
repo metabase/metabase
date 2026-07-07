@@ -6,6 +6,7 @@ export type SchemaJavaScriptType =
   | "unknown";
 
 export type SchemaColumn = {
+  type?: "column";
   name: string;
   description?: string;
   displayName?: string;
@@ -57,4 +58,12 @@ export type MetricSchema = {
   mappedTableIds?: readonly number[];
   columns?: readonly SchemaColumn[];
   dimensions?: Record<string, Record<string, FieldSchema>>;
+};
+
+export type QuestionSchema = {
+  type: "card";
+  id: number;
+  name?: string;
+  display?: string;
+  columns?: readonly SchemaColumn[];
 };

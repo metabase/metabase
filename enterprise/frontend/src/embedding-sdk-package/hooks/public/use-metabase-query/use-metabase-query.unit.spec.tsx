@@ -224,7 +224,6 @@ const TEST_SCHEMA = {
           product: {
             type: "column",
             fieldId: 202,
-            tableId: 2,
             sourceFieldId: 104,
             name: "NAME",
             displayName: "Name",
@@ -327,9 +326,37 @@ const TEST_SCHEMA = {
       },
     },
   },
+  questions: {
+    ordersQuestion: {
+      type: "card",
+      id: 41,
+      name: "Orders question",
+      columns: [
+        {
+          type: "column",
+          name: "STATUS",
+          displayName: "Status",
+          jsType: "string",
+        },
+        {
+          type: "column",
+          name: "AMOUNT",
+          displayName: "Amount",
+          jsType: "number",
+        },
+        {
+          type: "column",
+          name: "CREATED_AT",
+          displayName: "Created At",
+          jsType: "Date",
+        },
+      ],
+    },
+  },
 } as const;
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
+type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
 
 const TEST_METADATA = {
   databases: {
@@ -455,6 +482,17 @@ const TEST_METADATA = {
     },
   },
   questions: {
+    41: createMockCard({
+      id: 41,
+      name: "Orders question",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+        },
+      },
+    }),
     31: createMockCard({
       id: 31,
       name: "Revenue",
@@ -585,6 +623,17 @@ const _validTableQueryWithJoinedMetricBreakout = {
   aggregations: [TEST_SCHEMA.metrics.revenue],
   breakouts: [breakout(TEST_SCHEMA.metrics.revenue.dimensions.orders.product)],
 } satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _validSavedQuestionQuery = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
+
+const _invalidSavedQuestionClauseQuery = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+
+  // @ts-expect-error saved question queries only support source and enabled
+  fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
 
 const _validCardQuery = {
   query: {
@@ -1020,6 +1069,43 @@ describe("resolveDatasetQuery", () => {
     });
   });
 
+  it("loads saved question metadata and passes the question source through Lib.createTestQuery", async () => {
+    const store = createMockStore();
+
+    const datasetQuery = await resolveDatasetQueryInBundle(store)({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+    });
+
+    expect(mockFetchTableMetadata).not.toHaveBeenCalled();
+
+    expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
+      1,
+      { id: 41 },
+      store.dispatch,
+      cardApi.endpoints.getCard,
+      { forceRefetch: false },
+    );
+
+    expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
+      2,
+      41,
+      store.dispatch,
+      cardApi.endpoints.getCardQueryMetadata,
+      { forceRefetch: false },
+    );
+
+    expect(datasetQuery).toMatchObject({
+      "lib/type": "mbql/query",
+      database: 1,
+      stages: [
+        {
+          "lib/type": "mbql.stage/mbql",
+          "source-card": 41,
+        },
+      ],
+    });
+  });
+
   it("passes aggregation result orderBys through Lib.createTestQuery", async () => {
     const avgAmount = avg(TEST_SCHEMA.tables.orders.fields.amount);
 
@@ -1232,13 +1318,42 @@ describe("resolveDatasetQuery", () => {
     );
   });
 
+  it("rejects unsupported saved question query clauses with a clear error message", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+      }),
+    ).rejects.toThrow(
+      "Saved question queries only support source and enabled, but received fields.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        limit: 10,
+      }),
+    ).rejects.toThrow(
+      "Saved question queries only support source and enabled, but received limit.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        aggregations: [avg(TEST_SCHEMA.questions.ordersQuestion.columns[1])],
+      }),
+    ).rejects.toThrow(
+      "Saved question queries only support source and enabled, but received aggregations.",
+    );
+  });
+
   it("rejects metric sources with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.metrics.revenue,
       } as any),
     ).rejects.toThrow(
-      'Query object creation requires a source reference like `{ type: "table", id }`.',
+      'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "card", id }`.',
     );
   });
 });

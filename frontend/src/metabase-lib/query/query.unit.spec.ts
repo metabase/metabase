@@ -22,6 +22,7 @@ import {
 } from "./test-helpers";
 
 const METRIC_ID = 42;
+const QUESTION_ID = 43;
 
 const DEFAULT_QUERY: DatasetQuery = {
   database: SAMPLE_DATABASE.id,
@@ -95,6 +96,46 @@ describe("createTestQuery", () => {
         ],
       });
       expect(Lib.sourceTableOrCardId(query)).toBe(PRODUCTS_ID);
+    });
+
+    it("should create a query with a card source", () => {
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          questions: [
+            createMockCard({
+              id: QUESTION_ID,
+              name: "Orders question",
+              dataset_query: createMockStructuredDatasetQuery({
+                database: SAMPLE_DATABASE.id,
+                query: {
+                  "source-table": ORDERS_ID,
+                },
+              }),
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "card",
+              id: QUESTION_ID,
+            },
+          },
+        ],
+      });
+
+      expect(Lib.toJsQuery(query)).toMatchObject({
+        stages: [
+          {
+            "source-card": QUESTION_ID,
+          },
+        ],
+      });
     });
 
     it("should create a query with a metric aggregation", () => {
