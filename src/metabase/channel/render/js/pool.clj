@@ -66,11 +66,11 @@
 (def ^:private ^Pool static-viz-context-pool
   "Pool of Truffle JS contexts. They are not thread-safe, so access is exclusive from acquire to release. Generating a
   context is cheap — realm setup plus top-level eval against the engine's code cache, no reparse — and per-context
-  memory is a realm, not a full parsed copy of the bundle. The pool targets 100% utilization with a maximum of 2
+  memory is a realm, not a full parsed copy of the bundle. The pool targets 100% utilization with a maximum of 3
   contexts (to bound memory; renders hold a context exclusively, so that is also the render concurrency), but at
   least 1 context is always kept in the pool to pick up. Each pooled tuple carries an expiry timestamp so a context
   is recycled after 10 minutes regardless, bounding per-context leak accumulation."
-  (let [base-controller (Pools/utilizationController 1.0 2 2)]
+  (let [base-controller (Pools/utilizationController 1.0 3 3)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
                ;; Generate a tuple of the context and the expiry timestamp.
