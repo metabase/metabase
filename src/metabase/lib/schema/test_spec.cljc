@@ -183,9 +183,7 @@
 
 (mr/def ::test-template-tags-spec
   [:sequential
-   {:decode/normalize (fn [xs]
-                        (cond-> xs
-                          (map? xs) vals))}
+   {:decode/normalize #'lib.schema.template-tag/normalize-template-tags}
    ::test-template-tag-spec])
 
 (mr/def ::test-native-query-spec

@@ -251,7 +251,9 @@
     [:ref ::template-tag]]
    [:ref ::template-tag-map.validate-names]])
 
-(defn- normalize-template-tags [template-tags]
+(defn normalize-template-tags
+  "Normalize `template-tags` to a sequence (converting a map if needed)."
+  [template-tags]
   (letfn [(normalize-map [tags-map]
             (reduce-kv
              (fn [acc tag-name template-tag]

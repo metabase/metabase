@@ -286,9 +286,11 @@
    ;; this function is used by the frontend, so we'll also support a template tag map as input
    updated-tags :- ::lib.schema.template-tag/template-tag-map-or-sequence] ; NOCOMMIT - FE only?
   (let [updated-tags (->> (lib.normalize/normalize ::lib.schema.template-tag/template-tags updated-tags)
-                          ;; NOCOMMIT
+                          ;; NOCOMMIT -- do name normalization automatically
                           (mapv (fn [tag]
-                                  (update tag :name lib.params.parse/match-and-normalize-tag-name))))]
+                                  (assert (string? (:name tag))
+                                          (str "TAG SHOULD HAVE A NAME! GOT: " (pr-str tag)))
+                                  (update tag :name (some-fn lib.params.parse/match-and-normalize-tag-name identity)))))]
     (letfn [(update-template-tags [existing-tags]
               ;; prefer order from `updated-tags`, but only update tags that are present in `existing-tags`; keep any
               ;; `existing-tags` that don't have updates.

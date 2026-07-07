@@ -1422,7 +1422,9 @@
   ->legacy-MBQL
   ->mbql5
   legacy-default-join-alias
-  with-aggregation-list
+  ;; only export in clj, cljs export doesn't work currently because it's a macro... [[metabase.lib.js]] will have to
+  ;; use directly
+  #?(:clj with-aggregation-list)
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
