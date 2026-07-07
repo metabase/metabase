@@ -131,8 +131,14 @@ jobs:
         if: github.run_attempt != '1'
         run: echo "specs=$(cat failed-specs)" >> $GITHUB_ENV
 
-      - name: Compile CLJS
-        run: bun run build-pure:cljs
+      # Built once by the `build-cljs` job in run-tests.yml instead of
+      # compiling in every chunk. The Cypress rspack preprocessor resolves the
+      # `cljs/` alias to this directory.
+      - name: Get compiled CLJS
+        uses: actions/download-artifact@v8
+        with:
+          name: compiled-cljs
+          path: target/cljs_dev
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
