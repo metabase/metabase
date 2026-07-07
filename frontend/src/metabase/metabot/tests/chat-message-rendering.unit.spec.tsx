@@ -1,5 +1,6 @@
 import { assocIn } from "icepick";
 
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type {
   MetabotAgentChatMessage,
@@ -9,7 +10,7 @@ import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { thumbsDown, thumbsUp } from "metabase/metabot/tests/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
 import {
@@ -102,7 +103,12 @@ describe("AgentMessage", () => {
   });
 
   describe("entity_saved", () => {
-    it("renders a 'Chart X saved to Y' confirmation block", () => {
+    it("renders a 'Chart X saved to Y' block with the container's current name", async () => {
+      setupCollectionByIdEndpoint({
+        collections: [
+          createMockCollection({ id: 5, name: "Personal Collection" }),
+        ],
+      });
       setup({
         id: "s1",
         role: "agent",
@@ -113,17 +119,15 @@ describe("AgentMessage", () => {
             entity_id: "chart-1",
             card_id: 99,
             name: "Accounts by Day",
-            location: {
-              type: "collection",
-              id: 5,
-              name: "Personal Collection",
-            },
+            location: { type: "collection", id: 5 },
           },
         },
       });
 
+      expect(
+        await screen.findByText("Personal Collection"),
+      ).toBeInTheDocument();
       expect(screen.getByText("Accounts by Day")).toBeInTheDocument();
-      expect(screen.getByText("Personal Collection")).toBeInTheDocument();
     });
   });
 

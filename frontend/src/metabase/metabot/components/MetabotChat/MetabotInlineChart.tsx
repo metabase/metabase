@@ -207,9 +207,7 @@ function SaveChartAction({
     newQuestion: Question,
     options?: { dashboardTabId?: DashboardTabId },
   ) => {
-    // One request creates the card AND stamps its Metabot provenance columns, so
-    // the two cannot desync and the saved-state verification fetch never races
-    // the stamp.
+    // One request creates the card AND stamps its Metabot provenance columns.
     const created = await saveMetabotEntity({
       conversation_id: conversationId,
       entity_id: entityId,

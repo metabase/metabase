@@ -4,10 +4,12 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import type {
-  EntitySavedValue,
-  SavedEntityLocation,
-} from "metabase/api/ai-streaming/schemas";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+} from "metabase/api";
+import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type {
@@ -117,21 +119,37 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
-const locationUrl = (location: SavedEntityLocation): string =>
-  location.type === "dashboard"
-    ? Urls.dashboard(location)
-    : Urls.collection({ id: location.id, name: location.name });
-
 const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
+  const { location } = value;
+  // The persisted part carries only the container's type + id; fetch its current
+  // name so a rename after the save doesn't leave a stale label here.
+  const { data: collection } = useGetCollectionQuery(
+    location.type === "collection" ? { id: location.id ?? "root" } : skipToken,
+  );
+  const { data: dashboard } = useGetDashboardQuery(
+    location.type === "dashboard" ? { id: location.id } : skipToken,
+  );
+  const container =
+    location.type === "dashboard"
+      ? dashboard && { name: dashboard.name, url: Urls.dashboard(dashboard) }
+      : collection && {
+          name: collection.name,
+          url: Urls.collection(collection),
+        };
+
+  if (container == null) {
+    return null;
+  }
+
   const target = (
     <Anchor
       key="target"
       component={ForwardRefLink}
-      to={locationUrl(value.location)}
+      to={container.url}
       target="_blank"
       fw="bold"
     >
-      {value.location.name}
+      {container.name}
     </Anchor>
   );
   const chartName = (

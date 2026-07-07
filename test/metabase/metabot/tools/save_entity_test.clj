@@ -41,7 +41,7 @@
             (is (= "c-1" (get-in part [:data :entity_id])))
             (is (= (:id card) (get-in part [:data :card_id])))
             (is (= "Venues by price" (get-in part [:data :name])))
-            (is (= {:type "collection" :id (:id coll) :name "Sales analytics"}
+            (is (= {:type "collection" :id (:id coll)}
                    (get-in part [:data :location])))))))))
 
 (deftest save-stamps-card-provenance-test
@@ -102,7 +102,7 @@
             (is (= (:id dash) (:dashboard_id card)))
             (is (t2/exists? :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))))
           (testing "the location points at the dashboard"
-            (is (= {:type "dashboard" :id (:id dash) :name "Ops"}
+            (is (= {:type "dashboard" :id (:id dash)}
                    (get-in result [:data-parts 0 :data :location])))))))))
 
 (deftest unknown-chart-test
