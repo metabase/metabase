@@ -46,7 +46,7 @@ function mergeEntities(
       delete result[id];
     } else {
       result[id] = {
-        ...((result[id] as Record<string, unknown>) ?? {}),
+        ...(result[id] ?? {}),
         ...(entry as Record<string, unknown>),
       };
     }
@@ -76,7 +76,7 @@ function makeSliceReducer(
 }
 
 const customReducers: Partial<Record<string, SliceReducer>> = {
-  tables: tablesReducer as SliceReducer,
+  tables: tablesReducer,
 };
 
 const sliceReducers = Object.fromEntries(

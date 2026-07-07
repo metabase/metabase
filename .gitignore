@@ -57,6 +57,16 @@ cypress.env.json
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
 /e2e/support/assets/example_custom_viz_plugin*.tgz
+# Coverage artifacts
+/e2e/coverage-manifest-raw
+/e2e/coverage-manifest
+/e2e/coverage/analysis
+/e2e/coverage/spec-file-manifest.json
+/e2e/support/.nyc_output
+/e2e/support/coverage
+/e2e/support/e2e
+/.nyc_output
+
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot

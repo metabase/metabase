@@ -30,7 +30,7 @@ import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 
 interface QuestionInfoSidebarProps {
   question: Question;
-  onSave: (question: Question) => Promise<Question>;
+  onSave: (question: Question) => Promise<void>;
 }
 
 export const QuestionInfoSidebar = ({

@@ -88,6 +88,7 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+  should_index?: boolean;
 
   remapping?: Map<RowValue, string | number>;
 }

@@ -10,6 +10,7 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1348,3 +1349,85 @@
         (mt/with-temp [:model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))
+
+(deftest unsubscribe-without-collection-perms-test
+  (testing "A recipient without collection perms can still list and unsubscribe from a subscription (#22473)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                     :model/Pulse        {pulse-id :id} {:creator_id (mt/user->id :crowberto) :dashboard_id dashboard-id}
+                     :model/PulseChannel {channel-id :id} {:pulse_id pulse-id :channel_type "email" :schedule_type "daily"}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (with-pulses-in-nonreadable-collection! [pulse-id]
+          (is (some #(= pulse-id (:id %)) (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")))
+          (is (nil? (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription")))))))))
+
+(deftest pulse-slack-channel-persists-channel-id-test
+  (testing "PUT /api/pulse persists the immutable Slack channel_id alongside the channel display name (#...)"
+    (mt/with-temp [:model/Pulse pulse {}
+                   :model/Card  card  {}]
+      (with-pulses-in-writeable-collection! [pulse]
+        (api.card-test/with-cards-in-readable-collection! [card]
+          (let [response (mt/user-http-request :rasta :put 200 (format "pulse/%d" (u/the-id pulse))
+                                               {:name          "Slack Pulse"
+                                                :cards         [{:id (u/the-id card) :include_csv false :include_xls false :dashboard_card_id nil}]
+                                                :channels      [{:enabled       true
+                                                                 :channel_type  "slack"
+                                                                 :schedule_type "hourly"
+                                                                 :recipients    []
+                                                                 :details       {:channels "#work" :channel_id "C001"}}]})]
+            (is (= {:channels "#work" :channel_id "C001"}
+                   (-> response :channels first :details)))))))))
+
+;; Subscription parameter overrides are an EE feature: the OSS `the-parameters` fallback ignores the
+;; request's parameters and uses the dashboard defaults, so this can only pass with EE on the classpath.
+;; The EE app-db jobs run this same file with EE available and cover the override behavior.
+(deftest send-test-pulse-native-query-non-default-parameters-test
+  (mt/when-ee-evailable
+   (testing "POST /api/pulse/test uses the request's explicit parameter override, not the dashboard's persisted default (#18669)"
+     (mt/with-premium-features #{:dashboard-subscription-filters}
+       (let [mp    (mt/metadata-provider)
+             query (lib/native-query mp "SELECT {{p}} AS val, 1 AS n")
+             p-tag (get (lib/template-tags query) "p")
+             query (lib/with-template-tags query {"p" (assoc p-tag :required true)})]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
+                                                   :display "table"}
+                        :model/Dashboard {dashboard-id :id} {:name       "Overridable Pulse"
+                                                             :parameters [{:name    "P"
+                                                                           :slug    "p"
+                                                                           :id      "__P__"
+                                                                           :type    "category"
+                                                                           :default "default-val"}]}
+                        :model/DashboardCard _ {:card_id            card-id
+                                                :dashboard_id       dashboard-id
+                                                :parameter_mappings [{:parameter_id "__P__"
+                                                                      :card_id      card-id
+                                                                      :target       [:variable [:template-tag "p"]]}]}]
+           (mt/with-fake-inbox
+             (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                      (is (= {:ok true}
+                                             (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                                   {:name          (mt/random-name)
+                                                                    :dashboard_id  dashboard-id
+                                                                    :parameters    [{:id "__P__" :value "override-val"}]
+                                                                    :cards         [{:id                card-id
+                                                                                     :include_csv       false
+                                                                                     :include_xls       false
+                                                                                     :dashboard_card_id nil}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
+                                                                    :skip_if_empty false}))))
+                   content (-> channel-messages :channel/email first :message first :content)]
+               (is (str/includes? content "override-val"))
+               (is (not (str/includes? content "default-val")))))))))))
+
+(deftest archive-pulse-after-dashboard-collection-move-test
+  (testing "PUT /api/pulse/:id {archived: true} succeeds even after the pulse's dashboard moved to another collection (#17658)"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Dashboard  {dash-id :id} {}
+                   :model/Pulse      {pulse-id :id} {:dashboard_id dash-id}]
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:collection_id (:id coll)})
+      (is (true? (:archived (mt/user-http-request :crowberto :put 200 (str "pulse/" pulse-id) {:archived true})))))))

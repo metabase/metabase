@@ -109,9 +109,7 @@ class Table {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
-    return fks
-      .map((fk) => fk.origin?.table)
-      .filter((table) => table != null) as Table[];
+    return fks.map((fk) => fk.origin?.table).filter((table) => table != null);
   }
 
   foreignTables(): Table[] {

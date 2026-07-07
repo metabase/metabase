@@ -42,14 +42,14 @@ export const FormField = forwardRef(function FormField(
             {hasTitle && (
               <Text
                 component="label"
-                c={hasError ? "error" : "text-primary"}
+                c={hasError ? "feedback-negative" : "text-primary"}
                 htmlFor={htmlFor}
                 fw="bold"
                 fz="md"
               >
                 {title}
                 {hasError && (
-                  <Text component="span" c="error" role="alert">
+                  <Text component="span" c="feedback-negative" role="alert">
                     : {error}
                   </Text>
                 )}

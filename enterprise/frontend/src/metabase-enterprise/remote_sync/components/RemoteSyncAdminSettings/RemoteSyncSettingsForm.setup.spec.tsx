@@ -88,7 +88,7 @@ const setupEndpoints = ({
       value: settings[key],
       is_env_setting: true,
       env_name: `MB_${key.toUpperCase().replace(/-/g, "_")}`,
-    } as SettingDefinition),
+    }),
   );
 
   setupPropertiesEndpoints(settings);

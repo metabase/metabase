@@ -100,7 +100,7 @@ describe("issue 46221", () => {
     name: "46221",
     native: { query: "select 42" },
     type: "model",
-    collection_id: FIRST_COLLECTION_ID as number,
+    collection_id: FIRST_COLLECTION_ID,
   };
 
   beforeEach(() => {

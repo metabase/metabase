@@ -5,7 +5,9 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
+import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
   createSampleDatabase,
@@ -18,20 +20,27 @@ registerVisualizations();
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
-const table = metadata.table(PRODUCTS_ID);
+const table = checkNotNull(metadata.table(PRODUCTS_ID));
 
 describe("ChartSettingsSidebar", () => {
-  const data = {
-    rows: [[1]],
-    cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
-  };
+  const result = createMockDataset({
+    data: {
+      rows: [[1]],
+      cols: [
+        createMockColumn({
+          base_type: "type/Integer",
+          name: "foo",
+          display_name: "foo",
+        }),
+      ],
+    },
+  });
 
   it("should hide the title when showSidebarTitle is false", () => {
     renderWithProviders(
       <ChartSettingsSidebar
         question={table.question().setDisplay("gauge")}
-        result={{ data }}
-        showSidebarTitle={false}
+        result={result}
       />,
     );
 
@@ -56,7 +65,7 @@ describe("ChartSettingsSidebar", () => {
     renderWithProviders(
       <ChartSettingsSidebar
         question={table.question().setDisplay("scalar")}
-        result={{ data }}
+        result={result}
       />,
       {
         storeInitialState: createMockState({
