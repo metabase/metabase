@@ -357,7 +357,7 @@
 
 (deftest resolve-native-table-qualified-column-fails-closed-test
   (testing "native SQL with table-qualified columns (SELECT orders.id FROM orders) fails
-            closed via guard 3 — the accepted, documented limitation"
+            closed via guard 3 — the accepted limitation"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)

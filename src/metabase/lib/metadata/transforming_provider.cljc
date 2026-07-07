@@ -88,7 +88,7 @@
   "Wrap `parent-metadata-provider` so every `:metadata/table` it returns is `merge`d with
    `(table->overrides table-metadata)`. A nil return from `table->overrides` is a
    passthrough (the table is unchanged); all non-`:metadata/table` results pass through
-   untouched. Returns the wrapped provider.
+   untouched.
 
    `table->overrides` must be pure."
   [table->overrides parent-metadata-provider]

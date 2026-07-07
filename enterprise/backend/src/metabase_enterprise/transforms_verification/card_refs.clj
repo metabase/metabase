@@ -7,10 +7,7 @@
   - [[card->immediate-refs]] resolves one card, one layer: the physical tables it
     reads directly, and the source-card ids it defers to the caller.
   - [[card->tables]] walks the source-card graph to its physical leaves — every
-    table reachable, with the intervening cards unwound.
-
-  A card whose source is another card hides that card's tables behind a `:cards`
-  reference; [[card->tables]] unwinds them."
+    table reachable, with the intervening cards unwound."
   (:require
    [clojure.set :as set]
    [metabase.lib-be.core :as lib-be]

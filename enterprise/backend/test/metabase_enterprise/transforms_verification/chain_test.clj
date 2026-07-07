@@ -157,7 +157,7 @@
           (is (= before-scratch (tu/count-test-scratch-tables db-id schema))))))))
 
 ;;; ===========================================================================
-;;; Temporal output columns under a non-UTC report timezone (C-2)
+;;; Temporal output columns under a non-UTC report timezone
 ;;; ===========================================================================
 
 (deftest date-output-column-non-utc-report-timezone-test

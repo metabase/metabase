@@ -360,9 +360,6 @@
      (fn [{:keys [db-id driver mapping output-sql backend]}]
        (let [per-assertion-calls (atom 0)
              run-one-orig        (mt/original-fn #'assertions/run-one-assertion!)
-             ;; The bad assertion references an existing table but a non-existent
-             ;; column — passes prepare (verify checks table refs) but throws at
-             ;; the warehouse in the combined query.
              bad-sql "SELECT * FROM test_output WHERE nonexistent_column_xyz < 0"
              results (mt/with-dynamic-fn-redefs
                        [assertions/run-one-assertion!

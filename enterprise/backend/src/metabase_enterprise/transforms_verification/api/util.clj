@@ -8,17 +8,15 @@
    [metabase.util.json :as json]))
 
 (def test-run-error-http-status
-  "Maps `:error-type` keywords (see [[metabase-enterprise.transforms-verification.errors]])
-  to HTTP status codes.
+  "Maps `:error-type` keywords to HTTP status codes.
 
   400 — caller error (bad input): the caller can fix by changing the request.
   422 — unprocessable: the transform or its environment prevents a test run;
         the caller may need to change the transform definition.
   500 — internal error: unexpected failure; the caller cannot fix this.
 
-  Not every declared error-type needs an entry: an unmapped or unrecognised
-  `:error-type`, or an untyped exception (a statement timeout), surfaces as a
-  generic 500."
+  An `:error-type` missing from this map, and any untyped exception (a
+  statement timeout, say), surfaces as a generic 500."
   {;; Fixture errors — 400: caller supplied wrong CSV content.
    ::errors/header-mismatch             400
    ::errors/unparseable-cell            400

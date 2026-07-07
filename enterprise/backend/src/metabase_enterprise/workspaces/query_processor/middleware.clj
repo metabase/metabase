@@ -78,8 +78,8 @@
 
 (defn- table->overrides
   "Override `{:db :schema :name}` for any `:metadata/table` whose `(:schema, :name)`
-   matches a `from` spec in `remappings`, else nil (passthrough). Matched on
-   `(:schema, :name)`, not `:db` — sync doesn't populate `:db` on `:metadata/table`."
+   matches a `from` spec in `remappings`, else nil (passthrough). Ignores `:db` when
+   matching — sync doesn't populate it on `:metadata/table`."
   [remappings]
   (let [schema-table-index (into {}
                                  (map (fn [[from-spec to-spec]]

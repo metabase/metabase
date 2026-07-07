@@ -157,7 +157,7 @@
                   (testing "status is passed"
                     (is (= "passed" (:status resp))
                         (str "Expected passed; diff: " (pr-str (:diff resp)))))
-                  (testing "no test_run_id field (dropped; reintroduce with async runs)"
+                  (testing "response has no test_run_id field"
                     (is (not (contains? resp :test_run_id))))
                   (testing "diff is present and well-formed"
                     (is (map? (:diff resp)))

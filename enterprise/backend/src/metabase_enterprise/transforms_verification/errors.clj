@@ -5,8 +5,7 @@
   untyped throws (no `:error-type`) use raw `ex-info`.")
 
 (def all
-  "The full set of `:error-type` keywords the test-run pipeline can throw.
-  Not every error-type has a dedicated HTTP mapping."
+  "The full set of `:error-type` keywords the test-run pipeline can throw."
   #{;; Fixture-CSV parsing.
     ::header-mismatch             ; CSV header does not match the target table's columns (exact match), or contains duplicates.
     ::unparseable-cell           ; A CSV cell cannot be parsed as its column's type.
