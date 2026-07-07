@@ -582,6 +582,7 @@
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
    metabase.channel.render.js.svg/with-static-viz-context                                                                    hooks.common/with-one-top-level-binding
+   metabase.channel.render.js.svg/with-untrusted-static-viz-context                                                          hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.classloader.core/require                                                                                         hooks.clojure.core.require/lint-require
