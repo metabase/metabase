@@ -60,3 +60,21 @@ In case you want to preview release notes generation, or re-generate them after 
 ```sh
 bun run generate-changelog v0.77.0 > changelog.log
 ```
+
+### Release report
+
+Generate a self-contained HTML report for a newly-cut major release branch. It
+traces every commit on `release-x.<major>.x` back to where the previous major
+forked from master, resolves the linked GitHub issues and Linear projects,
+previews the release notes, and asks the `claude` CLI for a "major themes"
+summary.
+
+```sh
+bun run generate-release-report 63   # writes release-report-v63.html
+```
+
+Requires `GITHUB_TOKEN` / `GITHUB_OWNER` / `GITHUB_REPO` (in `release/.env`) and
+`LINEAR_API_KEY` (in the repo-root `.env`). The `release-x.<major>.x`,
+`release-x.<major-1>.x`, and `master` branches must be fetchable. The theme
+summary shells out to the `claude` CLI in headless mode; if it isn't on `PATH`
+the report still renders with a deterministic project-based fallback.
