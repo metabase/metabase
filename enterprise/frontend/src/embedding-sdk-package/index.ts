@@ -42,27 +42,6 @@ export type {
   AnyActionResult,
   UseActionResult,
 } from "./hooks/public/use-action";
-/** @internal */
-export {
-  avg,
-  breakout,
-  count,
-  createMetabaseQuery,
-  distinct,
-  filter,
-  max,
-  median,
-  min,
-  sum,
-  useMetabaseQuery,
-  useMetabaseQueryObject,
-} from "./hooks/public/use-metabase-query";
-/** @internal */
-export type {
-  MetabaseBreakout,
-  MetabaseQueryOptions,
-  UseMetabaseQueryResult,
-} from "./hooks/public/use-metabase-query";
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 
@@ -187,13 +166,10 @@ export type {
 } from "embedding-sdk-bundle/types";
 export type {
   FieldSchema,
-  MetricSchema,
-  QuestionSchema,
   QueryData,
   RowValue,
   SchemaColumn,
   SchemaJavaScriptType,
-  SchemaParameter,
   SchemaRow,
 } from "./hooks/public/data-schema";
 export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";

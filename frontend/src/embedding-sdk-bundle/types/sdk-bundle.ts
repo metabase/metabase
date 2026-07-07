@@ -35,6 +35,7 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
+import type { CreateMetabaseQuery } from "metabase/embedding-sdk/lib/create-metabase-query";
 import type { User } from "metabase-types/api";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =
@@ -89,6 +90,7 @@ type ReduxStoreExports = {
 };
 
 type ReduxStoreUtilityFunctionExports = {
+  createMetabaseQuery: CreateMetabaseQuery;
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
   >;

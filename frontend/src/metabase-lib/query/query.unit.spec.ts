@@ -1,5 +1,11 @@
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
+import {
+  createMockMeasure,
+  createMockSegment,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PEOPLE_ID,
@@ -391,6 +397,47 @@ describe("createTestQuery", () => {
   });
 
   describe("filters", () => {
+    it("should create a query with a segment filter", () => {
+      const SEGMENT_ID = 12;
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          segments: [
+            createMockSegment({
+              id: SEGMENT_ID,
+              table_id: PRODUCTS_ID,
+              definition: createMockStructuredDatasetQuery({
+                query: {
+                  "source-table": PRODUCTS_ID,
+                  filter: ["=", ["field", PRODUCTS.CATEGORY, null], "Widget"],
+                },
+              }),
+            }),
+          ],
+        }),
+      );
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            filters: [{ type: "segment", id: SEGMENT_ID }],
+          },
+        ],
+      });
+
+      expect(
+        (
+          Lib.toLegacyQuery(query) as DatasetQuery & {
+            query: { filter: unknown };
+          }
+        ).query.filter,
+      ).toEqual(["segment", SEGMENT_ID]);
+    });
+
     it("should create a query with filters", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
@@ -423,6 +470,55 @@ describe("createTestQuery", () => {
   });
 
   describe("aggregations", () => {
+    it("should create a query with a measure aggregation", () => {
+      const MEASURE_ID = 34;
+
+      const provider = Lib.metadataProvider(
+        SAMPLE_DATABASE.id,
+        createMockMetadata({
+          databases: [SAMPLE_DATABASE],
+          measures: [
+            createMockMeasure({
+              id: MEASURE_ID,
+              table_id: PRODUCTS_ID,
+              definition: createMockStructuredDatasetQuery({
+                query: {
+                  "source-table": PRODUCTS_ID,
+                  aggregation: [["count"]],
+                },
+              }) as never,
+            }),
+          ],
+        }),
+      );
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: PRODUCTS_ID,
+            },
+            aggregations: [{ type: "measure", id: MEASURE_ID }],
+          },
+        ],
+      });
+
+      expect(
+        (
+          Lib.toLegacyQuery(query) as DatasetQuery & {
+            query: { aggregation: unknown };
+          }
+        ).query.aggregation,
+      ).toEqual([
+        [
+          "aggregation-options",
+          expect.anything(),
+          { "display-name": "Measure" },
+        ],
+      ]);
+    });
+
     it("should create a query with aggregations", () => {
       const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
         stages: [
