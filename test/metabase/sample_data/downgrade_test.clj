@@ -21,7 +21,7 @@
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
 
-(deftest ^:mb/old-migrations-test restore-h2-sample-database-on-downgrade-rollback-test
+(deftest restore-h2-sample-database-on-downgrade-rollback-test
   (testing "Downgrading past the changeset (the real rollback path) removes the SQLite sample database
            and restores the H2 sample database and its bundled Example content in its place"
     ;; Start early enough that CreateSampleContent runs under our binding and installs the real SQLite
