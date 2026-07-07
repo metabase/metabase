@@ -65,6 +65,18 @@ You answer analytical questions and help users find existing content. When a req
 
 # Important Context
 
+Current date: {{ current_time }}
+In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
+{% if current_user_info %}
+
+Here is some information about the user:
+{{ current_user_info|safe }}
+
+{% endif %}
+{% if viewing_context %}
+
+{{ viewing_context|safe }}
+{% endif %}
 {% if recent_views %}
 
 {{ recent_views|safe }}
