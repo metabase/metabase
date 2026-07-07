@@ -215,8 +215,6 @@ export function ExplorationSidebar({
         shouldScrollSelectionRef={shouldScrollSelectionRef}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
         readPageIds={readPageIds}
-        showFilters={showFilters}
-        onToggleShowFilter={onToggleShowFilter}
         onArchiveGroup={onArchiveGroup}
       />
     ),
@@ -226,8 +224,6 @@ export function ExplorationSidebar({
       handlePrefetch,
       getSelectedEntityIdUrl,
       readPageIds,
-      showFilters,
-      onToggleShowFilter,
       onArchiveGroup,
     ],
   );
@@ -242,30 +238,36 @@ export function ExplorationSidebar({
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
-      <Box pl="0.5rem" pr="1rem">
-        <SegmentedControl
-          fullWidth
-          radius="xl"
-          value={selectedSidebarTab}
-          onChange={(value) =>
-            dispatch(
-              push(getSelectedSidebarTabUrl(value as ExplorationSidebarTab)),
-            )
-          }
-          data={Object.values(explorationSidebarTabsInfo).map(
-            ({ value, label }) => ({
-              value,
-              label: (
-                <SidebarTabLabel
-                  tab={value}
-                  label={label}
-                  hasNewContent={tabsWithNewContent?.has(value) ?? false}
-                />
-              ),
-            }),
-          )}
+      <Group pl="0.5rem" pr="1rem" gap="xs" wrap="nowrap" align="center">
+        <Box flex={1} miw={0}>
+          <SegmentedControl
+            fullWidth
+            radius="xl"
+            value={selectedSidebarTab}
+            onChange={(value) =>
+              dispatch(
+                push(getSelectedSidebarTabUrl(value as ExplorationSidebarTab)),
+              )
+            }
+            data={Object.values(explorationSidebarTabsInfo).map(
+              ({ value, label }) => ({
+                value,
+                label: (
+                  <SidebarTabLabel
+                    tab={value}
+                    label={label}
+                    hasNewContent={tabsWithNewContent?.has(value) ?? false}
+                  />
+                ),
+              }),
+            )}
+          />
+        </Box>
+        <SidebarShowFilterMenu
+          showFilters={showFilters}
+          onToggleShowFilter={onToggleShowFilter}
         />
-      </Box>
+      </Group>
       {tree.length > 0 ? (
         <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
           <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
@@ -342,8 +344,6 @@ interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
   readPageIds: ReadonlySet<string>;
-  showFilters: ExplorationShowFilters;
-  onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
   onArchiveGroup: (groupId: string | number) => void;
 }
 
@@ -383,8 +383,6 @@ function ExplorationTreeHeading({
   canWrite,
   explorationId,
   getSelectedEntityIdUrl,
-  showFilters,
-  onToggleShowFilter,
   onArchiveGroup,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
@@ -421,8 +419,6 @@ function ExplorationTreeHeading({
         canWrite={canWrite}
         explorationId={explorationId}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
-        showFilters={showFilters}
-        onToggleShowFilter={onToggleShowFilter}
         onArchiveGroup={onArchiveGroup}
       />
     </Box>
@@ -434,16 +430,12 @@ function ExplorationGroupMenu({
   canWrite,
   explorationId,
   getSelectedEntityIdUrl,
-  showFilters,
-  onToggleShowFilter,
   onArchiveGroup,
 }: {
   item: ITreeNodeItem<ExplorationTreeHeading>;
   canWrite: boolean;
   explorationId: ExplorationId;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
-  showFilters: ExplorationShowFilters;
-  onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
   onArchiveGroup: (groupId: string | number) => void;
 }) {
   const [cancelThread] = useCancelExplorationThreadMutation();
@@ -513,31 +505,6 @@ function ExplorationGroupMenu({
           {t`Copy link`}
         </Menu.Item>
 
-        <Menu.Sub>
-          <Menu.Sub.Target>
-            <Menu.Sub.Item leftSection={<Icon name="eye" />}>
-              {t`Show`}
-            </Menu.Sub.Item>
-          </Menu.Sub.Target>
-          <Menu.Sub.Dropdown>
-            <ShowFilterItem
-              label={t`Unread`}
-              checked={showFilters.unread}
-              onToggle={() => onToggleShowFilter("unread")}
-            />
-            <ShowFilterItem
-              label={t`Hidden`}
-              checked={showFilters.hidden}
-              onToggle={() => onToggleShowFilter("hidden")}
-            />
-            <ShowFilterItem
-              label={t`Potentially interesting`}
-              checked={showFilters.interesting}
-              onToggle={() => onToggleShowFilter("interesting")}
-            />
-          </Menu.Sub.Dropdown>
-        </Menu.Sub>
-
         <Menu.Item
           leftSection={<Icon name="archive" />}
           onClick={() => onArchiveGroup(item.id)}
@@ -553,6 +520,54 @@ function ExplorationGroupMenu({
         {canRestart && (
           <Menu.Item onClick={handleRestart}>{t`Restart`}</Menu.Item>
         )}
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
+function SidebarShowFilterMenu({
+  showFilters,
+  onToggleShowFilter,
+}: {
+  showFilters: ExplorationShowFilters;
+  onToggleShowFilter: (key: keyof ExplorationShowFilters) => void;
+}) {
+  const hasActiveFilter =
+    showFilters.unread || showFilters.hidden || showFilters.interesting;
+
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon
+          className={cx(S.filterButton, {
+            [S.filterButtonActive]: hasActiveFilter,
+          })}
+          radius="xl"
+          size="lg"
+          aria-label={t`Filter`}
+        >
+          <Icon
+            name="filter"
+            c={hasActiveFilter ? "white" : "text-secondary"}
+          />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <ShowFilterItem
+          label={t`Unread`}
+          checked={showFilters.unread}
+          onToggle={() => onToggleShowFilter("unread")}
+        />
+        <ShowFilterItem
+          label={t`Hidden`}
+          checked={showFilters.hidden}
+          onToggle={() => onToggleShowFilter("hidden")}
+        />
+        <ShowFilterItem
+          label={t`Potentially interesting`}
+          checked={showFilters.interesting}
+          onToggle={() => onToggleShowFilter("interesting")}
+        />
       </Menu.Dropdown>
     </Menu>
   );
