@@ -107,6 +107,36 @@
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))
 
+(deftest replace-non-h2-sample-database-test
+  (testing "A non-H2 sample database left by a newer version (e.g. SQLite after a downgrade) is swapped
+           back to the bundled H2 sample database on startup, with its Example content recreated."
+    (mt/with-model-cleanup [:model/Database :model/Collection :model/Card :model/Dashboard]
+      ;; Simulate the post-downgrade state: a SQLite sample database with a table + field (inserted via raw
+      ;; SQL, mirroring how a newer version synced them - inserting a Table via the model would dispatch on
+      ;; the absent :sqlite driver, which never happens on the real delete path).
+      (let [sqlite-db (t2/insert-returning-instance! :model/Database
+                                                     {:name    "Sample Database"
+                                                      :engine  :sqlite
+                                                      :is_sample true
+                                                      :details {:db "mem:fake-sqlite"}})
+            _         (t2/query {:insert-into :metabase_table
+                                 :values [{:db_id (:id sqlite-db) :name "ORDERS" :active true
+                                           :created_at :%now :updated_at :%now}]})
+            sqlite-tbl-id (t2/select-one-pk :model/Table :db_id (:id sqlite-db) :name "ORDERS")]
+        (t2/query {:insert-into :metabase_field
+                   :values [{:table_id sqlite-tbl-id :name "TOTAL" :base_type "type/Float"
+                             :database_type "FLOAT" :position 0 :created_at :%now :updated_at :%now}]})
+        (sample-data/update-sample-database-if-needed! sqlite-db)
+        (testing "the SQLite sample database (and its tables/fields) is gone"
+          (is (not (t2/exists? :model/Database :id (:id sqlite-db))))
+          (is (not (t2/exists? :model/Table :id sqlite-tbl-id))))
+        (let [h2-db (t2/select-one :model/Database :is_sample true :engine :h2)]
+          (testing "the bundled H2 sample database is installed and synced"
+            (is (some? h2-db))
+            (is (t2/exists? :model/Table :db_id (:id h2-db) :name "PEOPLE")))
+          (testing "the Example content is recreated on the H2 sample database"
+            (is (pos? (t2/count :model/Card :database_id (:id h2-db))))))))))
+
 (deftest write-rows-sample-database-test
   (testing "should be able to execute INSERT, UPDATE, and DELETE statements on the Sample Database"
     (mt/with-temp [:model/Database db (sample-database-db true)]

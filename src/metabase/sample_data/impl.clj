@@ -3,7 +3,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
+   [metabase.sample-data.example-content :as example-content]
    [metabase.sync.core :as sync]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
@@ -97,13 +99,59 @@
     (catch Throwable e
       (log/error e "Failed to load sample database"))))
 
+(defn- sample-database-dashboard-ids
+  "IDs of Dashboards holding at least one card backed by `database-id`. Captured before the sample
+  database is deleted so the dashboards it empties out can be pruned afterward."
+  [database-id]
+  (t2/select-fn-set :dashboard_id [:model/DashboardCard :dashboard_id]
+                    :card_id [:in {:select [:id]
+                                   :from   [(t2/table-name :model/Card)]
+                                   :where  [:= :database_id database-id]}]))
+
+(defn- delete-emptied-dashboards!
+  "Delete Dashboards from `dashboard-ids` that no longer hold any card-backed dashcard (the sample
+  dashboards are built entirely from sample cards + text/heading cards, so once the sample cards are
+  gone they are empty). A dashboard the user mixed their own card into is left alone."
+  [dashboard-ids]
+  (when (seq dashboard-ids)
+    (let [non-empty (t2/select-fn-set :dashboard_id [:model/DashboardCard :dashboard_id]
+                                      :dashboard_id [:in dashboard-ids]
+                                      :card_id [:not= nil])
+          empty-ids (remove (or non-empty #{}) dashboard-ids)]
+      (when (seq empty-ids)
+        (t2/delete! :model/Dashboard :id [:in empty-ids])))))
+
+(defn- replace-non-h2-sample-database!
+  "A newer version installed a non-H2 (e.g. SQLite) bundled sample database that this version cannot use.
+  Delete it - along with the content it leaves empty - then install and sync the bundled H2 sample
+  database and recreate the Example content in its place. Mirrors the H2 -> SQLite upgrade replacement a
+  newer version performs, but in reverse. The old sample database's tables/fields/cards go with it (its
+  cards can't work without it anyway); the Example collections are reused by
+  [[example-content/recreate-example-content!]]."
+  [old-sample-db]
+  (log/infof "Sample database engine is %s, which this version does not support; replacing it with the bundled H2 sample database"
+             (:engine old-sample-db))
+  (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
+    (t2/delete! :model/Database (:id old-sample-db))
+    (delete-emptied-dashboards! dashboard-ids))
+  ;; Only reinstall when sample content is enabled (matching fresh-install seeding); the broken sample
+  ;; database is removed either way.
+  (when (config/load-sample-content?)
+    (extract-and-sync-sample-database!)
+    (when-let [new-db (t2/select-one :model/Database :is_sample true)]
+      (example-content/recreate-example-content! (:id new-db)))))
+
 (defn update-sample-database-if-needed!
-  "Update the path to the sample database DB if it exists in case the JAR has moved."
+  "Reconcile the existing sample database on launch. If a newer version left behind a non-H2 sample
+  database this version can't use (e.g. after a downgrade), replace it with the bundled H2 one; otherwise
+  just refresh its connection details in case the JAR has moved."
   ([]
    (update-sample-database-if-needed! (t2/select-one :model/Database :is_sample true)))
 
   ([sample-db]
    (when sample-db
-     (let [intended (try-to-extract-sample-database!)]
-       (when (not= (:details sample-db) intended)
-         (t2/update! :model/Database (:id sample-db) {:details intended}))))))
+     (if (not= :h2 (:engine sample-db))
+       (replace-non-h2-sample-database! sample-db)
+       (let [intended (try-to-extract-sample-database!)]
+         (when (not= (:details sample-db) intended)
+           (t2/update! :model/Database (:id sample-db) {:details intended})))))))
