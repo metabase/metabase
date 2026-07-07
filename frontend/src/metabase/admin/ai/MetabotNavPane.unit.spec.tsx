@@ -133,7 +133,7 @@ describe("MetabotNavPane", () => {
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
 
-    // "Auditing" is now a folder; expand it to reveal its children
+    // Expand "Auditing" to reveal its children
     await userEvent.click(await screen.findByText("Auditing"));
 
     // MCP analytics is available with audit_app alone (no ai_controls needed)
