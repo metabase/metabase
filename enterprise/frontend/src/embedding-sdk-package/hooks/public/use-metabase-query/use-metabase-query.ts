@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAsyncFn } from "react-use";
 
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
@@ -146,8 +147,19 @@ const isOrderableJavaScriptType = (
   value === "boolean" ||
   value === "Date";
 
-const getCreateMetabaseQueryFromBundle = () =>
-  getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createMetabaseQuery;
+const getResolveDatasetQueryFromBundle = () =>
+  getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.resolveDatasetQuery;
+
+export type UseMetabaseQueryObjectResult = {
+  query: DatasetQuery | null;
+  error: unknown;
+  isLoading: boolean;
+};
+
+type QueryObjectState = {
+  query: DatasetQuery;
+  queryKey: string;
+};
 
 export function filter<
   TDimension,
@@ -275,6 +287,7 @@ const useMetabaseQueryImpl = <
   );
 
   const queryDataset = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryDataset;
+  const resolveDatasetQuery = getResolveDatasetQueryFromBundle();
 
   const [data, setData] =
     useState<UseMetabaseQueryResult<TEntity, TQuery>["data"]>(null);
@@ -304,11 +317,12 @@ const useMetabaseQueryImpl = <
 
     try {
       if (isTableInput(currentQuery)) {
-        if (!queryDataset) {
+        if (!queryDataset || !resolveDatasetQuery) {
           return;
         }
 
-        const datasetQuery = createMetabaseQuery(currentQuery);
+        const datasetQuery =
+          await resolveDatasetQuery(reduxStore)(currentQuery);
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
@@ -320,7 +334,7 @@ const useMetabaseQueryImpl = <
     } finally {
       setIsLoading(false);
     }
-  }, [queryDataset, reduxStore]);
+  }, [queryDataset, reduxStore, resolveDatasetQuery]);
 
   useEffect(() => {
     if (loginStatus?.status === "success") {
@@ -342,39 +356,68 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
   query: TableQuery<unknown>,
-): DatasetQuery | null {
+): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
+
+  const loginStatus = useLazySelector(
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getLoginStatus,
+  );
+
+  const {
+    state: {
+      internalProps: { reduxStore },
+    },
+  } = useMetabaseProviderPropsStore();
 
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
+  const pendingQueryKeyRef = useRef<string | null>(null);
 
   queryRef.current = query;
 
-  return useMemo(
-    () => {
-      const createQuery = getCreateMetabaseQueryFromBundle();
+  const [{ value, error, loading }, resolveQueryObject] =
+    useAsyncFn(async (): Promise<QueryObjectState | null> => {
+      const resolveDatasetQuery = getResolveDatasetQueryFromBundle();
 
-      if (!createQuery) {
+      if (!reduxStore || !resolveDatasetQuery) {
         return null;
       }
 
-      return createQuery(queryRef.current);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
-    [loadingState, queryKey],
-  );
-}
+      const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
 
-/** @notExported createMetabaseQuery */
-export function createMetabaseQuery(query: TableQuery<unknown>): DatasetQuery {
-  const createQuery = getCreateMetabaseQueryFromBundle();
+      return { query: result, queryKey };
+    }, [queryKey, reduxStore]);
 
-  if (!createQuery) {
-    throw new Error(
-      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Internal SDK developer error.
-      "createMetabaseQuery requires the Metabase Embedding SDK bundle to be loaded.",
-    );
+  useEffect(() => {
+    if (
+      !reduxStore ||
+      !getResolveDatasetQueryFromBundle() ||
+      loginStatus?.status !== "success"
+    ) {
+      return;
+    }
+
+    pendingQueryKeyRef.current = queryKey;
+    resolveQueryObject();
+  }, [
+    loadingState,
+    loginStatus?.status,
+    queryKey,
+    reduxStore,
+    resolveQueryObject,
+  ]);
+
+  if (error && !loading && pendingQueryKeyRef.current === queryKey) {
+    return { query: null, error, isLoading: false };
   }
 
-  return createQuery(query);
+  if (loginStatus?.status !== "success" || value?.queryKey !== queryKey) {
+    return { query: null, error: null, isLoading: true };
+  }
+
+  return {
+    query: value.query,
+    error: error ?? null,
+    isLoading: loading,
+  };
 }

@@ -17,7 +17,6 @@ export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export {
   aggregations,
   breakout,
-  createMetabaseQuery,
   filter,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -25,6 +24,7 @@ export {
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
+  UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
 export type {

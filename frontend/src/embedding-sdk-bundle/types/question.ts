@@ -84,7 +84,7 @@ export type SdkQuestionEntityPublicProps =
       token?: never;
       card?: never;
       /**
-       * A table-backed ad hoc query created with `createMetabaseQuery`.
+       * A table-backed ad hoc query created with `useMetabaseQueryObject`.
        */
       query: unknown | null;
     };

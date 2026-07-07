@@ -20,6 +20,7 @@ export type SchemaColumn = {
 export type FieldSchema = SchemaColumn & {
   type: "column";
   id?: string | number;
+  "source-name"?: string;
   fieldId?: number;
   tableId?: number;
   sourceFieldId?: number;
@@ -41,7 +42,6 @@ export type MeasureSchema<TTableId extends number = number> = {
 export type TableSchema = {
   type: "table";
   id: number;
-  databaseId: number;
   columns?: readonly SchemaColumn[];
   fields?: Record<string, FieldSchema>;
   segments?: Record<string, SegmentSchema>;
