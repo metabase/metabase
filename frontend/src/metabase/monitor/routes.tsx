@@ -64,7 +64,6 @@ export function getMonitorRoutes(
           <Route path="tasks">{getTasksRoutes()}</Route>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
           <Route path="jobs" component={JobInfoApp}>
-            {/* renders the job triggers sidebar within JobInfoApp */}
             <Route path=":jobKey" />
           </Route>
           <Route path="logs" component={Logs}>

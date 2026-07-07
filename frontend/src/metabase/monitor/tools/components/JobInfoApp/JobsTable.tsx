@@ -19,7 +19,6 @@ import type { Job } from "metabase-types/api";
 
 const COLUMN_WIDTHS = [0.34, 0.33, 0.33];
 
-// TreeTable rows must carry an `id`; jobs are identified by their key
 type JobRow = Job & { id: string };
 
 type JobsTableProps = {

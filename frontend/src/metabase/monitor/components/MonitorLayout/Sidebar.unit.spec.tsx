@@ -1,7 +1,7 @@
-import { useState } from "react";
-import type { ResizableProps, ResizeCallbackData } from "react-resizable";
+import type { ReactNode } from "react";
+import type { ResizableProps } from "react-resizable";
 
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import { MonitorContent } from "./MonitorContent";
 import { Sidebar } from "./Sidebar";
@@ -15,91 +15,59 @@ jest.mock("react-resizable", () => ({
   },
 }));
 
-// AppSwitcher pulls in redux/settings we don't need for the resize side effect.
+// AppSwitcher pulls in redux/settings the Sidebar behavior doesn't need.
 jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => null,
 }));
 
-const RESIZE_EVENT = {} as React.SyntheticEvent;
-const RESIZE_DATA: ResizeCallbackData = {
-  size: { width: 512, height: 0 },
-  node: {} as HTMLElement,
-  handle: "w",
-};
-
-function getContainerNode() {
-  // The Sidebar toggles the resizing class on the sidebar region's parent
-  // (the Monitor content container).
-  const container = screen.getByTestId("monitor-sidebar-region").parentElement;
-  if (container == null) {
-    throw new Error("expected a container node for the sidebar region");
-  }
-  return container;
+function setup(sidebar: ReactNode) {
+  return renderWithProviders(<MonitorContent>{sidebar}</MonitorContent>);
 }
 
-describe("Sidebar resize side effect", () => {
+describe("Sidebar", () => {
   beforeEach(() => {
     latestResizableBoxProps = null;
   });
 
-  it("adds the resizing class while dragging and removes it on stop", () => {
-    renderWithProviders(
-      <MonitorContent>
-        <Sidebar containerWidth={1000}>
-          <div data-testid="sidebar-content">{"Sidebar"}</div>
-        </Sidebar>
-      </MonitorContent>,
+  it("portals resizable content into the sidebar region at the default width", () => {
+    setup(
+      <Sidebar containerWidth={1000}>
+        <div data-testid="sidebar-content">{"Sidebar"}</div>
+      </Sidebar>,
     );
 
-    const container = getContainerNode();
-    const baseTokens = [...container.classList];
-
-    act(() =>
-      latestResizableBoxProps?.onResizeStart?.(RESIZE_EVENT, RESIZE_DATA),
+    const resizableBox = screen.getByTestId("resizable-box");
+    expect(screen.getByTestId("monitor-sidebar-region")).toContainElement(
+      resizableBox,
     );
-
-    const draggingTokens = [...container.classList];
-    const added = draggingTokens.filter((t) => !baseTokens.includes(t));
-    expect(added).toHaveLength(1);
-
-    act(() =>
-      latestResizableBoxProps?.onResizeStop?.(RESIZE_EVENT, RESIZE_DATA),
-    );
-
-    expect([...container.classList]).toEqual(baseTokens);
+    expect(
+      within(resizableBox).getByTestId("sidebar-content"),
+    ).toBeInTheDocument();
+    expect(latestResizableBoxProps?.width).toBe(512);
   });
 
-  it("removes the resizing class when the sidebar unmounts mid-drag", () => {
-    function Harness() {
-      const [open, setOpen] = useState(true);
-      return (
-        <MonitorContent>
-          <button onClick={() => setOpen(false)}>{"Close"}</button>
-          {open && (
-            <Sidebar containerWidth={1000}>
-              <div data-testid="sidebar-content">{"Sidebar"}</div>
-            </Sidebar>
-          )}
-        </MonitorContent>
-      );
-    }
-
-    renderWithProviders(<Harness />);
-
-    const container = getContainerNode();
-    const baseTokens = [...container.classList];
-
-    act(() =>
-      latestResizableBoxProps?.onResizeStart?.(RESIZE_EVENT, RESIZE_DATA),
+  it("uses the provided default width", () => {
+    setup(
+      <Sidebar containerWidth={1000} defaultWidth={560}>
+        <div data-testid="sidebar-content">{"Sidebar"}</div>
+      </Sidebar>,
     );
-    expect([...container.classList].length).toBeGreaterThan(baseTokens.length);
 
-    // Sidebar unmounts while still dragging -> the class must not leak.
-    act(() => {
-      screen.getByRole("button", { name: "Close" }).click();
-    });
+    expect(latestResizableBoxProps?.width).toBe(560);
+  });
 
-    expect([...container.classList]).toEqual(baseTokens);
-    expect(screen.queryByTestId("sidebar-content")).not.toBeInTheDocument();
+  it("renders content directly without the resizable box when resizable is false", () => {
+    setup(
+      <Sidebar resizable={false}>
+        <div data-testid="sidebar-content">{"Sidebar"}</div>
+      </Sidebar>,
+    );
+
+    expect(
+      within(screen.getByTestId("monitor-sidebar-region")).getByTestId(
+        "sidebar-content",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("resizable-box")).not.toBeInTheDocument();
   });
 });

@@ -12,8 +12,8 @@ type SidebarResizableBoxProps = {
   containerWidth: number;
   defaultWidth: number;
   children?: ReactNode;
-  onResizeStart: () => void;
-  onResizeStop: () => void;
+  onResizeStart?: () => void;
+  onResizeStop?: () => void;
 };
 
 export function SidebarResizableBox({

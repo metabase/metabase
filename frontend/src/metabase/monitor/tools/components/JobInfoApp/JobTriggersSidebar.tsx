@@ -98,7 +98,7 @@ type TriggerAttributeProps = {
 function TriggerAttribute({ label, value }: TriggerAttributeProps) {
   return (
     <Flex gap="md">
-      <Text component="dt" fw="bold" w={140} flex="0 0 auto">
+      <Text component="dt" fw="bold" w="8rem" flex="0 0 auto">
         {label}
       </Text>
       <Text component="dd" m={0} style={{ wordBreak: "break-word" }}>
