@@ -47,7 +47,7 @@
         via   [model (:id entity)]]
     {:visited #{via}
      :deps    (into #{}
-                    (map #(assoc (last %) :via via))
+                    (map #(assoc (peek %) :via via))
                     (serdes/serialization-dependencies model entity))}))
 
 (defn- merge-entity-deps
@@ -62,7 +62,7 @@
   (let [content-models (set serdes.models/content)]
     (transduce
      (comp
-      (filter #(contains? content-models (key %)))
+      (filter (comp content-models key))
       (mapcat resize-batch)
       (mapcat (fn [[model batch]]
                 (serdes/extract-query model (merge opts {:collection-set coll-set
@@ -94,7 +94,7 @@
   [deps visited analytics-cards]
   (let [content-models (set serdes.models/content)
         {content-deps true data-deps false} (group-by #(contains? content-models (:model %)) deps)
-        content-deps   (remove #(contains? structural-content-models (:model %)) content-deps)
+        content-deps   (remove (comp structural-content-models :model) content-deps)
         existing-data    (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))
         existing-content (m/map-kv-vals existing-ids (u/group-by :model :id content-deps))]
     (concat
