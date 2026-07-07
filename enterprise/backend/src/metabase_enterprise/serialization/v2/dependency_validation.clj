@@ -75,8 +75,9 @@
   "The subset of `ids` that exist as rows of `model` (a model-name string), queried in bounded `:in` batches."
   [model ids]
   (into #{}
-        (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]}))
-        (partition-all serdes/query-batch-size (distinct ids))))
+        (comp (partition-all serdes/query-batch-size)
+              (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]})))
+        (distinct ids)))
 
 (def ^:private structural-content-models
   "Content models whose absence from the archive is tolerated on import, so a reference to one is never a completeness
