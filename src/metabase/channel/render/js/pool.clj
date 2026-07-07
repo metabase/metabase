@@ -63,18 +63,41 @@
   "Dirigiste pools are keyed. The key itself is arbitrary — it just has to be the same for every pool operation."
   :engines)
 
+(def ^:private context-creation-lock
+  "Monitor serializing pooled context creation. Even with the shared-`Source` code cache, evaluating the bundle in a
+  fresh context allocates ~500 MB, so letting the pool grow 1→3 concurrently during a render burst stacks ~1–1.5 GB
+  of transient allocation on top of the in-flight renders — enough to blow a 2 GB heap. Holding creations to one at a
+  time bounds the worst case to a single creation (~1 s each); waiting acquires just queue on the pool meanwhile.
+  Nothing else may lock this monitor."
+  (Object.))
+
+(defn- expiry-timestamp
+  "Expiry timestamp for a pooled context: now + 10 minutes ± up to 3 minutes of jitter. The jitter keeps pool members
+  created in the same burst from all expiring — and serially regenerating — in the same window."
+  ^long []
+  (+ (System/nanoTime)
+     (.toNanos TimeUnit/MINUTES 7)
+     (long (rand (.toNanos TimeUnit/MINUTES 6)))))
+
+(defn- generate-pool-entry
+  "Create a `[context expiry-timestamp]` tuple for the pool. At most one context creation runs at a time (see
+  [[context-creation-lock]]); acquisition/use is already exclusive per context, so this only bounds pool *growth*."
+  []
+  (locking context-creation-lock
+    [(create-static-viz-context) (expiry-timestamp)]))
+
 (def ^:private ^Pool static-viz-context-pool
   "Pool of Truffle JS contexts. They are not thread-safe, so access is exclusive from acquire to release. Generating a
   context is cheap — realm setup plus top-level eval against the engine's code cache, no reparse — and per-context
   memory is a realm, not a full parsed copy of the bundle. The pool targets 100% utilization with a maximum of 3
   contexts (to bound memory; renders hold a context exclusively, so that is also the render concurrency), but at
-  least 1 context is always kept in the pool to pick up. Each pooled tuple carries an expiry timestamp so a context
-  is recycled after 10 minutes regardless, bounding per-context leak accumulation."
+  least 1 context is always kept in the pool to pick up. Each pooled tuple carries a (jittered, ~10-minute) expiry
+  timestamp so a context is recycled regardless, bounding per-context leak accumulation. Context creation is
+  serialized (see [[context-creation-lock]]) so pool growth never runs multiple ~500 MB creations concurrently."
   (let [base-controller (Pools/utilizationController 1.0 3 3)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               ;; Generate a tuple of the context and the expiry timestamp.
-               [(create-static-viz-context) (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
+               (generate-pool-entry))
              (destroy [_ _ [^Context ctx _expiry]]
                ;; Close the context when it's disposed from the pool (expiry/idle shrink/shutdown). Without this, each
                ;; disposed static-viz context leaks its memory: GraalVM only releases it on `close`, not on GC.
