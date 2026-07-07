@@ -1,7 +1,6 @@
 export {
   aggregations,
   breakout,
-  createMetabaseQuery,
   filter,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -9,5 +8,6 @@ export {
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
+  UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./use-metabase-query";

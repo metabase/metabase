@@ -458,6 +458,7 @@ export type TestSourceSpec = TestTableSourceSpec | TestCardSourceSpec;
 export type TestColumnSpec = {
   type: "column";
   name: string;
+  "source-name"?: string;
   sourceName?: string;
   displayName?: string;
 
