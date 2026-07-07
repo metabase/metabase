@@ -4,18 +4,19 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const ordersJoinProductsQuery = {
-  "source-table": ORDERS_ID,
+const ordersJoinProductsStage = {
+  source: { type: "table", id: ORDERS_ID },
   joins: [
     {
-      fields: "all",
-      "source-table": PRODUCTS_ID,
-      condition: [
-        "=",
-        ["field", ORDERS.PRODUCT_ID, null],
-        ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+      source: { type: "table", id: PRODUCTS_ID },
+      strategy: "left-join",
+      conditions: [
+        {
+          operator: "=",
+          left: { type: "column", name: "PRODUCT_ID", sourceName: "ORDERS" },
+          right: { type: "column", name: "ID", sourceName: "PRODUCTS" },
+        },
       ],
-      alias: "Products",
     },
   ],
 };
@@ -32,8 +33,9 @@ describe("scenarios > question > nested", () => {
     // Make sure it works for a GUI question
     const guiQuestionDetails = {
       name: "GH_12568: Simple",
-      query: {
-        "source-table": ORDERS_ID,
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
       },
       display: "line",
     };
@@ -69,7 +71,8 @@ describe("scenarios > question > nested", () => {
     // Make sure it works for a SQL question
     const sqlQuestionDetails = {
       name: "GH_12568: SQL",
-      native: {
+      dataset_query: {
+        database: SAMPLE_DB_ID,
         query:
           "SELECT date_trunc('year', CREATED_AT) as date, COUNT(*) as count FROM ORDERS GROUP BY date_trunc('year', CREATED_AT)",
       },
@@ -156,35 +159,67 @@ describe("scenarios > question > nested", () => {
       name: "Sum of discounts",
       description: "Discounted orders.",
       type: "metric",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        filter: ["!=", ["field", ORDERS.DISCOUNT, null], 0],
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count" }],
+            filters: [
+              {
+                type: "operator",
+                operator: "!=",
+                args: [
+                  { type: "column", name: "DISCOUNT", sourceName: "ORDERS" },
+                  { type: "literal", value: 0 },
+                ],
+              },
+            ],
+          },
+        ],
       },
     };
 
     cy.log("Create a metric with a filter");
-    H.createQuestion(metric, {
-      wrapId: true,
-      idAlias: "metricId",
+    H.createCardWithTestQuery(metric).then((card) => {
+      cy.wrap(card.id).as("metricId");
     });
 
     cy.get("@metricId").then((metricId) => {
       // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
       const baseQuestionDetails = {
         name: "12507",
-        query: {
-          "source-table": `card__${metricId}`,
-          aggregation: [["metric", metricId]],
-          breakout: [
-            ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "card", id: metricId },
+              aggregations: [{ type: "metric", id: metricId }],
+              breakouts: [
+                {
+                  type: "column",
+                  name: "TOTAL",
+                  sourceName: "ORDERS",
+                  bins: "auto",
+                },
+              ],
+            },
           ],
         },
       };
 
       const nestedQuestionDetails = {
-        query: {
-          filter: [">", ["field", ORDERS.TOTAL, null], 50],
+        stage: {
+          filters: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", name: "TOTAL", sourceName: "ORDERS" },
+                { type: "literal", value: 50 },
+              ],
+            },
+          ],
         },
       };
 
@@ -210,7 +245,10 @@ describe("scenarios > question > nested", () => {
 
     const baseQuestionDetails = {
       name: "Orders (remapped)",
-      query: { "source-table": ORDERS_ID, limit: 5 },
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "table", id: ORDERS_ID }, limit: 5 }],
+      },
     };
 
     createNestedQuestion({ baseQuestionDetails });
@@ -221,7 +259,10 @@ describe("scenarios > question > nested", () => {
   it("nested questions based on a saved question with joins should work (metabase#14724)", () => {
     const baseQuestionDetails = {
       name: "14724",
-      query: ordersJoinProductsQuery,
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [ordersJoinProductsStage],
+      },
     };
 
     ["default", "remapped"].forEach((scenario) => {
@@ -254,7 +295,10 @@ describe("scenarios > question > nested", () => {
 
     const baseQuestionDetails = {
       name: "14787",
-      query: { ...ordersJoinProductsQuery, limit: 5 },
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ ...ordersJoinProductsStage, limit: 5 }],
+      },
     };
 
     createNestedQuestion({ baseQuestionDetails });
@@ -610,33 +654,34 @@ function createNestedQuestion(
     throw new Error("Please provide the base question details");
   }
 
-  createBaseQuestion(baseQuestionDetails).then(({ body: { id } }) => {
+  createBaseQuestion(baseQuestionDetails).then((baseCard) => {
     if (loadBaseQuestionMetadata) {
-      H.visitQuestion(id);
+      H.visitCard(baseCard);
     }
 
-    const { query: nestedQuery, ...details } = nestedQuestionDetails;
+    const { stage: nestedStage, ...details } = nestedQuestionDetails;
 
     const composite = {
       name: "Nested Question",
-      query: {
-        ...nestedQuery,
-        "source-table": `card__${id}`,
-      },
       ...details,
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "card", id: baseCard.id }, ...nestedStage }],
+      },
     };
 
-    return H.createQuestion(composite, {
-      visitQuestion: visitNestedQuestion,
-      wrapId: true,
-      idAlias: "nestedQuestionId",
+    return H.createCardWithTestQuery(composite).then((nestedCard) => {
+      if (visitNestedQuestion) {
+        H.visitCard(nestedCard);
+      }
+      cy.wrap(nestedCard.id).as("nestedQuestionId");
     });
   });
 
-  function createBaseQuestion(query) {
-    return query.native
-      ? H.createNativeQuestion(query)
-      : H.createQuestion(query);
+  function createBaseQuestion(details) {
+    return details.dataset_query.stages
+      ? H.createCardWithTestQuery(details)
+      : H.createCardWithTestNativeQuery(details);
   }
 }
 
