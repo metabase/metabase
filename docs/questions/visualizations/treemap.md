@@ -81,5 +81,4 @@ Use the following toggles to show or hide labels and values:
 
 - Treemaps display a single metric grouped by one or two dimensions. If your query returns more than one metric, the treemap uses the metric you select in the **Value** slot.
 - When one leaf is far larger than the other leaves, the small leaves can become too small to see or select. If your values span a wide range, consider a [bar chart](./line-bar-and-area-charts.md) instead.
-- To show a single level of part-to-whole composition, use a [pie chart](./pie-chart.md) instead.
-
+- To show a single level of part-to-whole composition, use a [pie chart](./pie-or-donut-chart.md) instead.
