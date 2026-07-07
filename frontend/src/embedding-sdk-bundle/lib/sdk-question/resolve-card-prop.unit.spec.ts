@@ -55,6 +55,10 @@ describe("resolveCardProp", () => {
     });
   });
 
+  it("returns null when a MetabaseCard object has a null query", () => {
+    expect(resolveCardProp({ query: null })).toBeNull();
+  });
+
   it("uses an unlocked table display when `visualization` is omitted", () => {
     const input: MetabaseCard = {
       query: DATASET_QUERY,

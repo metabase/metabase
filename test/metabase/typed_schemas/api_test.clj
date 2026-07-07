@@ -54,6 +54,7 @@
 
 (deftest field-schema-uses-field-id-test
   (is (= {:name          "created_at"
+          :type          "column"
           :displayName   "Created At"
           :baseType      "type/DateTime"
           :jsType        "Date"
@@ -68,14 +69,15 @@
                                             :base_type      "type/DateTime"}))))
 
 (deftest table-schema-keys-fields-test
-  (is (= {:kind         "table"
+  (is (= {:type         "table"
           :key          "orders"
           :id           10
           :name         "Orders"
           :databaseId   1
           :databaseName "Boba"
           :tableName    "orders"
-          :fields       {"createdAt" {:name          "created_at"
+          :fields       {"createdAt" {:type          "column"
+                                      :name          "created_at"
                                       :displayName   "Created At"
                                       :baseType      "type/DateTime"
                                       :jsType        "Date"
@@ -94,6 +96,18 @@
                             :name         "created_at"
                             :display_name "Created At"
                             :base_type    "type/DateTime"}]}))))
+
+(deftest segment-schema-uses-type-discriminator-test
+  (is (= {:type    "segment"
+          :key     "completedOrders"
+          :id      12
+          :tableId 10
+          :name    "Completed Orders"}
+         (#'typed-schemas.api/segment-schema
+          10
+          {:id           12
+           :name         "Completed Orders"
+           :display-name "Completed Orders"}))))
 
 (deftest metric-source-id-test
   (testing "integer source-table emits sourceTableId but not sourceCardId"
@@ -177,7 +191,7 @@
                   (constantly {:name         "sum"
                                :display_name "Sum of Total"
                                :base_type    "type/Decimal"})]
-      (is (= {:kind    "measure"
+      (is (= {:type    "measure"
               :key     "totalRevenue"
               :id      1
               :tableId 10
@@ -193,7 +207,7 @@
                :name "Total Revenue"})))))
   (testing "measure result columns fall back to the measure name"
     (with-redefs [typed-schemas.api/measure-result-column (constantly nil)]
-      (is (= {:kind    "measure"
+      (is (= {:type    "measure"
               :key     "totalRevenue"
               :id      1
               :tableId 10
@@ -231,13 +245,15 @@
 (deftest typescript-renderer-compacts-runtime-objects-test
   (let [body (#'typed-schemas.api/render-typescript
               {:schemaVersion 2
-               :tables        {"orders"     {:kind         "table"
+               :tables        {"orders"     {:type         "table"
                                              :key          "orders"
                                              :id           10
                                              :name         "Orders"
                                              :databaseId   1
                                              :databaseName "Boba"
-                                             :fields       {"paymentMethod" {:name         "payment_method"
+                                             :tableName    "orders"
+                                             :fields       {"paymentMethod" {:type         "column"
+                                                                             :name         "payment_method"
                                                                              :displayName  "Payment Method"
                                                                              :baseType     "type/Text"
                                                                              :semanticType "type/Category"
@@ -246,12 +262,13 @@
                                                                              :id           3970
                                                                              :fieldId      3970
                                                                              :tableId      10}}}
-                               "franchises" {:kind       "table"
+                               "franchises" {:type       "table"
                                              :key        "franchises"
                                              :id         20
                                              :name       "Franchises"
                                              :databaseId 1
-                                             :fields     {"name" {:name        "name"
+                                             :fields     {"name" {:type        "column"
+                                                                  :name        "name"
                                                                   :displayName "Name"
                                                                   :baseType    "type/Text"
                                                                   :jsType      "string"
@@ -259,7 +276,8 @@
                                                                   :id          500
                                                                   :fieldId     500
                                                                   :tableId     20}
-                                                          "ownerName" {:name        "owner_name"
+                                                          "ownerName" {:type        "column"
+                                                                       :name        "owner_name"
                                                                        :displayName "Owner Name"
                                                                        :baseType    "type/Text"
                                                                        :jsType      "string"
@@ -315,12 +333,17 @@
                                                :columns       [{:name "count" :jsType "number"}]}}})]
     (is (str/includes? body (str "/" "/ Display name: Payment Method")))
     (is (str/includes? body (str "/" "/ Semantic type: type/Category")))
+    (is (not (str/includes? body (str "/" "/ Generated key:"))))
+    (is (not (str/includes? body (str "/" "/ Table: orders"))))
     (is (not (str/includes? body (str "/" "/ id: 3970"))))
-    (is (str/includes? body "paymentMethod: {\n        name: \"payment_method\""))
+    (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
+    (is (str/includes? body "name: \"payment_method\""))
+    (is (str/includes? body "type: \"table\""))
+    (is (not (str/includes? body "kind: \"table\"")))
     (is (str/includes? body "fieldId: 3970"))
     (is (str/includes? body "tableId: 10"))
     (is (not (str/includes? body "displayName: \"Payment Method\"")))
-    (is (not (str/includes? body "baseType: \"type/Text\"")))
+    (is (str/includes? body "baseType: \"type/Text\""))
     (is (str/includes? body (str "/" "/ Description: Total order revenue")))
     (is (str/includes? body "databaseId: 1"))
     (is (str/includes? body "sourceTableId: 10"))
@@ -574,8 +597,8 @@
                     (reset! selected-table-ids table-ids)
                     [{:id 10} {:id 42}])
                   typed-schemas.api/table-schemas
-                  (constantly [{:kind "table", :key "publishedTable", :id 10}
-                               {:kind "table", :key "mappedTable", :id 42}])]
+                  (constantly [{:type "table", :key "publishedTable", :id 10}
+                               {:type "table", :key "mappedTable", :id 42}])]
       (let [schema (#'typed-schemas.api/typed-schema {:library "123"})]
         (is (= #{10 42} @selected-table-ids))
         (is (= {} (:questions schema)))
@@ -614,8 +637,8 @@
                     (reset! selected-table-ids table-ids)
                     [{:id 10} {:id 42}])
                   typed-schemas.api/table-schemas
-                  (constantly [{:kind "table", :key "publishedTable", :id 10}
-                               {:kind "table", :key "mappedTable", :id 42}])]
+                  (constantly [{:type "table", :key "publishedTable", :id 10}
+                               {:type "table", :key "mappedTable", :id 42}])]
       (let [schema (#'typed-schemas.api/typed-schema {:library-collections "10, 20"})]
         (is (= #{10 42} @selected-table-ids))
         (is (= {} (:questions schema)))
@@ -671,7 +694,7 @@
                 typed-schemas.api/select-tables
                 (constantly [{:id 3}])
                 typed-schemas.api/table-schemas
-                (constantly [{:kind "table", :key "orders", :id 3}])]
+                (constantly [{:type "table", :key "orders", :id 3}])]
     (let [schema (#'typed-schemas.api/typed-schema {:library-collections  "10"
                                                     :question-collections "30"})]
       (is (= #{1} (->> (:questions schema) vals (map :id) set)))

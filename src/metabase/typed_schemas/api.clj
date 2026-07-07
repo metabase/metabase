@@ -37,21 +37,21 @@
 
 (def ^:private schema-render-policy
   {:question         {:runtime [:kind :id :name :display :columns :parameters]
-                      :comment [:key :entityId :description :verified]}
-   :table            {:runtime [:kind :id :name :databaseId :fields :segments :measures]
-                      :comment [:key :entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:name :jsType :fieldId :tableId :defaultTemporalBucket]
-                      :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
-   :segment          {:runtime [:kind :id :tableId :name]
-                      :comment [:key :entityId :description]}
-   :measure          {:runtime [:kind :id :tableId :name :columns]
-                      :comment [:key :entityId :description]}
+                      :comment [:entityId :description :verified]}
+   :table            {:runtime [:type :id :name :databaseId :fields :segments :measures]
+                      :comment [:entityId :description :databaseName :schemaName :tableName]}
+   :field            {:runtime [:type :name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
+                      :comment [:displayName :description :semanticType :unit]}
+   :segment          {:runtime [:type :id :tableId :name]
+                      :comment [:entityId :description]}
+   :measure          {:runtime [:type :id :tableId :name :columns]
+                      :comment [:entityId :description]}
    :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :sourceCardId
                                 :mappedTableIds :columns :dimensions]
-                      :comment [:key :entityId :description :verified :sourceTable]}
+                      :comment [:entityId :description :verified :sourceTable]}
    :metric-dimension {:runtime [:id :fieldId :metricId :tableId :sourceFieldId
-                                :name :jsType :defaultTemporalBucket]
-                      :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
+                                :name :jsType :baseType :effectiveType :defaultTemporalBucket]
+                      :comment [:displayName :description :semanticType :unit]}
    :column           {:runtime [:name :jsType]
                       :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
 
@@ -62,7 +62,6 @@
    :displayName  "Display name"
    :effectiveType "Effective type"
    :entityId     "Entity ID"
-   :key          "Generated key"
    :schemaName   "Schema"
    :semanticType "Semantic type"
    :sourceTable  "Source table"
@@ -597,6 +596,7 @@
         table-id (or (:table_id field) (:table-id field) (field-table-id field-id))]
     (assoc-some
      (assoc (column-schema field)
+            :type "column"
             :key (generated-key (:name field) field-id)
             :id field-id)
      :fieldId (when (integer? field-id) field-id)
@@ -743,7 +743,7 @@
 (defn- segment-schema
   [table-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
   (assoc-some
-   {:kind    "segment"
+   {:type    "segment"
     :key     (generated-key (or display-name name) id)
     :id      id
     :tableId table-id
@@ -754,7 +754,7 @@
 (defn- measure-schema
   [table-id database-id {:keys [id name description display-name portable-entity-id portable_entity_id]}]
   (assoc-some
-   {:kind    "measure"
+   {:type    "measure"
     :key     (generated-key (or display-name name) id)
     :id      id
     :tableId table-id
@@ -769,7 +769,7 @@
   (let [segments-map (keyed-map (map #(segment-schema id %) segments))
         measures-map (keyed-map (map #(measure-schema id database_id %) measures))]
     (assoc-some
-     {:kind         "table"
+     {:type         "table"
       :key          (generated-key (or display_name name) id)
       :id           id
       :name         (or display_name name)
@@ -927,7 +927,8 @@
 (defn- node-kind
   [path value]
   (when (map? value)
-    (let [kind (map-key-value value :kind)]
+    (let [kind (or (map-key-value value :type)
+                   (map-key-value value :kind))]
       (cond
         (= kind "question") :question
         (= kind "table") :table
@@ -947,9 +948,18 @@
            (filter #(contains? value %)))
       (keys value))))
 
+(defn- redundant-table-name-comment?
+  [entry-key table-name]
+  (and (some? entry-key)
+       (some? table-name)
+       (= (name entry-key) (str table-name))))
+
 (defn- policy-comment-keys
-  [kind value]
+  [kind value entry-key]
   (->> (get-in schema-render-policy [kind :comment])
+       (remove #(and (= kind :table)
+                     (= % :tableName)
+                     (redundant-table-name-comment? entry-key (get value %))))
        (filter #(contains? value %))))
 
 (defn- javascript-key
@@ -998,9 +1008,9 @@
     :else (str value)))
 
 (defn- comment-lines
-  [indent kind value]
+  [indent kind value entry-key]
   (let [spaces (apply str (repeat indent " "))]
-    (for [k (policy-comment-keys kind value)
+    (for [k (policy-comment-keys kind value entry-key)
           :let [v (comment-value (get value k))]
           :when (not (str/blank? v))]
       (str spaces "// " (get comment-labels k (name k)) ": " (str/replace v #"\R+" " ")))))
@@ -1010,7 +1020,7 @@
 (defn- render-javascript-entry
   [indent path k value]
   (let [kind     (node-kind (conj path k) value)
-        comments (comment-lines indent kind value)
+        comments (comment-lines indent kind value k)
         spaces   (apply str (repeat indent " "))]
     (str (when (seq comments)
            (str (str/join "\n" comments) "\n"))
@@ -1041,7 +1051,7 @@
     (let [entries (map-indexed
                    (fn [i item]
                      (let [kind     (node-kind (conj path i) item)
-                           comments (comment-lines (+ indent 2) kind item)
+                           comments (comment-lines (+ indent 2) kind item nil)
                            spaces   (apply str (repeat (+ indent 2) " "))]
                        (str (when (seq comments)
                               (str (str/join "\n" comments) "\n"))

@@ -25,6 +25,12 @@ const getErrorMetadata = <
         data: error.params?.path ?? "",
         parameterIndex,
       } as TMetadata;
+    case "has-entity-prop":
+      return {
+        errorCode: "missing_required_property",
+        data: "questionId, token, or query",
+        parameterIndex,
+      } as TMetadata;
     case "noUnknown":
       return {
         errorCode: "unrecognized_keys",
