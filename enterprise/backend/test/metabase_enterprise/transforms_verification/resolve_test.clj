@@ -253,13 +253,13 @@
 
 (deftest token-survival-substring-column-passes-test
   (testing "a legitimate column `orders_total` does not trip the token-survival guard when `orders` is mapped away"
-    ;; Bare columns are identifiers, outside the literal/CTE-scoped token scan. Must pass.
+    ;; Bare columns are identifiers, outside the CTE-scoped token scan. Must pass.
     (let [sql "SELECT orders_total FROM scratch_orders"]
       (is (string? (resolve/verify :postgres orders->scratch sql))))))
 
 (deftest token-survival-orders-old-does-not-match-orders-test
   (testing "`scratch_orders_old` in FROM is not flagged as a surviving `orders`"
-    ;; Plain identifiers are outside the literal/CTE-scoped token scan, so nothing
+    ;; Plain identifiers are outside the CTE-scoped token scan, so nothing
     ;; here is scanned for `orders`. (orders_old is mapped too — unmapped it would
     ;; trip guard 2 and mask the substring concern.)
     (let [mapping {{:schema "public" :table "orders"}     {:schema "public" :table "scratch_orders"}
@@ -271,7 +271,7 @@
   (testing "a case-different quoted alias of a mapped table must not trip the token scan"
     ;; The lib derives join aliases from table display names, so joining `products`
     ;; compiles to `... AS "Products"` — a legitimate alias over a scratch table.
-    ;; Aliases are identifiers, outside the literal/CTE-scoped token scan; this pins
+    ;; Aliases are identifiers, outside the CTE-scoped token scan; this pins
     ;; that MBQL-join-shaped SQL passes verify.
     (let [mapping {{:schema "public" :table "orders"}   {:schema "public" :table "scratch_orders"}
                    {:schema "public" :table "products"} {:schema "public" :table "scratch_products"}}
@@ -283,8 +283,8 @@
 (deftest column-named-like-mapped-table-passes-test
   (testing "a bare *column* named like another mapped input table passes verify"
     ;; Table/column name collisions are routine (`status`, `type`, `source`, `state`).
-    ;; The token scan is scoped to parser-invisible contexts (string literals, CTE
-    ;; names), so a plain column reference must not trip it.
+    ;; The token scan is scoped to CTE definition names, so a plain column
+    ;; reference must not trip it.
     (let [mapping {{:schema "public" :table "orders"} {:schema "public" :table "scratch_orders"}
                    {:schema "public" :table "status"} {:schema "public" :table "scratch_status"}}
           sql     "SELECT status FROM public.scratch_orders JOIN public.scratch_status ON true"]
@@ -303,30 +303,23 @@
                            "SELECT * FROM test_output" #{"test_output"})))))
 
 ;;; ===========================================================================
-;;; String-literal fail-closed
+;;; String literals are data, not references
 ;;; ===========================================================================
 
-(deftest string-literal-token-fails-closed-test
-  (testing "a string literal containing a real table token fails guard 4"
-    ;; `WHERE src = 'orders'` — the literal-scoped, boundary-aware scan matches
-    ;; `'orders'`; an accepted fail-closed false positive, with the surviving token named.
+(deftest string-literal-table-name-passes-test
+  (testing "a string literal containing a mapped table's name passes verify"
+    ;; Literals are data; only warehouse-side dynamic SQL could turn one into a
+    ;; table access, and that sits inside the native-perms trust envelope.
     (let [sql "SELECT id FROM scratch_orders WHERE src = 'orders'"]
-      (is (cannot-test-run?
-           #(resolve/verify :postgres orders->scratch sql)
-           ::resolve/token-survival)))))
-
-(deftest string-literal-scan-case-sensitive-test
-  (testing "the string-literal scan is case-sensitive — pinning both sides"
-    ;; Identifiers (join aliases like `AS "Products"`) are outside the literal-scoped
-    ;; scan at any case; this pins the scan itself: case-sensitive, so a case-different
-    ;; literal slips through. Harmless — the dangling-qualifier hazard is caught by the
-    ;; parser-based check regardless.
-    (let [fails  "SELECT id FROM scratch_orders WHERE src = 'orders'"
-          passes "SELECT id FROM scratch_orders WHERE src = 'ORDERS'"]
-      (is (cannot-test-run?
-           #(resolve/verify :postgres orders->scratch fails)
-           ::resolve/token-survival))
-      (is (string? (resolve/verify :postgres orders->scratch passes))))))
+      (is (string? (resolve/verify :postgres orders->scratch sql)))))
+  (testing "dbt accepted_values shape: a value list containing a mapped table's name"
+    ;; `'awaiting contact'` with a mapped `contact` table — the literal contains
+    ;; the table name as a whole word, and must still verify.
+    (let [mapping {{:schema "public" :table "orders"}  {:schema "public" :table "scratch_orders"}
+                   {:schema "public" :table "contact"} {:schema "public" :table "scratch_contact"}}
+          sql     (str "SELECT * FROM test_output"
+                       " WHERE status NOT IN ('new', 'awaiting contact', 'closed')")]
+      (is (string? (resolve/verify :postgres mapping sql #{"test_output"}))))))
 
 ;;; ===========================================================================
 ;;; Native end-to-end (gated): resolve-test-transform native path

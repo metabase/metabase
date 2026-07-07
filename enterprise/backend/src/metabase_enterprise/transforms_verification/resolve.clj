@@ -229,28 +229,6 @@
                         table-name)))))
           errors)))
 
-(defn- string-literal-contents
-  "The contents of every single-quoted string literal in `sql`, `''` unescaped to `'`."
-  [^String sql]
-  (map (fn [[_ content]] (str/replace content "''" "'"))
-       (re-seq #"'((?:[^']|'')*)'" sql)))
-
-(defn- token-boundary-pattern
-  "Whole-identifier match for `token`: case-sensitive, with identifier boundaries
-  (underscore counts as an identifier char)."
-  [^String token]
-  (re-pattern (str "(?<![A-Za-z0-9_])"
-                   (java.util.regex.Pattern/quote token)
-                   "(?![A-Za-z0-9_])")))
-
-(defn- token-in-string-literal?
-  "True when `token` appears as a whole identifier inside any single-quoted string
-  literal in `sql`. The scan is literal-scoped: the same token as a bare column
-  name or alias is parser-visible and guard 2/3 territory, not this guard's."
-  [^String token ^String sql]
-  (let [pat (token-boundary-pattern token)]
-    (boolean (some #(re-find pat %) (string-literal-contents sql)))))
-
 (defn- token-as-cte-name?
   "True when `token` appears as a CTE definition name in `sql` — `WITH token AS (`
   or `, token (cols) AS (`. A CTE named like a real input table means the rewrite
@@ -275,11 +253,11 @@
      `mapping`, or a `safe-aliases` name.
   3. no dangling qualifier — no real table name survives as a `table.col` column
      qualifier whose table is not in scope.
-  4. no parser-invisible survival — no real table name survives inside a string
-     literal (case-sensitive) or as a CTE definition name (a shadowing CTE means
-     the rewrite may have changed what its references point at). A real table
-     name as a plain column name or alias is parser-visible and legitimate —
-     guards 2/3 own those contexts.
+  4. no shadowing CTE — no real table name survives as a CTE definition name
+     (`referenced-tables-raw` excludes CTE names, so the rewrite may have
+     redirected references meant for the CTE without guards 1-3 seeing it). A
+     real table name as a column name or alias is parser-visible and guard 2/3
+     territory; inside a string literal it is data, not a reference.
 
   - `driver`       — driver keyword (for default-schema + parsing).
   - `mapping`      — `{real-spec → scratch-spec}` from `seed!`.
@@ -322,7 +300,7 @@
           {:guard      ::refs-subset-scratch
            :stray-refs (mapv #(normalize-ref driver %) stray)
            :allowed    allowed-refs})))
-     ;; Guards 3 + 4: no original token survives (dangling qualifier or string literal).
+     ;; Guards 3 + 4: no original token survives (dangling qualifier or CTE definition name).
      (let [forbidden-lc (into #{} (map u/lower-case-en) forbidden)
            dangling     (dangling-qualifier-tokens driver final-sql forbidden-lc)]
        (when-let [token (first dangling)]
@@ -332,12 +310,6 @@
                " in the rewritten SQL.")
           {:guard ::token-survival :surviving-token token :sql final-sql}))
        (doseq [token forbidden]
-         (when (token-in-string-literal? token final-sql)
-           (cannot-test-run!
-            (str "This transform can't be test-run: the original identifier "
-                 (pr-str token) " still appears inside a string literal in the"
-                 " rewritten SQL.")
-            {:guard ::token-survival :surviving-token token :sql final-sql}))
          (when (token-as-cte-name? token final-sql)
            (cannot-test-run!
             (str "This transform can't be test-run: a CTE in the rewritten SQL is"
