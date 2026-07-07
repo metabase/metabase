@@ -16,6 +16,7 @@
    [metabase.transforms.models.transform-run-cancelation]
    [metabase.transforms.models.transform-tag]
    [metabase.transforms.notification]
+   [metabase.transforms.run-listing]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.usage]
@@ -85,6 +86,10 @@
   paged-all-dag-runs
   transform-runs-for-dag-run
   running-run-for-source-transform-id]
+ [metabase.transforms.run-listing
+  paged-run-summaries
+  hydrate-run-names
+  present-run-summary]
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.transforms.models.transform-job

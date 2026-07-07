@@ -231,6 +231,58 @@
                                          :limit  (request/limit)))
       (update :data #(map transforms-base.u/present-run %))))
 
+(def ^:private RunSummaryResponse
+  "One row of the unified collection-level Runs listing. A row is a job run, a manual DAG-reprocess
+  run, or a standalone transform run (one not belonging to a job/DAG run). Identified by
+  `(run_type, id)`; `entity_id` is the associated job/transform id (for building drill-down URLs) and
+  `name` its name (nil if it was deleted). `direction` is set only for DAG runs."
+  [:map {:closed true}
+   [:run_type [:enum :job :dag :transform]]
+   [:id pos-int?]
+   [:entity_id [:maybe pos-int?]]
+   [:name [:maybe :string]]
+   [:direction [:maybe [:enum :upstream :downstream]]]
+   [:run_method [:maybe :keyword]]
+   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]])
+
+(api.macros/defendpoint :get "/runs" :- [:map {:closed true}
+                                         [:data [:sequential RunSummaryResponse]]
+                                         [:limit pos-int?]
+                                         [:offset :int]
+                                         [:total :int]]
+  "Paginated unified run history for the Runs page (the default, collection-level tab). Each row is a
+  top-level run — a job run, a manual DAG-reprocess run, or a standalone transform run (a transform
+  run not part of any job/DAG run) — never a member run of a job/DAG. Use `GET /run` for the
+  low-level per-transform-run tab.
+
+  `types` selects which kinds to include (`job`/`dag`/`transform`; all by default). `transform-id`
+  narrows to runs that ran a specific transform (a job/DAG run whose members include it, or that
+  transform's own standalone run)."
+  [_route-params
+   query-params :-
+   [:map
+    [:types {:optional true} [:maybe (ms/QueryVectorOf [:enum "job" "dag" "transform"])]]
+    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
+    [:start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:transform-id {:optional true} [:maybe ms/PositiveInt]]
+    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
+    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
+  (api/check-data-analyst)
+  (-> (transforms.core/paged-run-summaries (assoc query-params
+                                                  :types  (map keyword (:types query-params))
+                                                  :offset (request/offset)
+                                                  :limit  (request/limit)))
+      (update :data (fn [rows]
+                      (->> rows
+                           transforms.core/hydrate-run-names
+                           (map (comp transforms-base.u/localize-run-timestamps
+                                      transforms.core/present-run-summary)))))))
+
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."
   [{:keys [run-id]} :- [:map
