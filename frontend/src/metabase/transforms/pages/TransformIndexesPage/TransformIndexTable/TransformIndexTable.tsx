@@ -1,10 +1,11 @@
-import type { Row, SortingState } from "@tanstack/react-table";
+import type { OnChangeFn, Row, SortingState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { useSetting } from "metabase/common/hooks";
+import type { TreeTableColumnDef } from "metabase/ui";
 import { TreeTable, useTreeTableInstance } from "metabase/ui";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, UserId } from "metabase-types/api";
@@ -75,13 +76,47 @@ export function TransformIndexTable({
     [readOnly, onEdit],
   );
 
+  // Trigger remount and reflow when status column changes.
+  // This ensures that column widths are correctly measured after a status change.
+  const measureKey = useMemo(
+    () => indexes.map(({ request }) => request?.status).join(","),
+    [indexes],
+  );
+
+  return (
+    <TransformIndexTableBody
+      key={measureKey}
+      rows={rows}
+      columns={columns}
+      sorting={sorting}
+      onSortingChange={setSorting}
+      onRowClick={handleRowClick}
+    />
+  );
+}
+
+type TransformIndexTableBodyProps = {
+  rows: IndexRow[];
+  columns: TreeTableColumnDef<IndexRow>[];
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
+  onRowClick: (row: Row<IndexRow>) => void;
+};
+
+function TransformIndexTableBody({
+  rows,
+  columns,
+  sorting,
+  onSortingChange,
+  onRowClick,
+}: TransformIndexTableBodyProps) {
   const treeTableInstance = useTreeTableInstance<IndexRow>({
     data: rows,
     columns,
     getNodeId: (row) => row.id,
     enableSorting: true,
     sorting,
-    onSortingChange: setSorting,
+    onSortingChange,
   });
 
   return (
@@ -90,7 +125,7 @@ export function TransformIndexTable({
       hierarchical={false}
       emptyState={<ListEmptyState label={t`No indexes yet`} />}
       ariaLabel={t`Transform indexes`}
-      onRowClick={handleRowClick}
+      onRowClick={onRowClick}
     />
   );
 }

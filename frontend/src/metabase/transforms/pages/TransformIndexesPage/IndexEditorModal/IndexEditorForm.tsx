@@ -29,6 +29,7 @@ export function IndexEditorForm({
   onKindChange,
   onClose,
 }: IndexEditorFormProps) {
+  // The order of fields in the form is driven by the BE schema
   const [firstField, ...restFields] = fields;
 
   const renderField = (field: IndexField, autoFocus = false) => (
