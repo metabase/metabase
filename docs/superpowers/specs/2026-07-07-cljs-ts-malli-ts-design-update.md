@@ -108,7 +108,6 @@ Metabase already covers the most important forms for exported APIs, including ma
 Add mappings that cleanly collapse to TypeScript primitives:
 
 ```clojure
-:number              ;; number
 integer?            ;; number
 decimal?            ;; number
 pos? / neg? / zero? ;; number
@@ -128,6 +127,8 @@ true?               ;; true
 :qualified-keyword  ;; string
 :qualified-symbol   ;; string
 ```
+
+Only add `:number` if the local Malli registry accepts it. In this branch, bare `:number` is invalid, so supporting it would mean changing the registry rather than only the TypeScript renderer.
 
 Map `inst?` according to Metabase runtime behavior. If JS consumers receive serialized dates, emit `string`; only emit `Date` if runtime evidence says consumers receive `Date` objects.
 
@@ -295,7 +296,7 @@ These features require information Malli schemas don't provide or aren't represe
 
 Before implementation, write a focused plan that starts with the safest changes:
 
-1. Add missing primitive and predicate mappings.
+1. Add missing primitive and predicate mappings that are valid in Metabase's Malli registry.
 2. Add structured internal schema refs so generated TypeScript names aren't used as metadata.
 3. Add tests that compare Metabase coverage against `malli-ts` coverage for common Malli forms.
 4. Add targeted opt-in TypeScript helpers only where exported APIs need them.

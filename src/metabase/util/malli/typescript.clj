@@ -120,6 +120,23 @@
   "Optional map-key transform applied while generating JS-facing object types."
   nil)
 
+(defn- registry-ref->ts
+  "Return the TypeScript reference for a Malli registry ref.
+
+  The schema keyword is the source-of-truth reference. The generated TypeScript name is a rendering detail that can vary
+  by shared/local context. When a key transform is active, expand the referenced schema inline so nested map keys get the
+  same JS-facing transform."
+  [schema-keyword]
+  (if (and (keyword? schema-keyword) (namespace schema-keyword))
+    (if *key-transform*
+      (schema->ts (mr/resolve-schema schema-keyword))
+      (do
+        (record-registry-ref! schema-keyword)
+        (registry-type-name schema-keyword)))
+    (do
+      (record-weak-type! :unknown)
+      "unknown")))
+
 (defn- camel-case-key
   "Convert a kebab/snake/camel-ish Clojure key name to camelCase for JS-facing object schemas.
   Mirrors the common CLJS convention where predicate keys like `:many-pks?` become `isManyPks`."
@@ -200,17 +217,28 @@
 (defmethod -schema->ts :int      [_] "number")
 (defmethod -schema->ts :double   [_] "number")
 (defmethod -schema->ts :boolean  [_] "boolean")
-(defmethod -schema->ts :keyword  [_] "string")
-(defmethod -schema->ts :symbol   [_] "string")
-(defmethod -schema->ts :uuid     [_] "string")
-(defmethod -schema->ts :uri      [_] "string")
-(defmethod -schema->ts :nil      [_] "null")
+(defmethod -schema->ts :keyword           [_] "string")
+(defmethod -schema->ts :qualified-keyword [_] "string")
+(defmethod -schema->ts :symbol            [_] "string")
+(defmethod -schema->ts :qualified-symbol  [_] "string")
+(defmethod -schema->ts :uuid              [_] "string")
+(defmethod -schema->ts :uri               [_] "string")
+(defmethod -schema->ts :nil               [_] "null")
 (defmethod -schema->ts :any      [schema]
   (let [props (mc/properties schema)]
     (cond
       ;; [:any {:typescript "CustomType"}] => "CustomType"
       (:typescript props)
       (:typescript props)
+
+      ;; [:any {:ts/ref ::some/schema}] => "Some_Schema" or "Shared.Some_Schema"
+      (:ts/ref props)
+      (binding [*key-transform* (or (:ts/key-transform props) *key-transform*)]
+        (registry-ref->ts (:ts/ref props)))
+
+      ;; [:any {:ts/promise-of <result-schema>}] => "Promise<ResultType>"
+      (:ts/promise-of props)
+      (str "Promise<" (schema->ts (:ts/promise-of props)) ">")
 
       ;; [:any {:ts/array-of <element-schema>}] => "ElementType[]"
       (:ts/array-of props)
@@ -234,27 +262,47 @@
       :else
       (do (record-weak-type! :unknown)
           "unknown"))))
-(defmethod -schema->ts :re       [_] "string")
-(defmethod -schema->ts 'pos-int? [_] "number")
-(defmethod -schema->ts 'nat-int? [_] "number")
-(defmethod -schema->ts 'neg-int? [_] "number")
-(defmethod -schema->ts 'int      [_] "number")
-(defmethod -schema->ts 'int?     [_] "number")
-(defmethod -schema->ts 'number?  [_] "number")
-(defmethod -schema->ts 'string?  [_] "string")
-(defmethod -schema->ts 'boolean  [_] "boolean")
-(defmethod -schema->ts 'boolean? [_] "boolean")
-(defmethod -schema->ts 'double   [_] "number")
-(defmethod -schema->ts 'double?  [_] "number")
-(defmethod -schema->ts 'float    [_] "number")
-(defmethod -schema->ts 'float?   [_] "number")
-(defmethod -schema->ts 'keyword? [_] "string")
-(defmethod -schema->ts 'symbol   [_] "string")
-(defmethod -schema->ts 'symbol?  [_] "string")
-(defmethod -schema->ts 'uuid     [_] "string")
-(defmethod -schema->ts 'uuid?    [_] "string")
-(defmethod -schema->ts 'nil      [_] "null")
-(defmethod -schema->ts 'nil?     [_] "null")
+(defmethod -schema->ts :re                   [_] "string")
+(defmethod -schema->ts :>                    [_] "number")
+(defmethod -schema->ts :>=                   [_] "number")
+(defmethod -schema->ts :<                    [_] "number")
+(defmethod -schema->ts :<=                   [_] "number")
+(defmethod -schema->ts 'pos-int?             [_] "number")
+(defmethod -schema->ts 'nat-int?             [_] "number")
+(defmethod -schema->ts 'neg-int?             [_] "number")
+(defmethod -schema->ts 'int                  [_] "number")
+(defmethod -schema->ts 'int?                 [_] "number")
+(defmethod -schema->ts 'integer?             [_] "number")
+(defmethod -schema->ts 'number?              [_] "number")
+(defmethod -schema->ts 'decimal?             [_] "number")
+(defmethod -schema->ts 'pos?                 [_] "number")
+(defmethod -schema->ts 'neg?                 [_] "number")
+(defmethod -schema->ts 'zero?                [_] "number")
+(defmethod -schema->ts 'string?              [_] "string")
+(defmethod -schema->ts 'boolean              [_] "boolean")
+(defmethod -schema->ts 'boolean?             [_] "boolean")
+(defmethod -schema->ts 'true?                [_] "true")
+(defmethod -schema->ts 'false?               [_] "false")
+(defmethod -schema->ts 'double               [_] "number")
+(defmethod -schema->ts 'double?              [_] "number")
+(defmethod -schema->ts 'float                [_] "number")
+(defmethod -schema->ts 'float?               [_] "number")
+(defmethod -schema->ts 'ident?               [_] "string")
+(defmethod -schema->ts 'simple-ident?        [_] "string")
+(defmethod -schema->ts 'qualified-ident?     [_] "string")
+(defmethod -schema->ts 'keyword?             [_] "string")
+(defmethod -schema->ts 'simple-keyword?      [_] "string")
+(defmethod -schema->ts 'qualified-keyword?   [_] "string")
+(defmethod -schema->ts 'symbol               [_] "string")
+(defmethod -schema->ts 'symbol?              [_] "string")
+(defmethod -schema->ts 'simple-symbol?       [_] "string")
+(defmethod -schema->ts 'qualified-symbol?    [_] "string")
+(defmethod -schema->ts 'uuid                 [_] "string")
+(defmethod -schema->ts 'uuid?                [_] "string")
+(defmethod -schema->ts 'char?                [_] "string")
+(defmethod -schema->ts 'bytes?               [_] "string")
+(defmethod -schema->ts 'nil                  [_] "null")
+(defmethod -schema->ts 'nil?                 [_] "null")
 (defmethod -schema->ts 'vector?  [_]
   (record-weak-type! :unknown)
   "unknown[]")
@@ -460,6 +508,18 @@
     (nth child 2)
     (nth child 1)))
 
+(defn- catn-child-name
+  "Extract the parameter name from a Malli :catn child."
+  [child]
+  (first child))
+
+(defn- catn-parameter-name
+  [child index]
+  (let [child-name (catn-child-name child)]
+    (if (or (keyword? child-name) (symbol? child-name))
+      (comp/munge (symbol (name child-name)))
+      (str "arg" index))))
+
 (defn- arg-schema-children
   [arg-schema]
   (let [schema (mc/schema arg-schema)]
@@ -530,12 +590,19 @@
 (defmethod -schema->ts :=>
   [schema]
   (let [[args-schema return-schema] (mc/children (mc/schema schema))
-        args-children               (arg-schema-children args-schema)]
+        args-schema                 (mc/schema args-schema)
+        args-children               (mc/children args-schema)
+        arg-types                   (if (= :catn (mc/type args-schema))
+                                      (map-indexed (fn [i child]
+                                                     (str (catn-parameter-name child i) ": "
+                                                          (schema->ts (catn-child-schema child))))
+                                                   args-children)
+                                      (map-indexed (fn [i arg-schema]
+                                                     (str "arg" i ": "
+                                                          (schema->ts arg-schema)))
+                                                   args-children))]
     (str
-     (-> (str/join ", " (map-indexed (fn [i arg-schema]
-                                       (str "arg" i ": "
-                                            (schema->ts arg-schema)))
-                                     args-children))
+     (-> (str/join ", " arg-types)
          (wrap "()"))
      " => "
      (schema->ts return-schema))))
@@ -559,11 +626,7 @@
     ;; If this is a qualified keyword (registry ref), output type name and record it unless a key transform requires
     ;; expanding inline so nested map keys are transformed too.
     (if (and (keyword? t) (namespace t))
-      (if *key-transform*
-        (schema->ts (mr/resolve-schema t))
-        (do
-          (record-registry-ref! t)
-          (registry-type-name t)))
+      (registry-ref->ts t)
       ;; Otherwise fall through to resolve the schema
       (schema->ts t))))
 
@@ -594,11 +657,7 @@
 
       ;; For other qualified keyword schemas, output type name and record it
       (and (keyword? t) (namespace t))
-      (if *key-transform*
-        (schema->ts (mr/resolve-schema t))
-        (do
-          (record-registry-ref! t)
-          (registry-type-name t)))
+      (registry-ref->ts t)
 
       (:typescript (mc/properties schema))
       (:typescript (mc/properties schema))

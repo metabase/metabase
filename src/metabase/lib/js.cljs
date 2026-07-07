@@ -1891,7 +1891,7 @@
   ;; For custom aggregation expressions this sets the `:display-name` option instead.
   (lib.core/with-expression-name an-expression-clause new-name))
 
-(mu/defn ^:export expressions :- [:any {:ts/array-of [:any {:typescript "Shared.Metabase_Lib_Schema_MbqlClause_Clause"}]}]
+(mu/defn ^:export expressions :- [:any {:ts/array-of [:any {:ts/ref ::lib.schema.mbql-clause/clause}]}]
   "Returns a JS array of expressions on the given stage of `a-query`."
   [a-query stage-number]
   (to-array (lib.core/expressions a-query stage-number)))

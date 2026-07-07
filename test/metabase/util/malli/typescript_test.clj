@@ -30,6 +30,10 @@
       "Partial<Record<\"a\" | \"b\", number>>"                [:map-of [:enum :a :b] :int]
       "string[]"                                                 [:any {:ts/array-of :string}]
       "Metabase_Lib_Schema_Binning_Strategy[]"                   [:any {:ts/array-of ::lib.schema.binning/strategy}]
+      "Metabase_Lib_Schema_Binning_Strategy"                     [:any {:ts/ref ::lib.schema.binning/strategy}]
+      "Metabase_Lib_Schema_Binning_Strategy[]"                   [:any {:ts/array-of [:any {:ts/ref ::lib.schema.binning/strategy}]}]
+      "Promise<string>"                                          [:any {:ts/promise-of :string}]
+      "Promise<Metabase_Lib_Schema_Binning_Strategy>"            [:any {:ts/promise-of [:any {:ts/ref ::lib.schema.binning/strategy}]}]
       "CustomType"                                               [:any {:typescript "CustomType"}]
       "{\n\tdisplayName: string;\n\tfilterPositions?: number[];\n\tisManyPks?: boolean;\n\tgroup?: {\n\tdisplayName: string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}" [:any {:ts/object-of [:map
                                                                                                                                                                                                                  [:display-name :string]
@@ -81,6 +85,22 @@
            (ts/schema->ts [:merge
                            [:map [:a :string]]
                            [:fn {:typescript "unknown"} any?]])))))
+
+(deftest structured-ref-test
+  (testing "structured refs record registry refs without relying on generated TypeScript names"
+    (let [refs (atom #{})]
+      (binding [ts/*registry-refs* refs]
+        (is (= "Metabase_Lib_Schema_Binning_Strategy"
+               (ts/schema->ts [:any {:ts/ref ::lib.schema.binning/strategy}]))))
+      (is (= #{::lib.schema.binning/strategy} @refs))))
+  (testing "structured refs use the shared namespace prefix when the referenced schema is shared"
+    (binding [ts/*shared-types* #{::lib.schema.binning/strategy}]
+      (is (= "Shared.Metabase_Lib_Schema_Binning_Strategy"
+             (ts/schema->ts [:any {:ts/ref ::lib.schema.binning/strategy}])))))
+  (testing "structured refs under key-transform are expanded inline with transformed keys"
+    (is (= "{\n\tdisplayName: string;\n\tnestedValue?: {\n\tlongDisplayName: string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}"
+           (ts/schema->ts [:any {:ts/ref ::key-transform-ref
+                                 :ts/key-transform :camelCase}])))))
 
 (deftest key-transform-test
   (testing "explicit refs under key-transform are expanded inline with transformed keys"
@@ -239,18 +259,45 @@
                                     :ts/generic-bound [:or :string :int]}
                            :string]]))))
   (testing "standalone function schema handles named catn arguments"
-    (is (= "(arg0: string, arg1: number) => boolean"
+    (is (= "(a: string, b: number) => boolean"
            (ts/schema->ts [:=> [:catn [:a :string] [:b :int]] :boolean])))))
 
-(deftest predicate-schema-test
+(deftest primitive-and-predicate-schema-test
+  (testing "common schema forms produce precise primitive types"
+    (are [expected schema] (= expected (ts/schema->ts schema))
+      "string" :qualified-keyword
+      "string" :qualified-symbol))
   (testing "common predicate schemas produce precise primitive types"
     (are [expected schema] (= expected (ts/schema->ts schema))
       "number"  int?
+      "number"  integer?
+      "number"  decimal?
+      "number"  pos?
+      "number"  neg?
+      "number"  zero?
       "boolean" boolean?
       "number"  double?
       "number"  float?
       "string"  symbol?
-      "string"  uuid?)))
+      "string"  simple-symbol?
+      "string"  qualified-symbol?
+      "string"  keyword?
+      "string"  simple-keyword?
+      "string"  qualified-keyword?
+      "string"  ident?
+      "string"  simple-ident?
+      "string"  qualified-ident?
+      "string"  uuid?
+      "string"  char?
+      "string"  bytes?
+      "true"    true?
+      "false"   false?))
+  (testing "numeric comparator schemas fall back to number"
+    (are [schema] (= "number" (ts/schema->ts schema))
+      [:> 0]
+      [:>= 0]
+      [:< 0]
+      [:<= 0])))
 
 (deftest fallback-declarations-test
   (testing "fallback function declarations preserve export and arity"
