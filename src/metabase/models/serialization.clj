@@ -1455,18 +1455,13 @@
 
 (declare ^:private mbql-deps-map)
 
-(def ^:dynamic *serialization?*
-  "True while computing *serialization* dependencies (from a raw, pre-serialization entity), false while computing
-  *deserialization* (load) dependencies (from the serialized form). The `mbql-*` walkers handle both forms, but a
-  numeric id is only treated as a raw reference when this is true — a serialized query can still carry a stray numeric
-  id (e.g. a query whose deleted source database never got name-ified), which must not be mistaken for a raw ref at
-  load time."
-  false)
-
 (defn- raw-ref-id?
-  "True if `x` is a raw (numeric) reference id — i.e. a positive integer, and we're computing serialization deps."
-  [x]
-  (and *serialization?* (pos-int? x)))
+  "True if `x` is a raw (numeric) reference id — i.e. a positive integer — and `allow-int-ids?` is set, meaning we're computing
+  *serialization* (export) deps from a raw entity. The `mbql-*` walkers serve both forms; a numeric is only treated as
+  a reference when `allow-int-ids?`, since a serialized query can still carry a stray numeric id (e.g. a query whose deleted
+  source database never got name-ified) that must not be mistaken for a live ref at load time."
+  [allow-int-ids? x]
+  (and allow-int-ids? (pos-int? x)))
 
 (defn- ref->db-dep
   "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with
@@ -1484,7 +1479,7 @@
    :segment "Segment", "segment" "Segment"
    :measure "Measure", "measure" "Measure"})
 
-(defn- mbql-deps-vector [entity]
+(defn- mbql-deps-vector [allow-int-ids? entity]
   (match/match-one entity
     ;; --- serialized (portable) refs, walked at load time ---
     ;; A serialized `:field` clause's only dependency is the Database of its referenced field; the Field/Table
@@ -1497,7 +1492,7 @@
      (opts :guard map?)
      (field :guard portable-id?)]
     (into #{[{:model (mbql-ref-tag->model tag) :id field}]}
-          (mbql-deps-map opts))
+          (mbql-deps-map allow-int-ids? opts))
 
     ;; legacy (MBQL 4) serialized refs
     [#{:field "field" :field-id "field-id"} (ref :guard vector?) _opts]
@@ -1508,30 +1503,30 @@
 
     ;; --- raw (numeric) refs, walked at export time before serialization ---
     ;; The referenced Field/Table are real appdb ids, existence-checked so a deleted row can't produce a malformed
-    ;; portable reference.
-    [#{:field "field"} (_opts :guard map?) (id :guard raw-ref-id?)]
+    ;; portable reference. `allow-int-ids?` gates these so a stray numeric in serialized data isn't mistaken for a ref.
+    [#{:field "field"} (_opts :guard map?) (id :guard (raw-ref-id? allow-int-ids? id))]
     #{[{:model "Field" :id id}]}
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
      (opts :guard map?)
-     (id :guard raw-ref-id?)]
+     (id :guard (raw-ref-id? allow-int-ids? id))]
     (into #{[{:model (mbql-ref-tag->model tag) :id id}]}
-          (mbql-deps-map opts))
+          (mbql-deps-map allow-int-ids? opts))
 
-    [#{:field "field" :field-id "field-id"} (id :guard raw-ref-id?) _opts]
+    [#{:field "field" :field-id "field-id"} (id :guard (raw-ref-id? allow-int-ids? id)) _opts]
     #{[{:model "Field" :id id}]}
 
-    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (id :guard raw-ref-id?)]
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (id :guard (raw-ref-id? allow-int-ids? id))]
     #{[{:model (mbql-ref-tag->model tag) :id id}]}
 
     _ (reduce #(cond
-                 (map? %2)    (into %1 (mbql-deps-map %2))
-                 (vector? %2) (into %1 (mbql-deps-vector %2))
+                 (map? %2)    (into %1 (mbql-deps-map allow-int-ids? %2))
+                 (vector? %2) (into %1 (mbql-deps-vector allow-int-ids? %2))
                  :else %1)
               #{}
               entity)))
 
-(defn- mbql-deps-map [m]
+(defn- mbql-deps-map [allow-int-ids? m]
   (into #{}
         (mapcat (fn [[k v]]
                   (cond
@@ -1548,27 +1543,31 @@
                     (and (= k :table-id)     (vector? v))      (ref->db-dep v)
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
                     ;; --- raw (numeric) refs, walked at export time: the referenced Table/Field are real appdb ids to
-                    ;; existence-check. ---
-                    (and (= k :database)     (raw-ref-id? v))         #{[{:model "Database" :id v}]}
-                    (and (= k :source-table) (raw-ref-id? v))         #{[{:model "Table" :id v}]}
-                    (and (= k :source-card)  (raw-ref-id? v))         #{[{:model "Card" :id v}]}
-                    (and (= k :source-field) (raw-ref-id? v))         #{[{:model "Field" :id v}]}
-                    (and (= k :snippet-id)   (raw-ref-id? v))         #{[{:model "NativeQuerySnippet" :id v}]}
-                    (and (= k :table-id)     (raw-ref-id? v))         #{[{:model "Table" :id v}]}
-                    (and (#{:card_id :card-id} k) (raw-ref-id? v))    #{[{:model "Card" :id v}]}
-                    (map? v)                                   (mbql-deps-map v)
-                    (vector? v)                                (mbql-deps-vector v))))
+                    ;; existence-check. `allow-int-ids?` gates these (see `raw-ref-id?`). ---
+                    (and (= k :database)     (raw-ref-id? allow-int-ids? v))     #{[{:model "Database" :id v}]}
+                    (and (= k :source-table) (raw-ref-id? allow-int-ids? v))     #{[{:model "Table" :id v}]}
+                    (and (= k :source-card)  (raw-ref-id? allow-int-ids? v))     #{[{:model "Card" :id v}]}
+                    (and (= k :source-field) (raw-ref-id? allow-int-ids? v))     #{[{:model "Field" :id v}]}
+                    (and (= k :snippet-id)   (raw-ref-id? allow-int-ids? v))     #{[{:model "NativeQuerySnippet" :id v}]}
+                    (and (= k :table-id)     (raw-ref-id? allow-int-ids? v))     #{[{:model "Table" :id v}]}
+                    (and (#{:card_id :card-id} k) (raw-ref-id? allow-int-ids? v)) #{[{:model "Card" :id v}]}
+                    (map? v)                                   (mbql-deps-map allow-int-ids? v)
+                    (vector? v)                                (mbql-deps-vector allow-int-ids? v))))
         m))
 
 (defn mbql-deps
-  "Given an MBQL expression as exported, with qualified names like `[\"some-db\" \"schema\" \"table_name\"]` instead of
-  raw IDs, return the corresponding set of serdes dependencies. The query can't be imported until all the referenced
-  databases, tables and fields are loaded."
-  [entity]
+  "Given an MBQL expression, return the corresponding set of serdes dependencies. The query can't be imported until all
+  the referenced databases, tables and fields are loaded.
+
+  Pass `allow-int-ids?` true when `entity` is a raw appdb query whose references are still integer ids (export /
+  serialization time) and you want those references collected as dependencies. Pass false when `entity` is in
+  serialized/portable form (load time), where references are qualified names like `[\"some-db\" \"schema\"
+  \"table_name\"]` and a bare integer is a stray value to ignore, not a reference."
+  [allow-int-ids? entity]
   (cond
-    (map? entity)     (mbql-deps-map entity)
-    (seqable? entity) (mbql-deps-vector entity)
-    :else             (mbql-deps-vector [entity])))
+    (map? entity)     (mbql-deps-map allow-int-ids? entity)
+    (seqable? entity) (mbql-deps-vector allow-int-ids? entity)
+    :else             (mbql-deps-vector allow-int-ids? [entity])))
 
 ;;; ## Dashboard/Question Parameters
 
@@ -1618,14 +1617,14 @@
 
 (defn parameters-deps
   "Given the :parameters (possibly nil) for an entity, return any embedded serdes-deps as a set.
-  Always returns an empty set even if the input is nil."
-  [parameters]
+  Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
+  [allow-int-ids? parameters]
   (reduce set/union #{}
           (for [parameter parameters
                 :when (= (keyword (:values_source_type parameter)) :card)
                 :let  [config (:values_source_config parameter)]]
             (set/union #{[{:model "Card" :id (:card_id config)}]}
-                       (mbql-deps-vector (:value_field config))))))
+                       (mbql-deps-vector allow-int-ids? (:value_field config))))))
 
 ;;; ## Viz settings
 
@@ -1902,14 +1901,14 @@
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
-  [settings]
+  [allow-int-ids? settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
     (if (= model "table")
       ;; Serialized: a linked Table is not a dependency (synthesized on import), but its Database is. Raw (export
       ;; time): the numeric table id is a real Table to existence-check.
       (cond
-        (vector? id)     #{[{:model "Database" :id (first id)}]}
-        (raw-ref-id? id) #{[{:model "Table" :id id}]})
+        (vector? id)          #{[{:model "Database" :id (first id)}]}
+        (raw-ref-id? allow-int-ids? id) #{[{:model "Table" :id id}]})
       #{[{:model (name (link-card-model->toucan-model model))
           :id    id}]})))
 
@@ -1927,21 +1926,21 @@
 
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
-  Always returns an empty set even if the input is nil."
-  [viz]
+  Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
+  [allow-int-ids? viz]
   (let [column-settings-keys-deps (some->> viz
                                            :column_settings
                                            keys
-                                           (map (comp mbql-deps json/decode name)))
+                                           (map (comp #(mbql-deps allow-int-ids? %) json/decode name)))
         column-settings-vals-deps (some->> viz
                                            :column_settings
                                            vals
                                            (map viz-click-behavior-deps))
-        link-card-deps            (viz-link-card-deps viz)
+        link-card-deps            (viz-link-card-deps allow-int-ids? viz)
         click-behavior-deps       (viz-click-behavior-deps viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps viz) link-card-deps click-behavior-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
          (filter some?)
          (reduce set/union #{}))))
 

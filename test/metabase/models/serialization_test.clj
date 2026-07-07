@@ -265,7 +265,7 @@
   (testing "template tag :table-id contributes only its Database dependency — the referenced Table itself is not a
             dependency (it's synthesized on import if missing)"
     (is (= #{[{:model "Database" :id "DB"}]}
-           (#'serdes/mbql-deps-map {:table-id ["DB" "SCHEMA" "TABLE"]})))))
+           (#'serdes/mbql-deps-map false {:table-id ["DB" "SCHEMA" "TABLE"]})))))
 
 (deftest ^:parallel mbql-deps-format-parity-test
   (testing "mbql-deps finds each reference on both the serialized (portable) and the raw (numeric) form of a query.
@@ -283,8 +283,8 @@
                  ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]
                  ["measure"        [:measure {} (eid \c)]         [:measure {} 3]  #{"Measure"}  #{"Measure"}]]]
           (testing label
-            (is (= ser-models (models (serdes/mbql-deps serialized))) "serialized (portable) form")
-            (is (= raw-models (models (binding [serdes/*serialization?* true] (serdes/mbql-deps raw))))
+            (is (= ser-models (models (serdes/mbql-deps false serialized))) "serialized (portable) form")
+            (is (= raw-models (models (serdes/mbql-deps true raw)))
                 "raw (numeric) form"))))
       (testing "MBQL map keys"
         (doseq [[label serialized raw ser-models raw-models]
@@ -292,8 +292,8 @@
                  ["source-card"  {:source-card (eid \d)}         {:source-card 7}  #{"Card"}               #{"Card"}]
                  ["snippet-id"   {:snippet-id (eid \e)}          {:snippet-id 2}   #{"NativeQuerySnippet"} #{"NativeQuerySnippet"}]]]
           (testing label
-            (is (= ser-models (models (#'serdes/mbql-deps-map serialized))) "serialized")
-            (is (= raw-models (models (binding [serdes/*serialization?* true] (#'serdes/mbql-deps-map raw))))
+            (is (= ser-models (models (#'serdes/mbql-deps-map false serialized))) "serialized")
+            (is (= raw-models (models (#'serdes/mbql-deps-map true raw)))
                 "raw")))))))
 
 (deftest ^:parallel export-parameters-test
