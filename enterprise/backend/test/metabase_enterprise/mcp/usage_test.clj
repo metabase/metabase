@@ -35,6 +35,12 @@
   (testing "the mcp-remote wrapper is stripped before classifying"
     (is (= "zed"    (usage/detect-client "Zed (via mcp-remote 0.1.37)")))
     (is (= "claude" (usage/detect-client "Claude Code (via mcp-remote 0.1.37)"))))
+  (testing "the fuzzy fallback classifies spacing/punctuation variants and generic proxy wrappers"
+    (is (= "vscode"  (usage/detect-client "VS Code")))
+    (is (= "vscode"  (usage/detect-client "VSCode")))
+    (is (= "chatgpt" (usage/detect-client "chat-gpt")))
+    (is (= "chatgpt" (usage/detect-client "chatgpt-5 (via foo proxy v6)")))
+    (is (= "claude"  (usage/detect-client "Claude (via some-other-proxy 1.0)"))))
   (testing "unknown / missing names fall back to \"other\""
     (is (= "other" (usage/detect-client "Some Random Client")))
     (is (= "other" (usage/detect-client "")))

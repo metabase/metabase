@@ -24,18 +24,32 @@
 
 (def ^:private client-name-matchers
   "Ordered `[substring canonical-key]` pairs matched against the lowercased handshake
-  `clientInfo.name` (after stripping any mcp-remote wrapper). First match wins."
+  `clientInfo.name` (after stripping any mcp-remote wrapper). First match wins. Both the
+  spelled-out and compact forms of multi-word clients are listed so the fuzzy pass can catch
+  abbreviations (e.g. `\"VS Code\"`)."
   [["claude"             "claude"]
    ["chatgpt"            "chatgpt"]
    ["openai"             "chatgpt"]
    ["cursor"             "cursor-vscode"]
    ["visual studio code" "vscode"]
+   ["vscode"             "vscode"]
    ["zed"                "zed"]])
 
-(def ^:private proxy-wrapper-re
-  "`mcp-remote` rewrites the handshake name to `\"<name> (via mcp-remote x.y.z)\"`; this strips
-  that suffix so the real client name is what gets classified."
+(def ^:private mcp-remote-wrapper-re
+  "`mcp-remote` rewrites the handshake name to `\"<name> (via mcp-remote x.y.z)\"`; the strict
+  pass strips that suffix so the real client name is what gets classified."
   #"\s*\(via mcp-remote[^)]*\)\s*$")
+
+(def ^:private proxy-wrapper-re
+  "A generic `\"(via <proxy> …)\"` suffix that MCP proxies append to the client name; the fuzzy
+  pass strips any such wrapper so an unfamiliar proxy format never hides the client name."
+  #"\s*\(via[^)]*\)\s*$")
+
+(defn- normalize-client-name
+  "Lowercase and drop everything but letters/digits, so spacing/punctuation variants
+  (`\"VS Code\"`, `\"chat-gpt\"`) collapse to one comparable token."
+  [s]
+  (some-> s u/lower-case-en (str/replace #"[^a-z0-9]+" "")))
 
 (def ^:private proxy-probe-client-name
   "`mcp-remote` opens a throwaway probe connection under this exact name while negotiating
@@ -50,12 +64,20 @@
 
 (defn detect-client
   "Classify the `initialize`-handshake `clientInfo` name into a canonical client key (one of
-  [[supported-client-keys]]), or `\"other\"` when nothing matches. The `mcp-remote` wrapper is
-  stripped first. Identity comes from the handshake name, never User-Agent parsing."
+  [[supported-client-keys]]), or `\"other\"` when nothing matches. Runs a strict substring match
+  first (mcp-remote wrapper stripped); when that finds nothing, falls back to a fuzzier match
+  that ignores spacing/punctuation and strips any generic `(via …)` proxy wrapper, so variant
+  spellings and unfamiliar proxy formats still classify. Identity comes from the handshake name,
+  never User-Agent parsing."
   [client-info-name]
-  (let [n (some-> client-info-name u/lower-case-en (str/replace proxy-wrapper-re ""))]
-    (or (when n
-          (some (fn [[needle k]] (when (str/includes? n needle) k)) client-name-matchers))
+  (let [strict (some-> client-info-name u/lower-case-en (str/replace mcp-remote-wrapper-re ""))
+        fuzzy  (some-> client-info-name (str/replace proxy-wrapper-re "") normalize-client-name)]
+    (or (when strict
+          (some (fn [[needle k]] (when (str/includes? strict needle) k)) client-name-matchers))
+        (when fuzzy
+          (some (fn [[needle k]]
+                  (when (str/includes? fuzzy (normalize-client-name needle)) k))
+                client-name-matchers))
         "other")))
 
 (defenterprise record-mcp-session!
