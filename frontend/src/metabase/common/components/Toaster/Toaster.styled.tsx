@@ -69,13 +69,9 @@ export const ToasterButton = styled.button`
 export const ToasterDismiss = styled.button`
   cursor: pointer;
   transition: color 200ms ease;
-  color: var(--mb-color-background_page-tertiary-inverse);
+  color: var(--mb-color-text-primary-inverse);
 
   &:hover {
-    color: color-mix(
-      in srgb,
-      var(--mb-color-background_page-tertiary-inverse),
-      white 30%
-    );
+    color: color-mix(in srgb, var(--mb-color-text-primary-inverse), white 30%);
   }
 `;
