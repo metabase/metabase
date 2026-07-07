@@ -42,6 +42,19 @@
         (finally
           (.close context true))))))
 
+(deftest untrusted-plugin-context-load-resource-test
+  (testing "load-resource evals into the UNTRUSTED isolate (regression: a URL-backed Source fails to marshal
+            across the native-isolate boundary from a jar: URL — SourceCopyMarshaller ShouldNotReachHere — so
+            load-resource must build a literal Source from the resource content)"
+    (let [^Context context (js/untrusted-plugin-context)]
+      (try
+        ;; a tiny JS resource on the test classpath; the point is that load-resource (not load-js-string)
+        ;; succeeds against the isolate, which is what breaks when the Source is URL-backed.
+        (js/load-resource context "metabase/channel/render/js/engine_test_resource.js")
+        (is (= 3 (.asLong (js/execute-fn-name context "engine_test_plus" 1 2))))
+        (finally
+          (.close context true))))))
+
 (deftest untrusted-plugin-context-enforces-heap-limit-test
   (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
     (let [^Context context (js/untrusted-plugin-context)

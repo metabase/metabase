@@ -148,7 +148,14 @@
     (when (nil? resource)
       (throw (ex-info (trs "Javascript resource not found: {0}" source)
                       {:source source})))
-    (.eval context (.build (Source/newBuilder "js" resource)))))
+    ;; Build a *literal* Source from the resource content rather than a URL-backed Source. A URL-backed
+    ;; Source fails to marshal across the `SandboxPolicy/UNTRUSTED` native-isolate boundary
+    ;; ([[untrusted-plugin-context]]) — GraalVM's SourceCopyMarshaller throws `ShouldNotReachHere` — when the
+    ;; resource is a `jar:` URL (i.e. running from the packaged uberjar). It happens to work from a `file:` URL
+    ;; (running from source), so the failure only shows up when deployed. A literal Source carries only content
+    ;; + name, so it marshals identically whether the resource lives on disk or inside the jar. `source` is kept
+    ;; as the source name so stack traces still point at the right file.
+    (.eval context (.buildLiteral (Source/newBuilder "js" (slurp resource :encoding "UTF-8") source)))))
 
 (defn execute-fn-name
   "Executes `js-fn-name` in js context with args"
