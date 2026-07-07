@@ -82,7 +82,7 @@ To add a filter value to a card:
 
 ## Add an image
 
-If your admin has [allowed domains for images](../configuring-metabase/settings.md#allowed-domains-for-images), you can add an image to a dashboard. Add a text card and use Markdown image syntax:
+To add an image to a dashboard, add a text card and use Markdown image syntax:
 
 ```text
 ![A description of the image](https://example.com/image.png)
