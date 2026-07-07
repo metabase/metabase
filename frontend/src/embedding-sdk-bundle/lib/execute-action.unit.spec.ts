@@ -1,25 +1,40 @@
 import fetchMock from "fetch-mock";
 
+import { getStore } from "__support__/entities-store";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { Api } from "metabase/api";
 
 import { executeAction } from "./execute-action";
-
-// `executeAction` doesn't read the store today — the curried `(store) => fn`
-// shape is preserved for parity with the other bundle utilities. Pass a
-// minimal stub.
-const NOOP_STORE = {} as unknown as SdkStore;
 
 const NUMERIC_ID = 42;
 const ENTITY_ID = "abc123def456abc123def";
 
+let activeStore: ReturnType<typeof getStore> | undefined;
+
+// `executeAction` dispatches the `metabase/api` execute-action mutation, so it
+// needs a real store wired with the RTK Query `Api` reducer + middleware.
+function setup() {
+  const store = getStore({ [Api.reducerPath]: Api.reducer }, {}, [
+    Api.middleware,
+  ]);
+  activeStore = store;
+  return store as unknown as SdkStore;
+}
+
 describe("executeAction", () => {
+  afterEach(() => {
+    activeStore?.dispatch(Api.util.resetApiState());
+    activeStore = undefined;
+    fetchMock.removeRoutes().clearHistory();
+  });
+
   it("POSTs to /api/action/:id/execute with the given parameters", async () => {
     fetchMock.post(`path:/api/action/${NUMERIC_ID}/execute`, {
       status: 200,
       body: { "rows-affected": 7 },
     });
 
-    const result = await executeAction(NOOP_STORE)({
+    const result = await executeAction(setup())({
       actionId: NUMERIC_ID,
       parameters: { id: 1, name: "European" },
     });
@@ -39,7 +54,7 @@ describe("executeAction", () => {
       body: { "rows-affected": 0 },
     });
 
-    await executeAction(NOOP_STORE)({ actionId: NUMERIC_ID });
+    await executeAction(setup())({ actionId: NUMERIC_ID });
 
     const calls = fetchMock.callHistory.calls(
       `path:/api/action/${NUMERIC_ID}/execute`,
@@ -56,7 +71,7 @@ describe("executeAction", () => {
       body: { "created-row": { id: 1 } },
     });
 
-    const result = await executeAction(NOOP_STORE)({
+    const result = await executeAction(setup())({
       actionId: ENTITY_ID,
       parameters: { name: "Jane" },
     });
@@ -71,14 +86,14 @@ describe("executeAction", () => {
     ).toHaveLength(0);
   });
 
-  it("rejects with the legacy-client error shape on a non-2xx response", async () => {
+  it("rejects with the client error shape on a non-2xx response", async () => {
     fetchMock.post(`path:/api/action/${NUMERIC_ID}/execute`, {
       status: 403,
       body: { message: "denied" },
     });
 
     await expect(
-      executeAction(NOOP_STORE)({
+      executeAction(setup())({
         actionId: NUMERIC_ID,
         parameters: { id: 1 },
       }),
