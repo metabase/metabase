@@ -14,7 +14,6 @@
 declare module "@metabase/embedding-sdk-react" {
   export const InteractiveQuestion: (props: {
     questionId?: number | string;
-    query?: unknown;
     card?: unknown;
   }) => import("react").ReactNode;
 }
