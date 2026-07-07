@@ -119,27 +119,50 @@
               (is (every? #(contains? #{"dag" "transform"} (:run_type %)) (:data response)))
               (is (contains? rows ["dag" dag-run-id]))
               (is (contains? rows ["transform" standalone-id]))))
-          (testing "status= filters across all kinds"
-            (let [rows (rows-by-type (get-runs :status "failed"))]
+          (testing "statuses= filters across all kinds, matching any of the given statuses"
+            (let [rows (rows-by-type (get-runs :statuses ["failed"]))]
               (is (contains? rows ["dag" dag-run-id]))
               (is (not (contains? rows ["job" job-run-id])))
-              (is (not (contains? rows ["transform" standalone-id])))))
-          (testing "transform-id= returns runs that ran the transform"
+              (is (not (contains? rows ["transform" standalone-id]))))
+            (let [rows (rows-by-type (get-runs :statuses ["failed" "succeeded"]))]
+              (is (contains? rows ["dag" dag-run-id]))
+              (is (contains? rows ["job" job-run-id]))
+              (is (contains? rows ["transform" standalone-id]))))
+          (testing "run-methods= filters by trigger"
+            (let [rows (rows-by-type (get-runs :run-methods ["cron"]))]
+              (is (contains? rows ["job" job-run-id]))
+              (is (not (contains? rows ["dag" dag-run-id])))
+              (is (not (contains? rows ["transform" standalone-id]))))
+            (let [rows (rows-by-type (get-runs :run-methods ["manual"]))]
+              (is (contains? rows ["dag" dag-run-id]))
+              (is (contains? rows ["transform" standalone-id]))
+              (is (not (contains? rows ["job" job-run-id])))))
+          (testing "transform-ids= returns runs that ran any of the transforms"
             (testing "job runs with a member run of it, plus its standalone runs"
-              (let [rows (rows-by-type (get-runs :transform-id ta-id))]
+              (let [rows (rows-by-type (get-runs :transform-ids [ta-id]))]
                 (is (contains? rows ["job" job-run-id]))
                 (is (contains? rows ["transform" standalone-id]))
                 (is (not (contains? rows ["dag" dag-run-id])))))
             (testing "DAG runs with a member run of it"
-              (let [rows (rows-by-type (get-runs :transform-id tb-id))]
+              (let [rows (rows-by-type (get-runs :transform-ids [tb-id]))]
                 (is (contains? rows ["dag" dag-run-id]))
                 (is (not (contains? rows ["job" job-run-id])))
-                (is (not (contains? rows ["transform" standalone-id]))))))
+                (is (not (contains? rows ["transform" standalone-id])))))
+            (testing "multiple ids match as a logical OR"
+              (let [rows (rows-by-type (get-runs :transform-ids [ta-id tb-id]))]
+                (is (contains? rows ["job" job-run-id]))
+                (is (contains? rows ["dag" dag-run-id]))
+                (is (contains? rows ["transform" standalone-id])))))
           (testing "start-time= filters by run start"
             (let [rows (rows-by-type (get-runs :start-time "2025-09-03"))]
               (is (contains? rows ["transform" standalone-id]))
               (is (not (contains? rows ["job" job-run-id])))
-              (is (not (contains? rows ["dag" dag-run-id]))))))))))
+              (is (not (contains? rows ["dag" dag-run-id])))))
+          (testing "end-time= filters by run end"
+            (let [rows (rows-by-type (get-runs :end-time "2025-09-01"))]
+              (is (contains? rows ["job" job-run-id]))
+              (is (not (contains? rows ["dag" dag-run-id])))
+              (is (not (contains? rows ["transform" standalone-id]))))))))))
 
 (deftest unified-runs-sorting-and-pagination-test
   (testing "GET /api/transform/runs sorting and pagination"

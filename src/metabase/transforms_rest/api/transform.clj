@@ -260,16 +260,18 @@
   run not part of any job/DAG run) — never a member run of a job/DAG. Use `GET /run` for the
   low-level per-transform-run tab.
 
-  `types` selects which kinds to include (`job`/`dag`/`transform`; all by default). `transform-id`
-  narrows to runs that ran a specific transform (a job/DAG run whose members include it, or that
-  transform's own standalone run)."
+  `types` selects which kinds to include (`job`/`dag`/`transform`; all by default). `transform-ids`
+  narrows to runs that ran any of the given transforms (a job/DAG run whose members include one, or
+  those transforms' own standalone runs). The other filters mirror `GET /run`."
   [_route-params
    query-params :-
    [:map
     [:types {:optional true} [:maybe (ms/QueryVectorOf [:enum "job" "dag" "transform"])]]
-    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
+    [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout" "canceled" "canceling"])]]
+    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
-    [:transform-id {:optional true} [:maybe ms/PositiveInt]]
+    [:end-time {:optional true} [:maybe ms/NonBlankString]]
+    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
     [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
   (api/check-data-analyst)

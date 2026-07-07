@@ -30,7 +30,7 @@
 ;; manual). Timestamps and status/run_method/direction come back raw (strings) and are keywordized in
 ;; the API layer via `present-run-summary`.
 
-(defn- job-run-subquery [transform-id]
+(defn- job-run-subquery [transform-ids]
   {:select [[[:inline "job"] :run_type]
             :id
             [:job_id :entity_id]
@@ -39,16 +39,16 @@
             :status :is_active :start_time :end_time :message
             [nil :user_id]]
    :from   [:transform_job_run]
-   :where  (if transform-id
-             ;; only job runs that actually ran this transform
+   :where  (if (seq transform-ids)
+             ;; only job runs that actually ran one of these transforms
              [:exists {:select [[[:inline 1]]]
                        :from   [[:transform_run :member]]
                        :where  [:and
                                 [:= :member.job_run_id :transform_job_run.id]
-                                [:= :member.transform_id transform-id]]}]
+                                [:in :member.transform_id transform-ids]]}]
              true)})
 
-(defn- dag-run-subquery [transform-id]
+(defn- dag-run-subquery [transform-ids]
   {:select [[[:inline "dag"] :run_type]
             :id
             [:source_transform_id :entity_id]
@@ -57,15 +57,15 @@
             :status :is_active :start_time :end_time :message
             :user_id]
    :from   [:transform_dag_run]
-   :where  (if transform-id
+   :where  (if (seq transform-ids)
              [:exists {:select [[[:inline 1]]]
                        :from   [[:transform_run :member]]
                        :where  [:and
                                 [:= :member.dag_run_id :transform_dag_run.id]
-                                [:= :member.transform_id transform-id]]}]
+                                [:in :member.transform_id transform-ids]]}]
              true)})
 
-(defn- transform-run-subquery [transform-id]
+(defn- transform-run-subquery [transform-ids]
   {:select [[[:inline "transform"] :run_type]
             :id
             [:transform_id :entity_id]
@@ -75,43 +75,49 @@
             :user_id]
    :from   [:transform_run]
    ;; standalone runs only: those not coordinated by a job or DAG run
-   :where  [:and
-            [:= :job_run_id nil]
-            [:= :dag_run_id nil]
-            (if transform-id [:= :transform_id transform-id] true)]})
+   :where  (cond-> [:and
+                    [:= :job_run_id nil]
+                    [:= :dag_run_id nil]]
+             (seq transform-ids) (conj [:in :transform_id transform-ids]))})
 
 (defn- union-subquery
   "The UNION ALL of the branches selected by `types` (a subset of [[run-types]]), each optionally
-  narrowed to runs touching `transform-id`."
-  [types transform-id]
+  narrowed to runs touching one of `transform-ids`."
+  [types transform-ids]
   (let [types (set (or (seq types) run-types))]
     {:union-all (cond-> []
-                  (:job types)       (conj (job-run-subquery transform-id))
-                  (:dag types)       (conj (dag-run-subquery transform-id))
-                  (:transform types) (conj (transform-run-subquery transform-id)))}))
+                  (:job types)       (conj (job-run-subquery transform-ids))
+                  (:dag types)       (conj (dag-run-subquery transform-ids))
+                  (:transform types) (conj (transform-run-subquery transform-ids)))}))
 
 (defn paged-run-summaries
   "Return a page of the unified collection-level run listing, in the FE-conventional
   `{:data :limit :offset :total}` envelope. Rows are raw (see the ns docstring); the API layer
   keywordizes and hydrates run names.
 
-  Options:
+  Filter semantics follow the low-level transform-run listing
+  (`metabase.transforms.models.transform-run/paged-runs`). Options:
   - `:types`          subset of [[run-types]] (as keywords) to include; nil/empty means all three
-  - `:status`         restrict to a single status string
+  - `:statuses`       restrict to any of these status strings
+  - `:run-methods`    restrict to any of these triggers (`\"manual\"`/`\"cron\"`)
   - `:start-time`     QP-style date range string constraining `start_time`
-  - `:transform-id`   only runs that ran this transform (job/DAG runs whose members include it, or the
-                      standalone run of it)
+  - `:end-time`       QP-style date range string constraining `end_time`
+  - `:transform-ids`  only runs that ran any of these transforms (job/DAG runs whose members include
+                      one, or the standalone runs of them)
   - `:sort-column`    `\"start_time\"` / `\"end_time\"`
   - `:sort-direction` `\"asc\"` / `\"desc\"`
   - `:offset`/`:limit` pagination (default 0 / 20)"
-  [{:keys [types status start-time transform-id sort-column sort-direction offset limit]}]
+  [{:keys [types statuses run-methods start-time end-time transform-ids sort-column sort-direction offset limit]}]
   (let [offset     (or offset 0)
         limit      (or limit 20)
-        inner      (union-subquery types transform-id)
+        inner      (union-subquery types transform-ids)
         where      (into [:and] (remove nil?)
-                         [(when status               [:= :status status])
-                          (when (= status "started") [:= :is_active true])
-                          (when start-time           (transforms.models.u/timestamp-constraint :start_time start-time))])
+                         [(when (seq statuses)    [:in :status (set statuses)])
+                          ;; optimization: started-only queries can use the is_active partial index
+                          (when (= (set statuses) #{"started"}) [:= :is_active true])
+                          (when (seq run-methods) [:in :run_method (set run-methods)])
+                          (when start-time        (transforms.models.u/timestamp-constraint :start_time start-time))
+                          (when end-time          (transforms.models.u/timestamp-constraint :end_time end-time))])
         where      (when (> (count where) 1) where)
         base       (cond-> {:from [[inner :runs]]}
                      where (assoc :where where))]
