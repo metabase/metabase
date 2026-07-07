@@ -41,3 +41,24 @@
                        (js/load-js-string context "Java.type('java.lang.System')" "escape.js"))))
         (finally
           (.close context true))))))
+
+(deftest untrusted-plugin-context-enforces-heap-limit-test
+  (testing "sandbox.MaxHeapMemory terminates a plugin that exhausts the isolate heap"
+    (let [^Context context (js/untrusted-plugin-context)
+          ;; Retain a steadily growing list of materialized arrays until the per-context 512MB heap
+          ;; cap is hit. A single huge allocation can slip past the sampling-based limit, but
+          ;; sustained retention cannot. This stays within the isolate's own heap, so the host JVM
+          ;; isn't the one running out of memory.
+          ex      (try
+                    (js/load-js-string
+                     context
+                     "var a = []; for (var i = 0; i < 1e7; i++) { a.push(new Array(50000).fill(i)); } a.length"
+                     "oom.js")
+                    nil
+                    (catch PolyglotException e e))]
+      (try
+        (is (some? ex) "expected the runaway allocation to be terminated, not to complete")
+        (is (and ex (.isResourceExhausted ^PolyglotException ex))
+            "termination should be resource exhaustion (heap limit), not some other error")
+        (finally
+          (.close context true))))))
