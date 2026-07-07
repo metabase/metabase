@@ -817,7 +817,7 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should be able to use temporal-unit parameters with multiple temporal breakouts of a column", () => {
         cy.log("create dashboard");
         cy.signInAsAdmin();
-        H.createQuestionAndDashboard({
+        H.createQuestionAndDashboardWithTestQuery({
           dashboardDetails,
           questionDetails: questionWith2TemporalBreakoutsDetails,
         }).then(({ body: { dashboard_id } }) => {
