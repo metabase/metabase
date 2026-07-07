@@ -35,6 +35,7 @@
      ;; Definitely thread safe
      metabase.test.util.dynamic-redefs/patch-vars!
      ;; Throws an exception:
+     metabase-enterprise.transforms-test.fixtures/validate-header!
      metabase-enterprise.transforms-test.resolve/cannot-test-run!
      metabase-enterprise.transforms-test.subgraph/table-dependencies!
      metabase-enterprise.transforms-test.subgraph/assert-extractions-ok!

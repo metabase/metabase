@@ -2,15 +2,11 @@
   (:require
    [metabase.upload.db]
    [metabase.upload.impl]
-   [metabase.upload.parsing]
-   [metabase.upload.types]
    [potemkin :as p]))
 
 (comment
   metabase.upload.db/keep-me
-  metabase.upload.impl/keep-me
-  metabase.upload.parsing/keep-me
-  metabase.upload.types/keep-me)
+  metabase.upload.impl/keep-me)
 
 (p/import-vars
  [metabase.upload.db
@@ -20,10 +16,6 @@
   create-csv-upload!
   delete-upload!
   model-hydrate-based-on-upload
+  parse-csv
   update-action-schema
-  update-csv!]
- [metabase.upload.parsing
-  get-settings
-  upload-type->parser]
- [metabase.upload.types
-  base-type->upload-type])
+  update-csv!])

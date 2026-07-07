@@ -1,54 +1,12 @@
 (ns metabase-enterprise.transforms-test.fixtures
   "Fixture-CSV parsing for transform test runs."
   (:require
-   [clj-bom.core :as bom]
-   [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.transforms-test.errors :as errors]
-   [metabase.upload.core :as upload])
-  (:import
-   (java.io File InputStreamReader Reader StringReader)))
+   [metabase.upload.core :as upload]))
 
 (set! *warn-on-reflection* true)
-
-;; ---------------------------------------------------------------------------
-;; Base-type → upload-type conversion
-;; ---------------------------------------------------------------------------
-
-(defn- base-type->upload-type
-  "Maps a Metabase base-type to the best matching upload column type.
-  Falls back to `::upload.types/text` for unmapped types (e.g. :type/UUID)."
-  [base-type]
-  (or (try (upload/base-type->upload-type base-type)
-           (catch IllegalArgumentException _
-             :metabase.upload.types/text))
-      :metabase.upload.types/text))
-
-;; ---------------------------------------------------------------------------
-;; CSV reading with BOM / charset handling
-;; ---------------------------------------------------------------------------
-
-(defn- ->reader
-  "Opens `file` for CSV reading.  Strips a leading BOM if present (UTF-8,
-  UTF-16, UTF-32).  Charset is detected heuristically and falls back to UTF-8."
-  ^Reader [^File file]
-  ;; clj-bom's bom-input-stream transparently strips the BOM regardless of encoding.
-  ;; We read as UTF-8 (the dominant encoding for CSV fixtures); if charset detection
-  ;; is needed for broader upload compatibility, mirror upload.impl/->reader here.
-  (InputStreamReader. (bom/bom-input-stream file) "UTF-8"))
-
-(defn- read-csv
-  "Returns `[header-row & data-rows]` as vectors of strings.
-  Accepts a `java.io.File` (BOM-stripped, UTF-8) or a CSV `String` (already
-  decoded, passed through `StringReader` directly)."
-  [file-or-string]
-  (if (string? file-or-string)
-    (with-open [reader (StringReader. ^String file-or-string)]
-      (vec (csv/read-csv reader)))
-    (with-open [reader (->reader ^File file-or-string)]
-      ;; Realise the lazy seq inside with-open so the reader isn't closed first.
-      (vec (csv/read-csv reader)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Error constructors
@@ -89,60 +47,42 @@
            :raw-value   raw-value}
           cause)))
 
-;; ---------------------------------------------------------------------------
-;; Cell parsing
-;; ---------------------------------------------------------------------------
+(defn- ragged-row-error
+  "Throws an ex-info with `::errors/ragged-row` type.
 
-(defn- parse-cell
-  "Parse a single CSV cell string `s` using `parser`.
-  Returns nil for blank cells; throws `::unparseable-cell` on parse failure."
-  [parser row-index column-name s]
-  ;; Blank → nil mirrors the upload parse-rows path; required by insert-from-source!
-  (if (str/blank? s)
-    nil
-    (try
-      (parser s)
-      (catch Exception e
-        (unparseable-cell-error row-index column-name s e)))))
-
-(defn- parse-row
-  "Parse one data row (vector of strings) using per-column parsers.
-  `row-index` is 0-based (does not count the header row).
-  Throws `::errors/ragged-row` when the row's cell count differs from the header's."
-  [parsers column-names row-index row]
-  ;; mapv stops at the shortest collection — a ragged row would silently
-  ;; truncate or nil-pad without this guard.
-  (when (not= (count row) (count parsers))
-    (throw (ex-info (str "CSV row " row-index " has " (count row) " cell(s);"
-                         " the header has " (count parsers) " column(s).")
-                    {:error-type          ::errors/ragged-row
-                     :row-index           row-index
-                     :expected-cell-count (count parsers)
-                     :actual-cell-count   (count row)})))
-  (mapv (fn [parser col-name cell]
-          (parse-cell parser row-index col-name cell))
-        parsers
-        column-names
-        row))
+  `row-index` — 0-based index into the data rows (not counting the header)."
+  [row-index expected-cell-count actual-cell-count]
+  (throw (ex-info (str "CSV row " row-index " has " actual-cell-count " cell(s);"
+                       " the header has " expected-cell-count " column(s).")
+                  {:error-type          ::errors/ragged-row
+                   :row-index           row-index
+                   :expected-cell-count expected-cell-count
+                   :actual-cell-count   actual-cell-count})))
 
 ;; ---------------------------------------------------------------------------
-;; Schema-driven parsing path
+;; Header validation
 ;; ---------------------------------------------------------------------------
 
-(defn- parse-with-schema
-  "Parse `rows` (vectors of strings, no header) against `ordered-schema`
-  (a vector of `{:name :base-type :nullable?}` maps in CSV column order).
-  Returns `[parsed-row ...]`."
-  [ordered-schema rows]
-  (let [settings (upload/get-settings)
-        parsers  (mapv (fn [{:keys [base-type]}]
-                         (upload/upload-type->parser (base-type->upload-type base-type)
-                                                     settings))
-                       ordered-schema)
-        names    (mapv :name ordered-schema)]
-    (vec (map-indexed (fn [idx row]
-                        (parse-row parsers names idx row))
-                      rows))))
+(defn- validate-header!
+  "Validate the CSV `header` against `target-schema`; throws `::errors/header-mismatch`
+  on duplicate header names or a header ≠ schema-names mismatch."
+  [header target-schema]
+  (let [schema-names (set (map :name target-schema))
+        csv-names    (set header)
+        missing      (set/difference schema-names csv-names)
+        extra        (set/difference csv-names schema-names)
+        dupes        (->> (frequencies header)
+                          (keep (fn [[n cnt]] (when (> cnt 1) n)))
+                          sort)]
+    ;; Duplicates hide from the set comparison and misalign row values downstream.
+    (when (seq dupes)
+      (throw (ex-info (str "CSV header contains duplicate column names: "
+                           (str/join ", " dupes) ".")
+                      {:error-type        ::errors/header-mismatch
+                       :duplicate-columns (vec dupes)
+                       :csv-header        (vec header)})))
+    (when (or (seq missing) (seq extra))
+      (header-mismatch-error missing extra header (map :name target-schema)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Public API
@@ -183,32 +123,22 @@
                             and `:raw-value`."
   [csv-file target-schema]
   {:pre [(seq target-schema)]}
-  (let [rows      (read-csv csv-file)
-        header    (first rows)
-        data-rows (rest rows)
-        ;; Header matching is case-sensitive and exact: driver/insert-from-source! passes
-        ;; column names verbatim to the database, and real table column names are
-        ;; case-preserving; folding here could silently map the wrong CSV column onto the
-        ;; wrong DB column.
-        schema-names (set (map :name target-schema))
-        csv-names    (set header)
-        missing      (set/difference schema-names csv-names)
-        extra        (set/difference csv-names schema-names)
-        dupes        (->> (frequencies header)
-                          (keep (fn [[n cnt]] (when (> cnt 1) n)))
-                          sort)]
-    ;; Duplicates hide from the set comparison and misalign row values downstream.
-    (when (seq dupes)
-      (throw (ex-info (str "CSV header contains duplicate column names: "
-                           (str/join ", " dupes) ".")
-                      {:error-type        ::errors/header-mismatch
-                       :duplicate-columns (vec dupes)
-                       :csv-header        (vec header)})))
-    (when (or (seq missing) (seq extra))
-      (header-mismatch-error missing extra header (map :name target-schema)))
-    ;; Re-order the schema to match the CSV column order.
-    (let [name->col      (into {} (map (juxt :name identity)) target-schema)
-          ordered-schema (mapv name->col header)
-          parsed-rows    (parse-with-schema ordered-schema (vec data-rows))]
-      {:columns ordered-schema
-       :rows    parsed-rows})))
+  (let [header->columns
+        (fn [header]
+          (validate-header! header target-schema)
+          ;; Re-order the schema to match the CSV column order.
+          (let [name->col (into {} (map (juxt :name identity)) target-schema)]
+            (mapv name->col header)))]
+    (try
+      (upload/parse-csv csv-file header->columns)
+      (catch clojure.lang.ExceptionInfo e
+        (let [{:keys [type row-index column-name raw-value
+                      expected-cell-count actual-cell-count]} (ex-data e)]
+          (case type
+            :metabase.upload/ragged-row
+            (ragged-row-error row-index expected-cell-count actual-cell-count)
+
+            :metabase.upload/unparseable-cell
+            (unparseable-cell-error row-index column-name raw-value (ex-cause e))
+
+            (throw e)))))))
