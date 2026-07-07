@@ -203,3 +203,12 @@
 (deftest get-current-grant-fails-for-non-admin-test
   (is (= "You don't have permissions to do that."
          (mt/user-http-request :rasta :get 403 "ee/support-access-grant/current"))))
+
+(deftest create-grant-persists-notes-test
+  (mt/with-model-cleanup [:model/SupportAccessGrantLog]
+    (let [response (mt/user-http-request :crowberto :post 200 "ee/support-access-grant"
+                                         {:ticket_number "SUPPORT-777"
+                                          :grant_duration_minutes 2880
+                                          :notes "Custom notes"})]
+      (is (= "Custom notes" (:notes response)))
+      (is (= "Custom notes" (:notes (t2/select-one :model/SupportAccessGrantLog :id (:id response))))))))
