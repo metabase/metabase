@@ -14,6 +14,8 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
@@ -989,6 +991,23 @@
                 (t2/hydrate card :can_run_adhoc_query)))
         (is (=? {:can_run_adhoc_query false}
                 (t2/hydrate no-query :can_run_adhoc_query)))))))
+
+(deftest can-run-adhoc-query-respects-create-queries-perm-test
+  (testing "can_run_adhoc_query reflects a non-admin's create-queries permission on the card's table (#13347)"
+    (let [mp     (mt/metadata-provider)
+          venues (lib.metadata/table mp (mt/id :venues))
+          query  (lib/query mp venues)]
+      (mt/with-temp [:model/Card card {:dataset_query query}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query false}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query))))
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (=? {:can_run_adhoc_query true}
+                    (t2/hydrate (t2/select-one :model/Card :id (:id card)) :can_run_adhoc_query)))))))))
 
 (deftest audit-card-permissions-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"

@@ -289,28 +289,55 @@
       529 (tru "Anthropic API is overloaded and is asking us to wait")
       (tru "Anthropic API error (HTTP {0})" status))))
 
+(def ^:private supported-models
+  "Anthropic chat models offered in the Metabot model picker, as a map of model id -> display name.
+  `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
+  {"claude-fable-5"             "Claude Fable 5"
+   "claude-opus-4-8"            "Claude Opus 4.8"
+   "claude-opus-4-7"            "Claude Opus 4.7"
+   "claude-opus-4-6"            "Claude Opus 4.6"
+   "claude-opus-4-5-20251101"   "Claude Opus 4.5"
+   "claude-opus-4-1-20250805"   "Claude Opus 4.1"
+   "claude-sonnet-5"            "Claude Sonnet 5"
+   "claude-sonnet-4-6"          "Claude Sonnet 4.6"
+   "claude-sonnet-4-5-20250929" "Claude Sonnet 4.5"
+   "claude-haiku-4-5-20251001"  "Claude Haiku 4.5"})
+
+(defn- supported-model?
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
+  [{:keys [id]}]
+  (contains? supported-models id))
+
+(defn- list-all-models
+  "Fetch the full Anthropic model catalog (`GET /v1/models`).
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  [{:keys [credentials ai-proxy?]}]
+  (when (and credentials (str/blank? (:api-key credentials)))
+    (throw (core/missing-api-key-ex "Anthropic")))
+  (try
+    (let [auth (core/resolve-auth "anthropic" "Anthropic"
+                                  (when-let [k (or (not-empty (:api-key credentials))
+                                                   (not-empty (llm/llm-anthropic-api-key)))]
+                                    {:url     (llm/llm-anthropic-api-base-url)
+                                     :headers {"x-api-key" k}})
+                                  ai-proxy?)
+          res  (core/request auth {:method  :get
+                                   :url     "/v1/models"
+                                   :headers {"anthropic-version" "2023-06-01"}})]
+      (:data (json/decode+kw (:body res))))
+    (catch Exception e
+      (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))
+
 (defn list-models
-  "List available Anthropic models.
+  "List the Anthropic chat models supported by this adapter (see [[supported-models]]).
   No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy?]}]
-   (when (and credentials (str/blank? (:api-key credentials)))
-     (throw (core/missing-api-key-ex "Anthropic")))
-   (try
-     (let [auth   (core/resolve-auth "anthropic" "Anthropic"
-                                     (when-let [k (or (not-empty (:api-key credentials))
-                                                      (not-empty (llm/llm-anthropic-api-key)))]
-                                       {:url     (llm/llm-anthropic-api-base-url)
-                                        :headers {"x-api-key" k}})
-                                     ai-proxy?)
-           res    (core/request auth {:method  :get
-                                      :url     "/v1/models"
-                                      :headers {"anthropic-version" "2023-06-01"}})
-           body   (json/decode+kw (:body res))
-           models (reverse (sort-by :created_at (:data body)))]
-       {:models (map #(select-keys % [:id :display_name]) models)})
-     (catch Exception e
-       (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
+  ([opts]
+   {:models (->> (list-all-models opts)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id display_name]}]
+                         {:id id :display_name (or display_name (supported-models id))})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
