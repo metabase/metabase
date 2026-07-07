@@ -272,6 +272,46 @@
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
 
+(deftest get-report-details-skips-related-tables-test
+  (testing "get-report-details never computes related-tables"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   (mt/id)
+                        :type          :question
+                        :name          "Orders question"
+                        :dataset_query (mt/mbql-query orders {:limit 3})}]
+          (let [calls (atom 0)]
+            ;; `related-tables` should never be invoked, so the redef only needs to count calls.
+            (mt/with-dynamic-fn-redefs [entity-details/related-tables (fn [& _args]
+                                                                        (swap! calls inc)
+                                                                        nil)]
+              (let [output (-> (entity-details/get-report-details {:report-id card-id})
+                               :structured-output)]
+                (is (=? {:id card-id :type :question} output))
+                (is (not (contains? output :related_tables)))
+                (is (= 0 @calls))))))))))
+
+(deftest get-report-details-skips-metrics-test
+  (testing "get-report-details never computes metrics"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   (mt/id)
+                        :type          :question
+                        :name          "Orders question"
+                        :dataset_query (mt/mbql-query orders {:limit 3})}]
+          (let [calls (atom 0)]
+            ;; `available-metrics` should never be invoked, so the redef only needs to count calls.
+            (mt/with-dynamic-fn-redefs [lib/available-metrics (fn [& _args]
+                                                                (swap! calls inc)
+                                                                nil)]
+              (let [output (-> (entity-details/get-report-details {:report-id card-id})
+                               :structured-output)]
+                (is (=? {:id card-id :type :question} output))
+                (is (not (contains? output :metrics)))
+                (is (= 0 @calls))))))))))
+
 (defn- sandboxed-query []
   (let [mp       (mt/metadata-provider)
         table    (lib.metadata/table mp (mt/id :categories))

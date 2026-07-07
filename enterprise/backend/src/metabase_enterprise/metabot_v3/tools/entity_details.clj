@@ -406,7 +406,11 @@
       (let [options (cond-> arguments
                       (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
             details (if (int? report-id)
-                      (let [details (card-details report-id options)]
+                      ;; The select-keys below drops :related_tables and :metrics, so don't compute them. On
+                      ;; wide-FK source tables the related-tables cost can be substantial (metabase#76493).
+                      (let [details (card-details report-id (assoc options
+                                                                   :with-related-tables? false
+                                                                   :with-metrics? false))]
                         (-> details
                             (select-keys [:id :type :description :name :verified])
                             (assoc :result-columns (:fields details))))
