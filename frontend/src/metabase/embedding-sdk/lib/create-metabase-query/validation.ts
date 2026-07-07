@@ -1,8 +1,7 @@
+import type { TableQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { isMetricReference } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { MetricSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
-
-import type { TableQueryInput } from "./input-types";
 
 export function validateQueryInput(input: TableQueryInput) {
   validateLimit(input.limit);
@@ -121,7 +120,6 @@ function getSourceFieldId(value: unknown): number | undefined {
 function validateMetricAggregation(metric: MetricSchema, tableId: number) {
   // Source-card Metrics need a saved-question source so Lib scopes metric
   // dimensions to the card stage. EMB-2045 will add that source path:
-  // https://linear.app/metabase/issue/EMB-2045/support-saved-questions-for-usemetabasequery-via-libcreatetestquery
   if (metric.sourceCardId != null) {
     throw new Error(
       "Table query metric aggregations cannot use source-card Metrics. Use a saved question source for source-card Metrics.",

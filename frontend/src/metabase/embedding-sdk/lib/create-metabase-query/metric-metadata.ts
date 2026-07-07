@@ -1,9 +1,8 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import type { TableQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { isMetricReference } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-
-import type { TableQueryInput } from "./input-types";
 
 export const loadReferencedMetricMetadata = (
   store: SdkStore,

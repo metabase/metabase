@@ -20,7 +20,7 @@ export type SchemaColumn = {
 export type FieldSchema = SchemaColumn & {
   type: "column";
   id?: string | number;
-  "source-name"?: string;
+  sourceName?: string;
   fieldId?: number;
   tableId?: number;
   sourceFieldId?: number;

@@ -459,9 +459,7 @@ export type TestColumnSpec = {
   type: "column";
   name: string;
   tableId?: TableId;
-  "source-name"?: string;
   sourceName?: string;
-  "source-field-id"?: FieldId;
   sourceFieldId?: FieldId;
   displayName?: string;
 

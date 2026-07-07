@@ -80,7 +80,7 @@
           :tableName    "orders"
           :fields       {"createdAt" {:type          "column"
                                       :name          "created_at"
-                                      :source-name   "orders"
+                                      :sourceName   "orders"
                                       :displayName   "Created At"
                                       :baseType      "type/DateTime"
                                       :jsType        "Date"
@@ -187,7 +187,7 @@
             :mappedTableIds [10]
             :dimensions     {"orders" {:type        "column"
                                        :name        "orders"
-                                       :source-name "orders"
+                                       :sourceName "orders"
                                        :displayName "Orders"
                                        :baseType    "type/Integer"
                                        :jsType      "number"
@@ -369,7 +369,7 @@
                                                :columns       [{:name "count" :jsType "number"}]
                                                :dimensions    {"createdAt" {:type        "column"
                                                                             :name        "created_at"
-                                                                            :source-name "orders"
+                                                                            :sourceName "orders"
                                                                             :baseType    "type/DateTime"
                                                                             :jsType      "Date"
                                                                             :key         "createdAt"
@@ -384,7 +384,7 @@
     (is (not (str/includes? body (str "/" "/ id: 3970"))))
     (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
     (is (str/includes? body "name: \"payment_method\""))
-    (is (str/includes? body "\"source-name\": \"orders\""))
+    (is (str/includes? body "sourceName: \"orders\""))
     (is (str/includes? body "type: \"table\""))
     (is (not (str/includes? body "kind: \"table\"")))
     (is (str/includes? body "fieldId: 3970"))
@@ -396,7 +396,7 @@
     (is (str/includes? body "sourceTableId: 10"))
     (is (str/includes? body "sourceCardId: 42"))
     (is (str/includes? body "fields: {\n        createdAt: {\n          type: \"column\""))
-    (is (str/includes? body "\"source-name\": \"orders\""))
+    (is (str/includes? body "sourceName: \"orders\""))
     (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
     (is (str/includes? body "function pickFields"))
     (is (str/includes? body "const field = fields[key] as { tableId?: number };"))

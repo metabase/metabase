@@ -40,7 +40,7 @@
                       :comment [:entityId :description :verified]}
    :table            {:runtime [:type :id :name :fields :segments :measures]
                       :comment [:entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:type :name :source-name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
+   :field            {:runtime [:type :name :sourceName :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
    :segment          {:runtime [:type :id :tableId :name]
                       :comment [:entityId :description]}
@@ -49,7 +49,7 @@
    :metric           {:runtime [:type :id :name :databaseId :sourceTableId :sourceCardId
                                 :mappedTableIds :columns :dimensions]
                       :comment [:entityId :description :verified :sourceTable]}
-   :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :source-name :sourceFieldId
+   :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
    :column           {:runtime [:name :jsType]
@@ -588,8 +588,8 @@
              :type "column"
              :key (generated-key (:name column) dimension-id)
              :id (str dimension-id))
-      :source-name (when (integer? table-id)
-                     (get table-source-name-by-id table-id))
+      :sourceName (when (integer? table-id)
+                    (get table-source-name-by-id table-id))
       :fieldId (when (integer? field-id) field-id)
       :tableId (when (integer? table-id) table-id)
       :sourceFieldId (when (integer? (:source-field-id dimension))
@@ -609,7 +609,7 @@
              :type "column"
              :key (generated-key (:name field) field-id)
              :id field-id)
-      :source-name source-name
+      :sourceName source-name
       :fieldId (when (integer? field-id) field-id)
       :tableId (when (integer? table-id) table-id)
       :defaultTemporalBucket (:unit field)))))
