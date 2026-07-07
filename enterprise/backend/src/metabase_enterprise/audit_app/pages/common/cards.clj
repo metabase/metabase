@@ -4,10 +4,15 @@
   "HoneySQL for a CTE to get latest QueryExecution for a Card."
   [:latest_qe {:select   [:query_execution.card_id :error :query_execution.started_at]
                :from     [:query_execution]
+               ;; Join on BOTH card_id and started_at. Matching on started_at alone
+               ;; fans out whenever executions across cards share a timestamp,
+               ;; producing duplicate/incorrect card rows.
                :join     [[{:select [:card_id [:%max.started_at :started_at]]
                             :from [:query_execution]
                             :group-by [:card_id]} :inner_qe]
-                          [:= :query_execution.started_at :inner_qe.started_at]]}])
+                          [:and
+                           [:= :query_execution.card_id :inner_qe.card_id]
+                           [:= :query_execution.started_at :inner_qe.started_at]]]}])
 
 (def query-runs
   "HoneySQL for a CTE to include the total number of queries for each Card forever."

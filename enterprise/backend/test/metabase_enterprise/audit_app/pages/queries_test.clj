@@ -56,3 +56,29 @@
                                 :args ["unique-broken-table-xyz" nil nil])
                      mt/rows
                      ffirst))))))))
+
+(deftest bad-table-no-duplicate-cards-test
+  (testing "cards aren't duplicated when executions across cards share a started_at (latest_qe joins on card_id, not timestamp alone)"
+    (mt/test-helpers-set-global-values!
+      (let [shared-ts #t "2026-02-02T12:00:00Z"]
+        (mt/with-temp [:model/Card {erroring-id :id} {:name "Collision erroring card"}
+                       :model/Card {healthy-id :id}  {:name "Collision healthy card"}
+                       ;; both cards' latest run is at the SAME timestamp; only one errored
+                       :model/QueryExecution _ (merge query-execution-defaults
+                                                      {:card_id     erroring-id
+                                                       :executor_id (mt/user->id :crowberto)
+                                                       :started_at  shared-ts
+                                                       :error       "collision-error-marker-abc"})
+                       :model/QueryExecution _ (merge query-execution-defaults
+                                                      {:card_id     healthy-id
+                                                       :executor_id (mt/user->id :crowberto)
+                                                       :started_at  shared-ts})]
+          (let [rows (mt/rows (run-query ::queries/bad-table
+                                         :args ["collision-error-marker-abc" nil nil nil nil]))]
+            (testing "exactly one row, for the erroring card only (buggy join returns two)"
+              (is (= 1 (count rows)))
+              (is (= [erroring-id] (map first rows))))
+            (testing "the count query agrees"
+              (is (= [[1]]
+                     (mt/rows (run-query ::queries/bad-table-count
+                                         :args ["collision-error-marker-abc" nil nil])))))))))))
