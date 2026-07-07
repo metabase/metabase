@@ -8,10 +8,7 @@ export const isTableInput = (input: unknown): input is TableInput =>
   isObject(input) && "source" in input && isTableReference(input.source);
 
 export const isTableReference = (value: unknown): value is TableSchema =>
-  isObject(value) &&
-  typeof value.id === "number" &&
-  value.type === "table" &&
-  typeof value.databaseId === "number";
+  isObject(value) && typeof value.id === "number" && value.type === "table";
 
 export const isUnaryOperator = (operator: string) =>
   operator === "is-empty" ||

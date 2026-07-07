@@ -73,11 +73,11 @@
           :key          "orders"
           :id           10
           :name         "Orders"
-          :databaseId   1
           :databaseName "Boba"
           :tableName    "orders"
           :fields       {"createdAt" {:type          "column"
                                       :name          "created_at"
+                                      :source-name   "orders"
                                       :displayName   "Created At"
                                       :baseType      "type/DateTime"
                                       :jsType        "Date"
@@ -249,11 +249,11 @@
                                              :key          "orders"
                                              :id           10
                                              :name         "Orders"
-                                             :databaseId   1
                                              :databaseName "Boba"
                                              :tableName    "orders"
                                              :fields       {"paymentMethod" {:type         "column"
                                                                              :name         "payment_method"
+                                                                             :source-name  "orders"
                                                                              :displayName  "Payment Method"
                                                                              :baseType     "type/Text"
                                                                              :semanticType "type/Category"
@@ -266,7 +266,6 @@
                                              :key        "franchises"
                                              :id         20
                                              :name       "Franchises"
-                                             :databaseId 1
                                              :fields     {"name" {:type        "column"
                                                                   :name        "name"
                                                                   :displayName "Name"
@@ -338,6 +337,7 @@
     (is (not (str/includes? body (str "/" "/ id: 3970"))))
     (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
     (is (str/includes? body "name: \"payment_method\""))
+    (is (str/includes? body "\"source-name\": \"orders\""))
     (is (str/includes? body "type: \"table\""))
     (is (not (str/includes? body "kind: \"table\"")))
     (is (str/includes? body "fieldId: 3970"))
