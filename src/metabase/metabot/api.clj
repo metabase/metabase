@@ -405,13 +405,17 @@
 
 (defn- openrouter-model-group
   [{:keys [display_name id]}]
-  (or (some-> display_name
-              (str/split #": " 2)
-              first)
-      (some-> id
-              (str/split #"/" 2)
-              first
-              title-case-token)))
+  (cond
+    (and display_name (str/includes? display_name ": "))
+    (-> display_name
+        (str/split #": " 2)
+        first)
+
+    (and id (str/includes? id "/"))
+    (-> id
+        (str/split #"/" 2)
+        first
+        title-case-token)))
 
 (defn- decorate-provider-model
   [provider model]
