@@ -54,6 +54,7 @@ export const BrowseCard = ({
       component={Link}
       to={to}
       onClick={onClick}
+      pos="relative"
       h={sizeOptions[size].height}
       p="1.5rem"
       classNames={{
@@ -96,6 +97,16 @@ export const BrowseCard = ({
           </Box>
         )}
       </Flex>
+      {size === "lg" && children && (
+        <Box
+          className={CS.hoverChild}
+          pos="absolute"
+          top="0.75rem"
+          right="0.75rem"
+        >
+          {children}
+        </Box>
+      )}
     </Card>
   );
 };
