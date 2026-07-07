@@ -467,6 +467,34 @@
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
 
+(deftest list-models-explicit-credentials-test
+  (testing "a passed-in api-key is used over the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-explicit"}}
+                                                         req))
+                                                 {:body "{\"data\":[]}"})]
+        (is (= {:models []}
+               (claude/list-models {:credentials {:api-key "sk-ant-explicit"}})))))))
+
+(deftest list-models-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"x-api-key" "sk-ant-setting"}}
+                                                         req))
+                                                 {:body "{\"data\":[]}"})]
+        (is (= {:models []}
+               (claude/list-models {:credentials {:api-key ""}})))))))
+
+(deftest list-models-blank-credentials-without-configured-key-test
+  (testing "throws when the passed-in api-key is blank and no key is configured"
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Anthropic API key is set"
+           (claude/list-models {:credentials {:api-key ""}}))))))
+
 (deftest ^:parallel supported-model?-test
   (testing "whitelisted models are supported"
     (doseq [id ["claude-fable-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]

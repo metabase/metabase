@@ -146,8 +146,6 @@
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
-  (when (and credentials (str/blank? (:api-key credentials)))
-    (throw (core/missing-api-key-ex "OpenRouter")))
   (try
     (let [auth (core/resolve-auth "openrouter" "OpenRouter"
                                   (when-let [k (or (not-empty (:api-key credentials))

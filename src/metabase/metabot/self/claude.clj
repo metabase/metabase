@@ -312,8 +312,6 @@
   "Fetch the full Anthropic model catalog (`GET /v1/models`).
   No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   [{:keys [credentials ai-proxy?]}]
-  (when (and credentials (str/blank? (:api-key credentials)))
-    (throw (core/missing-api-key-ex "Anthropic")))
   (try
     (let [auth (core/resolve-auth "anthropic" "Anthropic"
                                   (when-let [k (or (not-empty (:api-key credentials))

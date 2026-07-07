@@ -252,3 +252,31 @@
                 {:id "anthropic/claude-sonnet-4.6" :display_name "Claude Sonnet 4.6"}
                 {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}]
                (:models (openrouter/list-models))))))))
+
+(deftest list-models-explicit-credentials-test
+  (testing "a passed-in api-key is used over the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"Authorization" "Bearer sk-or-v1-explicit"}}
+                                                         req))
+                                                 {:status 200 :body {:data []}})]
+        (is (= {:models []}
+               (openrouter/list-models {:credentials {:api-key "sk-or-v1-explicit"}})))))))
+
+(deftest list-models-blank-credentials-fall-back-to-configured-key-test
+  (testing "a blank passed-in api-key falls back to the configured key"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-setting"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:headers {"Authorization" "Bearer sk-or-v1-setting"}}
+                                                         req))
+                                                 {:status 200 :body {:data []}})]
+        (is (= {:models []}
+               (openrouter/list-models {:credentials {:api-key ""}})))))))
+
+(deftest list-models-blank-credentials-without-configured-key-test
+  (testing "throws when the passed-in api-key is blank and no key is configured"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenRouter API key is set"
+           (openrouter/list-models {:credentials {:api-key ""}}))))))
