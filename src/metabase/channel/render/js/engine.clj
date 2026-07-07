@@ -86,7 +86,9 @@
   whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in [[untrusted-plugin-context]]."
   ^Engine []
   (.. (Engine/newBuilder (into-array String ["js"]))
-      (sandbox SandboxPolicy/UNTRUSTED) ;; host access policy suitable for a context with UNTRUSTED sandbox policy.
+      ;; A shared engine and its contexts must declare the same sandbox policy, so the engine sets UNTRUSTED
+      ;; too — otherwise creating an UNTRUSTED context on it would fail the engine/context policy-match check.
+      (sandbox SandboxPolicy/UNTRUSTED)
       (option "engine.MaxIsolateMemory" "1GB")
       (out discarding-output-stream)
       (err discarding-output-stream)
@@ -119,12 +121,14 @@
       ;; allowNativeAccess is false by default under SandboxPolicy/UNTRUSTED.
       ;; allowEnvironmentAccess is NONE (no host env vars) by default under SandboxPolicy/UNTRUSTED.
       ;; allowExperimentalOptions left at default false
-      (option "sandbox.MaxCPUTime" "30s")       ; guest CPU budget: cold static-viz bundle load (~4s) + plugin + render; matches the legacy render timeout
-      (option "sandbox.MaxHeapMemory" "512MB")  ; must be < engine.MaxIsolateMemory; EE static-viz bundle + custom-viz render needs the headroom
-      (option "sandbox.MaxASTDepth" "5000")     ; large bundles parse deep; 5000 clears React+ECharts
+      (option "sandbox.MaxCPUTime" "30s")       ; MaxCPUTimeCheckInterval left at its ~10ms default — negligible overshoot vs a 30s budget
+      (option "sandbox.MaxHeapMemory" "512MB")
+      (option "sandbox.MaxASTDepth" "5000")
       (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
       (option "sandbox.MaxOutputStreamSize" "16MB")
       (option "sandbox.MaxErrorStreamSize" "4MB")
+      ;; sandbox.MaxStatements skipped (and thus its MaxStatementsIncludeInternal modifier): fragile to tune and the compute axis is already covered by MaxCPUTime et al.
+      ;; sandbox.MaxStackFrames skipped too: runtime-recursion blowup surfaces as a contained guest error in the isolate.
       (out discarding-output-stream)
       (err discarding-output-stream)
       (build)))
