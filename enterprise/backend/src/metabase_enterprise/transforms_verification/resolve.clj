@@ -376,7 +376,7 @@
           ;; MBQL path: compile under a metadata-provider override (no string rewrite).
           ;; Input tables' :name/:schema are overridden to their scratch specs before
           ;; compilation, so the compiler emits scratch-qualified SQL natively.
-          (let [db-id    (-> transform :source :query :database)
+          (let [db-id    (transforms-base.u/transform-source-database transform)
                 provider (override-provider db-id (id->override input-tables mapping))]
             (qp.store/with-metadata-provider provider
               (transforms-base.u/compile-source transform nil))))]

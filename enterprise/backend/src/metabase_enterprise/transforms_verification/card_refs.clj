@@ -79,7 +79,7 @@
   `card` must be a `:model/Card` row with a `:dataset_query` key."
   [{:keys [dataset_query] :as _card}]
   {:pre [(some? dataset_query)]}
-  (let [db-id (:database dataset_query)
+  (let [db-id (lib/database-id dataset_query)
         mp    (lib-be/application-database-metadata-provider db-id)
         query (lib/query mp dataset_query)]
     (if (lib/native-only-query? query)

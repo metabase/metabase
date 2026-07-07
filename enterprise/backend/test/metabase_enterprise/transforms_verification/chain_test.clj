@@ -64,8 +64,8 @@
 
 (defmacro ^:private with-t1-t2-chain
   "Run `body` inside the standard 2-node chain scaffolding: `:dependencies`
-  premium feature, `:postgres` driver, `test-data` dataset, temp t1/t2 transforms.
-  `ctx-binding` destructures the context map
+  premium feature, every `:transforms/table`-capable driver, `test-data` dataset,
+  temp t1/t2 transforms. `ctx-binding` destructures the context map
   `{:t1 :t2 :db-id :schema :orders-id :people-id :enriched-name :target-name}`."
   [[ctx-binding] & body]
   `(do-with-t1-t2-chain (fn [~ctx-binding] ~@body)))
@@ -86,8 +86,9 @@
 
 (defmacro ^:private with-single-native-transform
   "Run `body` inside the standard single-transform scaffolding: `:dependencies`
-  premium feature, `:postgres` driver, `test-data` dataset, one temp native-SQL
-  transform (from `sql`) targeting a random public table. `ctx-binding`
+  premium feature, every `:transforms/table`-capable driver, `test-data` dataset,
+  one temp native-SQL transform (from `sql`) targeting a random table in the test
+  schema. `sql` must be portable across the gated drivers. `ctx-binding`
   destructures the context map `{:t :db-id :schema :orders-id :people-id}`."
   [[ctx-binding sql] & body]
   `(do-with-single-native-transform ~sql (fn [~ctx-binding] ~@body)))
@@ -474,7 +475,7 @@
 ;;; ===========================================================================
 ;;; Assertions wired into run-chain-test! and run-card-chain-test!
 ;;;
-;;; All tests run on :postgres with the standard test-data chain (t1 → t2).
+;;; All tests use the standard test-data chain (t1 → t2).
 ;;; Assertion SQL is written against the real table names (orders, people,
 ;;; t2's real output table) — the harness remaps them to scratch at run time.
 ;;; The `test_output` alias is also exercised.
@@ -901,9 +902,13 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest subgraph-single-node-seed-creates-missing-target-schema-test
+  ;; Postgres-only: pins named-schema creation by seed!, and the cleanup is a raw
+  ;; quoted DROP SCHEMA … CASCADE. Engines without named schemas have no
+  ;; equivalent behavior to pin (MySQL: schema = database; create-schema-if-needed!
+  ;; is a no-op there).
   (testing "single-node run-chain-test! seeds a transform whose target schema does not exist yet"
     (mt/with-premium-features #{:dependencies}
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/test-driver :postgres
         (mt/dataset test-data
           (let [db-id        (mt/id)
                 fresh-schema (str "ttr_" (mt/random-name))
@@ -944,27 +949,41 @@
   ;; Verifies that a statement timeout kills the query and propagates an exception,
   ;; and that the `finally` cleanup still drops the scratch tables created before
   ;; the failure.
+  ;; Postgres-only: pinning the timeout needs a query that reliably outlives it,
+  ;; and there is no portable SQL sleep (each driver's own test file hand-rolls
+  ;; its dialect's). The timeout mechanism itself is driver-generic.
   (testing "single-node run-chain-test! with a pg_sleep transform → throws on timeout"
     ;; sleep must comfortably exceed the 1 s timeout (setQueryTimeout is
     ;; whole-second granularity, so 1000 ms is the smallest enforceable value);
     ;; if the timeout were a no-op the query would *succeed* after 3 s and no
     ;; exception would be thrown at all.
-    (with-single-native-transform [{:keys [t db-id schema orders-id]}
-                                   "SELECT total FROM orders WHERE pg_sleep(3) IS NOT NULL"]
-      (let [before-runs    (t2/count :model/TransformRun)
-            before-scratch (tu/count-test-scratch-tables db-id schema)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)cancel|timeout"
-                              (chain/run-chain-test!
-                               (:id t) #{}
-                               {orders-id (str tu/orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
-                               "total\n100.00\n"
-                               {:timeout-ms 1000}
-                               (t2/select :model/Transform)))
-            "Expected a statement-cancellation exception from the pg_sleep timeout")
-        (is (= before-scratch (tu/count-test-scratch-tables db-id schema))
-            "scratch tables must be dropped even when the node times out")
-        (is (= before-runs (t2/count :model/TransformRun))
-            "No TransformRun row after timeout")))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/test-driver :postgres
+        (mt/dataset test-data
+          (let [mp (mt/metadata-provider)]
+            (mt/with-temp [:model/Transform t
+                           {:source {:type :query
+                                     :query (lib/native-query
+                                             mp
+                                             "SELECT total FROM orders WHERE pg_sleep(3) IS NOT NULL")}
+                            :target {:schema (tu/test-schema) :type "table" :name (mt/random-name)}}]
+              (let [db-id          (mt/id)
+                    schema         (tu/test-schema)
+                    orders-id      (mt/id :orders)
+                    before-runs    (t2/count :model/TransformRun)
+                    before-scratch (tu/count-test-scratch-tables db-id schema)]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)cancel|timeout"
+                                      (chain/run-chain-test!
+                                       (:id t) #{}
+                                       {orders-id (str tu/orders-header "\n1,1,10,90,10,100.00,,2024-01-01T00:00:00Z,1\n")}
+                                       "total\n100.00\n"
+                                       {:timeout-ms 1000}
+                                       (t2/select :model/Transform)))
+                    "Expected a statement-cancellation exception from the pg_sleep timeout")
+                (is (= before-scratch (tu/count-test-scratch-tables db-id schema))
+                    "scratch tables must be dropped even when the node times out")
+                (is (= before-runs (t2/count :model/TransformRun))
+                    "No TransformRun row after timeout")))))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; read-back-output uses quoted identifiers

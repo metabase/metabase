@@ -381,8 +381,8 @@
                               (execute/native-query
                                db-id
                                (str "SELECT COUNT(*) FROM information_schema.tables"
-                                    " WHERE table_schema = 'public' AND table_name = ?")
-                               [enriched-name]))]
+                                    " WHERE table_schema = ? AND table_name = ?")
+                               [(tu/scratch-namespace db-id) enriched-name]))]
                   (testing "t1 real output table was never written"
                     (is (= 0 (-> result (get-in [:data :rows]) first first int)))))))))))))
 
