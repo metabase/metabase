@@ -1,4 +1,6 @@
 import type {
+  Card,
+  CreateCardRequest,
   DeleteSuggestedMetabotPromptRequest,
   MetabotFeedback,
   MetabotGenerateContentRequest,
@@ -121,12 +123,12 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
-    recordMetabotEntitySaved: builder.mutation<
-      { entity_id: string; card_id: number },
+    saveMetabotEntity: builder.mutation<
+      Card,
       {
         conversation_id: string;
         entity_id: string;
-        card_id: number;
+        card: CreateCardRequest;
       }
     >({
       query: ({ conversation_id, ...body }) => ({
@@ -134,8 +136,7 @@ export const metabotApi = Api.injectEndpoints({
         url: `/api/metabot/conversations/${conversation_id}/saved-entity`,
         body,
       }),
-      invalidatesTags: (_, error, { card_id }) =>
-        invalidateTags(error, [idTag("card", card_id)]),
+      invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
@@ -184,7 +185,7 @@ export const {
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
-  useRecordMetabotEntitySavedMutation,
+  useSaveMetabotEntityMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

@@ -117,16 +117,10 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
-const locationUrl = (location: SavedEntityLocation): string => {
-  if (location.type === "dashboard") {
-    return Urls.dashboard(location);
-  }
-  // Urls.collection needs a full Collection; the id-only path works the same
-  // (the router resolves it without a slug), with null meaning the root.
-  return location.id == null
-    ? "/collection/root"
-    : `/collection/${location.id}`;
-};
+const locationUrl = (location: SavedEntityLocation): string =>
+  location.type === "dashboard"
+    ? Urls.dashboard(location)
+    : Urls.collection({ id: location.id, name: location.name });
 
 const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
   const target = (
