@@ -122,6 +122,7 @@ export type {
   MetabaseCollection,
   MetabaseCollectionItem,
   MetabaseDataPointObject,
+  MetabaseQueryObject,
   MetabaseDashboard,
   MetabaseDashboardPluginsConfig,
   MetabaseEmbeddingColorKeyV2,

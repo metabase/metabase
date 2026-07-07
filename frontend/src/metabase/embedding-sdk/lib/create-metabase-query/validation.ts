@@ -1,8 +1,9 @@
+import type { TableQueryInput } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import { isMetricReference } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import type { MetricSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
 
-import type { TableQueryInput } from "./input-types";
-
-export function validateTableQueryInput(input: TableQueryInput) {
+export function validateQueryInput(input: TableQueryInput) {
   validateLimit(input.limit);
   validateTableScopedInputs(input);
 }
@@ -21,58 +22,61 @@ function validateTableScopedInputs(input: TableQueryInput) {
   const tableId = input.source.id;
 
   input.fields?.forEach((field) => {
-    validateGeneratedTableId(getTableId(field), tableId, "Table query fields");
+    validateGeneratedTableReference(field, tableId, "Table query fields");
   });
 
   input.filters?.forEach((filter) => {
     if (isTableScopedReference(filter)) {
-      validateGeneratedTableId(
-        getTableId(filter),
-        tableId,
-        "Table query filters",
-      );
+      validateGeneratedTableReference(filter, tableId, "Table query filters");
       return;
     }
 
-    validateGeneratedTableId(
-      getTableId(getFirstOperatorArg(filter)),
+    validateGeneratedTableReference(
+      getFirstOperatorArg(filter),
       tableId,
       "Table query filters",
     );
   });
 
   input.aggregations?.forEach((aggregation) => {
+    if (isMetricReference(aggregation)) {
+      validateMetricAggregation(aggregation, tableId);
+      return;
+    }
+
     if (isTableScopedReference(aggregation)) {
-      validateGeneratedTableId(
-        getTableId(aggregation),
+      validateGeneratedTableReference(
+        aggregation,
         tableId,
         "Table query aggregations",
       );
       return;
     }
 
-    validateGeneratedTableId(
-      getTableId(getFirstOperatorArg(aggregation)),
+    validateGeneratedTableReference(
+      getFirstOperatorArg(aggregation),
       tableId,
       "Table query aggregations",
     );
   });
 
   input.breakouts?.forEach((breakout) => {
-    validateGeneratedTableId(
-      getTableId(breakout),
-      tableId,
-      "Table query breakouts",
-    );
+    validateGeneratedTableReference(breakout, tableId, "Table query breakouts");
   });
 }
 
-function validateGeneratedTableId(
-  actualTableId: number | undefined,
+function validateGeneratedTableReference(
+  reference: unknown,
   expectedTableId: number,
   context: string,
 ) {
+  const actualTableId = getTableId(reference);
+
   if (actualTableId == null || actualTableId === expectedTableId) {
+    return;
+  }
+
+  if (getSourceFieldId(reference) != null) {
     return;
   }
 
@@ -103,4 +107,52 @@ function getTableId(value: unknown): number | undefined {
   }
 
   return value.tableId;
+}
+
+function getSourceFieldId(value: unknown): number | undefined {
+  if (!isObject(value) || typeof value.sourceFieldId !== "number") {
+    return undefined;
+  }
+
+  return value.sourceFieldId;
+}
+
+function validateMetricAggregation(metric: MetricSchema, tableId: number) {
+  // Source-card Metrics need a saved-question source so Lib scopes metric
+  // dimensions to the card stage. EMB-2045 will add that source path:
+  if (metric.sourceCardId != null) {
+    throw new Error(
+      "Table query metric aggregations cannot use source-card Metrics. Use a saved question source for source-card Metrics.",
+    );
+  }
+
+  const allowedTableIds = getMetricAllowedTableIds(metric);
+
+  if (allowedTableIds === null) {
+    throw new Error(
+      "Table query metric aggregations must include source table metadata.",
+    );
+  }
+
+  if (allowedTableIds.includes(tableId)) {
+    return;
+  }
+
+  throw new Error(
+    `Table query metric aggregations must belong to source table ${tableId}, but received mapped table ids ${allowedTableIds.join(
+      ", ",
+    )}.`,
+  );
+}
+
+function getMetricAllowedTableIds(metric: MetricSchema) {
+  if (metric.mappedTableIds?.length) {
+    return metric.mappedTableIds;
+  }
+
+  if (metric.sourceTableId != null) {
+    return [metric.sourceTableId];
+  }
+
+  return null;
 }

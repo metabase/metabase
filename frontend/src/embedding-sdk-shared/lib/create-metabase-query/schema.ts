@@ -20,7 +20,7 @@ export type SchemaColumn = {
 export type FieldSchema = SchemaColumn & {
   type: "column";
   id?: string | number;
-  "source-name"?: string;
+  sourceName?: string;
   fieldId?: number;
   tableId?: number;
   sourceFieldId?: number;
@@ -46,4 +46,15 @@ export type TableSchema = {
   fields?: Record<string, FieldSchema>;
   segments?: Record<string, SegmentSchema>;
   measures?: Record<string, MeasureSchema>;
+};
+
+export type MetricSchema = {
+  type: "metric";
+  id: number;
+  databaseId?: number;
+  sourceTableId?: number;
+  sourceCardId?: number;
+  mappedTableIds?: readonly number[];
+  columns?: readonly SchemaColumn[];
+  dimensions?: Record<string, Record<string, FieldSchema>>;
 };

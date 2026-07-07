@@ -44,10 +44,12 @@
 (mu/defn- matches-column? :- :boolean
   [query                                   :- ::lib.schema/query
    _stage-number                           :- :int
-   {:keys [name source-name display-name]} :- ::lib.schema.test-spec/test-column-spec
+   {:keys [name table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-column-spec
    column                     :- ::lib.schema.metadata/column]
   (cond-> (= name (:name column))
+    (some? table-id) (and (= table-id (:table-id column)))
     (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
+    (some? source-field-id) (and (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
     (some? display-name) (and (= display-name (:display-name column)))))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
@@ -277,14 +279,25 @@
           query
           filter-specs))
 
+(mu/defn- saved-aggregation-spec? :- :boolean
+  [aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
+  (boolean (#{:measure :metric} (keyword (:type aggregation-spec)))))
+
+(mu/defn- saved-aggregation :- [:maybe [:or ::lib.schema.metadata/measure ::lib.schema.metadata/metric]]
+  [query            :- ::lib.schema/query
+   aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
+  (case (keyword (:type aggregation-spec))
+    :measure (lib.metadata/measure query (:id aggregation-spec))
+    :metric  (lib.metadata/metric query (:id aggregation-spec))))
+
 (mu/defn- append-aggregation :- ::lib.schema/query
   [query            :- ::lib.schema/query
    stage-number     :- :int
    aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
-  (if (= (keyword (:type aggregation-spec)) :measure)
-    (if-let [measure (lib.metadata/measure query (:id aggregation-spec))]
-      (lib.aggregation/aggregate query stage-number measure)
-      (throw (ex-info "No measure found" {:measure-spec aggregation-spec})))
+  (if (saved-aggregation-spec? aggregation-spec)
+    (if-let [aggregation (saved-aggregation query aggregation-spec)]
+      (lib.aggregation/aggregate query stage-number aggregation)
+      (throw (ex-info "No saved aggregation found" {:aggregation-spec aggregation-spec})))
     (->> (lib.aggregation/aggregable-columns query stage-number)
          (expression-spec->expression-clause query stage-number aggregation-spec)
          (lib.aggregation/aggregate query stage-number))))

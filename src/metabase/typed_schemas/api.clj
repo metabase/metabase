@@ -40,16 +40,16 @@
                       :comment [:entityId :description :verified]}
    :table            {:runtime [:type :id :name :fields :segments :measures]
                       :comment [:entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:type :name :source-name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
+   :field            {:runtime [:type :name :sourceName :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
    :segment          {:runtime [:type :id :tableId :name]
                       :comment [:entityId :description]}
    :measure          {:runtime [:type :id :tableId :name :columns]
                       :comment [:entityId :description]}
-   :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :sourceCardId
+   :metric           {:runtime [:type :id :name :databaseId :sourceTableId :sourceCardId
                                 :mappedTableIds :columns :dimensions]
                       :comment [:entityId :description :verified :sourceTable]}
-   :metric-dimension {:runtime [:id :fieldId :metricId :tableId :sourceFieldId
+   :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
    :column           {:runtime [:name :jsType]
@@ -571,7 +571,12 @@
 (defn- dimension-schema
   ([dimension metric-id]
    (dimension-schema dimension metric-id {}))
-  ([{:keys [field_id] :as dimension} metric-id table-key-by-id]
+  ([dimension metric-id table-key-by-id]
+   (dimension-schema dimension metric-id table-key-by-id {}))
+  ([{:keys [field_id] :as dimension}
+    metric-id
+    table-key-by-id
+    table-source-name-by-id]
    (let [dimension-id (or (:id dimension) field_id)
          field-id     (or field_id (some-> dimension :sources first :field-id))
          table-id     (or (:table_id dimension) (:table-id dimension) (field-table-id field-id))
@@ -580,8 +585,11 @@
                         dimension)]
      (assoc-some
       (assoc (column-schema column)
+             :type "column"
              :key (generated-key (:name column) dimension-id)
              :id (str dimension-id))
+      :sourceName (when (integer? table-id)
+                    (get table-source-name-by-id table-id))
       :fieldId (when (integer? field-id) field-id)
       :tableId (when (integer? table-id) table-id)
       :sourceFieldId (when (integer? (:source-field-id dimension))
@@ -601,7 +609,7 @@
              :type "column"
              :key (generated-key (:name field) field-id)
              :id field-id)
-      :source-name source-name
+      :sourceName source-name
       :fieldId (when (integer? field-id) field-id)
       :tableId (when (integer? table-id) table-id)
       :defaultTemporalBucket (:unit field)))))
@@ -630,13 +638,30 @@
   (let [{:keys [dimensions dimension_mappings]} (t2/select-one [:model/Card :dimensions :dimension_mappings] :id id)]
     (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
-(defn- table-key-disambiguators
+(defn- readable-table-source-rows
   [table-ids]
   (when (seq table-ids)
     (->> (t2/select [:model/Table :id :name :display_name] :id [:in table-ids])
-         (map (fn [{:keys [id name display_name]}]
-                [id (pascal-case (generated-key (or display_name name) id))]))
-         (into {}))))
+         (filter mi/can-read?))))
+
+(defn- table-key-disambiguators
+  ([table-ids]
+   (table-key-disambiguators table-ids (readable-table-source-rows table-ids)))
+  ([_table-ids table-rows]
+   (when (seq table-rows)
+     (->> table-rows
+          (map (fn [{:keys [id name display_name]}]
+                 [id (pascal-case (generated-key (or display_name name) id))]))
+          (into {})))))
+
+(defn- table-source-names
+  ([table-ids]
+   (table-source-names table-ids (readable-table-source-rows table-ids)))
+  ([_table-ids table-rows]
+   (when (seq table-rows)
+     (->> table-rows
+          (map (juxt :id :name))
+          (into {})))))
 
 (defn- source-table-schema
   [[database-name schema-name table-name]]
@@ -699,15 +724,18 @@
                                          (field-table-id field-id)))))
                            (filter integer?)
                            distinct)
-        table-key-by-id (table-key-disambiguators table-ids)
-        dimension-schemas (mapv #(dimension-schema % id table-key-by-id) dimensions)
+        table-rows              (readable-table-source-rows table-ids)
+        table-key-by-id         (table-key-disambiguators table-ids table-rows)
+        table-source-name-by-id (table-source-names table-ids table-rows)
+        dimension-schemas (mapv #(dimension-schema % id table-key-by-id table-source-name-by-id)
+                                dimensions)
         mapped-table-ids  (->> dimension-schemas
                                (keep :tableId)
                                distinct
                                sort
                                vec)]
     (assoc-some
-     {:kind       "metric"
+     {:type       "metric"
       :key        (generated-key name id)
       :id         id
       :name       name
@@ -938,7 +966,9 @@
         (= kind "measure") :measure
         (= kind "metric") :metric
         (= (last (butlast path)) :fields) :field
-        (= (last (butlast path)) :dimensions) :metric-dimension
+        (and (= kind "column")
+             (or (= (last (butlast path)) :dimensions)
+                 (= (last (drop-last 2 path)) :dimensions))) :metric-dimension
         (= (last (butlast path)) :columns) :column
         :else nil))))
 
@@ -1141,6 +1171,25 @@
                 (array-map)
                 fields-by-group))))
 
+(defn- compact-metric-dimension-keys
+  [fields-reference-by-table field-key-by-table-and-field dimensions]
+  (->> dimensions
+       (keep (fn [[dimension-key {:keys [tableId fieldId name]}]]
+               (when (and (contains? fields-reference-by-table tableId)
+                          (or (get field-key-by-table-and-field [tableId fieldId])
+                              (get field-key-by-table-and-field [tableId name])))
+                 dimension-key)))
+       set))
+
+(defn- raw-metric-dimension-fields
+  [dimensions compact-keys compact-fields]
+  (when-let [raw-fields (not-empty (update-vals (apply dissoc dimensions compact-keys)
+                                                #(dissoc % :metricId)))]
+    (let [group-key (if (contains? compact-fields "fields")
+                      "metricFields"
+                      "fields")]
+      {group-key raw-fields})))
+
 (defn- compact-metric-dimensions
   [schema]
   (let [fields-reference-by-table      (table-fields-reference-lookup schema)
@@ -1152,9 +1201,14 @@
                              (let [dimensions     (:dimensions metric)
                                    compact-fields (compact-metric-dimension-fields fields-reference-by-table
                                                                                    field-key-by-table-and-field
-                                                                                   dimensions)]
+                                                                                   dimensions)
+                                   compact-keys   (compact-metric-dimension-keys fields-reference-by-table
+                                                                                 field-key-by-table-and-field
+                                                                                 dimensions)
+                                   raw-fields     (raw-metric-dimension-fields dimensions compact-keys compact-fields)
+                                   compact-dimensions (not-empty (merge raw-fields compact-fields))]
                                (cond-> (dissoc metric :dimensions)
-                                 compact-fields (assoc :dimensions compact-fields)))))))))
+                                 compact-dimensions (assoc :dimensions compact-dimensions)))))))))
 
 (defn- render-top-level-const
   [k value suffix]
@@ -1162,19 +1216,36 @@
 
 (defn- render-pick-fields-helper
   [suffix]
-  (if (= suffix " as const")
-    (str "function pickFields<TFields extends object, TKey extends keyof TFields>(\n"
-         "  fields: TFields,\n"
-         "  keys: readonly TKey[],\n"
-         "  options?: { sourceFieldId?: number },\n"
-         "): Pick<TFields, TKey> {\n"
-         "  const sourceField = options?.sourceFieldId == null ? {} : { sourceFieldId: options.sourceFieldId };\n"
-         "  return Object.fromEntries(keys.map((key) => [key, { ...(fields[key] as object), ...sourceField }])) as Pick<TFields, TKey>;\n"
-         "}\n\n")
-    (str "function pickFields(fields, keys, options) {\n"
-         "  const sourceField = options?.sourceFieldId == null ? {} : { sourceFieldId: options.sourceFieldId };\n"
-         "  return Object.fromEntries(keys.map((key) => [key, { ...fields[key], ...sourceField }]));\n"
-         "}\n\n")))
+  (let [lines (fn [& lines]
+                (str (str/join "\n" lines) "\n\n"))
+        body  ["  return Object.fromEntries(keys.map((key) => {"
+               "    if (options?.sourceFieldId == null) {"
+               "      return [key, fields[key]];"
+               "    }"
+               "    const { tableId, ...joinedField } = fields[key];"
+               ""
+               "    return [key, { ...joinedField, sourceFieldId: options.sourceFieldId }];"
+               "  }));"]]
+    (if (= suffix " as const")
+      (apply lines
+             "function pickFields<TFields extends object, TKey extends keyof TFields>("
+             "  fields: TFields,"
+             "  keys: readonly TKey[],"
+             "  options?: { sourceFieldId?: number },"
+             "): Pick<TFields, TKey> {"
+             "  return Object.fromEntries(keys.map((key) => {"
+             "    const field = fields[key] as { tableId?: number };"
+             "    if (options?.sourceFieldId == null) {"
+             "      return [key, field];"
+             "    }"
+             "    const { tableId, ...joinedField } = field;"
+             ""
+             "    return [key, { ...joinedField, sourceFieldId: options.sourceFieldId }];"
+             "  })) as Pick<TFields, TKey>;"
+             "}")
+      (apply lines
+             "function pickFields(fields, keys, options) {"
+             (conj body "}")))))
 
 (defn- uses-pick-fields-helper?
   [schema]
