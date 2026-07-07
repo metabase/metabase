@@ -64,7 +64,7 @@ export const NotificationRunSummaryLog = ({
           </Tooltip>
           <Tooltip label={run.error} disabled={!hasError}>
             <Badge
-              color={isFailing ? "error" : undefined}
+              color={isFailing ? "feedback-negative" : undefined}
               variant={isFailing ? "light" : "outline"}
               radius="lg"
               tt="none"

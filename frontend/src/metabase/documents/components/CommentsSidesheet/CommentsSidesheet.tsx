@@ -180,7 +180,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to send comment`,
       });
     } else {

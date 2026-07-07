@@ -246,7 +246,7 @@ export const ListViewConfiguration = ({
                     style={{
                       backgroundColor: iconConfig.entityIconEnabled
                         ? getIconBackground(iconConfig.selectedIconColor)
-                        : "var(--mb-color-white)",
+                        : "var(--mb-color-core-white)",
                     }}
                   >
                     {iconConfig.useImageColumn &&
