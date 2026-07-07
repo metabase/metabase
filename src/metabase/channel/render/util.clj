@@ -223,22 +223,24 @@
      :rows (apply mapv vector unzipped-rows)}))
 
 (defn render-parameters
-  "Renders parameters as inline left-aligned spans for use inside a dashcard. Returns nil if rendering fails, as a
-  safeguard so a broken filter doesn't fail the whole notification."
+  "Renders parameters as inline left-aligned spans for use inside a dashcard. A parameter that fails to render is
+  skipped so it doesn't fail the whole notification."
   [parameters]
-  (try
-    (html
-     (let [locale (system/site-locale)]
-       [:div {:style (style/style {:font-size "14px"
-                                   :font-weight 700
-                                   :padding-bottom "8px"})}
-        (for [{:keys [name] :as param} parameters]
-          [:div
-           {:style (style/style {:margin-bottom "4px"})}
-           [:span {:style (style/style {:color style/color-text-dark
-                                        :padding-right "8px"})}
-            name]
-           [:span {:style (style/style {:color style/color-text-medium})}
-            (shared.params/value-string param locale)]])]))
-    (catch Throwable e
-      (log/error e "Error rendering filters; skipping them"))))
+  (html
+   (let [locale (system/site-locale)]
+     [:div {:style (style/style {:font-size "14px"
+                                 :font-weight 700
+                                 :padding-bottom "8px"})}
+      (for [{:keys [name] :as param} parameters
+            :let [value-str (try
+                              (shared.params/value-string param locale)
+                              (catch Throwable e
+                                (log/errorf e "Error rendering filter %s; skipping it" name)))]
+            :when value-str]
+        [:div
+         {:style (style/style {:margin-bottom "4px"})}
+         [:span {:style (style/style {:color style/color-text-dark
+                                      :padding-right "8px"})}
+          name]
+         [:span {:style (style/style {:color style/color-text-medium})}
+          value-str]])])))
