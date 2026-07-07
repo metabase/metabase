@@ -56,31 +56,6 @@ export type MetabotTool = {
   parameters: Record<string, any>;
 };
 
-export type MetabotHistoryUserMessageEntry = {
-  role: "user";
-  message: string;
-  context: MetabotChatContext;
-};
-
-export type MetabotHistoryToolEntry = {
-  role: "assistant";
-  assistant_response_type: "tools";
-  tools: MetabotTool[];
-};
-
-export type MetabotHistoryMessageEntry = {
-  role: "assistant";
-  assistant_response_type: "message";
-  message: string;
-};
-
-export type MetabotHistoryEntry =
-  | MetabotHistoryUserMessageEntry
-  | MetabotHistoryToolEntry
-  | MetabotHistoryMessageEntry;
-
-export type MetabotHistory = any[];
-
 export type MetabotStateContext = Record<string, any>;
 
 export type MetabotColumnType =
@@ -173,7 +148,6 @@ export type MetabotCodeEdit = {
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  history: MetabotHistory;
   state: MetabotStateContext;
   conversation_id: string; // uuid
   parent_message_id?: string;
@@ -183,7 +157,6 @@ export type MetabotAgentRequest = {
 };
 
 export type MetabotAgentResponse = {
-  history: MetabotHistory[];
   conversation_id: string;
   state: any;
 };

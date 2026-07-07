@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.query-analyzer :as nqa]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
@@ -14,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1082,3 +1084,165 @@
                   "message UPDATE still landed")
               (is (some #(re-find #"Failed to record metabot used tables" (:message %)) (logs))
                   "warn line captured"))))))))
+
+(defn- seed-turn!
+  "Start a user turn and finalize its assistant reply with `parts`. Returns the
+  assistant placeholder pk."
+  [conversation-id prompt parts & finalize-opts]
+  (let [{:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                    conversation-id "internal" {:role "user" :content prompt})]
+    (apply metabot-persistence/finalize-assistant-turn!
+           conversation-id assistant-msg-id parts finalize-opts)
+    assistant-msg-id))
+
+(deftest history-empty-conversation-test
+  (testing "a conversation with no live messages reconstructs to an empty history"
+    (is (= [] (metabot-persistence/history (str (random-uuid)))))))
+
+(deftest history-multi-turn-ordering-test
+  (testing "successful turns reconstruct as alternating user/assistant messages in order"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "first" [{:type :text :text "reply one"}])
+          (seed-turn! conversation-id "second" [{:type :text :text "reply two"}])
+          (is (= [{:role :user :content "first"}
+                  {:role :assistant :content "reply one"}
+                  {:role :user :content "second"}
+                  {:role :assistant :content "reply two"}]
+                 (metabot-persistence/history conversation-id))))))))
+
+(deftest history-tool-call-conversion-test
+  (testing "text and tool parts interleave; tool calls become an assistant call + tool result pair"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "look it up"
+                      [{:type :text :text "on it"}
+                       {:type :tool-input :id "c1" :function "search" :arguments {:q "x"}}
+                       {:type :tool-output :id "c1" :result {:output "rows" :structured-output {:query-id "q"}}}])
+          (let [history (metabot-persistence/history conversation-id)]
+            (is (mr/validate ::metabot.schema/messages history)
+                "reconstructed history validates against the LLM message schema")
+            (is (= [{:role :user :content "look it up"}
+                    {:role :assistant :content "on it"}
+                    {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "x"})}]}
+                    {:role :tool :tool_call_id "c1" :content "rows"}]
+                   history))))))))
+
+(deftest history-tool-output-shapes-test
+  (testing "bare-scalar, nil, and errored tool outputs each coerce to a string tool result"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [tool-content (fn [parts]
+                             (let [conversation-id (str (random-uuid))]
+                               (seed-turn! conversation-id "go" parts)
+                               (->> (metabot-persistence/history conversation-id)
+                                    (filter #(= :tool (:role %)))
+                                    first
+                                    :content)))]
+          (testing "bare scalar output is stringified"
+            (is (= "just a string"
+                   (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                  {:type :tool-output :id "c1" :result "just a string"}]))))
+          (testing "nil output becomes an empty string"
+            (is (= ""
+                   (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                  {:type :tool-output :id "c1" :result nil}]))))
+          (testing "errored tool output uses the error text"
+            (is (= "kaboom"
+                   (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                  {:type :tool-output :id "c1" :error {:message "kaboom"}}])))))))))
+
+(deftest history-drops-errored-turn-test
+  (testing "a turn whose reply errored is dropped whole; surrounding turns survive"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "before" [{:type :text :text "ok before"}])
+          (seed-turn! conversation-id "boom" [] :error {:message "kaboom"})
+          (seed-turn! conversation-id "after" [{:type :text :text "ok after"}])
+          (is (= [{:role :user :content "before"}
+                  {:role :assistant :content "ok before"}
+                  {:role :user :content "after"}
+                  {:role :assistant :content "ok after"}]
+                 (metabot-persistence/history conversation-id))))))))
+
+(deftest history-drops-unfinished-turn-test
+  (testing "an in-flight placeholder (finished nil) drops its whole turn — this is how the current turn is excluded"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "done" [{:type :text :text "answered"}])
+          ;; start-turn! leaves a nil-finished placeholder, like the in-flight turn
+          (metabot-persistence/start-turn! conversation-id "internal" {:role "user" :content "pending"})
+          (is (= [{:role :user :content "done"}
+                  {:role :assistant :content "answered"}]
+                 (metabot-persistence/history conversation-id))))))))
+
+(deftest history-keeps-aborted-turn-with-synthetic-interrupt-test
+  (testing "an aborted turn replays its partial text and pairs an unresolved tool call with a synthetic interrupt"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "start something"
+                      [{:type :text :text "let me check"}
+                       {:type :tool-input :id "c1" :function "search" :arguments {:q "x"}}]
+                      :finished? false)
+          (is (= [{:role :user :content "start something"}
+                  {:role :assistant :content "let me check"}
+                  {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "x"})}]}
+                  {:role :tool :tool_call_id "c1" :content "Tool execution interrupted by user"}]
+                 (metabot-persistence/history conversation-id))))))))
+
+(deftest history-excludes-superseded-retry-response-test
+  (testing "after a retry the soft-deleted old reply is excluded; the prompt appears once with the new reply"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "question" [{:type :text :text "old answer"}])
+          (let [user-ext (t2/select-one-fn :external_id :model/MetabotMessage
+                                           :conversation_id conversation-id :role "user")
+                {:keys [assistant-msg-id]} (metabot-persistence/retry-turn!
+                                            conversation-id "internal" user-ext)]
+            (testing "before finalize, only prior (pre-retry-prompt) turns are present"
+              (is (= [] (metabot-persistence/history conversation-id))))
+            (metabot-persistence/finalize-assistant-turn!
+             conversation-id assistant-msg-id [{:type :text :text "new answer"}])
+            (is (= [{:role :user :content "question"}
+                    {:role :assistant :content "new answer"}]
+                   (metabot-persistence/history conversation-id)))))))))
+
+(deftest history-last-live-assistant-row-wins-test
+  (testing "when a turn has multiple live assistant rows, only the last is replayed"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "hi" [{:type :text :text "first reply"}])
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id conversation-id
+                       :role            "assistant"
+                       :profile_id      "internal"
+                       :external_id     (str (random-uuid))
+                       :total_tokens    0
+                       :data            [{:type "text" :text "second reply"}]
+                       :data_version    2
+                       :finished        true
+                       :created_at      (t/plus (t/offset-date-time) (t/seconds 60))})
+          (is (= [{:role :user :content "hi"}
+                  {:role :assistant :content "second reply"}]
+                 (metabot-persistence/history conversation-id))))))))
+
+(deftest history-skips-data-parts-test
+  (testing "data parts in an assistant reply are not leaked into LLM history"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id (str (random-uuid))]
+          (seed-turn! conversation-id "hi"
+                      [{:type :text :text "before"}
+                       {:type :data :data-type "navigate_to" :data "/question/1"}
+                       {:type :text :text "after"}])
+          (is (= [{:role :user :content "hi"}
+                  {:role :assistant :content "before"}
+                  {:role :assistant :content "after"}]
+                 (metabot-persistence/history conversation-id))))))))

@@ -33,7 +33,6 @@ import {
   getAgentRequestMetadata,
   getDebugMode,
   getDeveloperMessage,
-  getHistory,
   getIsProcessing,
   getMessageIdToRewind,
   getMetabotConversation,
@@ -567,7 +566,6 @@ export const sendAgentRequest = createAsyncThunk<
 
       return fulfillWithValue({
         conversation_id: request.conversation_id,
-        history: [...getHistory(getState(), agentId), ...response.history],
         state,
         processedResponse: response,
       });
@@ -578,10 +576,6 @@ export const sendAgentRequest = createAsyncThunk<
           conversation_id: request.conversation_id,
           unresolved_tool_calls:
             response?.toolCalls.filter((tc) => tc.state === "call") ?? [],
-          history: [
-            ...getHistory(getState(), agentId),
-            ...(response?.history ?? []),
-          ],
           // reuse new state if we recieved it
           state: Object.keys(state).length === 0 ? request.state : state,
           shouldRetry: false,

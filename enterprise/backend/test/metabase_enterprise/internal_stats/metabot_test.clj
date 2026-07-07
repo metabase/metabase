@@ -40,7 +40,6 @@
                             {:message         message
                              :context         {}
                              :conversation_id conversation-id
-                             :history         []
                              :state           {}}))))
 
 (defn- backdate-messages!
