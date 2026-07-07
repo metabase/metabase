@@ -5,12 +5,12 @@ import * as Yup from "yup";
 import { useListCollectionsQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormProvider,
   FormSubmitButton,
+  FormTextInput,
   FormTextarea,
 } from "metabase/forms";
 import { Button, Flex, Icon } from "metabase/ui";
@@ -92,14 +92,14 @@ function SnippetFormInner({
             rows={5}
             mb="md"
           />
-          <FormInput
+          <FormTextInput
             name="name"
-            title={t`Give your snippet a name`}
+            label={t`Give your snippet a name`}
             placeholder={t`Current Customers`}
           />
-          <FormInput
+          <FormTextInput
             name="description"
-            title={t`Add a description`}
+            label={t`Add a description`}
             placeholder={t`It's optional but oh, so helpful`}
             nullable
           />

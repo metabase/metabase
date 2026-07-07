@@ -3,8 +3,12 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import * as Errors from "metabase/utils/errors";
@@ -51,9 +55,9 @@ export const ForgotPasswordForm = ({
         onSubmit={handleSubmit}
       >
         <Form>
-          <FormInput
+          <FormTextInput
             name="email"
-            title={t`Email address`}
+            label={t`Email address`}
             placeholder={t`The email you use for your ${applicationName} account`}
             autoFocus
           />
