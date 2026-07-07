@@ -127,6 +127,24 @@
              :data       {:cols []}}
             (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))))
 
+(deftest ^:synchronized connection-pool-saturated-not-logged-test
+  (testing "connection-pool saturation is transient load shedding: fail the query (503 for clients) but don't log an error"
+    (doseq [error-type [qp.error-type/connection-pool-checkout-timeout
+                        qp.error-type/connection-pool-checkout-queue-full]]
+      (testing error-type
+        (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+          (is (=? {:status     :failed
+                   :error_type error-type
+                   :error      "The pool is full"}
+                  (catch-exceptions (fn [] (throw (ex-info "The pool is full" {:type error-type}))))))
+          (is (empty? (messages)))))))
+  (testing "control: other errors still log"
+    (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+      (is (=? {:status :failed}
+              (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))
+      (is (=? [{:level :error, :message #"(?s)^Error processing query.*"}]
+              (messages))))))
+
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
     (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
