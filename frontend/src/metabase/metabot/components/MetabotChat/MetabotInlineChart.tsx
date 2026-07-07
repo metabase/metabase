@@ -56,11 +56,11 @@ import S from "./MetabotInlineChart.module.css";
 export function MetabotInlineChart({
   value: { id: entityId, title, description, display, query },
   readonly = false,
-  agentId = "omnibot",
+  agentId,
 }: {
   value: GeneratedCard;
   readonly?: boolean;
-  agentId?: MetabotAgentId;
+  agentId: MetabotAgentId;
 }) {
   const datasetQuery = query.query;
   const clipboard = useClipboard();

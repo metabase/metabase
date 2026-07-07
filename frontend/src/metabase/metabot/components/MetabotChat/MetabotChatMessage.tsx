@@ -177,7 +177,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotAgentChatMessage;
   debug: boolean;
   readonly: boolean;
-  agentId?: MetabotAgentId;
+  agentId: MetabotAgentId;
   onRetry?: (messageId: string) => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -450,7 +450,7 @@ export const Messages = ({
   isDoingScience: boolean;
   debug: boolean;
   readonly?: boolean;
-  agentId?: MetabotAgentId;
+  agentId: MetabotAgentId;
   onInternalLinkClick?: (navigateToPath: string) => void;
   getExtraActions?: (messageId: string) => ReactNode;
 }) => {

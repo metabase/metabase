@@ -42,7 +42,7 @@ type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
-  agentId?: MetabotAgentId;
+  agentId: MetabotAgentId;
 };
 
 export const AgentDataPartMessage = ({
@@ -121,8 +121,7 @@ export const AgentDataPartMessage = ({
 
 const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
   const { location } = value;
-  // The persisted part carries only the container's type + id; fetch its current
-  // name so a rename after the save doesn't leave a stale label here.
+
   const { data: collection } = useGetCollectionQuery(
     location.type === "collection" ? { id: location.id ?? "root" } : skipToken,
   );

@@ -83,6 +83,7 @@ function setup(
     <MetabotInlineChart
       value={{ ...value, ...valueOverrides }}
       readonly={readonly}
+      agentId="omnibot"
     />,
   );
 }
@@ -253,7 +254,11 @@ describe("MetabotInlineChart", () => {
         <Route
           path="/"
           component={() => (
-            <MetabotInlineChart value={value} readonly={false} />
+            <MetabotInlineChart
+              value={value}
+              readonly={false}
+              agentId="omnibot"
+            />
           )}
         />,
         { withRouter: true },
