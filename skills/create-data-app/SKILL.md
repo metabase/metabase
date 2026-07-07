@@ -338,7 +338,7 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 
 This is a per-rendering decision, not a project-wide one:
 
-- **`useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`** — default for ordinary dashboard charts: bar, line, area, row, pie, scalar/smartscalar, gauge, progress, pivot, map, sortable table, and other displays Metabase already renders well. Build the semantic query from generated schema objects, then pass it to the SDK component with a card object, for example `<StaticQuestion card={{ query: trendQuery }} ... />`.
+- **`useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`** — default for ordinary dashboard charts: bar, line, area, row, pie, scalar/smartscalar, gauge, progress, pivot, map, sortable table, and other displays Metabase already renders well. Build the semantic query from generated schema objects, destructure the returned `query`, then pass that value to the SDK component with a card object, for example `<StaticQuestion card={{ query }} ... />`.
 - **`useMetabaseQuery`** — use when React genuinely needs row values: extracting KPI numbers, powering custom controls, composing bespoke summary cards, combining multiple queries into one UI element, or rendering a visualization Metabase cannot express.
 
 Generated dashboards should prefer SDK-rendered charts. Do not rebuild normal bar/line/table charts in React just to match app chrome. If you choose `useMetabaseQuery`, keep the row handling typed.

@@ -38,9 +38,9 @@
 (def ^:private schema-render-policy
   {:question         {:runtime [:kind :id :name :display :columns :parameters]
                       :comment [:entityId :description :verified]}
-   :table            {:runtime [:type :id :name :databaseId :fields :segments :measures]
+   :table            {:runtime [:type :id :name :fields :segments :measures]
                       :comment [:entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:type :name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
+   :field            {:runtime [:type :name :source-name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
    :segment          {:runtime [:type :id :tableId :name]
                       :comment [:entityId :description]}
@@ -591,17 +591,20 @@
                           (get table-key-by-id table-id))))))
 
 (defn- field-schema
-  [{:keys [id field_id] :as field}]
-  (let [field-id (or id field_id)
-        table-id (or (:table_id field) (:table-id field) (field-table-id field-id))]
-    (assoc-some
-     (assoc (column-schema field)
-            :type "column"
-            :key (generated-key (:name field) field-id)
-            :id field-id)
-     :fieldId (when (integer? field-id) field-id)
-     :tableId (when (integer? table-id) table-id)
-     :defaultTemporalBucket (:unit field))))
+  ([field]
+   (field-schema field nil))
+  ([{:keys [id field_id] :as field} source-name]
+   (let [field-id (or id field_id)
+         table-id (or (:table_id field) (:table-id field) (field-table-id field-id))]
+     (assoc-some
+      (assoc (column-schema field)
+             :type "column"
+             :key (generated-key (:name field) field-id)
+             :id field-id)
+      :source-name source-name
+      :fieldId (when (integer? field-id) field-id)
+      :tableId (when (integer? table-id) table-id)
+      :defaultTemporalBucket (:unit field)))))
 
 (defn- mapping-source-field-id
   [{:keys [target]}]
@@ -773,10 +776,9 @@
       :key          (generated-key (or display_name name) id)
       :id           id
       :name         (or display_name name)
-      :databaseId   database_id
       :databaseName database_name
       :tableName    name
-      :fields       (keyed-map (map field-schema fields))}
+      :fields       (keyed-map (map #(field-schema % name) fields))}
      :entityId portable_entity_id
      :description description
      :schemaName database_schema

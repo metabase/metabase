@@ -51,7 +51,6 @@ type MeasureIds<TEntity> = TEntity extends { measures?: infer TMeasures }
 type SourceQuerySpec<TTable> = {
   type: "table";
   id: TTable extends { id: infer TId extends number } ? TId : number;
-  databaseId: number;
 };
 
 export type SegmentReference<TTable = unknown> = {
