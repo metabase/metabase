@@ -15,6 +15,7 @@ import type {
   InferSchema,
   MetricSchema,
   QueryData,
+  QuestionSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SchemaValue,
@@ -375,6 +376,17 @@ type TableQueryBase<TTable> = {
     }
 );
 
+export type QuestionQuery<TQuestion = unknown> = {
+  source: TQuestion extends QuestionSchema ? TQuestion : QuestionSchema;
+  fields?: never;
+  filters?: never;
+  aggregations?: never;
+  breakouts?: never;
+  orderBys?: never;
+  limit?: never;
+  enabled?: boolean;
+};
+
 type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
   breakouts: readonly [unknown, ...unknown[]];
 }
@@ -386,10 +398,13 @@ type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
 export type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
 
-export type MetabaseQueryOptions<
-  TEntity = unknown,
-  _TSchema = unknown,
-> = TableQuery<TEntity>;
+export type MetabaseQueryOptions<TEntity = unknown, _TSchema = unknown> = [
+  TEntity,
+] extends [undefined]
+  ? TableQuery<TEntity> | QuestionQuery<TEntity>
+  : TEntity extends QuestionSchema
+    ? QuestionQuery<TEntity>
+    : TableQuery<TEntity>;
 
 type EmptyRow = Record<never, never>;
 
@@ -463,7 +478,7 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
 };
 
 export type UseMetabaseQuery = <
-  TEntity extends TableSchema | undefined = undefined,
+  TEntity extends TableSchema | QuestionSchema | undefined = undefined,
   TSchema = unknown,
   const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
 >(

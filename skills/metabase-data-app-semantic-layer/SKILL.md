@@ -14,7 +14,7 @@ Keep the semantic layer and presentation layer separate.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
-- Build queries with `source: schema.tables.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
+- Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
 - Prefer semantically rich table queries over shallow table dumps. Use curated table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it instead of recreating the concept from raw rows.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
@@ -44,7 +44,10 @@ Before generating, make sure the user has explicitly chosen the library scope th
 - `includeDataLibrary=true` for the whole `Library / Data` tree.
 - `includeMetricLibrary=true` for the whole `Library / metrics` tree.
 - `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
+- `questionCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific normal collections that contain saved questions and models.
 - `database=<name-or-id>` when the app should use tables from one database.
+
+Use `questionCollections` when the app needs generated `schema.questions.*` or `schema.models.*`. It can be combined with `libraryCollections`, `includeDataLibrary`, or `includeMetricLibrary` so one schema can include selected tables/metrics plus selected saved questions/models.
 
 If the user did not already choose a library scope, stop and ask what they want. Warn before exporting the whole instance: including everything is noisy, bloats context, and makes agents more likely to pick irrelevant entities.
 
@@ -87,6 +90,8 @@ fi
 )
 ```
 
+When the app needs saved questions or models, include `questionCollections=<id-or-entity-id>[,<id-or-entity-id>]` in the typed-schema URL.
+
 ## Standard pattern
 
 ```ts
@@ -121,6 +126,7 @@ Use keyed schema objects:
 
 - Tables: `source: schema.tables.<table>`
 - metrics: `schema.metrics.<metric>` inside `aggregations`
+- Saved questions: `source: schema.questions.<question>`
 - Fields: `schema.tables.<table>.fields.<field>`
 - Segments: `schema.tables.<table>.segments.<segment>`
 - Measures: `schema.tables.<table>.measures.<measure>`
@@ -228,6 +234,22 @@ useMetabaseQuery({
 ```
 
 A metric aggregation must belong to the table source. Do not use source-card metrics in table-source queries. Generated metric dimensions are scoped to their owning metric: if a query uses `revenueMetric.dimensions.*` in filters, helper aggregations, breakouts, or orderBys, it must also include `revenueMetric` in `aggregations`. Do not use metric dimensions as standalone table fields for unrelated `count()` or table-measure queries. Generated metric dimensions must also resolve to the table source. For reusable query objects, use `satisfies MetabaseQueryOptions<typeof ordersTable>` so TypeScript can validate the query while preserving precise row keys.
+
+## Saved question query recipes
+
+For a saved question query, pass the generated question object as `source`:
+
+```ts
+const ordersQuestion = schema.questions.ordersQuestion;
+
+const { data } = useMetabaseQuery({
+  source: ordersQuestion,
+});
+```
+
+Saved question queries only support `source` and `enabled` today. Do not add `fields`, `filters`, helper aggregations, breakouts, orderBys, or limits to `source: schema.questions.<question>` queries yet; use table-source queries, including metric aggregations, when the app needs post-source query clauses.
+
+SQL parameters stay on the existing `questionId` query path. Do not pass SQL parameter values through `source: schema.questions.<question>`.
 
 ## SDK-rendered views
 
