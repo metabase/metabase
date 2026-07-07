@@ -1,14 +1,16 @@
+// The queries use the SDK's `source` API (`{ type: "table", id }`); the database
+// is resolved from the SDK's metadata store, so no databaseId is passed.
+type TableSource = { type: "table"; id: number };
+type CountAggregation = { type: "operator"; operator: "count"; args: [] };
+
 export type DataAppTestEnv = {
-  scalarQuery: {
-    tableId: number;
-    databaseId: number;
-    aggregations: { type: "count" }[];
-  };
-  questionQuery: { tableId: number; databaseId: number };
+  scalarQuery: { source: TableSource; aggregations: CountAggregation[] };
+  questionQuery: { source: TableSource };
 };
 
 declare global {
-  const __METABASE_DATA_APP_TEST_ENV__: DataAppTestEnv | undefined;
+  // eslint-disable-next-line no-var -- `var` (not `const`) so `globalThis.x` typechecks
+  var __METABASE_DATA_APP_TEST_ENV__: DataAppTestEnv | undefined;
 }
 
 export function getTestEnv(): DataAppTestEnv {
