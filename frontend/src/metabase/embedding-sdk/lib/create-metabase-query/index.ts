@@ -1,9 +1,9 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import {
+  type QueryInput,
   isQueryInput,
   isQuestionInput,
   isTableInput,
-  type QueryInput,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
