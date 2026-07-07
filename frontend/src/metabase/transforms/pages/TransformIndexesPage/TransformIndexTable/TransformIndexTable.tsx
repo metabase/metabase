@@ -16,6 +16,7 @@ import { getIndexKey, isManagedIndex, isPendingDeletion } from "./utils";
 
 type TransformIndexTableProps = {
   indexes: TableIndexEntry[];
+  kindLabels: Map<string, string>;
   readOnly?: boolean;
   onEdit: (index: TableIndexEntry) => void;
   onDelete: (index: TableIndexEntry) => void;
@@ -25,6 +26,7 @@ const DEFAULT_SORTING: SortingState = [{ id: "name", desc: false }];
 
 export function TransformIndexTable({
   indexes,
+  kindLabels,
   readOnly,
   onEdit,
   onDelete,
@@ -61,9 +63,10 @@ export function TransformIndexTable({
     () =>
       getColumns({
         systemTimezone,
+        kindLabels,
         actions: readOnly ? undefined : { onEdit, onDelete },
       }),
-    [systemTimezone, readOnly, onEdit, onDelete],
+    [systemTimezone, kindLabels, readOnly, onEdit, onDelete],
   );
 
   const handleRowClick = useCallback(

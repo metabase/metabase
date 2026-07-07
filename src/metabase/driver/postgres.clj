@@ -32,7 +32,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
@@ -1346,12 +1346,24 @@
   ;; (hash, spgist) and partial/expression indexes are intentionally left out.
   (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
     ;; btree is the only method where column order direction matters, so it opts into the asc/desc picker.
-    {:btree {:lifecycle :standalone :fields [driver.common/index-name-field
-                                             driver.common/index-unique-field
-                                             (assoc driver.common/index-columns-field :directions true)]}
-     :gin   {:lifecycle :standalone :fields name+cols}
-     :gist  {:lifecycle :standalone :fields name+cols}
-     :brin  {:lifecycle :standalone :fields name+cols}}))
+    {:btree {:lifecycle    :standalone
+             :display-name (deferred-tru "B-Tree")
+             :description  (deferred-tru "Default. Best for equality and range queries on sortable data; use it for most columns you filter, sort, or join by.")
+             :fields       [driver.common/index-name-field
+                            driver.common/index-unique-field
+                            (assoc driver.common/index-columns-field :directions true)]}
+     :gin   {:lifecycle    :standalone
+             :display-name (deferred-tru "GIN")
+             :description  (deferred-tru "For values with multiple components. Best for full-text search, JSONB, and arrays—when you''re searching inside a value.")
+             :fields       name+cols}
+     :gist  {:lifecycle    :standalone
+             :display-name (deferred-tru "GiST")
+             :description  (deferred-tru "For geometric, spatial, and range data. Best for \"nearest neighbor\" and overlap queries, like geographic data (PostGIS) or range types.")
+             :fields       name+cols}
+     :brin  {:lifecycle    :standalone
+             :display-name (deferred-tru "BRIN")
+             :description  (deferred-tru "Tiny and low-overhead. Best for large tables where values correlate with physical row order, like timestamps in an append-only log.")
+             :fields       name+cols}}))
 
 (defn- pg-index-column-sql
   "Quote one indexed column; append its `ASC`/`DESC` direction only for btree, the one method where ordering matters."

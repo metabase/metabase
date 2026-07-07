@@ -27,7 +27,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv some empty? not-empty]]
@@ -1118,8 +1118,9 @@
 
 (defmethod driver/supported-index-methods :bigquery-cloud-sdk
   [_driver _database]
-  {:clustering {:lifecycle :inline
-                :fields    [driver.common/index-columns-field]}})
+  {:clustering {:lifecycle    :inline
+                :display-name (deferred-tru "Clustering")
+                :fields       [driver.common/index-columns-field]}})
 
 (defn- clustering-clause
   "Inline `CLUSTER BY col, ...` clause for a table's `indexes`, or nil when there's no clustering."

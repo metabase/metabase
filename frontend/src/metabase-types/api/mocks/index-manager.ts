@@ -55,12 +55,16 @@ export const createMockIndexMethod = (
   opts?: Partial<IndexMethod>,
 ): IndexMethod => ({
   lifecycle: "standalone",
+  "display-name": "B-Tree",
   fields: [INDEX_NAME_FIELD],
   ...opts,
 });
 
 export const createMockRequestableIndexes = (): RequestableIndexes => ({
   btree: createMockIndexMethod({
+    "display-name": "B-Tree",
+    description:
+      "Default. Best for equality and range queries on sortable data; use it for most columns you filter, sort, or join by.",
     fields: [
       INDEX_NAME_FIELD,
       {
@@ -81,6 +85,9 @@ export const createMockRequestableIndexes = (): RequestableIndexes => ({
     ],
   }),
   gin: createMockIndexMethod({
+    "display-name": "GIN",
+    description:
+      "For values with multiple components. Best for full-text search, JSONB, and arrays—when you're searching inside a value.",
     fields: [
       INDEX_NAME_FIELD,
       {

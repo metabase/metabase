@@ -19,11 +19,13 @@ type Actions = {
 
 type ColumnsProps = {
   systemTimezone: string | undefined;
+  kindLabels: Map<string, string>;
   actions: Actions | undefined;
 };
 
 export function getColumns({
   systemTimezone,
+  kindLabels,
   actions,
 }: ColumnsProps): TreeTableColumnDef<IndexRow>[] {
   const columns: TreeTableColumnDef<IndexRow>[] = [
@@ -46,7 +48,7 @@ export function getColumns({
       header: t`Type`,
       width: "auto",
       enableSorting: true,
-      accessorFn: (index) => index.kind,
+      accessorFn: (index) => kindLabels.get(index.kind) ?? index.kind,
       cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
     },
     {

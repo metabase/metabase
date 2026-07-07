@@ -34,7 +34,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -1023,8 +1023,9 @@
 
 (defmethod driver/supported-index-methods :snowflake
   [_driver _database]
-  {:clustering {:lifecycle :standalone
-                :fields    [driver.common/index-name-field driver.common/index-columns-field]}})
+  {:clustering {:lifecycle    :standalone
+                :display-name (deferred-tru "Clustering key")
+                :fields       [driver.common/index-name-field driver.common/index-columns-field]}})
 
 (defmethod driver/compile-create-index :snowflake
   [driver schema table {:keys [columns]}]

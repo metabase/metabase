@@ -1588,6 +1588,10 @@
 (mr/def ::index-method
   "Metadata for one index kind a driver supports."
   [:map
+   ;; deferred-i18n label for the index kind, e.g. "B-Tree" (localizable, so drivers own it rather than the FE)
+   [:display-name :any]
+   ;; deferred-i18n description of when to use this kind
+   [:description {:optional true} :any]
    ;; :standalone = created by a separate statement after the table; :inline = part of the CREATE TABLE
    [:lifecycle [:enum :standalone :inline]]
    [:fields [:sequential [:ref ::index-field]]]])

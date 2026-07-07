@@ -30,7 +30,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -1272,8 +1272,12 @@
   (let [fields [driver.common/index-name-field
                 (assoc driver.common/index-columns-field :directions true)
                 driver.common/index-unique-field]]
-    {:nonclustered {:lifecycle :standalone :fields fields}
-     :clustered    {:lifecycle :standalone :fields fields}}))
+    {:nonclustered {:lifecycle    :standalone
+                    :display-name (deferred-tru "Nonclustered")
+                    :fields       fields}
+     :clustered    {:lifecycle    :standalone
+                    :display-name (deferred-tru "Clustered")
+                    :fields       fields}}))
 
 (defn- index-column-sql
   "Quote one indexed column, appending its `ASC`/`DESC` direction when set."

@@ -23,7 +23,7 @@ import type {
 } from "metabase-types/api";
 
 import { IndexEditorForm } from "./IndexEditorForm";
-import type { ColumnOption } from "./types";
+import type { ColumnOption, IndexKindOption } from "./types";
 import {
   type IndexFormValues,
   buildInitialValues,
@@ -47,6 +47,14 @@ export function IndexEditorModal({
   const tableId = transform.table?.id;
   const requestableIndexes = transform.requestable_indexes;
   const kinds = requestableIndexes ? getObjectKeys(requestableIndexes) : [];
+  const indexKindOptions: IndexKindOption[] = kinds.map((kind) => {
+    const method = requestableIndexes?.[kind];
+    return {
+      value: kind,
+      label: method?.["display-name"] ?? kind,
+      description: method?.description ?? null,
+    };
+  });
   const [kind, setKind] = useState<IndexKind>(
     request?.structured.kind ? request?.structured.kind : kinds[0],
   );
@@ -108,7 +116,7 @@ export function IndexEditorModal({
         >
           <IndexEditorForm
             kind={kind}
-            kinds={kinds}
+            kindOptions={indexKindOptions}
             fields={fields}
             columnOptions={columnOptions}
             isEditing={isEditing}

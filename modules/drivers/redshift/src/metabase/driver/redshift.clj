@@ -237,28 +237,30 @@
   ;; Redshift has no secondary indexes: a sortkey and a distribution style are inlined into the table at creation.
   ;; That's the CTAS for a SQL transform and the CREATE TABLE for a Python transform, so both are rendered in
   ;; `compile-transform` and `create-table!`.
-  {:sortkey {:lifecycle :inline
-             :fields    [driver.common/index-columns-field
-                         {:name         "style"
-                          :display-name (deferred-tru "Style")
-                          :type         :select
-                          :required     true
-                          :options      [{:name (deferred-tru "Compound")    :value "compound"}
-                                         {:name (deferred-tru "Interleaved") :value "interleaved"}]}]}
-   :distkey {:lifecycle :inline
-             :fields    [{:name         "style"
-                          :display-name (deferred-tru "Style")
-                          :type         :select
-                          :required     true
-                          ;; AUTO is Redshift's default and drifts over time, so it's not offered as a managed style;
-                          ;; an AUTO table still surfaces its current style as a (non-managed) index.
-                          :options      [{:name (deferred-tru "Key")  :value "key"}
-                                         {:name (deferred-tru "All")  :value "all"}
-                                         {:name (deferred-tru "Even") :value "even"}]}
-                         ;; only the :key style takes a column, so this is not required
-                         {:name         "columns"
-                          :display-name (deferred-tru "Columns")
-                          :type         :columns}]}})
+  {:sortkey {:lifecycle    :inline
+             :display-name (deferred-tru "Sort key")
+             :fields       [driver.common/index-columns-field
+                            {:name         "style"
+                             :display-name (deferred-tru "Style")
+                             :type         :select
+                             :required     true
+                             :options      [{:name (deferred-tru "Compound")    :value "compound"}
+                                            {:name (deferred-tru "Interleaved") :value "interleaved"}]}]}
+   :distkey {:lifecycle    :inline
+             :display-name (deferred-tru "Distribution key")
+             :fields       [{:name         "style"
+                             :display-name (deferred-tru "Style")
+                             :type         :select
+                             :required     true
+                             ;; AUTO is Redshift's default and drifts over time, so it's not offered as a managed style;
+                             ;; an AUTO table still surfaces its current style as a (non-managed) index.
+                             :options      [{:name (deferred-tru "Key")  :value "key"}
+                                            {:name (deferred-tru "All")  :value "all"}
+                                            {:name (deferred-tru "Even") :value "even"}]}
+                            ;; only the :key style takes a column, so this is not required
+                            {:name         "columns"
+                             :display-name (deferred-tru "Columns")
+                             :type         :columns}]}})
 
 (defn- sortkey-clause
   "Render the inline sortkey clause for a table's `indexes`, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`, or nil when there

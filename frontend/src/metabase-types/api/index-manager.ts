@@ -168,6 +168,8 @@ export type IndexMethodLifecycle = "standalone" | "inline";
 
 export type IndexMethod = {
   lifecycle: IndexMethodLifecycle;
+  "display-name": string;
+  description?: string;
   fields: IndexField[];
 };
 

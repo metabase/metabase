@@ -20,11 +20,17 @@ import { TransformIndexTable } from "./TransformIndexTable";
 
 type SetupOpts = {
   indexes?: TableIndexEntry[];
+  kindLabels?: Map<string, string>;
   users?: UserListResult[];
   readOnly?: boolean;
 };
 
-function setup({ indexes = [], users = [], readOnly = false }: SetupOpts = {}) {
+function setup({
+  indexes = [],
+  kindLabels = new Map(),
+  users = [],
+  readOnly = false,
+}: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   setupUsersEndpoints(users);
 
@@ -33,6 +39,7 @@ function setup({ indexes = [], users = [], readOnly = false }: SetupOpts = {}) {
   renderWithProviders(
     <TransformIndexTable
       indexes={indexes}
+      kindLabels={kindLabels}
       readOnly={readOnly}
       onEdit={onEdit}
       onDelete={onDelete}
@@ -73,6 +80,19 @@ describe("TransformIndexTable", () => {
     expect(await screen.findByText("idx_orders")).toBeInTheDocument();
     expect(screen.getByText("gin")).toBeInTheDocument();
     expect(screen.getByText("total, created_at")).toBeInTheDocument();
+  });
+
+  it("shows the driver-provided label for the index kind, falling back to the raw kind", async () => {
+    setup({
+      kindLabels: new Map([["btree", "B-Tree"]]),
+      indexes: [
+        createMockTableIndexEntry({ name: "idx_btree", kind: "btree" }),
+        createMockTableIndexEntry({ name: "idx_gin", kind: "gin" }),
+      ],
+    });
+
+    expect(await screen.findByText("B-Tree")).toBeInTheDocument();
+    expect(screen.getByText("gin")).toBeInTheDocument();
   });
 
   it("falls back to the index kind when the index has no name", async () => {

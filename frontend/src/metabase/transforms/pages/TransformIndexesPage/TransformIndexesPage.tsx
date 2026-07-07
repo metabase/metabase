@@ -25,6 +25,7 @@ import { IndexEditorModal } from "./IndexEditorModal/IndexEditorModal";
 import { IndexPageActions } from "./IndexPageActions";
 import { NoIndexes } from "./NoIndexes";
 import { TransformIndexTable } from "./TransformIndexTable";
+import { getKindLabels } from "./TransformIndexTable/utils";
 
 type TransformIndexesPageProps = {
   params: {
@@ -110,6 +111,7 @@ function TransformIndexesContent({
         ) : (
           <TransformIndexTable
             indexes={indexes}
+            kindLabels={getKindLabels(transform.requestable_indexes)}
             readOnly={readOnly}
             onEdit={handleEdit}
             onDelete={deleteIndex}

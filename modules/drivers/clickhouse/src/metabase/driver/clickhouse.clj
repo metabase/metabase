@@ -273,19 +273,21 @@
 
 (defmethod driver/supported-index-methods :clickhouse
   [_driver _database]
-  {:order-by   {:lifecycle :inline
-                :fields    [driver.common/index-columns-field]}
-   :skip-index {:lifecycle :standalone
-                :fields    [driver.common/index-name-field
-                            driver.common/index-columns-field
-                            {:name         "type"
-                             :display-name (deferred-tru "Type")
-                             :type         :select
-                             :required     true
-                             ;; only arg-free types; set/ngrambf_v1/tokenbf_v1 need params the form can't supply yet
-                             :options      [{:name (deferred-tru "Min/max")      :value "minmax"}
-                                            {:name (deferred-tru "Bloom filter") :value "bloom_filter"}]}
-                            driver.common/index-granularity-field]}})
+  {:order-by   {:lifecycle    :inline
+                :display-name (deferred-tru "Sorting key")
+                :fields       [driver.common/index-columns-field]}
+   :skip-index {:lifecycle    :standalone
+                :display-name (deferred-tru "Skip index")
+                :fields       [driver.common/index-name-field
+                               driver.common/index-columns-field
+                               {:name         "type"
+                                :display-name (deferred-tru "Type")
+                                :type         :select
+                                :required     true
+                                ;; only arg-free types; set/ngrambf_v1/tokenbf_v1 need params the form can't supply yet
+                                :options      [{:name (deferred-tru "Min/max")      :value "minmax"}
+                                               {:name (deferred-tru "Bloom filter") :value "bloom_filter"}]}
+                               driver.common/index-granularity-field]}})
 
 (defn- order-by-columns
   "Columns for the MergeTree ORDER BY: the inline `:order-by` index's columns when present, else the primary key (the

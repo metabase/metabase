@@ -91,7 +91,7 @@ describe("IndexEditorModal", () => {
     setup();
 
     await userEvent.click(await screen.findByLabelText("Index type"));
-    await userEvent.click(await screen.findByRole("option", { name: /gin/ }));
+    await userEvent.click(await screen.findByRole("option", { name: /GIN/ }));
 
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
 
