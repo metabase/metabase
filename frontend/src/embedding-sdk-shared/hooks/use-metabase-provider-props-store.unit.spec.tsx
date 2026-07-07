@@ -52,7 +52,7 @@ describe("useMetabaseProviderPropsStore", () => {
 
     act(() => {
       ensureMetabaseProviderPropsStore().setProps({
-        authConfig: { metabaseInstanceUrl: "https://example.com" } as any,
+        authConfig: { metabaseInstanceUrl: "https://example.com" },
       });
     });
 
@@ -86,7 +86,7 @@ describe("useMetabaseProviderPropsStore", () => {
 
     act(() => {
       ensureMetabaseProviderPropsStore().setProps({
-        authConfig: { metabaseInstanceUrl: "https://before.com" } as any,
+        authConfig: { metabaseInstanceUrl: "https://before.com" },
       });
     });
     expect(screen.getByTestId("instance-url")).toHaveTextContent(
@@ -102,7 +102,7 @@ describe("useMetabaseProviderPropsStore", () => {
 
     act(() => {
       ensureMetabaseProviderPropsStore().setProps({
-        authConfig: { metabaseInstanceUrl: "https://after.com" } as any,
+        authConfig: { metabaseInstanceUrl: "https://after.com" },
       });
     });
 

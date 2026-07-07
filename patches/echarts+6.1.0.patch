@@ -1,0 +1,62 @@
+diff --git a/node_modules/echarts/lib/chart/line/LineView.js b/node_modules/echarts/lib/chart/line/LineView.js
+index 3a5abc1..d976453 100644
+--- a/node_modules/echarts/lib/chart/line/LineView.js
++++ b/node_modules/echarts/lib/chart/line/LineView.js
+@@ -152,6 +152,9 @@ function turnPointsIntoStep(points, basePoints, coordSys, stepTurnAt, connectNul
+     pt[0] = points[i];
+     pt[1] = points[i + 1];
+     stepPoints.push(pt[0], pt[1]);
++    if (isNaN(nextPt[1 - baseIndex])) {
++      continue;
++    }
+     switch (stepTurnAt) {
+       case 'end':
+         stepPt[baseIndex] = nextPt[baseIndex];
+diff --git a/node_modules/echarts/lib/chart/line/helper.js b/node_modules/echarts/lib/chart/line/helper.js
+index 298ce98..198716e 100644
+--- a/node_modules/echarts/lib/chart/line/helper.js
++++ b/node_modules/echarts/lib/chart/line/helper.js
+@@ -107,17 +107,21 @@ function getValueStart(valueAxis, valueOrigin) {
+   return valueStart;
+ }
+ export function getStackedOnPoint(dataCoordInfo, coordSys, data, idx) {
+-  var value = NaN;
++  let stackedOverValue = NaN;
++  let stackResultValue = NaN;
+   if (dataCoordInfo.stacked) {
+-    value = data.get(data.getCalculationInfo('stackedOverDimension'), idx);
++    stackedOverValue = data.get(data.getCalculationInfo('stackedOverDimension'), idx);
++    stackResultValue = data.get(data.getCalculationInfo('stackResultDimension'), idx);
++  } else {
++    stackResultValue = data.get(dataCoordInfo.valueDim, idx);
+   }
+-  if (isNaN(value)) {
+-    value = dataCoordInfo.valueStart;
++  if (isNaN(stackedOverValue) && !isNaN(stackResultValue)) {
++    stackedOverValue = dataCoordInfo.valueStart;
+   }
+   var baseDataOffset = dataCoordInfo.baseDataOffset;
+   var stackedData = [];
+   stackedData[baseDataOffset] = data.get(dataCoordInfo.baseDim, idx);
+-  stackedData[1 - baseDataOffset] = value;
++  stackedData[1 - baseDataOffset] = stackedOverValue;
+   return coordSys.dataToPoint(stackedData);
+ }
+ export function isPointIllegal(xOrY, yOrX) {
+diff --git a/node_modules/echarts/lib/label/labelLayoutHelper.js b/node_modules/echarts/lib/label/labelLayoutHelper.js
+index 1f2944e..112cc37 100644
+--- a/node_modules/echarts/lib/label/labelLayoutHelper.js
++++ b/node_modules/echarts/lib/label/labelLayoutHelper.js
+@@ -411,6 +411,12 @@ export function hideOverlap(labelList) {
+     }
+     var label = labelItem.label;
+     var labelLine = labelItem.labelLine;
++    if (label.style.text === "") {
++      hideEl(label);
++      labelLine && hideEl(labelLine);
++      continue;
++    }
++
+     // NOTICE: even when the with/height of globalRect of a label is 0, the label line should
+     // still be displayed, since we should follow the concept of "truncation", meaning that
+     // something exists even if it cannot be fully displayed. A visible label line is necessary

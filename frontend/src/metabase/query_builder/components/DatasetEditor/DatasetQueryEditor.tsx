@@ -102,6 +102,7 @@ function DatasetQueryEditorInner({
           {isActive && <NativeQueryEditor.RunButton />}
         </NativeQueryEditor>
       ) : (
+        // @ts-expect-error TODO: Fix types in DatasetQueryEditor
         <DatasetNotebook
           {...props}
           question={question}

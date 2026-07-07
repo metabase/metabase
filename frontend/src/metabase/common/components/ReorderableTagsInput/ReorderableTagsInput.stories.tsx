@@ -154,7 +154,7 @@ export const DragBetweenTwoInputs = {
         const toList = to === "left" ? leftValues : rightValues;
         overIndexInTo = toList.indexOf(String(over.id));
       } else if (over.id === "left" || over.id === "right") {
-        to = over.id as "left" | "right";
+        to = over.id;
         overIndexInTo = -1;
       }
 

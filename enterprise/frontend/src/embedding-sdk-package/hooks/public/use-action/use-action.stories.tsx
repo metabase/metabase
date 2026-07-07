@@ -58,7 +58,7 @@ const HookTemplate: StoryFn<
 
           {error ? (
             <Box>
-              <Text c="error" fw="bold">
+              <Text c="feedback-negative" fw="bold">
                 Error
               </Text>
               <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>

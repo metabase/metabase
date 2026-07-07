@@ -110,7 +110,7 @@ export const ApiKeyProviderFields = ({
       )}
 
       {updateMetabotSettingsResult.error && (
-        <Text size="sm" c="error">
+        <Text size="sm" c="feedback-negative">
           {getErrorMessage(
             updateMetabotSettingsResult.error,
             t`Unable to save provider settings.`,

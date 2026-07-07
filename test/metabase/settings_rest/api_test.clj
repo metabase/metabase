@@ -395,3 +395,11 @@
     (test-deprecated-setting! "hello")
     (is (re-find #"Setting test-deprecated-setting is deprecated as of Metabase 0.51.0"
                  (str/join " " (map :message (warnings)))))))
+
+(deftest site-name-description-reflects-application-name-test
+  (testing "GET /api/setting returns the site-name description interpolated with a whitelabel application-name (#17043)"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-name "New Test Co"]
+        (let [site-name-setting (some #(when (= "site-name" (:key %)) %)
+                                      (mt/user-http-request :crowberto :get 200 "setting"))]
+          (is (str/includes? (:description site-name-setting) "New Test Co")))))))
