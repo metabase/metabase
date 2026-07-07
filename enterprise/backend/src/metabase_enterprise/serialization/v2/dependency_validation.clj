@@ -44,13 +44,14 @@
 (defn- entity-deps
   "The dependency contribution of a single entity.
 
-  Returns a `{:visited :deps}`"
+  Returns a `{:visited :deps}`. `serialization-dependencies` yields `:serdes/meta` paths (each a vector whose last
+  element identifies the referenced entity), so we take that last element and tag it with the `:via` entity."
   [entity]
   (let [model (name (t2/model entity))
         via   [model (:id entity)]]
     {:visited #{via}
      :deps    (into #{}
-                    (map #(assoc % :via via))
+                    (map #(assoc (last %) :via via))
                     (serdes/serialization-dependencies model entity))}))
 
 (defn- collect-dependencies
@@ -83,21 +84,37 @@
         (mapcat #(t2/select-pks-set (keyword "model" model) {:where [:in :id %]}))
         (partition-all query-batch-size (distinct ids))))
 
+(def ^:private structural-content-models
+  "Content models whose absence from the archive is tolerated on import, so a reference to one is never a completeness
+   failure. A selective export routinely omits the Collection tree an entity lives in; the entity then loads at the
+   root of the target rather than producing a dangling reference."
+  #{"Collection"})
+
 (defn- unsatisfied-dependencies
   "Given collected `deps`, the `visited` set, and `analytics-cards`, returns the deps that won't be satisfied in the
-   archive, each tagged with a `:reason`. Each dep is classified by its model: content models must be in `visited` (or
-   be an analytics card, which resolves on import); data-model references must exist in the source appdb."
+   archive, each tagged with a `:reason`. Each dep is classified by its model:
+
+   - data-model references (Database, Table, Field, …) must exist in the source appdb, else the export emits a
+     malformed portable id;
+   - content references (Card, Dashboard, …) that still exist in the appdb must be part of the export (or be an
+     analytics card, which resolves on import). A content reference to a *deleted* entity is not a failure: export
+     cannot emit a portable id for a row that is gone, so `fk-elide` simply drops the reference.
+
+   [[structural-content-models]] references are ignored entirely."
   [deps visited analytics-cards]
   (let [content-models (set serdes.models/content)
         {content-deps true data-deps false} (group-by #(contains? content-models (:model %)) deps)
-        existing (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))]
+        content-deps   (remove #(contains? structural-content-models (:model %)) content-deps)
+        existing-data    (m/map-kv-vals existing-ids (u/group-by :model :id data-deps))
+        existing-content (m/map-kv-vals existing-ids (u/group-by :model :id content-deps))]
     (concat
      (for [{:keys [model id] :as dep} content-deps
-           :when (not (or (contains? visited [model id])
-                          (and (= model "Card") (contains? analytics-cards id))))]
+           :when (and (contains? (get existing-content model) id)
+                      (not (contains? visited [model id]))
+                      (not (and (= model "Card") (contains? analytics-cards id))))]
        (assoc dep :reason :not-in-export))
      (for [{:keys [model id] :as dep} data-deps
-           :when (not (contains? (get existing model) id))]
+           :when (not (contains? (get existing-data model) id))]
        (assoc dep :reason :missing-in-appdb)))))
 
 (defn- unsatisfied-label [{:keys [model id via reason]}]

@@ -1457,6 +1457,19 @@
 
 (declare ^:private mbql-deps-map)
 
+(def ^:dynamic *serialization?*
+  "True while computing *serialization* dependencies (from a raw, pre-serialization entity), false while computing
+  *deserialization* (load) dependencies (from the serialized form). The `mbql-*` walkers handle both forms, but a
+  numeric id is only treated as a raw reference when this is true — a serialized query can still carry a stray numeric
+  id (e.g. a query whose deleted source database never got name-ified), which must not be mistaken for a raw ref at
+  load time."
+  false)
+
+(defn- raw-ref-id?
+  "True if `x` is a raw (numeric) reference id — i.e. an integer, and we're computing serialization deps."
+  [x]
+  (and *serialization?* (int? x)))
+
 (defn- ref->db-dep
   "Given a portable table or field reference (a vector like `[db-name schema table-name ...]`), return a set with
   its Database dependency, or nil. Table and Field references are intentionally *not* dependencies — missing ones
@@ -1467,33 +1480,51 @@
   (when-let [db-name (first ref)]
     #{[{:model "Database" :id db-name}]}))
 
+(def ^:private mbql-ref-tag->model
+  "The serdes model that a `:metric`/`:segment`/`:measure` MBQL reference clause depends on."
+  {:metric "Card",    "metric"  "Card"
+   :segment "Segment", "segment" "Segment"
+   :measure "Measure", "measure" "Measure"})
+
 (defn- mbql-deps-vector [entity]
   (match/match-one entity
-    ;; A `:field`/`:field-id` clause's only dependency is the Database of its referenced field; the Field itself
-    ;; is not a dependency, and a field clause never contains nested metric/segment/card refs, so we don't descend.
+    ;; --- serialized (portable) refs, walked at load time ---
+    ;; A serialized `:field` clause's only dependency is the Database of its referenced field; the Field/Table
+    ;; themselves are synthesized on import, and a field clause never nests metric/segment/card refs, so we don't
+    ;; descend.
     [#{:field "field"} (_opts :guard map?) (ref :guard vector?)]
     (ref->db-dep ref)
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
      (opts :guard map?)
      (field :guard portable-id?)]
-    (into #{[{:model (case tag
-                       (:metric "metric") "Card"
-                       (:segment "segment") "Segment"
-                       (:measure "measure") "Measure")
-              :id field}]}
+    (into #{[{:model (mbql-ref-tag->model tag) :id field}]}
           (mbql-deps-map opts))
 
-    ;; legacy (MBQL 4) refs
+    ;; legacy (MBQL 4) serialized refs
     [#{:field "field" :field-id "field-id"} (ref :guard vector?) _opts]
     (ref->db-dep ref)
 
     [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
-    #{[{:model (case tag
-                 (:metric "metric") "Card"
-                 (:segment "segment") "Segment"
-                 (:measure "measure") "Measure")
-        :id field}]}
+    #{[{:model (mbql-ref-tag->model tag) :id field}]}
+
+    ;; --- raw (numeric) refs, walked at export time before serialization ---
+    ;; The referenced Field/Table are real appdb ids, existence-checked so a deleted row can't produce a malformed
+    ;; portable reference.
+    [#{:field "field"} (_opts :guard map?) (id :guard raw-ref-id?)]
+    #{[{:model "Field" :id id}]}
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"})
+     (opts :guard map?)
+     (id :guard raw-ref-id?)]
+    (into #{[{:model (mbql-ref-tag->model tag) :id id}]}
+          (mbql-deps-map opts))
+
+    [#{:field "field" :field-id "field-id"} (id :guard raw-ref-id?) _opts]
+    #{[{:model "Field" :id id}]}
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (id :guard raw-ref-id?)]
+    #{[{:model (mbql-ref-tag->model tag) :id id}]}
 
     _ (reduce #(cond
                  (map? %2)    (into %1 (mbql-deps-map %2))
@@ -1506,10 +1537,11 @@
   (into #{}
         (mapcat (fn [[k v]]
                   (cond
+                    ;; --- serialized (portable) refs. Table/Field references contribute only their Database as a
+                    ;; dependency (see `ref->db-dep`); the referenced Table/Field are synthesized on import. ---
                     (and (= k :database)
                          (string? v)
                          (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
-                    ;; Table/Field references contribute only their Database as a dependency (see `ref->db-dep`).
                     (and (= k :source-table) (vector? v))      (ref->db-dep v)
                     (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
@@ -1517,6 +1549,15 @@
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
                     (and (= k :table-id)     (vector? v))      (ref->db-dep v)
                     (and (#{:card_id :card-id} k) (string? v)) #{[{:model "Card" :id v}]}
+                    ;; --- raw (numeric) refs, walked at export time: the referenced Table/Field are real appdb ids to
+                    ;; existence-check. ---
+                    (and (= k :database)     (raw-ref-id? v))         #{[{:model "Database" :id v}]}
+                    (and (= k :source-table) (raw-ref-id? v))         #{[{:model "Table" :id v}]}
+                    (and (= k :source-card)  (raw-ref-id? v))         #{[{:model "Card" :id v}]}
+                    (and (= k :source-field) (raw-ref-id? v))         #{[{:model "Field" :id v}]}
+                    (and (= k :snippet-id)   (raw-ref-id? v))         #{[{:model "NativeQuerySnippet" :id v}]}
+                    (and (= k :table-id)     (raw-ref-id? v))         #{[{:model "Table" :id v}]}
+                    (and (#{:card_id :card-id} k) (raw-ref-id? v))    #{[{:model "Card" :id v}]}
                     (map? v)                                   (mbql-deps-map v)
                     (vector? v)                                (mbql-deps-vector v))))
         m))
@@ -1865,11 +1906,14 @@
 (defn- viz-link-card-deps
   [settings]
   (when-let [{:keys [model id]} (get-in settings [:link :entity])]
-    #{(case model
-        ;; A linked Table is not a dependency (synthesized on import if missing), but its Database is.
-        "table" [{:model "Database" :id (first id)}]
-        [{:model (name (link-card-model->toucan-model model))
-          :id    id}])}))
+    (if (= model "table")
+      ;; Serialized: a linked Table is not a dependency (synthesized on import), but its Database is. Raw (export
+      ;; time): the numeric table id is a real Table to existence-check.
+      (cond
+        (vector? id)     #{[{:model "Database" :id (first id)}]}
+        (raw-ref-id? id) #{[{:model "Table" :id id}]})
+      #{[{:model (name (link-card-model->toucan-model model))
+          :id    id}]})))
 
 (defn- viz-click-behavior-deps
   [settings]

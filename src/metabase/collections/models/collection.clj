@@ -2112,6 +2112,13 @@
   (when parent_id
     #{[{:model "Collection" :id parent_id}]}))
 
+(defmethod serdes/serialization-dependencies "Collection"
+  ;; The raw entity carries its ancestry in `:location` (the ingested form is normalized to `:parent_id`), so the
+  ;; parent Collection is derived from the path. A selective export may legitimately omit the parent.
+  [_model-name {:keys [location]}]
+  (when-let [parent-id (location-path->parent-id location)]
+    #{[{:model "Collection" :id parent-id}]}))
+
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 

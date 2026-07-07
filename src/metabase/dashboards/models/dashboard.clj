@@ -454,12 +454,19 @@
     (when action_id #{[{:model "Action" :id action_id}]})
     (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
-(defmethod serdes/deserialization-dependencies "Dashboard"
+(defn- dashboard-deps
+  "The serdes dependencies of a Dashboard, as `:serdes/meta` paths. Expects `:dashcards` (with `:series`) inlined —
+  that's the shape of an ingested Dashboard, and the raw path hydrates them first. The shared `mbql-*`/`*-deps` helpers
+  dispatch on ref shape, so this works for both the serialized and raw forms. Shared by
+  [[serdes/deserialization-dependencies]] and [[serdes/serialization-dependencies]]."
   [{:keys [collection_id dashcards parameters]}]
   (->> (map serdes-deps-dashcard dashcards)
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))
+
+(defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
+  (dashboard-deps dashboard))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id _opts]
   (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
@@ -494,11 +501,12 @@
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
 (defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
-  ;; content deps derived from descendants so the two can't drift; the export-time validator classifies which of
-  ;; these are actually exported as content. A dashboard's data-model references (field refs in parameter mappings)
-  ;; are carried by the cards it references, which are validated in their own right.
-  (for [[[model id] _] (serdes/descendants "Dashboard" (:id dashboard) nil)]
-    {:model model :id id}))
+  ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
+  ;; expects, then reuse the same walk as deserialization.
+  (binding [serdes/*serialization?* true]
+    (dashboard-deps (-> dashboard
+                        (t2/hydrate :dashcards)
+                        (update :dashcards #(t2/hydrate % :series))))))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

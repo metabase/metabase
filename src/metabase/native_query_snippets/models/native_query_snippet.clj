@@ -191,6 +191,12 @@
   (when collection_id
     [[{:model "Collection" :id collection_id}]]))
 
+(defmethod serdes/serialization-dependencies "NativeQuerySnippet"
+  [_model-name {:keys [collection_id]}]
+  ;; A snippet only references its containing Collection, which a selective export may legitimately omit.
+  (when collection_id
+    #{[{:model "Collection" :id collection_id}]}))
+
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   (serdes/storage-default-collection-path snippet ctx "snippets"))
 

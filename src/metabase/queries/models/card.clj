@@ -29,7 +29,6 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -1419,7 +1418,11 @@
               :collection_preview  true
               :enable_embedding    false}})
 
-(defmethod serdes/deserialization-dependencies "Card"
+(defn- card-deps
+  "The serdes dependencies of a Card, as `:serdes/meta` paths. Works on both an ingested (serialized) Card and a raw
+  appdb Card: the shared `mbql-*`/`*-deps` helpers dispatch on ref shape, so on the raw form the referenced Table/Field
+  come through as real ids to existence-check, while on the serialized form only their Database does (Table/Field are
+  synthesized on import). Shared by [[serdes/deserialization-dependencies]] and [[serdes/serialization-dependencies]]."
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata source_card_id visualization_settings
            dashboard_id document_id]}]
@@ -1428,8 +1431,6 @@
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
     (when database_id [[{:model "Database" :id database_id}]])
-    ;; Note: `table_id` is intentionally not a dependency — the Database (above) is, and a missing Table is
-    ;; synthesized as an inactive row on import.
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (when dashboard_id #{[{:model "Dashboard" :id dashboard_id}]})
@@ -1437,6 +1438,9 @@
     (result-metadata-deps result_metadata)
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
+
+(defmethod serdes/deserialization-dependencies "Card" [card]
+  (card-deps card))
 
 (defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)
@@ -1457,38 +1461,8 @@
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 (defmethod serdes/serialization-dependencies "Card" [_model-name card]
-  (let [{:keys [dataset_query database_id result_metadata visualization_settings]} card
-        query           (not-empty dataset_query)
-        query-field-ids (when query
-                          (into (lib/all-field-ids query)
-                                (lib/all-template-tag-field-ids query)))
-        ;; result_metadata columns carry the id of the field they were derived from
-        rmeta-field-ids (filter pos-int? (map :id result_metadata))
-        ;; visualization_settings column-setting keys are JSON-encoded field refs; mb.viz parses them
-        viz-field-ids   (some->> visualization_settings
-                                 mb.viz/db->norm
-                                 ::mb.viz/column-settings
-                                 keys
-                                 (keep ::mb.viz/field-id))
-        field-ids       (into #{} (concat query-field-ids rmeta-field-ids viz-field-ids))]
-    (concat
-     ;; content deps: derived from descendants so the two can't drift
-     (for [[[model id] _] (serdes/descendants "Card" (:id card) nil)]
-       {:model model :id id})
-     ;; data-model deps: omitted by descendants (import creates tables/fields on the fly), but at export time a missing
-     ;; row can't be turned into a portable reference, so they're existence-checked. Field refs are gathered from the
-     ;; query, result_metadata and visualization_settings; refs embedded in parameter_mappings / parameters value
-     ;; fields remain (see the serialization/deserialization dep-walker unification).
-     (when database_id
-       [{:model "Database" :id database_id}])
-     (for [table-id (some-> query lib/all-source-table-ids)]
-       {:model "Table" :id table-id})
-     (for [field-id field-ids]
-       {:model "Field" :id field-id})
-     (for [segment-id (some-> query lib/all-segment-ids)]
-       {:model "Segment" :id segment-id})
-     (for [measure-id (some-> query lib/all-measure-ids)]
-       {:model "Measure" :id measure-id}))))
+  (binding [serdes/*serialization?* true]
+    (card-deps card)))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
