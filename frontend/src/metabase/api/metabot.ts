@@ -121,6 +121,22 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    recordMetabotEntitySaved: builder.mutation<
+      { entity_id: string; card_id: number },
+      {
+        conversation_id: string;
+        entity_id: string;
+        card_id: number;
+      }
+    >({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/saved-entity`,
+        body,
+      }),
+      invalidatesTags: (_, error, { card_id }) =>
+        invalidateTags(error, [idTag("card", card_id)]),
+    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -168,6 +184,7 @@ export const {
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
+  useRecordMetabotEntitySavedMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

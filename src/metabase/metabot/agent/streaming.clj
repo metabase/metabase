@@ -26,12 +26,16 @@
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
   skipped because their value is diffed separately into MetabotMessage.state;
-  duplicating the full blob in the message data would bloat storage. Non-data
-  parts are always persistable here; the caller is responsible for filtering
-  stream-level metadata (`:start`, `:usage`, `:finish`) separately."
+  duplicating the full blob in the message data would bloat storage. `entity_saved`
+  parts are skipped because the durable record of a save lives on the card itself
+  (`report_card.metabot_conversation_id`/`metabot_chart_id`) — persisting the part
+  too would create a second source of truth that can drift (e.g. when the card is
+  later deleted). Non-data parts are always persistable here; the caller is
+  responsible for filtering stream-level metadata (`:start`, `:usage`, `:finish`)
+  separately."
   [part]
   (not (and (= :data (:type part))
-            (= state-type (:data-type part)))))
+            (contains? #{state-type entity-saved-type} (:data-type part)))))
 
 ;;; Query URL Encoding
 

@@ -101,8 +101,7 @@
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool
                     #'tools/create-chart-tool
-                    #'tools/edit-chart-tool
-                    #'tools/save-entity-tool]})
+                    #'tools/edit-chart-tool]})
 
 (register-profile!
  {:name            :internal
