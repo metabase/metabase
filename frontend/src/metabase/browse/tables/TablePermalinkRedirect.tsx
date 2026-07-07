@@ -10,8 +10,6 @@ import * as Urls from "metabase/urls";
 import type { DatabaseId, Table } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
 
-// Exact (case-sensitive) match within a database + schema. `schemaName` is
-// absent for schema-less databases, matching tables stored with a null schema.
 const findTable = (
   tables: Table[],
   dbId: DatabaseId,
@@ -25,22 +23,22 @@ const findTable = (
       (table.schema || null) === (schemaName || null),
   );
 
-/**
- * Resolves a name-based table permalink
- * (`/browse/databases/<db>/schema/<schema>/table/<table>`, or the schema-less
- * `/browse/databases/<db>/table/<table>`) to a table, then replace-redirects to
- * its canonical `/table/:id-:slug` url. `useListTablesQuery`'s `term` narrows
- * candidates server-side; the exact match happens on the client.
- */
 export const TablePermalinkRedirect = ({
   params: { dbName, schemaName, tableName },
 }: {
   params: { dbName: string; schemaName?: string; tableName: string };
 }) => {
   const dispatch = useDispatch();
-  const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery();
-  const { data: tables, isLoading: isLoadingTables } = useListTablesQuery({
+  const {
+    data: databasesData,
+    error: databasesError,
+    isLoading: isLoadingDatabases,
+  } = useListDatabasesQuery();
+  const {
+    data: tables,
+    error: tablesError,
+    isLoading: isLoadingTables,
+  } = useListTablesQuery({
     term: tableName,
   });
 
@@ -58,6 +56,12 @@ export const TablePermalinkRedirect = ({
       dispatch(replace(targetUrl));
     }
   }, [targetUrl, dispatch]);
+
+  const error = databasesError ?? tablesError;
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
 
   if (isLoadingDatabases || isLoadingTables || table) {
     return <LoadingAndErrorWrapper loading />;
