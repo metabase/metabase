@@ -80,3 +80,29 @@
                  (common/add-sort-clause
                   (or sort-column "card.name")
                   (or sort-direction "asc")))))}))
+
+;; Total number of failing questions matching the filters; powers the FE pagination for `bad-table`.
+(defmethod audit.i/internal-query ::bad-table-count
+  ([_]
+   (audit.i/internal-query ::bad-table-count nil nil nil))
+  ([_
+    error-filter
+    db-filter
+    collection-filter]
+   {:metadata [[:count {:display_name "Count", :base_type :type/Integer}]]
+    :results (common/reducible-query
+              (let [coll-name [:coalesce :coll.name "Our Analytics"]]
+                (->
+                 {:with      [cards/latest-qe]
+                  :select    [[:%count.* :count]]
+                  :from      [[:report_card :card]]
+                  :left-join [[:collection :coll]      [:= :card.collection_id :coll.id]
+                              [:metabase_database :db] [:= :card.database_id :db.id]
+                              :latest_qe               [:= :card.id :latest_qe.card_id]]
+                  :where     [:and
+                              [:= :card.archived false]
+                              [:<> :latest_qe.error nil]
+                              [:not= :card.database_id audit/audit-db-id]]}
+                 (common/add-search-clause error-filter :latest_qe.error)
+                 (common/add-search-clause db-filter :db.name)
+                 (common/add-search-clause collection-filter coll-name))))}))
