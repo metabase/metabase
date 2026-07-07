@@ -37,17 +37,17 @@ const BrowseTablesPage = ({
 };
 
 const BrowseTablesByDatabaseName = ({
-  name,
+  databaseName,
   schemaName,
 }: {
-  name: string;
+  databaseName: string;
   schemaName: string;
 }) => {
-  const { data, isLoading } = useListDatabasesQuery();
-  const database = findDatabaseByName(data?.data ?? [], name);
+  const { data, error, isLoading } = useListDatabasesQuery();
+  const database = findDatabaseByName(data?.data ?? [], databaseName);
 
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading />;
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
   if (!database) {
@@ -66,7 +66,9 @@ export const BrowseTables = ({
   };
 }) => {
   if (Urls.extractEntityId(dbId) == null) {
-    return <BrowseTablesByDatabaseName name={dbId} schemaName={schemaName} />;
+    return (
+      <BrowseTablesByDatabaseName databaseName={dbId} schemaName={schemaName} />
+    );
   }
 
   return <BrowseTablesPage dbId={dbId} schemaName={schemaName} />;
