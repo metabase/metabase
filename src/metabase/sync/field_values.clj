@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.sync.interface :as i]
+   [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -51,20 +52,38 @@
       counts-map)))
 
 (defn- table->fields-to-scan
-  [table]
-  (t2/select :model/Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
+  "Up to `limit` active, normal-visibility Fields of `table`, ordered by id so the selection is stable across syncs.
+  Bounding the count keeps wide tables (e.g. document databases with huge/dynamic schemas) from loading every Field
+  into memory and issuing a warehouse request per field."
+  [table limit]
+  (t2/select :model/Field
+             :table_id (u/the-id table), :active true, :visibility_type "normal"
+             {:order-by [[:id :asc]] :limit limit}))
+
+(defn- warn-too-many-fields!
+  "Log that `table` has more fields to scan for FieldValues than scan-max-fields-per-table (`limit`), so only the first
+  `limit` are scanned and the rest skipped -- scanning that many Fields would load them all into memory and (on non-SQL
+  drivers like Mongo) issue a warehouse request per field."
+  [table limit]
+  (log/warnf (str "Table %s has more than scan-max-fields-per-table (%d) fields to scan for field values; scanning the "
+                  "first %d and skipping the rest. Raise MB_SCAN_MAX_FIELDS_PER_TABLE to scan more.")
+             (sync-util/name-for-logging table) limit limit))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`."
   [table :- i/TableInstance]
-  (reduce (fn [fv-change-counts field]
-            (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
-                           (if (field-values/field-should-have-field-values? field)
-                             (update-field-values-for-field! field)
-                             (clear-field-values-for-field! field)))]
-              (update-field-value-stats-count fv-change-counts result)))
-          {:errors 0, :created 0, :updated 0, :deleted 0}
-          (table->fields-to-scan table)))
+  (let [limit   (sync.settings/scan-max-fields-per-table)
+        scanned (table->fields-to-scan table (inc limit))]
+    (when (> (count scanned) limit)
+      (warn-too-many-fields! table limit))
+    (reduce (fn [fv-change-counts field]
+              (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
+                             (if (field-values/field-should-have-field-values? field)
+                               (update-field-values-for-field! field)
+                               (clear-field-values-for-field! field)))]
+                (update-field-value-stats-count fv-change-counts result)))
+            {:errors 0, :created 0, :updated 0, :deleted 0}
+            (take limit scanned))))
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]
@@ -98,7 +117,7 @@
   For more info about advanced FieldValues, check the docs
   in [[metabase.warehouse-schema.models.field-values/field-values-types]]"
   [table :- i/TableInstance]
-  (->> (table->fields-to-scan table)
+  (->> (table->fields-to-scan table (sync.settings/scan-max-fields-per-table))
        (map delete-expired-advanced-field-values-for-field!)
        (reduce +)))
 

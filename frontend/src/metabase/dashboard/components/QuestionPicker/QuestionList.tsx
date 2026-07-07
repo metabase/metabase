@@ -92,6 +92,7 @@ export function QuestionList({
             : ["card", "dataset", "metric"],
           offset: queryOffset,
           limit: DEFAULT_SEARCH_LIMIT,
+          context: "entity-picker",
         }
       : skipToken,
   );

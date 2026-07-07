@@ -78,7 +78,8 @@
 
 (deftest create-table-from-schema!-test
   (testing "create-table-from-schema! preserves column order from schema definition"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table
+                                                     :test/dynamic-dataset-loading)
       (let [driver driver/*driver*
             db-id (mt/id)
             schema-name (when (get-method sql.tx/session-schema driver)

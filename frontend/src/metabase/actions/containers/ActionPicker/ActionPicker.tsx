@@ -161,7 +161,7 @@ function ActionPickerWithModels(
     data: searchResponse,
     isLoading: isLoadingSearch,
     error: searchError,
-  } = useSearchQuery({ models: ["dataset"] });
+  } = useSearchQuery({ models: ["dataset"], context: "entity-picker" });
   const {
     data: actions = [],
     isLoading: isLoadingActions,

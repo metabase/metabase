@@ -2676,8 +2676,8 @@
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
       (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
-        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                                     (apply orig card-id export-format
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
+                                                                     (apply orig card export-format
                                                                             :make-run (constantly (fn [{:keys [constraints]} _]
                                                                                                     {:constraints constraints}))
                                                                             options))]
@@ -2853,7 +2853,7 @@
           (is (verified? card))
           (is (=? {:dataset_query {:stages [{:source-table pos-int?}]}}
                   card))
-          (update-card card (update-in card [:dataset_query :stages 0 :source-table] inc))
+          (update-card card (assoc-in card [:dataset_query :stages 0 :source-table] (mt/id :checkins)))
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
             (is (= "Unverified due to edit"

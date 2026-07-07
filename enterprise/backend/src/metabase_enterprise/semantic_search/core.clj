@@ -13,6 +13,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -43,6 +44,23 @@
   (and
    (some? semantic.db.datasource/db-url)
    (semantic.settings/semantic-search-enabled)))
+
+(defn- with-zero-semantic-distance-score
+  "Record a 0 `:semantic-distance` score on `results` that lack it, for a consistent merged-result score breakdown."
+  [search-ctx results]
+  ;; Fallback (appdb/in-place) results never went through vector search, so they carry no semantic distance.
+  ;; Score them as least-relevant: the 0 below is a score, not a distance -- the opposite of a zero cosine
+  ;; distance, which would be a perfect match.
+  (let [entry {:name         :semantic-distance
+               :score        0
+               :weight       (search.config/weight search-ctx :semantic-distance)
+               :contribution 0}]
+    (map (fn [result]
+           (cond-> result
+             (and (contains? result :all-scores)
+                  (not-any? (comp #{:semantic-distance} :name) (:all-scores result)))
+             (update :all-scores conj entry)))
+         results)))
 
 (defenterprise results
   "Enterprise implementation of semantic search results with improved fallback logic. Falls back to appdb search only
@@ -85,7 +103,7 @@
                                        []))
                   fallback-results (take total-limit fallback-results)
                   _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
-                  combined-results (concat results fallback-results)
+                  combined-results (concat results (with-zero-semantic-distance-score search-ctx fallback-results))
                   deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
               (take total-limit deduped-results)))))
       (catch Exception e
@@ -122,6 +140,16 @@
        index-metadata
        model
        ids))))
+
+(defenterprise diagnose
+  "Enterprise implementation of the semantic search engine-owned diagnostic stages."
+  :feature :semantic-search
+  [search-ctx expected-model expected-id]
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)]
+    (if-not (index-active? pgvector index-metadata)
+      {:type :missing-from-index :details {:reason :no-active-index}}
+      (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id))))
 
 ;; NOTE:
 ;; we're currently not returning stats from `init!` as the async nature means

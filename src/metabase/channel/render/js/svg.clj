@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]
+   [metabase.channel.render.image-buffer :as image-buffer]
    [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.style :as style]
    [metabase.config.core :as config]
@@ -58,10 +59,15 @@
   (let [base-controller (Pools/utilizationController 1.0 3 3)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               ;; Generate a tuple of the engine and the expiry timestamp.
+               ;; Generate a tuple of the context and the expiry timestamp.
                [(load-viz-bundle (js.engine/context))
                 (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
-             (destroy [_ _ _v]))
+             (destroy [_ _ [^Context ctx _expiry]]
+               ;; Close the context when it's disposed from the pool (expiry/shutdown). Without this, each disposed
+               ;; static-viz context (~130 MB) leaks its native memory: GraalVM only releases it on `close`, not on GC.
+               (try
+                 (.close ctx true) ;; force close - can't wait for running code
+                 (catch Exception _))))
            ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
            (reify IPool$Controller
              (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))
@@ -174,6 +180,17 @@
   Defaults to white to ensure charts are readable in dark mode email clients."
   java.awt.Color/WHITE)
 
+(defn- reusing-buffers-transcoder
+  "A [[PNGTranscoder]] whose output ARGB raster is borrowed from the shared [[metabase.channel.render.image-buffer]]
+  pool instead of freshly allocated. Batik calls `createImage` once to mint the (often several-MB) result buffer; we
+  hand it a pooled one and record it in `acquired` (a 1-element atom) so the caller can release it after `transcode`."
+  ^PNGTranscoder [acquired]
+  (proxy [PNGTranscoder] []
+    (createImage [w h]
+      (let [img (image-buffer/acquire w h)]
+        (reset! acquired img)
+        img))))
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
@@ -181,13 +198,18 @@
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
-          transcoder                   (PNGTranscoder.)]
+          acquired                     (atom nil)
+          transcoder                   (reusing-buffers-transcoder acquired)]
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH *svg-render-width*)
       (when *svg-render-height*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT *svg-render-height*))
       (when *svg-background-color*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
-      (.transcode transcoder in out))
+      (try
+        (.transcode transcoder in out)
+        (finally
+          ;; Return the borrowed buffer to the pool. Guarded so a release failure can't mask a transcode error.
+          (try (image-buffer/release @acquired) (catch Throwable _)))))
     (.toByteArray os)))
 
 (defn svg-string->bytes

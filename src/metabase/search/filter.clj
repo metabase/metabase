@@ -177,31 +177,41 @@
     [:!= model-col [:inline "transform"]]
     (transform-source-type-where-clause search-context source-type-col)]))
 
-(defn with-filters
-  "Return a HoneySQL clause corresponding to all the optional search filters."
-  [search-context qry]
-  (as-> qry qry
-    (sql.helpers/where qry (if (seq (:models search-context))
-                             [:in :search_index.model (:models search-context)]
-                             ;; Ideally, we would not get this far, and bail out earlier.
-                             [:= 1 2]))
-    (sql.helpers/where qry (when-let [ids (:ids search-context)]
-                             [:and
-                              [:in :search_index.model_id (map str ids)]
-                              ;; NOTE: we limit id-based search to only a subset of the models
-                              ;; TODO this should just become part of the model spec e.g. :search-by-id?
-                              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
-    (sql.helpers/where qry [:or
+(defn filter-clauses
+  "Ordered seq of `[filter-key honeysql-clause]` for the structural filters implied by `search-context`.
+  [[with-filters]] ANDs these into the query; the search debug API uses the keys to attribute which specific
+  filter excludes a given row."
+  [search-context]
+  (keep
+   identity
+   (concat
+    [[:models (if (seq (:models search-context))
+                [:in :search_index.model (:models search-context)]
+                ;; Ideally, we would not get this far, and bail out earlier.
+                [:= 1 2])]]
+    (when-let [ids (:ids search-context)]
+      [[:ids [:and
+              [:in :search_index.model_id (map str ids)]
+              ;; NOTE: we limit id-based search to only a subset of the models
+              ;; TODO this should just become part of the model spec e.g. :search-by-id?
+              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
+    [[:dashboard-questions [:or
                             ;; leverage the fact that only card-related models populate this attribute
                             [:= nil :search_index.dashboard_id]
                             (when (:include-dashboard-questions? search-context)
-                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])])
-    (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
-              (or (when-some [v (get search-context context-key)]
-                    (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
-                    (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
-                      (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
-                        (sql.helpers/where qry c))))
-                  qry))
-            qry
-            (vals (dissoc search.config/filters :id :native-query)))))
+                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]]]
+    (for [{t :type :keys [context-key required-feature supported-value? field]}
+          (vals (dissoc search.config/filters :id :native-query))
+          :let [v (get search-context context-key)]]
+      (when (some? v)
+        (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
+        (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
+          (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
+            [context-key c])))))))
+
+(defn with-filters
+  "Return a HoneySQL clause corresponding to all the optional search filters."
+  [search-context qry]
+  (reduce (fn [qry [_ c]] (sql.helpers/where qry c))
+          qry
+          (filter-clauses search-context)))

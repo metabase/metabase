@@ -340,8 +340,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/Field
+   :model-imports #{:model/Field
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
@@ -954,7 +953,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1432,6 +1431,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/TaskHistory
+                    :model/TaskRun
                     :model/User}}
 
   oauth-server
@@ -1441,6 +1441,7 @@
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api
+           api-scope
            appearance
            mcp
            models
@@ -1808,6 +1809,7 @@
            premium-features
            queries
            query-permissions
+           request
            server
            settings
            system
@@ -1816,8 +1818,6 @@
            util
            workspaces}
    :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
@@ -2209,7 +2209,7 @@
            task
            tracing
            util}
-   :model-exports #{:model/TaskHistory}
+   :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -2254,7 +2254,8 @@
            parameters
            query-processor
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
   timeline
   {:team "UX West"

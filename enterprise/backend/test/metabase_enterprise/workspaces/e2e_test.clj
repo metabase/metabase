@@ -71,7 +71,7 @@
    `{:tables #{}}` even when USAGE/SELECT grants are intact (root cause
    pending investigation; see that test's docstring). Don't add drivers
    to the smaller test without first fixing the underlying sync visibility."
-  #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery-cloud-sdk})
+  #{:postgres :sqlserver :clickhouse :mysql :redshift})
 
 (defn- three-slot-driver?
   "True when the driver emits `db.schema.table` (SQL Server / BigQuery).
@@ -492,7 +492,7 @@
                                   ;; that's always null, same as `:model/Table.schema`. Use `tbl-schema`
                                   ;; (the per-driver translation we already do for synced rows).
                                   (testing "describe-database returns only input-schema tables"
-                                    (let [{described :tables} (driver/describe-database admin-driver ws-db)
+                                    (let [described (into [] (:tables (driver/describe-database admin-driver ws-db)))
                                           iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
                                       (is (some #(and (= tbl-schema (:schema %))
                                                       (= src-name (:name %)))

@@ -521,17 +521,13 @@ describe("scenarios > admin > settings > email settings", () => {
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
       cy.intercept("DELETE", "api/ee/email/override").as("smtpCleared");
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          // in an actual pro-cloud instance this gets configured via env vars
-          res.body["email-configured?"] = true;
-          return res.body;
-        });
-      });
       cy.intercept("PUT", "api/ee/email/override").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-cloud");
+      // A real pro-cloud instance configures email via env vars; set the SMTP host so
+      // email-configured? is true (avoids a session/properties intercept that flakes on reload).
+      H.updateSetting("email-smtp-host", "smtp.example.test");
       H.resetSnowplow();
       H.enableTracking();
     });
@@ -967,7 +963,7 @@ describe("scenarios > admin > settings > map settings", () => {
     // Not GeoJSON
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
-    ).type("https://metabase.com");
+    ).type("https://www.metabase.com");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

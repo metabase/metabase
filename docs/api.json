@@ -14987,7 +14987,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-dashboard",
         "summary" : "POST /api/agent/v1/dashboard",
-        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15173,7 +15173,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-question",
         "summary" : "POST /api/agent/v1/question",
-        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -32648,7 +32648,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-workspace-manager-id",
         "summary" : "DELETE /api/ee/workspace-manager/{id}",
-        "description" : "Delete a Workspace. Deprovisions all databases first (blocking).",
+        "description" : "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation\n  first (blocking). Refuses with a 409 if any database is still `:provisioning`/\n  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are\n  left in the warehouse and only their app-DB rows are removed. If the warehouse was\n  unreachable for some `:provisioned` databases, the response includes\n  `:orphaned_resources` and a `:message` describing the inert schema/user objects\n  left behind for manual cleanup.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -32658,6 +32658,18 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "ignore-pending",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -32674,6 +32686,44 @@
                       "description" : "value must be an integer greater than zero.",
                       "type" : "integer",
                       "minimum" : 1
+                    },
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "orphaned_resources" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "driver" : {
+                            "type" : "string"
+                          },
+                          "reason" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "schema" : {
+                            "type" : "string"
+                          },
+                          "user" : {
+                            "type" : "string"
+                          },
+                          "workspace_database_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          }
+                        },
+                        "required" : [ "workspace_database_id", "database_id", "driver", "schema", "user" ]
+                      }
                     }
                   },
                   "required" : [ "id", "deleted" ]
@@ -38676,7 +38726,7 @@
       "get" : {
         "operationId" : "get-api-notification-admin",
         "summary" : "GET /api/notification/admin",
-        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed).\n\n  `last_check_status` filter operates on the latest terminal TaskRun for the card — the whole-run\n  rollup (`successful` = the run succeeded; `failing` = it failed or was abandoned). This is a\n  superset of `last_send_status`: it also catches query failures and heartbeat-abandoned runs that\n  never reached the send step. The Failing tab uses `?last_check_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
+        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification (`successful` = latest channel-send succeeded; `failing` = latest channel-send\n  failed).\n\n  `last_check_status` filter operates on the latest terminal TaskRun for the notification — the\n  whole-run rollup (`successful` = the run succeeded; `failing` = it failed or was abandoned). This\n  is a superset of `last_send_status`: it also catches query failures and heartbeat-abandoned runs\n  that never reached the send step. The Failing tab uses `?last_check_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
         "parameters" : [ {
           "in" : "query",
           "name" : "active",
@@ -42672,7 +42722,7 @@
       "get" : {
         "operationId" : "get-api-search",
         "summary" : "GET /api/search",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  `context` identifies the surface issuing the search; it selects the ranking weights and filter defaults.\n  It defaults to `api`, the value for programmatic callers.\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filter_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -42689,11 +42739,9 @@
           "name" : "context",
           "required" : false,
           "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+            "default" : "api",
+            "type" : "string",
+            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
           }
         }, {
           "in" : "query",
@@ -42856,6 +42904,18 @@
           }
         }, {
           "in" : "query",
+          "name" : "vector_search_strategy",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "hnsw", "brute-force" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
           "name" : "search_native_query",
           "required" : false,
           "schema" : {
@@ -42946,6 +43006,343 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/search" ]
+      }
+    },
+    "/api/search/debug" : {
+      "get" : {
+        "operationId" : "get-api-search-debug",
+        "summary" : "GET /api/search/debug",
+        "description" : "Superuser-only. Explain why `expected_result_id` / `expected_result_type` does not appear in the results of\n  the given search query. Accepts every `GET /api/search` parameter plus the two expected-result parameters, and\n  returns `{:type ..., :details ...}` for the first stage that drops the item: `not-searchable`,\n  `missing-from-index`, `not-permitted`, `filtered`, `not-matching`, or the terminal `matched` / `ranked-out`.\n\n  - `for_user_id`: diagnose from another user's perspective (defaults to you). Permission and visibility checks run\n    as that user, so a `not-permitted` result means *they* can't see the item.\n\n  Not supported for `indexed-entity` (its id is compound).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "context",
+          "required" : false,
+          "schema" : {
+            "default" : "api",
+            "type" : "string",
+            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "collection",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "table_db_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "filter_items_in_personal_collection",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "all", "only", "only-mine", "exclude", "exclude-others" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "created_at",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "created_by",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "display_type",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "minLength" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_edited_at",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_edited_by",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "model_ancestors",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_engine",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "vector_search_strategy",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "hnsw", "brute-force" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_native_query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "verified",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "ids",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "calculate_available_models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_dashboard_questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_metadata",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "non_temporal_dim_ids",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "has_temporal_dim",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "expected_result_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "expected_result_id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "for_user_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
             }, {
               "type" : "null"
             } ]

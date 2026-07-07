@@ -308,7 +308,9 @@
     (try
       (describe-query query)
       (catch #?(:clj Throwable :cljs js/Error) e
-        (log/errorf e "Error calculating display name for query: %s" (ex-message e))
+        ;; Throttled: a search reindex can call this for many failing metric Cards, don't log them all.
+        (log/throttle (* 10 1000)
+                      (log/errorf e "Error calculating display name for query: %s" (ex-message e)))
         nil))))
 
 (defmulti display-info-method

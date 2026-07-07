@@ -4,6 +4,7 @@ import { Route } from "react-router";
 
 import {
   setupDeleteWorkspaceEndpoint,
+  setupGetWorkspaceEndpoint,
   setupUpdateWorkspaceEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -15,6 +16,7 @@ const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 
 function setup() {
   setupUpdateWorkspaceEndpoint({ ...WORKSPACE, name: "Renamed" });
+  setupGetWorkspaceEndpoint(WORKSPACE);
   setupDeleteWorkspaceEndpoint(WORKSPACE.id);
 
   renderWithProviders(

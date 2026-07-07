@@ -272,11 +272,15 @@
 
 (defn- dbfields->ftree*
   "Construct _raw_ ftree from `dbfields`. Intended result is described in the [[dbfields->ftree]] docstring.
-  _Raw_ means that nodes have only #{:database-type :visibility-type :index} keys."
-  [dbfields]
+  _Raw_ means that nodes have only #{:database-type :visibility-type :index} keys.
+
+  Stops once the tree holds `limit` nodes (leaf + intermediate object fields), so collections with huge or deeply
+  nested schemas can't build an unbounded tree in memory (which has OOM'd sync). Nodes are counted by ftree path."
+  [dbfields limit]
   (loop [[{raw-path :path leaf-type :type :as dbfield} & dbfields*] dbfields
-         ftree {:children {}}]
-    (if (nil? dbfield)
+         ftree {:children {}}
+         seen  #{}]
+    (if (or (nil? dbfield) (>= (count seen) limit))
       ftree
       (let [ftree-paths (raw-path->ftree-paths raw-path)
             parents-paths (butlast ftree-paths)
@@ -289,7 +293,7 @@
             ftree* (reduce #(assoc-in %1 (conj (vec (first %2)) :index) (second %2))
                            ftree*
                            (map vector ftree-paths (:indices dbfield)))]
-        (recur dbfields* ftree*)))))
+        (recur dbfields* ftree* (into seen ftree-paths))))))
 
 (defn- ftree-prewalk
   "Walk the `ftree` and apply (f ftree path) to each node prior descending to its children. Nodes are walked according
@@ -372,9 +376,11 @@
 
   The resulting structure will hold at most [[driver.settings/sync-leaf-fields-limit]] leaf fields. That translates
   to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the
-  time of writing hence safe to reside in memory for further operation."
-  [dbfields]
-  (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
+  time of writing hence safe to reside in memory for further operation. With `limit` it additionally caps the total
+  number of nodes (leaf + intermediate) -- a hard ceiling regardless of the leaf-field setting."
+  ([dbfields] (dbfields->ftree dbfields Long/MAX_VALUE))
+  ([dbfields limit]
+   (-> dbfields (dbfields->ftree* limit) ftree-reconcile-nodes)))
 
 (defn- ftree->nested-fields
   "Create nested-fields structure suitable for :fields key of structure return by [[driver/describe-table]]. `ftree`
@@ -428,7 +434,9 @@
   [_driver database table]
   {:schema nil
    :name (:name table)
-   :fields (-> (fetch-dbfields database table) dbfields->ftree ftree->nested-fields)})
+   :fields (-> (fetch-dbfields database table)
+               (dbfields->ftree (driver.settings/sync-max-fields-per-table))
+               ftree->nested-fields)})
 
 ;; describe-table impl end
 
