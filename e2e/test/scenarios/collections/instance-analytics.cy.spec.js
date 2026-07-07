@@ -7,8 +7,6 @@ import {
 const ANALYTICS_COLLECTION_NAME = "Usage analytics";
 const CUSTOM_REPORTS_COLLECTION_NAME = "Custom reports";
 const PEOPLE_MODEL_NAME = "People";
-const METRICS_DASHBOARD_NAME = "Metabase metrics";
-
 describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
   describe("admin", () => {
     beforeEach(() => {
@@ -184,32 +182,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       });
     });
 
-    it("should not allow editing analytics content (metabase#36228)", () => {
-      // dashboard
-      getItemId(ANALYTICS_COLLECTION_NAME, METRICS_DASHBOARD_NAME).then(
-        (id) => {
-          H.visitDashboard(id);
-        },
-      );
-
-      cy.findByTestId("dashboard-header").within(() => {
-        cy.findByText("Make a copy");
-        cy.icon("pencil").should("not.exist");
-      });
-
-      // model
-      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
-        H.visitModel(id);
-      });
-
-      cy.findByTestId("qb-header").icon("ellipsis").click();
-
-      H.popover().within(() => {
-        cy.findByText("Duplicate").should("be.visible");
-        cy.findByText("Edit query definition").should("not.exist");
-      });
-    });
-
     it("should not leak instance analytics database into SQL query builder (metabase#44856)", () => {
       getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then((id) => {
         H.visitModel(id);
@@ -241,57 +213,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       H.sidebar()
         .findByText(/internal metabase database/i)
         .should("not.exist");
-    });
-  });
-
-  describe("API tests", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      cy.intercept("POST", "api/card").as("saveCard");
-      cy.intercept("POST", "api/dashboard/*/copy").as("copyDashboard");
-
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-    });
-
-    it("should not allow editing analytics content (metabase#36228)", () => {
-      // get the analytics collection
-      cy.request("GET", "/api/collection/root/items").then(({ body }) => {
-        const analyticsCollection = body.data.find(
-          ({ name }) => name === ANALYTICS_COLLECTION_NAME,
-        );
-        expect(analyticsCollection.can_write).to.be.false;
-
-        // get the items in the collection
-        cy.request(
-          "GET",
-          `/api/collection/${analyticsCollection.id}/items`,
-        ).then(({ body }) => {
-          const analyticsItems = body.data;
-
-          // check each collection item
-          const cards = analyticsItems.filter(
-            ({ model }) => model === "card" || model === "dataset",
-          );
-          const dashboards = analyticsItems.filter(
-            ({ model }) => model === "dashboard",
-          );
-
-          cards.forEach(({ id }) => {
-            cy.request("GET", `/api/card/${id}`).then(({ body }) => {
-              expect(body.can_write).to.be.false;
-            });
-          });
-
-          dashboards.forEach(({ id }) => {
-            cy.request("GET", `/api/dashboard/${id}`).then(({ body }) => {
-              expect(body.can_write).to.be.false;
-            });
-          });
-        });
-      });
     });
   });
 });

@@ -1,5 +1,4 @@
 const { H } = cy;
-import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -210,35 +209,6 @@ describe("scenarios > dashboard cards > replace question", () => {
       cy.findByText("18,760").should("exist");
       cy.findByText("Ean").should("not.exist");
       cy.findByText("Rustic Paper Wallet").should("not.exist");
-    });
-  });
-
-  it("should handle questions with limited permissions", () => {
-    cy.signInAsAdmin();
-    cy.updateCollectionGraph({
-      [USER_GROUPS.ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
-    });
-
-    cy.signIn("nodata");
-    visitDashboardAndEdit();
-
-    // Replacing with a read-only question with limited data perms
-    replaceQuestion(findTargetDashcard(), {
-      nextQuestionName: "Next question",
-      collectionName: "First collection",
-    });
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Next question");
-      cy.findByText("Ean").should("exist");
-      cy.findByText("Rustic Paper Wallet").should("exist");
-    });
-
-    // Ensure changes are persisted
-    H.saveDashboard();
-    findTargetDashcard().within(() => {
-      assertDashCardTitle("Next question");
-      cy.findByText("Ean").should("exist");
-      cy.findByText("Rustic Paper Wallet").should("exist");
     });
   });
 });

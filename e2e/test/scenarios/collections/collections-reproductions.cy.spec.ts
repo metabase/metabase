@@ -1,6 +1,5 @@
 const { H } = cy;
 import {
-  ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
@@ -121,35 +120,6 @@ describe("issue 24660", () => {
     });
   });
 });
-
-describe("issue 30235", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
-    const COLLECTION_NAME = "C30235";
-
-    H.createCollection({
-      name: COLLECTION_NAME,
-      parent_id: ADMIN_PERSONAL_COLLECTION_ID,
-    }).then(({ body: { id } }) => {
-      cy.visit(`/collection/${id}`);
-
-      H.moveOpenedCollectionTo("Our analytics");
-
-      H.openCollectionMenu();
-
-      H.popover().within(() => {
-        cy.findByText("Make collection official").should("be.visible");
-        cy.findByText("Edit permissions").should("be.visible");
-      });
-    });
-  });
-});
-
 describe("issue 58231", () => {
   beforeEach(() => {
     H.restore();

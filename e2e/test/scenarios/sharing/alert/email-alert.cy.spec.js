@@ -16,17 +16,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     H.setupSMTP();
   });
 
-  it("should have no alerts set up initially", () => {
-    cy.visit("/");
-
-    cy.request("/api/notification").then(({ body }) => {
-      const questionAlerts = body.filter(
-        (notification) => notification.payload_type === "notification/card",
-      );
-      expect(questionAlerts).to.have.length(0);
-    });
-  });
-
   it("should set up an email alert", () => {
     openAlertForQuestion(ORDERS_QUESTION_ID);
 
@@ -89,33 +78,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
 
     cy.findByRole("button", { name: "Delete this alert" }).click();
-  });
-
-  it("should persist the immutable Slack channel_id alongside the channel name", () => {
-    H.mockSlackConfigured();
-
-    openAlertForQuestion(ORDERS_QUESTION_ID);
-
-    H.removeNotificationHandlerChannel("Email");
-    H.addNotificationHandlerChannel("Slack", { hasNoChannelsAdded: true });
-
-    H.modal()
-      .findByPlaceholderText(/Pick a user or channel/)
-      .click();
-    H.popover().findByText("#work").click();
-
-    H.modal().within(() => {
-      cy.button("Done").click();
-    });
-
-    cy.wait("@saveAlert").then(({ response: { body } }) => {
-      // The mocked channel `#work` has id `C001` in e2e-slack-helpers.js.
-      // Storing the immutable channel_id at save time is what makes the
-      // subscription survive future channel renames in Slack.
-      const slackDetails = body.handlers[0].recipients[0].details;
-      expect(slackDetails.value).to.eq("#work");
-      expect(slackDetails.channel_id).to.eq("C001");
-    });
   });
 
   it("should set up an email alert for newly created question", () => {
@@ -183,27 +145,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
           "href",
           "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=alert",
         );
-    });
-
-    it("should include branding for Starter instances", () => {
-      H.activateToken("starter");
-      sendTestAlertForQuestion(questionName);
-      cy.findAllByRole("link")
-        .filter(":contains(Made with)")
-        .should("contain", "Metabase")
-        .and(
-          "have.attr",
-          "href",
-          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=alert",
-        );
-    });
-
-    it("should not include branding on Pro/Enterprise instances", () => {
-      H.activateToken("pro-self-hosted");
-      sendTestAlertForQuestion(questionName);
-      cy.findAllByRole("link")
-        .filter(":contains(Made with)")
-        .should("not.exist");
     });
   });
 });

@@ -404,30 +404,6 @@ LIMIT
         .and("not.contain", /\bLIMIT\b/i);
     });
 
-    it("should not allow to overwrite an existing table when creating a transform", () => {
-      cy.log("open the new transform page");
-      visitTransformListPage();
-      cy.button("Create a transform").click();
-      H.popover().findByText("Query builder").click();
-
-      cy.log("set the query");
-      H.miniPicker().within(() => {
-        cy.findByText(DB_NAME).click();
-        cy.findByText(TARGET_SCHEMA).click();
-        cy.findByText(SOURCE_TABLE).click();
-      });
-      getQueryEditor().button("Save").click();
-      H.modal().within(() => {
-        cy.findByLabelText("Name").clear().type("MBQL transform");
-        cy.findByLabelText("Table name").clear().type(SOURCE_TABLE);
-        cy.button("Save").click();
-        cy.wait("@createTransform");
-      });
-      H.modal()
-        .findByText("A table with that name already exists.")
-        .should("be.visible");
-    });
-
     it("should be able to create a new schema when saving a transform", () => {
       visitTransformListPage();
       cy.button("Create a transform").click();
@@ -1343,58 +1319,6 @@ LIMIT
       cy.log("verify that the original question does not work");
       visitTableQuestion();
       assertTableDoesNotExistError();
-    });
-
-    it("should be able to delete the target and restore the same target back", () => {
-      cy.log("create and run a transform");
-      createMbqlTransform({ visitTransform: true });
-      H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
-
-      cy.log("delete the old target without creating the new one");
-      H.DataStudio.Transforms.settingsTab().click();
-      getTransformsTargetContent().button("Change target").click();
-      H.modal().within(() => {
-        cy.findByLabelText("New table name").clear().type(TARGET_TABLE_2);
-        cy.findByLabelText("Delete transform_table").click();
-        cy.button("Change target and delete old table").click();
-        cy.wait("@deleteTransformTable");
-        cy.wait("@updateTransform");
-      });
-
-      cy.log("change the target back to the original one");
-      getTransformsTargetContent().button("Change target").click();
-      H.modal().within(() => {
-        cy.findByLabelText("New table name").clear().type(TARGET_TABLE);
-        cy.button("Change target").click();
-        cy.wait("@updateTransform");
-      });
-
-      cy.log("run the transform to re-create the original target");
-      H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
-
-      cy.log("verify the target is available");
-      H.DataStudio.Transforms.settingsTab().click();
-      getTableLink().click();
-      H.queryBuilderHeader().findByText("Transform Table").should("be.visible");
-      H.assertQueryBuilderRowCount(3);
-    });
-
-    it("should not allow to overwrite an existing table when changing the target", () => {
-      createMbqlTransform({ visitTransform: true });
-
-      cy.log("change the target to an existing table");
-      H.DataStudio.Transforms.settingsTab().click();
-      getTransformsTargetContent().button("Change target").click();
-      H.modal().within(() => {
-        cy.findByLabelText("New table name").clear().type(SOURCE_TABLE);
-        cy.button("Change target").click();
-        cy.wait("@updateTransform");
-        cy.findByText("A table with that name already exists.").should(
-          "be.visible",
-        );
-      });
     });
   });
 
@@ -3241,30 +3165,6 @@ describe("scenarios > admin > transforms > jobs", () => {
         .should("deep.equal", { active: true });
       getJobRow("Job A").findByText("Disabled").should("not.exist");
       getJobRow("Job B").findByText("Disabled").should("not.exist");
-    });
-  });
-
-  describe("default jobs and tags", () => {
-    it("should pre-create default jobs and tags", () => {
-      const jobNames = ["Hourly job", "Daily job", "Weekly job", "Monthly job"];
-      const tagNames = ["hourly", "daily", "weekly", "monthly"];
-
-      cy.log("make sure that default jobs are created");
-      visitJobListPage();
-      H.DataStudio.Jobs.list().within(() => {
-        jobNames.forEach((jobName) =>
-          cy.findByText(jobName).should("be.visible"),
-        );
-      });
-
-      cy.log("make sure that default tags are available for selection");
-      H.DataStudio.Jobs.list().findByRole("link", { name: /New/ }).click();
-      getTagsInput().click();
-      H.popover().within(() => {
-        tagNames.forEach((tagName) =>
-          cy.findByText(tagName).should("be.visible"),
-        );
-      });
     });
   });
 

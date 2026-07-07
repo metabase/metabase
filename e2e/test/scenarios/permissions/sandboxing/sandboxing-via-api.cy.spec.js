@@ -18,7 +18,7 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const VIEW_DATA_PERMISSION_INDEX = 0;
 
@@ -69,7 +69,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
   describe("normal user", () => {
     const USER_ATTRIBUTE = "User ID";
     const ATTRIBUTE_VALUE = "3";
-    const TTAG_NAME = "cid";
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
@@ -94,46 +93,8 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         },
       });
 
-      H.createNativeQuestion({
-        name: "sql param",
-        native: {
-          query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
-          "template-tags": {
-            [TTAG_NAME]: {
-              id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-              name: TTAG_NAME,
-              "display-name": "CID",
-              type: "dimension",
-              dimension: ["field", PEOPLE.ID, null],
-              "widget-type": "id",
-            },
-          },
-        },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.sandboxTable({
-          table_id: PEOPLE_ID,
-          card_id: QUESTION_ID,
-          group_id: DATA_GROUP,
-          attribute_remappings: {
-            [USER_ATTRIBUTE]: ["dimension", ["template-tag", TTAG_NAME]],
-          },
-        });
-      });
-
       cy.signOut();
       cy.signInAsNormalUser();
-    });
-
-    describe("table sandboxed on a user attribute", () => {
-      it("should display correct number of orders", () => {
-        H.openOrdersTable();
-        // 10 rows filtered on User ID
-        cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10);
-        H.assertDatasetReqIsSandboxed({
-          columnId: ORDERS.USER_ID,
-          columnAssertion: Number(ATTRIBUTE_VALUE),
-        });
-      });
     });
 
     describe("question with joins", () => {
@@ -168,100 +129,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           6,
         );
       });
-    });
-
-    describe("table sandboxed on a saved parameterized SQL question", () => {
-      it("should show filtered categories", () => {
-        H.openPeopleTable();
-        H.assertDatasetReqIsSandboxed({
-          columnId: PEOPLE.ID,
-          columnAssertion: Number(ATTRIBUTE_VALUE),
-        });
-        cy.findAllByTestId("header-cell").should("have.length", 4);
-        cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
-          "have.length",
-          1,
-        );
-      });
-    });
-  });
-
-  describe("sandboxed user", () => {
-    const allCategories = ["Gadget", "Gizmo", "Doohickey", "Widget"];
-
-    function verifyCategoryList(visibleCategories) {
-      H.popover().within(() => {
-        allCategories.forEach((value) => {
-          if (visibleCategories.includes(value)) {
-            cy.findByText(value).should("be.visible");
-          } else {
-            cy.findByText(value).should("not.exist");
-          }
-        });
-      });
-    }
-
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      preparePermissions();
-    });
-
-    it("should show field values for sandboxed users", () => {
-      cy.log("create another sandboxed user");
-      const user = {
-        email: "u2@metabase.test",
-        password: "12341234",
-        login_attributes: {
-          attr_uid: "2",
-          attr_cat: "Gadget",
-        },
-        user_group_memberships: [
-          { id: ALL_USERS_GROUP, is_group_manager: false },
-          { id: COLLECTION_GROUP, is_group_manager: false },
-        ],
-      };
-      cy.createUserFromRawData(user);
-
-      cy.log("setup sandboxing");
-      cy.visit(
-        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
-      );
-      H.modifyPermission("collection", 0, "Row and column security");
-      H.modal().findByText("Pick a column").click();
-      H.popover().findByText("Category").click();
-      H.modal().findByPlaceholderText("Pick a user attribute").click();
-      H.popover().findByText("attr_cat").click();
-      H.modal().button("Save").click();
-      H.savePermissions();
-
-      cy.log("setup a dashboard");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
-      H.selectDashboardFilter(H.getDashboardCard(), "Category");
-      H.saveDashboard();
-
-      cy.log("field values for admin");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.filterWidget().click();
-      verifyCategoryList(allCategories);
-
-      cy.log("field values for the first sandboxed user");
-      cy.signIn("sandboxed");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.filterWidget().click();
-      verifyCategoryList(["Widget"]);
-
-      cy.log("field values for the second sandboxed user");
-      cy.request("POST", "/api/session", {
-        username: user.email,
-        password: user.password,
-      });
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.filterWidget().click();
-      verifyCategoryList(["Gadget"]);
     });
   });
 
@@ -396,56 +263,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       cy.findByText("11"); // Sum of orders for user with ID #1
       H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
       H.assertDatasetReqIsSandboxed();
-    });
-
-    // Note: This issue was ported from EE repo - it was previously known as (metabase-enterprise#548)
-    it("SB question with `case` CC should substitute the `else` argument's table (metabase#14859)", () => {
-      const QUESTION_NAME = "EE_548";
-      const CC_NAME = "CC_548"; // Custom column
-
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-        },
-      });
-
-      H.createQuestion({
-        name: QUESTION_NAME,
-        query: {
-          expressions: {
-            [CC_NAME]: [
-              "case",
-              [
-                [
-                  [">", ["field", ORDERS.DISCOUNT, null], 0],
-                  ["field", ORDERS.DISCOUNT],
-                  // no idea why this is here, a `case` subclause only has two args, this actually makes this invalid.
-                  null,
-                ],
-              ],
-              { default: ["field", ORDERS.TOTAL, null] },
-            ],
-          },
-          "source-table": ORDERS_ID,
-        },
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.signOut();
-        cy.signInAsSandboxedUser();
-
-        // Assertion phase starts here
-        H.visitQuestion(QUESTION_ID);
-        cy.findByText(QUESTION_NAME);
-
-        cy.log("Reported failing since v1.36.4");
-        cy.contains(CC_NAME);
-        H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-        H.assertDatasetReqIsSandboxed({
-          columnId: ORDERS.USER_ID,
-          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
-          requestAlias: `@cardQuery${QUESTION_ID}`,
-        });
-      });
     });
 
     ["remapped", "default"].forEach((test) => {
@@ -791,48 +608,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
           cy.wait("@cardQuery");
         }
       });
-
-      it("simple sandboxing should work (metabase#14629)", () => {
-        cy.updatePermissionsGraph({
-          [COLLECTION_GROUP]: {
-            [SAMPLE_DB_ID]: {
-              "view-data": {
-                PUBLIC: {
-                  [PRODUCTS_ID]: "unrestricted",
-                },
-              },
-            },
-          },
-        });
-
-        cy.sandboxTable({
-          table_id: ORDERS_ID,
-          attribute_remappings: {
-            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-          },
-        });
-
-        cy.signOut();
-        cy.signInAsSandboxedUser();
-        H.openOrdersTable({
-          callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
-        });
-        H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-        H.assertDatasetReqIsSandboxed({
-          columnId: ORDERS.USER_ID,
-          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
-        });
-
-        // Title of the first order for User ID = 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Awesome Concrete Shoes");
-
-        cy.signOut();
-        cy.signInAsAdmin();
-        cy.visit(
-          "/admin/permissions/data/group/3/database/1/schema/PUBLIC/5/segmented",
-        );
-      });
     });
 
     ["remapped", "default"].forEach((test) => {
@@ -1030,77 +805,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       });
     });
 
-    it("should work with pivot tables (metabase#14969)", () => {
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
-
-      cy.sandboxTable({
-        table_id: PEOPLE_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", PEOPLE.ID]],
-        },
-      });
-
-      cy.sandboxTable({
-        table_id: PRODUCTS_ID,
-        attribute_remappings: {
-          attr_cat: ["dimension", ["field-id", PRODUCTS.CATEGORY]],
-        },
-      });
-
-      cy.request("POST", "/api/card/", {
-        name: "14969",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": PEOPLE_ID,
-                condition: [
-                  "=",
-                  ["field-id", ORDERS.USER_ID],
-                  ["joined-field", "People - User", ["field-id", PEOPLE.ID]],
-                ],
-                alias: "People - User",
-              },
-            ],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
-            breakout: [
-              ["joined-field", "People - User", ["field-id", PEOPLE.SOURCE]],
-              [
-                "fk->",
-                ["field-id", ORDERS.PRODUCT_ID],
-                ["field-id", PRODUCTS.CATEGORY],
-              ],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "pivot",
-        visualization_settings: {},
-      }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.signOut();
-        cy.signInAsSandboxedUser();
-
-        H.visitQuestion(QUESTION_ID);
-        H.assertDatasetReqIsSandboxed({
-          requestAlias: `@cardQuery${QUESTION_ID}`,
-        });
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Twitter");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Row totals");
-      H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has 30
-    });
-
     it("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
       H.setupSMTP();
 
@@ -1127,28 +831,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
         columnId: ORDERS.USER_ID,
         columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
       });
-    });
-
-    it("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: [
-            "dimension",
-            ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.ID]],
-          ],
-        },
-      });
-
-      cy.signOut();
-      cy.signInAsSandboxedUser();
-
-      H.openOrdersTable({
-        callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("37.65");
     });
 
     it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {

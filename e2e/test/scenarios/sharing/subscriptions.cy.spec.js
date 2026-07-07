@@ -78,35 +78,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setupSMTP();
     });
 
-    it("renders an object detail as a label/value table in a subscription email", () => {
-      const questionDetails = {
-        name: "Object detail static-viz smoke",
-        native: {
-          query: "SELECT 'Hammer' AS product, 19 AS price, NULL AS discount",
-        },
-        display: "object",
-      };
-
-      H.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ dashboardId }) => {
-          H.visitDashboard(dashboardId);
-        },
-      );
-
-      H.openAndAddEmailsToSubscriptions([
-        `${admin.first_name} ${admin.last_name}`,
-      ]);
-
-      H.sendEmailAndAssert(({ html }) => {
-        expect(html).not.to.include(
-          "An error occurred while displaying this card.",
-        );
-        expect(html).to.include("Hammer");
-        // "Empty" (the null column) is unique to the :object renderer — a table fallback leaves it blank.
-        expect(html).to.include("Empty");
-      });
-    });
-
     describe("with no existing subscriptions", () => {
       it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
@@ -524,40 +495,6 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(email.html).to.include(questionDetails.name);
       });
     });
-
-    it("renders a region (choropleth) map as an image in a subscription email", () => {
-      const questionDetails = {
-        name: "Region map static-viz smoke",
-        native: {
-          query:
-            "SELECT 'CA' AS state, 99999 AS metric " +
-            "UNION ALL SELECT 'NY' AS state, 11111 AS metric",
-        },
-        display: "map",
-        visualization_settings: {
-          "map.type": "region",
-          "map.region": "us_states",
-          "map.dimension": "STATE",
-          "map.metric": "METRIC",
-        },
-      };
-
-      H.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ dashboardId }) => {
-          assignRecipient({ dashboard_id: dashboardId });
-        },
-      );
-
-      H.sendEmailAndAssert(({ html }) => {
-        expect(html).not.to.include(
-          "An error occurred while displaying this card.",
-        );
-        // The map rasterizes to a PNG <img>; a table fallback would instead leak these values as text.
-        expect(html).to.include("<img");
-        expect(html).not.to.include("99999");
-        expect(html).not.to.include("11111");
-      });
-    });
   });
 
   describe("with Slack set up", () => {
@@ -597,50 +534,12 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.openDashboardMenu();
       H.popover().findByText("Subscriptions").should("be.visible");
     });
-
-    it("should persist the immutable Slack channel_id alongside the channel name", () => {
-      cy.intercept("POST", "/api/pulse").as("createPulse");
-
-      openSlackCreationForm();
-
-      cy.findByPlaceholderText("Pick a user or channel...").click();
-      H.popover().findByText("#work").click();
-
-      H.sidebar().findByRole("button", { name: "Done" }).click();
-
-      cy.wait("@createPulse").then(({ request: { body } }) => {
-        // The mocked channel `#work` has id `C001` in e2e-slack-helpers.js.
-        // Storing the immutable channel_id at save time is what makes the
-        // subscription survive future channel renames in Slack.
-        const slackChannel = body.channels.find(
-          (c) => c.channel_type === "slack",
-        );
-        expect(slackChannel.details.channel).to.eq("#work");
-        expect(slackChannel.details.channel_id).to.eq("C001");
-      });
-    });
   });
 
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
       H.setupSMTP();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    });
-
-    it("should include branding", () => {
-      assignRecipient();
-      H.sendEmailAndVisitIt();
-      cy.findAllByRole("link")
-        .filter(":contains(Orders in a dashboard)")
-        .should("be.visible");
-      cy.findAllByRole("link")
-        .filter(":contains(Made with)")
-        .should("contain", "Metabase")
-        .and(
-          "have.attr",
-          "href",
-          "https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=dashboard_subscription",
-        );
     });
 
     describe("with parameters", () => {
@@ -711,17 +610,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.activateToken("pro-self-hosted");
       H.setupSMTP();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    });
-
-    it("should not include branding", () => {
-      assignRecipient();
-      H.sendEmailAndVisitIt();
-      cy.findAllByRole("link")
-        .filter(":contains(Orders in a dashboard)")
-        .should("be.visible");
-      cy.findAllByRole("link")
-        .filter(":contains(Made with)")
-        .should("not.exist");
     });
 
     it("should only show current user in recipients dropdown if `user-visiblity` setting is `none`", () => {

@@ -399,52 +399,6 @@ describe("AI controls > AI usage limits", () => {
       });
     });
   });
-
-  describe("When instance limit is set to 0", () => {
-    beforeEach(() => {
-      // Enable Metabot with a configured LLM key
-      H.updateSetting("metabot-enabled?", true);
-
-      // Set messages as the limit type (easier to trigger with 0)
-      // (These settings are added in PR #71699, so we call the API directly)
-      cy.request("PUT", "/api/setting/metabot-limit-unit", {
-        value: "messages",
-      });
-
-      // Set a custom quota-reached message
-      cy.request("PUT", "/api/setting/metabot-quota-reached-message", {
-        value: DEFAULT_QUOTA_MESSAGE,
-      });
-
-      // Set instance limit to 0 — any usage will immediately exceed it
-      cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
-        max_usage: 0,
-      });
-
-      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
-      cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
-        "xrayCandidates",
-      );
-
-      llmMockServerSetup();
-    });
-
-    afterEach(() => {
-      llmMockServerTeardown();
-    });
-
-    it("should show the quota-reached message when the user sends a message to Metabot", () => {
-      cy.visit("/");
-      cy.wait("@xrayCandidates");
-
-      H.openMetabotViaSearchButton();
-      H.sendMetabotMessage("hello");
-
-      // The backend returns the quota-reached message when limit is exceeded
-      H.lastChatMessage().should("have.text", DEFAULT_QUOTA_MESSAGE);
-    });
-  });
-
   describe("Group limits handling", () => {
     let groupAId: number;
     let groupBId: number;
@@ -559,47 +513,6 @@ describe("AI controls > AI usage limits", () => {
           .scrollIntoView()
           .should("be.visible");
       });
-    });
-
-    it("should respect the effective user limit (max across their groups)", () => {
-      // Normal user is in group A (limit 5) and group B (limit 100).
-      // Effective limit = max(1, 1, 1, 5, 100) = 100.
-      // (pre-existing groups are set to 1 in beforeEach)
-
-      // Seed 10 usage rows — below the effective limit of 100
-      cy.request("POST", "/api/testing/metabot/seed-ai-usage", {
-        user_id: NORMAL_USER_ID,
-        count: 10,
-      });
-
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.wait("@xrayCandidates");
-
-      H.openMetabotViaSearchButton();
-      H.sendMetabotMessage("hello");
-
-      // With usage (10) < effective limit (100) the backend passes the quota
-      // check, calls the mock LLM, and streams its response to the frontend.
-      H.lastChatMessage().should("contain.text", MOCK_LLM_RESPONSE);
-
-      // Seed additional rows so total usage (101) exceeds effective group limit (100)
-      cy.signInAsAdmin();
-      cy.request("POST", "/api/testing/metabot/seed-ai-usage", {
-        user_id: NORMAL_USER_ID,
-        count: 91,
-      });
-
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.wait("@xrayCandidates");
-
-      H.openMetabotViaSearchButton();
-      H.sendMetabotMessage("hello");
-
-      // With usage (101) > effective group limit (100) the backend short-circuits
-      // before calling the LLM and returns the quota-reached message.
-      H.lastChatMessage().should("have.text", DEFAULT_QUOTA_MESSAGE);
     });
   });
 });

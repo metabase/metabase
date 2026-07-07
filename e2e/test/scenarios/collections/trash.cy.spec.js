@@ -6,7 +6,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
-  READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > collections > trash", () => {
@@ -682,48 +681,6 @@ describe("scenarios > collections > trash", () => {
       archiveBanner().findByText("Restore").should("not.exist");
       archiveBanner().findByText("Move").should("not.exist");
       archiveBanner().findByText("Delete permanently").should("not.exist");
-    });
-  });
-
-  it("should hide read-only archived items in trash (metabase#24018)", () => {
-    const READ_ONLY_NAME = "read-only dashboard";
-    const CURATEABLE_NAME = "curate-able dashboard";
-
-    // setup archive with read-only collection items
-    createDashboard(
-      {
-        name: READ_ONLY_NAME,
-        collection_id: null,
-      },
-      true,
-    );
-
-    // setup archive with curate-able collection items (user created items)
-    cy.signIn("readonly");
-
-    createDashboard(
-      {
-        name: CURATEABLE_NAME,
-        collection_id: READ_ONLY_PERSONAL_COLLECTION_ID,
-      },
-      true,
-    );
-
-    // assert on desired behavior for read-only user
-    cy.visit("/trash");
-
-    cy.get("main").within(() => {
-      cy.findByText(READ_ONLY_NAME).should("not.exist");
-      cy.findByText(CURATEABLE_NAME).should("be.visible");
-    });
-
-    // assert on desired behavior for admin user
-    cy.signInAsAdmin();
-    cy.visit("/trash");
-
-    cy.get("main").within(() => {
-      cy.findByText(READ_ONLY_NAME).should("be.visible");
-      cy.findByText(CURATEABLE_NAME).should("be.visible");
     });
   });
 

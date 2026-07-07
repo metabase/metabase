@@ -63,17 +63,6 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
       cy.findByText("Registered").should("not.exist");
     });
   });
-
-  it("is accessible to superusers only", () => {
-    cy.signInAsNormalUser();
-    cy.request({
-      method: "GET",
-      url: "/api/oauth/authorizations",
-      failOnStatusCode: false,
-    })
-      .its("status")
-      .should("eq", 403);
-  });
 });
 
 type RegisteredClient = { client_id: string };

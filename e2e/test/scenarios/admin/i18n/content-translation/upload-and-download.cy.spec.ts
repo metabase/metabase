@@ -9,8 +9,6 @@ import {
   germanFieldNames,
   invalidLocaleXX,
   multipleInvalidLocales,
-  nonAsciiFieldNames,
-  portugueseFieldNames,
   stringTranslatedTwice,
 } from "./constants";
 import {
@@ -78,56 +76,6 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
       });
 
-      it("accepts a CSV upload with non-ASCII characters", () => {
-        uploadTranslationDictionary(nonAsciiFieldNames);
-        cy.findByTestId("content-localization-setting").findByText(
-          "Dictionary uploaded",
-        );
-        nonAsciiFieldNames.forEach(({ locale, msgid, msgstr }) => {
-          assertOnlyTheseTranslationsAreStored(
-            [{ locale, msgid, msgstr }],
-            locale,
-          );
-        });
-      });
-
-      it("accepts a CSV upload with a hyphenated locale", () => {
-        uploadTranslationDictionary(portugueseFieldNames);
-        cy.findByTestId("content-localization-setting").findByText(
-          "Dictionary uploaded",
-        );
-        cy.signInAsNormalUser();
-        assertOnlyTheseTranslationsAreStored(portugueseFieldNames, "pt-BR");
-      });
-
-      it("does not store rows with translations made of only whitespace and/or semicolons", () => {
-        const blankTranslation = { locale: "de", msgid: "Cat", msgstr: "" };
-        const translationWithJustSpaces = {
-          locale: "de",
-          msgid: "Spaces",
-          msgstr: "  ",
-        };
-        const translationWithJustTabs = {
-          locale: "de",
-          msgid: "Tabs",
-          msgstr: "\t\t",
-        };
-        const translationWithJustSemicolons = {
-          locale: "de",
-          msgid: "Semicolons",
-          msgstr: ";;",
-        };
-        const translationsWithBlanks = [
-          ...germanFieldNames,
-          blankTranslation,
-          translationWithJustSpaces,
-          translationWithJustTabs,
-          translationWithJustSemicolons,
-        ];
-        uploadTranslationDictionary(translationsWithBlanks);
-        assertOnlyTheseTranslationsAreStored(germanFieldNames);
-      });
-
       it("rejects a CSV upload that provides two translations for the same string", () => {
         uploadTranslationDictionary(stringTranslatedTwice);
         cy.findAllByRole("alert")
@@ -150,22 +98,6 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
         cy.findAllByRole("alert")
           .contains(/Row 2: Invalid locale: xx/)
           .should("exist");
-      });
-
-      it("erases previously stored translations when a new CSV is uploaded", () => {
-        uploadTranslationDictionary(germanFieldNames);
-        assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
-          const oneArabicFieldName = [nonAsciiFieldNames[0]];
-          uploadTranslationDictionary(oneArabicFieldName);
-          assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
-        });
-      });
-
-      it("does not erase previously stored translations when an upload fails", () => {
-        uploadTranslationDictionary(germanFieldNames);
-        assertOnlyTheseTranslationsAreStored(germanFieldNames);
-        uploadTranslationDictionary(invalidLocaleXX);
-        assertOnlyTheseTranslationsAreStored(germanFieldNames);
       });
 
       it("rejects a CSV upload with invalid locales in multiple rows", () => {

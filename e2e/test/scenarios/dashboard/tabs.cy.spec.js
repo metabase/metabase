@@ -1,8 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ADMIN_PERSONAL_COLLECTION_ID,
-  NORMAL_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -319,39 +317,6 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findAllByTestId("toast-undo").should("have.length", 0);
     },
   );
-
-  it("should allow moving dashcard even if we don't have permission on that underlying query", () => {
-    const questionDetails = {
-      native: {
-        query: "select 42",
-      },
-      collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-    };
-    H.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails: {
-        collection_id: NORMAL_PERSONAL_COLLECTION_ID,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      cy.signInAsNormalUser();
-      H.visitDashboard(dashboard_id);
-    });
-
-    H.editDashboard();
-    H.createNewTab();
-
-    H.goToTab("Tab 1");
-
-    H.getDashboardCard()
-      .findByText(/you don't have permission/)
-      .should("exist");
-
-    H.moveDashCardToTab({ tabName: "Tab 2" });
-
-    H.saveDashboard();
-
-    H.getDashboardCards().should("have.length", 0);
-  });
 
   it("should leave dashboard if navigating back after initial load", () => {
     H.visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });

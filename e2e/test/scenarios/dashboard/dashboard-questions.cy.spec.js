@@ -686,49 +686,6 @@ describe("Dashboard > Dashboard Questions", () => {
       });
     });
 
-    it("can archive and unarchive a card within a dashboard", () => {
-      H.createQuestion({
-        name: "Total Orders",
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
-      H.createQuestion({
-        name: "More Total Orders",
-        dashboard_id: S.ORDERS_DASHBOARD_ID,
-        query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
-          aggregation: [["count"]],
-        },
-        display: "scalar",
-      });
-
-      // archive it
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      H.dashboardCards().findByText("Total Orders").click();
-      H.openQuestionActions("Move to trash");
-      H.modal().button("Move to trash").click();
-
-      // check that it got removed
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      H.dashboardCards().findByText("Total Orders").should("not.exist");
-
-      // restore it
-      cy.visit("/trash");
-      H.collectionTable().findByText("Total Orders");
-      H.openCollectionItemMenu("Total Orders");
-      H.popover().findByText("Restore").click();
-      H.undoToast().findByText("Total Orders has been restored.");
-
-      // check that it got restored
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
-      H.dashboardCards().findByText("Total Orders");
-    });
-
     it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 

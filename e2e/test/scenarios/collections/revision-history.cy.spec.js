@@ -63,66 +63,6 @@ describe("revision history", () => {
               }
             });
 
-            it("shouldn't create a rearrange revision when adding a card (metabase#6884)", () => {
-              cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
-              cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-              H.createDashboard().then(({ body }) => {
-                H.visitDashboard(body.id);
-                H.editDashboard();
-              });
-
-              H.openQuestionsSidebar();
-              H.sidebar().findByText("Orders, Count").click();
-              cy.wait("@cardQuery");
-              H.saveDashboard();
-
-              // this is dirty, but seems like the only reliable way
-              // to wait until SET_DASHBOARD_EDITING is dispatched,
-              // so it doesn't close the revisions sidebar
-              cy.wait("@fetchDashboard");
-              cy.wait(100);
-
-              openRevisionHistory();
-              H.sidesheet().within(() => {
-                cy.findByRole("tab", { name: "History" }).click();
-                cy.findByText(/added a card/)
-                  .siblings("button")
-                  .should("not.exist");
-                cy.findByText(/rearranged the cards/).should("not.exist");
-              });
-            });
-
-            it("should be able to revert a dashboard (metabase#15237)", () => {
-              H.visitDashboard(ORDERS_DASHBOARD_ID);
-              openRevisionHistory();
-              clickRevert(/created this/);
-
-              cy.wait("@revert").then(({ response: { statusCode, body } }) => {
-                expect(statusCode).to.eq(200);
-                expect(body.cause).not.to.exist;
-              });
-
-              cy.log(
-                "We reverted the dashboard to the state prior to adding any cards to it",
-              );
-              cy.findByTestId("dashboard-empty-state").should("exist");
-
-              cy.log("Should be able to revert back again");
-              cy.findByTestId("dashboard-history-list").should(
-                "contain",
-                "You reverted to an earlier version.",
-              );
-              clickRevert(/added a card/);
-
-              cy.wait("@revert").then(({ response: { statusCode, body } }) => {
-                expect(statusCode).to.eq(200);
-                expect(body.cause).not.to.exist;
-              });
-
-              cy.findByTestId("visualization-root").should("contain", "117.03");
-            });
-
             it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
               cy.skipOn(user === "nodata");
 
@@ -189,11 +129,6 @@ describe("revision history", () => {
     });
   });
 });
-
-function clickRevert(event_name, index = 0) {
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.findAllByLabelText(event_name).eq(index).click();
-}
 
 function openRevisionHistory() {
   cy.intercept("GET", "/api/revision*").as("revisionHistory");

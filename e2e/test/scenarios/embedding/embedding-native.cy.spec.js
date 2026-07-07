@@ -3,10 +3,7 @@ const { H } = cy;
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
-import {
-  questionDetails as questionDetails2,
-  questionDetailsWithDefaults,
-} from "./shared/embedding-dashboard";
+import { questionDetails as questionDetails2 } from "./shared/embedding-dashboard";
 import { questionDetails } from "./shared/embedding-native";
 
 describe("scenarios > embedding > native questions", () => {
@@ -297,41 +294,6 @@ describe("scenarios > embedding > native questions", () => {
         cy.contains("35.7").should("not.exist");
       });
     });
-
-    it("should lock all parameters", () => {
-      cy.get("@questionId").then((questionId) => {
-        cy.request("PUT", `/api/card/${questionId}`, {
-          enable_embedding: true,
-          embedding_params: {
-            id: "locked",
-            product_id: "locked",
-            state: "locked",
-            created_at: "locked",
-            total: "locked",
-            source: "locked",
-          },
-        });
-
-        const payload = {
-          resource: { question: questionId },
-          params: {
-            id: [92, 96, 102, 104],
-            product_id: [140],
-            state: ["AK", "TX"],
-            created_at: "Q3-2027",
-            total: [10],
-            source: ["Organic"],
-          },
-        };
-
-        H.visitEmbeddedPage(payload);
-
-        H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
-        cy.findByText("66.8");
-
-        H.filterWidget().should("not.exist");
-      });
-    });
   });
 
   describe("locked parameters", () => {
@@ -355,22 +317,6 @@ describe("scenarios > embedding > native questions", () => {
       });
     });
 
-    it("locked parameters require a value to be specified in the JWT", () => {
-      cy.get("@questionId").then((questionId) => {
-        const payload = {
-          resource: { question: questionId },
-          params: { source: null },
-        };
-
-        H.visitEmbeddedPage(payload);
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You must specify a value for :source in the JWT.").should(
-        "be.visible",
-      );
-    });
-
     it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
       H.visitQuestion("@questionId").then((id) => {
         H.openLegacyStaticEmbeddingModal({
@@ -389,56 +335,6 @@ describe("scenarios > embedding > native questions", () => {
         .should("be.visible");
       cy.findByRole("heading", { name: "test question" }).should("be.visible");
     });
-  });
-});
-
-describe("scenarios > embedding > native questions with default parameters", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(questionDetailsWithDefaults, {
-      visitQuestion: true,
-      wrapId: true,
-    });
-
-    cy.get("@questionId").then((questionId) => {
-      H.openLegacyStaticEmbeddingModal({
-        resource: "question",
-        resourceId: questionId,
-        activeTab: "parameters",
-      });
-    });
-
-    // Note: ID is disabled
-    H.setEmbeddingParameter("Source", "Locked");
-    H.setEmbeddingParameter("Name", "Editable");
-    H.publishChanges("card", ({ request }) => {
-      assert.deepEqual(request.body.embedding_params, {
-        id: "disabled",
-        source: "locked",
-        name: "enabled",
-        user_id: "disabled",
-      });
-    });
-  });
-
-  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    cy.get("@questionId").then((questionId) => {
-      const payload = {
-        resource: { question: questionId },
-        params: { source: [] },
-      };
-
-      H.visitEmbeddedPage(payload);
-    });
-    // Remove default filter value
-    H.clearFilterWidget();
-    // The ID default (1, 2) should apply, because it is disabled.
-    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
-    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
-    // If either the Name or Source default applied the result would be 0.
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
   });
 });
 

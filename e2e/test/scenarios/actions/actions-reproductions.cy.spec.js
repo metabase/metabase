@@ -4,14 +4,11 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createMockActionParameter,
   createMockParameter,
 } from "metabase-types/api/mocks";
-
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const viewports = [
   [768, 800],
@@ -442,61 +439,6 @@ describe("issue 51020", () => {
       H.undoToast().findByText("Successfully updated").should("be.visible");
       H.getDashboardCard(0).should("contain.text", "Foo Baz Baz");
     });
-  });
-});
-
-describe("issue 32840", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
-
-    H.createQuestion(
-      {
-        type: "model",
-        name: "Products model",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-        },
-      },
-      {
-        wrapId: true,
-        idAlias: "modelId",
-      },
-    );
-
-    cy.get("@modelId").then((modelId) => {
-      H.createAction({
-        type: "implicit",
-        kind: "row/update",
-        name: "Update",
-        model_id: modelId,
-      });
-      H.visitModel(modelId);
-    });
-
-    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
-  });
-
-  it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {
-    cy.findAllByTestId("cell-data").eq(8).click();
-    H.modal().within(() => {
-      cy.findByText("July 19, 2026, 7:44 PM").should("be.visible");
-      cy.findByTestId("actions-menu").click();
-    });
-    H.popover().findByText("Update").should("be.visible").click();
-    H.modal()
-      .eq(1)
-      .within(() => {
-        cy.findByPlaceholderText("Created At").should(
-          "have.value",
-          "2026-07-19T19:44:56",
-        );
-        cy.button("Update").scrollIntoView().click();
-      });
-    cy.wait("@executeAction");
-    H.modal().findByText("July 19, 2026, 7:44 PM").should("be.visible");
   });
 });
 

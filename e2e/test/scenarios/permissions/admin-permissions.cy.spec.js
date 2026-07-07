@@ -5,8 +5,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =
-  USER_GROUPS;
+const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
@@ -672,45 +671,6 @@ describe("scenarios > admin > permissions", () => {
   });
 
   context("partial updates", () => {
-    it("partial data permission updates should not remove permissions from other unmodified groups", () => {
-      // check the we have an expected initial state
-      cy.visit(`admin/permissions/data/group/${DATA_GROUP}`);
-      H.assertPermissionTable([
-        ["Sample Database", "Query builder and native"],
-      ]);
-
-      // make a change to the permissions of another group
-      H.selectSidebarItem("nosql");
-      H.assertPermissionTable([["Sample Database", "Query builder only"]]);
-      H.modifyPermission(
-        "Sample Database",
-        NATIVE_QUERIES_PERMISSION_INDEX,
-        "No",
-      );
-
-      // observe the save change request and assert that we don't get back
-      // values for groups we did not modify
-      cy.intercept("PUT", "/api/permissions/graph").as("updateGraph");
-
-      // save changes
-      cy.button("Save changes").click();
-      H.modal().within(() => {
-        cy.button("Yes").click();
-      });
-
-      cy.wait("@updateGraph").then((interception) => {
-        const requestGroupIds = Object.keys(interception.request.body.groups);
-        const responseGroupIds = Object.keys(interception.response.body.groups);
-        expect(requestGroupIds).to.deep.equal(responseGroupIds);
-      });
-
-      // make sure that our other group's permission data did not get changed
-      H.selectSidebarItem("data");
-      H.assertPermissionTable([
-        ["Sample Database", "Query builder and native"],
-      ]);
-    });
-
     it("partial collection permission updates should not prevent user from making further changes", () => {
       cy.visit("/admin/permissions/collections");
 

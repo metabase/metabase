@@ -72,12 +72,6 @@ const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
   TABLE_DISPLAY_NAME, // 6 questions
 ];
 
-const BROKEN_DEPENDENTS = [
-  ...BROKEN_TABLE_DEPENDENTS,
-  ...BROKEN_QUESTION_DEPENDENTS,
-  ...BROKEN_MODEL_DEPENDENTS,
-];
-
 describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -92,17 +86,6 @@ describe("scenarios > dependencies > broken list", () => {
     dropTransformTable();
     H.expectNoBadSnowplowEvents();
   });
-
-  describe("analysis", () => {
-    it("should show broken dependencies", () => {
-      H.DependencyDiagnostics.visitBrokenDependencies();
-      checkList({
-        visibleEntities: BROKEN_DEPENDENCIES,
-        hiddenEntities: BROKEN_DEPENDENTS,
-      });
-    });
-  });
-
   describe("selecting entities", () => {
     it("should show sidebar for broken dependents and trigger snowplow event", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();

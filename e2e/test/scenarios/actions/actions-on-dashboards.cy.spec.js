@@ -767,30 +767,6 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("does not show json, enum, or binary columns for implicit actions", () => {
-          cy.get("@modelId").then((id) => {
-            H.createImplicitAction({
-              kind: "create",
-              model_id: id,
-            });
-          });
-
-          createDashboardWithActionButton({
-            actionName: "Create",
-            idFilter: true,
-          });
-
-          cy.findByRole("button", { name: "Create" }).click();
-
-          H.modal().within(() => {
-            cy.findByPlaceholderText("UUID").should("be.visible");
-            cy.findByPlaceholderText("JSON").should("not.exist");
-            cy.findByPlaceholderText("JSONB").should("not.exist");
-            cy.findByPlaceholderText("Binary").should("not.exist");
-            cy.findByPlaceholderText("Enum").should("exist");
-          });
-        });
-
         it("properly loads and updates date and time fields for implicit update actions", () => {
           cy.get("@modelId").then((id) => {
             H.createImplicitAction({

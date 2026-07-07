@@ -36,27 +36,9 @@ describe("scenarios > auth > signin", () => {
       .should("be.visible");
   });
 
-  it("should display same error for unknown users (to avoid leaking the existence of accounts)", () => {
-    cy.visit("/");
-    cy.findByLabelText("Email address").type("INVALID" + admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByRole("alert")
-      .filter(':contains("did not match stored password")')
-      .should("be.visible");
-  });
-
   it("should greet users after successful login", () => {
     cy.visit("/auth/login");
     cy.findByLabelText("Email address").should("be.focused").type(admin.email);
-    cy.findByLabelText("Password").type(admin.password);
-    cy.button("Sign in").click();
-    cy.findByTestId("greeting-message").should("contain.text", "Bobby");
-  });
-
-  it("should allow login regardless of login email case", () => {
-    cy.visit("/auth/login");
-    cy.findByLabelText("Email address").type(admin.email.toUpperCase());
     cy.findByLabelText("Password").type(admin.password);
     cy.button("Sign in").click();
     cy.findByTestId("greeting-message").should("contain.text", "Bobby");

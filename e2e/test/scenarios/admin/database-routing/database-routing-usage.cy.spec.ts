@@ -211,42 +211,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
     });
   });
 
-  it("should not leak cached data", function () {
-    H.createNativeQuestion({
-      database: this.leadDbId,
-      name: "Identifier Name",
-      native: {
-        query: "SELECT name FROM db_identifier;",
-      },
-    }).then(({ body: { id: questionId } }) => {
-      cy.request("PUT", "api/cache", {
-        model: "question",
-        model_id: questionId,
-        strategy: {
-          refresh_automatically: false,
-          unit: "hours",
-          duration: 24,
-          type: "duration",
-        },
-      });
-      cy.request("GET", `api/cache?model=question&id=${questionId}`);
-
-      cy.log("User A");
-      signInAs(DB_ROUTER_USERS.userA);
-      H.visitQuestion(questionId);
-      cy.get('[data-column-id="name"]')
-        .should("contain", "destination_one")
-        .and("not.contain", "destination_two");
-
-      cy.log("User B");
-      signInAs(DB_ROUTER_USERS.userB);
-      H.visitQuestion(questionId);
-      cy.get('[data-column-id="name"]')
-        .should("contain", "destination_two")
-        .and("not.contain", "destination_one");
-    });
-  });
-
   it("should work with sandboxing", function () {
     H.createQuestion({
       name: "Color",

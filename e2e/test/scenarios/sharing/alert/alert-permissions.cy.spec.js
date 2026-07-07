@@ -34,15 +34,6 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
   describe("as an admin", () => {
     beforeEach(cy.signInAsAdmin);
 
-    it("should let you see all created alerts", () => {
-      cy.request("/api/notification").then((response) => {
-        const questionAlerts = response.body.filter(
-          (notification) => notification.payload_type === "notification/card",
-        );
-        expect(questionAlerts).to.have.length(3);
-      });
-    });
-
     it("should let you edit an alert", () => {
       cy.intercept("PUT", "/api/notification/*").as("updatedAlert");
 

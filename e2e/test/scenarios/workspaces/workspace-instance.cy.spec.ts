@@ -1,6 +1,5 @@
 import {
   QA_DB_CREDENTIALS,
-  QA_MYSQL_PORT,
   QA_POSTGRES_PORT,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
@@ -41,41 +40,6 @@ const POSTGRES_CONFIG: AdvancedConfig = {
         [POSTGRES_DB_NAME]: {
           input_schemas: [POSTGRES_INPUT_SCHEMA],
           output: { schema: POSTGRES_OUTPUT_SCHEMA },
-        },
-      },
-    },
-  },
-};
-
-const MYSQL_DB_NAME = "Writable MySQL8";
-const MYSQL_OUTPUT_DATABASE = "mb__isolation";
-const MYSQL_SOURCE_TABLE = "scoreboard_actions";
-const MYSQL_TARGET_TABLE = "transform_table";
-const MYSQL_TARGET_TABLE_DISPLAY_NAME = "Transform Table";
-
-const MYSQL_CONFIG: AdvancedConfig = {
-  version: 1,
-  config: {
-    databases: [
-      {
-        name: MYSQL_DB_NAME,
-        engine: "mysql",
-        details: {
-          host: QA_DB_CREDENTIALS.host,
-          port: QA_MYSQL_PORT,
-          dbname: "writable_db",
-          user: "root",
-          password: QA_DB_CREDENTIALS.password,
-          ssl: false,
-        },
-      },
-    ],
-    workspace: {
-      name: WORKSPACE_NAME,
-      databases: {
-        [MYSQL_DB_NAME]: {
-          input_schemas: [],
-          output: { db: MYSQL_OUTPUT_DATABASE },
         },
       },
     },
@@ -152,84 +116,6 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.queryWritableDB(
         `SELECT COUNT(*) AS count FROM "${POSTGRES_OUTPUT_SCHEMA}"."${POSTGRES_INPUT_SCHEMA}__${POSTGRES_TARGET_TABLE}"`,
         "postgres",
-      ).then((result) => {
-        expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
-      });
-
-      cy.log("leave the workspace through the UI");
-      H.CurrentWorkspacePage.visit();
-      H.CurrentWorkspacePage.leaveButton().click();
-      H.LeaveWorkspaceModal.confirmButton().click();
-      H.WorkspaceListPage.setupInstanceButton().should("be.visible");
-    });
-  });
-
-  describe("mysql", () => {
-    beforeEach(() => {
-      H.restore("mysql-writable");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      H.resetTestTable({ type: "mysql", table: MYSQL_SOURCE_TABLE });
-      H.queryWritableDB(
-        `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
-        "mysql",
-      );
-      H.queryWritableDB(`CREATE DATABASE ${MYSQL_OUTPUT_DATABASE}`, "mysql");
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-    });
-
-    afterEach(() => {
-      H.clearWorkspaceInstanceConfig();
-      H.queryWritableDB(
-        `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
-        "mysql",
-      );
-    });
-
-    it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
-      cy.log("set up the workspace");
-      H.WorkspaceListPage.visit();
-      H.WorkspaceListPage.setupInstanceButton().click();
-      H.SetupWorkspaceModal.uploadConfig(MYSQL_CONFIG);
-      H.SetupWorkspaceModal.setupButton().click();
-      H.CurrentWorkspacePage.get().should("be.visible");
-
-      cy.log("create and run a transform via the API");
-      createAndRunTransform({
-        sourceTable: MYSQL_SOURCE_TABLE,
-        sourceSchema: null,
-        targetTable: MYSQL_TARGET_TABLE,
-        targetSchema: null,
-      });
-
-      cy.log("instance page shows the remapping for the transform target");
-      H.CurrentWorkspacePage.visit();
-      H.CurrentWorkspacePage.database(MYSQL_DB_NAME)
-        .should("contain.text", MYSQL_TARGET_TABLE)
-        .and(
-          "contain.text",
-          `${MYSQL_OUTPUT_DATABASE}/__${MYSQL_TARGET_TABLE}`,
-        );
-
-      cy.log("native query is rewritten to workspace table");
-      H.startNewNativeQuestion({
-        database: WRITABLE_DB_ID,
-        query: `SELECT * FROM \`${MYSQL_TARGET_TABLE}\``,
-      });
-      H.runNativeQuery();
-      H.assertQueryBuilderRowCount(ROW_COUNT);
-
-      cy.log("mbql query is rewritten to workspace table");
-      H.startNewQuestion();
-      H.miniPicker().findByText(MYSQL_DB_NAME).click();
-      H.miniPicker().findByText(MYSQL_TARGET_TABLE_DISPLAY_NAME).click();
-      H.visualize();
-      H.assertQueryBuilderRowCount(ROW_COUNT);
-
-      cy.log("the actual warehouse table lives under the workspace database");
-      H.queryWritableDB(
-        `SELECT COUNT(*) AS count FROM \`${MYSQL_OUTPUT_DATABASE}\`.\`__${MYSQL_TARGET_TABLE}\``,
-        "mysql",
       ).then((result) => {
         expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });

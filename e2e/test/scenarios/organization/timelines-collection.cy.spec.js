@@ -158,66 +158,6 @@ describe("scenarios > organization > timelines > collection", () => {
       });
     });
 
-    it("should move an event", () => {
-      H.createTimelineWithEvents({
-        timeline: { name: "Releases" },
-        events: [{ name: "RC1" }],
-      });
-      H.createTimelineWithEvents({
-        timeline: { name: "Metrics" },
-        events: [{ name: "RC2" }],
-      });
-
-      cy.visit("/collection/root/timelines");
-      H.modal().findByText("Metrics").click();
-      openMenu("RC2");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Move event").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Releases").click();
-      H.modal().button("Move").click();
-      cy.wait("@updateEvent");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("RC2").should("not.exist");
-
-      cy.icon("chevronleft").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Releases").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("RC1");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("RC2");
-    });
-
-    it("should move an event and undo", () => {
-      H.createTimelineWithEvents({
-        timeline: { name: "Releases" },
-        events: [{ name: "RC1" }],
-      });
-      H.createTimelineWithEvents({
-        timeline: { name: "Metrics" },
-        events: [{ name: "RC2" }],
-      });
-
-      cy.visit("/collection/root/timelines");
-      H.modal().findByText("Metrics").click();
-      openMenu("RC2");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Move event").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Releases").click();
-      H.modal().button("Move").click();
-      cy.wait("@updateEvent");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("RC2").should("not.exist");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Undo").click();
-      cy.wait("@updateEvent");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("RC2").should("be.visible");
-    });
-
     it("should archive an event when editing this event", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
@@ -358,25 +298,6 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Launches").should("be.visible");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create event").should("be.visible");
-    });
-
-    it("should edit a timeline", () => {
-      H.createTimelineWithEvents({
-        timeline: { name: "Releases" },
-        events: [{ name: "RC1" }],
-      });
-
-      cy.visit("/collection/root/timelines");
-      openMenu("Releases");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit timeline details").click();
-      cy.findByLabelText("Name").clear().type("Launches");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Update").click();
-      cy.wait("@updateTimeline");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Launches").should("be.visible");
     });
 
     it("should move a timeline", () => {

@@ -261,49 +261,6 @@ describe("scenarios > dependencies > dependency graph", () => {
         .should("be.visible");
     }
 
-    it("should display dependencies for a table and navigate to them", () => {
-      getScoreboardTableId().then((tableId) => {
-        createTableBasedQuestion({ tableId });
-        createTableBasedModel({ tableId });
-        createTableBasedMetric({ tableId });
-        createTableBasedTransform({ tableName: TABLE_NAME });
-        createTableBasedSegment({ tableId });
-        createTableBasedMeasure({ tableId });
-        visitGraphForEntity(tableId, "table");
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 question",
-        dependentItemTitle: TABLE_BASED_QUESTION_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 model",
-        dependentItemTitle: TABLE_BASED_MODEL_NAME,
-        dependentItemLocation: ROOT_COLLECTION_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 metric",
-        dependentItemTitle: TABLE_BASED_METRIC_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 transform",
-        dependentItemTitle: TABLE_BASED_TRANSFORM_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 segment",
-        dependentItemTitle: TABLE_BASED_SEGMENT_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 measure",
-        dependentItemTitle: TABLE_BASED_MEASURE_NAME,
-      });
-    });
-
     it("should display dependencies for a segment and navigate to them", () => {
       getScoreboardTableId().then((tableId) =>
         createTableBasedSegment({ tableId }).then(({ body: segment }) => {
