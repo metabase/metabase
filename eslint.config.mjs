@@ -452,8 +452,10 @@ const configs = [
       },
     },
     plugins: {
+      metabase: metabasePlugin,
       cypress: cypressPlugin,
       "chai-friendly": chaiFriendlyPlugin,
+      import: importXPlugin,
     },
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
