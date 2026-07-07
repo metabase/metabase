@@ -1423,8 +1423,8 @@
   the mbql walkers. Shared by [[serdes/deserialization-dependencies]] (allow-int-ids? false) and
   [[serdes/serialization-dependencies]] (allow-int-ids? true)."
   [allow-int-ids? {:keys [collection_id database_id dataset_query parameters parameter_mappings
-                result_metadata source_card_id visualization_settings
-                dashboard_id document_id]}]
+                          result_metadata source_card_id visualization_settings
+                          dashboard_id document_id]}]
   (set
    (concat
     (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
