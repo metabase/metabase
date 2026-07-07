@@ -24,6 +24,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
 import {
@@ -99,17 +100,12 @@ export const AgentDataPartMessage = ({
         </Stack>
       ),
     )
-    .with({ part: { type: "data-entity_saved" } }, ({ part }) =>
-      part.data.location == null ? null : (
-        <Stack gap="md">
-          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <EntitySavedMessage
-            value={part.data}
-            location={part.data.location}
-          />
-        </Stack>
-      ),
-    )
+    .with({ part: { type: "data-entity_saved" } }, ({ part }) => (
+      <Stack gap="md">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <EntitySavedMessage value={part.data} />
+      </Stack>
+    ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
@@ -121,36 +117,34 @@ export const AgentDataPartMessage = ({
       return null;
     });
 
-const locationUrl = ({ type, id }: SavedEntityLocation): string => {
-  if (type === "dashboard") {
-    return `/dashboard/${id}`;
+const locationUrl = (location: SavedEntityLocation): string => {
+  if (location.type === "dashboard") {
+    return Urls.dashboard(location);
   }
-  return id == null ? "/collection/root" : `/collection/${id}`;
+  // Urls.collection needs a full Collection; the id-only path works the same
+  // (the router resolves it without a slug), with null meaning the root.
+  return location.id == null
+    ? "/collection/root"
+    : `/collection/${location.id}`;
 };
 
-const EntitySavedMessage = ({
-  value,
-  location,
-}: {
-  value: EntitySavedValue;
-  location: SavedEntityLocation;
-}) => {
+const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
   const target = (
     <Anchor
       key="target"
       component={ForwardRefLink}
-      to={locationUrl(location)}
+      to={locationUrl(value.location)}
       target="_blank"
       fw="bold"
     >
-      {location.name}
+      {value.location.name}
     </Anchor>
   );
   const chartName = (
     <Anchor
       key="name"
       component={ForwardRefLink}
-      to={`/question/${value.card_id}`}
+      to={Urls.card({ id: value.card_id, name: value.name })}
       target="_blank"
       fw="bold"
     >
