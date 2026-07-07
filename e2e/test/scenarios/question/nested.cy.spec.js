@@ -300,13 +300,14 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
-    H.createNativeQuestion({
+    H.createCardWithTestNativeQuery({
       name: "15397",
-      native: {
+      dataset_query: {
+        database: SAMPLE_DB_ID,
         query:
           "select count(*), orders.product_id from orders group by orders.product_id;",
       },
-    }).then(({ body: { id } }) => {
+    }).then(({ id }) => {
       H.visitQuestion(id);
 
       visitNestedQueryAdHoc(id);
@@ -417,9 +418,12 @@ describe("scenarios > question > nested", () => {
   describe("should not remove user defined metric when summarizing based on saved question (metabase#15725)", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      H.createNativeQuestion({
+      H.createCardWithTestNativeQuery({
         name: "15725",
-        native: { query: "select 'A' as cat, 5 as val" },
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: "select 'A' as cat, 5 as val",
+        },
       });
       // Window object gets recreated for every `cy.visit`
       // See: https://stackoverflow.com/a/65218352/8815185
@@ -492,10 +496,13 @@ describe("scenarios > question > nested", () => {
   it("should properly work with native questions (metabase#15808, metabase#16938, metabase#18364)", () => {
     const questionDetails = {
       name: "15808",
-      native: { query: "select * from products limit 3" },
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: "select * from products limit 3",
+      },
     };
 
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createCardWithTestNativeQuery(questionDetails).then(H.visitCard);
     cy.findAllByTestId("cell-data").should(
       "contain",
       "Swaniawski, Casper and Hilll",
