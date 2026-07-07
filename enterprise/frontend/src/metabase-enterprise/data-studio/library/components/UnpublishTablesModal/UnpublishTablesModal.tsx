@@ -140,7 +140,11 @@ function ModalBody({
       </Stack>
       <Group mt="xl" gap="sm" wrap="nowrap" justify="flex-end">
         <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
-        <Button onClick={handleSubmit} variant="filled" color="error">
+        <Button
+          onClick={handleSubmit}
+          variant="filled"
+          color="feedback-negative"
+        >
           {getSubmitButtonLabel(selected_table, published_downstream_tables)}
         </Button>
       </Group>

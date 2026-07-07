@@ -95,9 +95,8 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
     );
 
     const icon = getCollectionIcon(collection, { isTenantUser });
-    const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
-      collection as unknown as Collection,
-    );
+    const isRegularCollection =
+      PLUGIN_COLLECTIONS.isRegularCollection(collection);
 
     const content = (
       <>

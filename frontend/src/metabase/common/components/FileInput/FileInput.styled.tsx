@@ -43,7 +43,7 @@ export const InputButton = styled.span`
   user-select: none;
 
   ${InputField}:focus + & {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   ${InputField}:not(:focus-visible) + & {

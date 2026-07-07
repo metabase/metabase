@@ -87,10 +87,7 @@ function getLinkText(value: string, options: ColumnSettings) {
 
   let text;
   if (isExplicitLink && hasCustomizedText) {
-    text = renderLinkTextForClick(
-      link_text,
-      getDataFromClicked(clicked) as any,
-    );
+    text = renderLinkTextForClick(link_text, getDataFromClicked(clicked));
   } else {
     text =
       getRemappedValue(value, options) ||
@@ -108,7 +105,7 @@ function getLinkUrl(
   const hasCustomizedUrl = link_url && clicked;
 
   if (isExplicitLink && hasCustomizedUrl) {
-    return renderLinkURLForClick(link_url, getDataFromClicked(clicked) as any);
+    return renderLinkURLForClick(link_url, getDataFromClicked(clicked));
   }
 
   const protocol = getUrlProtocol(value);

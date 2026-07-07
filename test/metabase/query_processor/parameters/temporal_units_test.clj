@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
@@ -127,6 +129,30 @@
                      (->> (mt/formatted-rows [int]))
                      (subvec 0 2)))
               (str "Unexpected results for aliased grouping " grouping)))))))
+
+(deftest ^:parallel temporal-unit-in-optional-clause-test
+  ;; Unlike the sibling tests, this one relies on a hand-written H2 query (LIMIT + an optional `[[…]]` clause) that the
+  ;; portable `mt/arbitrary-select-query` helper can't express, so it is gated to :h2 rather than the full driver set.
+  (mt/test-driver :h2
+    (testing "a :temporal-unit template tag inside an optional [[…]] clause"
+      (let [mp   (mt/metadata-provider)
+            make (fn [default]
+                   (let [q0       (lib/native-query mp "SELECT ID [[, {{unit}} AS unit]] FROM PEOPLE ORDER BY ID LIMIT 2")
+                         existing (get (lib/template-tags q0) "unit")]
+                     (lib/with-template-tags
+                       q0 {"unit" (merge existing
+                                         {:display-name "Unit"
+                                          :type         :temporal-unit
+                                          :dimension    (lib/ref (lib.metadata/field mp (mt/id :people :created_at)))
+                                          :default      default})})))]
+        (testing "the clause is included and bucketed when a default value is present"
+          (let [rows (mt/rows (qp/process-query (make "year")))]
+            (is (= 2 (count rows)))
+            (is (= 2 (count (first rows))))))
+        (testing "the clause is dropped entirely when the tag is unset"
+          (let [rows (mt/rows (qp/process-query (make nil)))]
+            (is (= 2 (count rows)))
+            (is (= 1 (count (first rows))))))))))
 
 (deftest ^:parallel bad-field-reference-throws-errors-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-temporal-units ::temporal-units-test)

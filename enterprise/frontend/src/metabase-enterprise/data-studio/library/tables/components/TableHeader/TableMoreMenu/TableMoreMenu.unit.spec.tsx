@@ -16,11 +16,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { CollectionPickerModalProps } from "metabase/common/components/Pickers/CollectionPicker/CollectionPickerModal";
 import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  CollectionItem,
-  EnterpriseSettings,
-  TokenFeatures,
-} from "metabase-types/api";
+import type { EnterpriseSettings, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -195,7 +191,7 @@ describe("TableMoreMenu", () => {
         name: "Orders",
         database_id: 1,
         collection_id: 10,
-      }) as CollectionItem;
+      });
 
       setup({ table: collectionItem });
       await userEvent.click(
@@ -219,7 +215,7 @@ describe("TableMoreMenu", () => {
         name: "Orders",
         database_id: undefined,
         collection_id: 10,
-      }) as CollectionItem;
+      });
 
       setup({ table: collectionItem });
       await userEvent.click(
@@ -245,7 +241,7 @@ describe("TableMoreMenu", () => {
       name: "Orders",
       database_id: 1,
       collection_id: dataCollection.id as number,
-    }) as CollectionItem;
+    });
 
     setup({ table, onMoved });
     await userEvent.click(

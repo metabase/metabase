@@ -162,7 +162,7 @@ export const PeopleListRow = ({
                     <Menu.Item
                       component={ForwardRefLink}
                       to={Urls.deactivateUser(user)}
-                      c="danger"
+                      c="feedback-negative"
                     >
                       {t`Deactivate user`}
                     </Menu.Item>

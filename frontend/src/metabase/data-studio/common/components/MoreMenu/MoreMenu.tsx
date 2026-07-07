@@ -56,7 +56,7 @@ export function MoreMenu({
           )}
           {onRemove && (
             <Menu.Item
-              c="danger"
+              c="feedback-negative"
               leftSection={<Icon name="trash" />}
               onClick={openConfirm}
             >

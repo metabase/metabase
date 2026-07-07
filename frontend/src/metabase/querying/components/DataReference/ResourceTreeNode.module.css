@@ -3,7 +3,7 @@
     margin-left: 32px;
 
     & svg {
-      color: var(--mb-color-focus);
+      color: var(--mb-color-input-focus);
     }
 
     & svg[data-role="chevron"] {

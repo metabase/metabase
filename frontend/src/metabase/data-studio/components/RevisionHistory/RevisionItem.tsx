@@ -93,7 +93,7 @@ function getDiffKeys(revision: Revision): string[] {
     return [];
   }
 
-  const diff = revision.diff as unknown as RevisionDiffMap;
+  const diff = revision.diff;
   let keys = Object.keys(diff);
 
   if (revision.is_creation) {
@@ -111,6 +111,6 @@ function getDiffForKey(
     return undefined;
   }
 
-  const revisionDiff = diff as unknown as RevisionDiffMap;
+  const revisionDiff = diff as RevisionDiffMap;
   return revisionDiff[key];
 }
