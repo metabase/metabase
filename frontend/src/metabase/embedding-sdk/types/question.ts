@@ -180,8 +180,34 @@ export type MapVisualizationSettings = Pick<
   "column_settings"
 >;
 
+/**
+ * Public structural type for ad-hoc SDK queries created by
+ * `useMetabaseQueryObject`.
+ *
+ * @public
+ */
+export type MetabaseQueryObject =
+  // Do not use the internal `DatasetQuery` type here. It carries an opaque marker
+  // that can be emitted separately from the main SDK and data-app declaration
+  // rollups, making otherwise identical query values fail across package entry
+  // points. This structural type keeps those entry points compatible while still
+  // being narrow enough to reject passing the whole hook result as `card.query`.
+  | { type: "query"; database?: unknown; query?: unknown; parameters?: unknown }
+  | {
+      type: "native";
+      database?: unknown;
+      native?: unknown;
+      parameters?: unknown;
+    }
+  | {
+      "lib/type": "mbql/query";
+      database?: unknown;
+      stages?: unknown;
+      parameters?: unknown;
+    };
+
 interface MetabaseCardBase {
-  query: unknown | null;
+  query: MetabaseQueryObject | null;
   displayIsLocked?: boolean;
 }
 

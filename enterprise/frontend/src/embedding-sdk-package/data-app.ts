@@ -24,6 +24,7 @@ export {
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
+  MetabaseQueryObject,
   UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
@@ -35,4 +36,3 @@ export type {
   DataAppFactory,
   DataAppMetabaseProviderProps,
 } from "metabase-enterprise/data_apps/sandbox";
-export type { DatasetQuery } from "metabase-types/api";

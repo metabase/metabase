@@ -3,9 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.typed-schemas.api :as typed-schemas.api]))
+   [metabase.typed-schemas.api :as typed-schemas.api]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -21,7 +23,8 @@
                                              :description  "Name of the customer"}))))
 
 (deftest metric-dimension-schema-uses-dimension-id-test
-  (is (= {:name          "category"
+  (is (= {:type          "column"
+          :name          "category"
           :displayName   "Category"
           :baseType      "type/Text"
           :jsType        "string"
@@ -77,7 +80,7 @@
           :tableName    "orders"
           :fields       {"createdAt" {:type          "column"
                                       :name          "created_at"
-                                      :source-name   "orders"
+                                      :sourceName   "orders"
                                       :displayName   "Created At"
                                       :baseType      "type/DateTime"
                                       :jsType        "Date"
@@ -156,8 +159,19 @@
             :tableId 168
             :keyDisambiguator "Orders"}]))))
 
+(deftest table-source-names-filters-unreadable-tables-test
+  (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
+                                       {:id 20 :name "franchises" :display_name "Franchises"}])
+                mi/can-read? (fn [{:keys [id]}] (= id 10))]
+    (is (= {10 "orders"}
+           (#'typed-schemas.api/table-source-names [10 20])))
+    (is (= {10 "Orders"}
+           (#'typed-schemas.api/table-key-disambiguators [10 20])))))
+
 (deftest metric-schema-keys-dimensions-test
   (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
+                typed-schemas.api/readable-table-source-rows
+                (constantly [{:id 10 :name "orders" :display_name "Orders"}])
                 typed-schemas.api/metric-dimensions
                 (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
                               :name           "orders"
@@ -165,13 +179,15 @@
                               :effective-type :type/Integer
                               :table-id       10
                               :sources        [{:type :field, :field-id 42}]}])]
-    (is (= {:kind           "metric"
+    (is (= {:type           "metric"
             :key            "customerLifetimeValue"
             :id             247
             :name           "Customer Lifetime Value"
             :columns        [{:name "Customer Lifetime Value", :displayName "Customer Lifetime Value", :jsType "unknown"}]
             :mappedTableIds [10]
-            :dimensions     {"orders" {:name        "orders"
+            :dimensions     {"orders" {:type        "column"
+                                       :name        "orders"
+                                       :sourceName "orders"
                                        :displayName "Orders"
                                        :baseType    "type/Integer"
                                        :jsType      "number"
@@ -184,6 +200,27 @@
             {:id   247
              :name "Customer Lifetime Value"}
             {:id 247})))))
+
+(deftest metric-schema-reuses-table-source-rows-test
+  (let [table-select-count (atom 0)]
+    (with-redefs [typed-schemas.api/metric-result-column (constantly nil)
+                  typed-schemas.api/metric-dimensions
+                  (constantly [{:id             "550e8400-e29b-41d4-a716-446655440001"
+                                :name           "orders"
+                                :display-name   "Orders"
+                                :effective-type :type/Integer
+                                :table-id       10
+                                :sources        [{:type :field, :field-id 42}]}])
+                  mi/can-read? (constantly true)
+                  t2/select (fn [columns & _args]
+                              (when (= columns [:model/Table :id :name :display_name])
+                                (swap! table-select-count inc)
+                                [{:id 10 :name "orders" :display_name "Orders"}]))]
+      (#'typed-schemas.api/metric-schema
+       {:id   247
+        :name "Customer Lifetime Value"}
+       {:id 247})
+      (is (= 1 @table-select-count)))))
 
 (deftest measure-schema-uses-result-column-test
   (testing "measure result columns come from the measure definition when available"
@@ -284,7 +321,7 @@
                                                                        :id          501
                                                                        :fieldId     501
                                                                        :tableId     20}}}}
-               :metrics       {"revenue" {:kind           "metric"
+               :metrics       {"revenue" {:type           "metric"
                                           :key            "revenue"
                                           :id             5
                                           :name           "Revenue"
@@ -322,14 +359,24 @@
                                                                                  :tableId       20
                                                                                  :sourceFieldId 42
                                                                                  :metricId      5}}}
-                               "modelRevenue" {:kind          "metric"
+                               "modelRevenue" {:type          "metric"
                                                :key           "modelRevenue"
                                                :id            6
                                                :name          "Model Revenue"
                                                :databaseId    1
                                                :sourceCardId  42
                                                :mappedTableIds [10]
-                                               :columns       [{:name "count" :jsType "number"}]}}})]
+                                               :columns       [{:name "count" :jsType "number"}]
+                                               :dimensions    {"createdAt" {:type        "column"
+                                                                            :name        "created_at"
+                                                                            :sourceName "orders"
+                                                                            :baseType    "type/DateTime"
+                                                                            :jsType      "Date"
+                                                                            :key         "createdAt"
+                                                                            :id          "model-dimension-uuid"
+                                                                            :fieldId     3971
+                                                                            :tableId     10
+                                                                            :metricId    6}}}}})]
     (is (str/includes? body (str "/" "/ Display name: Payment Method")))
     (is (str/includes? body (str "/" "/ Semantic type: type/Category")))
     (is (not (str/includes? body (str "/" "/ Generated key:"))))
@@ -337,7 +384,7 @@
     (is (not (str/includes? body (str "/" "/ id: 3970"))))
     (is (str/includes? body "paymentMethod: {\n        type: \"column\""))
     (is (str/includes? body "name: \"payment_method\""))
-    (is (str/includes? body "\"source-name\": \"orders\""))
+    (is (str/includes? body "sourceName: \"orders\""))
     (is (str/includes? body "type: \"table\""))
     (is (not (str/includes? body "kind: \"table\"")))
     (is (str/includes? body "fieldId: 3970"))
@@ -348,13 +395,18 @@
     (is (str/includes? body "databaseId: 1"))
     (is (str/includes? body "sourceTableId: 10"))
     (is (str/includes? body "sourceCardId: 42"))
+    (is (str/includes? body "fields: {\n        createdAt: {\n          type: \"column\""))
+    (is (str/includes? body "sourceName: \"orders\""))
     (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
     (is (str/includes? body "function pickFields"))
+    (is (str/includes? body "const field = fields[key] as { tableId?: number };"))
+    (is (str/includes? body "const { tableId, ...joinedField } = field;"))
     (is (str/includes? body "dimensions: {\n      orders: pickFields(tables.orders.fields, [ \"paymentMethod\" ])"))
     (is (str/includes? body "franchises: pickFields(tables.franchises.fields, [ \"name\", \"ownerName\" ], { sourceFieldId: 42 })"))
     (is (= 1 (count (re-seq #"sourceFieldId: 42" body))))
     (is (not (str/includes? body "dimensionIds")))
-    (is (not (str/includes? body "metricId: 5")))))
+    (is (not (str/includes? body "metricId: 5")))
+    (is (not (str/includes? body "metricId: 6")))))
 
 (deftest json-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/json")]
@@ -584,7 +636,7 @@
                   typed-schemas.api/metric-schemas
                   (fn [_database-ids collection-ids]
                     (is (= #{20} collection-ids))
-                    [{:kind           "metric"
+                    [{:type           "metric"
                       :key            "revenue"
                       :id             1
                       :name           "Revenue"
@@ -622,7 +674,7 @@
                   typed-schemas.api/metric-schemas
                   (fn [_database-ids collection-ids]
                     (is (= #{20} collection-ids))
-                    [{:kind           "metric"
+                    [{:type           "metric"
                       :key            "revenue"
                       :id             1
                       :name           "Revenue"
@@ -688,7 +740,7 @@
                   (is (= #{30} collection-ids))
                   [{:kind "model", :key "selectedQuestionCollectionModel", :id 100}])
                 typed-schemas.api/metric-schemas
-                (constantly [{:kind "metric", :key "revenue", :id 2}])
+                (constantly [{:type "metric", :key "revenue", :id 2}])
                 typed-schemas.api/select-library-tables
                 (constantly [{:id 3}])
                 typed-schemas.api/select-tables
