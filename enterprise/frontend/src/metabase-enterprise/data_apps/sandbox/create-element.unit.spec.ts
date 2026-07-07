@@ -5,6 +5,12 @@ import {
 
 import { makeCreateElementDistortion } from "./create-element";
 
+// In production `shared` is the custom-viz sandbox distortion callback
+// (`makeSandboxDistortionCallback` from `metabase/utils/scripts-sandbox`) — the
+// same dangerous-tag blocklist custom-viz uses. Here it's stubbed so these tests
+// assert the delegation contract (non-<style> tags fall back to `shared`, with
+// the tag/options forwarded and its result returned); the blocklist behaviour
+// itself is covered by scripts-sandbox's own tests.
 const setup = (target: object, sentinel?: unknown) => {
   const sharedImpl = jest.fn(() => sentinel);
   const shared = jest.fn(() => sharedImpl);

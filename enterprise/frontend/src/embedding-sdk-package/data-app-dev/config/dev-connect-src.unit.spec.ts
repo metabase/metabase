@@ -66,21 +66,28 @@ describe("readAllowedHosts", () => {
     expect(hosts).toEqual(["https://from-yaml.com"]);
   });
 
-  it("returns [] on malformed YAML", () => {
-    expect(setup({ [YAML_PATH]: "allowed_hosts: [unclosed" }).hosts).toEqual(
-      [],
+  it("returns [] when the manifest has no allowed_hosts key", () => {
+    expect(setup({ [YAML_PATH]: "name: My App\n" }).hosts).toEqual([]);
+  });
+
+  it("throws on malformed YAML", () => {
+    expect(() => setup({ [YAML_PATH]: "allowed_hosts: [unclosed" })).toThrow(
+      /Could not parse/,
     );
   });
 
-  it("returns [] when allowed_hosts is not a list", () => {
-    expect(setup({ [YAML_PATH]: "allowed_hosts: nope\n" }).hosts).toEqual([]);
+  it("throws when allowed_hosts is not a list", () => {
+    expect(() => setup({ [YAML_PATH]: "allowed_hosts: nope\n" })).toThrow(
+      /"allowed_hosts" must be a list/,
+    );
   });
 
-  it("filters out non-string entries", () => {
-    const { hosts } = setup({
-      [YAML_PATH]: "allowed_hosts:\n  - https://ok.com\n  - 42\n  - true\n",
-    });
-    expect(hosts).toEqual(["https://ok.com"]);
+  it("throws on a non-string entry", () => {
+    expect(() =>
+      setup({
+        [YAML_PATH]: "allowed_hosts:\n  - https://ok.com\n  - 42\n",
+      }),
+    ).toThrow(/must be a string/);
   });
 });
 

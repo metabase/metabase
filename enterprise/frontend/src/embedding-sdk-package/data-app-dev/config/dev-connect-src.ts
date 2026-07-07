@@ -16,16 +16,38 @@ export function readAllowedHosts(appRoot: string): string[] {
   let parsed: unknown;
   try {
     parsed = parseYaml(fs.readFileSync(manifestPath, "utf8"));
-  } catch {
-    return [];
+  } catch (error) {
+    throw new Error(
+      `Could not parse ${manifestPath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
+
   const hosts =
     typeof parsed === "object" && parsed !== null
       ? (parsed as { allowed_hosts?: unknown }).allowed_hosts
       : undefined;
-  return Array.isArray(hosts)
-    ? hosts.filter((host): host is string => typeof host === "string")
-    : [];
+
+  if (hosts == null) {
+    return [];
+  }
+
+  if (!Array.isArray(hosts)) {
+    throw new Error(`${manifestPath}: "allowed_hosts" must be a list.`);
+  }
+
+  const nonString = hosts.filter((host) => typeof host !== "string");
+
+  if (nonString.length > 0) {
+    throw new Error(
+      `${manifestPath}: every "allowed_hosts" entry must be a string, got ${JSON.stringify(
+        nonString[0],
+      )}.`,
+    );
+  }
+
+  return hosts as string[];
 }
 
 function toOrigin(url: string | undefined): string | undefined {
