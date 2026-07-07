@@ -1288,7 +1288,9 @@
               legacy-mbql
               lib
               lib-be
+              lib-metric
               llm
+              metrics
               models
               native-query-snippets
               notification
@@ -1333,7 +1335,8 @@
   metrics
   {:team "UX West"
    :api  #{metabase.metrics.api
-           metabase.metrics.core}
+           metabase.metrics.core
+           metabase.metrics.definition}
    :uses #{api
            collections
            lib
