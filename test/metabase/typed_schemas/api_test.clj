@@ -399,6 +399,8 @@
     (is (str/includes? body "\"source-name\": \"orders\""))
     (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
     (is (str/includes? body "function pickFields"))
+    (is (str/includes? body "const field = fields[key] as { tableId?: number };"))
+    (is (str/includes? body "const { tableId, ...joinedField } = field;"))
     (is (str/includes? body "dimensions: {\n      orders: pickFields(tables.orders.fields, [ \"paymentMethod\" ])"))
     (is (str/includes? body "franchises: pickFields(tables.franchises.fields, [ \"name\", \"ownerName\" ], { sourceFieldId: 42 })"))
     (is (= 1 (count (re-seq #"sourceFieldId: 42" body))))

@@ -1216,19 +1216,36 @@
 
 (defn- render-pick-fields-helper
   [suffix]
-  (if (= suffix " as const")
-    (str "function pickFields<TFields extends object, TKey extends keyof TFields>(\n"
-         "  fields: TFields,\n"
-         "  keys: readonly TKey[],\n"
-         "  options?: { sourceFieldId?: number },\n"
-         "): Pick<TFields, TKey> {\n"
-         "  const sourceField = options?.sourceFieldId == null ? {} : { sourceFieldId: options.sourceFieldId };\n"
-         "  return Object.fromEntries(keys.map((key) => [key, { ...(fields[key] as object), ...sourceField }])) as Pick<TFields, TKey>;\n"
-         "}\n\n")
-    (str "function pickFields(fields, keys, options) {\n"
-         "  const sourceField = options?.sourceFieldId == null ? {} : { sourceFieldId: options.sourceFieldId };\n"
-         "  return Object.fromEntries(keys.map((key) => [key, { ...fields[key], ...sourceField }]));\n"
-         "}\n\n")))
+  (let [lines (fn [& lines]
+                (str (str/join "\n" lines) "\n\n"))
+        body  ["  return Object.fromEntries(keys.map((key) => {"
+               "    if (options?.sourceFieldId == null) {"
+               "      return [key, fields[key]];"
+               "    }"
+               "    const { tableId, ...joinedField } = fields[key];"
+               ""
+               "    return [key, { ...joinedField, sourceFieldId: options.sourceFieldId }];"
+               "  }));"]]
+    (if (= suffix " as const")
+      (apply lines
+             "function pickFields<TFields extends object, TKey extends keyof TFields>("
+             "  fields: TFields,"
+             "  keys: readonly TKey[],"
+             "  options?: { sourceFieldId?: number },"
+             "): Pick<TFields, TKey> {"
+             "  return Object.fromEntries(keys.map((key) => {"
+             "    const field = fields[key] as { tableId?: number };"
+             "    if (options?.sourceFieldId == null) {"
+             "      return [key, field];"
+             "    }"
+             "    const { tableId, ...joinedField } = field;"
+             ""
+             "    return [key, { ...joinedField, sourceFieldId: options.sourceFieldId }];"
+             "  })) as Pick<TFields, TKey>;"
+             "}")
+      (apply lines
+             "function pickFields(fields, keys, options) {"
+             (conj body "}")))))
 
 (defn- uses-pick-fields-helper?
   [schema]

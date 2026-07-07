@@ -216,7 +216,6 @@ const TEST_SCHEMA = {
           product: {
             type: "column",
             fieldId: 202,
-            tableId: 2,
             sourceFieldId: 104,
             name: "NAME",
             displayName: "Name",

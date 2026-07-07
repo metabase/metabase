@@ -113,9 +113,13 @@ type LocalFieldReference<TTable = unknown> = Omit<
   sourceFieldId?: never;
 };
 
-type JoinedFieldReference = Omit<FieldSchema, "sourceFieldId"> & {
+type JoinedFieldReference = Omit<FieldSchema, "sourceFieldId" | "tableId"> & {
   type: "column";
   sourceFieldId: number;
+
+  // Joined fields are scoped through the source FK field, not by declaring
+  // themselves as fields on the query's source table.
+  tableId?: never;
 };
 
 export type FieldReference<TTable = unknown> =
