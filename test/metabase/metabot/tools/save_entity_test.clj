@@ -44,22 +44,34 @@
             (is (= {:type "collection" :id (:id coll) :name "Sales analytics"}
                    (get-in part [:data :location])))))))))
 
-(deftest records-save-in-conversation-state-test
+(deftest save-stamps-card-provenance-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-model-cleanup [:model/Card]
-      (mt/with-temp [:model/Collection coll {:name "Sales analytics"}]
-        (let [memory (chart-memory)]
-          (binding [shared/*memory-atom* memory]
-            (save-entity/save-entity-tool
-             {:chart_id    "c-1"
-              :name        "Venues by price"
-              :description "Count of venues grouped by price."
-              :destination {:target_type "collection" :collection_id (:id coll)}}))
-          (testing "records the saved card + location in agent memory so it persists in the conversation"
-            (let [saved (get-in @memory [:state :savedCharts "c-1"])]
-              (is (some? (:card_id saved)))
-              (is (= {:type "collection" :id (:id coll) :name "Sales analytics"}
-                     (:location saved))))))))))
+      (mt/with-temp [:model/Collection coll {}
+                     :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+        (let [result (binding [shared/*memory-atom*     (chart-memory)
+                               shared/*conversation-id* convo-id]
+                       (save-entity/save-entity-tool
+                        {:chart_id    "c-1"
+                         :name        "Venues by price"
+                         :description "Count of venues grouped by price."
+                         :destination {:target_type "collection" :collection_id (:id coll)}}))
+              card-id (get-in result [:structured-output :card-id])]
+          (testing "the card records which conversation + chart it was saved from"
+            (is (= {:metabot_conversation_id convo-id
+                    :metabot_chart_id        "c-1"}
+                   (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                                  :id card-id)))))))))
+
+(deftest save-without-conversation-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (testing "saving outside a conversation-backed run leaves provenance columns nil"
+        (let [result  (save! {:target_type "collection" :collection_id nil})
+              card-id (get-in result [:structured-output :card-id])]
+          (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
+                 (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                                :id card-id))))))))
 
 (deftest save-to-root-collection-test
   (mt/with-current-user (mt/user->id :crowberto)

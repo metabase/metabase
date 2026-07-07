@@ -4,8 +4,14 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { useCreateCardMutation, useGetAdhocQueryQuery } from "metabase/api";
+import {
+  skipToken,
+  useCreateCardMutation,
+  useGetAdhocQueryQuery,
+  useGetCardQuery,
+} from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { useRecordMetabotEntitySavedMutation } from "metabase/api/metabot";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
@@ -14,6 +20,7 @@ import { serializeCardForUrl } from "metabase/common/utils/card";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import {
   type MetabotAgentId,
+  getMetabotConversation,
   getSavedChartCardId,
   markChartSaved,
 } from "metabase/metabot/state";
@@ -58,7 +65,24 @@ export function MetabotInlineChart({
 }) {
   const datasetQuery = query.query;
   const clipboard = useClipboard();
+  const recordedCardId = useSelector((state) =>
+    getSavedChartCardId(state, entityId),
+  );
   const siteUrl = useSetting("site-url");
+
+  // Editing (or deleting) the saved card severs its provenance link, so verify
+  // the recorded save against the card itself. Subscribing via RTK Query means
+  // an in-app edit invalidates the card tag and this flips back to unsaved
+  // immediately. Only positive evidence unsaves: while loading, stay optimistic.
+  const { data: savedCard, error: savedCardError } = useGetCardQuery(
+    recordedCardId != null
+      ? { id: recordedCardId, ignore_error: true }
+      : skipToken,
+  );
+  const isLinkSevered =
+    savedCardError != null ||
+    (savedCard != null && savedCard.metabot_chart_id !== entityId);
+  const savedCardId = isLinkSevered ? undefined : recordedCardId;
 
   const question = useMemo(() => {
     const base = new Question({
@@ -90,8 +114,10 @@ export function MetabotInlineChart({
 
   const link = useMemo(
     () =>
-      `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
-    [card],
+      savedCardId != null
+        ? Urls.question(question.setId(savedCardId))
+        : `/question#${serializeCardForUrl(card, { includeDisplayIsLocked: true })}`,
+    [card, question, savedCardId],
   );
 
   const { data: dataset, error } = useGetAdhocQueryQuery(datasetQuery);
@@ -134,6 +160,7 @@ export function MetabotInlineChart({
         <SaveChartAction
           agentId={agentId}
           entityId={entityId}
+          savedCardId={savedCardId}
           question={question}
           readonly={readonly}
         />
@@ -160,19 +187,22 @@ export function MetabotInlineChart({
 function SaveChartAction({
   agentId,
   entityId,
+  savedCardId,
   question,
   readonly,
 }: {
   agentId: MetabotAgentId;
   entityId: string;
+  savedCardId: number | undefined;
   question: Question;
   readonly: boolean;
 }) {
   const dispatch = useDispatch();
   const [createCard] = useCreateCardMutation();
+  const [recordEntitySaved] = useRecordMetabotEntitySavedMutation();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const savedCardId = useSelector((state) =>
-    getSavedChartCardId(state, entityId),
+  const conversationId = useSelector(
+    (state) => getMetabotConversation(state, agentId).conversationId,
   );
 
   const handleCreate = async (
@@ -184,6 +214,15 @@ function SaveChartAction({
       dashboard_tab_id: options?.dashboardTabId,
     }).unwrap();
     const savedQuestion = newQuestion.setId(created.id);
+    // Stamp the card's Metabot provenance columns BEFORE flipping the chart to
+    // "Saved" — the saved state is verified against the card, so stamping after
+    // would race the verification fetch. Best-effort: the conversation row may
+    // not exist yet on the server, and the save itself already succeeded.
+    await recordEntitySaved({
+      conversation_id: conversationId,
+      entity_id: entityId,
+      card_id: created.id,
+    });
     dispatch(
       markChartSaved({
         agentId,

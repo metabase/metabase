@@ -1761,3 +1761,27 @@
               (is (contains? (stale-ids) public-id)))
             (tu/with-temporary-setting-values [enable-public-sharing true]
               (is (not (contains? (stale-ids) public-id))))))))))
+(deftest editing-clears-metabot-provenance-test
+  (testing "editing a card's content severs its Metabot provenance link"
+    (doseq [[change-desc changes] {"query"        {:dataset_query (mt/mbql-query checkins)}
+                                   "display"      {:display :line}
+                                   "viz settings" {:visualization_settings {"graph.goal_value" 10}}}]
+      (testing (str "changing the " change-desc " clears the link")
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
+                       :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
+                                                  :metabot_conversation_id convo-id
+                                                  :metabot_chart_id "chart-1"}]
+          (t2/update! :model/Card card-id changes)
+          (is (= {:metabot_conversation_id nil :metabot_chart_id nil}
+                 (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                                :id card-id)))))))
+  (testing "renaming or moving a card keeps the provenance link"
+    (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta)}
+                   :model/Collection {coll-id :id} {}
+                   :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)
+                                              :metabot_conversation_id convo-id
+                                              :metabot_chart_id "chart-1"}]
+      (t2/update! :model/Card card-id {:name "Renamed" :collection_id coll-id})
+      (is (= {:metabot_conversation_id convo-id :metabot_chart_id "chart-1"}
+             (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                            :id card-id))))))

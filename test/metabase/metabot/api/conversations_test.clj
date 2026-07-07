@@ -347,3 +347,41 @@
         (finally
           (t2/delete! :model/MetabotMessage :conversation_id convo-id)
           (t2/delete! :model/MetabotConversation :id convo-id))))))
+
+(deftest record-saved-entity-test
+  (testing "POST /api/metabot/conversations/:id/saved-entity stamps card provenance columns"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                     :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                     :model/Card {card-id :id} {:name "Venues by price"}]
+        (mt/user-http-request :rasta :post 200
+                              (str "metabot/conversations/" convo-id "/saved-entity")
+                              {:entity_id "chart-1" :card_id card-id})
+        (is (= {:metabot_conversation_id convo-id
+                :metabot_chart_id        "chart-1"}
+               (t2/select-one [:model/Card :metabot_conversation_id :metabot_chart_id]
+                              :id card-id)))
+        (testing "the conversation detail lists the saved entity"
+          (is (= [{:card_id card-id :chart_id "chart-1" :name "Venues by price"}]
+                 (:saved_entities
+                  (mt/user-http-request :rasta :get 200
+                                        (str "metabot/conversations/" convo-id))))))))))
+
+(deftest record-saved-entity-permissions-test
+  (let [user-id (mt/user->id :rasta)]
+    (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                   :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                   :model/Card {card-id :id} {}]
+      (testing "a non-participant cannot record a save"
+        (mt/user-http-request :lucky :post 403
+                              (str "metabot/conversations/" convo-id "/saved-entity")
+                              {:entity_id "chart-1" :card_id card-id})
+        (is (nil? (t2/select-one-fn :metabot_conversation_id :model/Card :id card-id))))
+      (testing "a nonexistent card 404s"
+        (mt/user-http-request :rasta :post 404
+                              (str "metabot/conversations/" convo-id "/saved-entity")
+                              {:entity_id "chart-1" :card_id Integer/MAX_VALUE}))
+      (testing "a nonexistent conversation 404s"
+        (mt/user-http-request :rasta :post 404
+                              (str "metabot/conversations/" (random-uuid) "/saved-entity")
+                              {:entity_id "chart-1" :card_id card-id})))))

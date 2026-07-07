@@ -45,10 +45,20 @@
    [:summary         [:maybe :string]]
    [:user_id         [:maybe ms/PositiveInt]]
    [:state           {:optional true} [:maybe ::metabot.schema/state]]
+   [:saved_entities  [:sequential
+                      [:map
+                       [:card_id  ms/PositiveInt]
+                       [:chart_id [:maybe :string]]
+                       [:name     ms/NonBlankString]]]]
    [:chat_messages   [:sequential :map]]])
 
 (def ^:private ConversationIdParams
   [:map [:id ms/UUIDString]])
+
+(def ^:private SaveEntityBody
+  [:map
+   [:entity_id ms/NonBlankString]
+   [:card_id   ms/PositiveInt]])
 
 ;;; ---------------------------------------- Queries ----------------------------------------
 
@@ -121,6 +131,27 @@
   [{:keys [id]} :- ConversationIdParams]
   (api/read-check :model/MetabotConversation id)
   (metabot.persistence/conversation-detail id))
+
+(api.macros/defendpoint :post "/:id/saved-entity"
+  "Record that a generated chart from this conversation was saved as a card.
+
+  Stamps the Metabot provenance columns on the card, mirroring what the agent's
+  `save_entity` tool records at creation time — used by the inline chart's
+  manual Save button, which runs outside any agent turn.
+
+  Accessible to any participant in the conversation or to any superuser."
+  [{:keys [id]} :- ConversationIdParams
+   _query-params
+   {:keys [entity_id card_id]} :- SaveEntityBody]
+  (api/read-check :model/MetabotConversation id)
+  (api/write-check :model/Card card_id)
+  ;; Raw table update: a provenance stamp should not run the Card model's heavy
+  ;; before-update pipeline (query normalization, metadata population).
+  (t2/update! (t2/table-name :model/Card) card_id
+              {:metabot_conversation_id id
+               :metabot_chart_id        entity_id})
+  {:entity_id entity_id
+   :card_id   card_id})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

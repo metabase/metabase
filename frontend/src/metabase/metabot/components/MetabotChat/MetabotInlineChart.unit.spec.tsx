@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   setupCardDataset,
+  setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -200,6 +202,13 @@ describe("MetabotInlineChart", () => {
           dataset_query: datasetQuery,
         },
       });
+      fetchMock.post("express:/api/metabot/conversations/:id/saved-entity", {
+        entity_id: "card-1",
+        card_id: 99,
+      });
+      setupCardEndpoints(
+        createMockCard({ id: 99, metabot_chart_id: "card-1" }),
+      );
       setup();
 
       const modal = await openSaveModal();
@@ -215,6 +224,18 @@ describe("MetabotInlineChart", () => {
       fetchMock.post("path:/api/card", createMockCard({ id: 99 }), {
         name: "create-card",
       });
+      fetchMock.post(
+        "express:/api/metabot/conversations/:id/saved-entity",
+        { entity_id: "card-1", card_id: 99 },
+        {
+          name: "record-saved-entity",
+          matchPartialBody: true,
+          body: { entity_id: "card-1", card_id: 99 },
+        },
+      );
+      setupCardEndpoints(
+        createMockCard({ id: 99, metabot_chart_id: "card-1" }),
+      );
       setup();
 
       const modal = await openSaveModal();
@@ -226,9 +247,75 @@ describe("MetabotInlineChart", () => {
         ).not.toBeInTheDocument();
       });
       expect(await screen.findByText("Saved")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("record-saved-entity")).toBe(true);
+      });
+    });
+
+    it("points the title at the saved question instead of the ad-hoc URL after saving", async () => {
+      setupCardDataset();
+      setupCardEndpoints(
+        createMockCard({ id: 99, metabot_chart_id: "card-1" }),
+      );
+      const { store } = renderWithProviders(
+        <Route
+          path="/"
+          component={() => (
+            <MetabotInlineChart value={value} readonly={false} />
+          )}
+        />,
+        { withRouter: true },
+      );
+
+      expect(await screen.findByText("Orders by month")).toHaveAttribute(
+        "href",
+        expect.stringContaining("/question#"),
+      );
+
+      act(() => {
+        store.dispatch(
+          markChartSaved({
+            agentId: "omnibot",
+            entity_id: "card-1",
+            card_id: 99,
+            name: "Orders by month",
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Orders by month")).toHaveAttribute(
+          "href",
+          expect.stringContaining("/question/99"),
+        );
+      });
+    });
+
+    it("flips back to unsaved when the saved card's provenance link is severed", async () => {
+      setupCardEndpoints(createMockCard({ id: 99, metabot_chart_id: null }));
+      const { store } = setup();
+
+      act(() => {
+        store.dispatch(
+          markChartSaved({
+            agentId: "omnibot",
+            entity_id: "card-1",
+            card_id: 99,
+            name: "Orders by month",
+          }),
+        );
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Save" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Saved")).not.toBeInTheDocument();
     });
 
     it("shows a short 'Saved' link (not the folder name) when a save data part exists", async () => {
+      setupCardEndpoints(
+        createMockCard({ id: 99, metabot_chart_id: "card-1" }),
+      );
       const { store } = setup();
 
       act(() => {

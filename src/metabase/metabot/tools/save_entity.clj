@@ -145,16 +145,19 @@
           {:keys [card location link]} (case (:target_type destination)
                                          "collection" (save-to-collection! args)
                                          "dashboard"  (save-to-dashboard! args))
+          ;; Provenance: which conversation + generated chart this card came from,
+          ;; so a reloaded conversation can mark the inline chart as saved. Raw
+          ;; table update — a provenance stamp should not run the Card model's
+          ;; heavy before-update pipeline.
+          _ (when shared/*conversation-id*
+              (t2/update! (t2/table-name :model/Card) (:id card)
+                          {:metabot_conversation_id shared/*conversation-id*
+                           :metabot_chart_id        chart_id}))
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " (:name location) ".")
                             ""
                             (str "Tell the user it was saved and share this link: "
                                  (te/link question-name link)))]
-      ;; Record the save in agent memory so it round-trips into the persisted
-      ;; conversation state (`MetabotConversation.state.savedCharts`).
-      (when shared/*memory-atom*
-        (swap! shared/*memory-atom* assoc-in [:state :savedCharts chart_id]
-               {:card_id (:id card) :location location}))
       {:output            (str "<result>\nSaved as card " (:id card)
                                " in " (:name location) ".\n</result>\n"
                                "<instructions>\n" instruction-text "\n</instructions>")
