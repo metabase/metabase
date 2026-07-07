@@ -3571,7 +3571,10 @@
 
   enterprise/stale
   {:team "UX West"
+   ;; stale.impl/find-candidates is the exported staleness-rule entry point (incl. the instance-wide
+   ;; `:collection-ids :all` arity) reused by Content Diagnostics — one source of truth for the rule.
    :api  #{metabase-enterprise.stale.api
+           metabase-enterprise.stale.impl
            metabase-enterprise.stale.init}
    :uses #{analytics
            api
