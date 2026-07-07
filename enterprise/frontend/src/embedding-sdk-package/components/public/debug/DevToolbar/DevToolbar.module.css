@@ -38,7 +38,7 @@
   margin-bottom: 8px;
   display: flex;
   flex-direction: column;
-  background: var(--mb-color-background, #fff);
+  background: var(--mb-color-background-primary, #fff);
   color: var(--mb-color-text-primary, #4c5773);
   border: 1px solid var(--mb-color-border, #eeecec);
   border-radius: 8px;
