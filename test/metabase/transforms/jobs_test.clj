@@ -6,8 +6,7 @@
    [clojure.tools.logging :as log]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.seed :as notification.seed]
@@ -29,13 +28,6 @@
    (java.util.concurrent CyclicBarrier TimeUnit)))
 
 (set! *warn-on-reflection* true)
-
-(defn- select-all-target
-  "`SELECT *` from transform `target`, quoted for `driver`. Referencing the target directly keeps the
-  dependency parser in sync with it on drivers whose test harness rewrites physical table names, e.g.
-  redshift embeds the dataset prefix so string-replacing a compiled query desyncs the dep (GDGT-2522)."
-  [driver target]
-  (first (sql.qp/format-honeysql driver {:select [:*] :from [[(driver.sql/qualified-name target)]]})))
 
 (deftest job-transform-ids-test
   (testing "single tag, single transform"
@@ -368,10 +360,14 @@
                                  :model/TransformTransformTag _tag1 {:transform_id (:id t1)
                                                                      :tag_id (:id tag)
                                                                      :position 0}
-                                 ;; depends on faulty transform
+                                 ;; depends on faulty transform. name target1 directly instead of
+                                 ;; str/replace-ing the compiled query: redshift's test harness embeds the
+                                 ;; dataset name in physical table names, so the replace leaks the prefix and
+                                 ;; desyncs the dep from t1 (GDGT-2522).
                                  :model/Transform t2 {:name "transform2"
                                                       :source {:type :query
-                                                               :query (lib/native-query mp (select-all-target driver/*driver* target1))}
+                                                               :query (lib/native-query mp (format "SELECT * FROM %s"
+                                                                                                   (sql.u/quote-name driver/*driver* :table (:schema target1) (:name target1))))}
                                                       :creator_id (mt/user->id :crowberto)
                                                       :target target2}
                                  :model/TransformTransformTag _tag2 {:transform_id (:id t2)
