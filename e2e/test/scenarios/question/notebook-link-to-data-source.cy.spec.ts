@@ -7,7 +7,6 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/utils/browser";
 
@@ -133,13 +132,13 @@ describe("scenarios > notebook > link to data source", () => {
     it("should open the source question from a nested question where the source is native question", () => {
       const source = {
         name: "Native source",
-        native: {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
           query: "select 1 as foo",
-          "template-tags": {},
         },
       };
 
-      H.createNativeQuestion(source).then(({ body: sourceQuestion }) => {
+      H.createCardWithTestNativeQuery(source).then((sourceQuestion) => {
         H.createCardWithTestQuery({
           name: "Nested question based on a native question",
           dataset_query: {
@@ -202,16 +201,16 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the source model from a nested question where the source is native model", () => {
-      const source: NativeQuestionDetails = {
+      const source = {
         name: "Native source",
-        native: {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
           query: "select 1 as foo",
-          "template-tags": {},
         },
-        type: "model",
+        type: "model" as const,
       };
 
-      H.createNativeQuestion(source).then(({ body: sourceQuestion }) => {
+      H.createCardWithTestNativeQuery(source).then((sourceQuestion) => {
         H.createCardWithTestQuery({
           name: "Nested question based on a native question",
           dataset_query: {
@@ -298,16 +297,16 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the underlying native model", () => {
-      const model: NativeQuestionDetails = {
+      const model = {
         name: "Native model",
-        native: {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
           query: "select 1 as foo",
-          "template-tags": {},
         },
-        type: "model",
+        type: "model" as const,
       };
 
-      H.createNativeQuestion(model).then(({ body: { id, name } }) => {
+      H.createCardWithTestNativeQuery(model).then(({ id, name }) => {
         H.visitModel(id);
 
         H.openNotebook();
