@@ -65,7 +65,7 @@ function getManifestStore(
 ) {
   return getStore(
     reducers,
-    _.pick(initialState, ...Object.keys(reducers)) as Partial<State>,
+    _.pick(initialState, ...Object.keys(reducers)),
     middleware,
   );
 }

@@ -55,5 +55,5 @@ export function useNavigate(): NavigateFunction {
     // `navigate` a new identity per navigation, matching v7.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [router, location.pathname],
-  ) as NavigateFunction;
+  );
 }

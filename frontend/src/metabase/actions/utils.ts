@@ -250,7 +250,7 @@ export const getForm = (
   fieldSettings: Record<string, FieldSettings> = {},
 ): ActionFormProps => {
   const sortedParams = [...parameters].sort(
-    sortActionParams({ fields: fieldSettings } as ActionFormSettings),
+    sortActionParams({ fields: fieldSettings }),
   );
   return {
     fields: sortedParams
