@@ -65,7 +65,7 @@
           (empty? (or (:table.column_formatting viz-settings)
                       (get viz-settings "table.column_formatting"))))
     (vec (repeat (count cells) nil))
-    (js.pool/with-context context
+    (js.pool/with-static-viz-context context
       (-> (js.engine/execute-fn-name context "getCellBackgroundColors"
                                      (json/encode rows)
                                      (json/encode cols)

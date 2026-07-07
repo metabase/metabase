@@ -168,7 +168,7 @@
   frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options. Returns a byte array
   of a png file."
   [data settings]
-  (let [svg-string (js.pool/with-context context
+  (let [svg-string (js.pool/with-static-viz-context context
                      (.asString (js.engine/execute-fn-name context "funnel" (json/encode data)
                                                            (json/encode settings)
                                                            (json/encode (premium-features/token-features)))))]
@@ -177,7 +177,7 @@
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
-  (let [response (js.pool/with-context context
+  (let [response (js.pool/with-static-viz-context context
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)
@@ -196,7 +196,7 @@
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
-  (js.pool/with-context context
+  (js.pool/with-static-viz-context context
     (let [js-res (js.engine/execute-fn-name context "gauge"
                                             (json/encode card)
                                             (json/encode data)
@@ -207,7 +207,7 @@
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
-  (js.pool/with-context context
+  (js.pool/with-static-viz-context context
     (let [js-res (js.engine/execute-fn-name context "progress"
                                             (json/encode {:value value :goal goal})
                                             (json/encode settings)
