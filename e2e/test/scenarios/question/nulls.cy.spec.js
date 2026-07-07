@@ -48,23 +48,63 @@ describe("scenarios > question > null", () => {
 
   it("pie chart should handle `0`/`null` values (metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
-    H.createQuestionAndDashboard({
+    H.createQuestionAndDashboardWithTestQuery({
       questionDetails: {
         name: "13626",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["expression", "NewDiscount"]]],
-          breakout: [["field", ORDERS.ID, null]],
-          expressions: {
-            NewDiscount: [
-              "case",
-              [[["=", ["field", ORDERS.ID, null], 2], 0]],
-              { default: ["field", ORDERS.DISCOUNT, null] },
-            ],
-          },
-          filter: ["=", ["field", ORDERS.ID, null], 1, 2, 3],
-        },
         display: "pie",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              expressions: [
+                {
+                  name: "NewDiscount",
+                  value: {
+                    type: "operator",
+                    operator: "case",
+                    args: [
+                      {
+                        type: "operator",
+                        operator: "=",
+                        args: [
+                          { type: "column", name: "ID", sourceName: "ORDERS" },
+                          { type: "literal", value: 2 },
+                        ],
+                      },
+                      { type: "literal", value: 0 },
+                      {
+                        type: "column",
+                        name: "DISCOUNT",
+                        sourceName: "ORDERS",
+                      },
+                    ],
+                  },
+                },
+              ],
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "NewDiscount" }],
+                },
+              ],
+              breakouts: [{ type: "column", name: "ID", sourceName: "ORDERS" }],
+              filters: [
+                {
+                  type: "operator",
+                  operator: "=",
+                  args: [
+                    { type: "column", name: "ID", sourceName: "ORDERS" },
+                    { type: "literal", value: 1 },
+                    { type: "literal", value: 2 },
+                    { type: "literal", value: 3 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
       },
       dashboardDetails: {
         name: "13626D",
@@ -109,16 +149,16 @@ describe("scenarios > question > null", () => {
   });
 
   it("dashboard should handle cards with null values (metabase#13801)", () => {
-    H.createNativeQuestion({
+    H.createCardWithTestNativeQuery({
       name: "13801_Q1",
-      native: { query: "SELECT null", "template-tags": {} },
+      dataset_query: { database: SAMPLE_DB_ID, query: "SELECT null" },
       display: "scalar",
-    }).then(({ body: { id: Q1_ID } }) => {
-      H.createNativeQuestion({
+    }).then(({ id: Q1_ID }) => {
+      H.createCardWithTestNativeQuery({
         name: "13801_Q2",
-        native: { query: "SELECT 0", "template-tags": {} },
+        dataset_query: { database: SAMPLE_DB_ID, query: "SELECT 0" },
         display: "scalar",
-      }).then(({ body: { id: Q2_ID } }) => {
+      }).then(({ id: Q2_ID }) => {
         H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
