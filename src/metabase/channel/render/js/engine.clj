@@ -86,7 +86,7 @@
   whole isolate heap and must exceed the per-context `sandbox.MaxHeapMemory` set in [[untrusted-plugin-context]]."
   ^Engine []
   (.. (Engine/newBuilder (into-array String ["js"]))
-      (sandbox SandboxPolicy/UNTRUSTED)
+      (sandbox SandboxPolicy/UNTRUSTED) ;; host access policy suitable for a context with UNTRUSTED sandbox policy.
       (option "engine.MaxIsolateMemory" "1GB")
       (out discarding-output-stream)
       (err discarding-output-stream)
@@ -113,10 +113,16 @@
       ;; HostAccess/UNTRUSTED, not /NONE: the UNTRUSTED policy rejects /NONE (it still permits mutable
       ;; target-type mappings). /UNTRUSTED is the policy's purpose-built strictest host-access mode.
       (allowHostAccess HostAccess/UNTRUSTED)
+      ;; allowAllAccess (the master switch that would enable all of the below at once) is false by default; UNTRUSTED forbids true.
+      ;; allowHostClassLookup is false by default under SandboxPolicy/UNTRUSTED.
+      ;; allowIO is disabled by default under SandboxPolicy/UNTRUSTED.
+      ;; allowNativeAccess is false by default under SandboxPolicy/UNTRUSTED.
+      ;; allowEnvironmentAccess is NONE (no host env vars) by default under SandboxPolicy/UNTRUSTED.
+      ;; allowExperimentalOptions left at default false
       (option "sandbox.MaxCPUTime" "30s")       ; guest CPU budget: cold static-viz bundle load (~4s) + plugin + render; matches the legacy render timeout
       (option "sandbox.MaxHeapMemory" "512MB")  ; must be < engine.MaxIsolateMemory; EE static-viz bundle + custom-viz render needs the headroom
       (option "sandbox.MaxASTDepth" "5000")     ; large bundles parse deep; 5000 clears React+ECharts
-      (option "sandbox.MaxThreads" "1")
+      (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
       (option "sandbox.MaxOutputStreamSize" "16MB")
       (option "sandbox.MaxErrorStreamSize" "4MB")
       (out discarding-output-stream)
