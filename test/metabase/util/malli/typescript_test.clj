@@ -80,11 +80,27 @@
   (testing "intersections preserve array-ness when every branch is unknown-ish"
     (is (= "unknown[]"
            (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:fn {:typescript "unknown"} any?]]))))
+  (testing "intersections drop raw predicate function branches because TypeScript cannot represent them"
+    (is (= "string[]"
+           (ts/schema->ts [:and [:sequential :string] [:fn (fn [xs] (apply distinct? xs))]]))))
+  (testing "intersections drop unevaluated predicate function forms from CLJS analyzer metadata"
+    (is (= "string[]"
+           (ts/schema->ts [:and [:sequential :string] [:fn '(fn [xs] (apply distinct? xs))]]))))
   (testing "merges drop unknown branches because T & unknown is T"
     (is (= "{\n\ta: string;\n\t[key: string]: unknown;\n}"
            (ts/schema->ts [:merge
                            [:map [:a :string]]
-                           [:fn {:typescript "unknown"} any?]])))))
+                           [:fn {:typescript "unknown"} any?]]))))
+  (testing "merges drop raw predicate function branches because TypeScript cannot represent them"
+    (is (= "{\n\ta: string;\n\t[key: string]: unknown;\n}"
+           (ts/schema->ts [:merge
+                           [:map [:a :string]]
+                           [:fn (fn [m] (contains? m :a))]]))))
+  (testing "merges drop unevaluated predicate function forms from CLJS analyzer metadata"
+    (is (= "{\n\ta: string;\n\t[key: string]: unknown;\n}"
+           (ts/schema->ts [:merge
+                           [:map [:a :string]]
+                           [:fn '(fn [m] (contains? m :a))]])))))
 
 (deftest structured-ref-test
   (testing "structured refs record registry refs without relying on generated TypeScript names"
@@ -260,7 +276,22 @@
                            :string]]))))
   (testing "standalone function schema handles named catn arguments"
     (is (= "(a: string, b: number) => boolean"
-           (ts/schema->ts [:=> [:catn [:a :string] [:b :int]] :boolean])))))
+           (ts/schema->ts [:=> [:catn [:a :string] [:b :int]] :boolean]))))
+  (testing "function declarations drop unevaluated predicate constraints and keep structural types"
+    (is (= (str "/**\n"
+                " * @param {unknown} query\n"
+                " * @returns {string[]}\n"
+                " */\n"
+                "export function returned_columns_like(query: unknown): string[];")
+           (#'ts/def->ts {:name     'metabase.util.malli.typescript-test/returned-columns-like
+                          :ns       'metabase.util.malli.typescript-test
+                          :arglists '([query])
+                          :schema   [:=>
+                                     [:cat :any]
+                                     [:and
+                                      [:sequential :string]
+                                      [:fn '(fn [cols] (or (empty? cols)
+                                                           (apply distinct? cols)))]]]})))))
 
 (deftest primitive-and-predicate-schema-test
   (testing "common schema forms produce precise primitive types"

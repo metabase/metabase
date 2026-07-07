@@ -446,6 +446,37 @@
       :else
       ["unknown"])))
 
+(defn- predicate-fn-schema-form?
+  [form]
+  (and (vector? form)
+       (= :fn (first form))))
+
+(defn- drop-predicate-fn-constraints
+  "Drop Malli `:fn` predicate branches from structural `:and` and `:merge` forms before Malli parses the schema.
+
+  Shadow CLJS analyzer metadata can contain unevaluated predicate function source forms. Malli needs SCI to parse those
+  forms, but TypeScript cannot represent arbitrary predicate constraints anyway. Keep the structural branches so the
+  generator can still emit useful declarations instead of falling back to `unknown`."
+  [schema]
+  (walk/postwalk
+   (fn [form]
+     (if (and (vector? form)
+              (#{:and :merge} (first form)))
+       (let [schema-type (first form)
+             body        (rest form)
+             props       (when (map? (first body)) (first body))
+             children    (if props (rest body) body)
+             structural  (remove predicate-fn-schema-form? children)]
+         (if (= (count structural) (count children))
+           form
+           (do
+             (record-weak-type! :unknown)
+             (if (seq structural)
+               (into (cond-> [schema-type] props (conj props)) structural)
+               :any))))
+       form))
+   schema))
+
 (defmethod -schema->ts :or
   [schema]
   (let [children (mc/children schema)
@@ -676,24 +707,25 @@
 (defn- schema->ts-impl
   "Core implementation of schema->ts (non-memoized)."
   [schema]
-  (when (*seen* schema)
-    (throw (ex-info "Circular schema reference" {::unsupported true
-                                                 :schema       schema})))
-  (try
-    (binding [*seen* (conj *seen* schema)]
-      (-schema->ts (mc/schema schema)))
-    (catch Throwable t
-      (cond
-        (::unsupported (ex-data t))
-        (do
-          (record-weak-type! :unknown)
-          "unknown")
-        (instance? StackOverflowError t)
-        (do
-          (record-weak-type! :unknown)
-          "unknown")
-        :else
-        (throw t)))))
+  (let [schema (drop-predicate-fn-constraints schema)]
+    (when (*seen* schema)
+      (throw (ex-info "Circular schema reference" {::unsupported true
+                                                   :schema       schema})))
+    (try
+      (binding [*seen* (conj *seen* schema)]
+        (-schema->ts (mc/schema schema)))
+      (catch Throwable t
+        (cond
+          (::unsupported (ex-data t))
+          (do
+            (record-weak-type! :unknown)
+            "unknown")
+          (instance? StackOverflowError t)
+          (do
+            (record-weak-type! :unknown)
+            "unknown")
+          :else
+          (throw t))))))
 
 (defn schema->ts
   "Convert a Malli schema to TypeScript type definition. Dispatches on the schema type (keyword)."
@@ -1049,7 +1081,9 @@
   [{:keys [arglists schema doc ns] fqname :name :as fnmeta}]
   (try
     (let [fnname (name fqname)
-          schema (resolve-var-refs (or ns fqname) schema)
+          schema (->> schema
+                      (resolve-var-refs (or ns fqname))
+                      drop-predicate-fn-constraints)
           arglists (if (= (first arglists) 'quote)
                      (second arglists)
                      arglists)]
@@ -1094,7 +1128,9 @@
   [{:keys [schema doc ns] fqname :name :as defmeta}]
   (try
     (let [constname (cljs-munge (name fqname))
-          schema (resolve-var-refs (or ns fqname) schema)]
+          schema (->> schema
+                      (resolve-var-refs (or ns fqname))
+                      drop-predicate-fn-constraints)]
       (str (format-const-jsdoc doc schema)
            (format "export const %s: %s;" constname (schema->ts schema))
            "\n"))
@@ -1197,7 +1233,9 @@
   [defs]
   (reduce (fn [refs {:keys [schema ns] fqname :name}]
             (try
-              (let [resolved-schema (resolve-var-refs (or ns fqname) schema)]
+              (let [resolved-schema (->> schema
+                                         (resolve-var-refs (or ns fqname))
+                                         drop-predicate-fn-constraints)]
                 (into refs (collect-registry-refs resolved-schema)))
               (catch clojure.lang.ExceptionInfo e
                 (if (= :malli.core/sci-not-available (:type (ex-data e)))
