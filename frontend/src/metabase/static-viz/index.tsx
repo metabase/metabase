@@ -21,7 +21,6 @@ import type { LegacyStaticChartType } from "metabase/static-viz/containers/Legac
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import type { ColorPalette } from "metabase/ui/colors/types";
-import type { OptionsType } from "metabase/utils/formatting/types";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
@@ -37,6 +36,7 @@ import {
 import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
 import type {
   Card,
+  ColumnSettings,
   DashCardVisualizationSettings,
   Dataset,
   DatasetData,
@@ -64,7 +64,7 @@ type StaticVizApiWindow = Omit<Window, "__METABASE_VIZ_API__"> & {
   React,
   jsxRuntime,
   columnTypes: customVizColumnTypes,
-  formatValue: (value: unknown, options?: OptionsType) => {
+  formatValue: (value: unknown, options?: ColumnSettings) => {
     const result = internalFormatValue(value, { ...options, jsx: false });
     return String(result ?? "");
   },

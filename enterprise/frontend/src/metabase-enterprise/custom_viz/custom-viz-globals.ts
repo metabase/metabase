@@ -1,4 +1,8 @@
 import type { ColumnTypes, CreateCustomVisualization } from "custom-viz";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- typeof needs a value import
+import * as ReactModule from "react";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- typeof needs a value import
+import * as JsxRuntimeModule from "react/jsx-runtime";
 
 import {
   measureText,
@@ -16,6 +20,10 @@ declare global {
       measureText: typeof measureText;
       measureTextWidth: typeof measureTextWidth;
       measureTextHeight: typeof measureTextHeight;
+      // Exposed only by the static-viz bundle (for plugin bundles that reference them); the app
+      // path (ensureVizApi) leaves these unset, so they're optional.
+      React?: typeof ReactModule;
+      jsxRuntime?: typeof JsxRuntimeModule;
     };
     __customVizPlugin__?: CreateCustomVisualization<Record<string, unknown>>;
   }
