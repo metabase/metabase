@@ -90,13 +90,15 @@
 ;; index can still be rebuilt.) Runs unconditionally rather than gating on :feature — the OSS fallback
 ;; `false` already covers the unlicensed case.
 (defenterprise entity-retrieval-available?
-  "EE impl: pgvector configured + library-retrieval licensed AND the index is ready (built for the current
-  model and populated), so the tool is offered only when it can serve a query (otherwise the agent
-  gets the general-search fallback)."
+  "EE impl: pgvector configured + semantic-search licensed AND the index is ready (built for the current
+  model and populated) AND the embedder circuit isn't open, so the curated tool is offered only when it can
+  serve a query -- otherwise the agent gets the general-search fallback rather than fast-failing on every
+  `retrieve_library_entities` call while the embedder is down."
   :feature :none
   []
   (let [{:keys [pgvector? licensed? index-compatible? populated?]} (retrieval-status)]
-    (and pgvector? licensed? index-compatible? populated?)))
+    (and pgvector? licensed? index-compatible? populated?
+         (not (embedding/embedder-circuit-open?)))))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
 ;;;

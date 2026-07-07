@@ -9,6 +9,7 @@
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -47,11 +48,21 @@
   [name check-fn]
   (swap! checks assoc name check-fn))
 
+(defn- run-check
+  "Run one check in isolation: a throwing check reads as degraded rather than aborting the whole report."
+  [check-name f]
+  (try
+    (f)
+    (catch Throwable e
+      (log/error e "Health check errored" {:check check-name})
+      {:health 0 :message (str "Health check errored: " (ex-message e))})))
+
 (defn report
-  "Run all registered checks and produce a report describing potential problems."
+  "Run all registered checks and produce a report describing potential problems.
+  Each check is isolated, so one that throws doesn't lose the others' results."
   []
   (into {} (for [[name f] @checks]
-             [name (f)])))
+             [name (run-check name f)])))
 
 (defn- persist-check-result!
   "Persist one check result, or nothing when `result` is nil.
@@ -69,14 +80,25 @@
   (doseq [[check-name result] (report)]
     (persist-check-result! check-name result)))
 
+(defn- latest-run
+  [check-name]
+  (t2/select-one :health_inspector_runs :check_name (name check-name) {:order-by [[:run_at :desc]]}))
+
 (defn run-and-save-check!
   "Run one registered check by name and persist its result, so a change can be surfaced immediately rather
   than at the next daily report.
-  A no-op unless the health inspector is enabled and the named check is registered and applicable (non-nil)."
+  A no-op unless the health inspector is enabled and the named check is registered and applicable (non-nil).
+  Deduplicates against the check's most recent run: an unchanged result isn't re-persisted, so a flapping
+  caller (e.g. a circuit breaker cycling open/half-open) can't flood the table and bury other checks."
   [check-name]
   (when (setting/health-inspector-enabled)
     (when-let [f (get @checks check-name)]
-      (persist-check-result! check-name (f)))))
+      (when-let [result (run-check check-name f)]
+        (let [prev (latest-run check-name)]
+          (when-not (and prev
+                         (= (:health prev) (:health result))
+                         (= (:message prev) (:message result)))
+            (persist-check-result! check-name result)))))))
 
 (defn list-runs
   "Return the most recent health inspector runs from the DB."

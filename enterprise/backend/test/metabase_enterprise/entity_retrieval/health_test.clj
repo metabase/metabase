@@ -36,15 +36,18 @@
             (check (assoc ready-status :populated? false))))))
 
 (deftest open-circuit-is-degraded-test
-  (testing "an open embedder circuit degrades and skips the service probe"
+  (testing "an open circuit degrades but still probes (so a recovered-but-idle embedder is detectable)"
     (let [probed? (atom false)]
       (mt/with-dynamic-fn-redefs
         [entity-retrieval.core/retrieval-status       (constantly ready-status)
          semantic.embedding/embedder-circuit-open?    (constantly true)
          semantic.health/embedding-service-reachable? (fn [] (reset! probed? true) {:reachable? true})]
-        (is (=? {:health 0 :message #".*circuit open.*"}
+        (is (=? {:health 0 :message #".*circuit open \(probe reachable.*"}
                 (entity-retrieval.health/nlq-retrieval-health-check)))
-        (is (false? @probed?))))))
+        (is (true? @probed?) "an open circuit still probes so recovery is detectable"))))
+  (testing "an open circuit with an unreachable probe names both"
+    (is (=? {:health 0 :message #".*unreachable; circuit open.*"}
+            (check ready-status :circuit-open? true :reachable {:reachable? false :error "boom"})))))
 
 (deftest unreachable-embedder-is-degraded-test
   (testing "ready index but unreachable embedder -> degraded, names the error"

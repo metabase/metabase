@@ -40,14 +40,23 @@
       (not populated?)
       (degraded "NLQ curated index empty (first reconcile pending) — agent on general-search fallback.")
 
-      (semantic.embedding/embedder-circuit-open?)
-      (degraded "Embedding service circuit open — NLQ curated retrieval unavailable.")
-
       :else
-      (let [{:keys [reachable? error]} (semantic.health/embedding-service-reachable?)]
-        (if reachable?
-          (healthy "NLQ curated retrieval available and serving.")
-          (degraded (str "Embedding service unreachable: " error
-                         " — NLQ curated retrieval unavailable.")))))))
+      ;; Probe even when the circuit is open, so a recovered-but-idle embedder isn't reported degraded
+      ;; forever (the breaker only leaves :open on a real call).
+      (let [circuit-open?              (semantic.embedding/embedder-circuit-open?)
+            {:keys [reachable? error]} (semantic.health/embedding-service-reachable?)]
+        (cond
+          (and circuit-open? (not reachable?))
+          (degraded "Embedding service unreachable; circuit open — NLQ curated retrieval unavailable.")
+
+          circuit-open?
+          (degraded (str "Embedder circuit open (probe reachable; awaiting half-open trial) — "
+                         "NLQ curated retrieval unavailable."))
+
+          (not reachable?)
+          (degraded (str "Embedding service unreachable: " error " — NLQ curated retrieval unavailable."))
+
+          :else
+          (healthy "NLQ curated retrieval available and serving."))))))
 
 (health-inspector/register-check! :nlq-retrieval nlq-retrieval-health-check)

@@ -384,7 +384,7 @@
                                     "ai-service-base-url"]}))))
 
 (defmethod get-embedding "ai-service"
-  [{:keys [model-name]} text & {:keys [record-tokens? type]}]
+  [{:keys [model-name]} text & {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
             {:provider       "ai-service"
@@ -392,7 +392,9 @@
              :api-key        api-key
              :model-name     model-name
              :texts          [text]
-             :snowplow?      true
+             ;; Callers (e.g. the health probe) can pass snowplow? false to avoid firing a phantom
+             ;; token_usage event for synthetic traffic; organic embedding keeps the default true.
+             :snowplow?      snowplow?
              :record-tokens? record-tokens?
              :type           type}))))
 
