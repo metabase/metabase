@@ -1,24 +1,26 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import type { NativeQuestionDetails } from "e2e/support/helpers";
 
-const ordersTableQuestionDetails: NativeQuestionDetails = {
+const ordersTableQuestionDetails = {
   display: "table",
-  native: {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
 };
 
-const peopleTableQuestionDetails: NativeQuestionDetails = {
+const peopleTableQuestionDetails = {
   display: "table",
-  native: {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
     query: "SELECT ID, EMAIL, CREATED_AT FROM PEOPLE ORDER BY ID LIMIT 10",
   },
 };
 
-const timeseriesLineQuestionDetails: NativeQuestionDetails = {
+const timeseriesLineQuestionDetails = {
   display: "line",
-  native: {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
     query: "SELECT CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
   visualization_settings: {
@@ -27,9 +29,10 @@ const timeseriesLineQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const timeseriesWithCategoryLineQuestionDetails: NativeQuestionDetails = {
+const timeseriesWithCategoryLineQuestionDetails = {
   display: "line",
-  native: {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
     query:
       "SELECT PRICE, CATEGORY, CREATED_AT FROM PRODUCTS ORDER BY ID LIMIT 10",
   },
@@ -39,9 +42,10 @@ const timeseriesWithCategoryLineQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const numericLineQuestionDetails: NativeQuestionDetails = {
+const numericLineQuestionDetails = {
   display: "line",
-  native: {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
     query: "SELECT ID, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
   visualization_settings: {
@@ -50,9 +54,10 @@ const numericLineQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const pinMapQuestionDetails: NativeQuestionDetails = {
+const pinMapQuestionDetails = {
   display: "map",
-  native: {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
     query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
   },
   visualization_settings: {
@@ -62,9 +67,10 @@ const pinMapQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const gridMapQuestionDetails: NativeQuestionDetails = {
+const gridMapQuestionDetails = {
   display: "map",
-  native: {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
     query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
   },
   visualization_settings: {
@@ -118,10 +124,12 @@ describe("scenarios > question > native query drill", () => {
   describe("query builder drills", () => {
     it("column-extract drill", () => {
       cy.log("from column header");
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-        wrapId: true,
-      });
+      H.createCardWithTestNativeQuery(ordersTableQuestionDetails).then(
+        (card) => {
+          cy.wrap(card.id).as("questionId");
+          H.visitCard(card);
+        },
+      );
       H.tableHeaderClick("CREATED_AT");
       H.popover().within(() => {
         cy.findByText("Extract day, month…").click();
@@ -156,10 +164,12 @@ describe("scenarios > question > native query drill", () => {
 
     it("combine-columns drill", () => {
       cy.log("from column header");
-      H.createNativeQuestion(peopleTableQuestionDetails, {
-        visitQuestion: true,
-        wrapId: true,
-      });
+      H.createCardWithTestNativeQuery(peopleTableQuestionDetails).then(
+        (card) => {
+          cy.wrap(card.id).as("questionId");
+          H.visitCard(card);
+        },
+      );
       H.tableHeaderClick("EMAIL");
       H.popover().findByText("Combine columns").click();
       H.popover().button("Done").click();
@@ -196,9 +206,9 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("column-filter drill", () => {
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(ordersTableQuestionDetails).then(
+        H.visitCard,
+      );
       H.assertQueryBuilderRowCount(10);
       H.tableHeaderClick("QUANTITY");
       H.popover().findByText("Filter by this column").click();
@@ -212,9 +222,9 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("distribution drill", () => {
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(ordersTableQuestionDetails).then(
+        H.visitCard,
+      );
       H.tableHeaderClick("QUANTITY");
       H.popover().findByText("Distribution").click();
       cy.wait("@dataset");
@@ -226,9 +236,9 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("quick-filter drill", () => {
-      H.createNativeQuestion(timeseriesLineQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(timeseriesLineQuestionDetails).then(
+        H.visitCard,
+      );
       H.assertQueryBuilderRowCount(10);
       H.cartesianChartCircle().eq(0).click();
       H.popover().within(() => {
@@ -241,10 +251,12 @@ describe("scenarios > question > native query drill", () => {
 
     it("sort drill", () => {
       cy.log("ascending");
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-        wrapId: true,
-      });
+      H.createCardWithTestNativeQuery(ordersTableQuestionDetails).then(
+        (card) => {
+          cy.wrap(card.id).as("questionId");
+          H.visitCard(card);
+        },
+      );
       H.tableHeaderClick("QUANTITY");
       H.popover().icon("arrow_up").click();
       cy.wait("@dataset");
@@ -266,10 +278,12 @@ describe("scenarios > question > native query drill", () => {
 
     it("summarize drill", () => {
       cy.log("distinct values");
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-        wrapId: true,
-      });
+      H.createCardWithTestNativeQuery(ordersTableQuestionDetails).then(
+        (card) => {
+          cy.wrap(card.id).as("questionId");
+          H.visitCard(card);
+        },
+      );
       H.tableHeaderClick("QUANTITY");
       H.popover().findByText("Distinct values").click();
       cy.wait("@dataset");
@@ -300,9 +314,9 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("summarize-column-by-time drill", () => {
-      H.createNativeQuestion(ordersTableQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(ordersTableQuestionDetails).then(
+        H.visitCard,
+      );
       H.tableHeaderClick("QUANTITY");
       H.popover().findByText("Sum over time").click();
       cy.wait("@dataset");
@@ -318,9 +332,9 @@ describe("scenarios > question > native query drill", () => {
 
     it("unsupported drills", () => {
       cy.log("aggregated cell click");
-      H.createNativeQuestion(timeseriesLineQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(timeseriesLineQuestionDetails).then(
+        H.visitCard,
+      );
       H.assertQueryBuilderRowCount(10);
       H.cartesianChartCircle().eq(0).click();
       H.popover().within(() => {
@@ -330,9 +344,9 @@ describe("scenarios > question > native query drill", () => {
       });
 
       cy.log("legend item click");
-      H.createNativeQuestion(timeseriesWithCategoryLineQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(
+        timeseriesWithCategoryLineQuestionDetails,
+      ).then(H.visitCard);
       cy.findByTestId("visualization-root").findByText("Gadget").click();
       cy.findByRole("tooltip").should("not.exist");
     });
@@ -340,9 +354,9 @@ describe("scenarios > question > native query drill", () => {
 
   describe("query builder brush filters", () => {
     it("timeseries filter", () => {
-      H.createNativeQuestion(timeseriesLineQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(timeseriesLineQuestionDetails).then(
+        H.visitCard,
+      );
       H.assertQueryBuilderRowCount(10);
       applyBrushFilter({ left: 200, right: 800 });
       cy.wait("@dataset");
@@ -350,9 +364,9 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("numeric filter", () => {
-      H.createNativeQuestion(numericLineQuestionDetails, {
-        visitQuestion: true,
-      });
+      H.createCardWithTestNativeQuery(numericLineQuestionDetails).then(
+        H.visitCard,
+      );
       H.assertQueryBuilderRowCount(10);
       applyBrushFilter({ left: 200, right: 800 });
       cy.wait("@dataset");
@@ -361,7 +375,7 @@ describe("scenarios > question > native query drill", () => {
 
     it("coordinates filter", () => {
       cy.log("pin map");
-      H.createNativeQuestion(pinMapQuestionDetails, { visitQuestion: true });
+      H.createCardWithTestNativeQuery(pinMapQuestionDetails).then(H.visitCard);
       cy.findByTestId("visualization-root").realHover();
       cy.findByTestId("visualization-root").within(() => {
         cy.findByText("Set as default view").should("be.visible");
@@ -377,7 +391,7 @@ describe("scenarios > question > native query drill", () => {
       H.assertQueryBuilderRowCount(1);
 
       cy.log("grid map");
-      H.createNativeQuestion(gridMapQuestionDetails, { visitQuestion: true });
+      H.createCardWithTestNativeQuery(gridMapQuestionDetails).then(H.visitCard);
       cy.findByTestId("visualization-root").realHover();
       cy.findByTestId("visualization-root").within(() => {
         cy.findByText("Set as default view").should("be.visible");
@@ -389,7 +403,7 @@ describe("scenarios > question > native query drill", () => {
   describe("dashboard drills", () => {
     it("quick-filter drill", () => {
       cy.log("cell click");
-      H.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboardWithTestQuery({
         questionDetails: ordersTableQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().findByText("May 15, 2027, 8:04 AM").click();
@@ -401,7 +415,7 @@ describe("scenarios > question > native query drill", () => {
       H.assertQueryBuilderRowCount(1);
 
       cy.log("aggregated cell click");
-      H.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboardWithTestQuery({
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() => H.cartesianChartCircle().eq(0).click());
@@ -416,7 +430,7 @@ describe("scenarios > question > native query drill", () => {
 
   describe("dashboard brush filters", () => {
     it("timeseries filter", () => {
-      H.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboardWithTestQuery({
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
@@ -427,7 +441,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("numeric filter", () => {
-      H.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboardWithTestQuery({
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
