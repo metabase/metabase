@@ -83,6 +83,25 @@
                 api/query-check                                 allow-read-check]
     (f)))
 
+(def ^:private mp-coerced
+  "ORDERS with a UNIX-seconds column coerced to a timestamp: `base-type :type/Integer`,
+  `effective-type :type/DateTime`. Exercises the editor gate's unsuppressed expression
+  type check against coerced columns (the #41122 false-positive class that
+  `*suppress-expression-type-check?*` exists for)."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"              :table-id 10 :base-type :type/Integer}
+               {:id 104 :name "CREATED_AT_UNIX" :table-id 10 :base-type :type/Integer
+                :effective-type :type/DateTime :coercion-strategy :Coercion/UNIXSeconds->DateTime}]}))
+
+(defn- with-coerced-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
 (defn- query-data
   "Build the keyword-keyed external-query map the tool accepts. Tests author the query as a
   string-keyed map (the form documented in earlier YAML-era tests); we walk-keywordize so the
@@ -486,26 +505,211 @@
 
 (deftest multi-stage-unknown-cross-stage-column-surfaces-error-test
   (testing (str "If the LLM references a column name that the previous stage doesn't produce,\n"
-                "repair leaves the clause alone (no `base-type` to infer) and the lib-schema\n"
-                "validator surfaces the missing-key error - reflagged as :agent-error?\n"
-                "by `execute-representations-query`'s catch.")
+                "the cross-stage assert pass raises an :agent-error? naming the column and\n"
+                "listing the valid ones, rather than passing a typeless ref through into a\n"
+                "non-runnable query (BOT-1442).")
     (with-mp-and-stubs!
       (fn []
-        (try
-          (construct/execute-representations-query
-           (query-data
-            {"lib/type" "mbql/query"
-             "database" "Sample"
-             "stages"   [{"lib/type"     "mbql.stage/mbql"
-                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                          "aggregation"  [["count" {}]]
-                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
-                         {"lib/type" "mbql.stage/mbql"
-                          "filters"  [[">" {} ["field" {} "no_such_column"] 10]]}]}))
-          (is false "expected throw")
-          (catch clojure.lang.ExceptionInfo e
-            (let [d (ex-data e)]
-              (is (true? (:agent-error? d))))))))))
+        (let [e (try
+                  (construct/execute-representations-query
+                   (query-data
+                    {"lib/type" "mbql/query"
+                     "database" "Sample"
+                     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "aggregation"  [["count" {}]]
+                                  "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                 {"lib/type" "mbql.stage/mbql"
+                                  "filters"  [[">" {} ["field" {} "no_such_column"] 10]]}]}))
+                  nil (catch clojure.lang.ExceptionInfo ex ex))]
+          (is (some? e))
+          (let [d (ex-data e)]
+            (is (true? (:agent-error? d)))
+            (is (= :unresolved-cross-stage-field (:error d)))
+            (is (contains? (set (:available d)) "count"))
+            (is (re-find #"no_such_column" (ex-message e)))))))))
+
+(deftest multi-stage-aggregation-display-name-recovered-end-to-end-test
+  (testing (str "BOT-1442 (Cynthia): a stage-1 breakout that references a previous stage's\n"
+                "aggregation column by its UI display label (`Max of Doubled`) instead of the\n"
+                "machine name (`max`) is recovered end-to-end: the tool succeeds, the ref is\n"
+                "rewritten to `max` with a stamped base-type, and the resolved query is runnable.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "expressions"  {"Doubled" ["*" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 2]}
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                                     "aggregation"  [["max" {} ["expression" {} "Doubled"]]]}
+                                    {"lib/type"    "mbql.stage/mbql"
+                                     "breakout"    [["field" {} "Max of Doubled"]]
+                                     "aggregation" [["count" {}]]}]}))
+              q             (get-in result [:structured-output :query])
+              stage1-bo     (get-in q [:stages 1 :breakout 0])]
+          (testing "the display label was rewritten to the aggregation's machine name"
+            (is (= "max" (nth stage1-bo 2))))
+          (testing "the recovered ref carries a base-type (schema-valid, runnable)"
+            (is (some? (:base-type (nth stage1-bo 1))))
+            (is (nil? (#'construct/query-not-runnable-explanation q)))))))))
+
+;;; ============================================================
+;;; Expression-editor diagnostics gate (post-resolve, mirrors FE `diagnose-expression`)
+;;; ============================================================
+
+(defn- editor-rejection
+  "Run `query` through the tool and return the thrown ExceptionInfo, or nil on success."
+  [string-keyed-query]
+  (try
+    (construct/execute-representations-query (query-data string-keyed-query))
+    nil
+    (catch clojure.lang.ExceptionInfo ex ex)))
+
+(deftest offset-in-custom-column-surfaces-error-end-to-end-test
+  (testing (str "BOT-1442 sibling: an `offset` in a custom column surfaces a loud, retryable\n"
+                "agent-error through the tool, instead of building a query the editor silently\n"
+                "can't run. The resolved query schema rejects any aggregation/window clause in\n"
+                "`:expressions`, so this is caught by the canRun-mirror gate, whose message\n"
+                "points the LLM at the misplaced-`offset` cause.")
+    (with-mp-and-stubs!
+      (fn []
+        (doseq [exprs [{"Prev" ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]}
+                       ;; offset nested inside a larger expression is caught too
+                       {"Delta" ["-" {}
+                                 ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                 ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]]}]]
+          (let [e (editor-rejection
+                   {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "expressions"  exprs
+                                 "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]})]
+            (is (some? e))
+            (is (true? (:agent-error? (ex-data e))))
+            (is (= :query-not-runnable (:error (ex-data e))))
+            (is (re-find #"`offset`" (ex-message e)))
+            (is (re-find #"non-aggregation expression" (ex-message e)))))))))
+
+(deftest editor-gate-offset-in-filter-surfaces-error-end-to-end-test
+  (testing (str "An `offset` anywhere inside a `filters:` clause surfaces an\n"
+                ":expression-editor-rejection agent-error - the editor rejects OFFSET in\n"
+                "custom filters even though the query schema accepts it.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [[">" {}
+                                                ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]
+                                                10]]}]})]
+          (is (some? e))
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (= :filter (:mode (ex-data e))))
+          (is (re-find #"OFFSET is not supported in custom filters" (ex-message e))))))))
+
+(deftest editor-gate-offset-nested-in-aggregation-function-surfaces-error-end-to-end-test
+  (testing (str "A window function embedded *inside* an aggregation function\n"
+                "(`sum(offset(...))`) surfaces an :expression-editor-rejection agent-error -\n"
+                "only the outer position (`offset(sum(...))`) is supported.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["sum" {}
+                                                ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]]]
+                               "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]})]
+          (is (some? e))
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (= :aggregation (:mode (ex-data e)))))))))
+
+(deftest editor-gate-offset-in-supported-positions-passes-end-to-end-test
+  (testing "`offset` in its supported positions does NOT trigger the editor gate"
+    (with-mp-and-stubs!
+      (fn []
+        (testing "at the top of an aggregation (`offset(sum(...), -1)`)"
+          (is (some? (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["offset" {}
+                                                      ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                                      -1]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]})))))
+        (testing "inside an `order-by`"
+          (is (some? (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "order-by"     [["asc" {}
+                                                      ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]]]}]})))))))))
+
+(deftest editor-gate-coerced-column-expression-passes-end-to-end-test
+  (testing (str "The editor gate's unsuppressed type check does not false-positive on a\n"
+                "coerced column: an expression that uses the column per its effective-type\n"
+                "(`get-month` on a UNIX-seconds -> DateTime coercion) builds successfully.")
+    (with-coerced-mp-and-stubs!
+      (fn []
+        (is (some? (construct/execute-representations-query
+                    (query-data
+                     {"lib/type" "mbql/query"
+                      "database" "Sample"
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                   "expressions"  {"Created Month" ["get-month" {}
+                                                                    ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT_UNIX"]]]}}]}))))))))
+
+(deftest editor-gate-type-incompatible-expression-surfaces-error-end-to-end-test
+  (testing (str "The editor gate type-checks expressions (which the canRun-mirror schema gate\n"
+                "suppresses): a non-boolean clause in `filters:` surfaces an\n"
+                ":expression-editor-rejection agent-error.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}]})]
+          (is (some? e))
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (= :filter (:mode (ex-data e)))))))))
+
+(deftest query-not-runnable-explanation-gate-test
+  (testing (str "The runnability backstop returns nil for a runnable resolved query and a\n"
+                "non-nil Malli explanation for one whose breakout field ref is missing its\n"
+                "base-type (the BOT-1442 schema invalidity that disables the editor's run/save).")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]}))
+              good (get-in result [:structured-output :query])
+              ;; Corrupt a breakout field ref into a string-named ref with no base-type - the
+              ;; exact shape that resolves structurally yet makes Lib.canRun false.
+              bad  (assoc-in good [:stages 0 :breakout 0] [:field {} "PRODUCT_ID"])]
+          (is (nil? (#'construct/query-not-runnable-explanation good)))
+          (is (some? (#'construct/query-not-runnable-explanation bad))))))))
 
 ;;; ============================================================
 ;;; Step-9 contract: expressions (custom columns)

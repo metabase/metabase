@@ -126,7 +126,7 @@ export const CardEmbed: Node<{
         },
         this.options.HTMLAttributes,
       ),
-      formatCardEmbed(node.attrs as CardEmbedAttributes),
+      formatCardEmbed(node.attrs),
     ];
   },
 
@@ -135,7 +135,7 @@ export const CardEmbed: Node<{
   },
 
   renderText({ node }) {
-    return formatCardEmbed(node.attrs as CardEmbedAttributes);
+    return formatCardEmbed(node.attrs);
   },
 
   addNodeView() {

@@ -134,7 +134,7 @@ describe("ObjectDetail utils", () => {
 
     it("should get a singularized table name if no entity name is present", () => {
       const name = getObjectName({
-        table: table as any,
+        table,
         question: question,
         cols: [idCol, qtyCol],
         zoomedRow: [22, 33],

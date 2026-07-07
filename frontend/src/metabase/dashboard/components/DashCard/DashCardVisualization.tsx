@@ -35,10 +35,7 @@ import {
 } from "metabase/visualizations/components/legend/LegendCaption";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type {
-  CardSlownessStatus,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -423,9 +420,7 @@ export function DashCardVisualization({
   );
 
   const cardTitle = useMemo(() => {
-    const settings = getComputedSettingsForSeries(
-      sanitizeSeriesData(series),
-    ) as ComputedVisualizationSettings;
+    const settings = getComputedSettingsForSeries(sanitizeSeriesData(series));
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 

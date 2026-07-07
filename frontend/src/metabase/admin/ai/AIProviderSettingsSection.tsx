@@ -41,7 +41,11 @@ export function AIProviderSettingsSection({ id }: { id?: string }) {
               <Badge
                 circle
                 size="12"
-                bg={hasCredentialsError ? "error" : "success"}
+                bg={
+                  hasCredentialsError
+                    ? "feedback-negative"
+                    : "feedback-positive"
+                }
                 mr="sm"
               />
             )}

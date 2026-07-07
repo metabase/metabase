@@ -512,6 +512,31 @@
                   :aggregation [[:count]]
                   :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
 
+(deftest ^:parallel measure-in-pivot-table-test
+  (testing "a :measure clause used inside a pivot query executes like the equivalent inline aggregation"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (let [mp         (mt/metadata-provider)
+            total      (lib.metadata/field mp (mt/id :orders :total))
+            quantity   (lib.metadata/field mp (mt/id :orders :quantity))
+            definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum total)))
+            mp         (lib.tu/mock-metadata-provider
+                        mp
+                        {:measures [{:id         1
+                                     :name       "Sum of Total"
+                                     :table-id   (mt/id :orders)
+                                     :definition definition}]})
+            pivot      (fn [agg]
+                         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate agg)
+                             (lib/breakout quantity)))
+            measure-pivot (pivot (lib.metadata/measure mp 1))
+            inline-pivot  (pivot (lib/sum total))]
+        ;; the spliced measure must produce the same pivot output (leaf + grand-total rows) as
+        ;; the equivalent inline sum aggregation
+        (is (= (mt/rows (qp.pivot/run-pivot-query inline-pivot))
+               (mt/rows (qp.pivot/run-pivot-query measure-pivot))))))))
+
 (deftest pivot-query-should-work-without-data-permissions-test
   (testing "Pivot queries should work if the current user only has permissions to view the Card -- no data perms (#14989)"
     (mt/dataset test-data

@@ -1581,7 +1581,8 @@
  [lib.ref
   field-ref-id
   field-ref-name
-  ref]
+  ref
+  with-field-ref-id]
  [lib.referenced-columns
   referenced-columns]
  [lib.remove-replace
@@ -1665,7 +1666,9 @@
   all-template-tags-map
   all-template-tags-id->field-ids
   any-native-stage?
-  any-native-stage-not-introduced-by-sandbox?])
+  any-native-stage-not-introduced-by-sandbox?
+  replace-field-ids
+  replace-table-ids])
 
 #?(:clj
    (defmacro with-card-clean-hook

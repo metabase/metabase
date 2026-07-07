@@ -38,7 +38,7 @@ export const NonClosable = {
   render: (args: BannerProps) => <Banner {...args} />,
   args: {
     closable: false,
-    bg: "var(--mb-color-success)",
+    bg: "var(--mb-color-feedback-positive)",
     body: (
       <Text lh="inherit" c="text-primary-inverse">
         This is a banner

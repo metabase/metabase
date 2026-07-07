@@ -42,7 +42,7 @@ export function setLocalization(
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
   updateDayjsLocale(language);
-  updateStartOfWeek(MetabaseSettings.get("start-of-week") as DayOfWeekId);
+  updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
     preserveLatinNumbersInDayjsLocale(language);

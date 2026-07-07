@@ -189,7 +189,11 @@ Re-aggregate — average daily total by month:
 ]
 ```
 
-- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is whatever the previous stage's aggregation/breakout/field produced (`count`, `sum`, or the source field's name).
+- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is the previous stage column's **machine name**, never its UI display label:
+  - An aggregation's output name is the **bare function**: `max`, `min`, `avg`, `sum`, `count`, `median` — the operand is dropped. `["max", {}, ["expression", {}, "Instance Has SC"]]` produces a column named **`max`** (display label "Max of Instance Has SC"). Reference it as `["field", {}, "max"]`, **not** `["field", {}, "Max of Instance Has SC"]`.
+  - A breakout keeps the source field's machine name even when its label is bucketed: a month breakout of `CREATED_AT` is still named `CREATED_AT` (display "Created At: Month").
+  - If a stage has several aggregations of the same function, the outputs are suffixed in order: `max`, `max_2`, `max_3`. So the second `max` is referenced as `["field", {}, "max_2"]`.
+- A `["field", {}, "<name>"]` cross-stage ref whose name matches no column the previous stage produced is an error — name it exactly.
 - Within the **same stage**, refer to your own aggregation with `["aggregation", {}, <idx>]` (see §Aggregation references). In a **later** stage, use the cross-stage string-name form against the previous stage's output.
 - Joins, expressions, filters, aggregation, breakout, order-by, limit are all valid in later stages.
 
@@ -199,7 +203,7 @@ Instead of `source-table`, use `source-card` to query an existing question or mo
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
-3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`).
+3. Reference the card's columns by output **machine name** (string in slot 3), not portable FK and not the UI display label. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`) — a ref whose name matches no column the card produces is an error.
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -388,6 +392,9 @@ Temporal:
 - `["absolute-datetime", {}, "<iso-string>", "<unit?>"]`
 - `["date", {}, <expr>]` / `["datetime", {}, <expr>]` / `["time", {}, <expr>]`
 - `["now", {}]` / `["today", {}]`
+
+Window:
+- `["offset", {}, <expr>, <n>]` — value of `<expr>` from `<n>` rows back (negative `<n>`) or ahead (positive). Valid **only** inside an `aggregation:` or `order-by:` clause — **never** in a custom column (`expressions:`) or a filter.
 
 ### Temporal units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
 

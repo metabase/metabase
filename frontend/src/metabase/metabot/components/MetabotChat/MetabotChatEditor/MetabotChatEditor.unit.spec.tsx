@@ -78,7 +78,7 @@ const setup = (
 
 const getEditor = () =>
   // eslint-disable-next-line testing-library/no-node-access
-  document.querySelector('[contenteditable="true"]')! as HTMLElement;
+  document.querySelector('[contenteditable="true"]') as HTMLElement;
 const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor", () => {

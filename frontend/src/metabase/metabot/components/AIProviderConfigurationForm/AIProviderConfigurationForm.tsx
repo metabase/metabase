@@ -130,7 +130,7 @@ export function AIProviderConfigurationForm({
         sendToast({
           message,
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
         });
       }
     } catch (error) {
@@ -142,7 +142,7 @@ export function AIProviderConfigurationForm({
       sendToast({
         message,
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
       });
     }
   }, [
@@ -296,7 +296,7 @@ export function AIProviderConfigurationForm({
               { isCurrentConfigured: true, isConnectButtonEnabled: false },
               () => (
                 <Button
-                  c="danger"
+                  c="feedback-negative"
                   loading={isMutating}
                   disabled={isMutating}
                   onClick={handleDisconnect}

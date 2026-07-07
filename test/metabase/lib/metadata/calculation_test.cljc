@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.computed :as lib.computed]
@@ -396,7 +397,7 @@
   (let [query                (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
                                  (lib/join (lib/join-clause (meta/table-metadata :products)))
                                  (lib/join (lib/join-clause (meta/table-metadata :orders))))
-        original             (lib.metadata/field meta/metadata-provider (meta/id :people :latitude))
+        original             (meta/field-metadata :people :latitude)
         {latitude "LATITUDE"} (m/index-by :name (lib/visible-columns query))]
     (is (some? original))
     (is (some? latitude))))
@@ -1217,3 +1218,21 @@
                  (lib.metadata.calculation/primary-source card-query)))))
       (testing "returns nil for a query based on a table"
         (is (nil? (lib.metadata.calculation/primary-source-card table-query)))))))
+
+(deftest ^:parallel multi-join-display-names-survive-nesting-test
+  (testing "#40635 multi-join column display names are preserved after wrapping as a nested (card) query"
+    (let [base   (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
+                                                    (lib/suggested-join-conditions q (meta/table-metadata :products)))
+                                   (lib/with-join-fields [(meta/field-metadata :products :id)])))
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (meta/field-metadata :orders :user-id)
+                                                            (meta/field-metadata :products :id))])
+                                   (lib/with-join-fields [(meta/field-metadata :products :id)]))))
+          mp     (lib.tu/metadata-provider-with-card-from-query 1 base)
+          nested (lib/query mp (lib.metadata/card mp 1))
+          nnames (set (map #(lib/display-name nested %) (lib/returned-columns nested)))]
+      (testing "the two joined Product ID columns get distinct disambiguated display names in the nested query"
+        (is (contains? nnames "Products → ID"))
+        (is (contains? nnames "Products - User → ID"))
+        (is (= 2 (count (filter #(str/includes? % "→ ID") nnames))))))))

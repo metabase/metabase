@@ -201,7 +201,7 @@ function FeedbackCard({
             <Badge
               variant="light"
               bg="background_surface-error"
-              c="error"
+              c="feedback-negative"
               ml="xs"
             >
               {getIssueTypeLabel(feedback.issue_type)}

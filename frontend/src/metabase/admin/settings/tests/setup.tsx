@@ -163,8 +163,8 @@ export const setup = async ({
   });
 
   setupNotificationChannelsEndpoints({
-    email: { configured: false } as any,
-    slack: { configured: false } as any,
+    email: { configured: false },
+    slack: { configured: false },
   });
   fetchMock.get("path:/api/ee/security-center", {
     last_checked_at: null,

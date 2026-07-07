@@ -2073,6 +2073,16 @@
             (is (not (contains? result-ids table-id))
                 "Published table should NOT be included in collection search in OSS")))))))
 
+(deftest collection-filter-respects-permissions-test
+  (testing "GET /api/search?collection=<id> excludes results the user cannot read, and includes them once granted (metabase#entity-picker)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       {card-id :id} {:collection_id coll-id :name "scoped one"}]
+        (is (empty? (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+        (is (= #{card-id coll-id}
+               (set (map :id (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Measure Search Tests (Phase 4)                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+

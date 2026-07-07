@@ -64,7 +64,7 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
 };
 
 export const databasesReducer = combineReducers({
-  deletionError: createReducer(null as null | unknown, (builder) => {
+  deletionError: createReducer<null | unknown>(null, (builder) => {
     builder.addCase(
       DELETE_DATABASE_FAILED,
       (_state, action) => action.payload.error,
