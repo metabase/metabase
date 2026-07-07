@@ -40,7 +40,7 @@
       (not populated?)
       (degraded "NLQ curated index empty (first reconcile pending) — agent on general-search fallback.")
 
-      (= :open (semantic.embedding/embedder-circuit-state))
+      (semantic.embedding/embedder-circuit-open?)
       (degraded "Embedding service circuit open — NLQ curated retrieval unavailable.")
 
       :else

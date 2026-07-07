@@ -12,6 +12,7 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.util.log :as log]
@@ -52,7 +53,10 @@
   map: healthy when an active index is present, queryable, un-stalled, and the embedding service is
   reachable; degraded (naming the failing conditions) otherwise."
   []
-  (when (semantic.util/semantic-search-available?)
+  ;; Mirror the engine's own gate (semantic-search core/supported?): beyond pgvector + license this respects
+  ;; the semantic-search-enabled kill switch, so a disabled instance neither records runs nor probes the embedder.
+  (when (and (semantic.util/semantic-search-available?)
+             (semantic-settings/semantic-search-enabled))
     (let [pgvector       (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.env/get-index-metadata)
           active         (try
@@ -69,7 +73,7 @@
         (let [state         (:state active)
               table-name    (-> state :index :table-name)
               stalled-at    (-> state :metadata-row :indexer_stalled_at)
-              circuit-open? (= :open (semantic.embedding/embedder-circuit-state))
+              circuit-open? (semantic.embedding/embedder-circuit-open?)
               ;; An open circuit already tells us the embedder is failing under real traffic; skip the
               ;; (bypassing) probe to avoid a needless slow call, and report the stricter signal.
               reach         (when-not circuit-open? (embedding-service-reachable?))

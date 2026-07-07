@@ -12,11 +12,11 @@
 (def ^:private ready-status
   {:pgvector? true :licensed? true :index-compatible? true :populated? true})
 
-(defn- check [status & {:keys [circuit reachable]
-                        :or   {circuit :closed reachable {:reachable? true :error nil}}}]
+(defn- check [status & {:keys [circuit-open? reachable]
+                        :or   {circuit-open? false reachable {:reachable? true :error nil}}}]
   (mt/with-dynamic-fn-redefs
     [entity-retrieval.core/retrieval-status       (constantly status)
-     semantic.embedding/embedder-circuit-state    (constantly circuit)
+     semantic.embedding/embedder-circuit-open?    (constantly circuit-open?)
      semantic.health/embedding-service-reachable? (constantly reachable)]
     (entity-retrieval.health/nlq-retrieval-health-check)))
 
@@ -40,7 +40,7 @@
     (let [probed? (atom false)]
       (mt/with-dynamic-fn-redefs
         [entity-retrieval.core/retrieval-status       (constantly ready-status)
-         semantic.embedding/embedder-circuit-state    (constantly :open)
+         semantic.embedding/embedder-circuit-open?    (constantly true)
          semantic.health/embedding-service-reachable? (fn [] (reset! probed? true) {:reachable? true})]
         (is (=? {:health 0 :message #".*circuit open.*"}
                 (entity-retrieval.health/nlq-retrieval-health-check)))

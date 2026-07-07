@@ -241,6 +241,13 @@
   []
   (dh.cb/state embedder-circuit-breaker))
 
+(defn embedder-circuit-open?
+  "Whether the breaker is enabled and currently open -- i.e. real embedding calls are being short-circuited.
+  False when the breaker is disabled, since calls then bypass it and a stale open state is irrelevant."
+  []
+  (and (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)
+       (= :open (embedder-circuit-state))))
+
 (defn- call-through-embedder-breaker
   "Run `thunk` under the embedder circuit breaker, unless it is bypassed (probe) or disabled (kill switch).
   An open circuit throws a 502 `ex-info` with `:cause :embedder/circuit-open`; any other failure propagates

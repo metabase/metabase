@@ -42,6 +42,20 @@
         (is (thrown? clojure.lang.ExceptionInfo (call-through boom)))
         (is (= :closed (circuit-state)))))))
 
+(deftest circuit-open?-respects-kill-switch-test
+  (testing "embedder-circuit-open? is authoritative only while the breaker is enabled"
+    (with-redefs [semantic.embedding/embedder-circuit-breaker
+                  (dh.cb/circuit-breaker {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})]
+      (is (thrown? Exception (call-through boom)))
+      (is (= :open (circuit-state)))
+      (testing "enabled + open -> open"
+        (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
+          (is (true? (semantic.embedding/embedder-circuit-open?)))))
+      (testing "disabled -> not open even though the raw state is still open (calls now bypass the breaker)"
+        (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled false]
+          (is (false? (semantic.embedding/embedder-circuit-open?)))
+          (is (= :open (circuit-state))))))))
+
 (deftest state-change-persists-affected-checks-test
   (testing "a breaker state transition persists both embedder-dependent health checks immediately"
     (let [persisted (atom [])]

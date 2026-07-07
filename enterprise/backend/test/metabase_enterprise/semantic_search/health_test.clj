@@ -5,6 +5,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.health :as semantic.health]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.test :as mt]))
 
@@ -18,14 +19,19 @@
   each test only has to override the signal it cares about."
   [thunk]
   (mt/with-dynamic-fn-redefs
-    [semantic.util/semantic-search-available? (constantly true)
-     semantic.env/get-pgvector-datasource!    (constantly ::pgvector)
-     semantic.env/get-index-metadata          (constantly ::index-metadata)]
+    [semantic.util/semantic-search-available?    (constantly true)
+     semantic-settings/semantic-search-enabled   (constantly true)
+     semantic.env/get-pgvector-datasource!       (constantly ::pgvector)
+     semantic.env/get-index-metadata             (constantly ::index-metadata)]
     (thunk)))
 
 (deftest not-enabled-is-omitted-test
-  (testing "when semantic search isn't available the check returns nil (omitted, not a misleading 100)"
+  (testing "unconfigured/unlicensed -> nil (omitted, not a misleading 100)"
     (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
+      (is (nil? (semantic.health/index-health-check)))))
+  (testing "the semantic-search-enabled kill switch off -> nil, even with pgvector + license present"
+    (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available?  (constantly true)
+                                semantic-settings/semantic-search-enabled (constantly false)]
       (is (nil? (semantic.health/index-health-check))))))
 
 (deftest pgvector-unreachable-test
@@ -53,7 +59,7 @@
        (mt/with-dynamic-fn-redefs
          [semantic.index-metadata/get-active-index-state (constantly active-state)
           semantic.health/active-index-queryable?        (constantly true)
-          semantic.embedding/embedder-circuit-state      (constantly :closed)
+          semantic.embedding/embedder-circuit-open?       (constantly false)
           semantic.health/embedding-service-reachable?   (constantly {:reachable? true :error nil})]
          (is (=? {:health 100 :message #"Semantic search index active.*serving\."}
                  (semantic.health/index-health-check))))))))
@@ -65,7 +71,7 @@
        (mt/with-dynamic-fn-redefs
          [semantic.index-metadata/get-active-index-state (constantly (assoc-in active-state [:metadata-row :indexer_stalled_at] "2026-07-07"))
           semantic.health/active-index-queryable?        (constantly true)
-          semantic.embedding/embedder-circuit-state      (constantly :closed)
+          semantic.embedding/embedder-circuit-open?       (constantly false)
           semantic.health/embedding-service-reachable?   (constantly {:reachable? true :error nil})]
          (is (=? {:health 0 :message #".*indexer stalled since 2026-07-07.*"}
                  (semantic.health/index-health-check)))))
@@ -73,7 +79,7 @@
        (mt/with-dynamic-fn-redefs
          [semantic.index-metadata/get-active-index-state (constantly active-state)
           semantic.health/active-index-queryable?        (constantly false)
-          semantic.embedding/embedder-circuit-state      (constantly :closed)
+          semantic.embedding/embedder-circuit-open?       (constantly false)
           semantic.health/embedding-service-reachable?   (constantly {:reachable? true :error nil})]
          (is (=? {:health 0 :message #".*active index table not queryable.*"}
                  (semantic.health/index-health-check)))))
@@ -82,7 +88,7 @@
          (mt/with-dynamic-fn-redefs
            [semantic.index-metadata/get-active-index-state (constantly active-state)
             semantic.health/active-index-queryable?        (constantly true)
-            semantic.embedding/embedder-circuit-state      (constantly :open)
+            semantic.embedding/embedder-circuit-open?       (constantly true)
             semantic.health/embedding-service-reachable?   (fn [] (reset! probed? true) {:reachable? true})]
            (is (=? {:health 0 :message #".*embedding service circuit open.*"}
                    (semantic.health/index-health-check)))
@@ -91,7 +97,7 @@
        (mt/with-dynamic-fn-redefs
          [semantic.index-metadata/get-active-index-state (constantly active-state)
           semantic.health/active-index-queryable?        (constantly true)
-          semantic.embedding/embedder-circuit-state      (constantly :closed)
+          semantic.embedding/embedder-circuit-open?       (constantly false)
           semantic.health/embedding-service-reachable?   (constantly {:reachable? false :error "boom"})]
          (is (=? {:health 0 :message #".*embedding service unreachable: boom.*"}
                  (semantic.health/index-health-check))))))))
