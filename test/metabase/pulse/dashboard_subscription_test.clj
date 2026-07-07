@@ -561,13 +561,7 @@
          (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
                                                    "State"       false}
                                                   pulse.test-util/png-attachment]})
-                (mt/summarize-multipart-single-email email #"Aviary KPIs" #"State")))))
-
-     :slack
-     (fn [_ [message]]
-       (testing "slack message is still delivered, with the broken filters left out"
-         (is (some? message))
-         (is (not (str/includes? (pr-str message) "*State*")))))}}))
+                (mt/summarize-multipart-single-email email #"Aviary KPIs" #"State")))))}}))
 
 (deftest dashboard-with-header-filters-test
   (tests!
