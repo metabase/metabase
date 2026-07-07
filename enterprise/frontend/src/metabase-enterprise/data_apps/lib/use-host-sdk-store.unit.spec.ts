@@ -53,7 +53,8 @@ describe("useHostSdkStore", () => {
   it("returns a single SDK store that stays stable across renders", () => {
     const { result, rerender, store } = setup();
 
-    rerender({ props: {} });
+    // Re-render with a changed prop: the store must stay the same instance.
+    rerender({ props: { theme: { colors: {} } } });
 
     expect(result.current).toBe(store);
     expect(mockedGetSdkStore).toHaveBeenCalledTimes(1);

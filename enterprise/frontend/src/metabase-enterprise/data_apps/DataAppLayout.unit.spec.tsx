@@ -1,19 +1,12 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { useListDataAppsQuery } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppLayout } from "./DataAppLayout";
-
-jest.mock("metabase-enterprise/api", () => ({
-  ...jest.requireActual("metabase-enterprise/api"),
-  useListDataAppsQuery: jest.fn(),
-}));
-
-const mockedList = jest.mocked(useListDataAppsQuery);
 
 const LayoutRoute = ({ params }: { params: { name: string } }) => {
   return (
@@ -24,9 +17,7 @@ const LayoutRoute = ({ params }: { params: { name: string } }) => {
 };
 
 const setup = (apps: DataApp[], name = "sales") => {
-  mockedList.mockReturnValue({ data: apps } as unknown as ReturnType<
-    typeof useListDataAppsQuery
-  >);
+  fetchMock.get("path:/api/data-app", apps);
 
   return renderWithProviders(
     <>
@@ -41,9 +32,7 @@ const setup = (apps: DataApp[], name = "sales") => {
 };
 
 describe("DataAppLayout", () => {
-  afterEach(() => jest.clearAllMocks());
-
-  it("renders the app content and the switcher chrome", () => {
+  it("renders the app content and the switcher chrome", async () => {
     setup([createMockDataApp({ name: "sales", display_name: "Sales" })]);
 
     expect(screen.getByText("app content")).toBeInTheDocument();
@@ -51,6 +40,8 @@ describe("DataAppLayout", () => {
     expect(
       screen.getByRole("textbox", { name: "Switch data app" }),
     ).toBeInTheDocument();
+    // The list query resolves and the switcher settles on the current app.
+    expect(await screen.findByDisplayValue("Sales")).toBeInTheDocument();
   });
 
   it("navigates back to the data-apps settings page", async () => {
@@ -77,6 +68,8 @@ describe("DataAppLayout", () => {
       "sales",
     );
 
+    // Wait for the list query to resolve before opening the switcher.
+    await screen.findByDisplayValue("Sales");
     await userEvent.click(
       screen.getByRole("textbox", { name: "Switch data app" }),
     );
@@ -100,6 +93,7 @@ describe("DataAppLayout", () => {
       "sales",
     );
 
+    await screen.findByDisplayValue("Sales");
     await userEvent.click(
       screen.getByRole("textbox", { name: "Switch data app" }),
     );

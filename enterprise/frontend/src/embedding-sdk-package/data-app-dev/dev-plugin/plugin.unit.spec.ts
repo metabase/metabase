@@ -13,13 +13,13 @@ import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
 import { dataAppSandboxDevPlugin } from "./plugin";
 
 jest.mock("vite", () => ({ build: jest.fn() }));
-jest.mock("vite-plugin-css-injected-by-js", () => ({
-  __esModule: true,
-  default: () => ({ name: "css-injected-by-js" }),
-}));
-jest.mock("vite-plugin-svgr", () => ({
-  __esModule: true,
-  default: () => ({ name: "svgr" }),
+// Mock at the app's own config boundary rather than the individual Vite plugins
+// it pulls in (`vite-plugin-css-injected-by-js`, `vite-plugin-svgr`): `build`
+// is stubbed out anyway, so the plugin never uses these values — the test only
+// needs `build-config` not to import those ESM-only packages at load time.
+jest.mock("../config/build-config", () => ({
+  dataAppBuildPlugins: () => [],
+  dataAppLibBuild: () => ({}),
 }));
 jest.mock("node:fs");
 
@@ -29,7 +29,12 @@ const mockedFs = jest.mocked(fs);
 const RESOLVED = (id: string) => `\0${id}`;
 
 type FakeServer = {
-  config: { root: string; mode: string; logger: { error: jest.Mock } };
+  config: {
+    root: string;
+    mode: string;
+    logger: { error: jest.Mock };
+    server: { headers: Record<string, string | null> };
+  };
   ws: { send: jest.Mock };
   middlewares: { use: jest.Mock };
   watcher: { on: jest.Mock };
@@ -111,12 +116,15 @@ describe("dataAppSandboxDevPlugin", () => {
   });
 
   describe("dev server wiring", () => {
+    const DEV_CSP = "connect-src 'self'; form-action 'none'; frame-src 'self'";
+
     function makeServer(): FakeServer {
       return {
         config: {
           root: "/app",
           mode: "development",
           logger: { error: jest.fn() },
+          server: { headers: { "Content-Security-Policy": DEV_CSP } },
         },
         ws: { send: jest.fn() },
         middlewares: { use: jest.fn() },
@@ -132,7 +140,10 @@ describe("dataAppSandboxDevPlugin", () => {
 
       const server = makeServer();
 
-      await makePlugin().configureServer(server);
+      // `configureServer` returns a hook Vite runs after its own middlewares;
+      // call it so the document (index.html) middleware is registered too.
+      const registerLateMiddleware = await makePlugin().configureServer(server);
+      registerLateMiddleware();
 
       return { server };
     }
@@ -193,6 +204,75 @@ describe("dataAppSandboxDevPlugin", () => {
 
       expect(mockedBuild).toHaveBeenCalledTimes(1);
       expect(server.ws.send).not.toHaveBeenCalled();
+    });
+
+    describe("synthetic index.html document", () => {
+      // The document middleware is the second one registered: the bundle
+      // middleware from `configureServer` (index 0), then this one from the
+      // returned late hook (index 1).
+      const getDocumentMiddleware = (server: FakeServer) =>
+        server.middlewares.use.mock.calls[1][0];
+
+      it("serves the transformed shell with the configured CSP for navigations", async () => {
+        const { server } = await setup();
+        const res = { statusCode: 0, setHeader: jest.fn(), end: jest.fn() };
+        const next = jest.fn();
+
+        await getDocumentMiddleware(server)(
+          { method: "GET", headers: { accept: "text/html" }, url: "/" },
+          res,
+          next,
+        );
+
+        // The shell HTML goes through Vite's transform (HMR client, etc.).
+        expect(server.transformIndexHtml).toHaveBeenCalledWith(
+          "/",
+          expect.stringContaining('<div id="root">'),
+        );
+        // The dev CSP configured on the server is copied onto the document.
+        expect(res.setHeader).toHaveBeenCalledWith(
+          "Content-Security-Policy",
+          DEV_CSP,
+        );
+        expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "text/html");
+        expect(res.end).toHaveBeenCalledWith(
+          expect.stringContaining("<!doctype html>"),
+        );
+        expect(next).not.toHaveBeenCalled();
+      });
+
+      it("leaves non-HTML requests for the next middleware", async () => {
+        const { server } = await setup();
+        const next = jest.fn();
+
+        await getDocumentMiddleware(server)(
+          {
+            method: "GET",
+            headers: { accept: "application/javascript" },
+            url: "/some/asset.js",
+          },
+          { setHeader: jest.fn(), end: jest.fn() },
+          next,
+        );
+
+        expect(server.transformIndexHtml).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledTimes(1);
+      });
+
+      it("forwards transformIndexHtml errors to the next middleware", async () => {
+        const { server } = await setup();
+        const error = new Error("transform failed");
+        server.transformIndexHtml.mockRejectedValueOnce(error);
+        const next = jest.fn();
+
+        await getDocumentMiddleware(server)(
+          { method: "GET", headers: { accept: "text/html" }, url: "/" },
+          { statusCode: 0, setHeader: jest.fn(), end: jest.fn() },
+          next,
+        );
+
+        expect(next).toHaveBeenCalledWith(error);
+      });
     });
   });
 });
