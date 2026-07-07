@@ -16,15 +16,9 @@ export const customVizRegistry: Map<string, any> = new Map();
 // identifier string), so a sentinel is sufficient and never observed.
 const STATIC_RENDER_PLUGIN_ID = -1;
 
-export function registerCustomVizPlugin(
-  factory: any,
-  identifier: string,
-  assets: any,
-) {
-  const assetMap = assets || {};
-  const getAssetUrl = (name: string) => assetMap[name] || "";
+export function registerCustomVizPlugin(factory: any, identifier: string) {
   const locale = MetabaseSettings.get("site-locale") ?? "en";
-  const vizDef = factory({ defineSetting, getAssetUrl, locale });
+  const vizDef = factory({ defineSetting, locale });
   const display = getCustomPluginIdentifier(identifier);
   customVizRegistry.set(display, vizDef);
 

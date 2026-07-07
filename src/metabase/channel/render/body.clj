@@ -497,35 +497,19 @@
     :html {:content [:div content] :attachments nil}
     :svg  (png->rendered-part render-type (js.svg/svg-string->bytes content))))
 
-(defn- asset->data-uri
-  "Convert an asset's bytes to a data: URI string."
-  [^String asset-name ^bytes asset-bytes]
-  (let [content-type (or (custom-viz-plugin/asset-content-type asset-name)
-                         "application/octet-stream")]
-    (str "data:" content-type ";base64,"
-         (.encodeToString (java.util.Base64/getEncoder) asset-bytes))))
-
 (defn- custom-viz-bundles
-  "If the card has a custom:* display type, resolve the plugin's bundle and assets for static rendering.
-   Assets are included as a map of `{name -> data-uri}` so the static viz JS context
-   can resolve `getAssetUrl` calls without HTTP."
+  "If the card has a custom:* display type, resolve the plugin's JS bundle for static rendering."
   [card]
   (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (let [{:keys [manifest] :as plugin}
-          ;; do not load the (potentially multi-MB) :bundle blob just to read the manifest;
-          ;; resolve-bundle / resolve-asset re-fetch bytes from the cache as needed.
-          (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :manifest :bundle_hash :dev_bundle_url]
+    (let [plugin
+          ;; do not load the (potentially multi-MB) :bundle blob just to read the metadata;
+          ;; resolve-bundle re-fetches the bundle bytes from the cache as needed.
+          (t2/select-one [:model/CustomVizPlugin :id :identifier :enabled :bundle_hash :dev_bundle_url]
                          :identifier identifier :enabled true)]
       (when-let [content (some-> plugin
                                  custom-viz-plugin/resolve-bundle
                                  :content)]
-        (let [asset-names (some-> manifest custom-viz-plugin/asset-paths)
-              assets      (into {}
-                                (keep (fn [asset-name]
-                                        (when-let [bytes (custom-viz-plugin/resolve-asset plugin asset-name)]
-                                          [asset-name (asset->data-uri asset-name bytes)])))
-                                asset-names)]
-          [{:identifier identifier :source content :assets assets}])))))
+        [{:identifier identifier :source content}]))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.

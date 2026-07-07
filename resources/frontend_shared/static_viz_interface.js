@@ -41,10 +41,9 @@ function initialize_context(options) {
   StaticViz.initializeContext(JSON.parse(options));
 }
 
-function register_custom_viz_plugin(identifier, assetsJson) {
+function register_custom_viz_plugin(identifier) {
   if (typeof __customVizPlugin__ === "function") {
-    var assets = assetsJson ? JSON.parse(assetsJson) : {};
-    StaticViz.registerCustomVizPlugin(__customVizPlugin__, identifier, assets);
+    StaticViz.registerCustomVizPlugin(__customVizPlugin__, identifier);
   }
 }
 

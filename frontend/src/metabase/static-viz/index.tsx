@@ -155,9 +155,8 @@ function getVisualizerRawSeries(
 export function registerCustomVizPlugin(
   factory: Parameters<typeof PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin>[0],
   identifier: string,
-  assets: Record<string, string> | undefined,
 ) {
-  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, assets);
+  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier);
 }
 
 /**

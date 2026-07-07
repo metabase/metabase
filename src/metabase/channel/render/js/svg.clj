@@ -343,7 +343,7 @@
 
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This function is dynamic only for testing purposes.
-   `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom
+   `custom-viz-bundles` is an optional seq of `{:identifier str :source str}` maps for custom
    visualization plugins. When present, rendering runs in a sandboxed UNTRUSTED isolate (the plugin code is
    untrusted third-party JS); built-in charts keep using the fast pooled context."
   [cards-with-data dashcard-viz-settings custom-viz-bundles]
@@ -361,10 +361,9 @@
                         ;; initialize_context applies EE overrides so the custom-viz registry is active
                         ;; before we register plugins; built-in charts don't need it (RenderChart handles setup).
                         (js.engine/execute-fn-name context "initialize_context" options)
-                        (doseq [{:keys [identifier source assets]} custom-viz-bundles]
+                        (doseq [{:keys [identifier source]} custom-viz-bundles]
                           (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
-                          (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier
-                                                     (json/encode (or assets {})))))
+                          (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier)))
                       (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                             (json/encode cards-with-data)
                                                             (json/encode dashcard-viz-settings)

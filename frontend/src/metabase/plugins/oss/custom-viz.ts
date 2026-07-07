@@ -77,7 +77,6 @@ const getDefaultPluginCustomViz = () => ({
       props: Record<string, unknown>,
     ) => Record<string, ComponentType<any>>,
     _identifier: string,
-    _assets: Record<string, string> | undefined,
   ) => {},
 
   /**
