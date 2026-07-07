@@ -15,7 +15,9 @@ export { DataAppLink } from "./components/public/DataAppLink";
 export { copy } from "./lib/public/copy";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export {
+  aggregations,
   breakout,
+  createMetabaseQuery,
   filter,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -33,3 +35,4 @@ export type {
   DataAppFactory,
   DataAppMetabaseProviderProps,
 } from "metabase-enterprise/data_apps/sandbox";
+export type { DatasetQuery } from "metabase-types/api";

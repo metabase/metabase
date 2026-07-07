@@ -78,6 +78,15 @@ export type SdkQuestionEntityPublicProps =
        */
       card: string | MetabaseCard;
       query?: never;
+    }
+  | {
+      questionId?: never;
+      token?: never;
+      card?: never;
+      /**
+       * A table-backed ad hoc query created with `createMetabaseQuery`.
+       */
+      query: unknown | null;
     };
 
 /**

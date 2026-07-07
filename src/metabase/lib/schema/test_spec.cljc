@@ -87,10 +87,20 @@
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
 
+(mr/def ::test-segment-spec
+  [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :segment]]
+   [:id [:ref ::lib.schema.id/segment]]])
+
 (mr/def ::test-named-expression-spec
   [:map
    [:name string?]
    [:value [:ref ::test-expression-spec]]])
+
+(mr/def ::test-measure-spec
+  [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]]
+   [:id [:ref ::lib.schema.id/measure]]])
 
 (mr/def ::test-join-spec
   [:map
@@ -113,7 +123,8 @@
 (mr/def ::test-aggregation-spec
   [:or
    [:ref ::test-expression-spec]
-   [:ref ::test-named-expression-spec]])
+   [:ref ::test-named-expression-spec]
+   [:ref ::test-measure-spec]])
 
 (mr/def ::test-stage-spec
   [:map
@@ -121,7 +132,7 @@
    [:fields       {:optional true} [:maybe [:sequential ::test-column-spec]]]
    [:expressions  {:optional true} [:maybe [:sequential ::test-named-expression-spec]]]
    [:joins        {:optional true} [:maybe [:sequential ::test-join-spec]]]
-   [:filters      {:optional true} [:maybe [:sequential ::test-expression-spec]]]
+   [:filters      {:optional true} [:maybe [:sequential [:or ::test-expression-spec ::test-segment-spec]]]]
    [:aggregations {:optional true} [:maybe [:sequential ::test-aggregation-spec]]]
    [:breakouts    {:optional true} [:maybe [:sequential ::test-breakout-spec]]]
    [:order-bys    {:optional true} [:maybe [:sequential ::test-order-by-spec]]]

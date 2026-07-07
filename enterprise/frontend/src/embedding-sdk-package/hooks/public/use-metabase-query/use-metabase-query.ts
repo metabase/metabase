@@ -2,38 +2,29 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
-import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import type { StructuredDatasetQuery } from "metabase-types/api";
-
-import type {
-  QuestionSchema,
-  SchemaJavaScriptType,
-  TableSchema,
-} from "../data-schema";
-import { mapQueryData } from "../data-schema";
-
+import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import {
-  getTableDatabaseId,
-  isMetricQuery,
-  isQuestionQuery,
-  isTableQuery,
+  isTableInput,
   isUnaryOperator,
-} from "./guards";
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
+import type { DatasetQuery } from "metabase-types/api";
+
+import type { SchemaJavaScriptType, TableSchema } from "../data-schema";
+
 import { mapDatasetQueryData } from "./map-dataset-query-data";
-import { buildMetricDatasetQuery } from "./metric-query-builder";
 import { stableStringifyQuery } from "./stable-query-key";
-import { buildTableDatasetQuery } from "./table-query-builder";
 import type {
   BetweenFilterOperatorForDimension,
+  BinningOptions,
   BreakoutOptionsArgument,
   CountAggregationSchema,
   FieldAggregationOperator,
   FieldAggregationSchema,
+  FilterLiteralValue,
   FilterOperator,
   MetabaseDimensionFilterForOperator,
   MetabaseQueryOptions,
-  MetricQuery,
-  MetricReference,
   NumericAggregationDimension,
   OrderableAggregationDimension,
   TableQuery,
@@ -50,53 +41,56 @@ export type {
   FieldAggregationSchema,
   MetabaseBreakout,
   MetabaseDimensionFilter,
-  MetabaseMetricBreakout,
-  MetabaseMetricDimensionFilter,
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
 } from "./types";
 
-/** @internal */
 export const count = (): CountAggregationSchema => ({
-  type: "count",
+  type: "operator",
+  operator: "count",
+  args: [],
   columns: [{ name: "count", displayName: "Count", jsType: "number" }],
 });
 
-/** @internal */
 export const sum = <TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
 ): FieldAggregationSchema<"sum", NumericAggregationDimension<TDimension>> =>
   fieldAggregation("sum", "Sum", dimension);
 
-/** @internal */
 export const avg = <TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
 ): FieldAggregationSchema<"avg", NumericAggregationDimension<TDimension>> =>
   fieldAggregation("avg", "Average", dimension);
 
-/** @internal */
 export const median = <TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
 ): FieldAggregationSchema<"median", NumericAggregationDimension<TDimension>> =>
   fieldAggregation("median", "Median", dimension);
 
-/** @internal */
 export const distinct = <TDimension>(
   dimension: TDimension,
 ): FieldAggregationSchema<"distinct", TDimension> =>
   fieldAggregation("distinct", "Distinct values", dimension);
 
-/** @internal */
 export const min = <TDimension>(
   dimension: OrderableAggregationDimension<TDimension>,
 ): FieldAggregationSchema<"min", OrderableAggregationDimension<TDimension>> =>
   fieldAggregation("min", "Minimum", dimension);
 
-/** @internal */
 export const max = <TDimension>(
   dimension: OrderableAggregationDimension<TDimension>,
 ): FieldAggregationSchema<"max", OrderableAggregationDimension<TDimension>> =>
   fieldAggregation("max", "Maximum", dimension);
+
+export const aggregations = {
+  avg,
+  count,
+  distinct,
+  max,
+  median,
+  min,
+  sum,
+} as const;
 
 const fieldAggregation = <
   TOperator extends FieldAggregationOperator,
@@ -107,8 +101,9 @@ const fieldAggregation = <
   dimension: TDimension,
 ): FieldAggregationSchema<TOperator, TDimension> =>
   ({
-    type,
-    dimension,
+    type: "operator",
+    operator: type,
+    args: [dimension],
     columns: [
       {
         name: getFieldAggregationColumnName(type),
@@ -151,6 +146,9 @@ const isOrderableJavaScriptType = (
   value === "boolean" ||
   value === "Date";
 
+const getCreateMetabaseQueryFromBundle = () =>
+  getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createMetabaseQuery;
+
 export function filter<
   TDimension,
   TOperator extends ValueFilterOperatorForDimension<TDimension>,
@@ -180,35 +178,84 @@ export function filter(
   value?: unknown,
 ): MetabaseDimensionFilterForOperator<unknown, FilterOperator> {
   if (operator === "between") {
-    return { dimension, operator, values: value as readonly unknown[] };
+    const [min, max] = value as readonly unknown[];
+
+    return {
+      type: "operator",
+      operator,
+      args: [
+        dimension,
+        { type: "literal", value: min as FilterLiteralValue },
+        { type: "literal", value: max as FilterLiteralValue },
+      ],
+    };
   }
 
   if (isUnaryOperator(operator)) {
-    return { dimension, operator };
+    return { type: "operator", operator, args: [dimension] };
   }
 
-  return { dimension, operator, value };
+  return {
+    type: "operator",
+    operator,
+    args: [dimension, { type: "literal", value: value as FilterLiteralValue }],
+  };
 }
 
-export function breakout<TDimension>(dimension: TDimension): {
-  dimension: TDimension;
-};
+export function breakout<TDimension>(dimension: TDimension): TDimension;
 export function breakout<TDimension>(
   dimension: TDimension,
   options: BreakoutOptionsArgument<TDimension>,
-): {
-  dimension: TDimension;
-} & BreakoutOptionsArgument<TDimension>;
+): TDimension & BreakoutOptionsArgument<TDimension>;
 export function breakout<TDimension>(
   dimension: TDimension,
   options?: BreakoutOptionsArgument<TDimension>,
 ) {
-  return { dimension, ...options };
+  return {
+    ...(dimension as object),
+    unit: options && "unit" in options ? options.unit : undefined,
+    ...getBinningOptions(options),
+  };
+}
+
+function getBinningOptions(
+  options:
+    | {
+        binning?: BinningOptions;
+        bins?: number | "auto";
+        binWidth?: number | "auto";
+      }
+    | undefined,
+) {
+  if (!options) {
+    return undefined;
+  }
+
+  if ("bins" in options && options.bins != null) {
+    return { bins: options.bins };
+  }
+
+  if ("binWidth" in options && options.binWidth != null) {
+    return { binWidth: options.binWidth };
+  }
+
+  if (options.binning?.strategy === "num-bins") {
+    return { bins: options.binning["num-bins"] };
+  }
+
+  if (options.binning?.strategy === "bin-width") {
+    return { binWidth: options.binning["bin-width"] };
+  }
+
+  if (options.binning?.strategy === "default") {
+    return { bins: "auto" as const };
+  }
+
+  return undefined;
 }
 
 const useMetabaseQueryImpl = <
-  TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
-    undefined,
+  TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
   TQuery extends MetabaseQueryOptions<TEntity, TSchema> = MetabaseQueryOptions<
     TEntity,
@@ -227,8 +274,6 @@ const useMetabaseQueryImpl = <
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getLoginStatus,
   );
 
-  const queryQuestion =
-    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryQuestion;
   const queryDataset = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryDataset;
 
   const [data, setData] =
@@ -258,45 +303,16 @@ const useMetabaseQueryImpl = <
     setError(null);
 
     try {
-      if (isQuestionQuery(currentQuery)) {
-        if (!queryQuestion) {
-          return;
-        }
-
-        const result = await queryQuestion(reduxStore)({
-          questionId: currentQuery.questionId,
-          initialSqlParameters: currentQuery.parameters,
-        });
-
-        setData(mapQueryData(result));
-        return;
-      }
-
-      if (isTableQuery(currentQuery)) {
+      if (isTableInput(currentQuery)) {
         if (!queryDataset) {
           return;
         }
 
-        const datasetQuery =
-          getTableDatabaseId(currentQuery) == null
-            ? buildTableDatasetQuery(currentQuery)
-            : createMetabaseQuery(currentQuery);
-
+        const datasetQuery = createMetabaseQuery(currentQuery);
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
         return;
-      }
-
-      if (isMetricQuery(currentQuery)) {
-        if (!queryDataset) {
-          return;
-        }
-
-        const datasetQuery = buildMetricDatasetQuery(currentQuery);
-        const result = await queryDataset(reduxStore)({ datasetQuery });
-
-        setData(mapDatasetQueryData(result));
       }
     } catch (err) {
       setError(err);
@@ -304,7 +320,7 @@ const useMetabaseQueryImpl = <
     } finally {
       setIsLoading(false);
     }
-  }, [queryDataset, queryQuestion, reduxStore]);
+  }, [queryDataset, reduxStore]);
 
   useEffect(() => {
     if (loginStatus?.status === "success") {
@@ -325,35 +341,40 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
-  query: TableQuery<unknown> | MetricQuery<unknown>,
-): StructuredDatasetQuery {
+  query: TableQuery<unknown>,
+): DatasetQuery | null {
+  const { loadingState } = useSdkLoadingState();
+
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
 
   queryRef.current = query;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
-  return useMemo(() => createMetabaseQuery(queryRef.current), [queryKey]);
+  return useMemo(
+    () => {
+      const createQuery = getCreateMetabaseQueryFromBundle();
+
+      if (!createQuery) {
+        return null;
+      }
+
+      return createQuery(queryRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
+    [loadingState, queryKey],
+  );
 }
 
 /** @notExported createMetabaseQuery */
-export function createMetabaseQuery(
-  query: TableQuery<unknown> | MetricQuery<unknown>,
-): StructuredDatasetQuery {
-  if (isMetricQuery(query)) {
-    return buildMetricDatasetQuery(query);
-  }
+export function createMetabaseQuery(query: TableQuery<unknown>): DatasetQuery {
+  const createQuery = getCreateMetabaseQueryFromBundle();
 
-  const databaseId = getTableDatabaseId(query);
-
-  if (databaseId == null) {
+  if (!createQuery) {
     throw new Error(
-      "Query creation requires a generated table schema, generated metric schema, or databaseId.",
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Internal SDK developer error.
+      "createMetabaseQuery requires the Metabase Embedding SDK bundle to be loaded.",
     );
   }
 
-  return {
-    ...buildTableDatasetQuery(query),
-    database: Number(databaseId),
-  };
+  return createQuery(query);
 }
