@@ -1044,7 +1044,7 @@
             (is (= [expected]
                    (mt/first-row (qp/process-query query))))))))))
 
-(deftest ^:parallel local-date-time-parameter-test
+(deftest local-date-time-parameter-test
   (test-temporal-instance
    #t "2024-04-25T14:44:00"
    "2024-04-25T14:44:00Z"))
@@ -1055,7 +1055,7 @@
      #t "2024-04-25T14:44:00"
      "2024-04-25T14:44:00-07:00")))
 
-(deftest ^:parallel offset-date-time-parameter-test
+(deftest offset-date-time-parameter-test
   (test-temporal-instance
    #t "2024-04-25T14:44:00-07:00"
    "2024-04-25T21:44:00Z"))
