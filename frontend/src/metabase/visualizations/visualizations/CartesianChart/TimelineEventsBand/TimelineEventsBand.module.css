@@ -60,24 +60,6 @@
   border-color: var(--mb-color-text-brand);
 }
 
-.count {
-  font-size: var(--mantine-font-size-xs);
-  font-weight: bold;
-  line-height: 1;
-}
-
-.singleEvent {
-  box-sizing: border-box;
-  min-width: 8rem;
-  max-width: 16rem;
-  padding: 0.75rem;
-}
-
-.eventList {
-  box-sizing: border-box;
-  width: 16rem;
-}
-
 .listItemWrapper {
   padding: 0.75rem;
 
@@ -86,16 +68,12 @@
   }
 }
 
-.icon {
-  flex-shrink: 0;
-}
-
 .eventDate {
   font-size: var(--mantine-font-size-sm);
   color: var(--mb-color-text-secondary);
 }
 
-.seeAll {
+.seeAllButton {
   display: block;
   width: 100%;
   padding: 0.75rem 1rem;
@@ -111,6 +89,6 @@
   border-bottom-right-radius: var(--mantine-radius-lg);
 }
 
-.seeAll:hover {
+.seeAllButton:hover {
   background-color: var(--mb-color-background_surface-brand-subtle);
 }

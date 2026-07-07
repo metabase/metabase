@@ -21,7 +21,7 @@ export const TimelineEventRow = ({
         c="icon-disabled"
         mt="0.125rem"
         size={12}
-        className={S.icon}
+        flex="0 0 auto"
       />
     )}
     <Stack gap={2}>

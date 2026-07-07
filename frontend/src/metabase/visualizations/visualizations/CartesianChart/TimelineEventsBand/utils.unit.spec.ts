@@ -5,6 +5,7 @@ import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartes
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import {
+  arePositionedGroupsEqual,
   getPositionedTimelineEventGroups,
   getTimelineEventGroupIconName,
 } from "./utils";
@@ -35,6 +36,15 @@ describe("TimelineEventsBand utils", () => {
         getTimelineEventGroupIconName({
           date: "2025-01-01T00:00:00Z",
           events: [createMockTimelineEvent({ icon: "star" })],
+        }),
+      ).toBe("star");
+    });
+
+    it("falls back to the default icon for an empty group", () => {
+      expect(
+        getTimelineEventGroupIconName({
+          date: "2025-01-01T00:00:00Z",
+          events: [],
         }),
       ).toBe("star");
     });
@@ -71,41 +81,11 @@ describe("TimelineEventsBand utils", () => {
         chartInstance,
         plotBounds: BOUNDS,
         xAxisIndex: 0,
-        selectedEventIds: [],
       });
 
-      expect(positioned).toHaveLength(2);
-      expect(positioned[0]).toMatchObject({
-        x: 120,
-        count: 1,
-        iconName: "star",
-      });
-      expect(positioned[1]).toMatchObject({
-        x: 300,
-        count: 2,
-        iconName: "star",
-      });
-    });
-
-    it("marks a group as selected when one of its events is selected", () => {
-      const chartInstance = createChartInstance({
-        "2025-01-01T00:00:00Z": 120,
-        "2025-02-01T00:00:00Z": 300,
-        "2025-03-01T00:00:00Z": 200,
-      });
-
-      const positioned = getPositionedTimelineEventGroups({
-        timelineEventsModel,
-        chartInstance,
-        plotBounds: BOUNDS,
-        xAxisIndex: 0,
-        selectedEventIds: [3],
-      });
-
-      expect(positioned.map((group) => group.isSelected)).toEqual([
-        false,
-        true,
-        false,
+      expect(positioned).toEqual([
+        { group: timelineEventsModel[0], x: 120 },
+        { group: timelineEventsModel[1], x: 300 },
       ]);
     });
 
@@ -117,7 +97,6 @@ describe("TimelineEventsBand utils", () => {
         chartInstance,
         plotBounds: BOUNDS,
         xAxisIndex: 0,
-        selectedEventIds: [],
       });
 
       expect(positioned).toHaveLength(0);
@@ -135,11 +114,33 @@ describe("TimelineEventsBand utils", () => {
         chartInstance,
         plotBounds: BOUNDS,
         xAxisIndex: 0,
-        selectedEventIds: [],
       });
 
       expect(positioned).toHaveLength(1);
       expect(positioned[0].x).toBe(200);
+    });
+  });
+
+  describe("arePositionedGroupsEqual", () => {
+    const group = {
+      date: "2025-01-01T00:00:00Z",
+      events: [createMockTimelineEvent({ id: 1 })],
+    };
+
+    it("returns true for the same groups at the same positions", () => {
+      expect(
+        arePositionedGroupsEqual([{ group, x: 120 }], [{ group, x: 120 }]),
+      ).toBe(true);
+    });
+
+    it("returns false when a position changes", () => {
+      expect(
+        arePositionedGroupsEqual([{ group, x: 120 }], [{ group, x: 121 }]),
+      ).toBe(false);
+    });
+
+    it("returns false when the number of groups changes", () => {
+      expect(arePositionedGroupsEqual([{ group, x: 120 }], [])).toBe(false);
     });
   });
 });

@@ -4,11 +4,7 @@ import type {
   TimelineEventGroup,
   TimelineEventsModel,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type {
-  IconName,
-  TimelineEventId,
-  TimelineIcon,
-} from "metabase-types/api";
+import type { IconName, TimelineIcon } from "metabase-types/api";
 
 export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
   info: "info",
@@ -26,21 +22,20 @@ export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
 export interface PositionedTimelineEventGroup {
   group: TimelineEventGroup;
   x: number;
-  iconName: IconName;
-  count: number;
-  isSelected: boolean;
 }
 
 export const getTimelineEventGroupIconName = (
   group: TimelineEventGroup,
-): IconName => TIMELINE_ICON_TO_SMALL_ICON_MAP[group.events[0]?.icon];
+): IconName => {
+  const icon = group.events.at(0)?.icon;
+  return icon != null ? TIMELINE_ICON_TO_SMALL_ICON_MAP[icon] : "star";
+};
 
 interface PositioningInput {
   timelineEventsModel: TimelineEventsModel;
   chartInstance: EChartsType;
   plotBounds: { left: number; right: number };
   xAxisIndex: number;
-  selectedEventIds: TimelineEventId[];
 }
 
 export const getPositionedTimelineEventGroups = ({
@@ -48,7 +43,6 @@ export const getPositionedTimelineEventGroups = ({
   chartInstance,
   plotBounds,
   xAxisIndex,
-  selectedEventIds,
 }: PositioningInput): PositionedTimelineEventGroup[] => {
   const { left, right } = plotBounds;
 
@@ -60,16 +54,16 @@ export const getPositionedTimelineEventGroups = ({
       return [];
     }
 
-    return [
-      {
-        group,
-        x,
-        iconName: getTimelineEventGroupIconName(group),
-        count: group.events.length,
-        isSelected: group.events.some((event) =>
-          selectedEventIds.includes(event.id),
-        ),
-      },
-    ];
+    return [{ group, x }];
   });
 };
+
+export const arePositionedGroupsEqual = (
+  a: PositionedTimelineEventGroup[],
+  b: PositionedTimelineEventGroup[],
+): boolean =>
+  a.length === b.length &&
+  a.every((item, index) => {
+    const other = b[index];
+    return item.group === other.group && item.x === other.x;
+  });

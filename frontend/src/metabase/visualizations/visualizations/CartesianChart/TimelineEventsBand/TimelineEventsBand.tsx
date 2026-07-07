@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   TIMELINE_BAND_HEIGHT,
@@ -11,7 +11,11 @@ import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventChip } from "./TimelineEventChip";
 import S from "./TimelineEventsBand.module.css";
-import { getPositionedTimelineEventGroups } from "./utils";
+import {
+  type PositionedTimelineEventGroup,
+  arePositionedGroupsEqual,
+  getPositionedTimelineEventGroups,
+} from "./utils";
 
 interface TimelineEventsBandProps {
   chartInstance?: EChartsType;
@@ -36,21 +40,6 @@ export const TimelineEventsBand = ({
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
 }: TimelineEventsBandProps) => {
-  // ECharts settles its layout asynchronously, so positions read from
-  // `convertToPixel` can be stale right after an option/size change. Recompute
-  // once the chart reports it has finished rendering.
-  const [renderTick, setRenderTick] = useState(0);
-  useEffect(() => {
-    if (!chartInstance) {
-      return;
-    }
-    const handleFinished = () => setRenderTick((tick) => tick + 1);
-    chartInstance.on("finished", handleFinished);
-    return () => {
-      chartInstance.off("finished", handleFinished);
-    };
-  }, [chartInstance]);
-
   const gridBottom = chartSize.height - chartLayout.padding.bottom;
   const trackTop = gridBottom + TIMELINE_EVENTS_BAND.marginY;
   const centerY = trackTop + TIMELINE_BAND_HEIGHT / 2;
@@ -58,35 +47,51 @@ export const TimelineEventsBand = ({
   const plotLeft = chartLayout.padding.left;
   const plotRight = chartSize.width - chartLayout.padding.right;
 
-  const positionedGroups = useMemo(() => {
-    if (
-      chartInstance == null ||
-      timelineEventsModel == null ||
-      timelineEventsModel.length === 0 ||
-      chartSize.width === 0
-    ) {
-      return [];
-    }
-    return getPositionedTimelineEventGroups({
-      timelineEventsModel,
-      chartInstance,
-      plotBounds: { left: plotLeft, right: plotRight },
-      xAxisIndex,
-      selectedEventIds: selectedTimelineEventIds ?? [],
-    });
-    // `renderTick` intentionally re-derives positions after ECharts settles.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const [positionedGroups, setPositionedGroups] = useState<
+    PositionedTimelineEventGroup[]
+  >([]);
+
+  const updatePositionedGroups = useCallback(() => {
+    const canPosition =
+      chartInstance != null &&
+      timelineEventsModel != null &&
+      timelineEventsModel.length > 0 &&
+      chartSize.width > 0;
+
+    const next = canPosition
+      ? getPositionedTimelineEventGroups({
+          timelineEventsModel,
+          chartInstance,
+          plotBounds: { left: plotLeft, right: plotRight },
+          xAxisIndex,
+        })
+      : [];
+
+    setPositionedGroups((previous) =>
+      arePositionedGroupsEqual(previous, next) ? previous : next,
+    );
   }, [
     chartInstance,
     timelineEventsModel,
     plotLeft,
     plotRight,
     xAxisIndex,
-    selectedTimelineEventIds,
     chartSize.width,
-    chartSize.height,
-    renderTick,
   ]);
+
+  useEffect(() => {
+    updatePositionedGroups();
+  }, [updatePositionedGroups]);
+
+  useEffect(() => {
+    if (!chartInstance) {
+      return;
+    }
+    chartInstance.on("finished", updatePositionedGroups);
+    return () => {
+      chartInstance.off("finished", updatePositionedGroups);
+    };
+  }, [chartInstance, updatePositionedGroups]);
 
   if (positionedGroups.length === 0) {
     return null;
@@ -108,6 +113,7 @@ export const TimelineEventsBand = ({
           key={eventsGroup.group.date}
           eventsGroup={eventsGroup}
           centerY={centerY}
+          selectedEventIds={selectedTimelineEventIds ?? []}
           onOpenTimelines={onOpenTimelines}
           onSelectTimelineEvents={onSelectTimelineEvents}
           onDeselectTimelineEvents={onDeselectTimelineEvents}

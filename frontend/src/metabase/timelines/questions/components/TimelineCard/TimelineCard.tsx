@@ -1,5 +1,5 @@
 import type { ChangeEvent, MouseEvent } from "react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -45,6 +45,7 @@ const TimelineCard = ({
   const events = getEvents(timeline.events);
   const isEventSelected = events.some((e) => selectedEventIds.includes(e.id));
   const hasSelection = selectedEventIds.length > 0;
+  const hadSelectionRef = useRef(hasSelection);
   const [isExpanded, setIsExpanded] = useState(
     hasSelection ? isEventSelected : Boolean(isDefault),
   );
@@ -81,10 +82,15 @@ const TimelineCard = ({
   );
 
   useEffect(() => {
+    const hadSelection = hadSelectionRef.current;
+    hadSelectionRef.current = hasSelection;
+
     if (hasSelection) {
       setIsExpanded(isEventSelected);
+    } else if (hadSelection) {
+      setIsExpanded(Boolean(isDefault));
     }
-  }, [hasSelection, isEventSelected, selectedEventIds]);
+  }, [hasSelection, isEventSelected, isDefault, selectedEventIds]);
 
   return (
     <CardRoot>

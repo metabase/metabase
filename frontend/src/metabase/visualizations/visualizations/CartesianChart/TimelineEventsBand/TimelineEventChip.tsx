@@ -1,13 +1,16 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { HoverCard, Icon, UnstyledButton } from "metabase/ui";
+import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
 import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
-import type { TimelineEvent } from "metabase-types/api";
+import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
 import { TimelineEventRow, TimelineEventsList } from "./TimelineEventsList";
-import type { PositionedTimelineEventGroup } from "./utils";
+import {
+  type PositionedTimelineEventGroup,
+  getTimelineEventGroupIconName,
+} from "./utils";
 
 const MAX_VISIBLE_EVENTS = 3;
 
@@ -20,6 +23,7 @@ const POPOVER_OFFSET =
 interface TimelineEventChipProps {
   eventsGroup: PositionedTimelineEventGroup;
   centerY: number;
+  selectedEventIds: TimelineEventId[];
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
@@ -28,11 +32,12 @@ interface TimelineEventChipProps {
 export const TimelineEventChip = ({
   eventsGroup,
   centerY,
+  selectedEventIds,
   onOpenTimelines,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
 }: TimelineEventChipProps) => {
-  const { group, x, iconName, count, isSelected } = eventsGroup;
+  const { group, x } = eventsGroup;
   const { events } = group;
 
   const isSingleEvent = events.length === 1;
@@ -41,6 +46,13 @@ export const TimelineEventChip = ({
     ? events.slice(0, MAX_VISIBLE_EVENTS)
     : events;
 
+  const isSelected = events.some((event) =>
+    selectedEventIds.includes(event.id),
+  );
+  const areAllEventsSelected = events.every((event) =>
+    selectedEventIds.includes(event.id),
+  );
+
   const canSelect = onSelectTimelineEvents != null;
   const handleSelect = () => {
     onOpenTimelines?.(isSingleEvent ? undefined : events.map((e) => e.id));
@@ -48,7 +60,7 @@ export const TimelineEventChip = ({
   };
 
   const handleChipClick = () => {
-    if (isSelected) {
+    if (areAllEventsSelected) {
       onDeselectTimelineEvents?.();
       onOpenTimelines?.();
     } else {
@@ -73,29 +85,36 @@ export const TimelineEventChip = ({
           style={{ left: x, top: centerY }}
           data-testid="timeline-event-chip"
           data-selected={isSelected}
-          aria-label={getChipLabel(eventsGroup)}
+          aria-label={
+            isSingleEvent ? events[0].name : t`${events.length} events`
+          }
           onClick={canSelect ? handleChipClick : undefined}
         >
-          {count > 1 ? (
-            <span className={S.count}>{count}</span>
+          {isSingleEvent ? (
+            <Icon name={getTimelineEventGroupIconName(group)} size={12} />
           ) : (
-            <Icon name={iconName} size={12} />
+            <Text component="span" size="xs" fw="bold" lh={1}>
+              {events.length}
+            </Text>
           )}
         </UnstyledButton>
       </HoverCard.Target>
       <HoverCard.Dropdown p={0} bdrs="0.75rem">
         <div data-testid="timeline-event-popover">
           {isSingleEvent ? (
-            <div className={S.singleEvent}>
+            <Box miw="8rem" maw="16rem" p="0.75rem">
               <TimelineEventRow event={events[0]} showIcon={false} />
-            </div>
+            </Box>
           ) : (
             <>
-              <div className={S.eventList}>
+              <Box w="16rem">
                 <TimelineEventsList events={visibleEvents} />
-              </div>
+              </Box>
               {showSeeAll && (
-                <UnstyledButton className={S.seeAll} onClick={handleSelect}>
+                <UnstyledButton
+                  className={S.seeAllButton}
+                  onClick={handleSelect}
+                >
                   {t`See all`}
                 </UnstyledButton>
               )}
@@ -106,6 +125,3 @@ export const TimelineEventChip = ({
     </HoverCard>
   );
 };
-
-const getChipLabel = ({ group, count }: PositionedTimelineEventGroup) =>
-  count > 1 ? t`${count} events` : group.events[0].name;

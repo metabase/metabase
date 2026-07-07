@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { TimelineEventId } from "metabase-types/api";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventChip } from "./TimelineEventChip";
@@ -14,9 +15,6 @@ const singleGroup: PositionedTimelineEventGroup = {
     ],
   },
   x: 100,
-  iconName: "cloud",
-  count: 1,
-  isSelected: false,
 };
 
 const twoGroup: PositionedTimelineEventGroup = {
@@ -28,9 +26,6 @@ const twoGroup: PositionedTimelineEventGroup = {
     ],
   },
   x: 200,
-  iconName: "star",
-  count: 2,
-  isSelected: false,
 };
 
 const manyGroup: PositionedTimelineEventGroup = {
@@ -44,18 +39,17 @@ const manyGroup: PositionedTimelineEventGroup = {
     ],
   },
   x: 300,
-  iconName: "star",
-  count: 4,
-  isSelected: false,
 };
 
 interface SetupOpts {
   eventsGroup?: PositionedTimelineEventGroup;
+  selectedEventIds?: TimelineEventId[];
   withCallbacks?: boolean;
 }
 
 const setup = ({
   eventsGroup = singleGroup,
+  selectedEventIds = [],
   withCallbacks = true,
 }: SetupOpts = {}) => {
   const onOpenTimelines = jest.fn();
@@ -66,6 +60,7 @@ const setup = ({
     <TimelineEventChip
       eventsGroup={eventsGroup}
       centerY={120}
+      selectedEventIds={selectedEventIds}
       onOpenTimelines={withCallbacks ? onOpenTimelines : undefined}
       onSelectTimelineEvents={
         withCallbacks ? onSelectTimelineEvents : undefined
@@ -85,8 +80,8 @@ describe("TimelineEventChip", () => {
     expect(screen.getByTestId("timeline-event-chip")).toHaveTextContent("4");
   });
 
-  it("marks the chip as selected when the group is selected", () => {
-    setup({ eventsGroup: { ...singleGroup, isSelected: true } });
+  it("marks the chip as selected when one of its events is selected", () => {
+    setup({ eventsGroup: singleGroup, selectedEventIds: [1] });
     expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
       "data-selected",
       "true",
@@ -136,12 +131,12 @@ describe("TimelineEventChip", () => {
     );
   });
 
-  it("deselects the events when an already-selected chip is clicked", async () => {
+  it("deselects the events when a fully selected chip is clicked", async () => {
     const {
       onSelectTimelineEvents,
       onDeselectTimelineEvents,
       onOpenTimelines,
-    } = setup({ eventsGroup: { ...singleGroup, isSelected: true } });
+    } = setup({ eventsGroup: twoGroup, selectedEventIds: [2, 3] });
 
     await userEvent.click(screen.getByTestId("timeline-event-chip"));
 
@@ -149,6 +144,18 @@ describe("TimelineEventChip", () => {
     expect(onSelectTimelineEvents).not.toHaveBeenCalled();
     // clears any sidebar focus so the full list returns
     expect(onOpenTimelines).toHaveBeenCalledWith();
+  });
+
+  it("selects the whole group when a partially selected cluster is clicked", async () => {
+    const { onSelectTimelineEvents, onDeselectTimelineEvents } = setup({
+      eventsGroup: twoGroup,
+      selectedEventIds: [2],
+    });
+
+    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+
+    expect(onSelectTimelineEvents).toHaveBeenCalledWith(twoGroup.group.events);
+    expect(onDeselectTimelineEvents).not.toHaveBeenCalled();
   });
 
   it("focuses the sidebar on the group and selects its events when a grouped chip is clicked", async () => {

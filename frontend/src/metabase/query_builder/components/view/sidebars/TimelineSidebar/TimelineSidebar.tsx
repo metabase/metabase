@@ -1,4 +1,4 @@
-import dayjs, { type Dayjs } from "dayjs";
+import dayjs, { type Dayjs, type OpUnitType } from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -152,7 +152,7 @@ export const getEventsXDomain = (
 ): [Dayjs, Dayjs] | undefined => {
   const timestamps = timelines
     .flatMap((timeline) => timeline.events ?? [])
-    .map((event) => dayjs(event.timestamp));
+    .map((event) => dayjs.utc(event.timestamp));
 
   if (timestamps.length === 0) {
     return undefined;
@@ -187,5 +187,8 @@ export const formatTitle = (xDomain?: [Dayjs, Dayjs], unit?: DatetimeUnit) => {
 };
 
 const formatDate = (date: Dayjs, unit?: DatetimeUnit) => {
-  return unit ? formatDateTimeWithUnit(date, unit) : date.format("ll");
+  if (unit == null) {
+    return date.format("ll");
+  }
+  return formatDateTimeWithUnit(date.startOf(unit as OpUnitType), unit);
 };

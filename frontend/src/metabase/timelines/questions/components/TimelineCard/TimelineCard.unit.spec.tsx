@@ -70,6 +70,21 @@ describe("TimelineCard", () => {
     expect(screen.queryByText("RC")).not.toBeInTheDocument();
   });
 
+  it("should restore the default expansion when the selection clears", () => {
+    const event = createMockTimelineEvent({ id: 1, name: "RC" });
+    const props = getProps({
+      timeline: createMockTimeline({ name: "Releases", events: [event] }),
+      isDefault: true,
+      selectedEventIds: [999],
+    });
+
+    const { rerender } = render(<TimelineCard {...props} />);
+    expect(screen.queryByText("RC")).not.toBeInTheDocument();
+
+    rerender(<TimelineCard {...props} selectedEventIds={[]} />);
+    expect(screen.getByText("RC")).toBeInTheDocument();
+  });
+
   it("should toggle visibility of the card", async () => {
     const props = getProps({
       timeline: createMockTimeline({

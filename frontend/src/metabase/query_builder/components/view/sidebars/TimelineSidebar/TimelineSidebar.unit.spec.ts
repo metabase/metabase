@@ -82,6 +82,7 @@ describe("getEventsXDomain", () => {
     const domain = getEventsXDomain(timelines);
     expect(domain?.[0].toISOString()).toBe("2027-06-03T00:00:00.000Z");
     expect(domain?.[1].toISOString()).toBe("2027-06-27T00:00:00.000Z");
+    expect(domain?.[0].utcOffset()).toBe(0);
   });
 });
 
@@ -92,6 +93,12 @@ describe("formatTitle", () => {
 
   it("returns a generic title without a domain", () => {
     expect(formatTitle()).toBe("Events");
+  });
+
+  it("snaps same-week dates to one week bucket (Jun 7 and Jun 10 are both the week of Jun 6)", () => {
+    const june7 = dayjs.utc("2027-06-07T00:00:00Z");
+    const june10 = dayjs.utc("2027-06-10T00:00:00Z");
+    expect(formatTitle([june7, june10], "week")).toBe("Events in June 6, 2027");
   });
 
   it("buckets a single month group to the chart granularity", () => {
