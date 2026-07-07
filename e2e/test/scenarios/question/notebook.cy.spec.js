@@ -523,22 +523,25 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should prompt to join with a model if the question is based on a model", () => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
 
-    H.createQuestion({
+    H.createCardWithTestQuery({
       name: "Products model",
-      query: { "source-table": PRODUCTS_ID },
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+      },
       type: "model",
       display: "table",
     });
 
-    H.createQuestion(
-      {
-        name: "Orders model",
-        query: { "source-table": ORDERS_ID },
-        type: "model",
-        display: "table",
+    H.createCardWithTestQuery({
+      name: "Orders model",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
       },
-      { visitQuestion: true },
-    );
+      type: "model",
+      display: "table",
+    }).then(H.visitCard);
 
     H.openNotebook();
 
