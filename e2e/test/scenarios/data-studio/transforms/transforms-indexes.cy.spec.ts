@@ -168,6 +168,16 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
       .and("contain", "Succeeded")
       .and("not.contain", "Never");
 
+    cy.log("the managed index physically exists in the warehouse");
+    H.queryWritableDB(
+      `SELECT indexname FROM pg_indexes
+       WHERE schemaname = '${TARGET_SCHEMA}'
+         AND tablename = '${targetTable}'
+         AND indexname = 'idx_lifecycle_name'`,
+    ).then(({ rows }) => {
+      expect(rows).to.have.length(1);
+    });
+
     cy.log("the DBA-created index is listed as unmanaged with no status");
     indexesTable()
       .findAllByRole("row")
