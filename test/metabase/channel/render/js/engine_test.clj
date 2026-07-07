@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.render.js.engine :as js]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (org.graalvm.polyglot Context PolyglotException Value)))
 
 (set! *warn-on-reflection* true)
 
@@ -25,3 +27,17 @@
       (is (= (repeat 10 2)
              (mt/repeat-concurrently 10
                                      #(.asLong (js/execute-fn-name context "plus" 1 1))))))))
+
+(deftest untrusted-plugin-context-denies-host-access-test
+  (testing "the SandboxPolicy/UNTRUSTED isolate runs untrusted plugin JS with no host interop"
+    (let [^Context context (js/untrusted-plugin-context)]
+      (try
+        (testing "ordinary JS still evaluates, so the sandbox isn't just broken"
+          (is (= "3" (.asString ^Value (js/load-js-string context "'' + (1 + 2)" "ok.js")))))
+        (testing "the `Java` host-interop global is absent"
+          (is (= "undefined" (.asString ^Value (js/load-js-string context "typeof Java" "typeof.js")))))
+        (testing "untrusted guest code cannot reach host classes (no sandbox escape)"
+          (is (thrown? PolyglotException
+                       (js/load-js-string context "Java.type('java.lang.System')" "escape.js"))))
+        (finally
+          (.close context true))))))
