@@ -43,7 +43,9 @@ export const JobTriggersSidebar = ({ jobKey }: JobTriggersSidebarProps) => {
         </ActionIcon>
       </Flex>
 
-      {triggers.length === 0 && (
+      {job == null && <Text c="text-secondary">{t`Job not found`}</Text>}
+
+      {job != null && triggers.length === 0 && (
         <Text c="text-secondary">{t`No triggers`}</Text>
       )}
 
