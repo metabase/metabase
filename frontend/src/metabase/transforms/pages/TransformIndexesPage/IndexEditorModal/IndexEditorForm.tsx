@@ -1,7 +1,13 @@
 import { t } from "ttag";
 
 import { Form, FormSubmitButton } from "metabase/forms";
-import { Button, Group, Select, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Group,
+  Select,
+  SelectItemWithDescription,
+  Stack,
+} from "metabase/ui";
 import type { IndexField, IndexKind } from "metabase-types/api";
 
 import { IndexFieldInput } from "./IndexFieldInput";
@@ -58,14 +64,12 @@ export function IndexEditorForm({
               (kindOption) => kindOption.value === option.value,
             )?.description;
             return (
-              <Stack gap="xs" p="sm">
-                <Text fw="bold">{option.label}</Text>
-                {description && (
-                  <Text size="sm" c="text-secondary">
-                    {description}
-                  </Text>
-                )}
-              </Stack>
+              <SelectItemWithDescription
+                selected={option.value === kind}
+                showCheckIcon={false}
+                label={option.label}
+                description={description}
+              />
             );
           }}
         />
