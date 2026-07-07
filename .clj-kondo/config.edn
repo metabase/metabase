@@ -187,10 +187,17 @@
      metabase.channel.render.pdf.font/load-fonts!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.mcp.usage/record-mcp-session!
+     metabase.mcp.usage/record-mcp-session-end!
+     metabase.mcp.usage/record-mcp-tool-call!
      metabase.notification.models/create-notification!
      metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
+     ;; MCP usage tests isolate their rows by unique keys (session id / tool name / duration /
+     ;; client version) and clean up only those, so these deletes are safe in parallel.
+     metabase-enterprise.mcp.usage-test/cleanup!
+     metabase-enterprise.mcp.usage-test/cleanup-calls!
      ;; Workspace isolation functions are safe in parallel tests because they operate on
      ;; isolated, test-specific workspaces and databases that don't affect other tests
      metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
