@@ -53,13 +53,30 @@
   (into {} (for [[name f] @checks]
              [name (f)])))
 
-(defn save-report
-  "Run a health inspector report and save it to the DB."
-  []
-  (doseq [[check-name result] (report)]
+(defn- persist-check-result!
+  "Persist one check result, or nothing when `result` is nil.
+  A nil result marks a check as not applicable on this instance, so it is omitted rather than recorded as
+  a misleading healthy score."
+  [check-name result]
+  (when (some? result)
     (t2/insert! :health_inspector_runs (-> result
                                            (select-keys [:health :message])
                                            (assoc :check_name (name check-name))))))
+
+(defn save-report
+  "Run every registered check and persist the results; not-applicable (nil) checks are omitted."
+  []
+  (doseq [[check-name result] (report)]
+    (persist-check-result! check-name result)))
+
+(defn run-and-save-check!
+  "Run one registered check by name and persist its result, so a change can be surfaced immediately rather
+  than at the next daily report.
+  A no-op unless the health inspector is enabled and the named check is registered and applicable (non-nil)."
+  [check-name]
+  (when (setting/health-inspector-enabled)
+    (when-let [f (get @checks check-name)]
+      (persist-check-result! check-name (f)))))
 
 (defn list-runs
   "Return the most recent health inspector runs from the DB."

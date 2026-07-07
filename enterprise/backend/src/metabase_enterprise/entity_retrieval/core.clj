@@ -60,21 +60,29 @@
        (pgvector-configured?)
        (embedding/embedding-supported? (embedding/get-configured-model))))
 
-(defn- index-ready?
-  "Whether the library entity index can serve a query right now: its meta row matches the configured
-  embedding model and schema version, and it holds at least one document.
-  A mismatched meta row (a model/dimension/format change whose rebuild hasn't run yet), a missing or empty
-  vectors table, or any query error all read as not-ready.
-  The compatibility check is what keeps a stale index from being offered: querying a vectors table built for
-  a different model returns nothing (or errors) rather than answering, so the agent must get the
-  general-search fallback instead."
+(defn retrieval-status
+  "Decomposed availability of the library entity index -- the single source of truth behind
+  [[entity-retrieval-available?]] and the health check.
+  Returns `{:pgvector? :licensed? :index-compatible? :populated?}`:
+  `:pgvector?` / `:licensed?` are the enablement conditions ([[available?]] is their conjunction);
+  `:index-compatible?` (meta row matches the configured model + schema version) and `:populated?`
+  (>= 1 document) are the readiness conditions, probed only when enabled.
+  A missing table or query error reads as not-compatible / not-populated."
   []
-  (boolean
-   (try
-     (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
-       (and (index-table/index-compatible? ds (embedding/get-configured-model))
-            (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
-     (catch Throwable _ false))))
+  (let [pgvector? (pgvector-configured?)
+        licensed? (premium-features/has-feature? :semantic-search)]
+    (if-not (and pgvector? licensed?)
+      {:pgvector? pgvector? :licensed? licensed? :index-compatible? false :populated? false}
+      ;; An incompatible meta row is a model/dimension/format change whose rebuild hasn't run; the vectors
+      ;; table would answer with nothing (or error), so such an index must not be offered.
+      (let [{:keys [compatible? populated?]}
+            (try
+              (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
+                {:compatible? (boolean (index-table/index-compatible? ds (embedding/get-configured-model)))
+                 :populated?  (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1"
+                                                                       index-table/*vectors-table*)])))})
+              (catch Throwable _ {:compatible? false :populated? false}))]
+        {:pgvector? true :licensed? true :index-compatible? compatible? :populated? populated?}))))
 
 ;; OSS-callable surface used to decide whether to OFFER the retrieve_library_entities tool: it must
 ;; be able to actually answer, so beyond config + license the index has to be built for the current model and
@@ -87,7 +95,8 @@
   gets the general-search fallback)."
   :feature :none
   []
-  (and (available?) (index-ready?)))
+  (let [{:keys [pgvector? licensed? index-compatible? populated?]} (retrieval-status)]
+    (and pgvector? licensed? index-compatible? populated?)))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
 ;;;

@@ -1048,6 +1048,7 @@
   health-inspector
   {:team "Querying Platform"
    :api #{metabase.health-inspector.api
+          metabase.health-inspector.core
           metabase.health-inspector.init}
    :uses #{api
            lib
@@ -3233,6 +3234,7 @@
    :uses #{analytics-interface
            collections
            entity-retrieval
+           health-inspector
            premium-features
            task
            util
@@ -3554,6 +3556,7 @@
            metabase-enterprise.semantic-search.core
            metabase-enterprise.semantic-search.db.datasource
            metabase-enterprise.semantic-search.embedding
+           metabase-enterprise.semantic-search.health
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3564,6 +3567,7 @@
            config
            connection-pool
            events
+           health-inspector
            llm
            metabot
            models

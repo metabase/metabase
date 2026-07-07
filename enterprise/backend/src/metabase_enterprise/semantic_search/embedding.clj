@@ -2,10 +2,13 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
+   [diehard.circuit-breaker :as dh.cb]
+   [diehard.core :as dh]
    [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.health-inspector.core :as health-inspector]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
@@ -16,6 +19,7 @@
   (:import
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
+   [dev.failsafe CircuitBreakerOpenException FailsafeException]
    [java.net ConnectException]))
 
 (set! *warn-on-reflection* true)
@@ -185,6 +189,76 @@
 (defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}] (ollama-get-embeddings-batch model-name texts))
 (defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
 
+;;;; Embedding-service circuit breaker
+;;;
+;;; The embedding service is a remote HTTP dependency; when it's down, every semantic-search / NLQ query
+;;; would otherwise re-attempt (and re-time-out) against it. A circuit breaker fails fast after repeated
+;;; failures, and its state doubles as a health signal: an open breaker means real traffic is currently
+;;; failing. State transitions surface the affected health checks immediately (see the listeners) rather
+;;; than waiting for the daily job. Thresholds are fixed (the breaker is built once); the setting is a
+;;; runtime kill switch checked per call.
+
+(def ^:private embedder-circuit-breaker-failure-threshold
+  "Consecutive embedding-service failures that trip the breaker open." 5)
+
+(def ^:private embedder-circuit-breaker-success-threshold
+  "Consecutive successes in half-open that close the breaker again." 2)
+
+(def ^:private embedder-circuit-breaker-delay-ms
+  "How long the breaker stays open before it allows a half-open trial call." 30000)
+
+(defn- on-embedder-circuit-state-change!
+  "Persist the embedder-dependent health checks the moment the breaker changes state, so an outage or its
+  recovery shows up within minutes instead of at the next daily report."
+  [state]
+  (log/warn "Embedding service circuit breaker changed state" {:state state})
+  ;; Off the failsafe callback thread. run-and-save-check! self-gates on the setting and skips unregistered
+  ;; checks, so this is safe to fire-and-forget.
+  (future
+    (try
+      (health-inspector/run-and-save-check! :semantic-search-index)
+      (health-inspector/run-and-save-check! :nlq-retrieval)
+      (catch Throwable e
+        (log/error e "Failed to persist embedder circuit health checks")))))
+
+(defonce ^:private embedder-circuit-breaker
+  (dh.cb/circuit-breaker
+   {:failure-threshold embedder-circuit-breaker-failure-threshold
+    :success-threshold embedder-circuit-breaker-success-threshold
+    :delay-ms          embedder-circuit-breaker-delay-ms
+    :on-open      (fn [_] (on-embedder-circuit-state-change! :open))
+    :on-half-open (fn [_] (on-embedder-circuit-state-change! :half-open))
+    :on-close     (fn [_] (on-embedder-circuit-state-change! :closed))}))
+
+(def ^:dynamic *bypass-circuit-breaker*
+  "Bind true to run an embedding call without consulting or tripping the breaker.
+  The health probe binds it so the probe stays an independent signal and can't flip the breaker from inside
+  a state-change listener (which would recurse)."
+  false)
+
+(defn embedder-circuit-state
+  "Current embedder circuit-breaker state: `:closed`, `:open`, or `:half-open`."
+  []
+  (dh.cb/state embedder-circuit-breaker))
+
+(defn- call-through-embedder-breaker
+  "Run `thunk` under the embedder circuit breaker, unless it is bypassed (probe) or disabled (kill switch).
+  An open circuit throws a 502 `ex-info` with `:cause :embedder/circuit-open`; any other failure propagates
+  unwrapped."
+  [thunk]
+  (if (or *bypass-circuit-breaker*
+          (not (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)))
+    (thunk)
+    (try
+      (dh/with-circuit-breaker embedder-circuit-breaker (thunk))
+      (catch CircuitBreakerOpenException _
+        ;; Mirror the connection-refused 502 shape so callers already handling embedder-down keep working.
+        (throw (ex-info "embedding service unavailable (circuit open)"
+                        {:status 502 :cause :embedder/circuit-open})))
+      ;; Diehard wraps a thunk failure in FailsafeException; unwrap so callers see the original.
+      (catch FailsafeException e
+        (throw (or (.getCause e) e))))))
+
 ;;;; OpenAI-compatible embedding service impl (shared by "ai-service" and "openai" providers)
 
 (defn- supports-dimensions?
@@ -195,9 +269,9 @@
    (when (string? model-name)
      (str/starts-with? model-name "text-embedding-3"))))
 
-(mu/defn- openai-compatible-get-embeddings-batch
-  "Call an OpenAI-compatible /v1/embeddings endpoint. Shared implementation for both
-  the `ai-service` and `openai` providers.
+(mu/defn- openai-compatible-get-embeddings-batch*
+  "Raw OpenAI-compatible /v1/embeddings call, without the circuit breaker. Callers go through
+  [[openai-compatible-get-embeddings-batch]]; the health probe reaches this path via the bypass flag.
 
   `:provider`        — label for analytics (e.g. \"ai-service\", \"openai\")
   `:endpoint`        — full URL including /v1/embeddings
@@ -269,6 +343,12 @@
       (log/error e (str provider " embeddings API call failed")
                  {:documents (count texts) :tokens (count-tokens-batch texts)})
       (throw e))))
+
+(defn- openai-compatible-get-embeddings-batch
+  "Circuit-breaker-guarded entry point to the OpenAI-compatible embeddings call (see
+  [[openai-compatible-get-embeddings-batch*]] for the argument contract)."
+  [opts]
+  (call-through-embedder-breaker #(openai-compatible-get-embeddings-batch* opts)))
 
 ;;;; Embedding-service provider
 
