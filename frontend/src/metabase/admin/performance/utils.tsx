@@ -32,7 +32,7 @@ export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
   "data" in error &&
   isObject(error.data) &&
   "message" in error.data &&
-  typeof (error as { data: { message: any } }).data.message === "string";
+  typeof error.data.message === "string";
 
 const delay = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
