@@ -19,6 +19,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -319,6 +320,25 @@
                                     [[#_some? [:= {} [:expression {} "qux_2"] [:expression {} "foobar_2"]]
                                       [:field {} (meta/id :products :rating)]]]]]]}]}
          (adjust query)))))
+
+(deftest ^:parallel metric-defined-as-ratio-of-metrics-test
+  (testing "a metric defined as a custom-named ratio of two different metric refs expands both nested :metric clauses and executes (#30574)"
+    (let [base-mp      (mt/metadata-provider)
+          ;; Two DIFFERENT metrics so the ratio is discriminating: if both refs collapsed to the same
+          ;; underlying aggregation the result would be 1.0 and tell us nothing about what was expanded.
+          count-q      (-> (lib/query base-mp (lib.metadata/table base-mp (mt/id :products)))
+                           (lib/aggregate (lib/count)))
+          [m-count mp] (mock-metric base-mp count-q {:name "Count metric", :database-id (mt/id)})
+          sum-q        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :rating)))))
+          [m-sum mp]   (mock-metric mp sum-q {:name "Sum metric", :database-id (mt/id)})
+          m2-query     (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (-> (lib// (lib.metadata/metric mp (:id m-count)) (lib.metadata/metric mp (:id m-sum)))
+                                              (lib/with-expression-name "X"))))
+          [m2 mp]      (mock-metric mp m2-query {:name "M2", :database-id (mt/id)})
+          query        (lib/query mp (lib.metadata/card mp (:id m2)))]
+      ;; count(products)=200 / sum(rating)=694.3 = 0.2881 (rounded), i.e. clearly not 1.0.
+      (is (= [[0.2881]] (mt/formatted-rows [4.0] (qp/process-query query)))))))
 
 (deftest ^:parallel adjust-filter-test
   (let [[source-metric mp] (mock-metric (lib/filter (basic-metric-query) (lib/> (meta/field-metadata :products :price) 1)))
@@ -865,6 +885,35 @@
             (mt/format-rows-by
              [u.date/temporal-str->iso8601-str int]
              (mt/rows (qp/process-query query)))))))
+
+(deftest ^:parallel metric-card-with-field-filter-parameter-test
+  (testing "a mapped field-filter parameter narrows a metric card's result via an implicit join, matching an explicit filter"
+    (let [mp0         (mt/metadata-provider)
+          [metric mp] (mock-metric mp0
+                                   (-> (lib/query mp0 (lib.metadata/table mp0 (mt/id :orders)))
+                                       (lib/aggregate (lib/count)))
+                                   {:name "Orders, Count", :database-id (mt/id)})
+          metric-id   (:id metric)]
+      (qp.store/with-metadata-provider mp
+        (let [orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              ;; products.category reached from orders via the product_id FK (an implicit join)
+              category-col (m/find-first #(and (= (mt/id :products :category) (:id %))
+                                               (= (mt/id :orders :product_id) (:fk-field-id %)))
+                                         (lib/visible-columns orders-query))
+              metric-agg   (lib.metadata/metric mp metric-id)
+              param-query  (-> orders-query
+                               (lib/aggregate metric-agg)
+                               (assoc :parameters
+                                      [{:type   :string/=
+                                        :target [:dimension (lib.convert/->legacy-MBQL (lib/ref category-col))]
+                                        :value  ["Gadget"]}]))
+              filter-query (-> orders-query
+                               (lib/aggregate metric-agg)
+                               (lib/filter (lib/= category-col "Gadget")))
+              param-rows   (mt/rows (qp/process-query param-query))]
+          (is (seq param-rows))
+          (is (= (mt/rows (qp/process-query filter-query))
+                 param-rows)))))))
 
 (deftest ^:parallel metric-in-offset-test
   (let [mp            (mt/metadata-provider)

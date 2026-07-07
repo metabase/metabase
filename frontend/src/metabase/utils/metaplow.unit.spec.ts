@@ -1,3 +1,5 @@
+import { reset } from "@metabase/track";
+
 import Settings from "metabase/utils/settings";
 
 import {
@@ -9,6 +11,11 @@ import {
 const METAPLOW_URL = "https://metaplow.example.com/api/send";
 const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 const ANON_ORIGIN = "http://anonymous.metabase.com";
+
+const setup = async ({ userId }: { userId?: number } = {}) => {
+  initMetaplow({ getUserId: () => userId });
+  await Promise.resolve();
+};
 
 describe("metaplow", () => {
   let fetchSpy: jest.SpyInstance;
@@ -23,6 +30,7 @@ describe("metaplow", () => {
   afterEach(() => {
     fetchSpy.mockRestore();
     Settings.set("metaplow-url", null);
+    reset();
   });
 
   const getSentPayload = () => {
@@ -37,44 +45,29 @@ describe("metaplow", () => {
   };
 
   describe("initMetaplow", () => {
-    describe("beforeSend", () => {
-      afterEach(() => {
-        initMetaplow({ beforeSend: (_type, payload) => payload });
-      });
+    describe("getUserId", () => {
+      it("injects the user_id into the event data", async () => {
+        initMetaplow({ getUserId: () => 123 });
 
-      it("can modify the payload before it's sent", () => {
-        initMetaplow({
-          beforeSend: (_type, payload) => ({
-            ...payload,
-            data: { ...payload.data, user_id: 123 },
-          }),
-        });
-
-        trackMetaplowEvent("button_clicked");
+        await trackMetaplowEvent("button_clicked");
 
         const { payload } = getSentPayload();
         expect(payload.data.user_id).toBe(123);
-      });
-
-      it("suppresses the fetch call when a falsy value is returned", () => {
-        initMetaplow({ beforeSend: () => undefined });
-
-        trackMetaplowEvent("button_clicked");
-
-        expect(fetchSpy).not.toHaveBeenCalled();
       });
     });
   });
 
   describe("trackMetaplowEvent", () => {
-    it("does not call fetch when metaplow-url is not set", () => {
+    it("does not call fetch when metaplow-url is not set", async () => {
       Settings.set("metaplow-url", null);
-      trackMetaplowEvent("button_clicked");
+      await setup();
+      await trackMetaplowEvent("button_clicked");
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it("sends an event with the given name and default empty data", () => {
-      trackMetaplowEvent("button_clicked");
+    it("sends an event with the given name and default empty data", async () => {
+      await setup();
+      await trackMetaplowEvent("button_clicked");
 
       const body = getSentPayload();
       expect(body.type).toBe("event");
@@ -91,15 +84,17 @@ describe("metaplow", () => {
       );
     });
 
-    it("forwards the data payload", () => {
-      trackMetaplowEvent("button_clicked", { foo: "bar", count: 3 });
+    it("forwards the data payload", async () => {
+      await setup();
+      await trackMetaplowEvent("button_clicked", { foo: "bar", count: 3 });
 
       const { payload } = getSentPayload();
       expect(payload.data).toEqual({ foo: "bar", count: 3 });
     });
 
-    it("includes screen and language from the browser", () => {
-      trackMetaplowEvent("button_clicked");
+    it("includes screen and language from the browser", async () => {
+      await setup();
+      await trackMetaplowEvent("button_clicked");
 
       const { payload } = getSentPayload();
       expect(payload.screen).toBe(
@@ -108,8 +103,9 @@ describe("metaplow", () => {
       expect(payload.language).toBe(navigator.language);
     });
 
-    it("uses an anonymized hostname in the url", () => {
-      trackMetaplowEvent("button_clicked");
+    it("uses an anonymized hostname in the url", async () => {
+      await setup();
+      await trackMetaplowEvent("button_clicked");
 
       const { payload } = getSentPayload();
       expect(payload.url.startsWith(ANON_ORIGIN)).toBe(true);
@@ -119,11 +115,13 @@ describe("metaplow", () => {
   describe("trackMetaplowPageView", () => {
     it("does not call fetch when metaplow-url is not set", async () => {
       Settings.set("metaplow-url", null);
+      await setup();
       await trackMetaplowPageView("/question/42-my-question");
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
     it('sends an event with name "pageview"', async () => {
+      await setup();
       await trackMetaplowPageView("/dashboard/1");
 
       const { payload } = getSentPayload();
@@ -132,6 +130,7 @@ describe("metaplow", () => {
     });
 
     it("strips slugs from /:id-slug paths", async () => {
+      await setup();
       await trackMetaplowPageView("/question/42-my-favorite-question");
 
       const { payload } = getSentPayload();
@@ -139,6 +138,7 @@ describe("metaplow", () => {
     });
 
     it("anonymizes absolute URLs by replacing the origin", async () => {
+      await setup();
       await trackMetaplowPageView(
         "https://my-company.metabaseapp.com/collection/5-secrets",
       );
@@ -148,6 +148,7 @@ describe("metaplow", () => {
     });
 
     it("preserves paths without a numeric slug prefix", async () => {
+      await setup();
       await trackMetaplowPageView("/admin/settings/general");
 
       const { payload } = getSentPayload();

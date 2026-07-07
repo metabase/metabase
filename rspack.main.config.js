@@ -70,7 +70,13 @@ const SWC_LOADER = {
         tsx: true,
       },
       experimental: {
-        plugins: [["@swc/plugin-emotion", { sourceMap: isDevMode }]],
+        plugins: [
+          ["@swc/plugin-emotion", { sourceMap: isDevMode }],
+          // instrumentation slows builds significantly and should only run in the nightly coverage CI job.
+          ...(process.env.INSTRUMENT_COVERAGE === "true"
+            ? [["swc-plugin-coverage-instrument", {}]]
+            : []),
+        ],
       },
     },
 

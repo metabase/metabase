@@ -455,6 +455,10 @@ const configs = [
     plugins: {
       cypress: cypressPlugin,
       "chai-friendly": chaiFriendlyPlugin,
+      // Declared here so the metabase and import rules below also resolve for non-JS/TS e2e files
+      // which don't match the `**/*.{js,ts,...}` base.
+      metabase: metabasePlugin,
+      import: importXPlugin,
     },
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
@@ -1093,6 +1097,7 @@ const configs = [
       "rspack.*.js",
       "bin/**/*.js",
       ".github/scripts/**/*.js",
+      ".github/scripts/**/*.mjs",
     ],
     languageOptions: {
       globals: {

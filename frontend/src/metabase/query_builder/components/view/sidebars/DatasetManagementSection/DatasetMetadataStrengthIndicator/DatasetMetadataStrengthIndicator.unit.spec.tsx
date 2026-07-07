@@ -1,32 +1,37 @@
 import { render, screen } from "__support__/ui";
+import Question from "metabase-lib/v1/Question";
+import type { Field } from "metabase-types/api";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 
 import { DatasetMetadataStrengthIndicator } from "./DatasetMetadataStrengthIndicator";
 
-function setup({ resultMetadata } = {}) {
-  const mockDataset = {
-    getResultMetadata: () => resultMetadata,
-  };
+function setup({ resultMetadata }: { resultMetadata?: Field[] }) {
+  const dataset = new Question(
+    createMockCard({ result_metadata: resultMetadata ?? null }),
+  );
   render(
     <DatasetMetadataStrengthIndicator
-      dataset={mockDataset}
+      dataset={dataset}
       data-testid="indicator"
     />,
   );
 }
 
 describe("DatasetMetadataStrengthIndicator", () => {
-  const FULLY_COMPLETE_METADATA = {
+  const FULLY_COMPLETE_METADATA = createMockField({
     id: 1,
     display_name: "ID",
     description: "Well, that's an ID",
     semantic_type: "type/PK",
-  };
-  const PARTIALLY_COMPLETE_METADATA = {
+  });
+  const PARTIALLY_COMPLETE_METADATA = createMockField({
     id: 1,
     display_name: "ID",
     semantic_type: "type/PK",
-  };
-  const FULLY_INCOMPLETE_METADATA = { display_name: "CREATED_AT" };
+  });
+  const FULLY_INCOMPLETE_METADATA = createMockField({
+    display_name: "CREATED_AT",
+  });
 
   it("doesn't render if result metadata is not defined", () => {
     setup({ resultMetadata: undefined });

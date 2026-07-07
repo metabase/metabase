@@ -72,10 +72,7 @@ function _init(reducers, getRoutes, callback) {
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
-    beforeSend: (_type, payload) => ({
-      ...payload,
-      data: { ...payload.data, user_id: getUserId(store.getState()) },
-    }),
+    getUserId: () => getUserId(store.getState()),
   });
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
