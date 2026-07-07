@@ -1,5 +1,5 @@
 (ns metabase.lib.field
-  (:refer-clojure :exclude [every? select-keys mapv empty? not-empty get-in #?(:clj for)])
+  (:refer-clojure :exclude [every? select-keys mapv empty? not-empty get-in some #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -35,7 +35,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys mapv empty? not-empty get-in #?(:clj for)]]
+   [metabase.util.performance :refer [every? select-keys mapv empty? not-empty get-in some #?(:clj for)]]
    [metabase.util.time :as u.time]))
 
 (defn- column-metadata-effective-type
@@ -104,6 +104,36 @@
           [stage-number clause]
           (recur (inc stage-number)))))))
 
+(defn- composite-clause-anywhere-upstream?
+  "True when any stage 0..`max-stage` contains an `:aggregation` or `:expressions` clause with
+  `:lib/uuid = target-uuid`. Searched latest-first since the originating aggregation is usually close."
+  [query max-stage target-uuid]
+  (loop [stage-number max-stage]
+    (cond
+      (neg? stage-number) false
+      (let [stage (lib.util/query-stage query stage-number)]
+        (some (fn [clause] (= (lib.options/uuid clause) target-uuid))
+              (concat (:aggregation stage) (:expressions stage)))) true
+      :else (recur (dec stage-number)))))
+
+(defn- previous-stage-composite-source-long-display-name
+  "Fallback for the `:long` display-name of a column that resolved from a `:field` name-ref into a previous
+  stage. `resolve-field-ref` clobbers `:lib/source-uuid` on the resolved col with the ref's own uuid, so the
+  main source-uuid traceback above misses. Look up the previous-stage returned column by
+  `:lib/deduplicated-name`, follow ITS `:lib/source-uuid` — but only if it points at an aggregation or
+  expression clause somewhere upstream. For a leaf `:field` source clause the col's own `:display-name`
+  (potentially user- or model-customized) is already the best answer. Fixes #76986."
+  [query stage-number {dedup-name :lib/deduplicated-name}]
+  (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+    (when dedup-name
+      (when-let [prev-col (m/find-first #(= (:lib/deduplicated-name %) dedup-name)
+                                        (lib.metadata.calculation/returned-columns query previous-stage-number))]
+        (when-let [prev-source-uuid (:lib/source-uuid prev-col)]
+          (when (composite-clause-anywhere-upstream? query previous-stage-number prev-source-uuid)
+            (when-let [[source-index source-clause] (find-stage-index-and-clause-by-uuid
+                                                     query previous-stage-number prev-source-uuid)]
+              (lib.metadata.calculation/display-name query source-index source-clause :long))))))))
+
 (defn- field-display-name-initial-display-name
   [query
    stage-number
@@ -164,6 +194,12 @@
           ;; long display-name with join info included for aggregations over a joined field
           ;; from the previous stage, like "Max of Products -> ID" rather than "Max of ID".
           (lib.metadata.calculation/display-name query source-index source-clause style))
+        (when (and field-display-name
+                   (= style :long)
+                   (= source :source/previous-stage)
+                   (not (or fk-field-id join-alias))
+                   (not (str/includes? field-display-name " → ")))
+          (previous-stage-composite-source-long-display-name query stage-number col))
         field-display-name
         (when (string? field-name)
           humanized-name)

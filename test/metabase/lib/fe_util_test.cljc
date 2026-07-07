@@ -13,6 +13,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
@@ -881,6 +882,34 @@
                          :lib/source :source/aggregations
                          :lib/source-uuid string?}]}
             (lib.fe-util/expression-parts query (second (lib/aggregations query)))))))
+
+(deftest ^:parallel expression-parts-preserves-join-disambiguation-test
+  (testing (str "same-named aggregations from different joins keep their disambiguated long display names "
+                "when their :field refs are read back via expression-parts (#76986)")
+    (let [q0    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          orders-id   (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:is-main-group true} {:display-name "ID"})
+          products-id (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:display-name "Products"} {:display-name "ID"})
+          q1    (-> q0
+                    (lib/aggregate (lib/distinct orders-id))
+                    (lib/aggregate (lib/distinct products-id))
+                    lib/append-stage)
+          agg1  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of ID"})
+          agg2  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of Products → ID"})
+          q2    (lib/expression q1 1 "diff" (lib/- agg2 agg1))
+          expr  (first (lib/expressions q2 1))
+          parts (lib.fe-util/expression-parts q2 1 expr)]
+      (is (= ["Distinct values of Products → ID" "Distinct values of ID"]
+             (mapv #(:long-display-name (lib/display-info q2 1 %))
+                   (:args parts)))))))
 
 (deftest ^:parallel join-condition-clause-test
   (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
