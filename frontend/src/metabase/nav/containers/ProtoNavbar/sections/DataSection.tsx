@@ -1,32 +1,21 @@
-import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { t } from "ttag";
 
-import { useListDatabasesQuery } from "metabase/api";
-import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { useAddDataPermissions } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/use-add-data-permission";
-import { trackAddDataModalOpened } from "metabase/nav/containers/MainNavbar/analytics";
-import { Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { SidebarLink } from "../../MainNavbar/SidebarItems";
-import S from "../ProtoNavbar.module.css";
 import { SubNavHeading, SubNavSection } from "../SubNav";
 
 type Props = { location: Location };
 
-// The Data Studio data-operations nav items, split into "Databases" (one item
-// per database, scoped to that database) and "Data transformation".
+const BROWSE_DATABASES_URL = "/browse/databases";
+const METADATA_EDITOR_URL = Urls.dataStudioData();
+const SCHEMA_VIEWER_URL = Urls.dataStudioSchemaViewer();
+
+// The Data Studio data-operations nav items, split into "Connected data"
+// (browse + metadata tools) and "Data transformation".
 export function DataSection({ location }: Props) {
   const path = location.pathname;
-
-  const { data: databasesData } = useListDatabasesQuery();
-  const databases = databasesData?.data ?? [];
-  const { canPerformMeaningfulActions } = useAddDataPermissions();
-  const [
-    addDataModalOpened,
-    { open: openAddDataModal, close: closeAddDataModal },
-  ] = useDisclosure(false);
 
   const isTransforms =
     path.startsWith("/data-studio/transforms") &&
@@ -36,36 +25,28 @@ export function DataSection({ location }: Props) {
   return (
     <>
       <SubNavSection>
-        {canPerformMeaningfulActions && (
-          <button
-            type="button"
-            className={S.navActionButton}
-            aria-label={t`Add data`}
-            onClick={() => {
-              trackAddDataModalOpened("left-nav");
-              openAddDataModal();
-            }}
-          >
-            <span className={S.navActionIconCircle}>
-              <Icon name="add" size={12} />
-            </span>
-            {t`Add data`}
-          </button>
-        )}
-        <SubNavHeading>{t`Databases`}</SubNavHeading>
-        {databases.map((database) => {
-          const url = Urls.dataStudioData({ databaseId: database.id });
-          return (
-            <SidebarLink
-              key={database.id}
-              icon="database"
-              url={url}
-              isSelected={path.startsWith(url)}
-            >
-              {database.name}
-            </SidebarLink>
-          );
-        })}
+        <SubNavHeading>{t`Connected data`}</SubNavHeading>
+        <SidebarLink
+          icon="database"
+          url={BROWSE_DATABASES_URL}
+          isSelected={path.startsWith(BROWSE_DATABASES_URL)}
+        >
+          {t`Databases`}
+        </SidebarLink>
+        <SidebarLink
+          icon="table"
+          url={METADATA_EDITOR_URL}
+          isSelected={path.startsWith(METADATA_EDITOR_URL)}
+        >
+          {t`Metadata editor`}
+        </SidebarLink>
+        <SidebarLink
+          icon="schema"
+          url={SCHEMA_VIEWER_URL}
+          isSelected={path.startsWith(SCHEMA_VIEWER_URL)}
+        >
+          {t`Schema viewer`}
+        </SidebarLink>
       </SubNavSection>
 
       <SubNavSection>
@@ -99,8 +80,6 @@ export function DataSection({ location }: Props) {
           {t`Workspaces`}
         </SidebarLink>
       </SubNavSection>
-
-      <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />
     </>
   );
 }

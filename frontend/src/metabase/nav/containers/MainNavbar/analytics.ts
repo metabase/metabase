@@ -13,7 +13,7 @@ export const trackNewCollectionFromNavInitiated = () =>
   });
 
 export const trackAddDataModalOpened = (
-  from: "getting-started" | "left-nav",
+  from: "getting-started" | "left-nav" | "browse-databases",
 ) => {
   trackSimpleEvent({
     event: "data_add_modal_opened",

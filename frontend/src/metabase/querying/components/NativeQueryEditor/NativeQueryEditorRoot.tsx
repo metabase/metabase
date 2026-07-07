@@ -16,7 +16,6 @@ import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { getMetabotVisible } from "metabase/metabot/state";
-import { parseNewQueryMode } from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   CodeMirrorEditor,
@@ -28,7 +27,6 @@ import { useNotebookScreenSize } from "metabase/querying/components/NativeQueryE
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -197,19 +195,13 @@ export const NativeQueryEditorRoot = forwardRef<
   const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
     useState(false);
 
-  // do not show reference sidebar on small screens automatically,
-  // or on the New Query SQL idle page where the editor is embedded
-  // in a compact prompt card.
+  // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
   const isMetabotSidebarOpen = useSelector((state) =>
     getMetabotVisible(state, "omnibot"),
   );
-  const { pathname } = useSelector(getLocation);
-  const isNewQuerySqlPage = parseNewQueryMode(pathname) === "sql";
   const shouldOpenDataReference =
-    screenSize !== "small" &&
-    !isMetabotSidebarOpen &&
-    !isNewQuerySqlPage;
+    screenSize !== "small" && !isMetabotSidebarOpen;
 
   useMount(() => {
     setIsNativeEditorOpen?.(

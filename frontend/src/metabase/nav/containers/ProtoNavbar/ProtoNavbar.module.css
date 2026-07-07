@@ -6,7 +6,7 @@
   overflow: hidden;
 }
 
-/* Shared shell for all proto nav tabs (Home, Query, Library, Data, Monitor). */
+/* Shared shell for all proto nav tabs (Home, Library, Data, Monitor). */
 .section {
   padding-inline: 16px;
   /* Matches former navActionButton margin-top so the first section lines up
@@ -65,9 +65,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.75rem 0.75rem 0;
   padding-inline-start: 1rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 32px;
   flex-shrink: 0;
 }
 
@@ -75,6 +75,66 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
+}
+
+.headerActions {
+  gap: 16px;
+}
+
+.headerActionsCompact .headerButtonLabel {
+  display: none;
+}
+
+.headerActionsCompact .headerButton {
+  padding: var(--sm-spacing, 8px);
+}
+
+.headerButton {
+  display: flex;
+  height: 32px;
+  padding: var(--sm-spacing, 8px) var(--md-spacing, 12px);
+  justify-content: center;
+  align-items: center;
+  gap: var(--xs-spacing, 6px);
+  border-radius: var(--xs-radius, 6px);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.headerQueryButton {
+  border: none;
+  background: var(--mb-color-core-brand, #1871bf);
+  color: var(--mb-color-text-primary-inverse, #fff);
+}
+
+.headerQueryButton:hover {
+  border-radius: var(--xs-radius, 6px);
+  background: var(--mb-color-upsell-primary, #105490);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
+}
+
+.headerSearchButton {
+  border: 0.5px solid var(--mb-color-border-strong, rgba(7, 23, 34, 0.51));
+  background: var(--mb-color-background-primary, #fff);
+  color: var(--mb-color-text-primary);
+}
+
+.headerSearchButton:hover {
+  border-radius: var(--xs-radius, 6px);
+  border: 0.5px solid var(--mb-color-border-strong, rgba(7, 23, 34, 0.51));
+  background: var(
+    --mb-color-background_surface-primary-hover,
+    rgba(7, 23, 34, 0.05)
+  );
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
 }
 
 .rail {

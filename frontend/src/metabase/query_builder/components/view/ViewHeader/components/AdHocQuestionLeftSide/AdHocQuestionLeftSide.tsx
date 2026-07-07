@@ -1,13 +1,7 @@
 import type React from "react";
 import { t } from "ttag";
 
-import {
-  isNewQuerySqlIdle,
-  parseNewQueryMode,
-} from "metabase/nav/containers/ProtoNavbar/newQuery";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -39,10 +33,6 @@ export function AdHocQuestionLeftSide(
     isSummarized,
     onOpenModal,
   } = props;
-  const { pathname } = useSelector(getLocation);
-  const hideNativeTitle = isNewQuerySqlIdle(pathname, question);
-  const nativeTitle =
-    parseNewQueryMode(pathname) === "sql" ? t`New query` : t`New question`;
 
   const handleTitleClick = () => {
     const { isEditable } = Lib.queryDisplayInfo(question.query());
@@ -55,24 +45,22 @@ export function AdHocQuestionLeftSide(
   return (
     <Box className={AdHocQuestionLeftSideS.AdHocLeftSideRoot}>
       <Flex align="center" wrap="nowrap">
-        {!hideNativeTitle && (
-          <ViewHeading
-            className={ViewTitleHeaderS.AdHocViewHeading}
-            c="text-secondary"
-          >
-            {isNative ? (
-              nativeTitle
-            ) : (
-              <QuestionDescription
-                question={question}
-                isNative={isNative}
-                originalQuestion={originalQuestion}
-                isObjectDetail={isObjectDetail}
-                onClick={handleTitleClick}
-              />
-            )}
-          </ViewHeading>
-        )}
+        <ViewHeading
+          className={ViewTitleHeaderS.AdHocViewHeading}
+          c="text-secondary"
+        >
+          {isNative ? (
+            t`New question`
+          ) : (
+            <QuestionDescription
+              question={question}
+              isNative={isNative}
+              originalQuestion={originalQuestion}
+              isObjectDetail={isObjectDetail}
+              onClick={handleTitleClick}
+            />
+          )}
+        </ViewHeading>
       </Flex>
       <ViewSubHeading className={ViewTitleHeaderS.ViewHeaderLeftSubHeading}>
         {isSummarized && (

@@ -6,13 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  useListCollectionItemsQuery,
-  useListCollectionsTreeQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { resetConversation } from "metabase/metabot/state";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { StoreDashboard } from "metabase/redux/store";
@@ -23,7 +20,8 @@ import {
   Box,
   FixedSizeIcon,
   Group,
-  Text,
+  Icon,
+  Menu,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -38,10 +36,8 @@ import {
   consumeProtoNavSectionPin,
   getActiveSection,
 } from "./getActiveSection";
-import { getLastNewQueryMode, newQueryUrl } from "./newQuery";
 import { CollectionsSection } from "./sections/CollectionsSection";
 import { DataSection } from "./sections/DataSection";
-import { ExploreSection } from "./sections/ExploreSection";
 import { LibrarySection } from "./sections/LibrarySection";
 import { MonitorSection } from "./sections/MonitorSection";
 
@@ -55,6 +51,7 @@ type Props = {
 const MIN_WIDTH = 220;
 const MAX_WIDTH = 480;
 const DEFAULT_WIDTH = 320;
+const COMPACT_HEADER_WIDTH = 262;
 const WIDTH_STORAGE_KEY = "proto-nav-width";
 
 export function ProtoNavbar({ isOpen, location, params }: Props) {
@@ -67,22 +64,11 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
 
   const sections: { id: SectionId; label: string; icon: IconName }[] = [
     { id: "collections", label: t`Home`, icon: "home" },
-    { id: "explore", label: t`Query`, icon: "query" },
-    { id: "library", label: t`Library`, icon: "repository" },
     { id: "data", label: t`Data`, icon: "database" },
+    { id: "library", label: t`Library`, icon: "repository" },
     { id: "monitor", label: t`Monitor`, icon: "gauge" },
   ];
 
-  // The landing page each section navigates to when its rail icon is clicked.
-  const { data: rootDashboards } = useListCollectionItemsQuery({
-    id: "root",
-    models: ["dashboard"],
-    limit: 1,
-  });
-  const firstDashboard = rootDashboards?.data?.[0];
-
-  const { data: databasesData } = useListDatabasesQuery();
-  const firstDatabase = databasesData?.data?.[0];
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
   );
@@ -96,16 +82,9 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
   );
 
   const defaultPaths: Partial<Record<SectionId, string>> = {
-    collections: firstDashboard
-      ? `/dashboard/${firstDashboard.id}`
-      : "/collection/root",
-    explore: newQueryUrl(getLastNewQueryMode(), {
-      databaseId: lastUsedDatabaseId ?? undefined,
-    }),
+    collections: "/",
     library: Urls.dataStudioLibrary({ library: "tables" }),
-    data: firstDatabase
-      ? Urls.dataStudioData({ databaseId: firstDatabase.id })
-      : undefined,
+    data: "/browse/databases",
     monitor: usageAnalytics ? Urls.collection(usageAnalytics) : undefined,
   };
 
@@ -127,6 +106,36 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
     pinnedSectionRef.current = section;
     setActiveSection(section);
   }, []);
+
+  const handleAskAi = useCallback(() => {
+    dispatch(resetConversation({ agentId: "ask" }));
+    dispatch(push(Urls.newQuestion({ mode: "ask", cardType: "question" })));
+  }, [dispatch]);
+
+  const handleQueryBuilder = useCallback(() => {
+    dispatch(
+      push(
+        Urls.newQuestion({
+          mode: "notebook",
+          creationType: "custom_question",
+          cardType: "question",
+        }),
+      ),
+    );
+  }, [dispatch]);
+
+  const handleSqlQuery = useCallback(() => {
+    dispatch(
+      push(
+        Urls.newQuestion({
+          DEPRECATED_RAW_MBQL_type: "native",
+          creationType: "native_question",
+          cardType: "question",
+          DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId ?? undefined,
+        }),
+      ),
+    );
+  }, [dispatch, lastUsedDatabaseId]);
 
   // Resizable width, clamped to [MIN_WIDTH, MAX_WIDTH] and persisted locally.
   const [width, setWidth] = useState(() => {
@@ -217,27 +226,61 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
       />
       <Box className={S.root}>
         <Box className={S.header}>
-          <Group gap="sm" wrap="nowrap" miw={0}>
-            <ForwardRefLink
-              to="/"
-              className={S.logoLink}
-              aria-label={applicationName}
-            >
-              <LogoIcon height={32} />
-            </ForwardRefLink>
-            <Text fw={700} fz="md" truncate>
-              {applicationName}
-            </Text>
-          </Group>
-          <Tooltip label={t`Search`}>
-            <ActionIcon
-              onClick={openSearch}
+          <ForwardRefLink
+            to="/"
+            className={S.logoLink}
+            aria-label={applicationName}
+          >
+            <LogoIcon height={32} />
+          </ForwardRefLink>
+          <Group
+            className={cx(S.headerActions, {
+              [S.headerActionsCompact]: width < COMPACT_HEADER_WIDTH,
+            })}
+            wrap="nowrap"
+          >
+            <button
+              type="button"
+              className={cx(S.headerButton, S.headerSearchButton)}
               aria-label={t`Search`}
-              c="text-secondary"
+              onClick={openSearch}
             >
               <FixedSizeIcon name="search" />
-            </ActionIcon>
-          </Tooltip>
+              <span className={S.headerButtonLabel}>{t`Search`}</span>
+            </button>
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <button
+                  type="button"
+                  className={cx(S.headerButton, S.headerQueryButton)}
+                  aria-label={t`Query`}
+                >
+                  <FixedSizeIcon name="message_circle" />
+                  <span className={S.headerButtonLabel}>{t`Query`}</span>
+                </button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<Icon name="sparkles" />}
+                  onClick={handleAskAi}
+                >
+                  {t`Ask AI`}
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icon name="notebook" />}
+                  onClick={handleQueryBuilder}
+                >
+                  {t`Query builder`}
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<Icon name="sql" />}
+                  onClick={handleSqlQuery}
+                >
+                  {t`SQL query`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Box>
 
         <Box className={S.rail} role="tablist" aria-label={t`Sections`}>
@@ -280,12 +323,6 @@ export function ProtoNavbar({ isOpen, location, params }: Props) {
               isOpen={isOpen}
               location={location}
               params={params}
-            />
-          )}
-          {activeSection === "explore" && (
-            <ExploreSection
-              location={location}
-              onPin={() => pinSection("explore")}
             />
           )}
           {activeSection === "library" && (

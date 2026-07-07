@@ -316,7 +316,7 @@ export function MainNavbarView({
       <SidebarContentRoot>
         <div>
           {/* Keep Create at the top of the proto Home tab so its spacing
-              matches Query's New query button when switching rails. */}
+              matches the Data tab Add data button when switching rails. */}
           {PROTO_NAV_ENABLED && protoCollectionsBlock}
 
           {!PROTO_NAV_ENABLED && (

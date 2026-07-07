@@ -1,9 +1,4 @@
-export type SectionId =
-  | "collections"
-  | "explore"
-  | "library"
-  | "data"
-  | "monitor";
+export type SectionId = "collections" | "library" | "data" | "monitor";
 
 // Lets navigations from outside ProtoNavbar (e.g. opening a table question
 // from the Data tab) keep the rail on the originating section.
@@ -24,6 +19,7 @@ export function consumeProtoNavSectionPin(): SectionId | null {
 // previously selected section stays put.
 export function getActiveSection(pathname: string): SectionId | null {
   if (
+    pathname.startsWith("/browse/databases") ||
     pathname.startsWith("/data-studio/data") ||
     pathname.startsWith("/data-studio/transforms") ||
     pathname.startsWith("/data-studio/schema-viewer") ||
@@ -44,11 +40,9 @@ export function getActiveSection(pathname: string): SectionId | null {
   if (
     pathname.startsWith("/metabot") ||
     pathname.startsWith("/explore") ||
-    pathname.startsWith("/question/ask") ||
-    pathname === "/question/new" ||
-    pathname.startsWith("/question/new/")
+    pathname.startsWith("/question/ask")
   ) {
-    return "explore";
+    return null;
   }
   if (
     pathname === "/" ||
