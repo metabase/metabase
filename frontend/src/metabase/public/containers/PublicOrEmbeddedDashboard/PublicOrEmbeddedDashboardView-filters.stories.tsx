@@ -544,9 +544,9 @@ export const LightThemeParameterListWithValue = {
     const popover = getLastPopover();
     await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
     await userEvent.click(popover.getByText("Widget"));
-    const gizmo = popover.getByRole("checkbox", {
+    const gizmo = popover.getByRole<HTMLInputElement>("checkbox", {
       name: "Gizmo",
-    }) as HTMLInputElement;
+    });
     gizmo.disabled = true;
   },
 };

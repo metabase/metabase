@@ -61,7 +61,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
         <Group gap="sm" justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
-            color="error"
+            color="feedback-negative"
             loading={isLoading}
             onClick={handleArchive}
             variant="filled"

@@ -793,7 +793,7 @@ function getCardWidths(
           cb(
             firstCard.width() as number,
             secondCard.width() as number,
-            thirdCard.width() as number,
+            thirdCard.width(),
           );
         });
       } else {

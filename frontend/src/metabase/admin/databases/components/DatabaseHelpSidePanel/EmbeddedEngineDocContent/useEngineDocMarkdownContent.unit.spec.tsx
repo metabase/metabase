@@ -74,7 +74,7 @@ describe("useEngineDocMarkdownContent", () => {
 
     it("should handle loading state", async () => {
       const { result } = renderHook(() =>
-        useEngineDocMarkdownContent("athena" as EngineKey),
+        useEngineDocMarkdownContent("athena"),
       );
       expect(result.current.isLoading).toBe(true);
       await waitFor(() => {

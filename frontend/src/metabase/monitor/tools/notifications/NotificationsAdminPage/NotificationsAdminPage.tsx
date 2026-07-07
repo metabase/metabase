@@ -245,7 +245,7 @@ export const NotificationsAdminPage = ({
       title: count === 1 ? t`Delete 1 alert?` : t`Delete ${count} alerts?`,
       message: t`Recipients will stop receiving these alerts.`,
       confirmButtonText: t`Delete`,
-      confirmButtonProps: { color: "danger" },
+      confirmButtonProps: { color: "feedback-negative" },
       size: "md",
       onConfirm: () =>
         deleteNotifications(
@@ -261,7 +261,7 @@ export const NotificationsAdminPage = ({
         title: t`Delete this alert?`,
         message: t`Recipients will stop receiving this alert.`,
         confirmButtonText: t`Delete`,
-        confirmButtonProps: { color: "danger" },
+        confirmButtonProps: { color: "feedback-negative" },
         onConfirm: () => deleteNotifications([id], "detail_sidebar"),
       });
     },

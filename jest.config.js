@@ -36,7 +36,7 @@ const swcJestTransform = [
 
 const baseConfig = {
   transform: {
-    "^.+\\.[jt]sx?$": swcJestTransform,
+    "^.+\\.m?[jt]sx?$": swcJestTransform,
   },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.

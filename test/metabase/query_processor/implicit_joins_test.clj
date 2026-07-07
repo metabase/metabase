@@ -384,3 +384,61 @@
                 ;; 3 months with log counts
                 (is (= 3
                        (count (mt/rows (qp/process-query query)))))))))))))
+
+(deftest ^:parallel implicit-join-filter-through-explicit-self-join-test
+  (testing "Two implicit-join filters through an explicit self-join execute and return the expected row count (#46845)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset test-data
+        (let [mp          (mt/metadata-provider)
+              orders-uid  (lib.metadata/field mp (mt/id :orders :user_id))
+              orders-id   (lib.metadata/field mp (mt/id :orders :id))
+              orders-pid  (lib.metadata/field mp (mt/id :orders :product_id))
+              products-id (lib.metadata/field mp (mt/id :products :id))
+              ;; 1:1 self-join (orders.id is unique) keeps the pipeline fan-out-free, so it stays fast
+              ;; on every driver including Mongo's $lookup
+              o2-join     (fn [] (-> (lib/join-clause (lib.metadata/table mp (mt/id :orders))
+                                                      [(lib/= orders-uid orders-id)])
+                                     (lib/with-join-alias "O2")))
+              vendor      "Gibson, Turner and Douglas"
+              o2-vendor   "Zemlak, Botsford and Corkery"
+              ;; implicit: products.vendor reached directly via orders.product_id, and via the O2 self-join's
+              ;; product_id -- the QP must resolve these two implicit joins independently (#46845)
+              i-joined    (lib/join (lib/query mp (lib.metadata/table mp (mt/id :orders))) (o2-join))
+              vendors     (filter #(= (mt/id :products :vendor) (:id %)) (lib/filterable-columns i-joined))
+              v-direct    (m/find-first #(and (= :source/implicitly-joinable (:lib/source %))
+                                              (not (:fk-join-alias %)))
+                                        vendors)
+              v-via-o2    (m/find-first #(= "O2" (:fk-join-alias %)) vendors)
+              implicit    (mt/formatted-rows [int]
+                                             (qp/process-query
+                                              (-> i-joined
+                                                  (lib/filter (lib/= v-direct vendor))
+                                                  (lib/filter (lib/= v-via-o2 o2-vendor))
+                                                  (lib/aggregate (lib/count)))))
+              ;; explicit: spell the same two paths out as P1 (off orders) and P2 (off the O2 self-join)
+              explicit    (mt/formatted-rows
+                           [int]
+                           (qp/process-query
+                            (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) q
+                              (lib/join q (o2-join))
+                              (lib/join q (-> (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                               [(lib/= orders-pid products-id)])
+                                              (lib/with-join-alias "P1")))
+                              (lib/join q (-> (lib/join-clause
+                                               (lib.metadata/table mp (mt/id :products))
+                                               [(lib/= (m/find-first #(and (= (mt/id :orders :product_id) (:id %))
+                                                                           (= "O2" (:lib/join-alias %)))
+                                                                     (lib/visible-columns q))
+                                                       products-id)])
+                                              (lib/with-join-alias "P2")))
+                              (lib/filter q (lib/= (m/find-first #(and (= (mt/id :products :vendor) (:id %))
+                                                                       (= "P1" (:lib/join-alias %)))
+                                                                 (lib/visible-columns q))
+                                                   vendor))
+                              (lib/filter q (lib/= (m/find-first #(and (= (mt/id :products :vendor) (:id %))
+                                                                       (= "P2" (:lib/join-alias %)))
+                                                                 (lib/visible-columns q))
+                                                   o2-vendor))
+                              (lib/aggregate q (lib/count)))))]
+          (is (= implicit explicit))
+          (is (pos? (ffirst implicit))))))))

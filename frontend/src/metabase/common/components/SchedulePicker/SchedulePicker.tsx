@@ -316,7 +316,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             minButtonWidth={110}
             value={scheduleType}
             onChange={(value) =>
-              this.handleChangeProperty("schedule_type", value as ScheduleType)
+              this.handleChangeProperty("schedule_type", value)
             }
             data={scheduleOptions.map((scheduleOption) => ({
               label:

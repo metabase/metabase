@@ -58,7 +58,7 @@ export const saveEditingPulse = createThunkAction(
         dispatch(
           addUndo({
             icon: "warning",
-            toastColor: "error",
+            toastColor: "feedback-negative",
             message: isEdit
               ? t`Cannot edit subscription. ${errorMessage} Please contact your administrator.`
               : t`Cannot create subscription. ${errorMessage} Please contact your administrator.`,

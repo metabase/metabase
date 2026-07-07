@@ -19,7 +19,7 @@ export const TrialBanner = ({
   return (
     <Banner
       icon="warning_round_filled"
-      bg="warning"
+      bg="feedback-warning"
       body={
         <Flex align="center" gap="xs">
           {/* Text and ExternalLink originally have different line-heights that we need to marry. */}

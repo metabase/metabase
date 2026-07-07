@@ -15,7 +15,7 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -297,7 +297,7 @@ describe("fetchDashboard", () => {
 
     const result = await store.dispatch(
       fetchDashboard({
-        dashId: token as unknown as DashboardId,
+        dashId: token,
         queryParams: {},
         options: {},
       }),

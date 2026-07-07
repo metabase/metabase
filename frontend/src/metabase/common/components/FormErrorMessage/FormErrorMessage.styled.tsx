@@ -6,6 +6,6 @@ interface ErrorMessageRootProps {
 }
 
 export const ErrorMessageRoot = styled.div<ErrorMessageRootProps>`
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   margin-top: ${(props) => !props.inline && "1rem"};
 `;

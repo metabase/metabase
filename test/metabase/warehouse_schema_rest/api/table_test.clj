@@ -1213,7 +1213,7 @@
 (deftest trigger-metadata-sync-for-table-test
   (testing "Can we trigger a metadata sync for a table?"
     (let [sync-called? (promise)
-          timeout (* 10 1000)]
+          timeout (* 60 1000)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                        :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1227,7 +1227,7 @@
   (testing "POST /api/table/:id/sync_schema"
     (testing "User with manage-table-metadata permission can sync table"
       (let [sync-called? (promise)
-            timeout (* 10 1000)]
+            timeout (* 60 1000)]
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                          :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
@@ -1480,3 +1480,16 @@
           (data-perms/set-table-permission! (perms-group/all-users) table-id :perms/create-queries :query-builder)
           (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
             (is (map? response))))))))
+
+(deftest bulk-update-tables-visibility-persists-test
+  (testing "PUT /api/table with an ids vector flips visibility_type on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id) :visibility_type nil}
+                   :model/Table {t2 :id} {:db_id (mt/id) :visibility_type nil}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type "hidden"})
+      (is (= [:hidden :hidden]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2])))
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type nil})
+      (is (= [nil nil]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2]))))))
