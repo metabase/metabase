@@ -1,19 +1,19 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import PropTypes from "prop-types";
-import { forwardRef } from "react";
-import { ResizableBox } from "react-resizable";
+import { type HTMLAttributes, type Ref, forwardRef } from "react";
+import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 
 import CS from "metabase/css/core/index.css";
-import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import {
+  Notebook,
+  type NotebookProps,
+} from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex, rem } from "metabase/ui";
 import { darken } from "metabase/ui/colors";
 
-const propTypes = {
-  question: PropTypes.object.isRequired,
-  isResizing: PropTypes.bool.isRequired,
-  resizableBoxProps: PropTypes.object.isRequired,
-  onResizeStop: PropTypes.func.isRequired,
+type DatasetNotebookProps = NotebookProps & {
+  isResizing: boolean;
+  onResizeStop: ResizableBoxProps["onResizeStop"];
+  resizableBoxProps: Partial<ResizableBoxProps> & { height: number };
 };
 
 /**
@@ -23,9 +23,16 @@ const propTypes = {
  * Setting the overflow to "hidden" while resizing fixes that behavior.
  * @link Demo: https://github.com/metabase/metabase/pull/19103#issuecomment-981935878
  */
-const getOverflow = (isResizing) => (isResizing ? "hidden" : "auto");
+const getOverflow = (isResizing: boolean) => (isResizing ? "hidden" : "auto");
 
-const Handle = forwardRef(function Handle(props, ref) {
+type HandleProps = HTMLAttributes<HTMLDivElement> & {
+  handleAxis?: string;
+};
+
+const Handle = forwardRef(function Handle(
+  props: HandleProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const { handleAxis, ...rest } = props;
 
   return (
@@ -45,8 +52,8 @@ const Handle = forwardRef(function Handle(props, ref) {
       <Box
         w="6.25rem"
         h="xs"
-        bg={darken("border-neutral", 0.03)}
         style={{
+          backgroundColor: darken("border-neutral", 0.03),
           borderRadius: "xs",
         }}
       ></Box>
@@ -59,16 +66,16 @@ export function DatasetNotebook({
   onResizeStop,
   resizableBoxProps,
   ...notebookProps
-}) {
+}: DatasetNotebookProps) {
   return (
     <ResizableBox
       className={cx(CS.borderTop, CS.flex)}
-      axis="y"
       handle={<Handle />}
       {...resizableBoxProps}
+      axis="y"
       onResizeStop={(...args) => {
-        resizableBoxProps.onResizeStop(...args);
-        onResizeStop(...args);
+        resizableBoxProps.onResizeStop?.(...args);
+        onResizeStop?.(...args);
       }}
     >
       <Box w="100%" style={{ overflowY: getOverflow(isResizing) }}>
@@ -77,5 +84,3 @@ export function DatasetNotebook({
     </ResizableBox>
   );
 }
-
-DatasetNotebook.propTypes = propTypes;

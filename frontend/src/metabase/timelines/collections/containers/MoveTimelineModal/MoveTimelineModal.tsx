@@ -56,7 +56,7 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
               collection_id:
                 typeof collectionId === "number" ? collectionId : null,
               collection,
-            } as Timeline),
+            }),
           ),
         );
       })();

@@ -84,7 +84,11 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider condensed />
           <Group>
-            <Button variant="filled" color="error" onClick={handleRemove}>
+            <Button
+              variant="filled"
+              color="feedback-negative"
+              onClick={handleRemove}
+            >
               {t`Remove writable connection`}
             </Button>
           </Group>

@@ -588,10 +588,6 @@
   (* (double px)
      (/ 72.0 common/dpi)))
 
-(defn- card-title [card dashcard]
-  (or (get-in dashcard [:visualization_settings :card.title])
-      (:name card)))
-
 (defn- effective-display
   "The display type the card actually renders as. A visualizer dashcard overrides the underlying card's `:display`
   (e.g. a smartscalar card shown as a `bar`), so prefer the visualizer display when present. This is the same
@@ -1085,7 +1081,7 @@
         {:keys [card dashcard inline-params]
          {:keys [data]} :result
          :as part}      (channel.shared/maybe-realize-data-rows part)
-        title      (card-title card dashcard)
+        title      (render.util/dashcard-title card dashcard)
         title-h    (typeset/text-block-height (font/face :bold) common/chart-title-pt cell-w (* 0.5 cell-h) title)
         ;; Inline parameters (filters attached to this card) render between the title and the chart body,
         ;; like the email subscription does.

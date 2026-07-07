@@ -13,7 +13,7 @@ export interface Undo {
   actions?: (() => void)[];
   showProgress?: boolean;
   icon?: IconName | null;
-  toastColor?: string;
+  toastColor?: ColorName;
   dark?: boolean;
   iconColor?: ColorName;
   style?: CSSProperties;

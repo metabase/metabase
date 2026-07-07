@@ -1,4 +1,3 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
 import { getMetabotConversation } from "metabase/metabot/state";
@@ -30,9 +29,7 @@ export const handleMetabotSlashCommand: MetabotSlashCommandHandler = ({
     return true;
   }
   dispatch(
-    push(
-      EnterpriseUrls.adminMetabotUsageAuditingConversation(conversationId),
-    ) as UnknownAction,
+    push(EnterpriseUrls.adminMetabotUsageAuditingConversation(conversationId)),
   );
   return true;
 };

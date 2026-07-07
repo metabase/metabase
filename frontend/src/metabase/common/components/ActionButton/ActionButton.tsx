@@ -116,9 +116,9 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const actionStatus = active ? "pending" : (result ?? "idle");
     const resultProps: Partial<ButtonProps> =
       result === "success"
-        ? { variant: "filled", color: "success" }
+        ? { variant: "filled", color: "feedback-positive" }
         : result === "failed"
-          ? { variant: "filled", color: "error" }
+          ? { variant: "filled", color: "feedback-negative" }
           : {};
 
     return (
@@ -135,7 +135,11 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
         {active ? (
           useLoadingSpinner ? (
             <Center px="2rem">
-              <Loader size="sm" color="white" data-testid="loading-indicator" />
+              <Loader
+                size="sm"
+                color="core-white"
+                data-testid="loading-indicator"
+              />
             </Center>
           ) : (
             activeText
