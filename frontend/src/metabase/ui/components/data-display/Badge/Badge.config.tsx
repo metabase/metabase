@@ -92,8 +92,8 @@ export const badgeOverrides = {
         "--badge-fz": "0.6875rem", // 11px
       };
 
-      // Legacy `color` values fall through to Mantine's default resolver so
-      // existing call sites keep rendering until they are migrated.
+      // Non-BadgeColor values fall through to Mantine's default resolver so
+      // colors like "core-filter" can still work.
       if (isBadgeColor(badgeColor)) {
         if (isIndicator) {
           root["--badge-bg"] = color(INDICATOR_BG[badgeColor]);
