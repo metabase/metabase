@@ -1,4 +1,4 @@
-import { permalinkDatabase } from "./browse";
+import { browseSchemaBySlug, permalinkDatabase } from "./browse";
 
 describe("permalinkDatabase", () => {
   it("builds a raw-name URL", () => {
@@ -25,6 +25,20 @@ describe("permalinkDatabase", () => {
     );
     expect(permalinkDatabase({ id: 9, name: "2024_metrics" })).toBe(
       "/browse/databases/9",
+    );
+  });
+});
+
+describe("browseSchemaBySlug", () => {
+  it("preserves an id-based database slug", () => {
+    expect(browseSchemaBySlug("1-sample-database", "PUBLIC")).toBe(
+      "/browse/databases/1-sample-database/schema/PUBLIC",
+    );
+  });
+
+  it("preserves a name-based database slug and encodes both segments", () => {
+    expect(browseSchemaBySlug("Data Warehouse", "über schema")).toBe(
+      "/browse/databases/Data%20Warehouse/schema/%C3%BCber%20schema",
     );
   });
 });
