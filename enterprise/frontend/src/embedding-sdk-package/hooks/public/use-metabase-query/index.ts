@@ -8,6 +8,7 @@ export {
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
+  MetabaseQueryObject,
   UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./use-metabase-query";

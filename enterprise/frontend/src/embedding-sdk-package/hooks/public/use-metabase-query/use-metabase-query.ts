@@ -5,11 +5,11 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import {
-  isTableInput,
+  isQueryInput,
   isUnaryOperator,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import type { DatasetQuery } from "metabase-types/api";
+import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
 
 import type { SchemaJavaScriptType, TableSchema } from "../data-schema";
 
@@ -34,6 +34,9 @@ import type {
   UseMetabaseQueryResult,
   ValueFilterOperatorForDimension,
 } from "./types";
+
+export type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
+
 export type {
   CountAggregation,
   CountAggregationSchema,
@@ -151,13 +154,13 @@ const getResolveDatasetQueryFromBundle = () =>
   getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.resolveDatasetQuery;
 
 export type UseMetabaseQueryObjectResult = {
-  query: DatasetQuery | null;
+  query: MetabaseQueryObject | null;
   error: unknown;
   isLoading: boolean;
 };
 
 type QueryObjectState = {
-  query: DatasetQuery;
+  query: MetabaseQueryObject;
   queryKey: string;
 };
 
@@ -316,13 +319,14 @@ const useMetabaseQueryImpl = <
     setError(null);
 
     try {
-      if (isTableInput(currentQuery)) {
+      if (isQueryInput(currentQuery)) {
         if (!queryDataset || !resolveDatasetQuery) {
           return;
         }
 
         const datasetQuery =
           await resolveDatasetQuery(reduxStore)(currentQuery);
+
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
@@ -385,7 +389,7 @@ export function useMetabaseQueryObject(
 
       const result = await resolveDatasetQuery(reduxStore)(queryRef.current);
 
-      return { query: result, queryKey };
+      return { query: result as MetabaseQueryObject, queryKey };
     }, [queryKey, reduxStore]);
 
   useEffect(() => {

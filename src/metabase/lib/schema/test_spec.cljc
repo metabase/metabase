@@ -31,7 +31,9 @@
   [:map
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
    [:name string?]
+   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
    [:source-name {:optional true} [:maybe string?]]
+   [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
    [:display-name {:optional true} [:maybe string?]]
    [:index {:optional true} [:maybe pos-int?]]])
 
@@ -102,6 +104,11 @@
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :measure]]
    [:id [:ref ::lib.schema.id/measure]]])
 
+(mr/def ::test-metric-spec
+  [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
+   [:id [:ref ::lib.schema.id/metric]]])
+
 (mr/def ::test-join-spec
   [:map
    [:source     [:ref ::test-source-spec]]
@@ -124,7 +131,8 @@
   [:or
    [:ref ::test-expression-spec]
    [:ref ::test-named-expression-spec]
-   [:ref ::test-measure-spec]])
+   [:ref ::test-measure-spec]
+   [:ref ::test-metric-spec]])
 
 (mr/def ::test-stage-spec
   [:map
