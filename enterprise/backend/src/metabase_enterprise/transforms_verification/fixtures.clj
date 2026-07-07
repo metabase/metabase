@@ -1,0 +1,142 @@
+(ns metabase-enterprise.transforms-verification.fixtures
+  "Fixture-CSV parsing for transform test runs."
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [metabase-enterprise.transforms-verification.errors :as errors]
+   [metabase.upload.core :as upload]))
+
+(set! *warn-on-reflection* true)
+
+;; ---------------------------------------------------------------------------
+;; Error constructors
+;; ---------------------------------------------------------------------------
+
+(defn- header-mismatch-error
+  "Throws an ex-info with `::header-mismatch` type.
+
+  `missing-columns` — column names in the target schema absent from the CSV header.
+  `extra-columns`   — column names in the CSV header absent from the target schema."
+  [missing-columns extra-columns csv-header schema-names]
+  (throw (errors/ex ::errors/header-mismatch
+                    (str "CSV header does not match target schema. "
+                         (when (seq missing-columns)
+                           (str "Missing columns: " (str/join ", " (sort missing-columns)) ". "))
+                         (when (seq extra-columns)
+                           (str "Extra columns: " (str/join ", " (sort extra-columns)) ".")))
+                    {:missing-columns (vec missing-columns)
+                     :extra-columns   (vec extra-columns)
+                     :csv-header      (vec csv-header)
+                     :schema-names    (vec schema-names)})))
+
+(defn- unparseable-cell-error
+  "Throws an ex-info with `::errors/unparseable-cell` type.
+
+  `row-index`   — 0-based index into the data rows (not counting the header).
+  `column-name` — name of the column whose value failed to parse.
+  `raw-value`   — the original string from the CSV cell."
+  [row-index column-name raw-value cause]
+  (throw (errors/ex ::errors/unparseable-cell
+                    (str "Could not parse value " (pr-str raw-value)
+                         " in column " (pr-str column-name)
+                         " at row " row-index ".")
+                    {:row-index   row-index
+                     :column-name column-name
+                     :raw-value   raw-value}
+                    cause)))
+
+(defn- ragged-row-error
+  "Throws an ex-info with `::errors/ragged-row` type.
+
+  `row-index` — 0-based index into the data rows (not counting the header)."
+  [row-index expected-cell-count actual-cell-count]
+  (throw (errors/ex ::errors/ragged-row
+                    (str "CSV row " row-index " has " actual-cell-count " cell(s);"
+                         " the header has " expected-cell-count " column(s).")
+                    {:row-index           row-index
+                     :expected-cell-count expected-cell-count
+                     :actual-cell-count   actual-cell-count})))
+
+;; ---------------------------------------------------------------------------
+;; Header validation
+;; ---------------------------------------------------------------------------
+
+(defn- validate-header!
+  "Validate the CSV `header` against `target-schema`; throws `::errors/header-mismatch`
+  on duplicate header names or a header ≠ schema-names mismatch."
+  [header target-schema]
+  (let [schema-names (set (map :name target-schema))
+        csv-names    (set header)
+        missing      (set/difference schema-names csv-names)
+        extra        (set/difference csv-names schema-names)
+        dupes        (->> (frequencies header)
+                          (keep (fn [[n cnt]] (when (> cnt 1) n)))
+                          sort)]
+    ;; Duplicates hide from the set comparison and misalign row values downstream.
+    (when (seq dupes)
+      (throw (errors/ex ::errors/header-mismatch
+                        (str "CSV header contains duplicate column names: "
+                             (str/join ", " dupes) ".")
+                        {:duplicate-columns (vec dupes)
+                         :csv-header        (vec header)})))
+    (when (or (seq missing) (seq extra))
+      (header-mismatch-error missing extra header (map :name target-schema)))))
+
+;; ---------------------------------------------------------------------------
+;; Public API
+;; ---------------------------------------------------------------------------
+
+(defn parse-fixture
+  "Parse a fixture CSV into typed rows suitable for seeding a scratch table.
+
+  Arguments:
+  - `csv-file`      — `java.io.File` (e.g. a multipart upload temp file) OR a
+                      CSV `String` (in-memory, used by in-process tests to avoid
+                      disk I/O).
+  - `target-schema` — a non-empty sequence of column descriptors in any order:
+                      `[{:name <string> :base-type <kw> :nullable? <bool>} ...]`
+                      These come from real `:metadata/table` + field metadata; the
+                      caller is responsible for building this from the DB.
+
+  Returns:
+  ```
+  {:columns [{:name <string> :base-type <kw> :nullable? <bool>} ...]
+   :rows    [[v1 v2 ...] ...]}
+  ```
+  `:columns` are in CSV column order.  `:rows` are vectors of plain Clojure
+  values, one per data row, in the same column order. Cell values are one of:
+  String, Double, BigInteger, Boolean, LocalDate, LocalDateTime, OffsetDateTime,
+  or nil. Blank cells — empty or whitespace-only — parse to nil (SQL NULL).
+
+  Throws (all via `ex-info` with typed `:error-type` in ex-data):
+  - `::header-mismatch`   — CSV header ≠ schema column names (case-sensitive,
+                            exact match; ex-data includes `:missing-columns` and
+                            `:extra-columns`), or the header contains duplicate
+                            names (ex-data includes `:duplicate-columns`).
+  - `::ragged-row`        — a data row's cell count ≠ the header's column count;
+                            ex-data includes `:row-index` (0-based),
+                            `:expected-cell-count`, and `:actual-cell-count`.
+  - `::unparseable-cell`  — a cell value could not be parsed as the column type;
+                            ex-data includes `:row-index` (0-based), `:column-name`,
+                            and `:raw-value`."
+  [csv-file target-schema]
+  {:pre [(seq target-schema)]}
+  (let [header->columns
+        (fn [header]
+          (validate-header! header target-schema)
+          ;; Re-order the schema to match the CSV column order.
+          (let [name->col (into {} (map (juxt :name identity)) target-schema)]
+            (mapv name->col header)))]
+    (try
+      (upload/parse-csv csv-file header->columns)
+      (catch clojure.lang.ExceptionInfo e
+        (let [{:keys [type row-index column-name raw-value
+                      expected-cell-count actual-cell-count]} (ex-data e)]
+          (case type
+            :metabase.upload/ragged-row
+            (ragged-row-error row-index expected-cell-count actual-cell-count)
+
+            :metabase.upload/unparseable-cell
+            (unparseable-cell-error row-index column-name raw-value (ex-cause e))
+
+            (throw e)))))))

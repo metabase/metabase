@@ -3598,9 +3598,9 @@
                     :model/Table
                     :model/TransformRun}}
 
-  enterprise/transforms-test
+  enterprise/transforms-verification
   {:team "Graphy"
-   :api  #{metabase-enterprise.transforms-test.api}
+   :api  #{metabase-enterprise.transforms-verification.api}
    :uses #{api
            driver
            lib
