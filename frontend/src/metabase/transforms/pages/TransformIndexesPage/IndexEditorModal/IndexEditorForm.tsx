@@ -32,20 +32,18 @@ export function IndexEditorForm({
   // The order of fields in the form is driven by the BE schema
   const [firstField, ...restFields] = fields;
 
-  const renderField = (field: IndexField, autoFocus = false) => (
-    <IndexFieldInput
-      key={field.name}
-      field={field}
-      columnOptions={columnOptions}
-      disabled={isEditing && field.name === "name"}
-      autoFocus={autoFocus}
-    />
-  );
-
   return (
     <Form>
       <Stack gap="lg" mt="sm">
-        {firstField && renderField(firstField, !isEditing)}
+        {firstField && (
+          <IndexFieldInput
+            key={firstField.name}
+            field={firstField}
+            columnOptions={columnOptions}
+            disabled={isEditing && firstField.name === "name"}
+            autoFocus={!isEditing}
+          />
+        )}
 
         <Select
           label={t`Index type`}
@@ -72,7 +70,14 @@ export function IndexEditorForm({
           }}
         />
 
-        {restFields.map((field) => renderField(field))}
+        {restFields.map((field) => (
+          <IndexFieldInput
+            key={field.name}
+            field={field}
+            columnOptions={columnOptions}
+            disabled={isEditing && field.name === "name"}
+          />
+        ))}
 
         <Group justify="flex-end">
           <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
