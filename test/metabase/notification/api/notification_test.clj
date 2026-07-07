@@ -257,7 +257,7 @@
                            :channel_type "channel/email"
                            :details      {:type    "email/handlebars-resource"
                                           :subject "test"
-                                          :path    "metabase/channel/email/password_reset.hbs"}}]
+                                          :path    "password_reset"}}]
     (testing "POST /api/notification rejects handlebars-resource templates"
       (mt/with-model-cleanup [:model/Notification]
         (mt/with-temp [:model/Card {card-id :id} {}]
