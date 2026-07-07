@@ -110,8 +110,14 @@
    [:left [:ref ::test-join-source-spec]]
    [:right [:ref ::test-join-source-spec]]])
 
+(mr/def ::test-metric-spec
+  [:map
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metric]]
+   [:id [:ref ::lib.schema.id/card]]])
+
 (mr/def ::test-aggregation-spec
   [:or
+   [:ref ::test-metric-spec]
    [:ref ::test-expression-spec]
    [:ref ::test-named-expression-spec]])
 

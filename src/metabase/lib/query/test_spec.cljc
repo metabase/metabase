@@ -276,9 +276,12 @@
   [query            :- ::lib.schema/query
    stage-number     :- :int
    aggregation-spec :- ::lib.schema.test-spec/test-aggregation-spec]
-  (->> (lib.aggregation/aggregable-columns query stage-number)
-       (expression-spec->expression-clause query stage-number aggregation-spec)
-       (lib.aggregation/aggregate query stage-number)))
+  (if (= :metric (:type aggregation-spec))
+    (->> (lib.metadata/metric query (:id aggregation-spec))
+         (lib.aggregation/aggregate query stage-number))
+    (->> (lib.aggregation/aggregable-columns query stage-number)
+         (expression-spec->expression-clause query stage-number aggregation-spec)
+         (lib.aggregation/aggregate query stage-number))))
 
 (mu/defn- append-aggregations  :- ::lib.schema/query
   [query             :- ::lib.schema/query

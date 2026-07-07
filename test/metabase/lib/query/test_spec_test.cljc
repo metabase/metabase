@@ -113,6 +113,17 @@
       (is (=? [[:count {}]]
               (lib/aggregations query))))))
 
+(deftest ^:parallel test-query-with-metric-aggregation-test
+  (testing "test-query adds a metric aggregation to the query"
+    (let [query (lib.query.test-spec/test-query
+                 lib.tu/metadata-provider-with-metric
+                 {:stages [{:source       {:type :table
+                                           :id   (meta/id :checkins)}
+                            :aggregations [{:type :metric
+                                            :id   1}]}]})]
+      (is (=? [[:metric {} 1]]
+              (lib/aggregations query))))))
+
 (deftest ^:parallel test-query-with-breakouts-test
   (testing "test-query adds breakouts to the query"
     (let [query (lib.query.test-spec/test-query

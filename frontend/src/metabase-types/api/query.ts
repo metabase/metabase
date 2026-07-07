@@ -472,7 +472,15 @@ export type TestExpressionSpec =
 
 export type TestFilterSpec = TestExpressionSpec;
 
-export type TestAggregationSpec = TestExpressionSpec | TestNamedExpressionSpec;
+export type TestMetricSpec = {
+  type: "metric";
+  id: CardId;
+};
+
+export type TestAggregationSpec =
+  | TestMetricSpec
+  | TestExpressionSpec
+  | TestNamedExpressionSpec;
 
 export type TestNamedExpressionSpec = {
   name: string;
