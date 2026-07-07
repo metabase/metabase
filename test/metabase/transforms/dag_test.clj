@@ -103,18 +103,3 @@
         (finally
           (t2/delete! :model/TransformRun :dag_run_id run-id)
           (t2/delete! :model/TransformDagRun :id run-id))))))
-
-(deftest paged-dag-runs-test
-  (mt/with-temp [:model/Transform {tid :id} {:name "seed"}]
-    (let [runs (doall (repeatedly 3 #(dag-run/start-dag-run! tid :upstream nil)))]
-      (try
-        (testing "paged-dag-runs is scoped to the seed transform"
-          (let [{:keys [data total]} (dag-run/paged-dag-runs {:source-transform-id tid})]
-            (is (= 3 total))
-            (is (every? #(= tid (:source_transform_id %)) data))))
-        (testing "paged-all-dag-runs includes runs across transforms"
-          (let [{:keys [total]} (dag-run/paged-all-dag-runs {})]
-            (is (<= 3 total))))
-        (finally
-          (doseq [{run-id :id} runs]
-            (t2/delete! :model/TransformDagRun :id run-id)))))))

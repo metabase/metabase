@@ -82,10 +82,7 @@
   paged-job-runs
   transform-runs-for-job-run]
  [metabase.transforms.models.dag-run
-  paged-dag-runs
-  paged-all-dag-runs
-  transform-runs-for-dag-run
-  running-run-for-source-transform-id]
+  transform-runs-for-dag-run]
  [metabase.transforms.run-listing
   paged-run-summaries
   hydrate-run-names

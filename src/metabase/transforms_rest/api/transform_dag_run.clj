@@ -1,13 +1,13 @@
 (ns metabase.transforms-rest.api.transform-dag-run
-  "`/api/transform-dag-run` routes: the cross-transform view over manual DAG-reprocess runs (the
-  `transform_dag_run` table), plus canceling one. Per-transform DAG endpoints (triggering a run,
-  previewing it, and a single transform's run history) live on `/api/transform/:id/...` in
-  [[metabase.transforms-rest.api.transform]]; the schemas here are shared with those endpoints."
+  "`/api/transform-dag-run` routes: operations on a single manual DAG-reprocess run (the
+  `transform_dag_run` table) — its member transform runs and canceling it. Rows come from the
+  unified runs listing (`GET /api/transform/runs`, `run_type = dag`); per-transform DAG endpoints
+  (triggering a run and previewing it) live on `/api/transform/:id/...` in
+  [[metabase.transforms-rest.api.transform]]."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.malli.schema :as ms]
@@ -18,23 +18,6 @@
 (def dag-directions
   "The DAG traversal directions a reprocess run can take."
   [:upstream :downstream])
-
-(def DagRunResponse
-  "A `transform_dag_run` row prepared for an API response (see `present-run`). `transform_name` is
-  the seed transform's name, hydrated only by the cross-transform listing."
-  [:map {:closed true}
-   [:id pos-int?]
-   [:source_transform_id pos-int?]
-   [:direction :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled]]
-   [:is_active [:maybe :boolean]]
-   [:start_time :any]
-   [:end_time {:optional true} [:maybe :any]]
-   [:message [:maybe :string]]
-   [:user_id [:maybe pos-int?]]
-   [:created_at :any]
-   [:updated_at :any]
-   [:transform_name {:optional true} [:maybe :string]]])
 
 (def DagRunTransformRunResponse
   "A member transform run of a DAG run — a `transform_run` row (linked via `dag_run_id`), hydrated
@@ -59,32 +42,15 @@
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]])
 
-(api.macros/defendpoint :get "/" :- [:map {:closed true}
-                                     [:data [:sequential DagRunResponse]]
-                                     [:limit pos-int?]
-                                     [:offset :int]
-                                     [:total :int]]
-  "Get paginated run history for all manual DAG-reprocess runs across transforms. Each row's seed
-  transform name is hydrated as `transform_name`."
-  [_route-params
-   query-params :- [:map
-                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
-                    [:start-time {:optional true} [:maybe ms/NonBlankString]]
-                    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
-                    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
+(api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential DagRunTransformRunResponse]
+  "Get the transform runs that made up a specific DAG run (the drill-down of a `dag` row in the
+  unified runs listing)."
+  [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
   (api/check-data-analyst)
-  (-> (transforms.core/paged-all-dag-runs (assoc query-params
-                                                 :offset (request/offset)
-                                                 :limit  (request/limit)))
-      (update :data
-              (fn [runs]
-                (let [id->name (when-let [ids (seq (map :source_transform_id runs))]
-                                 (t2/select-pk->fn :name :model/Transform :id [:in ids]))]
-                  (mapv (fn [run]
-                          (-> run
-                              transforms-base.u/present-run
-                              (assoc :transform_name (get id->name (:source_transform_id run)))))
-                        runs))))))
+  (api/check-404 (t2/select-one :model/TransformDagRun :id run-id))
+  (let [runs (transforms.core/transform-runs-for-dag-run run-id)]
+    (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
+         (map transforms-base.u/present-run))))
 
 (api.macros/defendpoint :post "/:run-id/cancel" :- :nil
   "Cancel an in-progress manual DAG run and request cancellation of its still-running transforms."

@@ -429,7 +429,7 @@
                                            :scheduled  (contains? scheduled id))))
          plan)))
 
-(defn compile-transform-failure-messages
+(defn- compile-transform-failure-messages
   "Render the `::failures` of a coordinated run (as returned by [[run-transforms!]]) into a single
   human-readable message, one block per failed transform with a link to its run."
   [failures]

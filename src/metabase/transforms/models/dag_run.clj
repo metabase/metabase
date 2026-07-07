@@ -7,7 +7,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.transforms.models.coordinated-run :as coordinated-run]
-   [metabase.transforms.models.util :as transforms.models.u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -56,11 +55,6 @@
   [run-id]
   (coordinated-run/cancel-started-run! :model/TransformDagRun run-id))
 
-(defn heartbeat-runs!
-  "Stamp `last_heartbeat = now` on the given still-active DAG-run-ids."
-  [run-ids]
-  (coordinated-run/heartbeat-runs! :model/TransformDagRun run-ids))
-
 (defn reap-orphaned-runs!
   "Time out active DAG runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
   process is presumed dead). Returns the rows that were timed out so callers can notify."
@@ -73,35 +67,6 @@
   (t2/select-one :model/TransformDagRun
                  :source_transform_id source-transform-id
                  :is_active           true))
-
-(defn paged-dag-runs
-  "Return a page of DAG run history for a single seed transform.
-
-  Follows the conventions used by the FE."
-  [{:keys [source-transform-id sort-column sort-direction status] :as params}]
-  (let [where-cond (cond-> [[:= :source_transform_id source-transform-id]]
-                     status               (conj [:= :status status])
-                     (= status "started") (conj [:= :is_active true]))
-        where      (into [:and] where-cond)]
-    (transforms.models.u/paged-run-listing :model/TransformDagRun
-                                           params
-                                           (transforms.models.u/run-order-by sort-column sort-direction)
-                                           where)))
-
-(defn paged-all-dag-runs
-  "Return a page of DAG run history across every transform (the cross-transform \"DAG runs\" view).
-
-  Follows the conventions used by the FE."
-  [{:keys [sort-column sort-direction status start-time] :as params}]
-  (let [where-cond (cond-> []
-                     status               (conj [:= :status status])
-                     (= status "started") (conj [:= :is_active true])
-                     start-time           (conj (transforms.models.u/timestamp-constraint :start_time start-time)))
-        where      (when (seq where-cond) (into [:and] where-cond))]
-    (transforms.models.u/paged-run-listing :model/TransformDagRun
-                                           params
-                                           (transforms.models.u/run-order-by sort-column sort-direction)
-                                           where)))
 
 (defn active-transform-run-ids-for-dag-run
   "Ids of the member transform runs of `dag-run-id` that are still active."

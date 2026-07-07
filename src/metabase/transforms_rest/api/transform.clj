@@ -427,36 +427,6 @@
           {:id xform-id, :name xform-name})
         (transforms.core/dag-run-transforms id direction)))
 
-(api.macros/defendpoint :get "/:id/dag-runs" :- [:map {:closed true}
-                                                 [:data [:sequential transforms.dag-run/DagRunResponse]]
-                                                 [:limit pos-int?]
-                                                 [:offset :int]
-                                                 [:total :int]]
-  "Get paginated DAG-reprocess run history for a transform."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   query-params :- [:map
-                    [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
-                    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
-                    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
-  (api/read-check :model/Transform id)
-  (-> (transforms.core/paged-dag-runs (assoc query-params
-                                             :source-transform-id id
-                                             :offset (request/offset)
-                                             :limit  (request/limit)))
-      (update :data #(map transforms-base.u/present-run %))))
-
-(api.macros/defendpoint :get "/:id/dag-runs/:dag-run-id/transform-runs" :- [:sequential transforms.dag-run/DagRunTransformRunResponse]
-  "Get the transform runs that made up a specific DAG run."
-  [{:keys [id dag-run-id]} :- [:map
-                               [:id ms/PositiveInt]
-                               [:dag-run-id ms/PositiveInt]]
-   _query-params]
-  (api/read-check :model/Transform id)
-  (api/check-404 (t2/select-one :model/TransformDagRun :id dag-run-id :source_transform_id id))
-  (let [runs (transforms.core/transform-runs-for-dag-run dag-run-id)]
-    (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
-         (map transforms-base.u/present-run))))
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
   (handlers/routes
