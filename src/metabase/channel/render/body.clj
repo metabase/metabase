@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-bundle :as image-bundle]
-   [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
