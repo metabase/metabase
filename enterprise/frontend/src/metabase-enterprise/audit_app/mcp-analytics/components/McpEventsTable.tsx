@@ -93,9 +93,11 @@ export function buildEventsRawSeries(
   // Result column names are upper- or lower-cased depending on the warehouse (the audit DB is
   // H2, which upper-cases identifiers; Postgres lower-cases), so match case-insensitively and
   // key everything off the real column names.
-  const colByLower = new Map(cols.map((col) => [col.name.toLowerCase(), col]));
-  const shown = eventColumns(hasTenants, hasPii)
-    .map((name) => colByLower.get(name)?.name)
+  const normalizedColumnMap = new Map(
+    cols.map((col) => [col.name.toLowerCase(), col]),
+  );
+  const visibleColumns = eventColumns(hasTenants, hasPii)
+    .map((name) => normalizedColumnMap.get(name)?.name)
     .filter((name): name is string => name != null);
 
   // Override each surfaced column's header. Row data is left untouched so columns stay aligned.
@@ -107,18 +109,18 @@ export function buildEventsRawSeries(
   // Fail closed: if none of the curated columns are present (e.g. an unexpected schema), render
   // nothing rather than the default table — the default would surface every column, including
   // user_agent, raw ids, and gated PII.
-  if (shown.length === 0) {
+  if (visibleColumns.length === 0) {
     return null;
   }
 
   // `table.columns` must enumerate EVERY column — the surfaced ones (ordered, enabled) followed
   // by the rest (disabled). Columns omitted from this list are otherwise appended to the table.
-  const shownSet = new Set<string>(shown);
+  const visibleColumnNames = new Set<string>(visibleColumns);
   const tableColumns: TableColumnOrderSetting[] = [
-    ...shown.map((name) => ({ name, enabled: true })),
+    ...visibleColumns.map((name) => ({ name, enabled: true })),
     ...cols
       .map((col) => col.name)
-      .filter((name) => !shownSet.has(name))
+      .filter((name) => !visibleColumnNames.has(name))
       .map((name) => ({ name, enabled: false })),
   ];
 

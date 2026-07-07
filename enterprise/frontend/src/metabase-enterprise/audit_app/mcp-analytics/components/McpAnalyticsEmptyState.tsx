@@ -9,7 +9,7 @@ export function McpAnalyticsEmptyState() {
     <Flex flex={1} mih="60vh" align="center" justify="center">
       <EmptyState
         icon="audit"
-        title={t`No MCP activity yet`}
+        title={t`No MCP activity`}
         message={t`Tool calls from MCP clients will show up here. Try widening the date range or check back once clients start using the server.`}
       />
     </Flex>

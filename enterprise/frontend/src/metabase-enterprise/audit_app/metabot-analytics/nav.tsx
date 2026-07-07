@@ -5,7 +5,7 @@ import { UpsellGem } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { getMcpAnalyticsNavItem } from "../mcp-analytics/nav";
+import { McpAnalyticsNavItem } from "../mcp-analytics/nav";
 
 export function getMetabotAnalyticsNavItems() {
   return <MetabotAnalyticsNavItems />;
@@ -55,7 +55,7 @@ function MetabotAnalyticsNavItems() {
           rightSection={<UpsellGem.New size={14} />}
         />
       )}
-      {getMcpAnalyticsNavItem(mcpEnabled)}
+      <McpAnalyticsNavItem mcpEnabled={mcpEnabled} />
     </AdminNavItem>
   );
 }

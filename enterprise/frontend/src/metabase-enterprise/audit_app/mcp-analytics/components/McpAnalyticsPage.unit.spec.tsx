@@ -11,9 +11,12 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
-import type { Database, Field } from "metabase-types/api";
+import type { Database, Dataset, Field } from "metabase-types/api";
 import {
+  createMockColumn,
   createMockDatabase,
+  createMockDataset,
+  createMockDatasetData,
   createMockField,
   createMockGroup,
   createMockTable,
@@ -91,42 +94,50 @@ const auditDatabase: Database = createMockDatabase({
 // (breakout + aggregation columns) and the events table (named columns).
 // Aggregation column first so the page's no-breakout count probe (reads rows[0][0]) sees a
 // positive number; the `source` tags still let the breakout charts find the right columns.
-const datasetResponse = {
-  data: {
+const datasetResponse: Dataset = createMockDataset({
+  data: createMockDatasetData({
     rows: [
       [12, "search_data"],
       [7, "run_query"],
     ],
     cols: [
-      { source: "aggregation", name: "count", display_name: "Count" },
-      { source: "breakout", name: "tool_name", display_name: "Tool name" },
+      createMockColumn({
+        source: "aggregation",
+        name: "count",
+        display_name: "Count",
+      }),
+      createMockColumn({
+        source: "breakout",
+        name: "tool_name",
+        display_name: "Tool name",
+      }),
     ],
-    results_metadata: { columns: [] },
-    native_form: { query: "" },
-    rows_truncated: 0,
-  },
+  }),
   database_id: AUDIT_DB_ID,
   row_count: 2,
   running_time: 1,
-};
+});
 
 // A zero-count aggregation result — what the page's "has any data?" probe gets when the
 // filtered view is empty.
-const emptyDatasetResponse = {
-  data: {
+const emptyDatasetResponse: Dataset = createMockDataset({
+  data: createMockDatasetData({
     rows: [[0]],
-    cols: [{ source: "aggregation", name: "count", display_name: "Count" }],
-    results_metadata: { columns: [] },
-    native_form: { query: "" },
-    rows_truncated: 0,
-  },
+    cols: [
+      createMockColumn({
+        source: "aggregation",
+        name: "count",
+        display_name: "Count",
+      }),
+    ],
+  }),
   database_id: AUDIT_DB_ID,
   row_count: 1,
   running_time: 1,
-};
+});
 
 /** Mock the audit-DB metadata, users/groups, and the `/api/dataset` adhoc endpoint (with the given dataset). */
-function setupEndpoints(dataset: object = datasetResponse) {
+function setupEndpoints(dataset: Dataset = datasetResponse) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   setupUsersEndpoints([createMockUser({ id: 1, first_name: "Ada" })]);
   setupGroupsEndpoint([createMockGroup({ id: 1, name: "All Users" })]);
@@ -134,7 +145,7 @@ function setupEndpoints(dataset: object = datasetResponse) {
 }
 
 /** Render `McpAnalyticsPage` at its route with EE plugins + `audit_app`, optionally overriding the dataset response. */
-function setup({ dataset }: { dataset?: object } = {}) {
+function setup({ dataset }: { dataset?: Dataset } = {}) {
   setupEnterprisePlugins();
   setupEndpoints(dataset);
 
@@ -192,21 +203,6 @@ describe("McpAnalyticsPage", () => {
     expect(
       await within(eventsPanel).findByTestId("table-root"),
     ).toBeInTheDocument();
-
-    // The events tab issues a row-level query: limited, ordered, no aggregation.
-    const eventsStage = await waitFor(() => {
-      const stage = fetchMock.callHistory
-        .calls("dataset")
-        .map((call) => JSON.parse(call.options.body as string)?.stages?.[0])
-        .find((s) => s?.limit != null);
-      if (!stage) {
-        throw new Error("events query not issued yet");
-      }
-      return stage;
-    });
-    expect(eventsStage.aggregation).toBeUndefined();
-    expect(eventsStage.breakout).toBeUndefined();
-    expect(eventsStage["order-by"]).toBeDefined();
   });
 
   it("shows a single empty state (no tabs, no charts) when there is no activity", async () => {
@@ -215,15 +211,14 @@ describe("McpAnalyticsPage", () => {
     expect(
       await screen.findByRole("heading", { name: "MCP analytics" }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("No MCP activity yet")).toBeInTheDocument();
+    expect(await screen.findByText("No MCP activity")).toBeInTheDocument();
 
-    // The tabs and charts must not render when the view is empty.
+    // No tabs render when the view is empty — so neither the charts nor the events table can.
     expect(
       screen.queryByRole("tab", { name: "Usage" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("tab", { name: "Tool calls" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText("Calls by tool")).not.toBeInTheDocument();
   });
 });

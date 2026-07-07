@@ -117,9 +117,11 @@ export function toSeriesByBreakoutRawSeries(
   }
 
   const breakoutCols = response.data.cols.filter(
-    (c) => c.source === "breakout",
+    (col) => col.source === "breakout",
   );
-  const metricCol = response.data.cols.find((c) => c.source === "aggregation");
+  const metricCol = response.data.cols.find(
+    (col) => col.source === "aggregation",
+  );
   const [dimensionCol, seriesCol] = breakoutCols;
   if (!dimensionCol?.name || !seriesCol?.name || !metricCol?.name) {
     return null;

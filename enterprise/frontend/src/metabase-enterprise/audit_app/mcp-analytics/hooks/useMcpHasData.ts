@@ -69,17 +69,19 @@ export function useMcpHasData({
   const { data, isFetching } = useAdhocBreakoutQuery(query);
 
   // Latch once the first count resolves; from then on a fetch is a refetch, not initial load.
-  const hasResolvedOnce = useRef(false);
+  const hasLoadedOnce = useRef(false);
   const resolved = query != null && !isFetching && data != null;
   if (resolved) {
-    hasResolvedOnce.current = true;
+    hasLoadedOnce.current = true;
   }
 
+  // The query is a single count aggregation with no breakout, so the result is exactly one row
+  // with one column — the scalar total. `rows[0][0]` is that count.
   const count = Number(data?.data?.rows?.[0]?.[0] ?? 0);
 
   return {
-    isInitialLoading: !hasResolvedOnce.current,
-    isRefetching: hasResolvedOnce.current && isFetching,
+    isInitialLoading: !hasLoadedOnce.current,
+    isRefetching: hasLoadedOnce.current && isFetching,
     hasData: count > 0,
   };
 }

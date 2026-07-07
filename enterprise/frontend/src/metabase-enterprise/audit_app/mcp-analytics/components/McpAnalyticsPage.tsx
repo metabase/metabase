@@ -10,7 +10,8 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 
 import {
-  ConversationFilters,
+  // The shared audit filter bar; aliased since it has nothing to do with MCP "conversations".
+  ConversationFilters as McpToolCallsFilter,
   useFilterOptions,
 } from "../../metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "../../metabot-analytics/hooks/useAuditTable";
@@ -48,7 +49,8 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
     hasTenants,
   } = useFilterOptions({ date, user, group, tenant });
 
-  // IP is PII (null unless retention is on), so only surface its column when it's collected.
+  // IP address and error message are PII (null unless retention is on), so only surface those
+  // columns when they're collected.
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   // The MCP server can be turned off while its historical analytics still exist; when it's off the
   // page is inaccessible (the nav item greys out — this also blocks direct URL access).
@@ -100,18 +102,18 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
         <Flex align="center" justify="space-between">
           <Title order={2}>{t`MCP analytics`}</Title>
 
-          <ConversationFilters
+          <McpToolCallsFilter
             date={date}
             onDateChange={(val) => patchUrlState({ date: val })}
             user={user}
             onUserChange={(val) => patchUrlState({ user: val })}
+            userOptions={userOptions}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val })}
+            groupOptions={groupOptions}
             groupNoFilterValue={groupNoFilterValue}
             tenant={tenant}
             onTenantChange={(val) => patchUrlState({ tenant: val })}
-            userOptions={userOptions}
-            groupOptions={groupOptions}
             tenantOptions={tenantOptions}
             hasTenants={hasTenants}
           />
@@ -137,7 +139,11 @@ export function McpAnalyticsPage({ location, router }: WithRouterProps) {
 
               <Tabs.Panel value="charts">
                 <Stack gap="lg">
-                  <McpCallsTimelineChart {...dataSources} {...chartFilters} />
+                  <McpCallsTimelineChart
+                    {...dataSources}
+                    {...chartFilters}
+                    title={t`Calls by client over time`}
+                  />
                   <SimpleGrid cols={2} spacing="lg">
                     <McpBreakoutChart
                       {...dataSources}

@@ -29,15 +29,17 @@ type Props = McpFilters & {
   provider: MetadataProvider | null;
   table: TableMetadata | CardMetadata | null;
   groupMembersTable: TableMetadata | CardMetadata | null;
-  title?: string;
+  title: string;
   /** Two-breakout (day × series) query builder. Defaults to the day×client breakdown. */
   buildQuery?: BuildQueryFn;
+  h?: number;
 };
 
 type InnerProps = McpFilters &
   DataSources & {
     title: string;
     buildQuery: BuildQueryFn;
+    h: number;
   };
 
 /**
@@ -48,12 +50,13 @@ export function McpCallsTimelineChart({
   provider,
   table,
   groupMembersTable,
-  title = t`Calls by client over time`,
+  title,
   buildQuery = buildCallsByDayByClientQuery,
+  h = CHART_HEIGHT,
   ...filters
 }: Props) {
   if (!provider || !table || !groupMembersTable) {
-    return <Skeleton h={CHART_HEIGHT} />;
+    return <Skeleton h={h} />;
   }
   return (
     <McpCallsTimelineChartInner
@@ -62,6 +65,7 @@ export function McpCallsTimelineChart({
       groupMembersTable={groupMembersTable}
       title={title}
       buildQuery={buildQuery}
+      h={h}
       {...filters}
     />
   );
@@ -81,6 +85,7 @@ function McpCallsTimelineChartInner({
   tenantId,
   title,
   buildQuery,
+  h,
 }: InnerProps) {
   const query = useMemo(
     () =>
@@ -118,7 +123,7 @@ function McpCallsTimelineChartInner({
       rawSeries={rawSeries}
       isFetching={isFetching}
       display="line"
-      h={CHART_HEIGHT}
+      h={h}
       otherLabel={t`Other`}
     />
   );

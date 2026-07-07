@@ -46,11 +46,11 @@ function applyScopeFilters(
   }: Pick<McpFilters, "userId" | "groupId" | "tenantId">,
   groupMembersTable: TableMetadata | CardMetadata,
 ): Query {
-  let q = applyIdFilter(query, "user_id", userId);
-  q = applyIdFilter(q, "tenant_id", tenantId);
-  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
-  return q;
+  query = applyIdFilter(query, "user_id", userId);
+  query = applyIdFilter(query, "tenant_id", tenantId);
+  query = groupId != null ? joinGroupMembers(query, groupMembersTable) : query;
+  query = groupId != null ? applyIdFilter(query, "group_id", groupId) : query;
+  return query;
 }
 
 /**
@@ -67,10 +67,14 @@ function buildBaseQuery({
   groupId,
   tenantId,
 }: McpFilters & McpDataSources): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyScopeFilters(q, { userId, groupId, tenantId }, groupMembersTable);
-  return q;
+  let query = Lib.queryFromTableOrCardMetadata(provider, table);
+  query = applyDateFilter(query, dateFilter);
+  query = applyScopeFilters(
+    query,
+    { userId, groupId, tenantId },
+    groupMembersTable,
+  );
+  return query;
 }
 
 /** Order an aggregated query by the count column descending (highest counts first). */
@@ -116,7 +120,7 @@ export function buildCountBreakoutQuery({
   tenantId,
   breakoutColumn,
 }: CountBreakoutQueryOpts): Query {
-  let q = buildBaseQuery({
+  let query = buildBaseQuery({
     provider,
     table,
     groupMembersTable,
@@ -125,10 +129,10 @@ export function buildCountBreakoutQuery({
     groupId,
     tenantId,
   });
-  q = Lib.aggregateByCount(q, 0);
-  q = breakoutByColumn(q, breakoutColumn);
-  q = orderByCountDesc(q);
-  return q;
+  query = Lib.aggregateByCount(query, 0);
+  query = breakoutByColumn(query, breakoutColumn);
+  query = orderByCountDesc(query);
+  return query;
 }
 
 /** Add a `created_at` breakout bucketed by day (falls back to the raw column if the day bucket is unavailable). */
@@ -158,7 +162,7 @@ export function buildCallsByDayByClientQuery({
   groupId,
   tenantId,
 }: McpFilters & McpDataSources): Query {
-  let q = buildBaseQuery({
+  let query = buildBaseQuery({
     provider,
     table,
     groupMembersTable,
@@ -167,10 +171,10 @@ export function buildCallsByDayByClientQuery({
     groupId,
     tenantId,
   });
-  q = Lib.aggregateByCount(q, 0);
-  q = breakoutByCreatedAtDay(q);
-  q = breakoutByColumn(q, "client_display_name");
-  return q;
+  query = Lib.aggregateByCount(query, 0);
+  query = breakoutByCreatedAtDay(query);
+  query = breakoutByColumn(query, "client_display_name");
+  return query;
 }
 
 /**
@@ -186,7 +190,7 @@ export function buildCallsByDayByStatusQuery({
   groupId,
   tenantId,
 }: McpFilters & McpDataSources): Query {
-  let q = buildBaseQuery({
+  let query = buildBaseQuery({
     provider,
     table,
     groupMembersTable,
@@ -195,10 +199,10 @@ export function buildCallsByDayByStatusQuery({
     groupId,
     tenantId,
   });
-  q = Lib.aggregateByCount(q, 0);
-  q = breakoutByCreatedAtDay(q);
-  q = breakoutByColumn(q, "status");
-  return q;
+  query = Lib.aggregateByCount(query, 0);
+  query = breakoutByCreatedAtDay(query);
+  query = breakoutByColumn(query, "status");
+  return query;
 }
 
 type ErrorBreakoutQueryOpts = McpFilters &
@@ -221,7 +225,7 @@ export function buildErrorBreakoutQuery({
   tenantId,
   breakoutColumn,
 }: ErrorBreakoutQueryOpts): Query {
-  let q = buildBaseQuery({
+  let query = buildBaseQuery({
     provider,
     table,
     groupMembersTable,
@@ -230,11 +234,11 @@ export function buildErrorBreakoutQuery({
     groupId,
     tenantId,
   });
-  q = applyStatusFilter(q, "error");
-  q = Lib.aggregateByCount(q, 0);
-  q = breakoutByColumn(q, breakoutColumn);
-  q = orderByCountDesc(q);
-  return q;
+  query = applyStatusFilter(query, "error");
+  query = Lib.aggregateByCount(query, 0);
+  query = breakoutByColumn(query, breakoutColumn);
+  query = orderByCountDesc(query);
+  return query;
 }
 
 /**
@@ -252,7 +256,7 @@ export function buildTotalCountQuery({
   tenantId,
   errorsOnly = false,
 }: McpFilters & McpDataSources & { errorsOnly?: boolean }): Query {
-  let q = buildBaseQuery({
+  let query = buildBaseQuery({
     provider,
     table,
     groupMembersTable,
@@ -261,9 +265,9 @@ export function buildTotalCountQuery({
     groupId,
     tenantId,
   });
-  q = errorsOnly ? applyStatusFilter(q, "error") : q;
-  q = Lib.aggregateByCount(q, 0);
-  return q;
+  query = errorsOnly ? applyStatusFilter(query, "error") : query;
+  query = Lib.aggregateByCount(query, 0);
+  return query;
 }
 
 type EventsQueryOpts = McpFilters &
@@ -285,7 +289,7 @@ export function buildEventsQuery({
   tenantId,
   limit,
 }: EventsQueryOpts): Query {
-  let q = buildBaseQuery({
+  let query = buildBaseQuery({
     provider,
     table,
     groupMembersTable,
@@ -295,11 +299,11 @@ export function buildEventsQuery({
     tenantId,
   });
 
-  const createdAt = findColumn(q, "created_at", Lib.orderableColumns);
+  const createdAt = findColumn(query, "created_at", Lib.orderableColumns);
   if (createdAt) {
-    q = Lib.orderBy(q, 0, createdAt, "desc");
+    query = Lib.orderBy(query, 0, createdAt, "desc");
   }
 
-  q = Lib.limit(q, 0, limit);
-  return q;
+  query = Lib.limit(query, 0, limit);
+  return query;
 }

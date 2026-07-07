@@ -43,7 +43,7 @@ describe("scenarios > metabot > mcp analytics", () => {
     cy.log("The page renders with the seeded data (not the empty state)");
     H.main().within(() => {
       cy.findByRole("heading", { name: "MCP analytics" }).should("be.visible");
-      cy.findByText("No MCP activity yet").should("not.exist");
+      cy.findByText("No MCP activity").should("not.exist");
     });
 
     cy.log("The seeded tool call shows up in the Events table");
