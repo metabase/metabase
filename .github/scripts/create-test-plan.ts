@@ -4,45 +4,36 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
+import micromatch from "micromatch";
+
 import { elements, rules } from "../../frontend/lint/module-boundaries.mjs";
 
 import { type FileDependency, parseCruiseModules } from "./affected-modules";
 import { createTestPlan } from "./affected-tests";
+import { listSpecFiles } from "./e2e-spec-globs.mjs";
 
+const UNIT_ROOTS = ["frontend/src", "enterprise/frontend/src"];
 const UNIT_GLOBS = [
-  "frontend/src/**/*.unit.spec.js",
-  "frontend/src/**/*.unit.spec.jsx",
-  "frontend/src/**/*.unit.spec.ts",
-  "frontend/src/**/*.unit.spec.tsx",
-  "enterprise/frontend/src/**/*.unit.spec.js",
-  "enterprise/frontend/src/**/*.unit.spec.jsx",
-  "enterprise/frontend/src/**/*.unit.spec.ts",
-  "enterprise/frontend/src/**/*.unit.spec.tsx",
+  "frontend/src/**/*.unit.spec.{js,jsx,ts,tsx}",
+  "enterprise/frontend/src/**/*.unit.spec.{js,jsx,ts,tsx}",
 ];
 
+const STORY_ROOTS = ["frontend", "enterprise/frontend"];
 const STORY_GLOBS = [
-  "frontend/**/*.stories.js",
-  "frontend/**/*.stories.jsx",
-  "frontend/**/*.stories.ts",
-  "frontend/**/*.stories.tsx",
-  "enterprise/frontend/**/*.stories.js",
-  "enterprise/frontend/**/*.stories.jsx",
-  "enterprise/frontend/**/*.stories.ts",
-  "enterprise/frontend/**/*.stories.tsx",
+  "frontend/**/*.stories.{js,jsx,ts,tsx}",
+  "enterprise/frontend/**/*.stories.{js,jsx,ts,tsx}",
 ];
 
-const E2E_GLOBS = [
-  "e2e/test/scenarios/**/*.cy.spec.js",
-  "e2e/test/scenarios/**/*.cy.spec.jsx",
-  "e2e/test/scenarios/**/*.cy.spec.ts",
-  "e2e/test/scenarios/**/*.cy.spec.tsx",
-];
-
-function listFiles(globs: string[]): string[] {
-  return execFileSync("git", ["ls-files", "--", ...globs], { encoding: "utf8" })
+// Returns the tracked files under `roots` that match `globs`. The `dot: true`
+// option means files inside dot-directories such as `.storybook` are included.
+function listFiles(roots: string[], globs: string[]): string[] {
+  const tracked = execFileSync("git", ["ls-files", "--", ...roots], {
+    encoding: "utf8",
+  })
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+  return micromatch(tracked, globs, { dot: true });
 }
 
 // dorny outputs comma-separated lists; CHANGED_FILES is `all_changed_files`.
@@ -74,21 +65,48 @@ function readFileDependencies(): FileDependency[] | null {
   return null;
 }
 
+// Reads the nightly coverage manifest (E2E_SPEC_MANIFEST): { builtAt, specs:
+// { spec -> files } }. Returns the specs map, or null so e2e falls back to a
+// full run when the manifest is missing/unparseable.
+function readE2eSpecFiles(): Record<string, string[]> | null {
+  const path = process.env.E2E_SPEC_MANIFEST;
+  if (path && existsSync(path)) {
+    try {
+      const { specs } = JSON.parse(readFileSync(path, "utf8"));
+      if (specs && typeof specs === "object") {
+        process.stderr.write(`Using e2e coverage manifest from ${path}.\n`);
+        return specs;
+      }
+    } catch (error) {
+      process.stderr.write(
+        `Failed to read ${path}; e2e will run in full: ${error}\n`,
+      );
+    }
+  } else {
+    process.stderr.write("No E2E_SPEC_MANIFEST found; e2e will run in full.\n");
+  }
+  return null;
+}
+
 const testPlan = createTestPlan({
   elements,
   rules,
   changedFiles: csvToList(process.env.CHANGED_FILES),
   fileDependencies: readFileDependencies(),
   testFilesBySuite: {
-    unit: listFiles(UNIT_GLOBS),
-    loki: listFiles(STORY_GLOBS),
-    e2e: listFiles(E2E_GLOBS),
+    unit: listFiles(UNIT_ROOTS, UNIT_GLOBS),
+    loki: listFiles(STORY_ROOTS, STORY_GLOBS),
+    e2e: listSpecFiles(),
   },
+  e2eSpecFiles: readE2eSpecFiles(),
   unitInfraTouched: process.env.UNIT_INFRA_TOUCHED === "true",
   lokiInfraTouched: process.env.LOKI_INFRA_TOUCHED === "true",
+  e2eInfraTouched: process.env.E2E_INFRA_TOUCHED === "true",
   sharedSourcesTouched: process.env.SHARED_SOURCES_TOUCHED === "true",
   feFilesChanged: csvToList(process.env.FE_CHANGED_FILES).length,
   beFilesChanged: csvToList(process.env.BE_CHANGED_FILES).length,
+  feFilesTotal: listFiles(["frontend", "enterprise/frontend"], ["**"]).length,
+  beFilesTotal: listFiles(["src", "enterprise/backend"], ["**"]).length,
 });
 
 process.stdout.write(JSON.stringify(testPlan) + "\n");

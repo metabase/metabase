@@ -120,8 +120,11 @@
    "execute_query"   execute-query-mcp-input-malli})
 
 (def ^:private mcp-output-overrides
-  "tool-name → Malli schema. Replaces the manifest's derived `:outputSchema`."
-  {"construct_query" construct-query-mcp-output-malli})
+  "tool-name → Malli schema. Replaces the manifest's derived `:outputSchema`.
+   Both construct tools emit `{:query_handle}` via the body transform (see
+   [[tools-storing-query-handle]]), so they share the same output schema."
+  {"construct_query"        construct-query-mcp-output-malli
+   "construct_native_query" construct-query-mcp-output-malli})
 
 (defn- override->input-json-schema [malli tool-name]
   (tools-manifest/assert-optional-fields-nullable! malli tool-name)
@@ -301,7 +304,7 @@
   (mr/validator construct-query-mcp-output-malli))
 
 (defn- make-store-construct-query-result
-  "Build a body-transform fn for construct_query.
+  "Build a body-transform fn for the construct tools (`construct_query`, `construct_native_query`).
    The fn stores the base64 payload server-side under the calling user (with the current MCP session id
    recorded for cleanup) and returns {:query_handle uuid} instead of {:query base64}, so the LLM carries
    a short opaque UUID rather than the full base64 string.
@@ -327,7 +330,12 @@
 ;; handle, but it's a UI tool that resolves the handle itself (see `metabase.mcp.resources`) and
 ;; never reaches this dispatch path, so it's intentionally absent here.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "query" "create_question" "update_question"})
+  #{"execute_query" "query" "create_question" "update_question" "create_metric" "update_metric"})
+
+;; Tools whose 200 body is `{:query base64}` and gets stored as a handle, returning `{:query_handle}`.
+;; `construct_query` (MBQL) and `construct_native_query` (native SQL) both follow this contract.
+(def ^:private tools-storing-query-handle
+  #{"construct_query" "construct_native_query"})
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -446,7 +454,7 @@
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)
-        body-transform-fn     (when (= tool-name "construct_query")
+        body-transform-fn     (when (tools-storing-query-handle tool-name)
                                 (make-store-construct-query-result
                                  session-id api/*current-user-id*))]
     (invoke-agent-api method api-path token-scopes remaining-args

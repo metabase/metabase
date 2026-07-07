@@ -123,6 +123,7 @@ export interface TableListQuery {
   "owner-email"?: string | null;
   "unused-only"?: boolean | null;
   "orphan-only"?: boolean;
+  "published-only"?: boolean | null;
 }
 
 export interface ForeignKey {

@@ -12,7 +12,6 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -2847,19 +2846,14 @@
         (is (= #{light-eid dark-eid}
                (ids-by-model "EmbeddingTheme" (extract/extract {}))))))))
 
-(deftest stamp-metabase-version-test
-  (testing "extract stamps :metabase_version on entities (so load can detect version mismatches)"
+(deftest no-metabase-version-stamp-test
+  (testing "extract does not stamp :metabase_version on entities (GHY-4013: it caused spurious remote-sync diffs)"
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "My Collection"}
                          :model/Card       _             {:name "My Card" :collection_id coll-id}]
         (let [extracted (into [] (extract/extract {}))
               by-model  (group-by (comp :model last :serdes/meta) extracted)]
-          (testing "Collections and Cards get the current Metabase version"
-            (doseq [m ["Collection" "Card"]
-                    entity (get by-model m)]
-              (is (= config/mb-version-string (:metabase_version entity))
-                  (str m " should be stamped with the current version"))))
-          (testing "Settings are not stamped — settings.yaml only persists :key and :value"
-            (doseq [setting (get by-model "Setting")]
-              (is (not (contains? setting :metabase_version))
-                  "Setting should not be stamped"))))))))
+          (doseq [m      ["Collection" "Card"]
+                  entity (get by-model m)]
+            (is (not (contains? entity :metabase_version))
+                (str m " should not carry a :metabase_version"))))))))

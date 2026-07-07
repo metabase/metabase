@@ -92,6 +92,9 @@
       (testing "finds by name with # prefix"
         (is (= {:display-name "#data-team" :name "data-team" :id "C002"}
                (channel.settings/find-cached-slack-channel-or-username "#data-team"))))
+      (testing "finds a user by name with @ prefix"
+        (is (= {:display-name "@alice" :name "alice" :id "U001"}
+               (channel.settings/find-cached-slack-channel-or-username "@alice"))))
       (testing "finds by ID"
         (is (= {:display-name "@alice" :name "alice" :id "U001"}
                (channel.settings/find-cached-slack-channel-or-username "U001"))))

@@ -73,7 +73,7 @@
   - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           can-query can-write include-transform-targets]}
+           published-only can-query can-write include-transform-targets]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -83,6 +83,7 @@
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
+       [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
@@ -110,6 +111,7 @@
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])
                      owner-email             (conj [:= :owner_email     owner-email])
                      orphan-only             (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
+                     published-only          (conj [:= :is_published true])
                      (and unused-only (premium-features/has-feature? :dependencies))
                      (conj [:not-exists {:select [:*]
                                          :from   [[:dependency :d]]

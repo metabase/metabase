@@ -149,6 +149,46 @@
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
 
+(deftest ^:parallel claude-thinking-blocks-ignored-test
+  (testing "thinking content blocks (extended/adaptive thinking, e.g. Claude Sonnet 5) are ignored"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-1" :model "claude-sonnet-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  ;; a thinking block arrives before the text
+                  {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "let me think"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "signature_delta" :signature "abc"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "text" :id "text-1"}}
+                  {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "hi"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "message_delta" :delta {:stop_reason "end_turn"}
+                   :usage {:input_tokens 10 :output_tokens 5}}
+                  {:type "message_stop"}]]
+      (testing "no thinking/reasoning chunks are emitted; only text + usage survive"
+        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into []
+                      (comp (claude/claude->aisdk-chunks-xf)
+                            (m/distinct-by :type))
+                      events))))
+      (testing "through the full pipeline produces text + usage"
+        (is (=? [{:type :start} {:type :text :text "hi"} {:type :usage}]
+                (into []
+                      (comp (claude/claude->aisdk-chunks-xf)
+                            (self.core/aisdk-xf))
+                      events))))))
+  (testing "a stream that ends mid-thinking flushes usage without emitting a thinking part"
+    (let [events [{:type "message_start"
+                   :message {:id "msg-2" :model "claude-sonnet-5"
+                             :usage {:input_tokens 10 :output_tokens 0}}}
+                  {:type "content_block_start" :index 0 :content_block {:type "thinking"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "thinking_delta" :thinking "partial"}}]]
+      (is (=? [{:type :start} {:type :usage}]
+              (into []
+                    (comp (claude/claude->aisdk-chunks-xf)
+                          (m/distinct-by :type))
+                    events))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->claude-messages tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -409,6 +449,28 @@
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
 
+(deftest ^:parallel supported-model?-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["claude-fable-5" "claude-opus-4-8" "claude-sonnet-5" "claude-haiku-4-5-20251001"]]
+      (is (true? (#'claude/supported-model? {:id id})) id)))
+  (testing "non-whitelisted models are not supported"
+    (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514"]]
+      (is (false? (#'claude/supported-model? {:id id})) id))))
+
+(deftest list-models-filters-catalog-to-whitelist-test
+  (testing "list-models keeps only whitelisted models sorted by id, preserving display_name"
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"]
+      (with-redefs [http/request (fn [_]
+                                   {:body (json/encode
+                                           {:data [{:id "claude-sonnet-5"            :display_name "Claude Sonnet 5"  :created_at "2026-01-01"}
+                                                   {:id "claude-opus-4-8"            :display_name "Claude Opus 4.8"  :created_at "2026-02-01"}
+                                                   {:id "claude-3-5-sonnet-20241022" :display_name "Claude 3.5"       :created_at "2024-10-22"}
+                                                   {:id "claude-fable-5"             :display_name "Claude Fable 5"   :created_at "2026-03-01"}]})})]
+        (is (= [{:id "claude-fable-5" :display_name "Claude Fable 5"}
+                {:id "claude-opus-4-8" :display_name "Claude Opus 4.8"}
+                {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
+               (:models (claude/list-models))))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; temperature support tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -419,9 +481,11 @@
                    "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
-  (testing "sampling parameters were removed starting with Opus 4.7 and on Fable models"
+  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
-                   "claude-opus-5" "claude-opus-5-0" "claude-fable-5"]]
+                   "claude-opus-5" "claude-opus-5-0"
+                   "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-6"
+                   "claude-fable-5"]]
       (is (false? (#'claude/model-supports-temperature? model))
           model))))
 
@@ -440,4 +504,5 @@
       (is (= 0.3 (:temperature (request-body "claude-haiku-4-5")))))
     (testing "temperature is omitted for models that reject sampling parameters"
       (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
+      (is (not (contains? (request-body "claude-sonnet-5") :temperature)))
       (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))

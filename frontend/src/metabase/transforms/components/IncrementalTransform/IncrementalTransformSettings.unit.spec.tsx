@@ -108,4 +108,14 @@ describe("IncrementalTransformSettings", () => {
 
     expect(getSwitch()).toBeEnabled();
   });
+
+  it("shows the merge key field when incremental is enabled", () => {
+    setup({ incremental: true });
+    expect(screen.getByText("Merge key")).toBeInTheDocument();
+  });
+
+  it("does not show the merge key field when incremental is disabled", () => {
+    setup({ incremental: false });
+    expect(screen.queryByText("Merge key")).not.toBeInTheDocument();
+  });
 });

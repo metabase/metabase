@@ -396,6 +396,26 @@
       (is (= 20
              (sql-jdbc.conn/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))
 
+(deftest ^:parallel include-checkout-timeout-test
+  (testing "We should be setting checkoutTimeout so a saturated pool fails fast instead of queueing forever"
+    (is (=? {"checkoutTimeout" integer?}
+            (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
+
+(deftest checkout-timeout-env-var-test
+  (testing "We should be able to set jdbc-data-warehouse-connection-pool-checkout-timeout-ms via env var"
+    (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-connection-pool-checkout-timeout-ms "5000"]
+      (is (= 5000
+             (driver.settings/jdbc-data-warehouse-connection-pool-checkout-timeout-ms)))
+      (is (= 5000
+             (get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))
+                  "checkoutTimeout"))))))
+
+(deftest max-pending-checkouts-env-var-test
+  (testing "We should be able to set jdbc-data-warehouse-connection-pool-max-pending-checkouts via env var"
+    (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-connection-pool-max-pending-checkouts "25"]
+      (is (= 25
+             (driver.settings/jdbc-data-warehouse-connection-pool-max-pending-checkouts))))))
+
 (deftest ^:parallel include-debug-unreturned-connection-stack-traces-test
   (testing "We should be setting debugUnreturnedConnectionStackTraces (#47981)"
     (is (=? {"debugUnreturnedConnectionStackTraces" boolean?}

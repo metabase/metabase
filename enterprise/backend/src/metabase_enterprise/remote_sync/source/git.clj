@@ -18,7 +18,7 @@
                               DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent Ref Repository)
    (org.eclipse.jgit.lib ObjectInserter ObjectReader)
-   (org.eclipse.jgit.revwalk RevCommit RevWalk)
+   (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)
@@ -295,11 +295,19 @@
   (.close ^ObjectReader reader)
   (.close ^RevWalk rev-walk))
 
+(defn- written-tree-id
+  "Finalize the editor and write the staged tree, memoizing it in `tree-id` so repeated calls (e.g.
+  `empty-commit?` then `finish-commit!`) finalize and write the tree only once."
+  ^ObjectId [{:keys [^DirCacheEditor editor ^DirCache index ^ObjectInserter inserter tree-id]}]
+  (or @tree-id
+      (do (.finish editor)
+          (reset! tree-id (.writeTree index inserter)))))
+
 ;; A commit being built incrementally against a GitSnapshot. Holds the open JGit resources (inserter, reader,
 ;; rev-walk) and the in-core index/editor; blobs are inserted as files are staged and the tree is written and
 ;; pushed at finish. Edits the branch tip's tree in place — unchanged entries/subtrees carry forward by object
 ;; id — so writeTree's work is proportional to the number of changes, not the repo size.
-(defrecord GitCommit [snapshot inserter reader rev-walk index editor parent-id]
+(defrecord GitCommit [snapshot inserter reader rev-walk index editor parent-id parent-tree-id tree-id]
   source.p/CommitBuilder
   (stage-upsert! [_ {:keys [^String path content]}]
     (let [blob-id (.insert ^ObjectInserter inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))]
@@ -319,12 +327,15 @@
       (.add ^DirCacheEditor editor (DirCacheEditor$DeleteTree. dir)))
     nil)
 
-  (finish-commit! [_ message]
-    (.finish ^DirCacheEditor editor)
+  (empty-commit? [this]
+    (boolean (when parent-tree-id
+               (.equals (written-tree-id this) ^ObjectId parent-tree-id))))
+
+  (finish-commit! [this message]
     (let [^Git git   (:git snapshot)
           repo       (.getRepository git)
           branch-ref (qualify-branch (:branch snapshot))
-          tree-id    (.writeTree ^DirCache index ^ObjectInserter inserter)
+          tree-id    (written-tree-id this)
           commit-builder (doto (CommitBuilder.)
                            (.setTreeId tree-id)
                            (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
@@ -348,18 +359,19 @@
 (defn- open-commit*
   "Begin a GitCommit against `snapshot`, seeding the in-core index from the parent tree."
   [{:keys [^Git git ^String version] :as snapshot}]
-  (let [repo      (.getRepository git)
-        parent-id (.resolve repo version)
-        inserter  (.newObjectInserter repo)
-        reader    (.newObjectReader repo)
-        rev-walk  (RevWalk. repo)
-        index     (DirCache/newInCore)]
+  (let [repo        (.getRepository git)
+        parent-id   (.resolve repo version)
+        inserter    (.newObjectInserter repo)
+        reader      (.newObjectReader repo)
+        rev-walk    (RevWalk. repo)
+        index       (DirCache/newInCore)
+        parent-tree (when parent-id (.getTree (.parseCommit rev-walk parent-id)))]
     (let [^DirCacheBuilder builder (.builder index)]
-      (when parent-id
-        (.addTree builder (byte-array 0) DirCacheEntry/STAGE_0 reader
-                  (.getTree (.parseCommit rev-walk parent-id))))
+      (when parent-tree
+        (.addTree builder (byte-array 0) DirCacheEntry/STAGE_0 reader ^RevTree parent-tree))
       (.finish builder))
-    (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id)))
+    (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id
+                 (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
 
 (defn branches
   "Retrieves all branch names from the remote repository.
