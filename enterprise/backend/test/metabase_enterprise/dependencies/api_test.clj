@@ -225,6 +225,56 @@
                          :edges #{}}
                         (update response :edges set)))))))))))
 
+(deftest ^:sequential table-dependents-all-types-test
+  (testing "GET /api/ee/dependencies/graph dependents_count types every non-card dependent kind for a table root"
+    (mt/with-premium-features #{:dependencies :transforms-basic}
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus
+                              :model/Transform :model/Segment :model/Measure]
+        (mt/with-test-user :crowberto
+          (let [mp          (mt/metadata-provider)
+                products-id (mt/id :products)
+                products    (lib.metadata/table mp products-id)
+                price       (lib.metadata/field mp (mt/id :products :price))
+                user        (mt/fetch-user :crowberto)]
+            (card/create-card! (assoc (card-with-query "Question on products" (lib/query mp products))
+                                      :type :question)
+                               user)
+            (card/create-card! (assoc (card-with-query "Model on products" (lib/query mp products))
+                                      :type :model)
+                               user)
+            (card/create-card! (assoc (card-with-query "Metric on products"
+                                                       (-> (lib/query mp products)
+                                                           (lib/aggregate (lib/count))))
+                                      :type :metric)
+                               user)
+            (mt/with-temp [:model/Segment {:as segment} {:name "Segment on products"
+                                                         :table_id products-id
+                                                         :definition (-> (lib/query mp products)
+                                                                         (lib/filter (lib/> price 50))
+                                                                         lib/->legacy-MBQL
+                                                                         :query)}
+                           :model/Measure {:as measure} {:name "Measure on products"
+                                                         :table_id products-id
+                                                         :definition (-> (lib/query mp products)
+                                                                         (lib/aggregate (lib/sum price)))}
+                           :model/Transform _ {:name   "Transform on products"
+                                               :source {:type "query" :query (lib/query mp products)}
+                                               :target {:type "table" :name (mt/random-name)}}]
+              (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
+              (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
+              (deps.test/synchronously-run-backfill!)
+              (let [response   (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                     :id products-id :type "table")
+                    table-node (first (filter #(= (:id %) products-id) (:nodes response)))]
+                (testing "the table's dependents_count includes every dependent kind, correctly typed"
+                  (is (=? {:question  pos-int?
+                           :model     pos-int?
+                           :metric    pos-int?
+                           :segment   pos-int?
+                           :measure   pos-int?
+                           :transform pos-int?}
+                          (:dependents_count table-node))))))))))))
+
 (deftest dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents"
     (mt/with-premium-features #{:dependencies}
