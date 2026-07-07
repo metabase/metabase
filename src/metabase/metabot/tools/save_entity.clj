@@ -63,15 +63,13 @@
 (defn- personal-collection-id []
   (:id (collection/user->personal-collection api/*current-user-id*)))
 
-(defn- collection-location
-  "Resolve `{:type :id :name}` for a collection target so the FE can label + link it.
+(defn- collection-name
+  "Current display name of a collection target, for the LLM-facing save summary.
   A `nil` id is the root (\"Our analytics\") collection."
   [collection-id]
-  {:type "collection"
-   :id   collection-id
-   :name (if (nil? collection-id)
-           (:name (collection/root-collection-with-ui-details nil))
-           (t2/select-one-fn :name :model/Collection :id collection-id))})
+  (if (nil? collection-id)
+    (:name (collection/root-collection-with-ui-details nil))
+    (t2/select-one-fn :name :model/Collection :id collection-id)))
 
 (defn- save-to-collection!
   [{:keys [name description dataset_query display destination]}]
@@ -88,9 +86,12 @@
                  :visualization_settings {}
                  :collection_id          collection-id}
                 {:id api/*current-user-id*})]
-      {:card     card
-       :location (collection-location collection-id)
-       :link     (str "metabase://question/" (:id card))})))
+      ;; The location carries no name: the FE resolves the current one at render
+      ;; time, so a later rename can't leave a stale label in the persisted part.
+      {:card          card
+       :location      {:type "collection" :id collection-id}
+       :location-name (collection-name collection-id)
+       :link          (str "metabase://question/" (:id card))})))
 
 (defn- save-to-dashboard!
   [{:keys [name description dataset_query display destination]}]
@@ -109,11 +110,10 @@
                 {:id api/*current-user-id*}
                 false
                 true)]
-      {:card     card
-       :location {:type "dashboard"
-                  :id   dashboard-id
-                  :name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)}
-       :link     (str "metabase://dashboard/" dashboard-id)})))
+      {:card          card
+       :location      {:type "dashboard" :id dashboard-id}
+       :location-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
+       :link          (str "metabase://dashboard/" dashboard-id)})))
 
 (mu/defn ^{:tool-name "save_entity"
            :scope     scope/agent-question-create}
@@ -142,9 +142,10 @@
                 :dataset_query  dataset_query
                 :display        display
                 :destination    destination}
-          {:keys [card location link]} (case (:target_type destination)
-                                         "collection" (save-to-collection! args)
-                                         "dashboard"  (save-to-dashboard! args))
+          {:keys [card location location-name link]}
+          (case (:target_type destination)
+            "collection" (save-to-collection! args)
+            "dashboard"  (save-to-dashboard! args))
           ;; Provenance: which conversation + generated chart this card came from,
           ;; so a reloaded conversation can mark the inline chart as saved. Raw
           ;; table update — a provenance stamp should not run the Card model's
@@ -154,12 +155,12 @@
                           {:metabot_conversation_id shared/*conversation-id*
                            :metabot_chart_id        chart_id}))
           instruction-text (te/lines
-                            (str "Saved \"" question-name "\" to " (:name location) ".")
+                            (str "Saved \"" question-name "\" to " location-name ".")
                             ""
                             (str "Tell the user it was saved and share this link: "
                                  (te/link question-name link)))]
       {:output            (str "<result>\nSaved as card " (:id card)
-                               " in " (:name location) ".\n</result>\n"
+                               " in " location-name ".\n</result>\n"
                                "<instructions>\n" instruction-text "\n</instructions>")
        :structured-output {:result-type   :saved-entity
                            :card-id       (:id card)

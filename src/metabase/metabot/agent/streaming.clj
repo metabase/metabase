@@ -146,8 +146,9 @@
 (defn entity-saved-part
   "Create an ENTITY_SAVED data part for streaming. `value` is a map describing where a
   previously-generated inline chart was persisted: `{:entity_id <chart-id>, :card_id
-  <saved card id>, :location {:type :id :name :url}}`. The FE uses `entity_id` to match
-  the annotation to the inline chart and flips it to a \"Saved in <name>\" link."
+  <saved card id>, :name <saved-as name>, :location {:type :id}}`. The location carries
+  no name — the part is persisted, so the FE resolves the container's current name at
+  render time rather than baking in a label that goes stale on rename."
   [value]
   {:type :data
    :data-type entity-saved-type

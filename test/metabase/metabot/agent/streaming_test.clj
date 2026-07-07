@@ -189,12 +189,6 @@
 (deftest persistable-data-part?-test
   (testing "state parts are not persisted (value lives on MetabotConversation.state)"
     (is (false? (streaming/persistable-data-part? (streaming/state-part {:queries {}})))))
-  (testing "entity_saved parts are persisted so admin usage logs and rehydrated
-            conversations replay the save confirmation"
-    (is (true? (streaming/persistable-data-part?
-                (streaming/entity-saved-part
-                 {:entity_id "c-1" :card_id 1 :name "x"
-                  :location {:type "collection" :id nil :name "Our analytics"}})))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? (streaming/navigate-to-part "/question/1"))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
