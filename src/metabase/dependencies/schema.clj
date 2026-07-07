@@ -1,4 +1,4 @@
-(ns metabase-enterprise.dependencies.schema
+(ns metabase.dependencies.schema
   (:require
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]

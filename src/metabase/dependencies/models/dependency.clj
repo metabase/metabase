@@ -1,7 +1,7 @@
-(ns metabase-enterprise.dependencies.models.dependency
+(ns metabase.dependencies.models.dependency
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.dependencies.dependency-types :as deps.dependency-types]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]

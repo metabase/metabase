@@ -3,7 +3,7 @@
    with source entity information. This enables querying errors by the data source that
    causes them (e.g., which cards are broken because table X removed column Y?)."
   (:require
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.dependencies.dependency-types :as deps.dependency-types]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]

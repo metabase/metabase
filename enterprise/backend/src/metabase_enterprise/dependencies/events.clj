@@ -2,31 +2,19 @@
   (:require
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase.dependencies.events :as deps.events]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 ;; ## Maintaining the dependency graph
-;; The below listens for inserts, updates and deletes of cards, snippets and transforms in order to keep the
-;; dependency graph up to date. Transform *runs* are also a trigger, since the transform's output table may be created
-;; or changed at that point.
+;; The below listens for inserts, updates and deletes of cards, snippets, dashboards etc. in order to keep the
+;; dependency graph up to date. The handlers for transforms — whose dependencies are tracked on all instances —
+;; live in `metabase.dependencies.events`.
 ;;
 ;; Create/update handlers mark entities stale in dependency_status. The backfill task does the actual computation.
-
-(defn- mark-stale-and-trigger!
-  "Mark an entity as stale in dependency_status and trigger the backfill job."
-  [entity-type entity-id]
-  (try
-    (deps.dependency-status/mark-stale! entity-type [entity-id])
-    (task.backfill/trigger-backfill-job!)
-    (catch Throwable e
-      (log/error e "Failed to mark entity stale" {:entity-type entity-type :entity-id entity-id}))))
 
 ;; ### Cards
 (derive ::card-deps :metabase/event)
@@ -36,7 +24,7 @@
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :card (:id object))))
+    (deps.events/mark-stale-and-trigger! :card (:id object))))
 
 (derive ::card-delete :metabase/event)
 (derive :event/card-delete ::card-delete)
@@ -44,8 +32,7 @@
 (methodical/defmethod events/publish-event! ::card-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :card :entity_id (:id object))))
+    (deps.events/delete-dependencies! :card (:id object))))
 
 ;; ### Snippets
 (derive ::snippet-deps :metabase/event)
@@ -55,7 +42,7 @@
 (methodical/defmethod events/publish-event! ::snippet-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :snippet (:id object))))
+    (deps.events/mark-stale-and-trigger! :snippet (:id object))))
 
 (derive ::snippet-delete :metabase/event)
 (derive :event/snippet-delete ::snippet-delete)
@@ -63,45 +50,7 @@
 (methodical/defmethod events/publish-event! ::snippet-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :snippet :entity_id (:id object))))
-
-;; ### Transforms
-(derive ::transform-deps :metabase/event)
-(derive :event/create-transform ::transform-deps)
-(derive :event/update-transform ::transform-deps)
-
-(methodical/defmethod events/publish-event! ::transform-deps
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :transform (:id object))))
-
-(derive ::transform-delete :metabase/event)
-(derive :event/delete-transform ::transform-delete)
-
-(methodical/defmethod events/publish-event! ::transform-delete
-  [_ {:keys [id]}]
-  ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
-  (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)
-    (t2/delete! :model/DependencyStatus :entity_type :transform :entity_id id)))
-
-;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
-;; (And if the target has changed, the old table's dep on the transform is dropped.)
-;; The upstream deps of the transform are not touched - those change only when the transform is edited.
-(derive ::transform-run :metabase/event)
-(derive :event/transform-run-complete ::transform-run)
-
-(defn- transform-table-deps! [{:keys [db-id output-schema output-table transform-id] :as _details}]
-  (let [;; output-table is a keyword like :my_schema/my_table
-        table-name (name output-table)]
-    (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
-      (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))))
-
-(methodical/defmethod events/publish-event! ::transform-run
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (transform-table-deps! object)))
+    (deps.events/delete-dependencies! :snippet (:id object))))
 
 ;; ### Dashboards
 (derive ::dashboard-deps :metabase/event)
@@ -111,7 +60,7 @@
 (methodical/defmethod events/publish-event! ::dashboard-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :dashboard (:id object))))
+    (deps.events/mark-stale-and-trigger! :dashboard (:id object))))
 
 (derive ::dashboard-delete :metabase/event)
 (derive :event/dashboard-delete ::dashboard-delete)
@@ -119,8 +68,7 @@
 (methodical/defmethod events/publish-event! ::dashboard-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :dashboard :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :dashboard :entity_id (:id object))))
+    (deps.events/delete-dependencies! :dashboard (:id object))))
 
 ;; ### Documents
 (derive ::document-deps :metabase/event)
@@ -130,7 +78,7 @@
 (methodical/defmethod events/publish-event! ::document-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :document (:id object))))
+    (deps.events/mark-stale-and-trigger! :document (:id object))))
 
 (derive ::document-delete :metabase/event)
 (derive :event/document-delete ::document-delete)
@@ -138,8 +86,7 @@
 (methodical/defmethod events/publish-event! ::document-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :document :entity_id (:id object))))
+    (deps.events/delete-dependencies! :document (:id object))))
 
 ;; ### Sandboxes
 (derive ::sandbox-deps :metabase/event)
@@ -149,7 +96,7 @@
 (methodical/defmethod events/publish-event! ::sandbox-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :sandbox (:id object))))
+    (deps.events/mark-stale-and-trigger! :sandbox (:id object))))
 
 (derive ::sandbox-delete :metabase/event)
 (derive :event/sandbox-delete ::sandbox-delete)
@@ -157,8 +104,7 @@
 (methodical/defmethod events/publish-event! ::sandbox-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :sandbox :entity_id (:id object))))
+    (deps.events/delete-dependencies! :sandbox (:id object))))
 
 ;; ### Segments
 (derive ::segment-deps :metabase/event)
@@ -168,7 +114,7 @@
 (methodical/defmethod events/publish-event! ::segment-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :segment (:id object))))
+    (deps.events/mark-stale-and-trigger! :segment (:id object))))
 
 (derive ::segment-delete :metabase/event)
 (derive :event/segment-delete ::segment-delete)
@@ -176,8 +122,7 @@
 (methodical/defmethod events/publish-event! ::segment-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :segment :entity_id (:id object))))
+    (deps.events/delete-dependencies! :segment (:id object))))
 
 ;; ### Measures
 (derive ::measure-deps :metabase/event)
@@ -187,7 +132,7 @@
 (methodical/defmethod events/publish-event! ::measure-deps
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (mark-stale-and-trigger! :measure (:id object))))
+    (deps.events/mark-stale-and-trigger! :measure (:id object))))
 
 (derive ::measure-delete :metabase/event)
 (derive :event/measure-delete ::measure-delete)
@@ -195,14 +140,13 @@
 (methodical/defmethod events/publish-event! ::measure-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))
-    (t2/delete! :model/DependencyStatus :entity_type :measure :entity_id (:id object))))
+    (deps.events/delete-dependencies! :measure (:id object))))
 
 ;; ## Checking dependents for breakage (analysis_finding staleness)
 ;;
 ;; This is a SEPARATE staleness system from the dependency_status table above.
 ;; - dependency_status.stale: tracks whether an entity's upstream *dependency graph* needs recomputation.
-;;   Handled by the backfill job (task.backfill).
+;;   Handled by the backfill job (metabase.dependencies.task.backfill).
 ;; - analysis_finding staleness: tracks whether an entity's dependents need re-analysis for *breakage detection*
 ;;   (e.g., a model column was removed — are downstream cards broken?). Handled by the entity-check job
 ;;   (task.entity-check).

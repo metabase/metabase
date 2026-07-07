@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
+   [metabase.dependencies.core :as dependencies]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -168,7 +169,12 @@
                         (validate-incremental-table-tag! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
-                        (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
+                        (when-let [{:keys [cycle-str]}
+                                   (transforms-base.ordering/get-transform-cycle
+                                    new
+                                    (dependencies/hydrate-stored-deps
+                                     (t2/select [:model/Transform :id :name :target :target_table_id
+                                                 :source_database_id])))]
                           (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
                                           {:status-code 400}))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))

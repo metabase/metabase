@@ -62,14 +62,27 @@
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
+(defn stored-or-live-deps
+  "Dependencies of `transform`, preferring the `:stored-deps` key — hydrated by callers from the
+  dependency table, see [[metabase.dependencies.core/transform-stored-deps]] — and falling back
+  to a live `table-dependencies` call when it is absent. An empty (but non-nil) stored value is
+  taken at face value as \"no dependencies\"."
+  [transform]
+  (or (:stored-deps transform)
+      (transforms-base.i/table-dependencies
+       ;; load :source on demand when computing live, so callers can omit the heavy blob from their select
+       (cond-> transform
+         (and (not (:source transform)) (:id transform))
+         (assoc :source (t2/select-one-fn :source [:model/Transform :id :source] (:id transform)))))))
+
 (defn safe-table-dependencies
-  "Like `table-dependencies`, but returns `#{}` if the computation throws. Used by cycle
+  "Like `stored-or-live-deps`, but returns `#{}` if the computation throws. Used by cycle
   detection where a single broken transform must not block the whole check. Callers that need
   to know *which* transforms failed should walk the graph themselves and capture the failure
   ids — see `transform-ordering`."
   [transform]
   (try
-    (transforms-base.i/table-dependencies transform)
+    (stored-or-live-deps transform)
     (catch Throwable _ #{})))
 
 (mu/defn- output-table-map
@@ -153,7 +166,7 @@
           :else
           (let [transform        (id->xf id)
                 [raw-deps fail?] (try
-                                   [(transforms-base.i/table-dependencies transform) false]
+                                   [(stored-or-live-deps transform) false]
                                    (catch Throwable _ [#{} true]))
                 resolved-ids     (into #{}
                                        (keep (fn [dep]
@@ -200,27 +213,34 @@
    :cycle [1 2]}
   ```
 "
-  [{transform-id :id :as to-check}]
-  (let [transforms       (map (fn [{:keys [id] :as transform}]
-                                (if (= id transform-id)
-                                  to-check
-                                  transform))
-                              (t2/select :model/Transform))
-        transforms-by-id (into {}
-                               (map (juxt :id identity))
-                               transforms)
-        db-id            (get-in to-check [:source :query :database])
-        db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
-        output-tables    (output-table-map db-transforms)
-        transform-ids    (into #{} (map :id) db-transforms)
-        target-refs      (target-ref-map transforms)
-        node->children   #(->> % transforms-by-id safe-table-dependencies
-                               (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
-        id->name         (comp :name transforms-by-id)
-        cycle            (find-cycle node->children [transform-id])]
-    (when cycle
-      {:cycle-str (str/join " -> " (map id->name cycle))
-       :cycle     cycle})))
+  ([to-check]
+   (get-transform-cycle to-check (t2/select [:model/Transform :id :name :target :target_table_id
+                                             :source_database_id])))
+  ([{transform-id :id :as to-check} all-transforms]
+   (let [db-id            (get-in to-check [:source :query :database])
+         ;; Recompute the transform under test live — its source may have just changed, so any stored
+         ;; deps are stale — and pin its source db. Every other transform uses its stored deps
+         ;; when the caller hydrated them (see `stored-or-live-deps`).
+         to-check         (-> to-check (assoc :source_database_id db-id) (dissoc :stored-deps))
+         transforms       (map (fn [{:keys [id] :as transform}]
+                                 (if (= id transform-id)
+                                   to-check
+                                   transform))
+                               all-transforms)
+         transforms-by-id (into {}
+                                (map (juxt :id identity))
+                                transforms)
+         db-transforms    (filter #(= (:source_database_id %) db-id) transforms)
+         output-tables    (output-table-map db-transforms)
+         transform-ids    (into #{} (map :id) db-transforms)
+         target-refs      (target-ref-map transforms)
+         node->children   #(->> % transforms-by-id safe-table-dependencies
+                                (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
+         id->name         (comp :name transforms-by-id)
+         cycle            (find-cycle node->children [transform-id])]
+     (when cycle
+       {:cycle-str (str/join " -> " (map id->name cycle))
+        :cycle     cycle}))))
 
 (defn available-transforms
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,

@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.dependencies.core :as dependencies]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-job]
@@ -193,7 +194,9 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
+        {graph :dependencies} (transforms.core/transform-ordering
+                               #{id}
+                               (dependencies/hydrate-stored-deps (vals id->transform)))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)

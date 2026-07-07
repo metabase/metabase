@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
    [metabase.util :as u]

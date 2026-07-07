@@ -1,6 +1,7 @@
-(ns metabase-enterprise.dependencies.dependency-types
+(ns metabase.dependencies.dependency-types
   (:require
    [clojure.set :as set]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -28,6 +29,15 @@
   "Dependency types that the backfill job computes dependencies for. Excludes `:table`: tables aren't
   backfilled directly; links involving tables are found via analysis of the other side of the relation."
   (disj dependency-types :table))
+
+(defn enabled-backfill-dependency-types
+  "The backfillable dependency types enabled on this instance. Transform dependencies are tracked
+  on all instances (transform-job planning reads them so it doesn't have to re-parse every
+  transform's source on every read); everything else requires the `:dependencies` premium feature."
+  []
+  (if (premium-features/has-feature? :dependencies)
+    backfillable-dependency-types
+    #{:transform}))
 
 (def models
   "The set of all models that are handled by dependencies."

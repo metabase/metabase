@@ -1,6 +1,6 @@
-(ns metabase-enterprise.dependencies.task.backfill
+(ns metabase.dependencies.task.backfill
   "Implements a task that brings all entities with dependencies tracked in the dependency table
-  (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
+  (see [[metabase.dependencies.models.dependency]]) up to date, that is, makes sure
   the dependency table contains fresh entries.
 
   This is done by querying the dependency_status table for entities that are stale or have an
@@ -11,16 +11,15 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase-enterprise.dependencies.task-util :as deps.task-util]
+   [metabase.dependencies.calculation :as deps.calculation]
+   [metabase.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.dependencies.models.dependency :as models.dependency]
+   [metabase.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase.dependencies.settings :as deps.settings]
+   [metabase.dependencies.task-util :as deps.task-util]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.transforms.core :as transforms]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -28,12 +27,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private entity-types
-  "The list of entity types to backfill.
+(defn- entity-types
+  "The list of entity types to backfill on this instance.
 
   This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
-  (vec deps.dependency-types/backfillable-dependency-types))
+  []
+  (vec (deps.dependency-types/enabled-backfill-dependency-types)))
 
 (def ^:private max-retries 5)
 
@@ -49,7 +49,7 @@
 (defmethod post-deps-cleanup! :default [_ _entity] nil)
 
 (defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
-  (let [db-id                (transforms/transform-source-database transform)
+  (let [db-id                (transforms-base.u/transform-source-database transform)
         downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
                                                :from_entity_type :table
                                                :to_entity_type   :transform
@@ -128,17 +128,16 @@
   "Job to backfill dependencies for all entities.
   Returns true if a full batch has been selected, nil or false otherwise."
   []
-  (when (premium-features/has-feature? :dependencies)
-    (-> (reduce (fn [batch-size entity-type]
-                  (if (< batch-size 1)
-                    (reduced 0)
-                    (let [processed (backfill-entity-batch! entity-type batch-size)]
-                      (when (pos? processed)
-                        (log/info "Updated" processed "entities."))
-                      (- batch-size processed))))
-                (deps.settings/dependency-backfill-batch-size)
-                entity-types)
-        (< 1))))
+  (-> (reduce (fn [batch-size entity-type]
+                (if (< batch-size 1)
+                  (reduced 0)
+                  (let [processed (backfill-entity-batch! entity-type batch-size)]
+                    (when (pos? processed)
+                      (log/info "Updated" processed "entities."))
+                    (- batch-size processed))))
+              (deps.settings/dependency-backfill-batch-size)
+              (entity-types))
+      (< 1)))
 
 (defn- has-pending-retries? []
   (deps.dependency-status/has-pending-retries?))
@@ -205,5 +204,6 @@
 
 (methodical/defmethod events/publish-event! ::backfill
   [_ _]
-  (when (premium-features/has-feature? :dependencies)
-    (trigger-backfill-job!)))
+  ;; No feature check: the job itself only processes the entity types enabled on this instance
+  ;; (see `entity-types`).
+  (trigger-backfill-job!))

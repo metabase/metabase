@@ -1,8 +1,8 @@
-(ns metabase-enterprise.dependencies.models.dependency-status
+(ns metabase.dependencies.models.dependency-status
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.dependencies.models.dependency :as models.dependency]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -105,7 +105,7 @@
   (boolean
    (some (fn [entity-type]
            (seq (instances-for-dependency-calculation entity-type 1)))
-         deps.dependency-types/backfillable-dependency-types)))
+         (deps.dependency-types/enabled-backfill-dependency-types))))
 
 (defn record-failure!
   "Record a failed dependency calculation attempt for an entity.

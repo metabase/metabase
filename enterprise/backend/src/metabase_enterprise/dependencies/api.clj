@@ -2,10 +2,10 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
-   [metabase-enterprise.dependencies.models.dependency :as dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase.dependencies.models.dependency :as dependency]
+   [metabase.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]

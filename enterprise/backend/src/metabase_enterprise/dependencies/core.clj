@@ -5,7 +5,7 @@
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
-   [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase.dependencies.models.dependency :as deps.graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

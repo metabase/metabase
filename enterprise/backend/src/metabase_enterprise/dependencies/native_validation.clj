@@ -1,32 +1,19 @@
 (ns metabase-enterprise.dependencies.native-validation
   (:require
    [clojure.string :as str]
-   [metabase.database-routing.core :as database-routing]
+   [metabase.dependencies.native :as deps.native]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(mu/defn- compile-query :- ::lib.schema/native-only-query
-  "Compile a query to native SQL with inline parameters (no JDBC placeholders).
-
-  Uses compile-with-inline-parameters to produce valid SQL that SQLGlot can parse,
-  rather than parameterized SQL with ? placeholders.
-
-  Important: We don't preprocess before calling compile-with-inline-parameters because
-  parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
-  to produce inline literals instead of ? placeholders."
-  [query :- ::lib.schema/query]
-  (database-routing/with-database-routing-off
-    (let [with-params (lib/add-parameters-for-template-tags query)
-          compiled    (qp.compile/compile-with-inline-parameters with-params)]
-      (lib/native-query with-params (:query compiled)))))
+(def ^:private compile-query
+  "See [[metabase.dependencies.native/compile-query]]."
+  deps.native/compile-query)
 
 (defn- has-substitutable-template-tags?
   "Returns true if the query has any card or table template tags that need
@@ -306,22 +293,6 @@
                      (compile-query query))]
       (driver/native-result-metadata driver compiled))))
 
-(mu/defn native-query-deps :- [:set
-                               [:or
-                                ::driver/native-query-deps.table-dep
-                                ::driver/native-query-deps.transform-dep
-                                [:map {:closed true} [:snippet ::lib.schema.id/snippet]]
-                                [:map {:closed true} [:card ::lib.schema.id/card]]]]
-  "Returns the upstream dependencies of a native query, as a set of `{:kind id}` pairs."
-  [driver :- :keyword
-   query  :- ::lib.schema/native-only-query]
-  (let [compiled (compile-query query)]
-    (into (driver/native-query-deps driver compiled)
-          ;; TODO (Cam 10/1/25) -- Even this much MBQL manipulation outside of Lib is illegal. Move this sort of stuff
-          ;; into Lib.
-          (keep #(case (:type %)
-                   :snippet {:snippet (:snippet-id %)}
-                   :card    {:card (:card-id %)}
-                   :table   {:table (:table-id %)}
-                   nil))
-          (lib/all-template-tags query))))
+(def native-query-deps
+  "See [[metabase.dependencies.native/native-query-deps]]."
+  deps.native/native-query-deps)

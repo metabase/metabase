@@ -1,7 +1,7 @@
 (ns metabase-enterprise.replacement.usages
   "Functions for finding all usages of a given source (card or table)."
   (:require
-   [metabase-enterprise.dependencies.models.dependency :as deps]))
+   [metabase.dependencies.models.dependency :as deps]))
 
 (set! *warn-on-reflection* true)
 

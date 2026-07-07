@@ -6,7 +6,7 @@
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase-enterprise.dependencies.task-util :as deps.task-util]
+   [metabase.dependencies.task-util :as deps.task-util]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))

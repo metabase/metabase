@@ -1,4 +1,4 @@
-(ns metabase-enterprise.dependencies.task-util
+(ns metabase.dependencies.task-util
   (:require
    [java-time.api :as t]))
 

@@ -11,7 +11,7 @@
   performance problem here, that would be a good optimization step. In practice most swaps don't change queries
   (the table was already upgraded and the query references are the same), so this is rarely an issue."
   (:require
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.api.common :as api]
