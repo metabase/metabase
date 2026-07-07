@@ -57,23 +57,21 @@
   [{dep-table :table dep-transform :transform :keys [table-ref]}]
   (cond
     dep-transform
-    (throw (ex-info
-            (str "Cannot resolve transform dependency " dep-transform
-                 " — test runs do not support transforms that depend on another"
-                 " transform's output table (the target table has not yet been"
-                 " materialised into the app DB).")
-            {:error-type   ::errors/transform-dep-not-supported
-             :transform-id dep-transform}))
+    (throw (errors/ex ::errors/transform-dep-not-supported
+                      (str "Cannot resolve transform dependency " dep-transform
+                           " — test runs do not support transforms that depend on another"
+                           " transform's output table (the target table has not yet been"
+                           " materialised into the app DB).")
+                      {:transform-id dep-transform}))
 
     dep-table
     (let [row (t2/select-one :model/Table :id dep-table :active true)]
       (if row
         (table-row->table-info row)
-        (throw (ex-info
-                (str "Cannot resolve table dependency: no synced Table with id "
-                     dep-table " found in the app DB. Has this table been synced?")
-                {:error-type ::errors/table-not-found
-                 :table-id   dep-table}))))
+        (throw (errors/ex ::errors/table-not-found
+                          (str "Cannot resolve table dependency: no synced Table with id "
+                               dep-table " found in the app DB. Has this table been synced?")
+                          {:table-id dep-table}))))
 
     table-ref
     (let [{:keys [database_id schema table]} table-ref
@@ -84,21 +82,20 @@
                              :active true)]
       (if row
         (table-row->table-info row)
-        (throw (ex-info
-                (str "Cannot resolve table-ref dependency: no synced Table found"
-                     " for database_id=" database_id
-                     " schema=" (pr-str schema)
-                     " table=" (pr-str table)
-                     ". Has this table been synced?")
-                {:error-type ::errors/table-not-found
-                 :table-ref  table-ref}))))
+        (throw (errors/ex ::errors/table-not-found
+                          (str "Cannot resolve table-ref dependency: no synced Table found"
+                               " for database_id=" database_id
+                               " schema=" (pr-str schema)
+                               " table=" (pr-str table)
+                               ". Has this table been synced?")
+                          {:table-ref table-ref}))))
 
     :else
-    (throw (ex-info
-            (str "Unrecognised dependency spec shape: " (pr-str {:table dep-table
-                                                                 :transform dep-transform
-                                                                 :table-ref table-ref}))
-            {:error-type ::errors/cannot-determine-inputs}))))
+    (throw (errors/ex ::errors/cannot-determine-inputs
+                      (str "Unrecognised dependency spec shape: " (pr-str {:table dep-table
+                                                                           :transform dep-transform
+                                                                           :table-ref table-ref}))
+                      {}))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public API
@@ -125,19 +122,17 @@
         unknown-keys  (set/difference provided-fixture-keys required-ids)]
     (when (seq missing-ids)
       (let [id->tbl (into {} (map (juxt :id identity)) required-tables)]
-        (throw (ex-info
-                (str "Missing fixture(s) for required input table(s): "
-                     (str/join ", "
-                               (for [id   (sort missing-ids)
-                                     :let [t (id->tbl id)]]
-                                 (str (:schema t) "." (:name t)
-                                      " (id=" id ")"))))
-                {:error-type     ::errors/missing-fixtures
-                 :missing-tables (mapv id->tbl (sort missing-ids))}))))
+        (throw (errors/ex ::errors/missing-fixtures
+                          (str "Missing fixture(s) for required input table(s): "
+                               (str/join ", "
+                                         (for [id   (sort missing-ids)
+                                               :let [t (id->tbl id)]]
+                                           (str (:schema t) "." (:name t)
+                                                " (id=" id ")"))))
+                          {:missing-tables (mapv id->tbl (sort missing-ids))}))))
     (when (seq unknown-keys)
-      (throw (ex-info
-              (str "Unknown fixture key(s) (no matching required input table): "
-                   (str/join ", " (sort unknown-keys)))
-              {:error-type   ::errors/unknown-fixture-keys
-               :unknown-keys unknown-keys})))
+      (throw (errors/ex ::errors/unknown-fixture-keys
+                        (str "Unknown fixture key(s) (no matching required input table): "
+                             (str/join ", " (sort unknown-keys)))
+                        {:unknown-keys unknown-keys})))
     nil))

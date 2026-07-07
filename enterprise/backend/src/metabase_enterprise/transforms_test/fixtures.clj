@@ -18,17 +18,16 @@
   `missing-columns` — column names in the target schema absent from the CSV header.
   `extra-columns`   — column names in the CSV header absent from the target schema."
   [missing-columns extra-columns csv-header schema-names]
-  (throw (ex-info
-          (str "CSV header does not match target schema. "
-               (when (seq missing-columns)
-                 (str "Missing columns: " (str/join ", " (sort missing-columns)) ". "))
-               (when (seq extra-columns)
-                 (str "Extra columns: " (str/join ", " (sort extra-columns)) ".")))
-          {:error-type      ::errors/header-mismatch
-           :missing-columns (vec missing-columns)
-           :extra-columns   (vec extra-columns)
-           :csv-header      (vec csv-header)
-           :schema-names    (vec schema-names)})))
+  (throw (errors/ex ::errors/header-mismatch
+                    (str "CSV header does not match target schema. "
+                         (when (seq missing-columns)
+                           (str "Missing columns: " (str/join ", " (sort missing-columns)) ". "))
+                         (when (seq extra-columns)
+                           (str "Extra columns: " (str/join ", " (sort extra-columns)) ".")))
+                    {:missing-columns (vec missing-columns)
+                     :extra-columns   (vec extra-columns)
+                     :csv-header      (vec csv-header)
+                     :schema-names    (vec schema-names)})))
 
 (defn- unparseable-cell-error
   "Throws an ex-info with `::errors/unparseable-cell` type.
@@ -37,27 +36,26 @@
   `column-name` — name of the column whose value failed to parse.
   `raw-value`   — the original string from the CSV cell."
   [row-index column-name raw-value cause]
-  (throw (ex-info
-          (str "Could not parse value " (pr-str raw-value)
-               " in column " (pr-str column-name)
-               " at row " row-index ".")
-          {:error-type  ::errors/unparseable-cell
-           :row-index   row-index
-           :column-name column-name
-           :raw-value   raw-value}
-          cause)))
+  (throw (errors/ex ::errors/unparseable-cell
+                    (str "Could not parse value " (pr-str raw-value)
+                         " in column " (pr-str column-name)
+                         " at row " row-index ".")
+                    {:row-index   row-index
+                     :column-name column-name
+                     :raw-value   raw-value}
+                    cause)))
 
 (defn- ragged-row-error
   "Throws an ex-info with `::errors/ragged-row` type.
 
   `row-index` — 0-based index into the data rows (not counting the header)."
   [row-index expected-cell-count actual-cell-count]
-  (throw (ex-info (str "CSV row " row-index " has " actual-cell-count " cell(s);"
-                       " the header has " expected-cell-count " column(s).")
-                  {:error-type          ::errors/ragged-row
-                   :row-index           row-index
-                   :expected-cell-count expected-cell-count
-                   :actual-cell-count   actual-cell-count})))
+  (throw (errors/ex ::errors/ragged-row
+                    (str "CSV row " row-index " has " actual-cell-count " cell(s);"
+                         " the header has " expected-cell-count " column(s).")
+                    {:row-index           row-index
+                     :expected-cell-count expected-cell-count
+                     :actual-cell-count   actual-cell-count})))
 
 ;; ---------------------------------------------------------------------------
 ;; Header validation
@@ -76,11 +74,11 @@
                           sort)]
     ;; Duplicates hide from the set comparison and misalign row values downstream.
     (when (seq dupes)
-      (throw (ex-info (str "CSV header contains duplicate column names: "
-                           (str/join ", " dupes) ".")
-                      {:error-type        ::errors/header-mismatch
-                       :duplicate-columns (vec dupes)
-                       :csv-header        (vec header)})))
+      (throw (errors/ex ::errors/header-mismatch
+                        (str "CSV header contains duplicate column names: "
+                             (str/join ", " dupes) ".")
+                        {:duplicate-columns (vec dupes)
+                         :csv-header        (vec header)})))
     (when (or (seq missing) (seq extra))
       (header-mismatch-error missing extra header (map :name target-schema)))))
 

@@ -69,8 +69,8 @@
         order
         (let [ready (sort (for [[n d] remaining :when (empty? d)] n))]
           (when (empty? ready)
-            (throw (ex-info "Cycle detected in transform sub-graph"
-                            {:error-type ::errors/cycle :remaining (vec (keys remaining))})))
+            (throw (errors/ex ::errors/cycle "Cycle detected in transform sub-graph"
+                              {:remaining (vec (keys remaining))})))
           (recur (into order ready)
                  (reduce (fn [m r]
                            (-> (dissoc m r)
@@ -142,12 +142,11 @@
   (try
     (transforms-base.i/table-dependencies transform)
     (catch Throwable e
-      (throw (ex-info
-              (str "Cannot determine input tables for transform " (:id transform)
-                   ". Dependency extraction failed: " (ex-message e))
-              {:error-type   ::errors/cannot-determine-inputs
-               :transform-id (:id transform)}
-              e)))))
+      (throw (errors/ex ::errors/cannot-determine-inputs
+                        (str "Cannot determine input tables for transform " (:id transform)
+                             ". Dependency extraction failed: " (ex-message e))
+                        {:transform-id (:id transform)}
+                        e)))))
 
 (defn- assert-extractions-ok!
   "`transform-ordering` swallows per-node `table-dependencies` throws, recording
@@ -158,10 +157,10 @@
   (when-let [id (first (sort failed))]
     (table-dependencies! (id->transform id))
     ;; Reachable only if the re-run stopped failing between the walk and here.
-    (throw (ex-info (str "Cannot determine input tables: dependency extraction failed"
-                         " for transform(s) " (pr-str (vec (sort failed))) ".")
-                    {:error-type    ::errors/cannot-determine-inputs
-                     :transform-ids (vec (sort failed))}))))
+    (throw (errors/ex ::errors/cannot-determine-inputs
+                      (str "Cannot determine input tables: dependency extraction failed"
+                           " for transform(s) " (pr-str (vec (sort failed))) ".")
+                      {:transform-ids (vec (sort failed))}))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public entry points
@@ -191,13 +190,12 @@
         _ (assert-extractions-ok! failed id->transform)
         {:keys [slice order bad-sources]} (compute-slice deps source-ids #{target-id})]
     (when (seq bad-sources)
-      (throw (ex-info
-              (str "Selected source transform(s) do not feed the target transform: "
-                   (pr-str (vec (sort bad-sources)))
-                   ". Every source must be an upstream dependency of the target.")
-              {:error-type  ::errors/sources-not-ancestors
-               :bad-sources bad-sources
-               :target-id   target-id})))
+      (throw (errors/ex ::errors/sources-not-ancestors
+                        (str "Selected source transform(s) do not feed the target transform: "
+                             (pr-str (vec (sort bad-sources)))
+                             ". Every source must be an upstream dependency of the target.")
+                        {:bad-sources bad-sources
+                         :target-id   target-id})))
     (let [producer-of (ordering/dependency-producer-map all-transforms)]
       {:slice     slice
        :order     order
@@ -247,15 +245,14 @@
         _ (assert-extractions-ok! failed id->transform)
         {:keys [slice order bad-sources]} (compute-slice deps source-ids seed-ids)]
     (when (seq bad-sources)
-      (throw (ex-info
-              (str "Selected source transform(s) do not feed any of the card's producing"
-                   " transforms: "
-                   (pr-str (vec (sort bad-sources)))
-                   ". Every source must be an upstream dependency of a transform that"
-                   " produces a table the card reads.")
-              {:error-type  ::errors/sources-not-ancestors
-               :bad-sources bad-sources
-               :card-id     (:id card)})))
+      (throw (errors/ex ::errors/sources-not-ancestors
+                        (str "Selected source transform(s) do not feed any of the card's producing"
+                             " transforms: "
+                             (pr-str (vec (sort bad-sources)))
+                             ". Every source must be an upstream dependency of a transform that"
+                             " produces a table the card reads.")
+                        {:bad-sources bad-sources
+                         :card-id     (:id card)})))
     ;; fixtures = card's raw boundary tables + slice's leaf deps.
     (let [card-fixtures  (into #{} (map (fn [tid] {:table tid})) boundary-table-ids)
           chain-fixtures (leaf-deps slice

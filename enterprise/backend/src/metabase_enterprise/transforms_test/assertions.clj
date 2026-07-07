@@ -107,10 +107,9 @@
   (log/debug "Executing combined assertion statement" {:db-id db-id})
   (let [result (qp/process-query (execute/native-query db-id sql))]
     (when (not= :completed (:status result))
-      (throw (ex-info
-              (str "Combined assertion query failed: QP returned " (pr-str (:status result)))
-              {:error-type ::errors/assertion-execution-failed
-               :qp-status  (:status result)})))
+      (throw (errors/ex ::errors/assertion-execution-failed
+                        (str "Combined assertion query failed: QP returned " (pr-str (:status result)))
+                        {:qp-status (:status result)})))
     ;; Result rows: [assertion-name failing-count]
     (into {}
           (map (fn [[assertion-name failing-count]]

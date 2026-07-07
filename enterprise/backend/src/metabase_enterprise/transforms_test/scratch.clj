@@ -223,11 +223,10 @@
               (catch Exception drop-e
                 (log/warn drop-e "Failed to drop scratch table during seed! failure cleanup:"
                           (keyword tbl-schema tbl-name))))))
-        (throw (ex-info
-                (str "Failed to seed scratch tables: " (.getMessage e))
-                {:error-type ::errors/seed-failed
-                 :created    @created}
-                e))))))
+        (throw (errors/ex ::errors/seed-failed
+                          (str "Failed to seed scratch tables: " (.getMessage e))
+                          {:created @created}
+                          e))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Cleanup

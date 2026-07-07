@@ -64,13 +64,12 @@
                                     [id node-db]))))
                         slice)]
     (when (seq offenders)
-      (throw (ex-info
-              (str "Chained test runs require all transforms in the sub-graph to use the"
-                   " same database. The target uses database " db-id
-                   " but these nodes do not: " (pr-str offenders) ".")
-              {:error-type ::errors/cross-database-subgraph
-               :db-id      db-id
-               :offenders  offenders})))))
+      (throw (errors/ex ::errors/cross-database-subgraph
+                        (str "Chained test runs require all transforms in the sub-graph to use the"
+                             " same database. The target uses database " db-id
+                             " but these nodes do not: " (pr-str offenders) ".")
+                        {:db-id     db-id
+                         :offenders offenders})))))
 
 (defn- leaf-table-infos
   "Resolve `leaf-deps` to deduped leaf table-infos, fail closed on an unsupported
@@ -207,12 +206,11 @@
   (let [result (qp/process-query (assoc (execute/native-query db-id card-sql)
                                         :middleware {:format-rows? false}))]
     (when (not= :completed (:status result))
-      (throw (ex-info
-              (str "Card query failed during test run: QP returned "
-                   (pr-str (:status result)))
-              {:error-type ::errors/execution-failed
-               :qp-status  (:status result)
-               :card-id    card-id})))
+      (throw (errors/ex ::errors/execution-failed
+                        (str "Card query failed during test run: QP returned "
+                             (pr-str (:status result)))
+                        {:qp-status (:status result)
+                         :card-id   card-id})))
     result))
 
 ;;; ---------------------------------------------------------------------------
@@ -344,12 +342,14 @@
   [target-id source-ids fixtures-by-table-id expected-csv-file opts all-transforms]
   (let [id->transform (u/index-by :id all-transforms)
         target        (or (id->transform target-id)
-                          (throw (ex-info (str "Target transform " target-id " not found.")
-                                          {:error-type ::errors/target-not-found :target-id target-id})))
+                          (throw (errors/ex ::errors/target-not-found
+                                            (str "Target transform " target-id " not found.")
+                                            {:target-id target-id})))
         resolution    (subgraph/resolve-subgraph target-id source-ids all-transforms)
         db-id         (or (transforms-base.u/transform-source-database target)
-                          (throw (ex-info "Cannot determine database id from target transform source query."
-                                          {:error-type ::errors/missing-database-id :target-id target-id})))]
+                          (throw (errors/ex ::errors/missing-database-id
+                                            "Cannot determine database id from target transform source query."
+                                            {:target-id target-id})))]
     (run-test!
      {:resolution           resolution
       :id->transform        id->transform
@@ -414,10 +414,10 @@
   [card source-ids fixtures-by-table-id expected-csv-file opts all-transforms]
   (let [card-id       (:id card)
         db-id         (or (card-db-id card)
-                          (throw (ex-info
-                                  (str "Cannot determine database id from card " card-id
-                                       " dataset_query.")
-                                  {:error-type ::errors/missing-database-id :card-id card-id})))
+                          (throw (errors/ex ::errors/missing-database-id
+                                            (str "Cannot determine database id from card " card-id
+                                                 " dataset_query.")
+                                            {:card-id card-id})))
         id->transform (u/index-by :id all-transforms)
         resolution    (subgraph/resolve-card-subgraph card source-ids all-transforms)]
     (run-test!

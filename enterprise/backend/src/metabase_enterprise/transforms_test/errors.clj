@@ -1,7 +1,8 @@
 (ns metabase-enterprise.transforms-test.errors
-  "Canonical `:error-type` vocabulary for transform test runs. Every typed
-  `ex-info` thrown across the pipeline carries one of these keywords under
-  `:error-type`.")
+  "Canonical `:error-type` vocabulary for transform test runs, and [[ex]], the
+  constructor every typed throw goes through. Every typed `ex-info` thrown
+  across the pipeline carries one of the [[all]] keywords under `:error-type`;
+  untyped throws (no `:error-type`) use raw `ex-info`.")
 
 (def all
   "The full set of `:error-type` keywords the test-run pipeline can throw.
@@ -39,3 +40,28 @@
     ::assertion-execution-failed ; The combined assertion query failed to execute.
     ;; Request parsing (HTTP layer).
     ::assertions-parse-error})   ; The `assertions` multipart part was malformed at parse time.
+
+(defn checked
+  "Return `error-type` iff it is a member of [[all]]; otherwise throw."
+  [error-type]
+  (when-not (contains? all error-type)
+    (throw (ex-info (str error-type " is not a declared test-run error type; see"
+                         " metabase-enterprise.transforms-test.errors/all.")
+                    {:invalid-error-type error-type})))
+  error-type)
+
+(defmacro ex
+  "Construct (not throw) the typed test-run ExceptionInfo: `error-type` is assoc'd
+  into `data` under `:error-type` and must be a member of [[all]] — a literal
+  keyword is checked at macro-expansion time (a typo fails the build), a computed
+  one at runtime.
+
+    (throw (errors/ex ::errors/cannot-test-run msg {:guard g}))
+    (throw (errors/ex ::errors/seed-failed msg {} cause))"
+  ([error-type msg data]
+   `(ex ~error-type ~msg ~data nil))
+  ([error-type msg data cause]
+   (if (keyword? error-type)
+     (do (checked error-type)
+         `(ex-info ~msg (assoc ~data :error-type ~error-type) ~cause))
+     `(ex-info ~msg (assoc ~data :error-type (checked ~error-type)) ~cause))))

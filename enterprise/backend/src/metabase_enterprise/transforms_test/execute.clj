@@ -31,13 +31,12 @@
   [names-to-check]
   (let [bad (remove scratch/test-table-name? names-to-check)]
     (when (seq bad)
-      (throw (ex-info
-              (str "Pre-execution DDL guard failed: the following table names do not match"
-                   " the test-scratch prefix and will NOT be used as DDL targets:\n"
-                   (pr-str (vec bad))
-                   "\nThis is an internal invariant violation — file a bug.")
-              {:error-type ::errors/pre-execution-guard-failed
-               :bad-names  (vec bad)})))))
+      (throw (errors/ex ::errors/pre-execution-guard-failed
+                        (str "Pre-execution DDL guard failed: the following table names do not match"
+                             " the test-scratch prefix and will NOT be used as DDL targets:\n"
+                             (pr-str (vec bad))
+                             "\nThis is an internal invariant violation — file a bug.")
+                        {:bad-names (vec bad)})))))
 
 (defn build-transform-details
   "Construct the `transform-details` map consumed by `driver/run-transform!`.
@@ -78,12 +77,11 @@
         result (qp/process-query (assoc (native-query db-id sql)
                                         :middleware {:format-rows? false}))]
     (when (not= :completed (:status result))
-      (throw (ex-info
-              (str "Failed to read back scratch output table " (pr-str (:table output-target))
-                   ": QP returned " (pr-str (:status result)))
-              {:error-type   ::errors/execution-failed
-               :qp-status    (:status result)
-               :output-table (:table output-target)})))
+      (throw (errors/ex ::errors/execution-failed
+                        (str "Failed to read back scratch output table " (pr-str (:table output-target))
+                             ": QP returned " (pr-str (:status result)))
+                        {:qp-status    (:status result)
+                         :output-table (:table output-target)})))
     result))
 
 (defn actual->schema

@@ -160,24 +160,24 @@
         validate-name!
         (fn [n]
           (when-not (nonblank-string? n)
-            (throw (ex-info (tru "Each assertion must have a non-empty ''name'' string.")
-                            {:status-code 400
-                             :error-type  ::errors/assertions-parse-error
-                             :entry       entry}))))
+            (throw (errors/ex ::errors/assertions-parse-error
+                              (tru "Each assertion must have a non-empty ''name'' string.")
+                              {:status-code 400
+                               :entry       entry}))))
         validate-sql!
         (fn [s]
           (when-not (nonblank-string? s)
-            (throw (ex-info (tru "Each assertion must have a non-empty ''sql'' string.")
-                            {:status-code 400
-                             :error-type  ::errors/assertions-parse-error
-                             :entry       entry}))))
+            (throw (errors/ex ::errors/assertions-parse-error
+                              (tru "Each assertion must have a non-empty ''sql'' string.")
+                              {:status-code 400
+                               :entry       entry}))))
         validate-severity!
         (fn [sev]
           (when-not (#{"error" "warn"} sev)
-            (throw (ex-info (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
-                            {:status-code 400
-                             :error-type  ::errors/assertions-parse-error
-                             :severity    sev}))))
+            (throw (errors/ex ::errors/assertions-parse-error
+                              (tru "Assertion severity must be ''error'' or ''warn''; got: {0}" (pr-str sev))
+                              {:status-code 400
+                               :severity    sev}))))
         n   (get entry "name")
         s   (get entry "sql")
         sev (get entry "severity" "error")]
@@ -201,9 +201,9 @@
   (let [validate-array!
         (fn [data]
           (when-not (sequential? data)
-            (throw (ex-info (tru "''assertions'' must be a JSON array.")
-                            {:status-code 400
-                             :error-type  ::errors/assertions-parse-error}))))
+            (throw (errors/ex ::errors/assertions-parse-error
+                              (tru "''assertions'' must be a JSON array.")
+                              {:status-code 400}))))
         validate-unique-names!
         (fn [parsed]
           (let [dupes (->> (map :name parsed)
@@ -211,11 +211,11 @@
                            (keep (fn [[n cnt]] (when (> cnt 1) n)))
                            sort)]
             (when (seq dupes)
-              (throw (ex-info (tru "Duplicate assertion name(s): {0}. Assertion names must be unique."
-                                   (str/join ", " dupes))
-                              {:status-code     400
-                               :error-type      ::errors/assertions-parse-error
-                               :duplicate-names (vec dupes)})))))]
+              (throw (errors/ex ::errors/assertions-parse-error
+                                (tru "Duplicate assertion name(s): {0}. Assertion names must be unique."
+                                     (str/join ", " dupes))
+                                {:status-code     400
+                                 :duplicate-names (vec dupes)})))))]
     (if (nil? assertions-part)
       []
       (let [data (part->json assertions-part json/decode

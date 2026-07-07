@@ -40,7 +40,7 @@
   (`:guard`, offending tokens/refs). `cause` is the wrapped backend exception, if any."
   ([msg extra] (cannot-test-run! msg extra nil))
   ([msg extra cause]
-   (throw (ex-info msg (assoc extra :error-type ::errors/cannot-test-run) cause))))
+   (throw (errors/ex ::errors/cannot-test-run msg extra cause))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Native path: build replacements + rewrite
@@ -386,11 +386,10 @@
   (e.g. Python) transforms."
   [transform mapping output-target {:keys [db input-tables]}]
   (when-not (transforms-base.u/query-transform? transform)
-    (throw (ex-info
-            (str "This transform can't be test-run: only :query transforms"
-                 " (native SQL and MBQL) are supported.")
-            {:error-type  ::errors/unsupported-transform-type
-             :source-type (-> transform :source :type keyword)})))
+    (throw (errors/ex ::errors/unsupported-transform-type
+                      (str "This transform can't be test-run: only :query transforms"
+                           " (native SQL and MBQL) are supported.")
+                      {:source-type (-> transform :source :type keyword)})))
   (let [driver  (source-driver db)
         ;; Record the backend for error reporting and the artifact.
         backend (sql-tools/parser-backend)

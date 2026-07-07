@@ -94,10 +94,10 @@
     (if-let [odt (parse-temporal-string v)]
       (.format (.withOffsetSameInstant odt ZoneOffset/UTC)
                DateTimeFormatter/ISO_OFFSET_DATE_TIME)
-      (throw (ex-info (str "Cannot canonicalize temporal value: " (pr-str v))
-                      {:error-type ::errors/cannot-canonicalize
-                       :value      v
-                       :type       (type v)})))
+      (throw (errors/ex ::errors/cannot-canonicalize
+                        (str "Cannot canonicalize temporal value: " (pr-str v))
+                        {:value v
+                         :type  (type v)})))
 
     (instance? LocalDate v)
     ;; LocalDate → midnight UTC. atStartOfDay(UTC) yields OffsetDateTime which
@@ -119,10 +119,10 @@
     (.format (.atOffset ^Instant v ZoneOffset/UTC) DateTimeFormatter/ISO_OFFSET_DATE_TIME)
 
     :else
-    (throw (ex-info (str "Cannot canonicalize temporal value: " (pr-str v))
-                    {:error-type ::errors/cannot-canonicalize
-                     :value      v
-                     :type       (type v)}))))
+    (throw (errors/ex ::errors/cannot-canonicalize
+                      (str "Cannot canonicalize temporal value: " (pr-str v))
+                      {:value v
+                       :type  (type v)}))))
 
 (defn- numeric->bigdecimal
   "Convert a numeric value to BigDecimal for scale-independent comparison.
@@ -140,10 +140,10 @@
     (instance? Integer v)    (BigDecimal/valueOf (long ^int v))
     (instance? Number v)     (BigDecimal/valueOf (.doubleValue ^Number v))
     :else
-    (throw (ex-info (str "Cannot convert to BigDecimal: " (pr-str v))
-                    {:error-type ::errors/cannot-canonicalize
-                     :value      v
-                     :type       (type v)}))))
+    (throw (errors/ex ::errors/cannot-canonicalize
+                      (str "Cannot convert to BigDecimal: " (pr-str v))
+                      {:value v
+                       :type  (type v)}))))
 
 (defn- canonicalize-cell
   "Canonicalize a cell value given the column `base-type`.
@@ -360,11 +360,11 @@
         actual-name-set (set actual-names)
         unknown-ignores (remove actual-name-set ignore-cols)]
     (when (seq unknown-ignores)
-      (throw (ex-info (str "Unknown ignore-column name(s): " (str/join ", " (sort unknown-ignores))
-                           ". Valid columns are: " (str/join ", " (sort actual-names)))
-                      {:error-type         ::errors/unknown-ignore-columns
-                       :unknown-columns    (vec (sort unknown-ignores))
-                       :available-columns  (vec (sort actual-names))})))
+      (throw (errors/ex ::errors/unknown-ignore-columns
+                        (str "Unknown ignore-column name(s): " (str/join ", " (sort unknown-ignores))
+                             ". Valid columns are: " (str/join ", " (sort actual-names)))
+                        {:unknown-columns   (vec (sort unknown-ignores))
+                         :available-columns (vec (sort actual-names))})))
     (let [filtered-actual-cols (filterv (fn [c] (not (contains? ignore-cols (:name c))))
                                         actual-cols)
           filtered-actual-names (mapv :name filtered-actual-cols)
