@@ -313,11 +313,7 @@ export const getRoutes = (store: AppStore) => {
               component={BrowseTables}
             />
             <Route
-              path="databases/:dbName/schema/:schemaName/table/:tableName"
-              component={TablePermalinkRedirect}
-            />
-            <Route
-              path="databases/:dbName/table/:tableName"
+              path="databases/:dbName(/schema/:schemaName)/table/:tableName"
               component={TablePermalinkRedirect}
             />
 
