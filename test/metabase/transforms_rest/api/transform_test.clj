@@ -1944,7 +1944,7 @@
 
 (deftest execute-transform-with-field-filter-template-tag-test
   (testing "a required field-filter (:dimension) template tag resolves via its default value at unattended execution"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -1977,7 +1977,7 @@
 
 (deftest execute-transform-with-table-template-tag-test
   (testing "a table (table-variable) template tag substitutes a schema-qualified identifier at unattended execution"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -2001,7 +2001,7 @@
 
 (deftest reject-target-name-collision-test
   (testing "target-name collision with a pre-existing, non-transform table is rejected"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
@@ -2031,7 +2031,7 @@
 
 (deftest delete-target-then-recreate-same-name-test
   (testing "re-running after DELETE /api/transform/:id/table recreates the same target name"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [table-name "gadget_products_recreate"]
@@ -2049,18 +2049,19 @@
 
 (deftest get-transform-with-deleted-database-test
   (testing "GET /api/transform/:id degrades gracefully when its source database has been deleted"
-    (mt/with-temp [:model/Database db {}]
-      (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:id db))
-            query (lib/native-query mp "select 1")]
-        (mt/with-temp [:model/Transform transform {:source {:type "query" :query query}
-                                                   :target {:type "table" :name (mt/random-name)}}]
-          (t2/delete! :model/Database (:id db))
-          (is (=? {:id (:id transform)}
-                  (mt/user-http-request :crowberto :get 200 (str "transform/" (:id transform))))))))))
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/Database db {}]
+        (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:id db))
+              query (lib/native-query mp "select 1")]
+          (mt/with-temp [:model/Transform transform {:source {:type "query" :query query}
+                                                     :target {:type "table" :name (mt/random-name)}}]
+            (t2/delete! :model/Database (:id db))
+            (is (=? {:id (:id transform)}
+                    (mt/user-http-request :crowberto :get 200 (str "transform/" (:id transform)))))))))))
 
 (deftest cancel-transform-run-endpoint-test
   (testing "POST /api/transform/:id/cancel"
-    (mt/with-premium-features #{}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/test-driver :postgres
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [table-name "cancel_endpoint_output"]

@@ -312,7 +312,7 @@
 (deftest reset-checkpoint-endpoint-test
   (testing "POST /api/transform/:id/reset-checkpoint clears the checkpoint and forces a full reprocess"
     (mt/test-drivers (test-drivers)
-      (mt/with-premium-features #{:transforms-basic}
+      (mt/with-premium-features #{:transforms-basic :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table (target-table-gen "reset_checkpoint")]
             (let [checkpoint-config (get checkpoint-configs :integer)
