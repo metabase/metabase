@@ -33,7 +33,7 @@ function emailInitials(user: PartialUser) {
   return null;
 }
 
-const isUser = (user: PartialUser | PartialGroup): user is PartialUser => {
+const isUser = (user: Named): user is PartialUser => {
   return "common_name" in user || "email" in user;
 };
 
