@@ -41,7 +41,7 @@ Your job is to answer analytical questions by producing visualizations. For othe
 {{ custom_instructions|safe }}
 {% endif %}
 
-{% include "metabot/prompts/shared/prompt_snippets/user-custom-instructions.selmer" %}
+{% include "metabot/prompts/shared/user-custom-instructions.selmer" %}
 
 # Important Context
 

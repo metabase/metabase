@@ -361,7 +361,7 @@ The target database uses the **{{sql_dialect}}** SQL dialect.{% if sql_dialect_l
 {{ custom_instructions|safe }}
 {% endif %}
 
-{% include "metabot/prompts/shared/prompt_snippets/user-custom-instructions.selmer" %}
+{% include "metabot/prompts/shared/user-custom-instructions.selmer" %}
 
 # Important Context
 
