@@ -121,7 +121,10 @@
       ;; allowNativeAccess is false by default under SandboxPolicy/UNTRUSTED.
       ;; allowEnvironmentAccess is NONE (no host env vars) by default under SandboxPolicy/UNTRUSTED.
       ;; allowExperimentalOptions left at default false
-      (option "sandbox.MaxCPUTime" "30s")       ; MaxCPUTimeCheckInterval left at its ~10ms default — negligible overshoot vs a 30s budget
+      ;; Guest CPU budget covering a bundle load + plugin render: cold first render ~6s (4s cold parse + render),
+      ;; warm renders ~2-3s (parsed-source cache). 10s leaves headroom for slower hardware while stopping a
+      ;; misbehaving plugin from monopolizing a render thread. MaxCPUTimeCheckInterval left at its ~10ms default.
+      (option "sandbox.MaxCPUTime" "10s")
       (option "sandbox.MaxHeapMemory" "512MB")
       (option "sandbox.MaxASTDepth" "5000")
       (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
