@@ -351,15 +351,13 @@ describe("scenarios > question > settings", () => {
     it("should show all options without text overflowing", () => {
       const longName =
         "SuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnName";
-      H.createNativeQuestion(
-        {
-          name: "Orders Model",
-          native: {
-            query: `SELECT total as "${longName}" FROM ORDERS`,
-          },
+      H.createCardWithTestNativeQuery({
+        name: "Orders Model",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: `SELECT total as "${longName}" FROM ORDERS`,
         },
-        { visitQuestion: true },
-      );
+      }).then(H.visitCard);
 
       H.openVizSettingsSidebar();
 
@@ -379,16 +377,14 @@ describe("scenarios > question > settings", () => {
       const longColumnName2 =
         "very very very very very very very very very very very long column 2";
 
-      H.createNativeQuestion(
-        {
-          name: "52975",
-          native: {
-            query: `select 'foo' x, 10 "${regularColumnName}", 20 "${longColumnName1}", 20 "${longColumnName2}"`,
-          },
-          display: "bar",
+      H.createCardWithTestNativeQuery({
+        name: "52975",
+        display: "bar",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: `select 'foo' x, 10 "${regularColumnName}", 20 "${longColumnName1}", 20 "${longColumnName2}"`,
         },
-        { visitQuestion: true },
-      );
+      }).then(H.visitCard);
 
       H.openVizSettingsSidebar();
 
