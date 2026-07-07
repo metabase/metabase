@@ -183,6 +183,8 @@ export type MapVisualizationSettings = Pick<
 /**
  * Public structural type for ad-hoc SDK queries created by
  * `useMetabaseQueryObject`.
+ *
+ * @public
  */
 export type MetabaseQueryObject =
   // Do not use the internal `DatasetQuery` type here. It carries an opaque marker
