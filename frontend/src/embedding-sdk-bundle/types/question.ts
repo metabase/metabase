@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
+import type {
+  MetabaseCard,
+  MetabaseQueryObject,
+} from "metabase/embedding-sdk/types/question";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
@@ -12,6 +15,7 @@ import type { SdkEntityId, SdkEntityToken } from "./entity";
 
 export type {
   MetabaseCard,
+  MetabaseQueryObject,
   MetabaseQuestion,
 } from "metabase/embedding-sdk/types/question";
 
@@ -86,7 +90,7 @@ export type SdkQuestionEntityPublicProps =
       /**
        * A table-backed ad hoc query created with `useMetabaseQueryObject`.
        */
-      query: unknown | null;
+      query: MetabaseQueryObject | null;
     };
 
 /**

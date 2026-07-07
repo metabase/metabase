@@ -2,6 +2,7 @@ import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-questio
 import type {
   FieldSchema,
   MeasureSchema,
+  MetricSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SegmentSchema,
@@ -12,6 +13,7 @@ import type { DatasetColumn, RowValues } from "metabase-types/api";
 export type {
   FieldSchema,
   MeasureSchema,
+  MetricSchema,
   SchemaColumn,
   SchemaJavaScriptType,
   SegmentSchema,
