@@ -60,7 +60,7 @@
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
                                                           :subject        "{{payload.custom.user_invited_email_subject}}"
-                                                          :path           "metabase/channel/email/new_user_invite.hbs"
+                                                          :path           "new_user_invite"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
@@ -78,7 +78,7 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "You set up an alert"
-                                                          :path "metabase/channel/email/notification_card_new_confirmation.hbs"
+                                                          :path "notification_card_new_confirmation"
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
                                            :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
@@ -96,7 +96,7 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "Your Slack connection stopped working"
-                                                          :path "metabase/channel/email/slack_token_error.hbs"
+                                                          :path "slack_token_error"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
@@ -116,7 +116,7 @@
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
                                                           :subject        "Comment on {{payload.event_info.entity_title}}"
-                                                          :path           "metabase/channel/email/comment_created.hbs"
+                                                          :path           "comment_created"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.email}}"}}]}]}
@@ -134,7 +134,7 @@
                                   :channel_type :channel/email
                                   :details {:type "email/handlebars-resource"
                                             :subject "Support Access Grant Created"
-                                            :path "metabase/channel/email/support_access_grant.hbs"
+                                            :path "support_access_grant"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.support_email}}"}}]}]}
@@ -152,7 +152,7 @@
                                   :channel_type :channel/email
                                   :details {:type "email/handlebars-resource"
                                             :subject "The job \"{{payload.event_info.job_name}}\" had failures"
-                                            :path "metabase/channel/email/transform_failed.hbs"
+                                            :path "transform_failed"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.email}}"}}]}]}]))
