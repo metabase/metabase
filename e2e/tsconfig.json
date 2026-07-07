@@ -18,5 +18,9 @@
       "*": ["../frontend/src/*"]
     }
   },
-  "include": ["**/*"]
+  "include": ["**/*"],
+  // Data-app fixtures are standalone SDK apps (built by Vite, typechecked by
+  // their own tsconfig) — not part of the e2e TS program. Including them pulls
+  // SDK source outside this project's rootDir.
+  "exclude": ["support/assets/data-apps"]
 }
