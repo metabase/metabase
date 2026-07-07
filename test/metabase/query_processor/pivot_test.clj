@@ -523,6 +523,27 @@
           (is (= (get-in @multi-p  [:middleware :pivot-options])
                  (get-in @native-p [:middleware :pivot-options]))))))))
 
+(deftest ^:mb/driver-tests pivot-with-expression-referencing-breakout-e2e-test
+  (testing "pivot with a breakout that references an expression"
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+      (mt/dataset test-data
+        (let [mp       (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))
+              price    (lib.metadata/field mp (mt/id :products :price))
+              category (lib.metadata/field mp (mt/id :products :category))
+              q        (-> (lib/query mp products)
+                           (lib/expression "doubled" (lib/* price 2))
+                           (as-> q (lib/breakout q category)
+                             (lib/breakout q (lib/expression-ref q "doubled")))
+                           (lib/aggregate (lib/count)))
+              q        (assoc q :pivot_rows [0] :pivot_cols [1])
+              result   (qp.pivot/run-pivot-query q)
+              rows     (get-in result [:data :rows])
+              pgs      (mapv #(nth % 2) rows)]
+          (is (pos? (:row_count result)))
+          (is (= (sort pgs) pgs)
+              "rows should appear in non-decreasing pivot-grouping order"))))))
+
 ;;; ---- wrap-nested-field-breakouts ----
 
 (def ^:private json-mock-metadata-provider
