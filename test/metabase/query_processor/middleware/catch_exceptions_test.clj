@@ -145,6 +145,22 @@
       (is (=? [{:level :error, :message #"(?s)^Error processing query.*"}]
               (messages))))))
 
+(deftest ^:synchronized error-log-excludes-stack-trace-and-query-test
+  (testing "the error log carries only the error message — no stack trace and nothing carrying the query/user data"
+    (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+      (let [result (catch-exceptions
+                    (fn [] (throw (ex-info "boom" {:secret-in-ex-data "hunter2-ex-data"})))
+                    {:query {:source-table 3, :filter [:= [:field 5 nil] "hunter2-query"]}})]
+        (is (=? [{:level :error, :message "Error processing query: boom"}]
+                (messages)))
+        (testing "the userland response still has the full detail"
+          (is (=? {:status     :failed
+                   :error      "boom"
+                   :stacktrace vector?
+                   :ex-data    {:secret-in-ex-data "hunter2-ex-data"}
+                   :json_query {:query {:filter [:= [:field 5 nil] "hunter2-query"]}}}
+                  result)))))))
+
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
     (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
