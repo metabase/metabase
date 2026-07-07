@@ -539,16 +539,28 @@
   ([token-scopes session-id tool-name arguments]
    (call-tool token-scopes session-id tool-name arguments {:supports-mcp-ui? true}))
   ([token-scopes session-id tool-name arguments options]
-   (let [start  (System/nanoTime)
-         result (dispatch-tool-call token-scopes session-id tool-name arguments options)
-         error? (boolean (:isError result))]
-     (mcp.usage/record-mcp-tool-call!
-      {:tool-name     tool-name
-       :user-id       api/*current-user-id*
-       :session-id    session-id
-       :status        (if error? "error" "success")
-       :duration-ms   (quot (- (System/nanoTime) start) 1000000)
-       :error-code    (when error? (or (::error-code result) error-code-internal))
-       :error-message (when error? (some-> result :content first :text))})
-     ;; `::error-code` is an internal classification marker — never expose it to the client.
-     (dissoc result ::error-code))))
+   (let [start   (System/nanoTime)
+         record! (fn [status error-code error-message]
+                   (mcp.usage/record-mcp-tool-call!
+                    {:tool-name     tool-name
+                     :user-id       api/*current-user-id*
+                     :session-id    session-id
+                     :status        status
+                     :duration-ms   (quot (- (System/nanoTime) start) 1000000)
+                     :error-code    error-code
+                     :error-message error-message}))]
+     (try
+       (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)
+             error? (boolean (:isError result))]
+         (record! (if error? "error" "success")
+                  (when error? (or (::error-code result) error-code-internal))
+                  (when error? (some-> result :content first :text)))
+         ;; `::error-code` is an internal classification marker — never expose it to the client.
+         (dissoc result ::error-code))
+       (catch Throwable e
+         ;; A handler that throws instead of returning error content (notably a UI tool
+         ;; `:response-fn`, whose path isn't wrapped in `dispatch-tool-call`) would otherwise
+         ;; skip instrumentation and under-report errors. Record the failure, then rethrow so the
+         ;; transport layer still surfaces it to the client.
+         (record! "error" error-code-internal (ex-message e))
+         (throw e))))))

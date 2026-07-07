@@ -5,6 +5,7 @@
   :none`); PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -175,6 +176,44 @@
           (is (= 0 (t2/count :model/McpSessionLog :id sid)))
           (let [row (t2/select-one :model/McpToolCallLog :mcp_session_id sid)]
             (is (some? row))
+            (is (= "error" (:status row))))
+          (finally (cleanup! sid)))))))
+
+(deftest ^:parallel record-mcp-tool-call!-normalizes-tool-name-test
+  (testing "a blank or over-long tool_name is normalized so the row is still recorded, rather than
+           dropped to a swallowed NOT NULL / length-constraint violation"
+    (mt/with-premium-features #{:audit-app}
+      (testing "a missing tool name falls back to a sentinel"
+        (let [sid (str "toolname-nil-" (mt/random-name))]
+          (try
+            (usage/record-mcp-tool-call! {:tool-name nil :user-id (mt/user->id :rasta)
+                                          :session-id sid :status "error" :duration-ms 1})
+            (is (= "unknown" (:tool_name (t2/select-one :model/McpToolCallLog :mcp_session_id sid))))
+            (finally (cleanup! sid)))))
+      (testing "an over-long tool name is truncated to the column width"
+        (let [sid       (str "toolname-long-" (mt/random-name))
+              long-name (apply str (repeat 300 \x))]
+          (try
+            (usage/record-mcp-tool-call! {:tool-name long-name :user-id (mt/user->id :rasta)
+                                          :session-id sid :status "success" :duration-ms 1})
+            (is (= 255 (count (:tool_name (t2/select-one :model/McpToolCallLog :mcp_session_id sid)))))
+            (finally (cleanup! sid))))))))
+
+;;; ---------------------------------------- call-tool instrumentation --------------------------------------
+
+(deftest ^:parallel call-tool-records-error-when-handler-throws-test
+  (testing "a handler that throws (rather than returning error content) still records an error row,
+           then the exception is rethrown so the client still sees the failure"
+    (mt/with-premium-features #{:audit-app}
+      (let [sid (str "throw-session-" (mt/random-name))]
+        (try
+          (mt/with-dynamic-fn-redefs [mcp.tools/dispatch-tool-call
+                                      (fn [& _] (throw (ex-info "kaboom" {})))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"kaboom"
+                                  (mcp.tools/call-tool #{} sid "boom_tool" {}))))
+          (let [row (t2/select-one :model/McpToolCallLog :mcp_session_id sid)]
+            (is (some? row) "an error row is recorded even though the handler threw")
+            (is (= "boom_tool" (:tool_name row)))
             (is (= "error" (:status row))))
           (finally (cleanup! sid)))))))
 

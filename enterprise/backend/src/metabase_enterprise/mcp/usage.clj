@@ -21,6 +21,16 @@
   "Cap on the stored error_message length (gated PII), mirroring query_execution.parameters."
   1024)
 
+(def ^:private tool-name-max-length
+  "Cap on the stored tool_name length, matching the `mcp_tool_call_log.tool_name` column width."
+  255)
+
+(def ^:private unknown-tool-name
+  "Recorded when a `tools/call` arrives with no usable tool name (blank/missing — e.g. a malformed
+  request that returns \"Unknown tool\"). Keeps the analytics row rather than dropping it to a
+  swallowed NOT NULL violation."
+  "unknown")
+
 (defn- truncate
   "Truncate string `s` to at most `n` characters; nil-safe."
   [s n]
@@ -71,12 +81,15 @@
 (defenterprise record-mcp-tool-call!
   "EE: write one `mcp_tool_call_log` row per `tools/call`. `error_code` (JSON-RPC code) is
   non-PII and always recorded on failure; `error_message` is PII — stored only when
-  `analytics-pii-retention-enabled` is on (truncated), else null, like `query_execution.parameters`."
+  `analytics-pii-retention-enabled` is on (truncated), else null, like `query_execution.parameters`.
+  `tool-name` is truncated and falls back to a sentinel when blank/missing, so a malformed call
+  still records a row instead of hitting a swallowed NOT NULL/length violation."
   :feature :none
   [{:keys [tool-name user-id session-id status duration-ms error-code error-message]}]
   (try
     (t2/insert! :model/McpToolCallLog
-                {:tool_name      tool-name
+                {:tool_name      (or (not-empty (truncate tool-name tool-name-max-length))
+                                     unknown-tool-name)
                  :user_id        user-id
                  :mcp_session_id session-id
                  :status         status
