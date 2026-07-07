@@ -512,6 +512,35 @@
                                {:type "section" :text {:type "plain_text" :text "1,000"}}]}
                     message)))))}})))
 
+(deftest dashboard-filter-with-empty-default-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard (update pulse.test-util/test-dashboard :parameters
+                       (fn [params]
+                         (for [param params]
+                           (cond-> param
+                             (= "State" (:name param)) (assoc :default [])))))}
+   "Dashboard subscription whose text filter had its default value cleared to [] still sends (#76854)"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [_ thunk]
+      (thunk))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "The subscription is delivered and the empty filter is left out"
+         (is (some? email))
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"      true
+                                                   "Quarter and Year" true
+                                                   "State"            false}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email
+                                                     #"Aviary KPIs"
+                                                     #"Quarter and Year"
+                                                     #"State")))))}}))
+
 (deftest dashboard-with-header-filters-test
   (tests!
    {:pulse     {:skip_if_empty false}
