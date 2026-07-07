@@ -22,10 +22,12 @@ export interface LoadedApp {
  * themed failure screen); the returned `failed` flag only gates what the iframe
  * renders in the meantime (the bundle vs. a neutral loader).
  */
-export function useDataAppBundle(name: string): {
+export const useDataAppBundle = (
+  name: string,
+): {
   data: LoadedApp | null;
   failed: boolean;
-} {
+} => {
   const [data, setData] = useState<LoadedApp | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -96,4 +98,4 @@ export function useDataAppBundle(name: string): {
   }, []);
 
   return { data, failed };
-}
+};

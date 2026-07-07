@@ -10,6 +10,7 @@ const MAX_ENV_SEARCH_DEPTH = 2;
 /** Walk up from `start` to the dir holding `.env.local` (or the git root). */
 export function findEnvRoot(start: string): string {
   let dir = start;
+
   for (let i = 0; i <= MAX_ENV_SEARCH_DEPTH; i++) {
     if (
       fs.existsSync(path.join(dir, ".env.local")) ||
@@ -19,5 +20,6 @@ export function findEnvRoot(start: string): string {
     }
     dir = path.dirname(dir);
   }
+
   return start;
 }
