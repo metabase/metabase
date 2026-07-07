@@ -7,6 +7,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - run: env
+      shell: bash
+
+    - run: echo ${{ fromJSON(github) }}
+      shell: bash
+
     - name: Prepare Node.js
       uses: actions/setup-node@v6.4.0
       with:
