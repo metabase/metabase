@@ -41,8 +41,9 @@ describe("LogsViewer", () => {
     );
 
     const region = screen.getByRole("region");
-    expect(region).toHaveTextContent("java.lang.NullPointerException");
-    expect(region).toHaveTextContent("at Foo.bar(Foo.java:1)");
+    expect(region).toHaveTextContent(
+      "boom java.lang.NullPointerException at Foo.bar(Foo.java:1)",
+    );
   });
 
   it("prefixes each line with its process UUID when there are multiple processes (default process = ALL)", () => {

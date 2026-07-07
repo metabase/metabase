@@ -62,8 +62,8 @@ const LogsBase = ({
 
   const handleDownload = () => {
     const formatLog = createLogFormatter(process, processUUIDs);
-    const logText = filteredLogs.map(formatLog).join("\n");
-    const blob = new Blob([logText], { type: "text/json" });
+    const logText = filteredLogs.flatMap(formatLog).join("\n");
+    const blob = new Blob([logText], { type: "text/plain" });
     openSaveDialog("logs.txt", blob);
   };
 

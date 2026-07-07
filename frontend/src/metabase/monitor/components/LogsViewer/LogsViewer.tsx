@@ -27,7 +27,7 @@ export const LogsViewer = forwardRef<HTMLDivElement, LogsViewerProps>(
         process,
         processUUIDs ?? getAllProcessUUIDs(logs),
       );
-      return logs.map(formatLog).join("\n");
+      return logs.flatMap(formatLog).join("\n");
     }, [logs, process, processUUIDs]);
 
     return (
