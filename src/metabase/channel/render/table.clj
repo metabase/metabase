@@ -318,13 +318,13 @@
                                                          (let [group (:num-value (nth (:row row) pivot-grouping-idx))]
                                                            (when (= 0 group)
                                                              (update row :row #(m/remove-nth pivot-grouping-idx %)))))))
-         cell-keyed-queries (for [[row-idx {:keys [row]}] (m/indexed rows)
+         keyed-cells        (for [[row-idx {:keys [row]}] (m/indexed rows)
                                   [col-idx cell]          (m/indexed row)]
                               [[row-idx col-idx]
                                [cell row-idx (get cols-for-color-lookup col-idx)]])
-         cell-colors        (zipmap (map first cell-keyed-queries)
+         cell-colors        (zipmap (map first keyed-cells)
                                     (js.color/cell-background-colors color-data viz-settings
-                                                                     (mapv second cell-keyed-queries)))
+                                                                     (mapv second keyed-cells)))
          color-getter       (fn [row-idx col-idx] (get cell-colors [row-idx col-idx]))
          thead              (render-table-head (vec col-names) header columns col->styles row-index?)
          tbody              (render-table-body color-getter cols-for-color-lookup rows columns viz-settings minibar-cols col->styles row-index?)]

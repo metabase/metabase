@@ -649,25 +649,25 @@
   leading row-label columns), and `:measure-names` (ordered measure column names) to apply the card's conditional
   formatting to the measure value cells."
   [rows {:keys [color-data color-settings left-width measure-names]}]
-  (let [measure-count      (max 1 (count measure-names))
-        cell-query         (fn [cell ^long c]
-                             ;; value cells are NumericWrapper; map each value column back to its measure column
-                             ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
-                             ;; for pivots (:table.pivot in pivot-table-content), so the row index is unused.
-                             (when (and color-data (formatter/NumericWrapper? cell))
-                               (let [vpos (- c (long left-width))]
-                                 (when (nat-int? vpos)
-                                   [cell 0 (nth measure-names (mod vpos measure-count))]))))
+  (let [measure-count (max 1 (count measure-names))
+        colorable-cell (fn [cell ^long c]
+                         ;; value cells are NumericWrapper; map each value column back to its measure column
+                         ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
+                         ;; for pivots (:table.pivot in pivot-table-content), so the row index is unused.
+                         (when (and color-data (formatter/NumericWrapper? cell))
+                           (let [vpos (- c (long left-width))]
+                             (when (nat-int? vpos)
+                               [cell 0 (nth measure-names (mod vpos measure-count))]))))
         ;; all value-cell colors are fetched in one batched JS call up front, keyed by [row col] position
-        cell-keyed-queries (for [[r row]  (map-indexed vector rows)
-                                 [c cell] (map-indexed vector row)
-                                 :let     [query (cell-query cell c)]
-                                 :when    query]
-                             [[r c] query])
-        cell-colors        (zipmap (map first cell-keyed-queries)
-                                   (js.color/cell-background-colors (or color-data {:cols [] :rows []})
-                                                                    color-settings
-                                                                    (mapv second cell-keyed-queries)))]
+        keyed-cells (for [[r row]  (map-indexed vector rows)
+                          [c cell] (map-indexed vector row)
+                          :let     [colorable (colorable-cell cell c)]
+                          :when    colorable]
+                      [[r c] colorable])
+        cell-colors (zipmap (map first keyed-cells)
+                            (js.color/cell-background-colors (or color-data {:cols [] :rows []})
+                                                             color-settings
+                                                             (mapv second keyed-cells)))]
     [:table {:style (style/style (style/pivot-table-style))}
      [:tbody
       (map-indexed
