@@ -121,12 +121,12 @@ export function ManageCustomVizPage() {
           align="center"
           bd="1px solid var(--mb-color-border-neutral)"
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           justify="center"
           mih="15rem"
           p="xl"
         >
-          <Text c="text-tertiary">{t`You don't have any custom visualizations.`}</Text>
+          <Text c="text-disabled">{t`You don't have any custom visualizations.`}</Text>
         </Group>
       )}
 
@@ -134,7 +134,7 @@ export function ManageCustomVizPage() {
         <Box
           bd="1px solid var(--mb-color-border-neutral)"
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           className={S.pluginList}
           style={{
             overflow: "hidden",

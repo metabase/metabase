@@ -1,9 +1,9 @@
 .errors {
-  background-color: var(--mb-color-background-error);
+  background-color: var(--mb-color-background_surface-error);
   color: var(--mb-color-text-primary);
   line-height: 1em;
 }
 
 .icon {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }

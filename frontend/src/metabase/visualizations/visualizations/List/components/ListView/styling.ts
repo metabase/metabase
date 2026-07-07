@@ -41,12 +41,12 @@ export const ENTITY_ICON_COLORS: ColorName[] = [
 // otherwise derive transparent background from custom color.
 export function getIconBackground(iconColor?: string) {
   if (!iconColor) {
-    return "var(--mb-color-white)";
+    return "var(--mb-color-core-white)";
   }
 
   return iconColor !== color("text-primary")
     ? `color-mix(in srgb, ${maybeColor(iconColor)}, transparent 88%)`
-    : "var(--mb-color-white)";
+    : "var(--mb-color-core-white)";
 }
 
 const CATEGORY_COLORS = [
@@ -63,7 +63,7 @@ const CATEGORY_COLORS = [
 // Get a consistent color for a category value based on its hash
 export const getCategoryColor = (categoryValue: any, columnName: string) => {
   if (categoryValue == null || categoryValue === "") {
-    return "var(--mb-color-background-secondary)";
+    return "var(--mb-color-background_page-secondary)";
   }
 
   const stringValue = String(categoryValue);

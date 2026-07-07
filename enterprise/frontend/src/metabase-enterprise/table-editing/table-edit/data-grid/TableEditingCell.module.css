@@ -1,10 +1,10 @@
 .inlineEditingTextInput {
   transition: none;
-  outline: 2px solid var(--mb-color-background-selected);
+  outline: 2px solid var(--mb-color-background_surface-selected);
   outline-offset: -2px;
   border-color: transparent;
   box-sizing: border-box;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border-radius: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -18,7 +18,7 @@
 
   /* Keep outline consistent for inline editing, since focused and non focused state is semantically the same */
   &:focus {
-    outline: 2px solid var(--mb-color-background-selected);
+    outline: 2px solid var(--mb-color-background_surface-selected);
   }
 }
 
@@ -34,28 +34,28 @@
 
 .readonlyCell {
   font-weight: normal;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   cursor: not-allowed;
   border-bottom-color: var(--mb-color-border-neutral);
 }
 
 .errorCell {
-  background-color: var(--mb-color-background-warning);
-  outline: 2px solid var(--mb-color-warning);
+  background-color: var(--mb-color-background_surface-warning);
+  outline: 2px solid var(--mb-color-feedback-warning);
   outline-offset: -2px;
   border-radius: 0.25rem;
 
   &:hover {
-    background-color: var(--mb-color-background-warning);
+    background-color: var(--mb-color-background_surface-warning);
   }
 }
 
 .updatingCell {
   background: linear-gradient(
     110deg,
-    var(--mb-color-background-secondary) 8%,
-    var(--mb-color-background-primary) 18%,
-    var(--mb-color-background-secondary) 33%
+    var(--mb-color-background_page-secondary) 8%,
+    var(--mb-color-background_page-primary) 18%,
+    var(--mb-color-background_page-secondary) 33%
   );
   background-size: 200% 100%;
   animation: 1s shine linear infinite;

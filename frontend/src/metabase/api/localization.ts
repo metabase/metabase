@@ -1,4 +1,4 @@
-import { api } from "metabase/api/client";
+import { getBasename } from "metabase/utils/basename";
 import {
   type LocaleDataWithLanguage,
   setLocalization,
@@ -17,7 +17,7 @@ export async function loadLocalization(
         // which will make the browser do the pre-flight request on the SDK.
         // The backend doesn't seem to support pre-flight request on the static assets, but even
         // if it supported them it's more performant to skip the pre-flight request
-        await fetch(`${api.basename}/app/locales/${locale}.json`).then(
+        await fetch(`${getBasename()}/app/locales/${locale}.json`).then(
           (response) => response.json(),
         )
       : // We don't serve en.json. Instead, use this object to fall back to the literals.

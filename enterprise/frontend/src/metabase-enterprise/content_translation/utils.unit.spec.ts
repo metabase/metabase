@@ -1,7 +1,6 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
-  MaybeTranslatedSeries,
   Series,
   SeriesSettings,
   SingleSeries,
@@ -84,7 +83,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([
       ["translated_apple", 10],
@@ -112,7 +111,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([
       ["translated_text", 123, null, true],
@@ -147,7 +146,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 10],
@@ -175,7 +174,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_apple", 10],
@@ -218,7 +217,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -246,7 +245,7 @@ describe("translateFieldValuesInSeries", () => {
 
       const result = translateFieldValuesInSeries(
         mockTranslateWithTranslations,
-      )(series) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -272,7 +271,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result).toHaveLength(2);
     expect(result[0].data?.rows).toEqual([["translated_apple", 10]]);
@@ -290,7 +289,7 @@ describe("translateFieldValuesInSeries", () => {
 
     const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([]);
     expect(result[0].data?.untranslatedRows).toEqual([]);

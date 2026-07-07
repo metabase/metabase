@@ -10,7 +10,7 @@ function makeItem(overrides: Partial<GlossaryItem> = {}): GlossaryItem {
     id: overrides.id ?? 1,
     term: overrides.term ?? "Alpha",
     definition: overrides.definition ?? "First",
-  } as GlossaryItem;
+  };
 }
 
 describe("GlossaryTable", () => {
@@ -369,5 +369,32 @@ describe("GlossaryTable", () => {
     expect(
       screen.queryByRole("button", { name: /save/i }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("readOnly", () => {
+    it("hides create, edit, and delete controls", async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(
+        <GlossaryTable
+          glossary={[makeItem({ id: 1, term: "Alpha", definition: "First" })]}
+          readOnly
+        />,
+      );
+
+      // No "New term" button
+      expect(
+        screen.queryByRole("button", { name: /new term/i }),
+      ).not.toBeInTheDocument();
+
+      // No delete action
+      expect(
+        screen.queryByRole("button", { name: /delete/i }),
+      ).not.toBeInTheDocument();
+
+      // Clicking a term does not open the inline editor
+      await user.click(screen.getByText("Alpha"));
+      expect(screen.queryByPlaceholderText(/boat/i)).not.toBeInTheDocument();
+    });
   });
 });

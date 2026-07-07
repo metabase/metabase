@@ -257,7 +257,7 @@ function getCaretVirtualElement(editor: Editor): VirtualElement {
         right: coordinates.left,
         bottom: coordinates.bottom,
         left: coordinates.left,
-      } as DOMRect;
+      };
     },
   };
 }

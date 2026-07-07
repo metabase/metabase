@@ -52,6 +52,16 @@
   [card dashcard]
   (merge (:visualization_settings card) (:visualization_settings dashcard)))
 
+(defn dashcard-title
+  "The title to display for `card` on `dashcard`: a non-blank dashboard-level `card.title` override wins over the
+  card's own name. The override lives at the visualizer's nested location (`[:visualization :settings :card.title]`)
+  for visualizer dashcards, otherwise directly on the dashcard's viz settings. Shared by the PDF, email, and Slack
+  renderers (and the attachment-filename logic) so they all resolve titles the same way."
+  [card dashcard]
+  (or (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title]))
+      (not-empty (get-in dashcard [:visualization_settings :card.title]))
+      (:name card)))
+
 (defn viz-setting
   "Look up the `map.*`-style setting `k` (a string) in `viz-settings`, tolerating either string or keyword
   keys — production stores viz-settings keys as keywords-with-dots, but they can also arrive as strings."

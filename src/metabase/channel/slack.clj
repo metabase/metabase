@@ -262,10 +262,12 @@
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
    same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
-  [& {:keys [file-id filename]}]
+  [& {:keys [file-id filename channel-id initial-comment]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
-                      {:query-params {:files (json/encode [{:id file-id, :title filename}])}}))
+                      {:query-params (cond-> {:files (json/encode [{:id file-id, :title filename}])}
+                                       channel-id      (assoc :channel_id channel-id)
+                                       initial-comment (assoc :initial_comment initial-comment))}))
         complete-response
         (try
           (complete!)
@@ -311,6 +313,68 @@
     (u/prog1 {:url file-url
               :id file_id}
       (log/debug "Uploaded image" (:url <>)))))
+
+(defn- join-channel!
+  "Best-effort: have the bot join `channel-id`. Sharing a file into a channel requires membership (Slack returns
+  `not_in_channel` otherwise); posting messages does not, since that uses `chat:write.public`. Joining only works for
+  public channels — private channels need the bot invited, so a failure here is logged and ignored."
+  [channel-id]
+  (try
+    (POST "conversations.join" {:query-params {:channel channel-id}})
+    (catch Throwable e
+      (log/warnf e "Could not join Slack channel %s; a file share may fail" channel-id))))
+
+(declare post-chat-message!)
+
+(def ^:private slack-user-id-pattern
+  "Slack user IDs start with U (people) or W (Enterprise Grid). Unlike channel IDs (C/G/D/Z), they are rejected by
+  `files.completeUploadExternal`, so a file shared with a user must target their DM channel instead."
+  #"^[UW][A-Z0-9]{8,}$")
+
+(defn- open-dm-channel-id!
+  "Resolve the direct-message channel ID (`D…`) for Slack user `user-id` by posting `text` via `chat.postMessage`,
+  whose response carries the opened DM's channel ID. This needs only `chat:write` (already granted), avoiding the
+  `im:write` scope `conversations.open` would require. The caller therefore shares the file into the DM *without* an
+  `initial-comment`, since `text` was already delivered as this message."
+  [user-id text]
+  (:channel (post-chat-message! {:channel user-id, :text text})))
+
+(defn- complete-upload!
+  "Get an upload URL from Slack, push the `file` bytes to it, and complete the upload — sharing into `channel-id` with
+  `initial-comment` as the message text when provided. Returns the uploaded file URL."
+  [file filename channel-id initial-comment]
+  (let [{:keys [upload_url file_id]} (get-upload-url! filename file)]
+    (upload-file-to-url! upload_url file)
+    (complete! {:file-id         file_id
+                :filename        filename
+                :channel-id      channel-id
+                :initial-comment initial-comment})))
+
+(mu/defn upload-file-to-channel!
+  "Upload `file` bytes to Slack and share them as a downloadable file; returns the file URL. `channel-id` may be a
+  channel ID, a user ID, or a legacy display name (\"#general\"/\"@bob\") resolved via the cached channel/user list.
+  A channel is joined and gets the file with `initial-comment` (mrkdwn, optional) as its caption in one message; a
+  user is DM'd, with the caption sent as the DM opener and the file following."
+  ([file filename channel-id]
+   (upload-file-to-channel! file filename channel-id nil))
+  ([file            :- NonEmptyByteArray
+    filename        :- ms/NonBlankString
+    channel-id      :- ms/NonBlankString
+    initial-comment :- [:maybe :string]]
+   {:pre [(channel.settings/slack-configured?)]}
+   (let [target (or (:id (channel.settings/find-cached-slack-channel-or-username channel-id)) channel-id)]
+     (if (re-matches slack-user-id-pattern target)
+       ;; User: open the DM with the caption (chat.postMessage), then share the file — caption already sent.
+       (let [dm-channel-id (open-dm-channel-id! target (or (not-empty initial-comment) filename))]
+         (try
+           (complete-upload! file filename dm-channel-id nil)
+           (catch Throwable e
+             ;; Caption already went out as the DM opener; flag so `send!`'s fallback doesn't re-post it.
+             (throw (ex-info (ex-message e) (assoc (ex-data e) ::caption-already-posted? true) e)))))
+       ;; Channel: join (membership required), then share the file with the caption as its message.
+       (do
+         (join-channel! target)
+         (complete-upload! file filename target initial-comment))))))
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.

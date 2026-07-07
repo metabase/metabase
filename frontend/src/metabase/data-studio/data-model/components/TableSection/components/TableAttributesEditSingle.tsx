@@ -210,7 +210,7 @@ function TransformLink({ table }: { table: Table }) {
   if (!transform) {
     return (
       <Box
-        c="error"
+        c="feedback-negative"
         className={S.transformLink}
         fz="sm"
       >{t`Transform does not exist anymore`}</Box>
@@ -232,7 +232,7 @@ function TransformLink({ table }: { table: Table }) {
           cursor: "pointer",
           textDecoration: "none",
         }}
-        bg="background-brand"
+        bg="background_surface-brand-subtle"
         c="core-brand"
       >
         <Icon name="insight" size={12} />

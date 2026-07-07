@@ -1,7 +1,4 @@
-import type {
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 
 import {
   buildEmbedAttributes,
@@ -38,7 +35,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -68,7 +65,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -95,7 +92,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -117,7 +114,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -139,7 +136,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -165,7 +162,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -190,7 +187,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -219,7 +216,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: null,
         wrapWithQuotes: true,
       });
@@ -245,7 +242,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: null,
         wrapWithQuotes: true,
       });
@@ -271,7 +268,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "dashboard" as SdkIframeEmbedSetupExperience,
+        experience: "dashboard",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -293,7 +290,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "exploration" as SdkIframeEmbedSetupExperience,
+        experience: "exploration",
         token: null,
         wrapWithQuotes: true,
       });
@@ -318,7 +315,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "exploration" as SdkIframeEmbedSetupExperience,
+        experience: "exploration",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -339,7 +336,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "exploration" as SdkIframeEmbedSetupExperience,
+        experience: "exploration",
         token: "test-token",
         wrapWithQuotes: true,
       });
@@ -362,7 +359,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -387,7 +384,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: false,
       });
@@ -411,7 +408,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -431,7 +428,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });
@@ -454,7 +451,7 @@ describe("buildEmbedAttributes", () => {
 
       const result = buildEmbedAttributes({
         settings,
-        experience: "chart" as SdkIframeEmbedSetupExperience,
+        experience: "chart",
         token: null,
         wrapWithQuotes: true,
       });

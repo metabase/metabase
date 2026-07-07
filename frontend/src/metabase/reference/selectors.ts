@@ -8,11 +8,7 @@ import {
   getShallowSegments as getSegments,
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
-import type {
-  Card,
-  NormalizedField,
-  NormalizedTable,
-} from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import type {
   StubbedDatabase,
@@ -80,9 +76,7 @@ export const getTableId = (
 export const getTablesByDatabase = createSelector(
   [getTables, getDatabase],
   (tables, database) =>
-    tables && database.tables
-      ? idsToObjectMap(database.tables, tables)
-      : ({} as Record<string, NormalizedTable>),
+    tables && database.tables ? idsToObjectMap(database.tables, tables) : {},
 );
 export const getTableBySegment = createSelector(
   [getSegment, getTables],
@@ -107,17 +101,11 @@ export const getFieldId = (
 ) => Number.parseInt(props.params.fieldId ?? "");
 export const getFieldsByTable = createSelector(
   [getTable, getFields],
-  (table, fields) =>
-    table.fields
-      ? idsToObjectMap(table.fields, fields)
-      : ({} as Record<string, NormalizedField>),
+  (table, fields) => (table.fields ? idsToObjectMap(table.fields, fields) : {}),
 );
 export const getFieldsBySegment = createSelector(
   [getTableBySegment, getFields],
-  (table, fields) =>
-    table.fields
-      ? idsToObjectMap(table.fields, fields)
-      : ({} as Record<string, NormalizedField>),
+  (table, fields) => (table.fields ? idsToObjectMap(table.fields, fields) : {}),
 );
 export const getField = createSelector(
   [getFieldId, getFields],

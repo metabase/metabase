@@ -225,7 +225,7 @@ describe("Admin > CollectionPermissionsPage", () => {
     setup();
 
     expect(
-      screen.queryByRole("radio", { name: "Shared collections" }),
+      screen.queryByRole("tab", { name: "Shared collections" }),
     ).not.toBeInTheDocument();
   });
 });

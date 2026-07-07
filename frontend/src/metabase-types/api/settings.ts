@@ -112,6 +112,7 @@ export interface Engine {
   "details-fields"?: DatabaseFieldOrGroup[];
   source: EngineSource;
   "superseded-by": string | null;
+  "creatable?"?: boolean;
   "extra-info": {
     "db-routing-info": {
       text: string;
@@ -375,6 +376,7 @@ export const tokenFeatures = [
   "transforms-python",
   "transforms-basic",
   "library",
+  "library_retrieval",
   "support-users",
   "tenants",
   "writable_connection",

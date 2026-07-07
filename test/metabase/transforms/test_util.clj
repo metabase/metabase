@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -85,20 +86,34 @@
   (if-let [[sym prefix & more-gens] (seq table-gens)]
     `(let [target# (gen-table-name ~prefix)
            ~sym target#]
-       (try
-         (with-transform-cleanup! ~more-gens ~@body)
-         (finally
-           (drop-target! target#))))
+       (when (or (nil? driver/*driver*)
+                 (driver.u/supports? driver/*driver* :test/dynamic-dataset-loading nil))
+         (try
+           (with-transform-cleanup! ~more-gens ~@body)
+           (finally
+             (drop-target! target#)))))
     `(mt/with-model-cleanup [:model/Transform]
        ~@body)))
 
 (defn table-rows
+  "Fetch all rows of `table-name` in the current test database.
+
+   Dataset tables (e.g. `transforms_products`) are resolved by their logical name via `mt/id`, which handles
+   drivers like Redshift that load datasets under prefixed physical names (`transforms_test_transforms_products`).
+   Transform TARGET tables are created with their exact requested name, so they are looked up by bare name scoped
+   to the current test database and, when the transforms dataset is loaded, to its schema — avoiding an unrelated
+   `Table` row with the same name under a different database/schema."
   [table-name]
-  (->>
-   (mt/rows (mt/process-query {:database (mt/id)
-                               :query    {:source-table (t2/select-one-pk :model/Table :name table-name)}
-                               :type     :query}))
-   (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x)))))
+  (let [pk (or (try (mt/id (keyword table-name)) (catch Exception _ nil))
+               (if-let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
+                                 (t2/select-one-fn :schema :model/Table products-id))]
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
+                 (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)))]
+    (->>
+     (mt/rows (mt/process-query {:database (mt/id)
+                                 :query    {:source-table pk}
+                                 :type     :query}))
+     (map (fn [x] (if (= :mongo driver/*driver*) (rest x) x))))))
 
 (defn parse-timestamp
   "Parse a local datetime and convert it to a ZonedDateTime in the default timezone."
@@ -118,17 +133,25 @@
   (-> timestamp-string parse-instant str))
 
 (defn wait-for-table
-  "Wait for a table to appear in metadata, with timeout."
+  "Wait for a table to become queryable in the current test database, with timeout.
+
+   Sync creates the target's `Table` row first (already active) and inserts its `Field` rows in a later
+   step, so \"table exists but has no fields\" is a normal mid-sync state; a query against the table in
+   that state fails in `add-implicit-clauses` with \"Table has no Fields associated with it\". Wait for
+   the same condition the QP requires: an active table row (scoped to the current test database, like
+   `mt/id` resolution) with at least one active field."
   [^String table-name timeout-ms]
   (let [timer (u/start-timer)]
     (loop []
-      (let [table (t2/select-one :model/Table :name table-name)
-            fields (t2/select :model/Field :table_id (:id table))]
+      (let [table (t2/select-one :model/Table :db_id (mt/id) :name table-name :active true)]
         (cond
-          (and table (seq fields)) table
+          (and table (t2/exists? :model/Field :table_id (:id table) :active true))
+          table
+
           (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
+          (throw (ex-info (format "Table %s did not become queryable after %dms" table-name timeout-ms)
                           {:table-name table-name :timeout-ms timeout-ms}))
+
           :else (do (Thread/sleep 100)
                     (recur)))))))
 

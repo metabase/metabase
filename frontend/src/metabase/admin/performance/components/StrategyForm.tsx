@@ -36,7 +36,6 @@ import type {
   CacheStrategy,
   CacheStrategyType,
   CacheableModel,
-  DurationStrategy,
   ScheduleStrategy,
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
@@ -209,8 +208,7 @@ const StrategyFormBody = ({
 
   const handleSwitchToggle = useCallback(() => {
     if (values.type === "duration" || values.type === "schedule") {
-      const newValue = !(values as DurationStrategy | ScheduleStrategy)
-        .refresh_automatically;
+      const newValue = !values.refresh_automatically;
       setFieldValue("refresh_automatically", newValue);
       setStatus("idle");
     }
@@ -299,7 +297,7 @@ const FormButtonsGroup = ({
       justify={layout === "sidebar" ? "flex-end" : undefined}
       px={layout === "sidebar" ? "md" : "2.5rem"}
       pb={layout === "sidebar" ? 0 : undefined}
-      bg={layout === "sidebar" ? undefined : "background-primary"}
+      bg={layout === "sidebar" ? undefined : "background_page-primary"}
       style={
         layout === "sidebar"
           ? undefined

@@ -197,7 +197,7 @@ export const TransparentThemeDefault = {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="background-primary" h="100%">
+    <Box bg="background_page-primary" h="100%">
       <Story />
     </Box>
   );
@@ -412,7 +412,7 @@ const downloadQuestionAsPng = async (canvasElement: HTMLElement) => {
   const downloadButton = await canvas.findByTestId(
     "question-results-download-button",
   );
-  await userEvent.click(downloadButton!);
+  await userEvent.click(downloadButton);
 
   const documentElement = within(document.documentElement);
   const pngButton = await documentElement.findByText(".png");

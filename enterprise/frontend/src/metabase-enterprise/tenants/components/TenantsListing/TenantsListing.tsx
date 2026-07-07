@@ -119,13 +119,13 @@ export const TenantsListing = ({
 
       {((tenants.length !== 0 && filteredTenants.length === 0) ||
         (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-disabled">
           {t`No matching tenants found.`}
         </Text>
       )}
 
       {tenants.length === 0 && status === ACTIVE_STATUS.active && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-disabled">
           {t`Add your first tenant to get started.`}
         </Text>
       )}
@@ -144,7 +144,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
     <Menu shadow="md" width={200} position="bottom-end">
       <Menu.Target>
         <UnstyledButton>
-          <Icon c="text-tertiary" name="ellipsis" />
+          <Icon c="text-disabled" name="ellipsis" />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
@@ -153,7 +153,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
         </Menu.Item>
         {tenant.is_active ? (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.deactivateTenant(tenant.id)}
           >
@@ -161,7 +161,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
           </Menu.Item>
         ) : (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.reactivateTenant(tenant.id)}
           >

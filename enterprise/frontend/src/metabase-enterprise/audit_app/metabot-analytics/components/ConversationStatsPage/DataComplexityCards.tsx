@@ -44,10 +44,10 @@ import S from "./DataComplexityCards.module.css";
 type RatingColorKey = DataComplexityRating | "default";
 
 const RATING_BADGE_BACKGROUND_COLORS = {
-  low: "background-success-secondary",
-  medium: "background-warning-secondary",
-  high: "background-error",
-  default: "background-tertiary",
+  low: "feedback-positive-selected",
+  medium: "background_surface-warning-strong",
+  high: "background_surface-error",
+  default: "background_page-tertiary",
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 
 const RATING_BADGE_TEXT_COLORS = {
@@ -108,7 +108,7 @@ function DataComplexityCard({
       <UnstyledButton onClick={open}>
         <Flex align="center" justify="space-between" gap="sm">
           <Text fw={700}>{title}</Text>
-          <Icon name="expand" c="text-tertiary" />
+          <Icon name="expand" c="text-disabled" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
         {catalog.score !== null ? (
@@ -124,7 +124,7 @@ function DataComplexityCard({
           </Stack>
         ) : (
           <Stack gap={4} my="sm">
-            <Text c="error" fw={700}>{t`Score unavailable`}</Text>
+            <Text c="feedback-negative" fw={700}>{t`Score unavailable`}</Text>
             <Text c="text-secondary">{t`Open for component details.`}</Text>
           </Stack>
         )}
@@ -283,14 +283,19 @@ function DataComplexityComponentItem({
     .exhaustive();
 
   return (
-    <Accordion.Item value={componentId} bg="background-secondary" bd="0" mt={0}>
+    <Accordion.Item
+      value={componentId}
+      bg="background_page-secondary"
+      bd="0"
+      mt={0}
+    >
       <Accordion.Control>
         <Flex align="center" gap="sm" w="100%">
           <Text c="text-primary" fw={500} truncate>
             {count}
           </Text>
           <Tooltip label={description}>
-            <Icon name="info" c="text-tertiary" size={14} />
+            <Icon name="info" c="text-disabled" size={14} />
           </Tooltip>
           <ScoreDisplayInline score={component} />
         </Flex>
@@ -301,7 +306,7 @@ function DataComplexityComponentItem({
         </Text>
         {match(component)
           .with({ error: P.nonNullable }, ({ error }) => (
-            <Text c="error" size="sm" role="alert">
+            <Text c="feedback-negative" size="sm" role="alert">
               {error}
             </Text>
           ))
@@ -378,7 +383,7 @@ function ScoreDisplayInline({
 } & MantineStyleProps) {
   return match(score)
     .with({ score: P.nullish }, { error: P.nonNullable }, () => (
-      <Text c="error" fw={700} lh="1rem" ml="auto" {...rest}>
+      <Text c="feedback-negative" fw={700} lh="1rem" ml="auto" {...rest}>
         {withTitle ? t`Complexity score unavailable` : t`Unavailable`}
       </Text>
     ))

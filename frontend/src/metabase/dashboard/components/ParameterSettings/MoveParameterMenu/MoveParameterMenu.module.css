@@ -6,7 +6,7 @@
 
   &[data-variant="default"]:hover:not(:disabled) {
     border-color: var(--mb-color-border-neutral);
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -25,12 +25,12 @@
   }
 
   &:hover::after {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
   }
 }
 
 .MoveParameterMenuOptionIcon {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .MoveParameterMenuOptionText {

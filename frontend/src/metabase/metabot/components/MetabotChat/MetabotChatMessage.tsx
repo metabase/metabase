@@ -292,12 +292,12 @@ const AgentTurnAlert = ({
     bd="1px solid var(--mb-color-border-neutral)"
     bdrs="sm"
     data-testid="metabot-chat-message-turn-alert"
-    bg="background-primary"
+    bg="background_page-primary"
   >
     <Flex align="center" gap="sm">
       <Icon
         name={variant === "error" ? "warning" : "info"}
-        c={variant === "error" ? "error" : "text-secondary"}
+        c={variant === "error" ? "feedback-negative" : "text-secondary"}
         size="1rem"
         flex="0 0 auto"
       />

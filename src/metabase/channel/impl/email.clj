@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
@@ -30,7 +31,9 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec])
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -217,11 +220,11 @@
   {:notification/dashboard {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{payload.dashboard.name}}"
-                                           :path    "metabase/channel/email/dashboard_subscription.hbs"}}
+                                           :path    "dashboard_subscription"}}
    :notification/card      {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{computed.subject}}"
-                                           :path    "metabase/channel/email/notification_card.hbs"}}})
+                                           :path    "notification_card"}}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
@@ -272,8 +275,32 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(defn- dashboard-pdf-attachment
+  "Render the whole dashboard to a PDF email attachment, or `nil` if rendering fails. `parts` are the dashboard's
+  already-executed parts, reused so the PDF generation doesn't re-run every query."
+  [dashboard-id dashboard-name creator-id parameters parts]
+  (try
+    ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
+          temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
+                      (.deleteOnExit))]
+      (with-open [os (io/output-stream temp-file)]
+        (.write os ^bytes pdf-bytes))
+      {:type         :attachment
+       :content-type "application/pdf"
+       :file-name    (-> dashboard-name
+                         (some-> str/trim)
+                         not-empty
+                         (or "dashboard")
+                         (str ".pdf"))
+       :content      (.. temp-file toURI toURL)
+       :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
+    (catch Throwable e
+      (log/error e "Error rendering dashboard subscription PDF; skipping PDF attachment")
+      nil)))
+
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only]}]
+  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf]}]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -310,9 +337,11 @@
                              (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
         card-attachments    (map make-message-attachment merged-attachments)
+        pdf-attachment      (when include_pdf
+                              (dashboard-pdf-attachment (:id dashboard) (:name dashboard) creator_id parameters dashboard_parts))
         attachments         (cond-> (into [icon-attachment] result-attachments)
-                              (not attachment_only)
-                              (concat card-attachments))
+                              (not attachment_only) (concat card-attachments)
+                              pdf-attachment        (concat [pdf-attachment]))
         dashboard-content   (if-not attachment_only
                               (str "<div>" (str/join html-contents) "</div>")
                               "<p>Dashboard content available in attached files</p>")

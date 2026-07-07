@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha, lighten } from "metabase/ui/colors";
-
 interface ToasterContainerProps {
   show: boolean;
   fixed?: boolean;
@@ -44,7 +42,11 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${() => alpha("background-primary", 0.1)};
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-background_page-primary) 10%,
+    transparent
+  );
   border-radius: 6px;
   color: var(--mb-color-text-primary-inverse);
   height: fit-content;
@@ -56,16 +58,20 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${() => alpha("background-primary", 0.3)};
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-background_page-primary) 30%,
+      transparent
+    );
   }
 `;
 
 export const ToasterDismiss = styled.button`
   cursor: pointer;
   transition: color 200ms ease;
-  color: var(--mb-color-background-tertiary-inverse);
+  color: var(--mb-color-text-primary-inverse);
 
   &:hover {
-    color: ${() => lighten("background-tertiary-inverse", 0.3)};
+    color: color-mix(in srgb, var(--mb-color-text-primary-inverse), white 30%);
   }
 `;

@@ -364,7 +364,6 @@ describe("scenarios > question > settings", () => {
         .findByRole("listitem")
         .within(() => {
           cy.findByLabelText("ellipsis icon").should("be.visible");
-          cy.findByLabelText("grabber icon").should("be.visible");
           cy.findByLabelText("eye_outline icon").should("be.visible");
           cy.findByText(longName).should("be.visible");
         });

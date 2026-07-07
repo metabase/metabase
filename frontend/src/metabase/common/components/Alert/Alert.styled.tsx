@@ -15,19 +15,19 @@ interface AlertRootProps {
 
 const colorsByVariant = {
   border: {
-    info: "var(--mb-color-background-tertiary)",
-    error: color("error"),
-    warning: color("warning"),
+    info: "var(--mb-color-background_page-tertiary)",
+    error: color("feedback-negative"),
+    warning: color("feedback-warning"),
   },
   background: {
-    info: "var(--mb-color-background-secondary)",
-    error: color("background-error"),
-    warning: color("background-warning"),
+    info: "var(--mb-color-background_page-secondary)",
+    error: color("background_surface-error"),
+    warning: color("background_surface-warning"),
   },
   icon: {
     info: color("text-primary"),
-    error: color("error"),
-    warning: color("warning"),
+    error: color("feedback-negative"),
+    warning: color("feedback-warning"),
   },
 };
 

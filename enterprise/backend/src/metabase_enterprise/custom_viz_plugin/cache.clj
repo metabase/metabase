@@ -320,12 +320,17 @@
 
 (defn fetch-dev-bundle
   "Fetch a JS bundle from a dev base URL.
-   Returns {:content str :hash str} or nil."
+   Returns {:content str :hash str}, or nil when the dev server is transiently
+   unavailable (e.g. mid-rebuild)."
   [^String base-url]
-  (let [content (:body (http/get (dev-url base-url bundle-rel-path)
-                                 (assoc http-opts :as :string)))]
-    {:content content
-     :hash    (string-hash content)}))
+  (try
+    (let [content (:body (http/get (dev-url base-url bundle-rel-path)
+                                   (assoc http-opts :as :string)))]
+      {:content content
+       :hash    (string-hash content)})
+    (catch Exception e
+      (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
+      nil)))
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.

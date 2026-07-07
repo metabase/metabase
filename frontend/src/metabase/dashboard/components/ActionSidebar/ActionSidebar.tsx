@@ -134,7 +134,7 @@ export function ActionSidebar() {
           <Modal.Content>
             <ActionDashcardSettings
               dashboard={dashboard}
-              dashcard={dashcard as ActionDashboardCard}
+              dashcard={dashcard}
               onClose={closeActionModal}
             />
           </Modal.Content>

@@ -1187,6 +1187,27 @@
             (testing "Renders with at least one category name visible"
               (is (= "Doohickey" category-text)))))))))
 
+(deftest render-treemap-chart-test
+  (testing "The static-viz treemap chart renders correctly."
+    (mt/dataset test-data
+      (let [q       (mt/mbql-query products
+                      {:aggregation  [[:count]]
+                       :breakout     [$category $vendor]})
+            card    {:name           "treemap-test"
+                     :display        :treemap
+                     :dataset_query  q
+                     :visualization_settings
+                     {:treemap.grouping     "CATEGORY"
+                      :treemap.sub_grouping "VENDOR"
+                      :treemap.value        "count"}}]
+        (mt/with-temp [:model/Card {card-id :id} card]
+          (let [doc (render.tu/render-card-as-hickory! card-id)
+                category-text (->> (hik.s/select (hik.s/find-in-text #"Doohickey") doc)
+                                   (map (fn [el] (-> el :content first)))
+                                   first)]
+            (testing "Renders with at least one category name visible"
+              (is (= "Doohickey" category-text)))))))))
+
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
     (mt/with-temporary-setting-values [start-of-week "monday"]
@@ -1204,7 +1225,7 @@
             (let [doc            (render.tu/render-card-as-hickory! card-id)
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 6)
+                                      (take-last 4)
                                       (map str/trim)
                                       first)]
               (testing "Renders with correct day of week first"
@@ -1357,10 +1378,11 @@
                                :rows [["x" 1]]})]
         (is (some? (:content part)))))
     (testing "the card's conditional formatting colors the measure value cells"
-      (mt/with-dynamic-fn-redefs [js.color/make-color-selector  (fn [_ _] ::selector)
-                                  js.color/get-background-color (fn [_sel cell _col _row]
-                                                                  (when (formatter/NumericWrapper? cell)
-                                                                    "rgb(1, 2, 3)"))]
+      (mt/with-dynamic-fn-redefs [js.color/cell-background-colors (fn [_data _settings queries]
+                                                                    (mapv (fn [[cell _row-index _col-name]]
+                                                                            (when (formatter/NumericWrapper? cell)
+                                                                              "rgb(1, 2, 3)"))
+                                                                          queries))]
         (let [pcard {:display                :pivot
                      :visualization_settings {:pivot_table.column_split pivot-test-split
                                               :table.column_formatting [{:type     "single"

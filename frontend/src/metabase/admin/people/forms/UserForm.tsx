@@ -145,6 +145,8 @@ interface UserFormProps {
   external?: boolean;
   edit?: boolean;
   userId?: UserId | null;
+  hideNameFields?: boolean;
+  hideAttributes?: boolean;
 }
 
 export const UserForm = ({
@@ -155,6 +157,8 @@ export const UserForm = ({
   external = false,
   edit = false,
   userId,
+  hideNameFields = false,
+  hideAttributes = false,
 }: UserFormProps) => {
   return (
     <FormProvider
@@ -165,22 +169,26 @@ export const UserForm = ({
     >
       {({ dirty }: { dirty: boolean }) => (
         <Form disabled={!dirty}>
-          <FormTextInput
-            name="first_name"
-            title={t`First name`}
-            placeholder={t`Johnny`}
-            label={t`First name`}
-            mb="md"
-            nullable
-          />
-          <FormTextInput
-            name="last_name"
-            title={t`Last name`}
-            placeholder={t`Appleseed`}
-            label={t`Last name`}
-            mb="md"
-            nullable
-          />
+          {!hideNameFields && (
+            <>
+              <FormTextInput
+                name="first_name"
+                title={t`First name`}
+                placeholder={t`Johnny`}
+                label={t`First name`}
+                mb="md"
+                nullable
+              />
+              <FormTextInput
+                name="last_name"
+                title={t`Last name`}
+                placeholder={t`Appleseed`}
+                label={t`Last name`}
+                mb="md"
+                nullable
+              />
+            </>
+          )}
           <FormTextInput
             name="email"
             type="email"
@@ -203,7 +211,11 @@ export const UserForm = ({
               disabled={edit}
             />
           )}
-          <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes userId={userId} />
+          {!hideAttributes && (
+            <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes
+              userId={userId}
+            />
+          )}
           <FormFooter>
             <FormErrorMessage inline />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

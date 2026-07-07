@@ -21,7 +21,7 @@ import _ from "underscore";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
-import { PUT } from "metabase/api/legacy-client";
+import { useUpdateSettingMutation } from "metabase/api/settings";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
@@ -171,7 +171,7 @@ export function getTestStoreAndWrapper({
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
-    initialState = _.pick(initialState, ...publicReducerNames) as State;
+    initialState = _.pick(initialState, ...publicReducerNames);
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -241,6 +241,27 @@ const GlobalStylesForTest = () => {
   return <Global styles={[baseStyle, cssVariables]} />;
 };
 
+/**
+ * Wires `AppColorSchemeProvider` to the `updateSetting` RTK mutation. Kept as a
+ * child component so the hook runs inside the store provider rendered by
+ * `TestWrapper`.
+ */
+const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
+  const [updateSetting] = useUpdateSettingMutation();
+  const handleUpdateColorScheme = useCallback(
+    async (value: any) => {
+      await updateSetting({ key: "color-scheme", value }).unwrap();
+    },
+    [updateSetting],
+  );
+
+  return (
+    <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
+      {children}
+    </AppColorSchemeProvider>
+  );
+};
+
 export function TestWrapper({
   children,
   store,
@@ -264,10 +285,6 @@ export function TestWrapper({
   displayTheme?: "light" | "dark";
   withCssVariables?: boolean;
 }): JSX.Element {
-  const handleUpdateColorScheme = useCallback(async (value: any) => {
-    await PUT("/api/setting/:key")({ key: "color-scheme", value });
-  }, []);
-
   const [whitelabelColors, setWhitelabelColors] = useState(() =>
     MetabaseSettings.applicationColors(),
   );
@@ -280,7 +297,7 @@ export function TestWrapper({
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
+        <TestColorSchemeProvider>
           <OverlayStackProvider>
             <ThemeProviderContext.Provider value={{ withCssVariables }}>
               <ThemeProvider
@@ -301,7 +318,7 @@ export function TestWrapper({
               </ThemeProvider>
             </ThemeProviderContext.Provider>
           </OverlayStackProvider>
-        </AppColorSchemeProvider>
+        </TestColorSchemeProvider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );

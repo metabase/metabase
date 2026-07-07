@@ -21,7 +21,7 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
 
 - `display` → `display` prop
 - `color` → `c` prop (`c="core-brand"`, `c="text-primary"`)
-- `background-color` → `bg` prop (`bg="background-primary"`)
+- `background-color` → `bg` prop (`bg="background_page-primary"`)
 - `font-size` → `fz` prop (`fz="md"`)
 - `font-weight` → `fw` prop (`fw="bold"`)
 - `line-height` → `lh` prop (`lh="md"`)
@@ -57,7 +57,7 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
   align="center"            /* style prop */
   gap="sm"                  /* style prop */
   p="md"                    /* style prop */
-  bg="background-primary"   /* style prop */
+  bg="background_page-primary"   /* style prop */
 >
 ```
 
@@ -172,7 +172,7 @@ Create `ComponentName.module.css` alongside the component file:
 .root {
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 /* Conditional states as separate classes, combined with cx() */
@@ -182,7 +182,7 @@ Create `ComponentName.module.css` alongside the component file:
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   pointer-events: none;
 }
 
@@ -192,7 +192,7 @@ Create `ComponentName.module.css` alongside the component file:
 
   &:hover {
     color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -255,9 +255,9 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** (`c`, `bg`):
 
-- Text: `"text-primary"`, `"text-secondary"`, `"text-tertiary"`
-- Background: `"background-primary"`, `"background-secondary"`, `"background-hover"`
-- Brand: `"core-brand"`, `"error"`, `"success"`, `"warning"`
+- Text: `"text-primary"`, `"text-secondary"`, `"text-disabled"`
+- Background: `"background_page-primary"`, `"background_page-secondary"`, `"background_surface-hover"`
+- Brand: `"core-brand"`, `"feedback-negative"`, `"feedback-positive"`, `"feedback-warning"`
 
 **Typography** (`fz`, `fw`, `lh`, `ta`, `ff`):
 
@@ -279,11 +279,11 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** — `var(--mb-color-<name>)`:
 
-- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-tertiary`
-- `--mb-color-background-primary`, `--mb-color-background-secondary`, `--mb-color-background-hover`
-- `--mb-color-border-neutral`, `--mb-color-border-neutral-strong`, `--mb-color-border-neutral-subtle`
+- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-disabled`
+- `--mb-color-background_page-primary`, `--mb-color-background_page-secondary`, `--mb-color-background_surface-hover`
+- `--mb-color-border`, `--mb-color-border-strong`, `--mb-color-border-subtle`
 - `--mb-color-core-brand`, `--mb-color-core-brand-hover`
-- `--mb-color-error`, `--mb-color-success`, `--mb-color-warning`
+- `--mb-color-feedback-negative`, `--mb-color-feedback-positive`, `--mb-color-feedback-warning`
 - `--mb-color-shadow`, `--mb-color-focus`
 - `--mb-color-accent0` through `--mb-color-accent7`
 
@@ -398,7 +398,7 @@ export const Wrapper = styled.div`
 ```tsx
 export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
   color: ${(props) =>
-    props.disabled ? color("text-tertiary") : color("text-primary")};
+    props.disabled ? color("text-disabled") : color("text-primary")};
   background-color: ${(props) =>
     props.isSelected ? color("core-brand") : "transparent"};
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
@@ -427,11 +427,11 @@ export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   cursor: default;
 
   &:hover {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 }
 ```
@@ -574,7 +574,7 @@ export const Spinner = styled.div`
 | -------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
 | `color("core-brand")`      | `var(--mb-color-core-brand)`                                      | `c="core-brand"` or `bg="core-brand"` |
 | `color("text-primary")`    | `var(--mb-color-text-primary)`                                    | `c="text-primary"`                    |
-| `color("border-neutral")`  | `var(--mb-color-border-neutral)`                                  | N/A (use CSS module)                  |
+| `color("border-neutral")`          | `var(--mb-color-border-neutral)`                                          | N/A (use CSS module)                  |
 | `alpha("core-brand", 0.2)` | `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)` | N/A (use CSS module)                  |
 
 ### Pattern 7: Responsive Spacing/Sizing → Responsive Style Props (NOT CSS Media Queries)

@@ -611,6 +611,14 @@
                          (all-schemas driver conn catalog))]
          {:tables (reduce set/union #{} schemas)})))))
 
+(defn- column->field
+  [database-pos {:keys [column type comment]}]
+  (cond-> {:name              column
+           :database-type     type
+           :base-type         (presto-type->base-type type)
+           :database-position database-pos}
+    (not (str/blank? comment)) (assoc :field-comment comment)))
+
 (defmethod driver/describe-table :presto-jdbc
   [driver database {schema :schema, table-name :name}]
   (let [{:keys [catalog]} (driver.conn/effective-details database)]
@@ -625,11 +633,7 @@
           :name   table-name
           :fields (into
                    #{}
-                   (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                  {:name              column
-                                   :database-type     type
-                                   :base-type         (presto-type->base-type type)
-                                   :database-position idx}))
+                   (map-indexed column->field)
                    (jdbc/reducible-query {:connection conn} sql))})))))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`

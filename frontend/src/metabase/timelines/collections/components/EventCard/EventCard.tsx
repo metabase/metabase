@@ -6,7 +6,7 @@ import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
-import type { IconName, Timeline, TimelineEvent } from "metabase-types/api";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
   CardAside,
@@ -45,7 +45,7 @@ const EventCard = ({
     <CardRoot>
       <CardThread>
         <CardThreadIconContainer>
-          <CardThreadIcon name={event.icon as unknown as IconName} />
+          <CardThreadIcon name={event.icon} />
         </CardThreadIconContainer>
         <CardThreadStroke />
       </CardThread>

@@ -4,7 +4,7 @@ import {
   type Emoji as EmojiType,
   EmojiPicker as Picker,
 } from "frimousse";
-import { type CSSProperties, type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import { ActionIcon, Box, Icon, Paper, Text, TextInput } from "metabase/ui";
@@ -85,7 +85,7 @@ function CategoryHeader({
   ...props
 }: EmojiPickerListCategoryHeaderProps) {
   return (
-    <Box px="sm" pos="sticky" top={0} bg="background-primary" {...props}>
+    <Box px="sm" pos="sticky" top={0} bg="background_page-primary" {...props}>
       <Text fz="sm" c="text-secondary">
         {category.label}
       </Text>
@@ -110,7 +110,7 @@ function Emoji({
         root: {
           // for colored backgrounds
           "--emoji": `"${emoji.emoji}"`,
-        } as CSSProperties,
+        },
       }}
       {...props}
     >

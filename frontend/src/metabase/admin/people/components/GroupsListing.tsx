@@ -147,14 +147,14 @@ function ActionsPopover({
       <Menu shadow="md" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-tertiary" name="ellipsis" />
+            <Icon c="text-disabled" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item onClick={() => onEditGroupClicked(group)}>
             {t`Edit Name`}
           </Menu.Item>
-          <Menu.Item c="danger" onClick={openModal}>
+          <Menu.Item c="feedback-negative" onClick={openModal}>
             {t`Remove Group`}
           </Menu.Item>
         </Menu.Dropdown>
@@ -299,7 +299,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-tertiary">
+    <Box component="span" c="text-disabled">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}

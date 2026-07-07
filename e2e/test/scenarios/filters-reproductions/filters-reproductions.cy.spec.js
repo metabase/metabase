@@ -172,7 +172,7 @@ describe("issue 20683", { tags: "@external" }, () => {
 
     H.visualize();
 
-    H.queryBuilderMain().findByText("No results!").should("be.visible");
+    H.queryBuilderMain().findByText("No results").should("be.visible");
   });
 });
 
@@ -770,7 +770,7 @@ describe("issue 30312", () => {
     });
 
     cy.findByTestId("filter-pill").should("have.text", "Count is equal to 10");
-    H.queryBuilderMain().findByText("No results!").should("be.visible");
+    H.queryBuilderMain().findByText("No results").should("be.visible");
   });
 });
 

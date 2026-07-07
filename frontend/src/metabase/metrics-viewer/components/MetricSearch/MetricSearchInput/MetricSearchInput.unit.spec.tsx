@@ -7,7 +7,6 @@ import type {
   ExpressionDefinitionEntry,
   ExpressionSubToken,
   MetricDefinitionEntry,
-  MetricExpressionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDimensionBreakoutState,
@@ -67,7 +66,7 @@ function makeExpressionEntry(
   tokens: ExpressionSubToken[],
 ): ExpressionDefinitionEntry {
   return {
-    id: `expression:${name}` as MetricExpressionId,
+    id: `expression:${name}`,
     type: "expression",
     name,
     tokens,
@@ -238,7 +237,7 @@ describe("collapsed view (definitions present, not focused)", () => {
     const indicators = screen.getAllByTestId("color-indicator-container");
     expect(
       within(indicators[1]).getByRole("img", { hidden: true }),
-    ).toHaveStyle({ color: "var(--mb-color-icon-disabled)" });
+    ).toHaveStyle({ color: "var(--mb-color-icon-secondary)" });
   });
 
   it("does not render a text input when collapsed", () => {

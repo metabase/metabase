@@ -18,7 +18,7 @@
   &:hover,
   &[aria-selected="true"] {
     color: inherit;
-    background-color: var(--mb-color-focus);
+    background-color: var(--mb-color-input-focus);
   }
 
   .icon {
@@ -43,7 +43,7 @@
 .footer {
   box-sizing: border-box;
   height: 2.5rem;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
@@ -57,7 +57,7 @@
   padding: 6px;
   display: inline-block;
   border-radius: 6px;
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   height: 24px;
   width: 24px;
   margin: 0 4px;

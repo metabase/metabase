@@ -1,15 +1,20 @@
+import { useDisclosure } from "@mantine/hooks";
+import { t } from "ttag";
+
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import {
   getIsDashCardsRunning,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
 import {
   CopyLinkMenuItem,
   CopyPublicLinkMenuItem,
 } from "metabase/embedding/components/SharingMenu/MenuItems/CopyLinkMenuItem";
 import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
 import { ExportPdfMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/ExportPdfMenuItem";
+import { InviteToViewMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/InviteToViewMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import { SharingMenu } from "metabase/embedding/components/SharingMenu/SharingMenu";
 import type { DashboardSharingModalType } from "metabase/embedding/components/SharingMenu/types";
@@ -23,7 +28,7 @@ import {
   dashboard as getDashboardUrl,
   publicDashboard as getPublicDashboardUrl,
 } from "metabase/urls";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, InviteTarget } from "metabase-types/api";
 
 import { DashboardPublicLinkPopover } from "../../../DashboardInfoSidebar/DashboardPublicLinkPopover/DashboardPublicLinkPopover";
 
@@ -62,15 +67,24 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
       resource: dashboard,
       resourceType: "dashboard",
     });
+  const [isInviteOpen, { open: openInvite, close: closeInvite }] =
+    useDisclosure();
   const isDashCardsRunning = useSelector(getIsDashCardsRunning);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const siteUrl = useSetting("site-url");
   const isAnalytics =
     dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
   const canShare = !isAnalytics;
+  // x-ray dashboards have string ids and can't be invite targets.
+  const inviteTarget: InviteTarget | undefined =
+    typeof dashboard.id === "number"
+      ? { type: "dashboard", id: dashboard.id, name: dashboard.name }
+      : undefined;
 
   return (
     <Flex>
       <SharingMenu>
+        <InviteToViewMenuItem onClick={openInvite} />
         <CopyDashboardLinkMenuItem dashboard={dashboard} />
         {canShare && isPublicSharingEnabled && (
           <PublicLinkMenuItem
@@ -91,6 +105,15 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
           target={<Box h="2rem" />}
           isOpen
           onClose={() => setModalType(null)}
+        />
+      )}
+      {isInviteOpen && (
+        <InviteToViewModal
+          title={t`Invite someone to view this dashboard`}
+          shareUrl={`${siteUrl}${getDashboardUrl(dashboard)}`}
+          triggeredFrom="dashboard"
+          inviteTarget={inviteTarget}
+          onClose={closeInvite}
         />
       )}
     </Flex>

@@ -30,6 +30,7 @@
                               :disable-password-login
                               :database-auth-providers
                               :library
+                              :library-retrieval
                               :development-mode
                               :email-allow-list
                               :email-restrict-recipients
@@ -82,6 +83,7 @@
             :disable_password_login         true
             :database_auth_providers        true
             :library                        true
+            :library_retrieval              true
             :development_mode               true
             :email_allow_list               true
             :email_restrict_recipients      true

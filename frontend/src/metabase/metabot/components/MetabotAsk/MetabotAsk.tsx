@@ -37,7 +37,7 @@ export const MetabotAsk = () => {
   const showGreeting = messages.length === 0 && !isDoingScience;
 
   return (
-    <Flex h="100%" w="100%" justify="center" bg="background-primary">
+    <Flex h="100%" w="100%" justify="center" bg="background_page-primary">
       {showGreeting ? (
         <MetabotGreeting agentId="ask" suggestionModels={SUGGESTION_MODELS} />
       ) : (

@@ -67,7 +67,7 @@ export default function Gauge({
     formattedValue,
     GAUGE_INNER_RADIUS,
   );
-  const outlineColor = getColor("white");
+  const outlineColor = getColor("core-white");
 
   return (
     <svg
@@ -108,7 +108,7 @@ export default function Gauge({
                       <g>
                         <path
                           d={baseArcPath}
-                          fill={getColor("background-tertiary")}
+                          fill={getColor("background_page-tertiary")}
                         />
                       </g>
                     )}
@@ -146,7 +146,7 @@ export default function Gauge({
               }}
             </Pie>
             <GaugeNeedle
-              color={getColor("background-tertiary-inverse")}
+              color={getColor("background_page-tertiary-inverse")}
               outlineColor={outlineColor}
               position={gaugeNeedlePosition}
               valueAngle={gaugeNeedleAngle}

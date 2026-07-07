@@ -397,6 +397,32 @@
                (do-perm-put "permissions/graph?force=false" 409)))
         (do-perm-put "permissions/graph?force=true" 200)))))
 
+;; NOTE: `oss-preserves-sandboxed-view-data-test` lives in
+;; `metabase-enterprise.sandbox.api.permissions-test`: it references the EE-only `:model/Sandbox` model,
+;; which is not on the OSS classpath. It exercises OSS-token graph semantics under `with-premium-features #{}`.
+
+(deftest oss-edit-create-queries-on-blocked-row-test
+  (testing "PUT /api/permissions/graph in OSS: a create-queries-only edit on a :blocked database returns 200 and bumps view-data to :unrestricted"
+    (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                   :model/Database {db-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (data-perms/set-database-permission! gid db-id :perms/view-data :blocked))
+      (mt/with-premium-features #{}
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (data-perms.graph/api-graph) [:groups gid db-id :create-queries] :query-builder-and-native))
+        (is (= :unrestricted (data-perms/table-permission-for-groups #{gid} :perms/view-data db-id nil)))))))
+
+(deftest update-graph-response-echoes-only-modified-groups-test
+  (testing "PUT /api/permissions/graph response :groups map contains only the request's modified group ids"
+    (mt/with-temp [:model/PermissionsGroup g1 {} :model/PermissionsGroup g2 {}]
+      (let [body (assoc-in (data-perms.graph/api-graph)
+                           [:groups (u/the-id g1) (mt/id) :view-data] :unrestricted)
+            resp (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                       (update body :groups select-keys [(u/the-id g1)]))]
+        (is (= #{(u/the-id g1)} (set (keys (:groups resp)))))
+        (is (not (contains? (:groups resp) (u/the-id g2))))))))
+
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (let [table-id (mt/id :venues)]

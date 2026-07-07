@@ -15,7 +15,7 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
     return highlighted ? color("text-primary-inverse") : color("text-primary");
   } else {
-    return color("text-tertiary");
+    return color("text-disabled");
   }
 };
 
@@ -31,7 +31,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   background-color: ${({ hasValue, highlighted }) =>
     hasValue && highlighted
       ? color("core-brand")
-      : color("background-primary")};
+      : color("background_page-primary")};
   border-radius: var(--mantine-spacing-sm);
   font-weight: 700;
   min-width: 104px;
@@ -43,7 +43,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
 
   &:focus {
     border-color: var(--mb-color-core-brand);
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:not(:focus-visible) {
@@ -51,7 +51,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
     color: var(--mb-color-text-secondary);
     pointer-events: none;
   }

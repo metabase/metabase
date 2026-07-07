@@ -152,7 +152,7 @@ function GoogleSheetsConnectModal({
         }
       />
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         style={{ borderRadius: "0.5rem" }}
         p="md"
         direction="column"
@@ -199,7 +199,7 @@ function GoogleSheetsConnectModal({
           </Text>
         </Box>
         <Flex justify="space-between" align="center" mt="sm" gap="md">
-          <Text c="error" lh="1.2rem">
+          <Text c="feedback-negative" lh="1.2rem">
             {errorMessage}
           </Text>
           <Button
@@ -244,7 +244,7 @@ function GoogleSheetsDisconnectModal({
           {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
-          <Text c="error" ta="start">
+          <Text c="feedback-negative" ta="start">
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="md">
@@ -257,7 +257,7 @@ function GoogleSheetsDisconnectModal({
             </Button>
             <Button
               variant="filled"
-              color="danger"
+              color="feedback-negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >
@@ -303,7 +303,7 @@ export const DriveConnectionDisplay = () => {
   return (
     <MaybeLink href={folderUrl ?? ""}>
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         w="100%"
         gap="sm"
         p="md"

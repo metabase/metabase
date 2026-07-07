@@ -163,11 +163,11 @@ export const MetabotPromptSuggestionPane = ({
           }
           emptyBody={
             error ? (
-              <Center my="lg" fw="bold" c="danger">
+              <Center my="lg" fw="bold" c="feedback-negative">
                 {t`Something went wrong.`}
               </Center>
             ) : data?.total === 0 ? (
-              <Center my="lg" fw="bold" c="text-tertiary">
+              <Center my="lg" fw="bold" c="text-disabled">
                 {t`No prompts found.`}
               </Center>
             ) : null

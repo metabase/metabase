@@ -98,7 +98,7 @@ describe("useCollectionsWithTenants", () => {
       id: 100 as CollectionId,
       name: "Tenant A",
       location: "/",
-      namespace: "shared-tenant-collection" as any,
+      namespace: "shared-tenant-collection",
     });
 
     const { result } = setupHook({
@@ -123,17 +123,17 @@ function setup() {
   });
 
   const ourAnalyticsSubCollection = createMockExpandedCollection({
-    id: 200 as CollectionId,
+    id: 200,
     name: "Our Analytics Sub",
     location: "/",
-    path: ["root" as CollectionId],
+    path: ["root"],
   });
 
   const ourAnalyticsNestedCollection = createMockExpandedCollection({
-    id: 201 as CollectionId,
+    id: 201,
     name: "Nested Sub",
     location: "/200/",
-    path: ["root" as CollectionId, 200 as CollectionId],
+    path: ["root", 200],
   });
 
   baseRoot.children = [ourAnalyticsSubCollection];
@@ -153,17 +153,17 @@ function setup() {
   });
 
   const tenantA = createMockExpandedCollection({
-    id: 100 as CollectionId,
+    id: 100,
     name: "Tenant A",
     location: "/",
-    path: ["root" as CollectionId],
+    path: ["root"],
   });
 
   const subCollection = createMockExpandedCollection({
-    id: 300 as CollectionId,
+    id: 300,
     name: "Subcollection",
     location: "/100/",
-    path: ["root" as CollectionId, 100 as CollectionId],
+    path: ["root", 100],
   });
 
   sharedRoot.children = [tenantA];
