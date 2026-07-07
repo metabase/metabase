@@ -804,6 +804,10 @@
                                         driver/*driver*
                                         (t2/select-one :model/Database (mt/id)))
                                        :tables
+                                       ;; metabase-enterprise.transforms-inspector-test
+                                       ;; adds a bunch of new tables randomly
+                                       (into [])
+                                       (remove (partial re-find #"^g_"))
                                        (into #{}))
                       default-table-set (tables-set)
                       do-with-resolved-connection sql-jdbc.execute/do-with-resolved-connection]
