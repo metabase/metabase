@@ -13,7 +13,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.log :as log])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -105,13 +106,34 @@
   [binding-name & body]
   `(do-with-static-viz-context (fn [~binding-name] ~@body)))
 
+(defn- warm-untrusted-source-cache!
+  "Parse the static-viz bundle + interface once into an isolate context with a generous CPU budget
+  ([[js.engine/warmup-max-cpu-time]]), populating the shared engine's parsed-source cache, then dispose the
+  context. The parsed-source cache lives on the shared engine and survives context disposal, so subsequent
+  per-render contexts get a cache-hit parse (~3s) that fits the tight per-render budget instead of paying the
+  >10s cold parse of the ~16MB bundle on every render. Best-effort: warm-up failures are logged and swallowed
+  so rendering still proceeds (parsing cold on the raised per-render budget)."
+  []
+  (try
+    (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context js.engine/warmup-max-cpu-time))]
+      (try (.close context true) (catch Throwable _)))
+    (catch Throwable e
+      (log/warn e "Failed to warm untrusted static-viz source cache; custom-viz renders will parse the bundle cold"))))
+
+(defonce ^:private untrusted-source-cache-warmed
+  ;; Realized lazily on the first custom-viz render (not at ns-load) so tests and servers that never render
+  ;; custom viz don't pay the cost, and the `load-viz-bundle` bundle-built guard still fires under test init.
+  (delay (warm-untrusted-source-cache!)))
+
 (defn do-with-untrusted-static-viz-context
   "Impl for [[with-untrusted-static-viz-context]]. Loads the static-viz bundle into a fresh
   `SandboxPolicy/UNTRUSTED` isolate context ([[js.engine/untrusted-plugin-context]]), runs `f`, then disposes it.
   Unpooled unlike [[do-with-static-viz-context]] — each render gets a clean context (no tainting), and the
-  isolate's VM-enforced CPU/heap limits replace the old manual render timeout; the shared engine's parsed-source
-  cache keeps bundle reloads cheap."
+  isolate's VM-enforced CPU/heap limits replace the old manual render timeout. The one-time cold parse of the
+  ~16MB bundle is warmed off the render path (see [[warm-untrusted-source-cache!]]) so the shared engine's
+  parsed-source cache keeps per-render bundle reloads cheap."
   [f]
+  @untrusted-source-cache-warmed
   (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context))]
     (try
       (f context)

@@ -102,39 +102,53 @@
   shared-untrusted-plugin-engine
   (delay (new-untrusted-plugin-engine)))
 
+(def render-max-cpu-time
+  "Per-render guest CPU budget for untrusted custom-viz plugin execution. Must cover a *warm* static-viz bundle
+  load (parsed-source cache hit, ~3s) plus the chart + plugin render, with headroom for slow / CPU-throttled
+  hardware (coredev/containers run well under one core). The one-time *cold* parse of the ~16MB static-viz
+  bundle (>10s of guest CPU) is charged to [[warmup-max-cpu-time]] instead, at cache warm-up, so it does not
+  have to fit inside this per-render budget."
+  "30s")
+
+(def warmup-max-cpu-time
+  "One-time budget for the cold parse of the ~16MB static-viz bundle into the isolate at cache warm-up
+  (see `metabase.channel.render.js.svg`). Generous because a cold parse is >10s of guest CPU even on fast
+  hardware and considerably more on a throttled container; it runs once per process, off the render path."
+  "120s")
+
 (defn untrusted-plugin-context
   "Create a `SandboxPolicy/UNTRUSTED` GraalVM isolate `Context` for running untrusted custom-viz plugin JS.
   The guest runs in a separate isolate heap with VM-enforced CPU/heap/AST limits; like [[context]] it has no
   host access and no IO, so data must cross the boundary as JSON strings. Requires `js-isolate-community` on
   the classpath. The `sandbox.*` limits below are all mandatory under `UNTRUSTED` — the context fails to build
-  if any is unset."
-  ^Context []
-  (.. (Context/newBuilder (into-array String ["js"]))
-      (engine @shared-untrusted-plugin-engine)
-      (sandbox SandboxPolicy/UNTRUSTED)
-      ;; HostAccess/UNTRUSTED, not /NONE: the UNTRUSTED policy rejects /NONE (it still permits mutable
-      ;; target-type mappings). /UNTRUSTED is the policy's purpose-built strictest host-access mode.
-      (allowHostAccess HostAccess/UNTRUSTED)
-      ;; allowAllAccess (the master switch that would enable all of the below at once) is false by default; UNTRUSTED forbids true.
-      ;; allowHostClassLookup is false by default under SandboxPolicy/UNTRUSTED.
-      ;; allowIO is disabled by default under SandboxPolicy/UNTRUSTED.
-      ;; allowNativeAccess is false by default under SandboxPolicy/UNTRUSTED.
-      ;; allowEnvironmentAccess is NONE (no host env vars) by default under SandboxPolicy/UNTRUSTED.
-      ;; allowExperimentalOptions left at default false
-      ;; Guest CPU budget covering a bundle load + plugin render: cold first render ~6s (4s cold parse + render),
-      ;; warm renders ~2-3s (parsed-source cache). 10s leaves headroom for slower hardware while stopping a
-      ;; misbehaving plugin from monopolizing a render thread. MaxCPUTimeCheckInterval left at its ~10ms default.
-      (option "sandbox.MaxCPUTime" "10s")
-      (option "sandbox.MaxHeapMemory" "512MB")
-      (option "sandbox.MaxASTDepth" "5000")
-      (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
-      (option "sandbox.MaxOutputStreamSize" "16MB")
-      (option "sandbox.MaxErrorStreamSize" "4MB")
-      ;; sandbox.MaxStatements skipped (and thus its MaxStatementsIncludeInternal modifier): fragile to tune and the compute axis is already covered by MaxCPUTime et al.
-      ;; sandbox.MaxStackFrames skipped too: runtime-recursion blowup surfaces as a contained guest error in the isolate.
-      (out discarding-output-stream)
-      (err discarding-output-stream)
-      (build)))
+  if any is unset. `max-cpu-time` is the `sandbox.MaxCPUTime` budget (default [[render-max-cpu-time]]); the
+  warm-up path passes [[warmup-max-cpu-time]] for the one-time cold bundle parse."
+  (^Context [] (untrusted-plugin-context render-max-cpu-time))
+  (^Context [^String max-cpu-time]
+   (.. (Context/newBuilder (into-array String ["js"]))
+       (engine @shared-untrusted-plugin-engine)
+       (sandbox SandboxPolicy/UNTRUSTED)
+       ;; HostAccess/UNTRUSTED, not /NONE: the UNTRUSTED policy rejects /NONE (it still permits mutable
+       ;; target-type mappings). /UNTRUSTED is the policy's purpose-built strictest host-access mode.
+       (allowHostAccess HostAccess/UNTRUSTED)
+       ;; allowAllAccess (the master switch that would enable all of the below at once) is false by default; UNTRUSTED forbids true.
+       ;; allowHostClassLookup is false by default under SandboxPolicy/UNTRUSTED.
+       ;; allowIO is disabled by default under SandboxPolicy/UNTRUSTED.
+       ;; allowNativeAccess is false by default under SandboxPolicy/UNTRUSTED.
+       ;; allowEnvironmentAccess is NONE (no host env vars) by default under SandboxPolicy/UNTRUSTED.
+       ;; allowExperimentalOptions left at default false
+       ;; MaxCPUTimeCheckInterval left at its ~10ms default — negligible overshoot vs a multi-second budget.
+       (option "sandbox.MaxCPUTime" max-cpu-time)
+       (option "sandbox.MaxHeapMemory" "512MB")
+       (option "sandbox.MaxASTDepth" "5000")
+       (option "sandbox.MaxThreads" "1")         ; single-threaded isolate; allowCreateThread also defaults to false
+       (option "sandbox.MaxOutputStreamSize" "16MB")
+       (option "sandbox.MaxErrorStreamSize" "4MB")
+       ;; sandbox.MaxStatements skipped (and thus its MaxStatementsIncludeInternal modifier): fragile to tune and the compute axis is already covered by MaxCPUTime et al.
+       ;; sandbox.MaxStackFrames skipped too: runtime-recursion blowup surfaces as a contained guest error in the isolate.
+       (out discarding-output-stream)
+       (err discarding-output-stream)
+       (build))))
 
 (defn load-js-string
   "Load a string literal source into the js context."
@@ -155,7 +169,7 @@
     ;; (running from source), so the failure only shows up when deployed. A literal Source carries only content
     ;; + name, so it marshals identically whether the resource lives on disk or inside the jar. `source` is kept
     ;; as the source name so stack traces still point at the right file.
-    (.eval context (.buildLiteral (Source/newBuilder "js" (slurp resource :encoding "UTF-8") source)))))
+    (.eval context (.buildLiteral (Source/newBuilder "js" ^String (slurp resource :encoding "UTF-8") ^String source)))))
 
 (defn execute-fn-name
   "Executes `js-fn-name` in js context with args"
