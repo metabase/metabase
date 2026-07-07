@@ -4,8 +4,9 @@
 ## migration) so Liquibase — which processes change-log files alphabetically — creates the
 ## mcp_tool_call_log / mcp_session_log tables before this view references them.
 ##
-## v_mcp_tool_calls LEFT JOINs each tool-call row to its mcp_session_log row (client + PII)
-## and to core_user / group membership, mirroring how v_ai_usage_log joins metabot_conversation.
+## Client identity + PII are denormalized onto each tool-call row, so v_mcp_tool_calls reads them
+## straight off mcp_tool_call_log (no session join) and stays valid once the MCP RC drops sessions.
+## It LEFT JOINs core_user (for the display name) and the tenant table (for tenant_name).
 
 databaseChangeLog:
   - logicalFilePath: migrations/063_update_migrations.yaml

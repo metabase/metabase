@@ -74,16 +74,21 @@
     (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes {:supports-mcp-ui?
                                                                      supports-mcp-ui?})})))
 
-(defn- handle-tools-call [id params session-id token-scopes]
-  (let [tool-name (:name params)
-        arguments (or (:arguments params) {})
+(defn- handle-tools-call [id params session-id token-scopes request-context]
+  (let [tool-name        (:name params)
+        arguments        (or (:arguments params) {})
+        ;; RC clients carry their identity per-call in `_meta`; the recorder falls back to the
+        ;; session's stored identity when it's absent. (`json/decode+kw` preserves the slash in
+        ;; the extension key, so it's the namespaced keyword `:io.modelcontextprotocol/clientInfo`.)
+        client-info      (get-in params [:_meta :io.modelcontextprotocol/clientInfo])
         supports-mcp-ui? (mcp.session/supports-mcp-ui? session-id)]
     (jsonrpc-response id (mcp.tools/call-tool token-scopes
                                               session-id
                                               tool-name
                                               arguments
-                                              {:supports-mcp-ui?
-                                               supports-mcp-ui?}))))
+                                              {:supports-mcp-ui? supports-mcp-ui?
+                                               :client-info      client-info
+                                               :request-context  request-context}))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
@@ -106,12 +111,12 @@
 
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
-  [{:keys [id method params] :as _msg} session-id token-scopes]
+  [{:keys [id method params] :as _msg} session-id token-scopes request-context]
   (try
     (case method
       "notifications/initialized" nil
       "tools/list"                (handle-tools-list id params session-id token-scopes)
-      "tools/call"                (handle-tools-call id params session-id token-scopes)
+      "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
       "ping"                      (handle-ping id params)
@@ -260,8 +265,12 @@
       (let [{:keys [error]} (require-valid-session user-id session-id)]
         (if error
           error
-          (let [messages  (if batch? body [body])
-                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request))) messages)]
+          (let [messages        (if batch? body [body])
+                ;; Captured on-thread from the request so each tool-call row can denormalize IP/UA
+                ;; (gated PII) alongside client identity — the view no longer joins the session.
+                request-context {:user-agent (get-in request [:headers "user-agent"])
+                                 :ip-address (request/ip-address request)}
+                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request) request-context)) messages)]
             (cond
               (empty? responses)
               {:status 202 :headers {} :body ""}

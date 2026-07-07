@@ -18,7 +18,6 @@ SELECT
     END                                                    AS error_type,
     t.error_message                                        AS error_message,
     t.duration_ms,
-    t.mcp_session_id,
     t.user_id,
     COALESCE(u.first_name || ' ' || u.last_name, u.email)  AS user_display_name,
     (SELECT pg.name
@@ -28,29 +27,26 @@ SELECT
        AND pg.id != 1
      ORDER BY pg.name
      LIMIT 1)                                              AS group_name,
-    s.client_name                                          AS client_name,
+    t.client_name                                          AS client_name,
     -- NOTE: keep these CASE branches in sync with `supported-client-keys` /
     -- `detect-client` in src/metabase/mcp/usage.clj (the enum-<->-CASE sync footgun).
-    CASE s.client_name
+    CASE t.client_name
         WHEN 'claude'        THEN 'Claude'
         WHEN 'chatgpt'       THEN 'ChatGPT'
         WHEN 'cursor-vscode' THEN 'Cursor'
         WHEN 'vscode'        THEN 'VS Code'
         WHEN 'zed'           THEN 'Zed'
         WHEN 'other'         THEN 'Other'
-        ELSE s.client_name
+        ELSE t.client_name
     END                                                    AS client_display_name,
-    s.client_version                                       AS client_version,
-    s.tenant_id                                            AS tenant_id,
+    t.client_version                                       AS client_version,
+    t.tenant_id                                            AS tenant_id,
     tn.name                                                AS tenant_name,
-    s.ip_address                                           AS ip_address,
-    s.user_agent                                           AS user_agent,
-    s.created_at                                           AS session_started_at,
-    s.ended_at                                             AS session_ended_at
+    t.ip_address                                           AS ip_address,
+    t.user_agent                                           AS user_agent,
+    t.sanitized_user_agent                                 AS sanitized_user_agent
 FROM mcp_tool_call_log t
-LEFT JOIN mcp_session_log s
-    ON s.id = t.mcp_session_id
 LEFT JOIN core_user u
     ON u.id = t.user_id
 LEFT JOIN tenant tn
-    ON tn.id = s.tenant_id;
+    ON tn.id = t.tenant_id;

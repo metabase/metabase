@@ -18,8 +18,12 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- cleanup! [session-id]
-  (t2/delete! :model/McpToolCallLog :mcp_session_id session-id)
   (t2/delete! :model/McpSessionLog :id session-id))
+
+(defn- cleanup-calls!
+  "Tool-call rows no longer carry a session id, so tests isolate them by a unique `tool-name`."
+  [tool-name]
+  (t2/delete! :model/McpToolCallLog :tool_name tool-name))
 
 ;;; ----------------------------------------- detect-client (pure) ------------------------------------------
 
@@ -154,50 +158,108 @@
 
 (deftest ^:parallel record-mcp-tool-call!-writes-row-test
   (mt/with-premium-features #{:audit-app}
-    (let [sid (str "test-session-" (mt/random-name))]
+    (let [sid  (str "test-session-" (mt/random-name))
+          tool (str "query-" (mt/random-name))]
       (try
         (usage/record-mcp-session! {:session-id sid :user-id (mt/user->id :rasta) :client-info {:name "claude"}})
-        (usage/record-mcp-tool-call! {:tool-name "query" :user-id (mt/user->id :rasta)
+        (usage/record-mcp-tool-call! {:tool-name tool :user-id (mt/user->id :rasta)
                                       :session-id sid :status "success" :duration-ms 12})
-        (let [row (t2/select-one :model/McpToolCallLog :mcp_session_id sid)]
-          (is (= "query" (:tool_name row)))
+        (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+          (is (= tool (:tool_name row)))
           (is (= "success" (:status row)))
           (is (= 12 (:duration_ms row)))
-          (is (= (mt/user->id :rasta) (:user_id row))))
-        (finally (cleanup! sid))))))
+          (is (= (mt/user->id :rasta) (:user_id row)))
+          (testing "client identity is denormalized onto the row (here from the session)"
+            (is (= "claude" (:client_name row)))))
+        (finally (cleanup-calls! tool) (cleanup! sid))))))
 
-(deftest ^:parallel record-mcp-tool-call!-missing-session-fallback-test
-  (testing "a tool call whose session row is absent still logs (no FK constraint)"
+(deftest ^:parallel record-mcp-tool-call!-client-identity-test
+  (testing "client identity is resolved in priority order: _meta clientInfo -> session -> nothing"
     (mt/with-premium-features #{:audit-app}
-      (let [sid (str "absent-session-" (mt/random-name))]
-        (try
-          (usage/record-mcp-tool-call! {:tool-name "query" :user-id (mt/user->id :rasta)
-                                        :session-id sid :status "error" :duration-ms 3})
-          (is (= 0 (t2/count :model/McpSessionLog :id sid)))
-          (let [row (t2/select-one :model/McpToolCallLog :mcp_session_id sid)]
-            (is (some? row))
-            (is (= "error" (:status row))))
-          (finally (cleanup! sid)))))))
+      (testing "1. _meta clientInfo wins, and its raw name is canonicalized"
+        (let [tool (str "meta-" (mt/random-name))]
+          (try
+            (usage/record-mcp-tool-call! {:tool-name tool :user-id (mt/user->id :rasta)
+                                          :status "success" :duration-ms 1
+                                          :client-info {:name "ChatGPT" :version "5.0"}})
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+              (is (= "chatgpt" (:client_name row)))
+              (is (= "5.0" (:client_version row))))
+            (finally (cleanup-calls! tool)))))
+      (testing "2. falls back to the session's stored identity when the call carries no _meta"
+        (let [sid  (str "identity-session-" (mt/random-name))
+              tool (str "session-" (mt/random-name))]
+          (try
+            (usage/record-mcp-session! {:session-id sid :user-id (mt/user->id :rasta)
+                                        :client-info {:name "claude-ai" :version "1.2"}})
+            (usage/record-mcp-tool-call! {:tool-name tool :user-id (mt/user->id :rasta)
+                                          :session-id sid :status "success" :duration-ms 1})
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+              (is (= "claude" (:client_name row)))
+              (is (= "1.2" (:client_version row))))
+            (finally (cleanup-calls! tool) (cleanup! sid)))))
+      (testing "3. neither _meta nor a session row -> nil client identity (row still logs)"
+        (let [tool (str "none-" (mt/random-name))]
+          (try
+            (usage/record-mcp-tool-call! {:tool-name tool :user-id (mt/user->id :rasta)
+                                          :session-id (str "absent-" (mt/random-name))
+                                          :status "success" :duration-ms 1})
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+              (is (some? row))
+              (is (nil? (:client_name row)))
+              (is (nil? (:client_version row))))
+            (finally (cleanup-calls! tool))))))))
+
+(deftest record-mcp-tool-call!-pii-gate-test
+  (testing "ip/user-agent are denormalized onto the row only when retention is on"
+    (mt/with-premium-features #{:audit-app}
+      (testing "retention on: PII columns populated"
+        (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+          (let [tool (str "pii-on-" (mt/random-name))]
+            (try
+              (usage/record-mcp-tool-call! {:tool-name tool :user-id (mt/user->id :rasta)
+                                            :status "success" :duration-ms 1
+                                            :ip-address "203.0.113.7"
+                                            :user-agent "Claude/1.0 (macOS)"})
+              (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+                (is (= "203.0.113.7" (:ip_address row)))
+                (is (some? (:user_agent row)))
+                (is (some? (:sanitized_user_agent row))))
+              (finally (cleanup-calls! tool))))))
+      (testing "retention off: PII columns stay null"
+        (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+          (let [tool (str "pii-off-" (mt/random-name))]
+            (try
+              (usage/record-mcp-tool-call! {:tool-name tool :user-id (mt/user->id :rasta)
+                                            :status "success" :duration-ms 1
+                                            :ip-address "203.0.113.7"
+                                            :user-agent "Claude/1.0 (macOS)"})
+              (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+                (is (nil? (:ip_address row)))
+                (is (nil? (:user_agent row)))
+                (is (nil? (:sanitized_user_agent row))))
+              (finally (cleanup-calls! tool)))))))))
 
 (deftest ^:parallel record-mcp-tool-call!-normalizes-tool-name-test
   (testing "a blank or over-long tool_name is normalized so the row is still recorded, rather than
            dropped to a swallowed NOT NULL / length-constraint violation"
     (mt/with-premium-features #{:audit-app}
       (testing "a missing tool name falls back to a sentinel"
-        (let [sid (str "toolname-nil-" (mt/random-name))]
+        ;; tool_name is the value under test, so isolate the row by a unique duration_ms marker
+        (let [marker (+ 5000000 (rand-int 1000000))]
           (try
             (usage/record-mcp-tool-call! {:tool-name nil :user-id (mt/user->id :rasta)
-                                          :session-id sid :status "error" :duration-ms 1})
-            (is (= "unknown" (:tool_name (t2/select-one :model/McpToolCallLog :mcp_session_id sid))))
-            (finally (cleanup! sid)))))
+                                          :status "error" :duration-ms marker})
+            (is (= "unknown" (:tool_name (t2/select-one :model/McpToolCallLog :duration_ms marker))))
+            (finally (t2/delete! :model/McpToolCallLog :duration_ms marker)))))
       (testing "an over-long tool name is truncated to the column width"
-        (let [sid       (str "toolname-long-" (mt/random-name))
+        (let [marker    (+ 6000000 (rand-int 1000000))
               long-name (apply str (repeat 300 \x))]
           (try
             (usage/record-mcp-tool-call! {:tool-name long-name :user-id (mt/user->id :rasta)
-                                          :session-id sid :status "success" :duration-ms 1})
-            (is (= 255 (count (:tool_name (t2/select-one :model/McpToolCallLog :mcp_session_id sid)))))
-            (finally (cleanup! sid))))))))
+                                          :status "success" :duration-ms marker})
+            (is (= 255 (count (:tool_name (t2/select-one :model/McpToolCallLog :duration_ms marker)))))
+            (finally (t2/delete! :model/McpToolCallLog :duration_ms marker))))))))
 
 ;;; ---------------------------------------- call-tool instrumentation --------------------------------------
 
@@ -205,17 +267,17 @@
   (testing "a handler that throws (rather than returning error content) still records an error row,
            then the exception is rethrown so the client still sees the failure"
     (mt/with-premium-features #{:audit-app}
-      (let [sid (str "throw-session-" (mt/random-name))]
+      (let [sid  (str "throw-session-" (mt/random-name))
+            tool (str "boom-" (mt/random-name))]
         (try
           (mt/with-dynamic-fn-redefs [mcp.tools/dispatch-tool-call
                                       (fn [& _] (throw (ex-info "kaboom" {})))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"kaboom"
-                                  (mcp.tools/call-tool #{} sid "boom_tool" {}))))
-          (let [row (t2/select-one :model/McpToolCallLog :mcp_session_id sid)]
+                                  (mcp.tools/call-tool #{} sid tool {}))))
+          (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
             (is (some? row) "an error row is recorded even though the handler threw")
-            (is (= "boom_tool" (:tool_name row)))
             (is (= "error" (:status row))))
-          (finally (cleanup! sid)))))))
+          (finally (cleanup-calls! tool)))))))
 
 ;;; --------------------------------------------- Feature gating --------------------------------------------
 
@@ -224,16 +286,17 @@
     ;; Without :audit-app the `analytics-pii-retention-enabled` setting reads its default (false)
     ;; and cannot be turned on, so PII is never collected — but non-PII rows still are.
     (mt/with-premium-features #{}
-      (let [sid (str "test-session-" (mt/random-name))]
+      (let [sid  (str "test-session-" (mt/random-name))
+            tool (str "query-" (mt/random-name))]
         (try
           (usage/record-mcp-session!
            {:session-id sid :user-id (mt/user->id :rasta) :client-info {:name "claude" :version "1"}
             :user-agent "UA" :ip-address "1.2.3.4"})
-          (usage/record-mcp-tool-call! {:tool-name "query" :user-id (mt/user->id :rasta)
+          (usage/record-mcp-tool-call! {:tool-name tool :user-id (mt/user->id :rasta)
                                         :session-id sid :status "success" :duration-ms 1})
           (testing "rows are written"
             (is (= 1 (t2/count :model/McpSessionLog :id sid)))
-            (is (= 1 (t2/count :model/McpToolCallLog :mcp_session_id sid))))
+            (is (= 1 (t2/count :model/McpToolCallLog :tool_name tool))))
           (let [row (t2/select-one :model/McpSessionLog :id sid)]
             (testing "non-PII identity is collected"
               (is (= "claude" (:client_name row)))
@@ -241,7 +304,7 @@
             (testing "PII is null because retention can't be enabled without :audit-app"
               (is (nil? (:ip_address row)))
               (is (nil? (:user_agent row)))))
-          (finally (cleanup! sid)))))))
+          (finally (cleanup-calls! tool) (cleanup! sid)))))))
 
 ;;; ------------------------------------------- Best-effort logging -----------------------------------------
 
@@ -290,16 +353,16 @@
                          {:request-options {:headers {"mcp-session-id" sid}}}
                          (jsonrpc "tools/call" {:name "read_resource"
                                                 :arguments {:uris ["metabase://databases"]}} 2))]
-          (testing "successful tools/call writes a success row linked to the session"
+          (testing "successful tools/call writes a success row with identity denormalized on it"
             (is (= 200 (:status call-resp)))
             (is (false? (boolean (get-in call-resp [:body :result :isError]))))
-            (let [row (t2/select-one :model/McpToolCallLog :mcp_session_id sid :tool_name "read_resource")]
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name "read_resource" :user_id crowberto)]
               (is (some? row))
               (is (= "success" (:status row)))
               (is (= crowberto (:user_id row)))
               (is (nat-int? (:duration_ms row)))
-              (testing "mcp_session_id resolves to the session row"
-                (is (= 1 (t2/count :model/McpSessionLog :id (:mcp_session_id row))))))))
+              (testing "client identity is denormalized from the session (the call carried no _meta)"
+                (is (= "claude" (:client_name row)))))))
         (testing "an unknown tool records a status=error row and the error propagates to the client"
           (let [err-resp (client/client-full-response
                           (test.users/username->token :crowberto)
@@ -307,7 +370,7 @@
                           {:request-options {:headers {"mcp-session-id" sid}}}
                           (jsonrpc "tools/call" {:name "no_such_tool" :arguments {}} 3))]
             (is (true? (boolean (get-in err-resp [:body :result :isError]))))
-            (let [row (t2/select-one :model/McpToolCallLog :mcp_session_id sid :tool_name "no_such_tool")]
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name "no_such_tool" :user_id crowberto)]
               (is (some? row))
               (is (= "error" (:status row)))
               ;; unknown tool -> JSON-RPC "method not found"; error_code is non-PII, always recorded
@@ -317,4 +380,6 @@
                                        :delete "mcp"
                                        {:request-options {:headers {"mcp-session-id" sid}}})
           (is (some? (:ended_at (t2/select-one :model/McpSessionLog :id sid)))))
-        (finally (cleanup! sid))))))
+        (finally
+          (t2/delete! :model/McpToolCallLog :user_id crowberto)
+          (cleanup! sid))))))

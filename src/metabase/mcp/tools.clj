@@ -548,7 +548,15 @@
                      :status        status
                      :duration-ms   (quot (- (System/nanoTime) start) 1000000)
                      :error-code    error-code
-                     :error-message error-message}))]
+                     :error-message error-message
+                     ;; Identity + PII are denormalized onto the row (the view no longer joins the
+                     ;; session): client from the call's `_meta`, tenant from the current user,
+                     ;; IP/UA from the request. The recorder falls back to the session row's stored
+                     ;; client when `_meta` carries none, and gates the PII columns.
+                     :client-info   (:client-info options)
+                     :tenant-id     (some-> api/*current-user* deref :tenant_id)
+                     :user-agent    (get-in options [:request-context :user-agent])
+                     :ip-address    (get-in options [:request-context :ip-address])}))]
      (try
        (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)
              error? (boolean (:isError result))]

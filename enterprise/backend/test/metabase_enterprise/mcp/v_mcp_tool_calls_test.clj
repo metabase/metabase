@@ -1,6 +1,7 @@
 (ns metabase-enterprise.mcp.v-mcp-tool-calls-test
-  "Tests for the `v_mcp_tool_calls` SQL view (joins tool calls to their session + user, and derives
-  `client_display_name` / `error_type`)."
+  "Tests for the `v_mcp_tool_calls` SQL view. Identity is denormalized onto each tool-call row
+  (no session join), and the view derives `client_display_name` / `error_type` / `user_display_name`
+  from it."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
@@ -23,17 +24,16 @@
   (some #(when (= (:tool_call_id %) tool-call-id) %) rows))
 
 (deftest joins-and-derived-columns-test
-  (testing "the view joins each tool call to its session + user and derives display columns"
+  (testing "the view derives display columns from the identity denormalized on each tool-call row"
     (mt/with-temp
       [:model/User          {user-id :id} {:first_name "Ada" :last_name "Lovelace"}
-       :model/McpSessionLog  _ {:id "sess-1" :user_id user-id
-                                :client_name "claude" :client_version "1.4.2"
-                                :created_at (t/offset-date-time)}
-       :model/McpToolCallLog {ok-id :id} {:mcp_session_id "sess-1" :user_id user-id
+       :model/McpToolCallLog {ok-id :id} {:user_id user-id
                                           :tool_name "query" :status "success" :duration_ms 42
+                                          :client_name "claude" :client_version "1.4.2"
                                           :created_at (t/offset-date-time)}
-       :model/McpToolCallLog {err-id :id} {:mcp_session_id "sess-1" :user_id user-id
+       :model/McpToolCallLog {err-id :id} {:user_id user-id
                                            :tool_name "query" :status "error" :duration_ms 7
+                                           :client_name "claude" :client_version "1.4.2"
                                            :error_code -32602 :error_message "bad params"
                                            :created_at (t/offset-date-time)}]
       (let [rows (query-view [ok-id err-id])
@@ -52,14 +52,14 @@
                  :error_message "bad params"}
                 err))))))
 
-(deftest missing-session-left-join-test
-  (testing "a tool call whose session row is absent still appears (LEFT JOIN), with null session columns"
+(deftest unknown-client-and-user-test
+  (testing "a tool call with no denormalized client and no user still appears, with null display columns"
     (mt/with-temp
-      [:model/McpToolCallLog {orphan-id :id} {:mcp_session_id "does-not-exist" :user_id nil
+      [:model/McpToolCallLog {orphan-id :id} {:user_id nil
                                               :tool_name "query" :status "success" :duration_ms 5
                                               :created_at (t/offset-date-time)}]
       (let [row (find-row (query-view [orphan-id]) orphan-id)]
-        (is (some? row) "orphan tool call is not dropped by the join")
+        (is (some? row) "the row is not dropped")
         (is (=? {:tool_name "query" :client_name nil :client_display_name nil :user_display_name nil}
                 row))))))
 

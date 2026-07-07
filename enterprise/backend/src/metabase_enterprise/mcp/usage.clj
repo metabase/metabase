@@ -25,6 +25,10 @@
   "Cap on the stored tool_name length, matching the `mcp_tool_call_log.tool_name` column width."
   255)
 
+(def ^:private client-version-max-length
+  "Cap on the stored client_version length, matching the `client_version` column width."
+  255)
+
 (def ^:private unknown-tool-name
   "Recorded when a `tools/call` arrives with no usable tool name (blank/missing — e.g. a malformed
   request that returns \"Unknown tool\"). Keeps the analytics row rather than dropping it to a
@@ -62,7 +66,7 @@
                             :user_id        user-id
                             :tenant_id      tenant-id
                             :client_name    (mcp.usage/detect-client (:name client-info))
-                            :client_version (truncate (:version client-info) 255)}
+                            :client_version (truncate (:version client-info) client-version-max-length)}
                            pii))))
     (catch Throwable e
       (log/warn e "Failed to record MCP session"))))
@@ -78,24 +82,54 @@
     (catch Throwable e
       (log/warn e "Failed to record MCP session end"))))
 
+(defn- resolve-client-identity
+  "Client identity for a tool-call row, denormalized so `v_mcp_tool_calls` needs no session join.
+  Resolved in priority order (matches the upcoming MCP RC, which drops sessions):
+    1. `client-info` from the call's `_meta[\"io.modelcontextprotocol/clientInfo\"]` (RC clients);
+    2. the identity stored on the session row at `initialize` (old-protocol clients);
+    3. nothing.
+  Returns `{:client_name <canonical> :client_version <version>}` (either key may be nil)."
+  [client-info session-id]
+  (cond
+    client-info
+    {:client_name    (mcp.usage/detect-client (:name client-info))
+     :client_version (truncate (:version client-info) client-version-max-length)}
+
+    session-id
+    (t2/select-one [:model/McpSessionLog :client_name :client_version] :id session-id)
+
+    :else nil))
+
 (defenterprise record-mcp-tool-call!
-  "EE: write one `mcp_tool_call_log` row per `tools/call`. `error_code` (JSON-RPC code) is
-  non-PII and always recorded on failure; `error_message` is PII — stored only when
-  `analytics-pii-retention-enabled` is on (truncated), else null, like `query_execution.parameters`.
-  `tool-name` is truncated and falls back to a sentinel when blank/missing, so a malformed call
-  still records a row instead of hitting a swallowed NOT NULL/length violation."
+  "EE: write one `mcp_tool_call_log` row per `tools/call`, with client identity + PII denormalized
+  onto the row (resolved at call time via [[resolve-client-identity]]) so `v_mcp_tool_calls` needs
+  no join to `mcp_session_log`. `error_code` (JSON-RPC code) is non-PII and always recorded on
+  failure; `error_message` and the `ip_address`/`user_agent`/`sanitized_user_agent` columns are
+  PII — stored only when `analytics-pii-retention-enabled` is on. `tool-name` is truncated and
+  falls back to a sentinel when blank/missing, so a malformed call still records a row."
   :feature :none
-  [{:keys [tool-name user-id session-id status duration-ms error-code error-message]}]
+  [{:keys [tool-name user-id session-id status duration-ms error-code error-message
+           client-info tenant-id user-agent ip-address]}]
   (try
-    (t2/insert! :model/McpToolCallLog
-                {:tool_name      (or (not-empty (truncate tool-name tool-name-max-length))
-                                     unknown-tool-name)
-                 :user_id        user-id
-                 :mcp_session_id session-id
-                 :status         status
-                 :duration_ms    duration-ms
-                 :error_code     error-code
-                 :error_message  (when (analytics.settings/analytics-pii-retention-enabled)
-                                   (truncate error-message error-message-max-length))})
+    (let [{:keys [client_name client_version]} (resolve-client-identity client-info session-id)
+          ;; `pii-fields-from` returns the gated PII columns only when retention is on (nil
+          ;; otherwise). Allowlist the three the tool-call row has, so a new field on the shared
+          ;; helper can't silently start persisting here without a deliberate change.
+          pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
+                                                       :ip-address ip-address})
+                           [:user_agent :ip_address :sanitized_user_agent])]
+      (t2/insert! :model/McpToolCallLog
+                  (merge {:tool_name       (or (not-empty (truncate tool-name tool-name-max-length))
+                                               unknown-tool-name)
+                          :user_id         user-id
+                          :client_name     client_name
+                          :client_version  client_version
+                          :tenant_id       tenant-id
+                          :status          status
+                          :duration_ms     duration-ms
+                          :error_code      error-code
+                          :error_message   (when (analytics.settings/analytics-pii-retention-enabled)
+                                             (truncate error-message error-message-max-length))}
+                         pii)))
     (catch Throwable e
       (log/warn e "Failed to record MCP tool call"))))

@@ -27,7 +27,9 @@
       (log/info "Skipping MCP usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (let [cutoff (t/minus (t/offset-date-time) (t/days (long retention-days)))]
         (log/infof "Trimming MCP usage log rows older than %d days." (long retention-days))
-        ;; tool-call rows first, then the session rows they reference.
+        ;; Each table is pruned independently by its own created_at. Tool-call rows are
+        ;; self-contained (identity is denormalized onto them, no session link), so pruning a
+        ;; session row can never orphan a tool call.
         (let [calls    (t2/delete! :model/McpToolCallLog {:where [:< :created_at cutoff]})
               sessions (t2/delete! :model/McpSessionLog {:where [:< :created_at cutoff]})]
           (log/infof "MCP usage log cleanup complete. Deleted %d tool-call and %d session rows."
