@@ -142,8 +142,10 @@
             ;; format the Exception and return it
             (let [formatted-exception (format-exception* query e @extra-info)
                   query-canceled?     (some (comp :query/query-canceled? ex-data)
-                                            (u/full-exception-chain e))]
-              (when-not query-canceled?
+                                            (u/full-exception-chain e))
+                  pool-saturated?     (qp.error-type/connection-pool-saturated?
+                                       (:error_type formatted-exception))]
+              (when-not (or query-canceled? pool-saturated?)
                 (log/errorf "Error processing query: %s\n%s"
                             (or (:error formatted-exception) "Error running query")
                             (u/pprint-to-str formatted-exception)))
