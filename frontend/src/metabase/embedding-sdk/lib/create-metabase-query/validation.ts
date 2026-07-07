@@ -1,8 +1,8 @@
 import {
-  isMetricReference,
   type QueryInput,
   type QuestionQueryInput,
   type TableQueryInput,
+  isMetricReference,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { MetricSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
