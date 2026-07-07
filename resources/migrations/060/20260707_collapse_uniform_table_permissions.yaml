@@ -32,7 +32,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v60.2026-07-07T00:00:00
-      author: alexander-polyankin
+      author: ranquild
       comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
       changes:
         - sql:
@@ -59,7 +59,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v60.2026-07-07T00:00:01
-      author: alexander-polyankin
+      author: ranquild
       comment: Delete table-level data_permissions rows made redundant by an equal-value db-level row (#76077)
       changes:
         - sql:
