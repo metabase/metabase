@@ -1,10 +1,7 @@
 import { mockSettings } from "__support__/settings";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type {
-  DashboardSubscription,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import type { DashboardSubscription } from "metabase-types/api";
 
 import { EmailAttachmentPicker } from "./EmailAttachmentPicker";
 
@@ -294,7 +291,7 @@ function createPulse(): DashboardSubscription {
         id: 4,
         collection_id: null,
         description: null,
-        display: "map" as VisualizationDisplay,
+        display: "map",
         name: "card1",
         include_csv: false,
         include_xls: false,
@@ -306,7 +303,7 @@ function createPulse(): DashboardSubscription {
         id: 6,
         collection_id: null,
         description: null,
-        display: "scalar" as VisualizationDisplay,
+        display: "scalar",
         name: "card2",
         include_csv: false,
         include_xls: false,
@@ -362,7 +359,7 @@ function createPulseWithDuplicateCardId(): DashboardSubscription {
         id: 10,
         collection_id: null,
         description: null,
-        display: "table" as VisualizationDisplay,
+        display: "table",
         name: "Original Card",
         include_csv: false,
         include_xls: false,
@@ -374,7 +371,7 @@ function createPulseWithDuplicateCardId(): DashboardSubscription {
         id: 10, // Same card ID as above
         collection_id: null,
         description: null,
-        display: "line" as VisualizationDisplay,
+        display: "line",
         name: "Visualizer Card",
         include_csv: false,
         include_xls: false,

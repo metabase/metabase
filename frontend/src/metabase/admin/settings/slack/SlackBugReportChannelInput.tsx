@@ -36,7 +36,7 @@ export const SlackBugReportChannelInput = () => {
       await updateSlackSettings({ "slack-bug-report-channel": value }).unwrap();
       sendToast({
         message: t`Slack bug report channel updated`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
     } catch (err) {
       setError(getSlackError(err));

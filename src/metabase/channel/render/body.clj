@@ -665,11 +665,12 @@
          [:tr
           (map-indexed
            (fn [c cell]
-             (let [header? (zero? r)
-                   label?  (and (pos? r) (zero? c))
-                   bg      (cell-bg cell c)]
+             (let [header?    (zero? r)
+                   first-col? (zero? c)
+                   label?     (and (pos? r) first-col?)
+                   bg         (cell-bg cell c)]
                [(if (or header? label?) :th :td)
-                {:style (style/style (style/pivot-cell-style header? label? bg))}
+                {:style (style/style (style/pivot-cell-style header? label? first-col? bg))}
                 (h (pivot-cell->str cell))]))
            row)])
        rows)]]))
@@ -680,7 +681,9 @@
   assembly ([[pivot.postprocess/build-pivot-output]] + [[pivot.core]]) and the row/col/measure indices the
   pivot QP already computed in `:pivot-export-options`."
   [card dashcard {:keys [cols pivot-export-options] :as data}]
-  (let [settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+  (let [;; db->norm gives the same settings shape the CSV/xlsx pivot exports pass build-pivot-output: per-column
+        ;; overrides (e.g. a renamed column title) under the normalized ::mb.viz/column-settings key, pivot keys raw.
+        settings (mb.viz/db->norm (merge (:visualization_settings card) (:visualization_settings dashcard)))
         split    (setting-value settings :pivot_table.column_split)
         pg-idx   (pivot.postprocess/pivot-grouping-index (mapv :name cols))]
     (when (and split pivot-export-options pg-idx)

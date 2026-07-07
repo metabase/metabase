@@ -21,7 +21,7 @@ import {
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 
 import {
   EmptyStateActionContainer,
@@ -99,7 +99,7 @@ function ModelActionDetails({ model }: Props) {
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
-      const actionUrl = Urls.action(model.card() as Card, action.id);
+      const actionUrl = Urls.action(model.card(), action.id);
 
       return (
         <li key={action.id} aria-label={action.name}>
@@ -117,7 +117,7 @@ function ModelActionDetails({ model }: Props) {
     [model, databases, onArchiveAction],
   );
 
-  const newActionUrl = Urls.newAction(model.card() as Card);
+  const newActionUrl = Urls.newAction(model.card());
 
   return (
     <Root data-testid="model-action-details">

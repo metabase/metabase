@@ -188,13 +188,13 @@ export const DeleteDatabaseModal = ({
           </DeleteDatabaseModalSection>
           <Flex gap="sm" justify="flex-end" align="center">
             {errorMessage && (
-              <Box c="error" px="md">
+              <Box c="feedback-negative" px="md">
                 {errorMessage}
               </Box>
             )}
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
             <Button
-              color="error"
+              color="feedback-negative"
               variant="filled"
               type="submit"
               disabled={!canDelete}

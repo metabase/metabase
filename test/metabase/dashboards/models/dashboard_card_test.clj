@@ -325,6 +325,21 @@
         (is (= dashcard
                transformed))))))
 
+(deftest ^:parallel visualizer-settings-no-extra-keys-test
+  (testing "visualization_settings.visualization.settings persists exactly as written (VIZ-905)"
+    (mt/with-temp [:model/Dashboard     dash {}
+                   :model/Card          card {}
+                   :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                  :card_id      (:id card)
+                                                  :visualization_settings
+                                                  {:visualization {:display              "line"
+                                                                   :columnValuesMapping  {}
+                                                                   :settings             {"graph.dimensions" ["A"]
+                                                                                          "graph.metrics"    ["B"]}}}}]
+      (is (= {:graph.dimensions ["A"] :graph.metrics ["B"]}
+             (-> (t2/select-one :model/DashboardCard :id (:id dashcard))
+                 :visualization_settings :visualization :settings))))))
+
 (deftest ^:parallel after-select-tolerates-dangling-visualizer-ref-test
   (testing "A DashboardCard whose visualizer settings reference a deleted Card is returned unmodified on read,
            rather than throwing and making the dashcard unloadable."

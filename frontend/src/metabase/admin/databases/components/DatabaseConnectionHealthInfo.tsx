@@ -26,7 +26,7 @@ export const DatabaseConnectionHealthInfo = ({
     return match(healthQuery)
       .with(
         { currentData: { status: "ok" } },
-        () => ({ message: t`Connected`, color: "success" }) as const,
+        () => ({ message: t`Connected`, color: "feedback-positive" }) as const,
       )
       .with(
         { isUninitialized: true },
@@ -40,7 +40,11 @@ export const DatabaseConnectionHealthInfo = ({
       )
       .with(
         { currentData: { status: "error" } },
-        (q) => ({ message: q.currentData.message, color: "danger" }) as const,
+        (q) =>
+          ({
+            message: q.currentData.message,
+            color: "feedback-negative",
+          }) as const,
       )
       .with(
         { isError: true },
