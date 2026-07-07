@@ -364,15 +364,13 @@
                               :data-model     {:schemas {"s1" {t3a :all t3b :none}
                                                          "s2" {t3d :all t3e :none}}}}}}
               ;; Run the update and count queries.
-              ;; Expected: 1 select tables + 1 select current perms + 1 bulk delete + 1 bulk insert = 4,
-              ;; plus a constant number of aggregate checks from `batch-collapse-permissions!`
-              ;; in the write funnel = 6.
-              ;; If this grows by one or two more, that's okay, but more should be very suspicious - it's
-              ;; very likely an N+1 query in one of these dimensions!
+              ;; Expected: 1 select tables + 1 select current perms + 1 bulk delete + 1 bulk insert = 4
+              ;; If this grows to 5 or 6, that's okay, but more should be very suspicious - it's very likely an N+1
+              ;; query in one of these dimensions!
               query-count (t2/with-call-count [call-count]
                             (data-perms.graph/update-data-perms-graph!* graph)
                             (call-count))]
-          (is (<= query-count 6)
+          (is (<= query-count 4)
               (format "Expected constant query count but got %d — possible N+1 regression" query-count)))
         ;; Verify the permissions actually took effect by spot-checking a few values
         (let [result (data-perms.graph/data-permissions-graph :group-ids [g1 g2 g3])]

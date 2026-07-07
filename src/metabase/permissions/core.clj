@@ -38,6 +38,8 @@
 (p/import-vars
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
+  batch-delete-permissions!
+  batch-insert-permissions!
   disable-perms-cache
   download-perms-level
   full-db-permission-for-user
@@ -51,7 +53,6 @@
   permissions-for-user
   prime-db-cache
   sandboxes-for-user
-  save-permission-changes!
   schema-permission-for-user
   set-database-permission!
   set-table-permission!
