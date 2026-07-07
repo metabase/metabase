@@ -1,9 +1,8 @@
 (ns metabase.transforms.models.coordinated-run
-  "Shared lifecycle operations for the two coordinated-run models — `transform_job_run` (scheduled job
-  runs) and `transform_dag_run` (manual DAG-reprocess runs). Both track a coordinated multi-transform
-  run with the same status/heartbeat lifecycle and differ only in their extra columns (parent job vs
-  seed transform) and their member-run FK. These helpers are parameterized by the Toucan `model` so
-  each model namespace can expose thin, self-documenting wrappers over them."
+  "Shared lifecycle operations for the two coordinated-run models, `transform_job_run` and
+  `transform_dag_run`. Both track a multi-transform run with the same status/heartbeat lifecycle and
+  differ only in their extra columns and member-run FK; helpers here are parameterized by the Toucan
+  `model`."
   (:require
    [metabase.run-tracking.core :as rt]
    [toucan2.core :as t2]))

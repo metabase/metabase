@@ -25,10 +25,10 @@
            (when end   [:<  field-name end])])))
 
 (defn run-order-by
-  "Standard `:order-by` clause for a paged listing of coordinated runs (job runs, DAG runs).
-  Sorts by `sort-column` (`:start_time` or `:end_time`; anything else — including nil — falls back to
-  ordering by start_time then end_time) in `sort-direction` (`:asc`/`:desc`, defaulting to `:desc`),
-  with in-progress rows (null `end_time`) always ordered last."
+  "Standard `:order-by` clause for a paged run listing. Sorts by `sort-column` (`:start_time` or
+  `:end_time`; anything else — including nil — falls back to ordering by start_time then end_time)
+  in `sort-direction` (`:asc`/`:desc`, defaulting to `:desc`), with in-progress rows (null
+  `end_time`) always ordered last."
   [sort-column sort-direction]
   (let [sort-direction (or (keyword sort-direction) :desc)
         nulls-sort     (if (= sort-direction :asc) :nulls-last :nulls-first)]

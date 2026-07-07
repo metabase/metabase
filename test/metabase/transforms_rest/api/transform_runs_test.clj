@@ -1,5 +1,5 @@
 (ns metabase.transforms-rest.api.transform-runs-test
-  "Tests for GET /api/transform/runs — the unified collection-level runs listing (job runs, manual
+  "Tests for GET /api/transform/runs — the unified listing of root runs (job runs, manual
   DAG-reprocess runs, and standalone transform runs)."
   (:require
    [clojure.test :refer :all]
