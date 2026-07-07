@@ -1,9 +1,12 @@
 import { isEmail } from "metabase/utils/email";
 import type { BaseUser, Group, Tenant } from "metabase-types/api";
 
+// Requires at least an `email` or `common_name` (mirroring `isUser` below), so
+// name-only objects like a tenant's `{ name }` can't be passed as first_name alone.
 export type PartialUser = Partial<
   Pick<BaseUser, "first_name" | "last_name" | "email" | "common_name">
->;
+> &
+  (Pick<BaseUser, "email"> | Pick<BaseUser, "common_name">);
 export type PartialGroup = Pick<Group, "name">;
 
 export type PartialTenant = Pick<Tenant, "name">;
