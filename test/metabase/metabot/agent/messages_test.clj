@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.agent.messages :as messages]))
+   [metabase.metabot.agent.messages :as messages]
+   [metabase.test :as mt]))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; input-message->parts
@@ -168,13 +170,56 @@
       (is (=? {:role "system" :content #"(?s).*Metabot.*"}
               (messages/build-system-message {} profile {})))))
   (testing "includes viewing context when provided"
-    (let [context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales Dashboard"}]}
-          profile {:prompt-template "internal.selmer"
-                   :model           "claude-sonnet-4-5-20250929"}]
-      (is (=? {:content #(not (str/blank? %))}
-              (messages/build-system-message context profile {})))))
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales Dashboard"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [context {:user_is_viewing [{:type "dashboard" :id dash-id :name "Sales Dashboard"}]}
+              profile {:prompt-template "internal.selmer"
+                       :model           "claude-sonnet-4-5-20250929"}]
+          (is (=? {:content #(str/includes? % "Sales Dashboard")}
+                  (messages/build-system-message context profile {})))))))
   (testing "handles empty context gracefully"
     (let [profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:content #(not (str/blank? %))}
               (messages/build-system-message {} profile {}))))))
+
+(deftest ^:parallel build-system-message-viewing-dashboard-test
+  (testing "system message includes enriched dashboard details when user is viewing a dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name        "Zorblatt Industries Quarterly Sales"
+                                                   :description "Zorblatt-brand widget revenue by quarter"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [profile {:prompt-template "internal.selmer"}
+              context {:user_is_viewing [{:type "dashboard" :id dash-id :name "Zorblatt Industries Quarterly Sales"}]}
+              {:keys [content]} (messages/build-system-message context profile {})]
+          (is (str/includes? content "Zorblatt Industries Quarterly Sales"))
+          (testing "description comes from the DB, so it proves enrichment rather than the payload fallback"
+            (is (str/includes? content "Zorblatt-brand widget revenue by quarter"))))))))
+
+(deftest ^:parallel build-system-message-viewing-native-query-test
+  (testing "system message includes SQL and schema when user is viewing a native query"
+    (let [mp (mt/metadata-provider)
+          profile {:prompt-template "internal.selmer"}
+          context {:user_is_viewing [{:type "adhoc",
+                                      :query
+                                      (lib/native-query mp "SELECT * FROM orders WHERE status = 'paid'")
+                                      :sql_engine "postgres"
+                                      :used_tables
+                                      [{:description nil,
+                                        :database_id 2,
+                                        :name "orders",
+                                        :fields
+                                        [{:field_id "t23-0" :name "id" :display_name "ID" :base_type "type/Integer" :database_type "int4" :semantic_type "type/PK"}
+                                         {:field_id "t24-0" :name "status" :display_name "Status" :base_type "type/Integer" :database_type "int4"}
+                                         {:field_id "t25-0" :name "total" :display_name "Total" :base_type "type/Integer" :database_type "int4"}]
+                                        :type :table
+                                        :database_schema "public",
+                                        :display_name "Orders"}],
+                                      :id "6ef8bcf9-383d-449f-827f-501c4d9b3564"}
+                                     {:type "code_editor",
+                                      :buffers [{:id "qb", :source {:language "sql", :database_id 2}, :cursor {:line 0, :column 0}}],
+                                      :id "f4f07783-9276-403f-af5f-b9e7bd96fc88"}]}
+          {:keys [content]} (messages/build-system-message context profile {})]
+      (is (str/includes? content "SQL editor"))
+      (is (str/includes? content "SELECT * FROM orders WHERE status = 'paid'"))
+      (is (str/includes? content "public.orders"))
+      (is (str/includes? content "id, status, total")))))

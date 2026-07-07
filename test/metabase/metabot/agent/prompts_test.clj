@@ -146,3 +146,55 @@
       (is (some? content))
       (is (str/includes? content "Here is some information about the user:"))
       (is (str/includes? content "<user><name>Jane Doe</name></user>")))))
+
+(deftest ^:parallel build-system-message-content-test-7
+  (testing "omits the user info header when current_user_info is absent"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:current_time "2024-01-15 14:30:00"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (some? content))
+      (is (not (str/includes? content "Here is some information about the user:"))))))
+
+(deftest ^:parallel build-system-message-content-test-8
+  (testing "includes current time in internal.selmer"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:current_time "2024-01-15 14:30:00"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (str/includes? content "Current date: 2024-01-15 14:30:00")))))
+
+(deftest ^:parallel build-system-message-content-test-9
+  (testing "includes first day of week when provided"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:current_time "2024-01-15 14:30:00"
+                   :first_day_of_week "Monday"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (str/includes? content "the first day of the week (index 1) is: Monday")))))
+
+(deftest ^:parallel build-system-message-content-test-10
+  (testing "first day of week defaults to Sunday"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:current_time "2024-01-15 14:30:00"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (str/includes? content "the first day of the week (index 1) is: Sunday")))))
+
+(deftest ^:parallel build-system-message-content-test-11
+  (testing "includes viewing context when provided"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:current_time "2024-01-15 14:30:00"
+                   :viewing_context "The user is viewing the Sales Overview dashboard"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (str/includes? content "The user is viewing the Sales Overview dashboard")))))
+
+(deftest ^:parallel build-system-message-content-test-12
+  (testing "includes recent views when provided"
+    (let [profile {:prompt-template "internal.selmer"}
+          context {:current_time "2024-01-15 14:30:00"
+                   :recent_views "<recently_viewed>my question</recently_viewed>"}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (str/includes? content "<recently_viewed>my question</recently_viewed>")))))
