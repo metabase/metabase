@@ -7,9 +7,11 @@
   resulting svg."
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.js.svg :as js.svg])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
+   (org.graalvm.polyglot Context Engine HostAccess)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -75,3 +77,40 @@
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"
     (#'js.svg/parse-svg-string
      "<svg xmlns=\"http://www.w3.org/2000/svg\">\u001F</svg>")))
+
+(defn- context-on-engine ^Context [^Engine engine]
+  (.. (Context/newBuilder (into-array String ["js"]))
+      (engine engine)
+      (allowHostAccess HostAccess/NONE)
+      (build)))
+
+(defn- load-bundle-ms
+  "Load the static-viz bundle into a fresh context on `engine`, returning the wall-clock load time in ms."
+  ^double [^Engine engine]
+  (let [^Context ctx (context-on-engine engine)
+        start        (System/nanoTime)]
+    (try
+      (#'js.svg/load-viz-bundle ctx)
+      (/ (- (System/nanoTime) start) 1e6)
+      (finally (.close ctx true)))))
+
+(deftest ^:mb/slow shared-engine-parsed-source-cache-speeds-bundle-reloads-test
+  (testing "reloading the ~16MB static-viz bundle on the same engine reuses its parsed-source cache"
+    ;; Same Engine-level cache that keeps the untrusted-plugin isolate's per-render bundle reloads cheap
+    ;; (see do-with-untrusted-static-viz-context). Tested on the plain engine because an UNTRUSTED engine
+    ;; would need the full sandbox context builder; the parsed-source cache is identical for both.
+    ;;
+    ;; Pre-warm the host JVM's JS parser with a throwaway engine so the measured gap reflects the engine's
+    ;; parsed-source cache, not one-time JIT warmup.
+    (let [^Engine warmup (#'js.engine/new-js-engine)]
+      (load-bundle-ms warmup)
+      (load-bundle-ms warmup)
+      (.close warmup))
+    (let [^Engine engine (#'js.engine/new-js-engine)
+          cold           (load-bundle-ms engine)          ; first parse of the bundle on this engine: cold
+          warm           (min (load-bundle-ms engine)     ; reloads on the same engine hit the cache
+                              (load-bundle-ms engine))]
+      (.close engine)
+      (testing (format "(cold=%.0fms warm=%.0fms)" cold warm)
+        ;; Observed ~2x cheaper; assert a generous 25% floor so the timing test stays robust to noise.
+        (is (< warm (* 0.75 cold)))))))
