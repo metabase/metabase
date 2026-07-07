@@ -8,6 +8,11 @@ env:
   TERM: xterm
   TZ: US/Pacific # to make Node match the instance tz
   MB_EDITION: "ee"
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  REPO_ID: ${{ github.event.repository.id }}
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
 jobs:
   sdk-component-tests:
@@ -19,6 +24,7 @@ jobs:
         react-version: [18, 19]
       fail-fast: false
     env:
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-react-${{ matrix.react-version }}
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -68,6 +74,8 @@ jobs:
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+
+      - uses: ./.github/actions/resolve-job-id
 
       - name: Make app db snapshot
         env:
@@ -168,6 +176,7 @@ jobs:
     env:
       MB_RUN_MODE: "e2e"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-backward-compatibility
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -236,6 +245,8 @@ jobs:
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
+
+      - uses: ./.github/actions/resolve-job-id
 
       - name: Make app db snapshot
         env:
