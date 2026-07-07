@@ -233,7 +233,7 @@ export const metabot = createSlice({
       });
       // transform type caused flaky "possible infinite type definition" errorj
       // ts-expect-error fails when it doesn't fail, so casting to any
-      state.reactions.suggestedTransforms.push(transform);
+      state.reactions.suggestedTransforms.push(transform as any);
     },
     activateSuggestedTransform: (
       state,
@@ -319,7 +319,7 @@ export const metabot = createSlice({
       convo.conversationId = conversationId ?? uuid();
       convo.isProcessing = false;
 
-      state.reactions.suggestedTransforms = suggestedTransforms ?? [];
+      state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;
     },
   },
   extraReducers: (builder) => {
