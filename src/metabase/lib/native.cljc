@@ -288,8 +288,6 @@
   (let [updated-tags (->> (lib.normalize/normalize ::lib.schema.template-tag/template-tags updated-tags)
                           ;; NOCOMMIT -- do name normalization automatically
                           (mapv (fn [tag]
-                                  (assert (string? (:name tag))
-                                          (str "TAG SHOULD HAVE A NAME! GOT: " (pr-str tag)))
                                   (update tag :name (some-fn lib.params.parse/match-and-normalize-tag-name identity)))))]
     (letfn [(update-template-tags [existing-tags]
               ;; prefer order from `updated-tags`, but only update tags that are present in `existing-tags`; keep any

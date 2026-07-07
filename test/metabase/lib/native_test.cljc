@@ -142,7 +142,8 @@
 
 (deftest ^:parallel variable-tag-with-dots-and-underscores-test
   (testing "dots and underscores are legal in variable names (metabase#15029)"
-    (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
+    (are [exp input] (= exp
+                        (into #{} (map :name) (lib.native/extract-template-tags meta/metadata-provider input)))
       #{"number.of.stars"} "select * from products where rating = {{number.of.stars}}"
       #{"a_b" "c.d"}       "select {{a_b}}, {{c.d}}")))
 
@@ -198,7 +199,8 @@
         (let [mp (lib.tu/mock-metadata-provider
                   meta/metadata-provider
                   {:native-query-snippets snippets})]
-          (is (contains? (lib.native/extract-template-tags mp query) expected)))))))
+          (is (contains? (into #{} (map :name) (lib.native/extract-template-tags mp query))
+                         expected)))))))
 
 (deftest ^:parallel snippet-inner-tag-dedup-test
   (doseq [[description snippets query expected]
@@ -231,7 +233,7 @@
                   meta/metadata-provider
                   {:native-query-snippets snippets})
             tags (lib.native/extract-template-tags mp query)]
-        (is (= 1 (count (filter #(= expected %) (keys tags)))))))))
+        (is (= 1 (count (filter #(= expected %) (map :name tags)))))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query

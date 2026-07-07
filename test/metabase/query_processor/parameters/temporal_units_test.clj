@@ -8,7 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [medley.core :as m]))
 
 (defn- ->local-date-time [t]
   (as-> t $
@@ -138,7 +139,7 @@
       (let [mp   (mt/metadata-provider)
             make (fn [default]
                    (let [q0       (lib/native-query mp "SELECT ID [[, {{unit}} AS unit]] FROM PEOPLE ORDER BY ID LIMIT 2")
-                         existing (get (lib/template-tags q0) "unit")]
+                         existing (m/find-first #(= (:name %) "unit") (lib/template-tags q0))]
                      (lib/with-template-tags
                        q0 {"unit" (merge existing
                                          {:display-name "Unit"

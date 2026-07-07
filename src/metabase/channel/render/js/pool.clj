@@ -28,6 +28,16 @@
 ;; re-evaluate its defonce (or restart the REPL) to pick the change up.
 
 ;; goes through webpack; changes require a `bun run build-static-viz`
+
+;; TODO (Cam 2026-07-07) -- using [[defonce]] here makes this REPL-unfriendly; if you forget to build static viz then
+;; evaluating something like
+;;
+;;    @bundle-source
+;;
+;; will capture a file not found error for the rest of your REPL session, even if you go build it and try again; you
+;; have to manually redef the values below to try again. We should change these to some other sort of REPL-friendly
+;; caching mechanism.
+
 (defonce ^:private bundle-source
   (delay (js.engine/build-source "frontend_client/app/dist/lib-static-viz.bundle.js")))
 

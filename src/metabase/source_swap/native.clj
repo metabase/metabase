@@ -404,7 +404,7 @@
 (mu/defn- replace-template-tags :- ::lib.schema.template-tag/template-tags
   "Replaces references to `old-card-id` with `new-card-id` in a template-tags map.
    Preserves slug format: if old key was `#42-my-query`, new key will be `#99-new-query-name`."
-  [tags          :- ::lib.schema.template-tag/template-tags
+  [tags          :- [:maybe ::lib.schema.template-tag/template-tags]
    old-card-id   :- ::lib.schema.id/card
    new-card-id   :- ::lib.schema.id/card
    new-card-name :- :string]
