@@ -1,3 +1,5 @@
+import type { SchemaJavaScriptType } from "../data-schema";
+
 import type {
   CountAggregationSchema,
   FieldAggregationOperator,
@@ -5,7 +7,6 @@ import type {
   NumericAggregationDimension,
   OrderableAggregationDimension,
 } from "./types";
-import type { SchemaJavaScriptType } from "../data-schema";
 
 export const count = (): CountAggregationSchema => ({
   type: "operator",
