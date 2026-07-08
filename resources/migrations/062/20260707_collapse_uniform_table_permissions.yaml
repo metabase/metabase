@@ -27,13 +27,13 @@
 ## Combos with partial table coverage, mixed values, or a uniform non-blocked value are intentionally
 ## left untouched.
 ##
-## Lives in 060 (the oldest backported release) so the same changeSet is shared across all versions >= 60.
+## Lives in 062 so the changeSet runs on upgrades to v62 and later (the fix is not backported earlier).
 
 databaseChangeLog:
-  - logicalFilePath: migrations/060_update_migrations.yaml
+  - logicalFilePath: migrations/062_update_migrations.yaml
 
   - changeSet:
-      id: v60.2026-07-07T00:00:00
+      id: v62.2026-07-07T00:00:00
       author: ranquild
       comment: Insert db-level data_permissions rows for uniform full-coverage blocked table-level view-data permissions (#76077)
       changes:
@@ -60,7 +60,7 @@ databaseChangeLog:
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
   - changeSet:
-      id: v60.2026-07-07T00:00:01
+      id: v62.2026-07-07T00:00:01
       author: ranquild
       comment: Drop table-level data_permissions rows made redundant by an equal-value db-level row, keeping only the surviving rows (#76077)
       changes:
