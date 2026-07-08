@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+
+FROM clojure:temurin-21-tools-deps-bookworm AS builder
+
+# Install Node and Bun alongside the JVM/Clojure toolchain the base image already provides.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl unzip \
+  && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+  && apt-get install -y --no-install-recommends nodejs \
+  && curl -fsSL https://bun.sh/install | bash \
+  && rm -rf /var/lib/apt/lists/*
+ENV PATH="/root/.bun/bin:${PATH}"
+
+WORKDIR /app
+COPY . .
+
+# Cypress isn't needed to build the bundle; skip its (large) binary download.
+ENV CYPRESS_INSTALL_BINARY=0
+RUN bun install --frozen-lockfile \
+  && bun run build-release:cljs \
+  && bun run build-release:static-viz-server
+
+FROM node:22-slim AS runtime
+
+WORKDIR /app
+COPY --from=builder \
+  /app/target/static-viz-server/static-viz-server.bundle.js \
+  ./static-viz-server.bundle.js
+
+ENV PORT=3000 \
+    HOST=0.0.0.0
+EXPOSE 3000
+USER node
+
+# Reuse the service's own health endpoint for container health checks.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/v1/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "static-viz-server.bundle.js"]

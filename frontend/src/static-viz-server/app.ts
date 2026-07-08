@@ -4,7 +4,6 @@ import { getCellBackgroundColors, renderChart } from "metabase/static-viz";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? "0.0.0.0";
-// Cap request bodies so a malformed or oversized payload can't exhaust memory.
 const MAX_BODY_BYTES = Number(process.env.MAX_BODY_BYTES ?? 64 * 1024 * 1024);
 
 type Handler = (body: string) => string;

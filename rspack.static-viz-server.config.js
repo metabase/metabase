@@ -16,6 +16,11 @@ module.exports = (env) => {
     entry: {
       "static-viz-server": "../static-viz-server/app.ts",
     },
+    output: {
+      ...base.output,
+      // Emit outside resources/ so the server bundle is never packaged into the main Metabase app.
+      path: __dirname + "/target/static-viz-server",
+    },
     plugins: base.plugins.filter(
       (plugin) =>
         !(plugin instanceof StatsWriterPlugin) &&
