@@ -30,9 +30,11 @@
           sql        (assertions/build-combined-assertion-sql output-sql runnable)]
       (testing "starts with WITH test_output AS (...)"
         (is (str/starts-with? sql "WITH test_output AS (")))
-      (testing "contains both assertion names as literals"
-        (is (str/includes? sql "'no_nulls'"))
-        (is (str/includes? sql "'no_negatives'")))
+      (testing "labels rows by ordinal index, not by name"
+        (is (str/includes? sql "0 AS __assertion"))
+        (is (str/includes? sql "1 AS __assertion"))
+        (is (not (str/includes? sql "'no_nulls'")))
+        (is (not (str/includes? sql "'no_negatives'"))))
       (testing "contains __assertion and __failing column aliases"
         (is (str/includes? sql "__assertion"))
         (is (str/includes? sql "__failing")))
@@ -48,7 +50,8 @@
                "SELECT * FROM scratch_table"
                [{:name "only_one" :severity :error :rewritten-sql "SELECT * FROM test_output WHERE x < 0"}])]
       (is (not (str/includes? sql "UNION ALL")))
-      (is (str/includes? sql "'only_one'")))))
+      (is (str/includes? sql "0 AS __assertion"))
+      (is (not (str/includes? sql "'only_one'"))))))
 
 (deftest build-combined-assertion-sql-strips-trailing-semicolon-test
   (testing "trailing semicolons in user SQL are stripped before embedding"
@@ -59,6 +62,33 @@
       (is (not (str/includes? sql "1;)")))
       ;; ...and the assertion SQL itself must survive the strip.
       (is (str/includes? sql "x = 1) __a")))))
+
+(deftest build-combined-assertion-sql-no-name-injection-test
+  (testing "user-supplied assertion names never appear in generated SQL (no injection surface)"
+    (let [malicious "evil\\"                              ; trailing backslash
+          quote-name "o'brien; DROP TABLE x--"
+          runnable  [{:name malicious   :severity :error :rewritten-sql "SELECT 1 WHERE 1=0"}
+                     {:name quote-name  :severity :error :rewritten-sql "SELECT 2 WHERE 1=0"}]
+          sql       (assertions/build-combined-assertion-sql "SELECT 1" runnable)]
+      (testing "neither name is embedded in the SQL"
+        (is (not (str/includes? sql "evil")))
+        (is (not (str/includes? sql "brien")))
+        (is (not (str/includes? sql "DROP TABLE"))))
+      (testing "rows are labelled by ordinal index instead"
+        (is (str/includes? sql "0 AS __assertion"))
+        (is (str/includes? sql "1 AS __assertion")))
+      (testing "no stray single-quote/backslash literal survives from the name"
+        ;; strip known-safe tokens, then assert no lone quote/backslash remains
+        (let [scrubbed (-> sql (str/replace "__assertion" "") (str/replace "test_output" ""))]
+          (is (nil? (re-find #"['\\]" scrubbed))))))))
+
+(deftest build-combined-assertion-sql-duplicate-names-distinguished-test
+  (testing "assertions sharing a name are distinguished by index, not collapsed"
+    (let [runnable [{:name "dup" :severity :error :rewritten-sql "SELECT 1 WHERE 1=0"}
+                    {:name "dup" :severity :error :rewritten-sql "SELECT 2 WHERE 1=0"}]
+          sql      (assertions/build-combined-assertion-sql "SELECT 1" runnable)]
+      (is (str/includes? sql "0 AS __assertion"))
+      (is (str/includes? sql "1 AS __assertion")))))
 
 ;;; ===========================================================================
 ;;; prepare fault isolation (unit-level, no DB)

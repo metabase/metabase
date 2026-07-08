@@ -12,7 +12,6 @@
    [metabase-enterprise.transforms-verification.errors :as errors]
    [metabase-enterprise.transforms-verification.execute :as execute]
    [metabase-enterprise.transforms-verification.resolve :as resolve]
-   [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
    [metabase.util.log :as log]))
 
@@ -45,20 +44,22 @@
   "Build the batched combined assertion statement (pure, no I/O).
 
   Binds `output-sql` as `WITH test_output AS (<output-sql>)` and emits one
-  `SELECT '<name>' AS __assertion, COUNT(*) AS __failing FROM (<sql>) __a`
-  per runnable assertion, joined with `UNION ALL`.
+  `SELECT <idx> AS __assertion, COUNT(*) AS __failing FROM (<sql>) __a`
+  per runnable assertion, joined with `UNION ALL`. The label is the
+  assertion's ordinal index in `runnable`, not its name; names never reach
+  SQL. Callers correlate result rows back to assertions by that index.
 
   `output-sql` — SQL whose result is bound as `test_output`.
   `runnable`   — seq of PreparedAssertions (no `:error` key).
 
   Returns a SQL string."
   [output-sql runnable]
-  (let [union-parts (mapv (fn [{:keys [name rewritten-sql]}]
-                            (let [clean (strip-trailing-semicolon rewritten-sql)]
-                              (str "SELECT " (sql.u/quote-literal name)
-                                   " AS __assertion, COUNT(*) AS __failing"
-                                   " FROM (" clean ") __a")))
-                          runnable)
+  (let [union-parts (map-indexed (fn [idx {:keys [rewritten-sql]}]
+                                   (let [clean (strip-trailing-semicolon rewritten-sql)]
+                                     (str "SELECT " idx
+                                          " AS __assertion, COUNT(*) AS __failing"
+                                          " FROM (" clean ") __a")))
+                                 runnable)
         union-sql   (str/join "\nUNION ALL\n" union-parts)]
     (str "WITH test_output AS (" output-sql ")\n" union-sql)))
 
@@ -99,20 +100,21 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- execute-counts!
-  "Execute the combined assertion SQL and return a map of assertion-name →
+  "Execute the combined assertion SQL and return a map of assertion-index →
   failing-row-count. Makes one QP round-trip.
 
-  Returns `{<name-str> <count-long> ...}`."
+  Returns `{<idx-long> <count-long> ...}`."
   [db-id sql]
   (log/debug "Executing combined assertion statement" {:db-id db-id})
   (let [result (execute/run-native! (execute/native-query db-id sql)
                                     ::errors/assertion-execution-failed
                                     "Combined assertion query failed"
                                     {})]
-    ;; Result rows: [assertion-name failing-count]
+    ;; Result rows: [assertion-index failing-count]; some drivers return the
+    ;; label as BigDecimal/Integer rather than Long.
     (into {}
-          (map (fn [[assertion-name failing-count]]
-                 [assertion-name (long (or failing-count 0))]))
+          (map (fn [[idx failing-count]]
+                 [(long idx) (long (or failing-count 0))]))
           (get-in result [:data :rows]))))
 
 (defn- build-sample-sql
@@ -166,18 +168,20 @@
 
 (defn- failing-assertions
   "Return the subset of `runnable` PreparedAssertions with a positive count in
-  `counts-map`."
+  `counts-map` (keyed by `:idx`)."
   [runnable counts-map]
-  (filter #(pos? (get counts-map (:name %) 0)) runnable))
+  (filter #(pos? (get counts-map (:idx %) 0)) runnable))
 
 (defn- raw-results-from-counts
-  "Combine counts + samples into a seq of raw result maps for `interpret`."
+  "Combine counts + samples into a seq of raw result maps for `interpret`.
+  Counts and samples are keyed by `:idx`; each assertion's `:name` is carried
+  through from `runnable` into its result."
   [runnable counts-map samples-map]
-  (mapv (fn [{:keys [name]}]
-          (let [cnt (get counts-map name 0)]
+  (mapv (fn [{:keys [idx name]}]
+          (let [cnt (get counts-map idx 0)]
             {:name          name
              :failing-count cnt
-             :sample        (when (pos? cnt) (get samples-map name))}))
+             :sample        (when (pos? cnt) (get samples-map idx))}))
         runnable))
 
 ;;; ---------------------------------------------------------------------------
@@ -198,7 +202,10 @@
   result maps `{:name :failing-count :sample}`. Falls back to
   [[run-per-assertion!]] when the combined query fails."
   [db-id output-sql prepared]
-  (let [runnable (remove :error prepared)]
+  ;; `:idx`, not `:name`, correlates results back to assertions; names never
+  ;; enter SQL, and duplicate names stay distinct.
+  (let [runnable (vec (map-indexed (fn [i m] (assoc m :idx i))
+                                   (remove :error prepared)))]
     (if (empty? runnable)
       []
       (let [sql (build-combined-assertion-sql output-sql runnable)]
@@ -206,7 +213,7 @@
           (let [counts-map  (execute-counts! db-id sql)
                 failing     (failing-assertions runnable counts-map)
                 samples-map (into {}
-                                  (map (fn [pa] [(:name pa) (fetch-sample! db-id output-sql pa)]))
+                                  (map (fn [pa] [(:idx pa) (fetch-sample! db-id output-sql pa)]))
                                   failing)]
             (raw-results-from-counts runnable counts-map samples-map))
           (catch Throwable e
