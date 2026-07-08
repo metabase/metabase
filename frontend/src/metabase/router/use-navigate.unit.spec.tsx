@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
+import { Route } from "./react-router";
 import { useNavigate } from "./use-navigate";
 
 function NavigateProbe() {

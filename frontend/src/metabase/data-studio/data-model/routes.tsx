@@ -1,5 +1,4 @@
 import type { ComponentType } from "react";
-import { IndexRoute, Redirect, Route } from "react-router";
 
 import { DataModelMeasureDependenciesPage } from "metabase/data-studio/measures/pages/DataModelMeasureDependenciesPage";
 import { DataModelMeasureDetailPage } from "metabase/data-studio/measures/pages/DataModelMeasureDetailPage";
@@ -10,6 +9,7 @@ import { DataModelSegmentDependenciesPage } from "metabase/data-studio/segments/
 import { DataModelSegmentDetailPage } from "metabase/data-studio/segments/pages/DataModelSegmentDetailPage";
 import { DataModelSegmentRevisionHistoryPage } from "metabase/data-studio/segments/pages/DataModelSegmentRevisionHistoryPage";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { IndexRoute, Redirect, Route } from "metabase/router";
 
 import { DataModel } from "./pages/DataModel";
 

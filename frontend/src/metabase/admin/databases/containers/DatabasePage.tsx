@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import {
   Box,
   Button,

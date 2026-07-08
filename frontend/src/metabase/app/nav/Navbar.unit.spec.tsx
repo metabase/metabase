@@ -1,6 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCollectionItemsEndpoint,
@@ -29,6 +28,7 @@ import {
   createMockEmbedState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { User } from "metabase-types/api";
 import {
