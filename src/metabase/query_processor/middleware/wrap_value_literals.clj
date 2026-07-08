@@ -248,14 +248,19 @@
   picks up the field's effective type and the report timezone — same as a raw string would. The
   comparison field's own bucket still wins, but when the field is *unbucketed* the literal's own unit
   is used as the fallback instead of `:default`, so e.g. `[:absolute-datetime {} \"2024\" :year]`
-  against an unbucketed field keeps its `:year` bucket instead of collapsing to a single instant.
+  against an unbucketed field keeps its `:year` bucket instead of collapsing to a single instant. A
+  field carrying an explicit `:default` unit counts as unbucketed here — `add-default-temporal-unit`
+  stamps `:default` onto every temporal field ref on `:temporal/requires-default-unit` drivers, and an
+  LLM can author it directly — so the literal's unit still wins in that case.
   Anything else — an already-parsed `:absolute-datetime`, `:now`, `:relative-datetime`, another
   field — is returned untouched, so a *mixed* `:between` only wraps the bound(s) that need it."
   [query path field x]
   (if-let [[s unit] (string-valued-absolute-datetime x)]
     (let [col (*type-info* query path field)]
+      ;; `contains?`, not `(#{nil :default} (:unit col))`: a set used as a fn returns the *found value*,
+      ;; so it would report `nil` (falsy) for an unbucketed `nil`-unit field and drop the fallback.
       (add-type-info s (cond-> col
-                         (and unit (not (:unit col))) (assoc :unit unit))))
+                         (and unit (contains? #{nil :default} (:unit col))) (assoc :unit unit))))
     (if (raw-value? x)
       (add-type-info x (*type-info* query path field))
       x)))

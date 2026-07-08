@@ -282,6 +282,24 @@
                 :stages
                 first)))))
 
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-default-unit-test
+  (testing (str "a field carrying an explicit `:default` temporal unit counts as *unbucketed*, so the "
+                "literal's own unit still wins instead of collapsing to a single `:default`-bucketed "
+                "instant. `add-default-temporal-unit` stamps `:default` onto every temporal field ref on "
+                "`:temporal/requires-default-unit` drivers (Druid family), so the unit-preservation "
+                "feature would otherwise be fully defeated there.")
+    (doseq [[unit s expected] [[:year  "2024"    "2024-01-01"]
+                               [:month "2024-03" "2024-03-01"]]]
+      (is (=? {:filters [[:= {}
+                          [:field {:temporal-unit :default} (meta/id :checkins :date)]
+                          [:absolute-datetime {} (t/local-date expected) unit]]]}
+              (-> (year-literal-filter-query s unit)
+                  (assoc-in [:stages 0 :filters 0 2 1 :temporal-unit] :default)
+                  wrap-value-literals
+                  :stages
+                  first))
+          (str (name unit) " literal keeps its unit against a `:default`-bucketed field")))))
+
 (deftest ^:parallel wrap-prewrapped-absolute-datetime-mixed-between-test
   (testing "a mixed `:between` wraps only the string-valued bound and passes the other through untouched"
     (testing "string bound + already-parsed `:absolute-datetime` bound"
