@@ -31,7 +31,7 @@ module.exports = (env) => {
 
     entry: {
       "lib-static-viz": {
-        import: "./static-viz/index.tsx",
+        import: "../static-viz-graalvm/index.ts",
         library: {
           name: "MetabaseStaticViz",
           type: "umd",

@@ -17,8 +17,8 @@
                                               {:body "RENDERED"})]
         (let [renderer (remote/renderer "http://static-viz:3000")]
           (is (= "RENDERED"
-                 (js.protocol/visualization renderer {:kind "funnel" :data "D" :settings "S" :tokenFeatures "T"})))
-          (is (= ["http://static-viz:3000/api/v1/visualization"
+                 (js.protocol/chart renderer {:kind "funnel" :data "D" :settings "S" :tokenFeatures "T"})))
+          (is (= ["http://static-viz:3000/api/v1/chart"
                   {:kind "funnel" :data "D" :settings "S" :tokenFeatures "T"}]
                  (last @calls)))
           (js.protocol/cell-background-colors renderer {:rows "R" :cols "C" :settings "St" :cells "Ce"})

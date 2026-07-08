@@ -1,6 +1,3 @@
-import "./environment";
-import "fast-text-encoding";
-
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
@@ -17,7 +14,6 @@ import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticCh
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
-import type { ColorPalette } from "metabase/ui/colors/types";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
@@ -35,37 +31,31 @@ import type {
   DashCardVisualizationSettings,
   Dataset,
   DatasetData,
-  DayOfWeekId,
-  FormattingSettings,
   GeoJSONData,
   RawSeries,
-  RowValue,
   SettingKey,
-  TokenFeatures,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
 
+import type {
+  CellBackgroundColorsInput,
+  RenderChartDashcardSettings,
+  RenderChartInput,
+  RenderChartOptions,
+  RenderedChart,
+} from "./types";
+
+export type {
+  CellBackgroundColorsInput,
+  RenderChartInput,
+  RenderChartOptions,
+  RenderedChart,
+} from "./types";
+
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
 });
-
-export type RenderChartOptions = {
-  tokenFeatures: TokenFeatures;
-  applicationColors: ColorPalette;
-  customFormatting: FormattingSettings;
-  startOfWeek: DayOfWeekId | null | undefined;
-  // Explicit pixel dimensions for the chart. Use fitWithinBounds to have height include
-  // chart legends
-  width?: number;
-  height?: number;
-  // When true, width/height are treated as the exact output box
-  fitWithinBounds?: boolean;
-};
-
-type RenderChartDashcardSettings = DashCardVisualizationSettings & {
-  visualization?: VisualizerVizDefinition;
-};
 
 /**
  * @deprecated use RenderChart instead
@@ -219,77 +209,66 @@ function RenderChart(
   );
 }
 
-// Host-facing API — the surface the JVM backends call, via GraalVM (MetabaseStaticViz.<fn>) or the
-// remote HTTP server (metabase-static-viz/app.ts). Every argument is a JSON string and every return
-// value is a string.
+// Public rendering API. These are plain typed functions; the JSON boundary lives in the entry
+// adapters that call them (static-viz-graalvm for GraalVM, static-viz-server for HTTP).
 
-// Renders any visualization. Most display types go through the isomorphic RenderChart; legacy funnel
-// and gauge are folded in here via LegacyRenderChart (the isomorphic renderer can't render gauge, and
-// its `funnel` is a different chart). The request's `kind` selects the path. Always returns a JSON
-// `{type, content}` string.
-export function visualization(requestJSON: string): string {
-  const request = JSON.parse(requestJSON);
+// Renders any chart. Most display types go through the isomorphic RenderChart; legacy funnel and gauge
+// are folded in here via LegacyRenderChart (the isomorphic renderer can't render gauge, and its
+// `funnel` is a different chart). The input's `kind` selects the path.
+export function renderChart(input: RenderChartInput): RenderedChart {
   let content: string;
-  switch (request.kind) {
+  switch (input.kind) {
     case "funnel":
       content = LegacyRenderChart("funnel", {
-        data: request.data,
-        settings: request.settings,
-        tokenFeatures: request.tokenFeatures,
+        data: input.data,
+        settings: input.settings,
+        tokenFeatures: input.tokenFeatures,
       });
       break;
     case "gauge":
       content = LegacyRenderChart("gauge", {
-        card: request.card,
-        data: request.data,
-        tokenFeatures: request.tokenFeatures,
+        card: input.card,
+        data: input.data,
+        tokenFeatures: input.tokenFeatures,
       });
       break;
     default:
       content = RenderChart(
-        request.rawSeries,
-        request.dashcardSettings,
-        request.options,
+        input.rawSeries,
+        input.dashcardSettings,
+        input.options,
       );
   }
-  const type = content.startsWith("<svg") ? "svg" : "html";
-  return JSON.stringify({ type, content });
+  return { type: content.startsWith("<svg") ? "svg" : "html", content };
 }
 
 function buildCellBackgroundGetter(
-  rowsJSON: string,
-  colsJSON: string,
-  settingsJSON: string,
+  ...args: Parameters<typeof makeCellBackgroundGetter>
 ) {
-  const rows = JSON.parse(rowsJSON);
-  const cols = JSON.parse(colsJSON);
-  const settings = settingsJSON ? JSON.parse(settingsJSON) : {};
   try {
-    return makeCellBackgroundGetter(
-      rows,
-      cols,
-      settings?.["table.column_formatting"] ?? [],
-      settings?.["table.pivot"],
-    );
+    return makeCellBackgroundGetter(...args);
   } catch (e) {
     console.error("Error building cell background getter", e);
     return () => null;
   }
 }
 
-// Colors many cells in one call; `cellsJSON` is an array of [value, rowIndex, colName] triples, and the
-// result is a JSON array of color strings (or null), positionally.
-export function getCellBackgroundColors(
-  rowsJSON: string,
-  colsJSON: string,
-  settingsJSON: string,
-  cellsJSON: string,
-): string {
-  const getter = buildCellBackgroundGetter(rowsJSON, colsJSON, settingsJSON);
-  const cells = JSON.parse(cellsJSON);
-  return JSON.stringify(
-    cells.map((cell: [RowValue, number, string]) =>
-      getter(cell[0], cell[1], cell[2]),
-    ),
+// Computes the background color of each requested table cell, positionally (a CSS color string, or
+// null when no rule matches).
+export function getCellBackgroundColors({
+  rows,
+  cols,
+  settings,
+  cells,
+}: CellBackgroundColorsInput): (string | null)[] {
+  const getter = buildCellBackgroundGetter(
+    rows,
+    cols,
+    settings?.["table.column_formatting"] ?? [],
+    Boolean(settings?.["table.pivot"]),
+  );
+  return cells.map(
+    ([value, rowIndex, columnName]) =>
+      getter(value, rowIndex, columnName) ?? null,
   );
 }

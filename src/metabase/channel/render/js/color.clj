@@ -3,6 +3,7 @@
   [[metabase.channel.render.js.protocol]]. All the colors for a table are computed in a single batched JS call."
   (:require
    [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.render.js.renderer :as renderer]
    [metabase.formatter.core :as formatter]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -64,7 +65,7 @@
                       (get viz-settings "table.column_formatting"))))
     (vec (repeat (count cells) nil))
     (-> (js.protocol/cell-background-colors
-         (js.protocol/renderer)
+         (renderer/renderer)
          {:rows     rows
           :cols     cols
           :settings viz-settings

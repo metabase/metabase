@@ -217,8 +217,7 @@
   in-process on the pooled GraalVM contexts."
   []
   (reify js.protocol/StaticVizRenderer
-    (visualization [_ viz]
-      (call-js "visualization" [(json/encode viz)]))
-    (cell-background-colors [_ {:keys [rows cols settings cells]}]
-      (call-js "getCellBackgroundColors"
-               [(json/encode rows) (json/encode cols) (json/encode settings) (json/encode cells)]))))
+    (chart [_ input]
+      (call-js "renderChart" [(json/encode input)]))
+    (cell-background-colors [_ input]
+      (call-js "getCellBackgroundColors" [(json/encode input)]))))

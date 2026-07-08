@@ -244,6 +244,22 @@ const elements = [
     pattern: "frontend/src/metabase/store.js",
     mode: "full",
   }),
+
+  // Standalone top-level build entries wrapping the static-viz bundle: `static-viz-graalvm` (the
+  // GraalVM UMD bundle) and `static-viz-server` (the Node HTTP service). Each is built and run on its
+  // own, so its outgoing imports aren't boundary-enforced.
+  createElement({
+    type: "shared",
+    name: "static-viz-graalvm",
+    pattern: "frontend/src/static-viz-graalvm/**",
+    enforceOutgoing: false,
+  }),
+  createElement({
+    type: "shared",
+    name: "static-viz-server",
+    pattern: "frontend/src/static-viz-server/**",
+    enforceOutgoing: false,
+  }),
 ];
 
 const rules = [

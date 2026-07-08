@@ -1,7 +1,7 @@
 ;; The remote (HTTP) static-viz backend.
 (ns metabase.channel.render.js.remote
   "The `:remote` [[metabase.channel.render.js.protocol/StaticVizRenderer]]: renders by POSTing to an
-  external static-viz service (see frontend/src/metabase-static-viz/app.ts) rather than running JS in
+  external static-viz service (see frontend/src/static-viz-server/app.ts) rather than running JS in
   process. Each method JSON-encodes its argument map as the request body and returns the service's
   response body (the raw JSON string the corresponding bundle function produced)."
   (:require
@@ -28,7 +28,7 @@
   "The `:remote` renderer, POSTing to the static-viz service at `url`."
   [url]
   (reify js.protocol/StaticVizRenderer
-    (visualization [_ viz]
-      (post url "/api/v1/visualization" (json/encode viz)))
-    (cell-background-colors [_ opts]
-      (post url "/api/v1/cell-background-colors" (json/encode opts)))))
+    (chart [_ input]
+      (post url "/api/v1/chart" (json/encode input)))
+    (cell-background-colors [_ input]
+      (post url "/api/v1/cell-background-colors" (json/encode input)))))

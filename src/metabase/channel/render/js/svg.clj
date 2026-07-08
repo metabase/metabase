@@ -8,6 +8,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-buffer :as image-buffer]
    [metabase.channel.render.js.protocol :as js.protocol]
+   [metabase.channel.render.js.renderer :as renderer]
    [metabase.channel.render.style :as style]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
@@ -167,11 +168,11 @@
   frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options. Returns a byte array
   of a png file."
   [data settings]
-  (-> (js.protocol/visualization (js.protocol/renderer)
-                                 {:kind          "funnel"
-                                  :data          data
-                                  :settings      settings
-                                  :tokenFeatures (premium-features/token-features)})
+  (-> (js.protocol/chart (renderer/renderer)
+                         {:kind          "funnel"
+                          :data          data
+                          :settings      settings
+                          :tokenFeatures (premium-features/token-features)})
       json/decode+kw
       :content
       svg-string->bytes))
@@ -179,8 +180,8 @@
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
-  (-> (js.protocol/visualization
-       (js.protocol/renderer)
+  (-> (js.protocol/chart
+       (renderer/renderer)
        {:rawSeries        cards-with-data
         :dashcardSettings dashcard-viz-settings
         :options          (cond-> {:applicationColors (appearance/application-colors)
@@ -197,11 +198,11 @@
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
-  (-> (js.protocol/visualization (js.protocol/renderer)
-                                 {:kind          "gauge"
-                                  :card          card
-                                  :data          data
-                                  :tokenFeatures (premium-features/token-features)})
+  (-> (js.protocol/chart (renderer/renderer)
+                         {:kind          "gauge"
+                          :card          card
+                          :data          data
+                          :tokenFeatures (premium-features/token-features)})
       json/decode+kw
       :content
       svg-string->bytes))
