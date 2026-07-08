@@ -3,11 +3,29 @@
   (`metabase.channel.render.js.svg`) and table-cell color selection (`metabase.channel.render.js.color`). Every
   pooled context has the static-viz bundle, the static-viz interface, and the color-selector sources loaded.
 
-  All contexts share the process-lifetime engine and evaluate the same `Source` instances (one `defonce` per
-  resource), so the engine's code cache — which is keyed on the `Source` instance — holds ONE parsed copy of the
-  static-viz bundle (~130 MB). Building a fresh `Source` per context (the previous behavior) made the engine retain a
-  separate parsed copy for every pool generation, and made each generation reparse the 27 MB bundle: a
-  multi-hundred-MB allocation spike every context recycle.
+  ### Memory model (GraalJS 25, interpreter mode — measured, see GHY-4077)
+
+  - The engine plus the parsed sources cost ~220 MB retained, steady, paid once per process. All contexts share the
+    process-lifetime engine and evaluate the same `Source` instances (one `defonce` per resource), so the engine's
+    code cache — which is keyed on the `Source` instance — holds ONE parsed copy of the static-viz bundle. Building a
+    fresh `Source` per context (the previous behavior) made the engine retain a separate parsed copy for every pool
+    generation, and made each generation reparse the 27 MB bundle: a multi-hundred-MB allocation spike every context
+    recycle.
+  - Evaluating the sources in a fresh context (realm setup against the warm code cache) churns through ~500 MB of
+    allocation in ~1 s. That is collectable garbage, not footprint: each extra live context retains only ~16 MB. The
+    very first context in the JVM additionally pays the cold parse — ~1.2 GB / ~5 s.
+  - A render itself allocates on the order of ~1 MB per row of chart data, also transient.
+
+  ### Why context creation is serialized
+
+  Creation being ~500 MB of churn a pop, letting the pool grow 1→3 concurrently during a render burst stacks
+  ~1–1.5 GB of transient allocation on top of the in-flight renders — on a 2 GB heap (the Cloud default) that
+  outruns the collector and drives GC thrash / OOM. So creation takes a private monitor
+  (see [[context-creation-lock]]). A time-based throttle (\"no two creations within X seconds\") is the wrong shape:
+  a burst of concurrent renders genuinely needs multiple contexts, so we let the pool grow to meet demand — it just
+  warms one context per ~1 s instead of all at once, bounding the worst case to a single creation's churn. Waiting
+  acquires simply queue on the pool. Pooled contexts expire after ~10 minutes with jitter so members created
+  together don't all regenerate in the same window.
 
   Consumers borrow a context within [[with-static-viz-context]] and return plain data — never the context or a
   context-bound `Value`. Never acquire a context while already holding one: with a small pool, nested acquires can
