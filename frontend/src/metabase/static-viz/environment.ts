@@ -1,12 +1,6 @@
 import ResizeObserver from "resize-observer-polyfill";
 
 const defineGlobal = (name: PropertyKey, value: unknown): void => {
-  // Only polyfill globals the host engine is missing. GraalVM's sandboxed context (the in-process
-  // static-viz engine) provides almost none of these, so it still gets the full set of mocks and its
-  // behavior is unchanged. Node already provides real implementations for many of them (Event,
-  // MessageEvent, URL, TextEncoder, timers, crypto, ...); overwriting those breaks Node internals
-  // (e.g. undici's `class MessageEvent extends Event`), so when the bundle runs in a Node process we
-  // leave the real ones in place.
   if (Reflect.has(globalThis, name)) {
     return;
   }
