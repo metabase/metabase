@@ -24,6 +24,12 @@ Before writing any action-invoking code, look at the schema and enumerate what's
 ## The hook
 
 ```ts
+import { useAction } from "@metabase/embedding-sdk-react";
+import {
+  type ActionKindFromDataAppSchema,
+  type ActionParametersFromDataAppSchema,
+} from "@metabase/embedding-sdk-react/data-app";
+
 const { execute, isExecuting, result, error, reset } = useAction<
   ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>,
   ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>
@@ -31,8 +37,8 @@ const { execute, isExecuting, result, error, reset } = useAction<
 ```
 
 - **First argument** is the action's numeric **id** — read it off the schema entry as `schema.models.<model>.actions.<action>.id`. The hook also accepts an action's `entity_id` string, but in a Data App you always have the numeric id on hand from the schema, so pass that.
-- **`TParameters` generic** — the type of the parameters object you'll pass to `execute`. In a Data App, derive it from the schema with `ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` (imported from `@metabase/embedding-sdk-react`); the helper expands the schema's `parameters[]` into a keyed object, marks `required: true` entries as required keys, and types each value from its `jsType`. Skip the generic and `execute` accepts any `Record<string, unknown>`.
-- **`TKind` generic** — the action kind literal that drives the discriminated `result` shape. In a Data App, derive it from the same schema entry with `ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>`; the helper maps `implicitKind` (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`) and `type === "query"` → `"query"`. Skip the generic and `result` defaults to the `AnyActionResult` union — TS-narrowable via `"<key>" in result`, but you lose the per-kind precision.
+- **`TParameters` generic** — the type of the parameters object you'll pass to `execute`. In a Data App, derive it from the schema with `ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` imported from `@metabase/embedding-sdk-react/data-app`; the helper expands the schema's `parameters[]` into a keyed object, marks `required: true` entries as required keys, and types each value from its `jsType`. Skip the generic and `execute` accepts any `Record<string, unknown>`.
+- **`TKind` generic** — the action kind literal that drives the discriminated `result` shape. In a Data App, derive it from the same schema entry with `ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` imported from `@metabase/embedding-sdk-react/data-app`; the helper maps `implicitKind` (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`) and `type === "query"` → `"sql"`. Skip the generic and `result` defaults to the `AnyActionResult` union — TS-narrowable via `"<key>" in result`, but you lose the per-kind precision.
 - **`execute(parameters)`** — triggers the action. Parameters object is keyed by parameter `slug`; parameters declared `required: true` are required keys, everything else optional. Returns the response body on success AND throws on failure (the error is also written to `error` state for render-time consumers). Resolves to `null` (without making a request) when `actionId` is `null` or the SDK is not yet initialized — guard the call site if those cases are reachable.
 - **No `enabled` / `options` argument.** The hook only ever runs when `execute(...)` is called, so a gate option would be redundant. Skip the action by branching in the event handler:
   ```ts
@@ -51,7 +57,13 @@ const { execute, isExecuting, result, error, reset } = useAction<
 ## Canonical usage — a form that creates a row
 
 ```tsx
-import { schema } from "../metabase.data";
+import { useAction } from "@metabase/embedding-sdk-react";
+import {
+  type ActionKindFromDataAppSchema,
+  type ActionParametersFromDataAppSchema,
+} from "@metabase/embedding-sdk-react/data-app";
+
+import schema from "../metabase.data";
 
 function AddPersonForm({ onCreated }: { onCreated: () => void }) {
   const { useState } = React;
@@ -87,16 +99,42 @@ function AddPersonForm({ onCreated }: { onCreated: () => void }) {
 }
 ```
 
-## Showing the error message
+## Rendering the parent model
 
-When `execute(...)` fails, surface the backend message in the UI. The hook's `error` is typed `ActionExecuteError | null` — shape `{ status?, data: { message?, errors? }, isCancelled }` where the human-readable diagnostic lives at `error.data.message` (SQL constraint violations, validation failures, permission denials all land there). `error.data.errors` is a per-field map (`{ <slug>: <message> }`) when the backend reports parameter-level failures, or `{}` for whole-request failures. Read both directly, no cast:
+Actions belong to models, but model ids are not `MetabaseCard` objects. Do not render a model with `card={{ type: "model", id: model.id }}` or any other handcrafted `card` shape; `MetabaseCard` accepts generated query objects, not `{ type, id }`. When the UI needs to show the parent model itself, render it as an existing card with `questionId={schema.models.<model>.id}`:
 
 ```tsx
+<InteractiveQuestion questionId={schema.models.people.id} title={false}>
+  <InteractiveQuestion.QuestionVisualization height="300px" />
+</InteractiveQuestion>
+```
+
+## Showing the error message
+
+When `execute(...)` fails, surface both error layers. The hook's `error` is typed `ActionExecuteError | null` — shape `{ status?, data: { message?, errors? }, isCancelled }`. `error.data.message` is the whole-request failure. `error.data.errors` is a per-field validation map keyed by parameter slug (`{ <slug>: <message> }`), or `{}` for whole-request failures. Read both directly, no cast:
+
+```tsx
+const fieldErrors = error?.data.errors ?? {};
+
 {error ? (
   <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>
     {error.data.message ?? "Action failed."}
   </pre>
 ) : null}
+
+{action.parameters.map((parameter) => {
+  const fieldError = fieldErrors[parameter.slug];
+  return (
+    <label key={parameter.slug}>
+      {parameter.displayName}
+      <input
+        aria-invalid={Boolean(fieldError)}
+        style={{ borderColor: fieldError ? "#dc2626" : undefined }}
+      />
+      {fieldError ? <div role="alert">{fieldError}</div> : null}
+    </label>
+  );
+})}
 ```
 
 Use `<pre>` (or any element with `white-space: pre-wrap`) — the messages contain newlines that matter (driver errors include the SQL on its own line). A `<span>` collapses them into one wall of text.
@@ -114,6 +152,7 @@ That whole string is `error.data.message`. Render it as-is.
 **Don't:**
 
 - Render `"Failed"` / `"Something went wrong"` / `String(error)` instead of `error.data.message` — the user loses the only fix-it info they have.
+- Render only `error.data.message` for validation failures — `error.data.errors[parameter.slug]` is often the actionable "which field and why" detail.
 - Paraphrase the message into a "friendlier" version. The raw H2/Postgres/SQL error is more actionable than any rewrite.
 
 ## After an action runs — keeping the UI honest
