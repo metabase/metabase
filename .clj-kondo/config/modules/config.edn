@@ -2983,12 +2983,17 @@
   enterprise/content-diagnostics
   {:team "Gadget"
    :api  #{metabase-enterprise.content-diagnostics.init}
-   :uses #{enterprise/stale
-           models
+   :uses #{models
            premium-features
            settings
            task
-           util}}
+           util
+           enterprise/stale}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Document
+                    :model/Transform
+                    :model/User}}
 
   enterprise/content-translation
   {:team "UX West"
