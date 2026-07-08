@@ -16,7 +16,7 @@ Actions belong to a model. They mutate that model's rows. Concretely:
 - An action's `type` is either `"implicit"` (CRUD on the model) or `"query"` (custom SQL the user authored).
 - Implicit actions have an `implicitKind` that says what they do: `"row/create"`, `"row/update"`, `"row/delete"`, or `"bulk/*"` variants.
 - Each action publishes a `parameters` list. Each parameter has a `slug` (the key the Data App sends), a `jsType` (`"string"` / `"number"` / `"Date"` / `"boolean"` / `"unknown"`), and an optional `required` flag.
-- The action response row shape is loosely typed as `Record<string, RowValue>` — read individual fields off `result["created-row"]` after a `row/create`, but after a successful action refresh the existing table/question/query data already used by the page; do not fetch or render the parent model itself.
+- Use `action.parameters` to know which fields to render and submit. A create result may include `result["created-row"]`, but that row is only typed as `Record<string, RowValue>`; use it for lightweight confirmation, then refresh the existing table/question/query data already used by the page. Do not fetch or render the parent model itself.
 
 ## What's in the schema (and what isn't)
 
@@ -49,7 +49,7 @@ const { execute, isExecuting, result, error, reset } = useAction<
   };
   ```
 - **`isExecuting`** — `true` between the call and its resolution. Drive button `disabled` from this so the user can't double-click into duplicate requests.
-- **`result`** — the response body, discriminated by `TKind` (or the `AnyActionResult` union when `TKind` is omitted). `null` before the first call and after `reset()`. Use it for confirmation data (`result?.["created-row"]` after an insert, `result?.["rows-affected"]` after a SQL action), but prefer refreshing surrounding data over driving UI from the response body — see *After an action runs*.
+- **`result`** — the response body, discriminated by `TKind` (or the `AnyActionResult` union when `TKind` is omitted). `null` before the first call and after `reset()`. Use it for lightweight confirmation (`result?.["created-row"]` after an insert, `result?.["rows-affected"]` after a SQL action), but do not treat create rows as richly typed model rows; refresh surrounding data instead — see *After an action runs*.
 - **`error`** — the last thrown error, typed `ActionExecuteError | null`. Read fields directly with no cast: `error?.data?.message`, `error?.status`, `error?.isCancelled`.
 - **`reset()`** — clears `result` and `error` back to `null`. Useful after the user acknowledges success or dismisses an error.
 
