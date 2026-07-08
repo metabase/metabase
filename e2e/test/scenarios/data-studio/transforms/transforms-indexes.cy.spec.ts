@@ -58,7 +58,7 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
       .findAllByRole("row")
       .eq(0)
       .should("contain", "idx_animal_name")
-      .and("contain", "btree")
+      .and("contain", "B-Tree")
       .and("contain", "name")
       .and("contain", "Managed")
       .and("contain", "Pending")
