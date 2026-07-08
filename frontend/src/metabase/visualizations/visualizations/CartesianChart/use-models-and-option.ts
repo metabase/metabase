@@ -19,7 +19,9 @@ import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesia
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, TimelineEventId } from "metabase-types/api";
+
+const NO_SELECTED_TIMELINE_EVENT_IDS: TimelineEventId[] = [];
 
 export function useModelsAndOption(
   {
@@ -31,7 +33,7 @@ export function useModelsAndOption(
     height,
     hiddenSeries = new Set(),
     timelineEvents,
-    selectedTimelineEventIds = [],
+    selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
     isFullscreen,
     gridSize,
