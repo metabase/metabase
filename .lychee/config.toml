@@ -2,7 +2,7 @@ accept = ["200..=204", "429"]
 exclude = ["\\.html(#.*)?$"]
 exclude_path = ["docs/util"]
 no_progress = true
-include_fragments = true
+include_fragments = "full"
 verbose = "error"
 include_verbatim = false
 cache = false
