@@ -497,7 +497,6 @@
       (testing "cards present in the import are not reported"
         (is (empty? (spec/check-collection-deletion-conflicts
                      {:by-entity-id {"Card" #{(:entity_id metric) (:entity_id question)}}}))))))
-
   (testing "content already synced (present in RemoteSyncObject as 'synced') is not data loss and is excluded"
     (mt/with-temp [:model/Collection coll {:name "Synced" :is_remote_synced true :location "/"}
                    :model/Card synced-card {:name "Pushed" :collection_id (:id coll)}
@@ -509,7 +508,6 @@
             card-conflict (first (filter #(= "Card" (:model %)) conflicts))]
         (is (= 1 (:count card-conflict)))
         (is (= ["Never pushed"] (:names card-conflict))))))
-
   (testing "content in a non-synced collection is not scoped in, so nothing is flagged"
     (mt/with-temp [:model/Collection coll {:name "Not synced" :is_remote_synced false :location "/"}
                    :model/Card _card {:name "Local Q" :collection_id (:id coll)}]
