@@ -9,7 +9,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
-import { type RouteProps, withRouteProps } from "metabase/router";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -85,5 +85,5 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
-  )(SegmentListContainer as unknown as React.ComponentType<RouteProps>),
+  )(SegmentListContainer as unknown as React.ComponentType<InjectedRouteProps>),
 );

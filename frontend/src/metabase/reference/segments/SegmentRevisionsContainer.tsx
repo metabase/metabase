@@ -8,7 +8,7 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import SegmentRevisions from "metabase/reference/segments/SegmentRevisions";
-import { type RouteProps, withRouteProps } from "metabase/router";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 import type { User } from "metabase-types/api";
 
 import type { ClearStateProps, FetchProps } from "../reference";
@@ -95,5 +95,7 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
-  )(SegmentRevisionsContainer as unknown as React.ComponentType<RouteProps>),
+  )(
+    SegmentRevisionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
+  ),
 );

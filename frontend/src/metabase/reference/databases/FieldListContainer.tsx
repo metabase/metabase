@@ -8,7 +8,7 @@ import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import FieldList from "metabase/reference/databases/FieldList";
 import * as actions from "metabase/reference/reference";
-import { type RouteProps, withRouteProps } from "metabase/router";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -97,5 +97,5 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
-  )(FieldListContainer as unknown as React.ComponentType<RouteProps>),
+  )(FieldListContainer as unknown as React.ComponentType<InjectedRouteProps>),
 );

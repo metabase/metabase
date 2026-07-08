@@ -11,7 +11,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import * as actions from "metabase/reference/reference";
 import { SegmentQuestions } from "metabase/reference/segments/SegmentQuestions";
-import { type RouteProps, withRouteProps } from "metabase/router";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 import type { User } from "metabase-types/api";
 
 import type { ClearStateProps, FetchProps } from "../reference";
@@ -100,5 +100,7 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
-  )(SegmentQuestionsContainer as unknown as React.ComponentType<RouteProps>),
+  )(
+    SegmentQuestionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
+  ),
 );

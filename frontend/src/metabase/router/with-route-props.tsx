@@ -7,7 +7,7 @@ import { useParams } from "./use-params";
 /**
  * The router props injected by the facade hooks into a wrapped component.
  */
-export interface RouteProps {
+export interface InjectedRouteProps {
   params: Params;
   location: Location;
 }
@@ -19,10 +19,10 @@ export interface RouteProps {
  * the engine swap happen without touching the wrapped components. Removed in
  * Phase 4 once they read the hooks themselves.
  */
-export function withRouteProps<Props extends RouteProps>(
+export function withRouteProps<Props extends InjectedRouteProps>(
   WrappedComponent: ComponentType<Props>,
-): ComponentType<Omit<Props, keyof RouteProps>> {
-  function WithRouteProps(props: Omit<Props, keyof RouteProps>) {
+): ComponentType<Omit<Props, keyof InjectedRouteProps>> {
+  function WithRouteProps(props: Omit<Props, keyof InjectedRouteProps>) {
     const params = useParams();
     const location = useLocation();
 

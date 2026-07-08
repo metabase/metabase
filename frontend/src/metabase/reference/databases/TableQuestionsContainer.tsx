@@ -11,7 +11,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as actions from "metabase/reference/reference";
-import { type RouteProps, withRouteProps } from "metabase/router";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -106,5 +106,7 @@ export default withRouteProps(
   connect(
     mapStateToProps,
     mapDispatchToProps,
-  )(TableQuestionsContainer as unknown as React.ComponentType<RouteProps>),
+  )(
+    TableQuestionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
+  ),
 );
