@@ -93,11 +93,16 @@
                                                             :instance_id  i1})]
               (is (=? {:instance {:id i1 :name "One" :url "https://one.example.com"}} ws))
               (is (= ws-id (t2/select-one-fn :workspace_id :model/WorkspaceInstance :id i1)))
-              (testing "a taken instance is refused with a 409 before any workspace is created"
-                (let [before (t2/count :model/Workspace)]
-                  (mt/user-http-request :crowberto :post 409 "ee/workspace-manager/"
-                                        {:name "Clash" :database_ids [db-id] :instance_id i1})
-                  (is (= before (t2/count :model/Workspace)))))
+              (testing "a taken instance is re-pointed at the new workspace, detaching the old one"
+                (let [{ws2-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                         {:name "Thief" :database_ids [db-id] :instance_id i1})]
+                  (is (= ws2-id (t2/select-one-fn :workspace_id :model/WorkspaceInstance :id i1)))
+                  (is (=? {:instance nil}
+                          (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id))))
+                  ;; hand the instance back for the rest of the test
+                  (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/" ws-id)
+                                        {:instance_id i1})
+                  (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws2-id))))
               (testing "a missing instance 404s"
                 (mt/user-http-request :crowberto :post 404 "ee/workspace-manager/"
                                       {:name "Ghost" :database_ids [db-id] :instance_id Integer/MAX_VALUE}))
@@ -124,9 +129,9 @@
                                                              :url     "https://stored.example.com"
                                                              :details {:api-key "mb_stored"}}]
     (let [calls (atom [])]
-      (with-redefs [ws.client/test-connection (fn [params]
-                                                (swap! calls conj params)
-                                                {:ok true})]
+      (mt/with-dynamic-fn-redefs [ws.client/test-connection (fn [params]
+                                                              (swap! calls conj params)
+                                                              {:ok true})]
         (testing "url + api_key are passed through for unsaved form values"
           (is (= {:ok true}
                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance/test"
@@ -140,7 +145,7 @@
             (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance/test"
                                   {:id instance-id :url "https://edited.example.com"})
             (is (= {:url "https://edited.example.com" :api-key "mb_stored"} (last @calls))))))
-      (with-redefs [ws.client/test-connection (fn [_] {:ok false :message "nope"})]
+      (mt/with-dynamic-fn-redefs [ws.client/test-connection (fn [_] {:ok false :message "nope"})]
         (testing "failures are reported in the body, not as an HTTP error"
           (is (= {:ok false :message "nope"}
                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance/test"
@@ -162,9 +167,9 @@
                                                        :instance_id  instance-id})
               pushed            (atom nil)]
           (testing "POST /:id/push-config uploads the config to the assigned instance"
-            (with-redefs [ws.client/push-config! (fn [target yaml]
-                                                   (reset! pushed {:target target :yaml yaml})
-                                                   {:ok true})]
+            (mt/with-dynamic-fn-redefs [ws.client/push-config! (fn [target yaml]
+                                                                 (reset! pushed {:target target :yaml yaml})
+                                                                 {:ok true})]
               (is (=? {:id instance-id :initialized_at some?}
                       (mt/user-http-request :crowberto :post 200
                                             (str "ee/workspace-manager/" ws-id "/push-config"))))
@@ -173,7 +178,7 @@
               (is (some? (t2/select-one-fn :initialized_at :model/WorkspaceInstance :id instance-id)))))
           (testing "a child failure surfaces as a 502 and does not stamp initialized_at"
             (t2/update! :model/WorkspaceInstance :id instance-id {:initialized_at nil})
-            (with-redefs [ws.client/push-config! (fn [_ _] {:ok false :message "child said no"})]
+            (mt/with-dynamic-fn-redefs [ws.client/push-config! (fn [_ _] {:ok false :message "child said no"})]
               (mt/user-http-request :crowberto :post 502 (str "ee/workspace-manager/" ws-id "/push-config"))
               (is (nil? (t2/select-one-fn :initialized_at :model/WorkspaceInstance :id instance-id)))))
           (testing "a workspace without an assigned instance 400s"

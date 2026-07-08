@@ -59,31 +59,23 @@
   (assert-instance-exists id)
   (t2/delete! :model/WorkspaceInstance :id id))
 
-(defn check-assignable!
-  "Throw 404/409 unless `instance-id` exists and isn't hosting a workspace yet.
-   Used to fail workspace creation fast, before any provisioning work."
+(defn check-instance-exists!
+  "Throw a 404 unless `instance-id` exists. Used to fail workspace creation
+   fast, before any provisioning work."
   [instance-id]
-  (let [instance (assert-instance-exists instance-id)]
-    (when (:workspace_id instance)
-      (throw (ex-info (tru "Instance is already assigned to another workspace")
-                      {:status-code  409
-                       :instance_id  instance-id
-                       :workspace_id (:workspace_id instance)})))))
+  (assert-instance-exists instance-id)
+  nil)
 
 (defn assign-to-workspace!
   "Point `instance-id` at `workspace-id`, releasing any instance previously
-   assigned to that workspace. nil `instance-id` just releases. Throws 404 when
-   the instance doesn't exist and 409 when it already hosts another workspace."
+   assigned to that workspace. An instance already hosting another workspace is
+   simply re-pointed — the other workspace loses it (and its deployment on the
+   child is overwritten by the next config push). nil `instance-id` just
+   releases. Throws 404 when the instance doesn't exist."
   [instance-id workspace-id]
   (t2/with-transaction [_conn]
     (when instance-id
-      (let [instance (assert-instance-exists instance-id)]
-        (when (and (:workspace_id instance)
-                   (not= (:workspace_id instance) workspace-id))
-          (throw (ex-info (tru "Instance is already assigned to another workspace")
-                          {:status-code  409
-                           :instance_id  instance-id
-                           :workspace_id (:workspace_id instance)})))))
+      (assert-instance-exists instance-id))
     (if instance-id
       (do
         (t2/update! :model/WorkspaceInstance

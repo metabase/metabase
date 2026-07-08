@@ -156,13 +156,14 @@
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
    for workspaces), provision it (blocking), and assign it to the child instance
-   with `instance_id`, if given (404 when the instance doesn't exist, 409 when it
-   already hosts another workspace — checked before any provisioning work)."
+   with `instance_id`, if given (404 when the instance doesn't exist — checked
+   before any provisioning work). An instance already hosting another workspace
+   is re-pointed at the new one."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (let [instance-id (:instance_id params)]
     (when instance-id
-      (ws.instances/check-assignable! instance-id))
+      (ws.instances/check-instance-exists! instance-id))
     (let [workspace (ws/create-workspace!
                      (-> params
                          (dissoc :instance_id)

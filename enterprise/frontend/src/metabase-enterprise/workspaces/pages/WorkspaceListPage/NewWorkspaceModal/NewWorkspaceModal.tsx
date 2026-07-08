@@ -13,12 +13,13 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Checkbox, Group, Modal, Stack } from "metabase/ui";
+import { Alert, Button, Checkbox, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useCreateWorkspaceMutation,
   useLazyListWorkspacesQuery,
   useListWorkspaceInstancesQuery,
+  useListWorkspacesQuery,
   usePushWorkspaceConfigMutation,
 } from "metabase-enterprise/api";
 import type {
@@ -93,12 +94,9 @@ function NewWorkspaceForm({
   const [createWorkspace] = useCreateWorkspaceMutation();
   const [fetchWorkspaces] = useLazyListWorkspacesQuery();
   const [pushConfig] = usePushWorkspaceConfigMutation();
-  const { data: instances } = useListWorkspaceInstancesQuery();
+  const { data: instances = [] } = useListWorkspaceInstancesQuery();
+  const { data: workspaces = [] } = useListWorkspacesQuery();
   const [sendToast] = useToast();
-
-  const freeInstances = (instances ?? []).filter(
-    (instance) => instance.workspace_id == null,
-  );
 
   const handleSubmit = async ({
     name,
@@ -156,8 +154,8 @@ function NewWorkspaceForm({
               ))}
             </Stack>
           </FormCheckboxGroup>
-          {freeInstances.length > 0 && (
-            <InstanceSection instances={freeInstances} />
+          {instances.length > 0 && (
+            <InstanceSection instances={instances} workspaces={workspaces} />
           )}
           <FormErrorMessage />
           <Group justify="flex-end">
@@ -172,10 +170,23 @@ function NewWorkspaceForm({
 
 type InstanceSectionProps = {
   instances: WorkspaceInstance[];
+  workspaces: Workspace[];
 };
 
-function InstanceSection({ instances }: InstanceSectionProps) {
+function InstanceSection({ instances, workspaces }: InstanceSectionProps) {
   const { values } = useFormikContext<NewWorkspaceFormValues>();
+
+  const workspaceNamesById = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace.name]),
+  );
+
+  const selectedInstance = instances.find(
+    (instance) => String(instance.id) === values.instance_id,
+  );
+  const selectedInstanceWorkspaceName =
+    selectedInstance?.workspace_id != null
+      ? workspaceNamesById.get(selectedInstance.workspace_id)
+      : undefined;
 
   return (
     <>
@@ -184,12 +195,30 @@ function InstanceSection({ instances }: InstanceSectionProps) {
         label={t`Instance`}
         description={t`The connected instance this workspace will be developed on.`}
         placeholder={t`None`}
-        data={instances.map((instance) => ({
-          value: String(instance.id),
-          label: instance.name,
-        }))}
+        data={instances.map((instance) => {
+          const workspaceName =
+            instance.workspace_id != null
+              ? workspaceNamesById.get(instance.workspace_id)
+              : undefined;
+          return {
+            value: String(instance.id),
+            label:
+              workspaceName != null
+                ? t`${instance.name} — used by "${workspaceName}"`
+                : instance.workspace_id != null
+                  ? t`${instance.name} — in use`
+                  : instance.name,
+          };
+        })}
         clearable
       />
+      {selectedInstance?.workspace_id != null && (
+        <Alert icon="warning" variant="warning">
+          {selectedInstanceWorkspaceName != null
+            ? t`This instance is already used by the workspace "${selectedInstanceWorkspaceName}". Setting it up will erase that workspace's deployment from the instance.`
+            : t`This instance is already used by another workspace. Setting it up will erase that workspace's deployment from the instance.`}
+        </Alert>
+      )}
       {values.instance_id != null && (
         <FormCheckbox
           name="initialize_instance"

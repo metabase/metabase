@@ -64,22 +64,25 @@ describe("WorkspaceListPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers an instance picker in the create modal when a free instance exists", async () => {
+  it("offers all instances in the create modal, warning when a taken one is picked", async () => {
     setup({
+      workspaces: [createMockWorkspace({ id: 1, name: "First" })],
       instances: [
         createMockWorkspaceInstance({ id: 7, name: "Dev child" }),
         createMockWorkspaceInstance({ id: 8, name: "Taken", workspace_id: 1 }),
       ],
     });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Create a workspace/i }),
-    );
+    await userEvent.click(await screen.findByRole("button", { name: "New" }));
 
     const picker = await screen.findByLabelText("Instance");
     await userEvent.click(picker);
     expect(await screen.findByText("Dev child")).toBeInTheDocument();
-    expect(screen.queryByText("Taken")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByText('Taken — used by "First"'));
+    expect(
+      await screen.findByText(/erase that workspace's deployment/),
+    ).toBeInTheDocument();
   });
 
   it("shows the assigned instance and a set-up action on the workspace card", async () => {
