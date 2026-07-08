@@ -20,7 +20,7 @@ RUN bun install --frozen-lockfile \
   && bun run build-release:cljs \
   && bun run build-release:static-viz-server
 
-FROM node:22-slim AS runtime
+FROM node:22-alpine AS runtime
 
 WORKDIR /app
 COPY --from=builder \
