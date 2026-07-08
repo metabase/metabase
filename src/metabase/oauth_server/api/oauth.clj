@@ -105,9 +105,9 @@
                   ;; Flag the broad first-party grant so the consent page can warn about it without
                   ;; hardcoding the scope string in the view.
                   :full-access? (= s oauth-server/full-access-scope)
-                  ;; Flag the workspace-manager grant: approving it revokes the account's other
-                  ;; full-scope OAuth sessions (containment tier 1), and the consent page must say so.
-                  :revokes-full-scope? (= s oauth-server/workspace-manager-scope)})))))
+                  ;; Flag the workspace-manager grant: approving it revokes ALL of the account's
+                  ;; other OAuth sessions (containment tier 1), and the consent page must say so.
+                  :revokes-other-sessions? (= s oauth-server/workspace-manager-scope)})))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -322,20 +322,23 @@
                                  :error_description "The authorization request is invalid."}}))))))
           {:status 404 :body {:error "not_found"}}))))
 
-(defn- revoke-full-scope-sessions-on-workspace-login!
+(defn- revoke-other-sessions-on-workspace-login!
   "Containment tier 1: a fresh workspace-scoped login (authorization_code grant whose
-   issued scope carries `mb:workspace-manager` and NOT `mb:full`) revokes the user's
-   other full-scope OAuth sessions server-side. The consent page warned the user this
-   would happen (see [[requested-scope-descriptions]]). Refresh grants are excluded —
-   routine token refresh of a workspace session must not repeatedly sweep the account."
+   issued scope is exactly `mb:workspace-manager`) revokes all of the user's OTHER
+   OAuth sessions server-side — `mb:full`, every `agent:*` token, and any mixed token.
+   Only pure workspace-manager sessions survive: the workspace credential is meant to
+   be the only OAuth credential the agent holds, and any broader stale token (even a
+   non-`mb:full` `agent:sql:create` one) can still tinker with the parent. The consent
+   page warned the user this would happen (see [[requested-scope-descriptions]]).
+   Refresh grants are excluded — routine refresh of a workspace session must not
+   repeatedly sweep the account."
   [body response]
   (when (= (:grant_type body) "authorization_code")
     (let [scopes (set (some-> (:scope response) (str/split #"\s+")))]
-      (when (and (contains? scopes oauth-server/workspace-manager-scope)
-                 (not (contains? scopes oauth-server/full-access-scope)))
+      (when (= #{oauth-server/workspace-manager-scope} scopes)
         (when-let [user-id (some-> (:access_token response) oauth-server/resolve-access-token :user-id)]
-          (let [counts (oauth-store/revoke-full-scope-tokens-for-user! user-id)]
-            (log/infof "Workspace-scoped login for user %d: revoked full-scope OAuth sessions %s"
+          (let [counts (oauth-store/revoke-non-workspace-tokens-for-user! user-id)]
+            (log/infof "Workspace-scoped login for user %d: revoked other OAuth sessions %s"
                        user-id (pr-str counts))))))))
 
 (api.macros/defendpoint :post "/token"
@@ -353,7 +356,7 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (let [response (oidc/token-request provider body authorization-header)]
-                  (revoke-full-scope-sessions-on-workspace-login! body response)
+                  (revoke-other-sessions-on-workspace-login! body response)
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

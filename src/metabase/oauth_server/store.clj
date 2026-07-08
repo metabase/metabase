@@ -211,19 +211,25 @@
 
 ;;; ------------------------------------------- Bulk revocation ------------------------------------------------------
 
-(defn revoke-full-scope-tokens-for-user!
-  "Revoke every unrevoked full-scope (`mb:full`) OAuth access and refresh token
-   belonging to `user-id`. Tier 1 of the workspace containment ladder: called when a
-   workspace-scoped login is issued for the user, so stale full-access agent/CLI
-   sessions on the same account die server-side — the whole point of the narrow
-   credential is defeated if an old `mb:full` token is still sitting in a profile
-   store next to it. Narrower tokens (agent:*, mb:workspace-manager) are untouched.
+(defn revoke-non-workspace-tokens-for-user!
+  "Revoke every unrevoked OAuth access and refresh token belonging to `user-id`
+   whose scope is not *exactly* `#{mb:workspace-manager}`. Tier 1 of the workspace
+   containment ladder: called when a workspace-scoped login is issued, so any other
+   session on the same account dies server-side.
+
+   Revokes `mb:full`, every `agent:*` token, and any mixed token — dropping `mb:full`
+   is not enough, since an `agent:sql:create` / `agent:transforms:write` token still
+   grants mutating access to the parent. The only session that survives is one scoped
+   to workspace management alone. The narrow workspace credential is meant to be the
+   *only* OAuth credential the agent holds; a broader stale token sitting in the same
+   profile store defeats that.
 
    Returns `{:access-tokens <n> :refresh-tokens <n>}` revocation counts."
   [user-id]
-  (let [revoke! (fn [model]
+  (let [workspace-only? (fn [scope] (= #{scopes/workspace-manager} (set scope)))
+        revoke! (fn [model]
                   (let [ids (->> (t2/select [model :id :scope] :user_id user-id :revoked_at nil)
-                                 (filter #(some #{scopes/full-access} (:scope %)))
+                                 (remove #(workspace-only? (:scope %)))
                                  (mapv :id))]
                     (if (seq ids)
                       (t2/update! model :id [:in ids] {:revoked_at :%now})

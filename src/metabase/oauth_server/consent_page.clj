@@ -161,12 +161,13 @@
             [:span "This grants " [:strong "complete access to your account"] " — anything you can do, "
              (or client-name "this application") " can do, including reading and changing all data you "
              "can reach. Only approve it for a tool you trust and control."]])
-         (when (some :revokes-full-scope? scopes)
+         (when (some :revokes-other-sessions? scopes)
            [:div.warning
             [:span.mark "!"]
-            [:span "Approving will also " [:strong "sign out this account's other full-access agent sessions"]
-             " on this Metabase. Workspace credentials are designed to be the only credential an agent"
-             " holds — stale full-access logins are revoked so they can't be picked up alongside it."]])
+            [:span "Approving will also " [:strong "sign out this account's other agent sessions"]
+             " on this Metabase — every OAuth login except workspace-management ones. Workspace"
+             " credentials are designed to be the only credential an agent holds, so any other"
+             " login is revoked and can't be picked up alongside it."]])
          (render-scope-list scopes)
          [:form {:method "POST" :action "/oauth/authorize/decision"}
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]

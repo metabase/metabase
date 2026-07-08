@@ -730,8 +730,8 @@
                               :authorization (basic-auth-header client-id client-secret))]
           (is (=? {:error string?} response)))))))
 
-(deftest workspace-login-revokes-full-scope-sessions-test
-  (testing "a workspace-scoped authorization_code grant revokes the user's other full-scope OAuth sessions"
+(deftest workspace-login-revokes-other-sessions-test
+  (testing "a workspace-scoped authorization_code grant revokes ALL the user's other OAuth sessions"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client        (create-test-client! {:scopes ["mb:workspace-manager" "profile"]})
@@ -743,10 +743,17 @@
               seed!         (fn [model token uid scope]
                               (t2/insert! model {:token token :user_id uid :client_id client-id
                                                  :scope scope :expiry expiry}))]
-          (seed! :model/OAuthAccessToken  "stale-full-at"  user-id  ["mb:full"])
-          (seed! :model/OAuthRefreshToken "stale-full-rt"  user-id  ["mb:full"])
-          (seed! :model/OAuthAccessToken  "narrow-at"      user-id  ["agent:query:execute"])
-          (seed! :model/OAuthAccessToken  "other-full-at"  other-id ["mb:full"])
+          (seed! :model/OAuthAccessToken  "stale-full-at"   user-id  ["mb:full"])
+          (seed! :model/OAuthRefreshToken "stale-full-rt"   user-id  ["mb:full"])
+          ;; a non-mb:full agent token still grants mutating parent access -> must die
+          (seed! :model/OAuthAccessToken  "agent-at"        user-id  ["agent:sql:create"])
+          (seed! :model/OAuthRefreshToken "agent-rt"        user-id  ["agent:query:execute"])
+          ;; a mixed token is not a pure workspace-manager token -> must die
+          (seed! :model/OAuthAccessToken  "mixed-at"        user-id  ["mb:workspace-manager" "agent:sql:read"])
+          ;; a pre-existing pure workspace-manager session survives
+          (seed! :model/OAuthAccessToken  "ws-only-at"      user-id  ["mb:workspace-manager"])
+          ;; another user's tokens are never touched
+          (seed! :model/OAuthAccessToken  "other-full-at"   other-id ["mb:full"])
           (let [code (authorize-and-get-code! client-id "mb:workspace-manager")
                 resp (token-request!
                       {:grant_type   "authorization_code"
@@ -754,15 +761,19 @@
                        :redirect_uri "https://example.com/callback"}
                       :authorization (basic-auth-header client-id client-secret))]
             (is (= "mb:workspace-manager" (:scope resp)))
-            (testing "the user's full-scope access + refresh tokens are revoked"
-              (is (some? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token "stale-full-at")))
-              (is (some? (t2/select-one-fn :revoked_at :model/OAuthRefreshToken :token "stale-full-rt"))))
-            (testing "narrower tokens and other users' tokens are untouched"
-              (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token "narrow-at")))
+            (testing "mb:full, agent:*, and mixed tokens are all revoked"
+              (doseq [[model token] [[:model/OAuthAccessToken  "stale-full-at"]
+                                     [:model/OAuthRefreshToken "stale-full-rt"]
+                                     [:model/OAuthAccessToken  "agent-at"]
+                                     [:model/OAuthRefreshToken "agent-rt"]
+                                     [:model/OAuthAccessToken  "mixed-at"]]]
+                (is (some? (t2/select-one-fn :revoked_at model :token token))
+                    (str token " should be revoked"))))
+            (testing "a pure workspace-manager session and other users' tokens are untouched"
+              (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token "ws-only-at")))
               (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token "other-full-at"))))
-            (testing "the fresh workspace-scoped token itself is live"
-              (is (some? (:access_token resp)))
-              (is (nil? (t2/select-one-fn :revoked_at :model/OAuthAccessToken :token (:access_token resp)))))))))))
+            (testing "the fresh workspace-scoped token itself is live (resolves to the user)"
+              (is (= user-id (:user-id (oauth-server/resolve-access-token (:access_token resp))))))))))))
 
 (deftest full-scope-login-does-not-revoke-test
   (testing "an ordinary (non-workspace) authorization_code grant revokes nothing"
