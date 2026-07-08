@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { DataApp } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 

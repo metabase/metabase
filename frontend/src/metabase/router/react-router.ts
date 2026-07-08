@@ -16,6 +16,7 @@ export {
   // a `<Route index>` element without recursing back into the shim's own builder.
   Route as ReactRouterRoute,
   Router,
+  browserHistory,
   createMemoryHistory,
   createRoutes,
   formatPattern,
