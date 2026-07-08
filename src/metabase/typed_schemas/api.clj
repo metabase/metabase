@@ -370,15 +370,46 @@
                     :order-by [[:name :asc] [:id :asc]]})
         (filter mi/can-read?))))
 
+(defn- card-type-name
+  [card]
+  (some-> (:type card) name))
+
+(defn- schema-details-error-message
+  [card error-message]
+  (format "Failed to build schema details for %s \"%s\" (card %s): %s"
+          (or (card-type-name card) "card")
+          (or (:name card) "Untitled")
+          (:id card)
+          (or error-message "unknown error")))
+
+(defn- schema-details-error-data
+  [card m]
+  (assoc-some
+   {:card-id   (:id card)
+    :card-name (:name card)
+    :card-type (:type card)}
+   :status-code (:status-code m)))
+
 (defn- question-details
   [card]
-  (-> (entity-details/get-report-details {:report-id             (:id card)
-                                          :with-field-values?    false
-                                          :with-related-tables?  false
-                                          :with-metrics?         false
-                                          :with-measures?        false
-                                          :with-segments?        false})
-      :structured-output))
+  (let [response (try
+                   (entity-details/get-report-details {:report-id             (:id card)
+                                                       :with-field-values?    false
+                                                       :with-related-tables?  false
+                                                       :with-metrics?         false
+                                                       :with-measures?        false
+                                                       :with-segments?        false})
+                   (catch Exception e
+                     (throw (ex-info (schema-details-error-message card (ex-message e))
+                                     (assoc (schema-details-error-data card (ex-data e))
+                                            :cause-message (ex-message e))
+                                     e))))]
+    (or (:structured-output response)
+        (let [error-message (:output response)]
+          (throw (ex-info (schema-details-error-message card error-message)
+                          (assoc (schema-details-error-data card response)
+                                 :error-message error-message
+                                 :response response)))))))
 
 (defn- metric-result-column
   [card]

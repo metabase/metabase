@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -520,6 +521,37 @@
       (#'typed-schemas.api/typed-schema {:database "Boba"})
       (#'typed-schemas.api/typed-schema {:database "Boba" :questions "true"})
       (is (= [#{42} #{42}] @model-database-ids)))))
+
+(deftest model-schemas-surface-detail-errors-test
+  (with-redefs [typed-schemas.api/select-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
+                entity-details/get-report-details (constantly {:output "source table not found"
+                                                               :status-code 404})]
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (doall (#'typed-schemas.api/model-schemas #{1}))))]
+      (is (= "Failed to build schema details for model \"Broken model\" (card 100): source table not found"
+             (ex-message e)))
+      (is (= {:card-id       100
+              :card-name     "Broken model"
+              :card-type     "model"
+              :status-code   404
+              :error-message "source table not found"}
+             (select-keys (ex-data e) [:card-id :card-name :card-type :status-code :error-message]))))))
+
+(deftest model-schemas-surface-detail-exceptions-test
+  (with-redefs [typed-schemas.api/select-cards (constantly [{:id 100 :type "model" :name "Broken model"}])
+                entity-details/get-report-details (fn [_]
+                                                    (throw (ex-info "Invalid output: [\"Valid Table metadata, got: nil\"]"
+                                                                    {:status-code 500})))]
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (doall (#'typed-schemas.api/model-schemas #{1}))))]
+      (is (= "Failed to build schema details for model \"Broken model\" (card 100): Invalid output: [\"Valid Table metadata, got: nil\"]"
+             (ex-message e)))
+      (is (= {:card-id       100
+              :card-name     "Broken model"
+              :card-type     "model"
+              :status-code   500
+              :cause-message "Invalid output: [\"Valid Table metadata, got: nil\"]"}
+             (select-keys (ex-data e) [:card-id :card-name :card-type :status-code :cause-message]))))))
 
 (deftest library-and-database-are-mutually-exclusive-test
   (mt/user-http-request-full-response
