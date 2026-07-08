@@ -303,6 +303,36 @@
                            "SELECT * FROM test_output" #{"test_output"})))))
 
 ;;; ===========================================================================
+;;; Schema-less drivers (MySQL/MariaDB): a nil scratch schema must not leak into
+;;; the rewritten SQL as the literal identifier "NULL"
+;;; ===========================================================================
+
+(def ^:private orders->scratch-nil-schema
+  "A scratch mapping as MySQL/MariaDB produce it: real and scratch specs both
+  carry :schema nil; the namespace travels in the catalog slot, which
+  mapping->replacements never sees."
+  {{:schema nil :table "orders"} {:schema nil :table "scratch_orders_xyz"}})
+
+(deftest nil-schema-scratch-target-rewrites-to-bare-table-test
+  (testing "a nil-schema scratch target rewrites to a bare table reference, not a
+            NULL-qualified one (pinned :mysql dialect; no live connection needed)"
+    (let [rw (resolve/rewrite-native-sql :mysql "SELECT id FROM orders"
+                                         orders->scratch-nil-schema
+                                         (sql-tools.settings/current-parser-backend))]
+      (is (not (re-find #"(?i)\bnull\b" rw))
+          (str "rewritten SQL must not contain a literal NULL qualifier: " (pr-str rw)))
+      (is (re-find #"scratch_orders_xyz" rw)))))
+
+(deftest nil-schema-scratch-target-passes-verify-test
+  (testing "verify accepts a nil-schema scratch ref: a leaked NULL qualifier would
+            parse back as :schema \"null\", mismatch the allowed set's :schema nil,
+            and be rejected as stray"
+    (let [rw (resolve/rewrite-native-sql :mysql "SELECT id FROM orders"
+                                         orders->scratch-nil-schema
+                                         (sql-tools.settings/current-parser-backend))]
+      (is (string? (resolve/verify :mysql orders->scratch-nil-schema rw))))))
+
+;;; ===========================================================================
 ;;; String literals are data, not references
 ;;; ===========================================================================
 
@@ -391,7 +421,7 @@
 
 (deftest resolve-mbql-two-table-join-test
   (testing "MBQL two-table join compiles to scratch refs for both physical tables"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               orders    (lib.metadata/table mp (mt/id :orders))
@@ -441,7 +471,7 @@
 (deftest resolve-mbql-incomplete-mapping-fails-closed-test
   (testing "MBQL with an incomplete override map (a joined table left unmapped) fails closed
             via guards 2+3"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :left-join)
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)
               orders    (lib.metadata/table mp (mt/id :orders))

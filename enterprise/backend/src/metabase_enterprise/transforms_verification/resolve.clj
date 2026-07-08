@@ -47,11 +47,15 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- quote-identifier
-  "Render a bare identifier as a driver-quoted SQL identifier string. Quoting preserves
-  case so the rewritten scratch reference matches the quoted table that was created; an
-  unquoted reference would fold to a different case on folding drivers."
+  "Render a bare identifier as a driver-quoted SQL identifier string; nil
+  `name-str` → nil. Quoting preserves case so the rewritten scratch reference
+  matches the quoted table that was created; unquoted, a folding driver would
+  fold it to a different case."
   [driver ^String name-str]
-  (first (sql.qp/format-honeysql driver (keyword name-str))))
+  ;; nil must not reach format-honeysql: HoneySQL renders a nil form as the SQL
+  ;; NULL literal, and the qualifier would come out as the identifier NULL.
+  (when name-str
+    (first (sql.qp/format-honeysql driver (keyword name-str)))))
 
 (defn- bare-key-specs
   "`{real-table-name → real-spec}` for the table names whose unqualified reference

@@ -275,7 +275,10 @@
                                       (str "SELECT COUNT(*) FROM information_schema.tables"
                                            " WHERE table_schema = ? AND table_name = ?")
                                       [(or schema (tu/scratch-namespace db-id)) table-name]))]
-    (= 1 (ffirst (get-in result [:data :rows])))))
+    ;; COUNT(*)'s numeric type is driver-specific -- Long on Postgres/H2,
+    ;; BigDecimal on ClickHouse (UInt64) -- and `(= 1 1M)` is false in Clojure;
+    ;; coerce before comparing.
+    (some-> (ffirst (get-in result [:data :rows])) long pos?)))
 
 (deftest cleanup-drops-all-scratch-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

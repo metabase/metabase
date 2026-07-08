@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
@@ -59,6 +60,22 @@
        (testing "Join references both tables"
          (is (= #{{:table (mt/id :orders)}
                   {:table (mt/id :products)}}
+                (sql-tools/referenced-tables driver/*driver* query))))))))
+
+(deftest ^:parallel referenced-tables-unqualified-non-default-schema-test
+  (sql-tools.tu/test-parser-backends
+   (mt/test-driver :h2
+     ;; :h2's default-schema is the fixed literal "PUBLIC", but a table can be synced under
+     ;; any schema (ClickHouse's per-connection database, a generated per-run schema); an
+     ;; unqualified reference must still resolve when the name is unambiguous.
+     (let [table-id (mt/id :orders)
+           mp (lib.tu/merged-mock-metadata-provider
+               (mt/metadata-provider)
+               {:tables [(-> (lib.metadata/table (mt/metadata-provider) table-id)
+                             (assoc :schema "some_other_schema" :name "unqualified_schema_probe"))]})
+           query (lib/native-query mp "select id from unqualified_schema_probe")]
+       (testing "Unqualified reference to a table outside the driver's default schema still resolves"
+         (is (= #{{:table table-id}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
 ;;; ------------------------------------------------ replace-names -------------------------------------------------

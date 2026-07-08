@@ -116,12 +116,12 @@
           (get-in result [:data :rows]))))
 
 (defn- build-sample-sql
-  "Build the SQL that fetches a capped sample of failing rows for one assertion."
+  "Build the SQL that fetches one assertion's failing rows, uncapped: no
+  row-limit syntax is common to every :transforms/table dialect (SQL Server
+  has no LIMIT), so the cap is the caller's, applied through QP `:constraints`."
   [output-sql clean-sql]
-  ;; LIMIT parses on every :transforms/table engine except SQL Server (TOP);
-  ;; there fetch-sample! degrades to a nil sample. Counts are unaffected.
   (str "WITH test_output AS (" output-sql ")\n"
-       "SELECT * FROM (" clean-sql ") __sample LIMIT " sample-cap))
+       "SELECT * FROM (" clean-sql ") __sample"))
 
 (defn- fetch-sample!
   "Fetch a capped sample of failing rows for a single assertion.
@@ -130,7 +130,9 @@
   (try
     (let [clean-sql  (strip-trailing-semicolon rewritten-sql)
           sample-sql (build-sample-sql output-sql clean-sql)
-          result     (qp/process-query (execute/native-query db-id sample-sql))]
+          result     (qp/process-query (assoc (execute/native-query db-id sample-sql)
+                                              :constraints {:max-results           sample-cap
+                                                            :max-results-bare-rows sample-cap}))]
       (when (= :completed (:status result))
         {:rows    (get-in result [:data :rows])
          :columns (mapv :name (get-in result [:data :cols]))}))
