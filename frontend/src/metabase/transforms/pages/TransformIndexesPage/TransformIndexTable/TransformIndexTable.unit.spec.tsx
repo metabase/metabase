@@ -7,6 +7,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import type { TableIndexEntry, UserListResult } from "metabase-types/api";
@@ -52,6 +53,7 @@ function setup({
 describe("TransformIndexTable", () => {
   it("renders the column headers", async () => {
     setup({ indexes: [createMockTableIndexEntry()] });
+    await waitForLoaderToBeRemoved();
 
     for (const header of [
       "Name",
@@ -62,7 +64,7 @@ describe("TransformIndexTable", () => {
       "Last modified by",
       "Last run",
     ]) {
-      expect(await screen.findByText(header)).toBeInTheDocument();
+      expect(screen.getByText(header)).toBeInTheDocument();
     }
   });
 
@@ -76,8 +78,9 @@ describe("TransformIndexTable", () => {
         }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("idx_orders")).toBeInTheDocument();
+    expect(screen.getByText("idx_orders")).toBeInTheDocument();
     expect(screen.getByText("gin")).toBeInTheDocument();
     expect(screen.getByText("total, created_at")).toBeInTheDocument();
   });
@@ -90,8 +93,9 @@ describe("TransformIndexTable", () => {
         createMockTableIndexEntry({ name: "idx_gin", kind: "gin" }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("B-Tree")).toBeInTheDocument();
+    expect(screen.getByText("B-Tree")).toBeInTheDocument();
     expect(screen.getByText("gin")).toBeInTheDocument();
   });
 
@@ -99,8 +103,9 @@ describe("TransformIndexTable", () => {
     setup({
       indexes: [createMockTableIndexEntry({ name: null, kind: "distkey" })],
     });
+    await waitForLoaderToBeRemoved();
 
-    const table = await screen.findByRole("treegrid", {
+    const table = screen.getByRole("treegrid", {
       name: "Transform indexes",
     });
     // The kind shows in both the Name (fallback) and Type columns.
@@ -111,16 +116,18 @@ describe("TransformIndexTable", () => {
     setup({
       indexes: [createMockTableIndexEntry({ metabase_managed: true })],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Managed")).toBeInTheDocument();
+    expect(screen.getByText("Managed")).toBeInTheDocument();
   });
 
   it("labels non-managed indexes as 'Unmanaged'", async () => {
     setup({
       indexes: [createMockTableIndexEntry({ metabase_managed: false })],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Unmanaged")).toBeInTheDocument();
+    expect(screen.getByText("Unmanaged")).toBeInTheDocument();
   });
 
   it("formats the request status", async () => {
@@ -142,8 +149,9 @@ describe("TransformIndexTable", () => {
         }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("Removing")).toBeInTheDocument();
   });
 
@@ -155,8 +163,9 @@ describe("TransformIndexTable", () => {
         }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
     await userEvent.hover(getIcon("info_outline"));
     expect(
       await screen.findByText(
@@ -176,8 +185,9 @@ describe("TransformIndexTable", () => {
         }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Succeeded")).toBeInTheDocument();
+    expect(screen.getByText("Succeeded")).toBeInTheDocument();
     expect(queryIcon("info_outline")).not.toBeInTheDocument();
   });
 
@@ -202,8 +212,9 @@ describe("TransformIndexTable", () => {
         }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Never")).toBeInTheDocument();
+    expect(screen.getByText("Never")).toBeInTheDocument();
   });
 
   it("offers edit and delete for a managed index with a request", async () => {
@@ -212,9 +223,10 @@ describe("TransformIndexTable", () => {
       request: createMockTableIndexRequest({ id: 5 }),
     });
     const { onEdit, onDelete } = setup({ indexes: [index] });
+    await waitForLoaderToBeRemoved();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Index actions" }),
+      screen.getByRole("button", { name: "Index actions" }),
     );
     await userEvent.click(await screen.findByText("Edit"));
     expect(onEdit).toHaveBeenCalledWith(
@@ -222,7 +234,7 @@ describe("TransformIndexTable", () => {
     );
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Index actions" }),
+      screen.getByRole("button", { name: "Index actions" }),
     );
     await userEvent.click(await screen.findByText("Delete"));
     expect(onDelete).toHaveBeenCalledWith(
@@ -247,8 +259,9 @@ describe("TransformIndexTable", () => {
       request: createMockTableIndexRequest({ id: 6, status: "delete-pending" }),
     });
     const { onEdit } = setup({ indexes: [managed, unmanaged, removing] });
+    await waitForLoaderToBeRemoved();
 
-    await userEvent.click(await screen.findByText("idx_unmanaged"));
+    await userEvent.click(screen.getByText("idx_unmanaged"));
     await userEvent.click(screen.getByText("idx_removing"));
     expect(onEdit).not.toHaveBeenCalled();
 
@@ -275,8 +288,9 @@ describe("TransformIndexTable", () => {
       request: createMockTableIndexRequest({ id: 5 }),
     });
     const { onEdit } = setup({ indexes: [index], readOnly: true });
+    await waitForLoaderToBeRemoved();
 
-    await userEvent.click(await screen.findByText("idx_readonly"));
+    await userEvent.click(screen.getByText("idx_readonly"));
     expect(onEdit).not.toHaveBeenCalled();
   });
 
@@ -289,8 +303,9 @@ describe("TransformIndexTable", () => {
         }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Unmanaged")).toBeInTheDocument();
+    expect(screen.getByText("Unmanaged")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Index actions" }),
     ).not.toBeInTheDocument();
@@ -306,8 +321,9 @@ describe("TransformIndexTable", () => {
         }),
       ],
     });
+    await waitForLoaderToBeRemoved();
 
-    expect(await screen.findByText("Managed")).toBeInTheDocument();
+    expect(screen.getByText("Managed")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Index actions" }),
     ).not.toBeInTheDocument();
