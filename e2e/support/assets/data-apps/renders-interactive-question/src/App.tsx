@@ -47,7 +47,10 @@ function Overview() {
         >
           Total orders
         </div>
-        <div data-testid="orders-count" style={{ fontSize: 32, fontWeight: 700 }}>
+        <div
+          data-testid="orders-count"
+          style={{ fontSize: 32, fontWeight: 700 }}
+        >
           {ordersCount.isLoading ? "…" : String(totalOrders ?? "—")}
         </div>
       </section>
