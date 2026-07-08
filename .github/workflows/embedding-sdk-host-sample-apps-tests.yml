@@ -10,6 +10,11 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
   MB_EDITION: ee
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  REPO_ID: ${{ github.event.repository.id }}
+  COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 jobs:
   get-sample-apps-data:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -98,6 +103,7 @@ jobs:
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-sample-app
       MB_EDITION: ee
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -171,6 +177,8 @@ jobs:
       - name: Log free disk space
         run: df -h /
 
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Run e2e tests for Sample App
         id: run-e2e-tests
         if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
@@ -207,6 +215,7 @@ jobs:
     timeout-minutes: 45
     name: e2e-sample-app-shoppy-e2e-tests-${{ matrix.environment }}-bundle
     env:
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-shoppy
       MB_EDITION: ee
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -237,6 +246,8 @@ jobs:
           metastore-dev-server-url: ${{ secrets.METASTORE_DEV_SERVER_URL }}
           shoppy-datadog-application-id: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_APPLICATION_ID }}
           shoppy-datadog-client-token: ${{ secrets.SHOPPY_METABASE_APP_DATADOG_CLIENT_TOKEN }}
+
+      - uses: ./.github/actions/resolve-job-id
 
       - name: Run e2e tests for Shoppy
         id: run-e2e-tests
@@ -272,6 +283,7 @@ jobs:
     timeout-minutes: 45
     name: e2e-shoppy-synthetic-monitoring-tests
     env:
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-shoppy-synthetic
       MB_EDITION: ee
       MB_RUN_MODE: e2e
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
@@ -315,6 +327,8 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/resolve-job-id
 
       - name: Run synthetic monitoring tests
         id: run-e2e-tests
@@ -363,6 +377,8 @@ jobs:
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
+      CI_CONDUCTOR_TEST_SUITE: embedding-sdk-host-app
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
@@ -399,6 +415,8 @@ jobs:
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Generate database snapshots
         run: |
           node e2e/runner/run_cypress_ci.js snapshot \
@@ -422,6 +440,15 @@ jobs:
           path: |
             ./cypress
           if-no-files-found: ignore
+
+      - name: Quarantine gate (dry run)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
 
       - name: Fail job if tests failed
         if: ${{ steps.run-e2e-tests.outcome != 'success' }}

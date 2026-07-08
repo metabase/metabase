@@ -43,7 +43,7 @@ jest.mock("metabase/common/components/Pickers/EntityPicker", () => ({
             id: 1,
             name: "ORDERS",
             database_id: 1,
-          } as OmniPickerItem)
+          })
         }
       >
         Select Orders

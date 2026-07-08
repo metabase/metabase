@@ -631,15 +631,15 @@
                    :get-quarter :quarter-of-year}]
     (match/match-one filter-clause
       ;; no arguments
-      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?) & (args :len 0 :guard (every? int? args))]
+      [(op :guard #{:is-null :not-null}) _ (col-ref :guard date-col?)]
       {:operator op, :column (ref->col col-ref), :values []}
 
       ;; without `mode`
-      [(_ :guard #{:!= :not-in}) _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [(op :guard #{:get-hour :get-month :get-quarter}) _ (col-ref :guard date-col?)] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit (op->unit op), :values args}
 
       ;; with `:mode`
-      [(_ :guard #{:!= :not-in}) _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
+      [#{:!= :not-in} _ [:get-day-of-week _ (col-ref :guard date-col?) :iso] & (args :guard (every? int? args))]
       {:operator :!=, :column (ref->col col-ref), :unit :day-of-week, :values args}
 
       ;; do not match inner clauses

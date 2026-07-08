@@ -70,7 +70,7 @@ export const PublicLinkCopyPanel = ({
               component="button"
               style={{ whiteSpace: "nowrap" }}
               fz="sm"
-              c="error"
+              c="feedback-negative"
               fw={700}
               onClick={onRemoveLink}
             >

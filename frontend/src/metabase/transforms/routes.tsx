@@ -1,10 +1,9 @@
-import { IndexRoute, Route } from "react-router";
-
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import { IndexRoute, Route } from "metabase/router";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";

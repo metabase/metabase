@@ -609,7 +609,7 @@
                     derived-measure))
             (is (= #{[{:id "my-db", :model "Database"}]
                      [{:id (:entity_id @msr1s), :model "Measure"}]}
-                   (serdes/mbql-deps (:definition derived-measure))))))
+                   (serdes/mbql-deps false (:definition derived-measure))))))
         (testing "deserializing adjusts the measure IDs properly"
           (ts/with-db dest-db
             (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")

@@ -39,8 +39,7 @@ describe("Remote Sync", () => {
           query: {
             "source-table": PRODUCTS_ID,
           },
-          collection_id: (syncedCollection as unknown as Collection)
-            .id as number,
+          collection_id: (syncedCollection as unknown as Collection).id,
         });
       });
 

@@ -21,11 +21,11 @@ describe("resolveConcreteColor", () => {
     beforeEach(() => {
       appendSpy = jest
         .spyOn(document.body, "appendChild")
-        .mockImplementation((el) => el as any);
+        .mockImplementation((el) => el);
 
       removeSpy = jest
         .spyOn(document.body, "removeChild")
-        .mockImplementation((el) => el as any);
+        .mockImplementation((el) => el);
     });
 
     afterEach(() => {

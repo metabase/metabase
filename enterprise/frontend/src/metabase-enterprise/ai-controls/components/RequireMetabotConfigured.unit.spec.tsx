@@ -1,7 +1,6 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { RequireMetabotConfigured } from "./RequireMetabotConfigured";
 

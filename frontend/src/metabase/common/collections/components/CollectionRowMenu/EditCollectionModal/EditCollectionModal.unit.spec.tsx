@@ -95,7 +95,7 @@ describe("EditCollectionModal", () => {
       model: "collection",
       name: "Collection item",
       collection_id: itemParentCollection.id as number,
-    }) as CollectionItem;
+    });
     const { onSave } = setup(collectionItem);
 
     await userEvent.clear(screen.getByLabelText("Name"));

@@ -119,6 +119,15 @@ export const getTicksOptions = (
     });
   }
 
+  // HACK: ECharts 6.1.0 emits intermediate (mid-year) ticks within the padded
+  // single-point year domain. Unlike week/month/quarter, the year path had no
+  // boundary guard, so two ticks in the same year both format as that year and
+  // duplicate the label (metabase#63671). Filter to start-of-year ticks only.
+  if (largestInterval.unit === "year") {
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) && date.month() === 0 && date.date() === 1;
+  }
+
   if (!maxInterval) {
     minInterval = getTimeSeriesIntervalDuration(largestInterval);
   }

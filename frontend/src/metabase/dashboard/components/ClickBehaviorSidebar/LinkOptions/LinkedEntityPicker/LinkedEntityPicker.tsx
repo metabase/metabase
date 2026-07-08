@@ -49,7 +49,7 @@ const LINK_TARGETS = {
   },
   dashboard: {
     Name: ({ id }: { id: CardId | DashboardId | undefined }) => (
-      <DashboardName id={id as DashboardId | undefined} />
+      <DashboardName id={id} />
     ),
     PickerComponent: DashboardPickerModal,
     pickerIcon: "dashboard" as const,

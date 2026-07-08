@@ -33,7 +33,7 @@ export const getCollectionIdValueFromReference = createSelector(
           );
         }
 
-        return tenantCollectionId as RegularCollectionId;
+        return tenantCollectionId;
       })
       .with("root", () => null)
       .with(P.union(P.number, P.string), (id) => id)
@@ -71,7 +71,7 @@ export const getCollectionIdSlugFromReference = createSelector(
           );
         }
 
-        return tenantCollectionId as RegularCollectionId;
+        return tenantCollectionId;
       })
       .with("root", () => "root" as const)
       .with(P.union(P.number, P.string), (id) => id)

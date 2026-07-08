@@ -1,5 +1,4 @@
 import { useLayoutEffect, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -7,6 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import { Alert, Box, Card, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";

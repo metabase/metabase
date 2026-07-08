@@ -34,6 +34,7 @@ const {
   CI_CONDUCTOR_BASE_URL,
   CI_CONDUCTOR_WEBHOOK_SECRET,
   CI_CONDUCTOR_DRY_RUN,
+  CI_CONDUCTOR_TEST_SUITE,
   REPO_ID,
   GITHUB_RUN_ID,
   GITHUB_RUN_ATTEMPT,
@@ -337,7 +338,7 @@ export async function reportFailedTestsToConductor(
       run_id: toNumber(GITHUB_RUN_ID),
       attempt: toNumber(GITHUB_RUN_ATTEMPT),
       job_id: getJobId(),
-      test_suite: "e2e",
+      test_suite: CI_CONDUCTOR_TEST_SUITE || "e2e",
       // PR head sha / target branch when set by e2e-test.yml, else the ambient
       // (push/local) values. Empty strings collapse to null.
       sha: COMMIT_SHA || GITHUB_SHA || null,

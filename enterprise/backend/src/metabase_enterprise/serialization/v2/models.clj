@@ -90,6 +90,8 @@
    "ImplicitAction"
    "LoginHistory"
    "McpQueryHandle"
+   "McpSessionLog"
+   "McpToolCallLog"
    "MetabotConversation"
    "MetabotFeedback"
    "MetabotGroupLimit"

@@ -11,7 +11,7 @@ export const getObjectKeys = <K extends string>(
 };
 
 export const getObjectValues = <V>(obj: Record<string, V>): V[] => {
-  return Object.values(obj) as V[];
+  return Object.values(obj);
 };
 
 export const objectFromEntries = <K extends string, V>(
