@@ -1835,8 +1835,14 @@
                                    ;; trace is just incomplete for async/streaming agent-api responses.
                                    (fn eval-traced-respond [response]
                                      (when (ait/capture-active?)
+                                       ;; `+auth` binds `*current-user-id*` inside `base-routes`, so it
+                                       ;; is unbound when the span opened above but set by the time this
+                                       ;; respond fires — record the user id here so direct HTTP callers
+                                       ;; (not just the MCP path, which carries `:metabase-user-id`) get it.
                                        (ait/record! {:http/status   (:status response)
-                                                     :http/response (:body response)}))
+                                                     :http/response (:body response)
+                                                     :http/user-id  (or (:metabase-user-id request)
+                                                                        api/*current-user-id*)}))
                                      (respond response))
                                    raise))))
    (fn [prefix] (open-api/open-api-spec base-routes prefix))))

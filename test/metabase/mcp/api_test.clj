@@ -270,7 +270,7 @@
           delete-response (mcp-delete {"mcp-session-id" session-id})]
       (is (= 200 (:status delete-response))))))
 
-(deftest eval-session-override-test
+(deftest ^:parallel eval-session-override-test
   (testing "the x-eval-session-id header is honored only when it's a safe trace-file name"
     (let [override #'mcp.api/eval-session-override]
       (testing "a bare uuid (what the harness mints) is honored"
@@ -1342,7 +1342,7 @@
 
 (defn- dispatch-initialized-request [msg token-scopes]
   (let [session-id (str (random-uuid))]
-    (#'mcp.api/dispatch-request msg session-id token-scopes nil)))
+    (#'mcp.api/dispatch-request msg session-id token-scopes nil nil)))
 
 (defn- with-scoped-test-resource! [f]
   (let [registry @#'mcp.resources/registry
@@ -1389,6 +1389,7 @@
                         (jsonrpc-request "resources/list")
                         "session-id"
                         #{"agent:other"}
+                        nil
                         nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris construct-query-uri)
@@ -1402,6 +1403,7 @@
                         (jsonrpc-request "resources/list")
                         "session-id"
                         #{"agent:search"}
+                        nil
                         nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris scoped-test-uri)))))))

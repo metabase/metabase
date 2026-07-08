@@ -27,7 +27,7 @@
                 :attributes {:ai/model "claude" :ai/output-text "hi"}
                 :events [{:event :note}]
                 :duration-ms 12.5 :start-epoch-nanos 1000 :end-epoch-nanos 2000}
-          e    (ait.log/node->entry node "sess-1")]
+          e    (#'ait.log/node->entry node "sess-1")]
       (is (= {:session "sess-1" :id "n1" :parent "p0" :type :llm :name "llm.call"
               :start-epoch-ns 1000 :end-epoch-ns 2000 :dur-ms 12.5
               :attributes {:ai/model "claude" :ai/output-text "hi"}

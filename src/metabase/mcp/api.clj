@@ -135,6 +135,11 @@
   ;; filesystem/URL-safe, whereas the full id can carry a base64 payload that `require-valid-session`
   ;; accepts but `safe-session-id-re` rejects (e.g. `=` padding) — passing that to `with-eval-session`
   ;; would throw out here, ahead of the try/catch.
+  ;;
+  ;; When BOTH are absent (a stateless / pre-initialize request with no header), this is nil and
+  ;; `with-eval-session` mints a fresh uuid — so such requests get their own `<uuid>.jsonl` rather than
+  ;; grouping. That's fine for the eval flow, which always supplies `eval-session-id`; the ungrouped
+  ;; files are reaped by the appender's IdlePurgePolicy.
   (ait/with-eval-session (or eval-session-id (some-> session-id (str/split #"\.") first))
     (ait/eval-span (str "mcp." method) {:mcp/method     method
                                         :mcp/request-id id
@@ -303,7 +308,8 @@
                 ;; (gated PII) alongside client identity — the view no longer joins the session.
                 request-context {:user-agent (get-in request [:headers "user-agent"])
                                  :ip-address (request/ip-address request)}
-                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request) request-context eval-session-id)) messages)]
+                dispatch-msg    (fn [msg] (dispatch-request msg session-id (:token-scopes request) request-context eval-session-id))
+                responses       (into [] (keep dispatch-msg) messages)]
             (cond
               (empty? responses)
               {:status 202 :headers {} :body ""}

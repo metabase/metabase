@@ -97,6 +97,8 @@
       (is (= #{"tool.t0" "tool.t1" "tool.t2" "tool.t3"}
              (set (map :name (:children llm))))))))
 
+;; Not ^:parallel: references the destructive `emit!` (redef'd to a no-op here), which the
+;; `validate-deftest` lint disallows in parallel tests regardless of the thread-local redef.
 (deftest capture-reducible-test
   (testing "capture-reducible realizes a reducible and returns {:result :trace}"
     ;; redef the sink so the test never writes a trace file
@@ -122,7 +124,7 @@
       (is (thrown? clojure.lang.ExceptionInfo (ait/checked-session-id bad))
           (str "should reject " (pr-str bad))))))
 
-(deftest with-eval-session-rejects-unsafe-id-test
+(deftest ^:parallel with-eval-session-rejects-unsafe-id-test
   (testing "with-eval-session validates a caller-supplied id when capture is enabled"
     (mt/with-dynamic-fn-redefs [ait/eval-capture-enabled? (constantly true)]
       (is (thrown? clojure.lang.ExceptionInfo

@@ -702,15 +702,18 @@
                               (ait/record! {:ai/finish-reason finish-reason
                                             :ai/usage         @usage-atom
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
-                            ;; Emit debug log as a data part if debug mode was active
-                            (if (and debug? (seq @*debug-log*))
-                              (rf result (debug-log-part @*debug-log*))
-                              result)))]
-                    ;; When capturing, emit a tiny pointer so the harness can find the
-                    ;; per-session `<session-id>.jsonl` trace file written by the log sink.
-                    (if (ait/capture-active?)
-                      (rf turn-result (eval-session-part ait/*session-id*))
-                      turn-result)))
+                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
+                            ;; the reducing fn — stepping it again would violate the transducer contract.
+                            ;; Append trailing parts only on a normal finish: the debug log, and the
+                            ;; eval-session pointer that lets the harness locate the per-session
+                            ;; `<session-id>.jsonl` (it reads that file, not the stream, so a skipped
+                            ;; pointer on disconnect costs nothing).
+                            (if (= :reduced finish-reason)
+                              result
+                              (cond-> result
+                                (and debug? (seq @*debug-log*)) (rf (debug-log-part @*debug-log*))
+                                (ait/capture-active?)           (rf (eval-session-part ait/*session-id*))))))]
+                    turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
                   (let [{:keys [api-error status provider body]} (ex-data e)

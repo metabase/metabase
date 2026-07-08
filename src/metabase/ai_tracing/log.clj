@@ -15,14 +15,20 @@
   The single on/off switch is `MB_AI_EVAL_CAPTURE` (off by default): [[emit!]] is only reached while
   a capture is active, so on a normal instance this logger writes nothing even though it sits at
   INFO. (`resources/log4j2.xml` also lets you set the logger to `off` as a hard kill.) Traces contain
-  full, unredacted user content — intended for dedicated eval instances only."
+  full, unredacted user content — intended for dedicated eval instances only.
+
+  Retention is the operator's responsibility. Files are append-only with no rollover, no size cap,
+  and no expiry — a long session grows unbounded, and re-running the same session id appends to the
+  same file. The `RoutingAppender`'s IdlePurgePolicy only reclaims idle *appenders* (open file
+  handles), never the files on disk. An eval host should periodically prune
+  `${logfile.path}/eval-traces/` (the harness has usually consumed each `<id>.jsonl` by then)."
   (:require
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(defn node->entry
+(defn- node->entry
   "Pure: a finished span node + `session-id` → the JSONL map. No semantic-convention mapping and no
   size limits — full payloads. The reconstruction script joins on `:session` and chains
   `:id`/`:parent`. `:start-epoch-ns`/`:end-epoch-ns` are wall-clock epoch nanos (see ns docstring)."
