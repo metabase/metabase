@@ -220,6 +220,31 @@ describe("scenarios > data apps", () => {
       H.main().findByText("Data app not found").should("be.visible");
     });
   });
+
+  describe("internal routing", () => {
+    it("mirrors internal route changes into the parent URL", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: TEST_ENV,
+      });
+
+      H.openDataApp(APP_NAME);
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Orders overview" }).should(
+          "be.visible",
+        );
+        // Navigate to a nested page using the exposed `DataAppLink`.
+        cy.findByRole("link", { name: "Details" }).click();
+        cy.findByRole("heading", { name: "Order details" }).should(
+          "be.visible",
+        );
+      });
+
+      // The iframe's client-side navigation is mirrored to the parent's URL bar
+      // (via replaceState), so the top-level path reflects the nested route.
+      cy.location("pathname").should("eq", `/data-app/${APP_NAME}/details`);
+    });
+  });
 });
 
 describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {

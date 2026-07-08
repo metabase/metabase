@@ -1,22 +1,22 @@
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 import {
+  DataAppLink,
+  DataAppRouter,
+  useDataAppLocation,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 
 import { getTestEnv } from "./test-env";
 
-export default function App() {
+function Overview() {
   const { scalarQuery, questionQuery } = getTestEnv();
   const ordersCount = useMetabaseQuery(scalarQuery);
   const totalOrders = ordersCount.data?.rawRows?.[0]?.[0];
   const ordersQuery = useMetabaseQueryObject(questionQuery);
 
   return (
-    <div
-      data-testid="data-app-content"
-      style={{ padding: 24, fontFamily: "sans-serif" }}
-    >
+    <div data-testid="data-app-content" style={{ padding: 24 }}>
       <h1 style={{ margin: "0 0 16px" }}>Orders overview</h1>
 
       <section
@@ -38,10 +38,7 @@ export default function App() {
         >
           Total orders
         </div>
-        <div
-          data-testid="orders-count"
-          style={{ fontSize: 32, fontWeight: 700 }}
-        >
+        <div data-testid="orders-count" style={{ fontSize: 32, fontWeight: 700 }}>
           {ordersCount.isLoading ? "…" : String(totalOrders ?? "—")}
         </div>
       </section>
@@ -55,5 +52,46 @@ export default function App() {
         )}
       </div>
     </div>
+  );
+}
+
+// A nested page reached via the data-app router — used to assert that internal
+// navigation is mirrored to the parent's URL bar.
+function Details() {
+  return (
+    <div data-testid="data-app-details" style={{ padding: 24 }}>
+      <h1 style={{ margin: "0 0 16px" }}>Order details</h1>
+      <p>A nested page reached through the data-app router.</p>
+    </div>
+  );
+}
+
+function Shell() {
+  const { pathname } = useDataAppLocation();
+
+  return (
+    <div style={{ fontFamily: "sans-serif" }}>
+      <nav
+        style={{
+          padding: 16,
+          borderBottom: "1px solid #e0e0e0",
+          display: "flex",
+          gap: 16,
+        }}
+      >
+        <DataAppLink to="/">Overview</DataAppLink>
+        <DataAppLink to="/details">Details</DataAppLink>
+      </nav>
+
+      {pathname === "/details" ? <Details /> : <Overview />}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <DataAppRouter>
+      <Shell />
+    </DataAppRouter>
   );
 }
