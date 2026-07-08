@@ -44,23 +44,6 @@
                                    :status :started
                                    :is_active true})))
 
-(defn add-run-activity!
-  "Notes that a run has had activity"
-  [run-id]
-  (coordinated-run/add-run-activity! :model/TransformJobRun run-id))
-
-(defn succeed-started-run!
-  "Mark a started run as successfully completed."
-  ([run-id]
-   (succeed-started-run! run-id {}))
-  ([run-id properties]
-   (coordinated-run/succeed-started-run! :model/TransformJobRun run-id properties)))
-
-(defn fail-started-run!
-  "Mark the started active run as failed and inactive."
-  [run-id properties]
-  (coordinated-run/fail-started-run! :model/TransformJobRun run-id properties))
-
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
   process is presumed dead). Returns the rows that were timed out so callers can notify."
