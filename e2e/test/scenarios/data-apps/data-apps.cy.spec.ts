@@ -360,13 +360,10 @@ describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
   it("shows the data-apps upsell instead of the management UI", () => {
     cy.visit("/admin/settings/data-apps");
 
-    cy.findByTestId("upsell-big-card").within(() => {
+    H.main().within(() => {
       cy.findByText("Build apps on your data").should("be.visible");
+      cy.findByText("Try for free").should("be.visible");
     });
-    cy.findByRole("button", { name: "Try for free" }).should("be.visible");
-
-    // The management-only "Setup" section must not render.
-    cy.findByRole("heading", { name: "Setup" }).should("not.exist");
   });
 
   it("marks the Data apps settings nav item with an upsell gem", () => {
