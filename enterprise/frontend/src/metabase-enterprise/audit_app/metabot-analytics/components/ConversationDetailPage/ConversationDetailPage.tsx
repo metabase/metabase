@@ -137,8 +137,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
             )}
           </Flex>
           <Card withBorder shadow="none" p="xl">
-            {/* the read-only transcript has no live agent; "omnibot" always
-                exists in the store and readonly hides all save actions */}
             <Messages
               messages={messages}
               getExtraActions={getExtraActions}

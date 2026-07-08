@@ -295,6 +295,42 @@ describe("MetabotInlineChart", () => {
       expect(screen.queryByText("Saved")).not.toBeInTheDocument();
     });
 
+    it("flips back to unsaved when the saved card is gone (404)", async () => {
+      fetchMock.get("path:/api/card/99", { status: 404 });
+      const { store } = setup();
+
+      act(() => {
+        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Save" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Saved")).not.toBeInTheDocument();
+    });
+
+    it("stays saved when the card fetch fails transiently", async () => {
+      fetchMock.get(
+        "path:/api/card/99",
+        { status: 500 },
+        { name: "card-error" },
+      );
+      const { store } = setup();
+
+      act(() => {
+        store.dispatch(markChartSaved({ entityId: "card-1", cardId: 99 }));
+      });
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("card-error")).toBe(true);
+      });
+
+      expect(await screen.findByText("Saved")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("shows a short 'Saved' link once the chart is marked saved", async () => {
       setupCardEndpoints(
         createMockCard({ id: 99, metabot_chart_id: "card-1" }),

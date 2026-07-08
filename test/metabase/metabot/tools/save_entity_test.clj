@@ -40,7 +40,6 @@
             (is (= "entity_saved" (:data-type part)))
             (is (= "c-1" (get-in part [:data :entity_id])))
             (is (= (:id card) (get-in part [:data :card_id])))
-            (is (= "Venues by price" (get-in part [:data :name])))
             (is (= {:type "collection" :id (:id coll)}
                    (get-in part [:data :location])))))))))
 

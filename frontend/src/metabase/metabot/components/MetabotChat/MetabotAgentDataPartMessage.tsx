@@ -6,6 +6,7 @@ import { jt, t } from "ttag";
 
 import {
   skipToken,
+  useGetCardQuery,
   useGetCollectionQuery,
   useGetDashboardQuery,
 } from "metabase/api";
@@ -122,11 +123,19 @@ export const AgentDataPartMessage = ({
 const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
   const { location } = value;
 
-  const { data: collection } = useGetCollectionQuery(
-    location.type === "collection" ? { id: location.id ?? "root" } : skipToken,
+  const { data: card } = useGetCardQuery({
+    id: value.card_id,
+    ignore_error: true,
+  });
+  const { data: collection, error: collectionError } = useGetCollectionQuery(
+    location.type === "collection"
+      ? { id: location.id ?? "root", ignore_error: true }
+      : skipToken,
   );
-  const { data: dashboard } = useGetDashboardQuery(
-    location.type === "dashboard" ? { id: location.id } : skipToken,
+  const { data: dashboard, error: dashboardError } = useGetDashboardQuery(
+    location.type === "dashboard"
+      ? { id: location.id, ignore_error: true }
+      : skipToken,
   );
   const container =
     location.type === "dashboard"
@@ -135,12 +144,15 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
           name: collection.name,
           url: Urls.collection(collection),
         };
+  const containerError =
+    location.type === "dashboard" ? dashboardError : collectionError;
+  const isContainerPending = container == null && containerError == null;
 
-  if (container == null) {
+  if (card == null || isContainerPending) {
     return null;
   }
 
-  const target = (
+  const target = container && (
     <Anchor
       key="target"
       component={ForwardRefLink}
@@ -155,11 +167,11 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
     <Anchor
       key="name"
       component={ForwardRefLink}
-      to={Urls.card({ id: value.card_id, name: value.name })}
+      to={Urls.card(card)}
       target="_blank"
       fw="bold"
     >
-      {value.name}
+      {card.name}
     </Anchor>
   );
 
@@ -167,7 +179,9 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
     <Flex align="center" gap="sm" c="text-secondary">
       <Icon name="check" size={14} />
       <Text c="text-secondary">
-        {jt`Chart ${chartName} saved to ${target}`}
+        {target
+          ? jt`Chart ${chartName} saved to ${target}`
+          : jt`Chart ${chartName} saved`}
       </Text>
     </Flex>
   );

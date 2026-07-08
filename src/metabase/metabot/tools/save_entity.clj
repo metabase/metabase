@@ -105,9 +105,7 @@
                  :display                display
                  :visualization_settings {}
                  :dashboard_id           dashboard-id}
-                {:id api/*current-user-id*}
-                false
-                true)]
+                {:id api/*current-user-id*})]
       {:card          card
        :location      {:type "dashboard" :id dashboard-id}
        :location-name (t2/select-one-fn :name :model/Dashboard :id dashboard-id)
@@ -167,7 +165,6 @@
        :data-parts        [(streaming/entity-saved-part
                             {:entity_id chart_id
                              :card_id   (:id card)
-                             :name      question-name
                              :location  location})]})
     (catch Exception e
       (log/error e "Error saving entity")
