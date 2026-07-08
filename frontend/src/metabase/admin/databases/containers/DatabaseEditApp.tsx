@@ -97,6 +97,7 @@ function DatabaseEditAppInner({
 
   PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
+  // Unjustified type cast. FIXME
   return (
     <>
       <ErrorBoundary errorComponent={GenericError as ComponentType}>

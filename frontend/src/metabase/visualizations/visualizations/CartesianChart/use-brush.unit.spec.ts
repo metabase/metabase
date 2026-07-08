@@ -25,6 +25,7 @@ class PointerEventPolyfill extends MouseEvent {
 }
 
 if (typeof globalThis.PointerEvent === "undefined") {
+  // Unjustified type cast. FIXME
   (globalThis as any).PointerEvent = PointerEventPolyfill;
 }
 
@@ -32,7 +33,9 @@ const createMockChartRef = () => {
   const dispatchAction = jest.fn();
   const trigger = jest.fn();
   const getZrender = jest.fn(() => ({ trigger }));
+  // Unjustified type cast. FIXME
   const chartRef = {
+    // Unjustified type cast. FIXME
     current: { dispatchAction, getZr: getZrender } as unknown as EChartsType,
   } as MutableRefObject<EChartsType | undefined>;
 
@@ -43,9 +46,11 @@ const createMockContainerRef = () => {
   const element = document.createElement("div");
 
   element.getBoundingClientRect = jest.fn(
+    // Unjustified type cast. FIXME
     () => ({ left: 10, top: 20, width: 400, height: 300 }) as DOMRect,
   );
 
+  // Unjustified type cast. FIXME
   const containerRef = { current: element } as RefObject<HTMLDivElement>;
 
   return { containerRef, el: element };
@@ -180,6 +185,7 @@ describe("use-brush", () => {
 
   describe("createZrenderMousedownEvent", () => {
     it("calculates correct offsets from client coords and rect", () => {
+      // Unjustified type cast. FIXME
       const rect = { left: 50, top: 100 } as DOMRect;
       const { offsetX, offsetY, target, event } = createZrenderMousedownEvent(
         { x: 150, y: 250 },
@@ -231,6 +237,7 @@ describe("use-brush", () => {
         // the first attempt to enable the brush is a no-op. Surfacing the chart
         // instance as a signal must re-run the effect and enable the brush.
         const dispatchAction = jest.fn();
+        // Unjustified type cast. FIXME
         const chartRef = {
           current: undefined,
         } as MutableRefObject<EChartsType | undefined>;
@@ -248,6 +255,7 @@ describe("use-brush", () => {
             ),
           {
             initialProps: {
+              // Unjustified type cast. FIXME
               chartInstance: undefined as EChartsType | undefined,
             },
           },

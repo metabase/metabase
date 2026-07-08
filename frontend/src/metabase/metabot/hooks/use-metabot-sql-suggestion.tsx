@@ -36,6 +36,7 @@ const responseHasCodeEdit = (action: SubmitInputResult) => {
         typeof dp === "object" &&
         dp !== null &&
         "type" in dp &&
+        // Unjustified type cast. FIXME
         (dp as { type: string }).type === "code_edit",
     )
   );

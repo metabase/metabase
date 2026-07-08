@@ -1348,6 +1348,7 @@ export function formatDateTimeWithUnit(
 
   if (!dateFormat) {
     dateFormat = getDateFormatFromStyle(
+      // Unjustified type cast. FIXME
       options.date_style as string,
       unit,
       options.date_separator,
@@ -1357,6 +1358,7 @@ export function formatDateTimeWithUnit(
 
   if (!timeFormat) {
     timeFormat = getTimeFormatFromStyle(
+      // Unjustified type cast. FIXME
       options.time_style as string,
       unit,
       options.time_enabled,

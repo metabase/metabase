@@ -48,8 +48,10 @@ function NewEventWithTimelineModalContainer(
       return;
     }
     const timeline = await createTimeline(
+      // Unjustified type cast. FIXME
       getDefaultTimeline(collection) as CreateTimelineRequest,
     ).unwrap();
+    // Unjustified type cast. FIXME
     await createTimelineEvent({
       ...values,
       timeline_id: timeline.id,

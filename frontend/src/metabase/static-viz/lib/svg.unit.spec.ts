@@ -55,6 +55,7 @@ const SVG_STR = `<svg width="500" height="500">
 describe("patchDominantBaseline", () => {
   it(`should add "dy='0.5em'" to all text nodes with "dominant-baseline='central'`, () => {
     const patchedSvgStr = patchDominantBaseline(SVG_STR);
+    // Unjustified type cast. FIXME
     const patchedSvgElem = fromHtml(patchedSvgStr, {
       fragment: true,
       space: "svg",

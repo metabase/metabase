@@ -364,6 +364,7 @@ describe("getTimelineEventsForEvent", () => {
   ];
 
   it("finds events by event.value", () => {
+    // Unjustified type cast. FIXME
     const event = {
       value: "2027-10-01T00:00:00Z",
       data: null,
@@ -374,6 +375,7 @@ describe("getTimelineEventsForEvent", () => {
   });
 
   it("finds events by event.data.xAxis when value is not populated (stacked series) #74005", () => {
+    // Unjustified type cast. FIXME
     const event = {
       value: undefined,
       data: { xAxis: "2027-10-01T00:00:00Z" },
@@ -384,6 +386,7 @@ describe("getTimelineEventsForEvent", () => {
   });
 
   it("returns undefined when no matching date exists", () => {
+    // Unjustified type cast. FIXME
     const event = {
       value: "9999-01-01T00:00:00Z",
       data: null,

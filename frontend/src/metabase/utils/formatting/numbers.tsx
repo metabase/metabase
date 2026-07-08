@@ -187,9 +187,11 @@ export function numberFormatterForOptions(options: FormatNumberOptions) {
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
+    // Unjustified type cast. FIXME
     style: options.number_style as Intl.NumberFormatOptions["style"],
     currency: options.currency,
     currencyDisplay:
+      // Unjustified type cast. FIXME
       options.currency_style as Intl.NumberFormatOptions["currencyDisplay"],
     // always use grouping separators, but we may replace/remove them depending on number_separators option
     useGrouping: true,

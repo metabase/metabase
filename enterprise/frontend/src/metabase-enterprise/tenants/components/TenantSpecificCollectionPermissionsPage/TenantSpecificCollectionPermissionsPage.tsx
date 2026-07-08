@@ -112,6 +112,7 @@ function TenantSpecificCollectionPermissionsPageView({
       // Always propagate to sub-collections for tenant-specific collections
       updateCollectionPermission({
         groupId: assertNumericId(item.id),
+        // Unjustified type cast. FIXME
         collection: collection as Collection,
         value,
         shouldPropagateToChildren: true,

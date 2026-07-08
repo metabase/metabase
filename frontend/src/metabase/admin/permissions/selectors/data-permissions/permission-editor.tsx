@@ -69,6 +69,7 @@ const getGroupHint = (groupType: SpecialGroupType): string | null => {
 // editor/sidebar loading and error UI.
 const selectDatabaseTablesMetadata = (state: State, databaseId: string) =>
   databaseApi.endpoints.getDatabaseMetadata.select({
+    // Unjustified type cast. FIXME
     id: databaseId as unknown as DatabaseId,
     include_hidden: true,
     remove_inactive: true,
@@ -267,7 +268,8 @@ export const getDatabasesPermissionEditor = createSelector(
     if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
         ? database.getSchemas()[0]
-        : (database.schema(schemaName) as Schema);
+        : // Unjustified type cast. FIXME
+          (database.schema(schemaName) as Schema);
       permissionSubject = "fields";
       entities = (schema.tables ?? [])
         .sort((a, b) => a.display_name.localeCompare(b.display_name))
@@ -321,7 +323,9 @@ export const getDatabasesPermissionEditor = createSelector(
       permissionSubject = "schemas";
       entities = metadata
         .databasesList({ savedQuestions: false })
+        // Unjustified type cast. FIXME
         .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as Database))
+        // Unjustified type cast. FIXME
         .filter((db) => !(db as Database).router_database_id)
         .map((database) => {
           const entityId = getDatabaseEntityId(database);

@@ -16,6 +16,7 @@ import {
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
     it("connectedReduxRedirect should throw an error if no context is provided", async () => {
+      // Unjustified type cast. FIXME
       expect(() => connectedReduxRedirect({} as any)).toThrow(
         "you must provide a custom context",
       );
@@ -35,6 +36,7 @@ describe("route-guards", () => {
       const text = "User can see since context is shared";
       const state = { auth: { VAL_ONLY_IN_THIS_CTX: true } };
       renderWithProviders(<RouteGuard>{text}</RouteGuard>, {
+        // Unjustified type cast. FIXME
         storeInitialState: createMockState(state as any),
       });
 
@@ -62,6 +64,7 @@ describe("route-guards", () => {
       const text = "User should not be able to see this";
       const state = { auth: { VAL_ONLY_IN_THIS_CTX: true } };
       renderWithProviders(<RouteGuard>{text}</RouteGuard>, {
+        // Unjustified type cast. FIXME
         storeInitialState: createMockState(state as any),
       });
 
@@ -72,11 +75,13 @@ describe("route-guards", () => {
 
   describe("redirect-after-login flow (UXW-3939)", () => {
     it("UserIsAuthenticated should preserve original path as ?redirect= when sending logged-out user to /auth/login", async () => {
+      // Unjustified type cast. FIXME
       const settings = {
         "has-user-setup": true,
       } as any;
       const state = createMockState({
         currentUser: undefined,
+        // Unjustified type cast. FIXME
         settings: { values: settings } as any,
       });
 

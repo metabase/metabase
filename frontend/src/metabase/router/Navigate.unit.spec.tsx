@@ -98,6 +98,7 @@ describe("router/Navigate", () => {
       expect(history?.getCurrentLocation().pathname).toBe("/dest"),
     );
 
+    // Unjustified type cast. FIXME
     const state = history?.getCurrentLocation().state as typeof RICH_STATE;
     // Serializing would turn the Date into a string and NaN into null.
     expect(state.when).toBe(RICH_STATE.when);

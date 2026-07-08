@@ -25,11 +25,13 @@ function Quoted({ children }: { children: React.ReactNode }) {
 }
 
 const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
+  // Unjustified type cast. FIXME
   const { targetId } = clickBehavior as EntityCustomDestinationClickBehavior;
   if (clickBehavior.linkType === "url") {
     return t`URL`;
   }
   if (clickBehavior.linkType === "question") {
+    // Unjustified type cast. FIXME
     return (
       <Quoted key="link-question">
         <QuestionName id={targetId as CardId} />
@@ -85,6 +87,7 @@ interface ColumnProps {
 export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
+      // Unjustified type cast. FIXME
       name={getIconForField(column) as unknown as IconName}
       c="core-brand"
       size={18}

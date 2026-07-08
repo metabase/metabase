@@ -327,6 +327,7 @@ describe("DashboardSharingMenu", () => {
         method: "POST",
       })[0];
       return JSON.parse(
+        // Unjustified type cast. FIXME
         await (call.options?.body as unknown as Promise<string>),
       );
     };

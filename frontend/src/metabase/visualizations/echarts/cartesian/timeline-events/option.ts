@@ -60,6 +60,7 @@ export const getTimelineEventsSeries = (
 
     const color = getColor(isSelected ? "core-brand" : "text-disabled");
     const iconName =
+      // Unjustified type cast. FIXME
       events.length === 1 ? (events[0].icon as IconName) : "star";
 
     const iconSvg = setSvgColor(Icons[iconName].source, color);

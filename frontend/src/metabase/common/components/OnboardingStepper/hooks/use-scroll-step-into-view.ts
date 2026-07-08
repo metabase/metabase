@@ -18,6 +18,7 @@ export function useScrollStepIntoView(
         refs[stepId] = createRef<HTMLDivElement>();
         return refs;
       },
+      // Unjustified type cast. FIXME
       {} as Record<string, React.RefObject<HTMLDivElement>>,
     );
   }, [stepIds]);

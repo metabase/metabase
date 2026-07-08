@@ -12,6 +12,7 @@ import {
 
 type LinkVariantProp = { variant?: "default" | "brand" | "brandBold" };
 
+// Unjustified type cast. FIXME
 export const LinkRoot = styled(
   Link,
   doNotForwardProps("variant"),

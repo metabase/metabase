@@ -84,6 +84,7 @@ function setup({
   });
 
   const metadata = getMetadata(state);
+  // Unjustified type cast. FIXME
   const question = metadata.question(card.id) as Question;
   const onOpenModal = jest.fn();
   const onSetQueryBuilderMode = jest.fn();

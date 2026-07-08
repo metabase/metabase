@@ -137,6 +137,7 @@ const getTenantCollection = createSelector(
     }
 
     if (collectionId === ROOT_COLLECTION.id) {
+      // Unjustified type cast. FIXME
       return {
         ...ROOT_COLLECTION,
         name: t`Root shared collection`,
@@ -238,6 +239,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
               ),
               warning: getTenantCollectionWarning(
                 group.id,
+                // Unjustified type cast. FIXME
                 collection as ExpandedCollection,
                 permissions,
               ),

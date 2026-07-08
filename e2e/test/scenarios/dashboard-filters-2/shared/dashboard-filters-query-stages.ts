@@ -725,9 +725,12 @@ export function goBackToDashboard() {
 }
 
 export function getDashboardId(): Cypress.Chainable<number> {
-  return cy
-    .get("@dashboardId")
-    .then((dashboardId) => dashboardId as unknown as number);
+  return (
+    cy
+      .get("@dashboardId")
+      // Unjustified type cast. FIXME
+      .then((dashboardId) => dashboardId as unknown as number)
+  );
 }
 
 export function waitForPublicDashboardData(requestCount: number) {

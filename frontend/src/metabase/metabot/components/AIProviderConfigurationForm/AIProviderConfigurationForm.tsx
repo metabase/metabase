@@ -235,6 +235,7 @@ export function AIProviderConfigurationForm({
                 <Text
                   lh="1rem"
                   c={option.disabled ? "text-disabled" : undefined}
+                  // Unjustified type cast. FIXME
                 >
                   {option.label}
                 </Text>

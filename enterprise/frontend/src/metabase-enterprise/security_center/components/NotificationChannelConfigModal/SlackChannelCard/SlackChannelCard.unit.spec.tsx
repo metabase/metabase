@@ -15,6 +15,7 @@ jest.mock("../../../hooks/use-notification-config", () => ({
 }));
 
 const mockedUseNotificationConfig =
+  // Unjustified type cast. FIXME
   useNotificationConfig as any as jest.MockedFn<typeof useNotificationConfig>;
 
 const DEFAULT_CONFIG: NotificationConfig = {

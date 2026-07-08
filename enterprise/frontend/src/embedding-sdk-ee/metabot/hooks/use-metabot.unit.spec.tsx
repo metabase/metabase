@@ -247,6 +247,7 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
@@ -278,6 +279,7 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(metabotActions.setDebugMode(true));
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "tool_call",
@@ -286,6 +288,7 @@ describe("useMetabot", () => {
           } as any),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "edit_suggestion",
@@ -304,6 +307,7 @@ describe("useMetabot", () => {
           } as any),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "todo_list",
@@ -318,6 +322,7 @@ describe("useMetabot", () => {
           } as any),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "text",
@@ -349,6 +354,7 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
@@ -356,6 +362,7 @@ describe("useMetabot", () => {
           } as any),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
@@ -371,6 +378,7 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
@@ -474,6 +482,7 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
@@ -494,6 +503,7 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
@@ -537,6 +547,7 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",
@@ -562,6 +573,7 @@ describe("useMetabot", () => {
           }),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "data_part",

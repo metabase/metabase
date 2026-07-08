@@ -754,6 +754,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });
@@ -786,6 +787,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });

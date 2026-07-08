@@ -51,6 +51,7 @@ function setup({ isGuestEmbed }: { isGuestEmbed: boolean }) {
       permissions: { can_access_subscription: true },
     }),
     settings: {
+      // Unjustified type cast. FIXME
       values: {
         ...createMockSettings({ "enable-embedding-sdk": true }),
         "token-features": {

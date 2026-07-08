@@ -32,6 +32,7 @@ const mockInitSdkTracker = jest.mocked(initSdkTracker);
 const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
 
 function makeStore() {
+  // Unjustified type cast. FIXME
   return { dispatch: jest.fn(), getState: jest.fn() } as any;
 }
 

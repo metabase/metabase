@@ -65,6 +65,7 @@ function setup({
     }),
   };
 
+  // Unjustified type cast. FIXME
   const location = {
     pathname,
     query,
@@ -80,6 +81,7 @@ function setup({
           [dashboardId]: createMockStoreDashboard({
             id: dashboardId,
             parameters,
+            // Unjustified type cast. FIXME
             tabs: tabs?.map((tab) => ({ ...tab }) as any),
           }),
         };
@@ -95,6 +97,7 @@ function setup({
   });
 
   const { store, unmount } = renderHookWithProviders(
+    // Unjustified type cast. FIXME
     () => useDashboardUrlQuery(router as any, location),
     { storeInitialState },
   );
@@ -104,8 +107,11 @@ function setup({
 
 describe("useDashboardUrlQuery", () => {
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     (push as jest.Mock).mockClear();
+    // Unjustified type cast. FIXME
     (replace as jest.Mock).mockClear();
+    // Unjustified type cast. FIXME
     (isEmbedPreview as jest.Mock).mockReturnValue(false);
   });
 
@@ -135,6 +141,7 @@ describe("useDashboardUrlQuery", () => {
 
     // The mount sync (previous query params were undefined) uses replace.
     (push as jest.Mock).mockClear();
+    // Unjustified type cast. FIXME
     (replace as jest.Mock).mockClear();
 
     act(() => {
@@ -151,6 +158,7 @@ describe("useDashboardUrlQuery", () => {
   });
 
   it("does not sync when isEmbedPreview() is true", () => {
+    // Unjustified type cast. FIXME
     (isEmbedPreview as jest.Mock).mockReturnValue(true);
 
     setup({

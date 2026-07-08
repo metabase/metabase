@@ -589,6 +589,7 @@ describe("Actions > ActionForm", () => {
             type: "form",
             fields: {
               "abc-123": makeFieldSettings({
+                // Unjustified type cast. FIXME
                 inputType: inputType as FieldSettings["inputType"],
                 id: "abc-123",
                 title: "input",

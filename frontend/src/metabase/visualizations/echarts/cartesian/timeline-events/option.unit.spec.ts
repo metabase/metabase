@@ -38,9 +38,11 @@ describe("getTimelineEventsSeries", () => {
     );
 
     expect(result).not.toBeNull();
+    // Unjustified type cast. FIXME
     const markLineData = result!.markLine!.data as unknown[][];
     expect(markLineData).toHaveLength(1);
 
+    // Unjustified type cast. FIXME
     const [startPoint, endPoint] = markLineData[0] as Array<{
       y: number;
       xAxis: string;

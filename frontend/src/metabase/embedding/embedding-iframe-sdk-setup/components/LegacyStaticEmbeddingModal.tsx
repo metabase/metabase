@@ -53,6 +53,7 @@ export const LegacyStaticEmbeddingModal = ({
   if (experience === "chart") {
     return (
       <QuestionEmbedWidget
+        // Unjustified type cast. FIXME
         card={resource as Card}
         onBack={handleBack}
         onClose={onClose}
@@ -63,6 +64,7 @@ export const LegacyStaticEmbeddingModal = ({
   if (experience === "dashboard") {
     return (
       <DashboardSharingEmbeddingModal
+        // Unjustified type cast. FIXME
         dashboard={resource as Dashboard}
         onBack={handleBack}
         onClose={onClose}

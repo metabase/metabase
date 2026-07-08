@@ -22,6 +22,7 @@ const getDefaultPluginAuthProviders = () => ({
   SettingsSAMLForm: NotFoundPlaceholder,
   SettingsJWTForm: NotFoundPlaceholder,
   SettingsOIDCForm: NotFoundPlaceholder,
+  // Unjustified type cast. FIXME
   providers: [] as GetAuthProviders[],
 });
 

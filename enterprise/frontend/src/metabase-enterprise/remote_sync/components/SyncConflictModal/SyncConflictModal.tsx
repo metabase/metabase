@@ -99,6 +99,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
       const remoteSyncSettings: RemoteSyncConfigurationSettings = {
+        // Unjustified type cast. FIXME
         [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
           COLLECTIONS_KEY
         ],

@@ -36,6 +36,7 @@ const groupEventsByUnitStart = (
     (acc, event) => {
       const unitStart = dayjs
         .utc(event.timestamp)
+        // Unjustified type cast. FIXME
         .startOf(unit as OpUnitType)
         .toISOString();
 

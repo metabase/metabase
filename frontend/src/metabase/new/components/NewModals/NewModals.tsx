@@ -106,6 +106,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
         </Modal>
       );
     case "embed": {
+      // Unjustified type cast. FIXME
       const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
       return (
         <SdkIframeEmbedSetupModal
@@ -116,6 +117,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     }
     case STATIC_LEGACY_EMBEDDING_TYPE: {
+      // Unjustified type cast. FIXME
       const props = currentNewModalProps as LegacyStaticEmbeddingModalProps;
 
       return (

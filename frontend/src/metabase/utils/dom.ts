@@ -216,7 +216,9 @@ export const getEventTarget = (
     clientX = event.changedTouches[0].clientX;
     clientY = event.changedTouches[0].clientY;
   } else {
+    // Unjustified type cast. FIXME
     clientX = (event as MouseEvent).clientX;
+    // Unjustified type cast. FIXME
     clientY = (event as MouseEvent).clientY;
   }
 

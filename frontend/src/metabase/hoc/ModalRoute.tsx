@@ -132,4 +132,5 @@ class _ModalRoute extends Route {
 // ModalRoute extends react-router's Route which is not generic,
 // so it's impossible to extend Route's props.
 export const ModalRoute =
+  // Unjustified type cast. FIXME
   _ModalRoute as unknown as React.ComponentType<ModalRouteProps>;

@@ -208,6 +208,7 @@ export const getTenantSpecificCollectionsPermissionEditor = createSelector(
               ),
               warning: getTenantSpecificCollectionWarning(
                 group.id,
+                // Unjustified type cast. FIXME
                 collection as ExpandedCollection,
                 permissions,
               ),

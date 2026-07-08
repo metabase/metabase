@@ -216,6 +216,7 @@ export async function resolveCards({
   return cardId
     ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
     : fetchAndPrepareAdHocQuestionCards(
+        // Unjustified type cast. FIXME
         deserializedCard as Card,
         dispatch,
         getState,
@@ -250,6 +251,7 @@ export async function updateTemplateTagNames(
 
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
+    // Unjustified type cast. FIXME
     const action = (dispatch as DispatchFn)(
       snippetApi.endpoints.listSnippets.initiate(undefined, {
         forceRefetch: true,
@@ -444,6 +446,7 @@ async function handleQBInit(
   }
 
   if (isNative && isEditable) {
+    // Unjustified type cast. FIXME
     const query = question.legacyNativeQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
     question = question.setLegacyQuery(newQuery);

@@ -139,14 +139,19 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   getCollectionPickerItems: () => undefined,
   getEntityPickerSyntheticLibraryItem: () => undefined,
   CreateLibraryModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
   CollectionPermissionsModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,
   PublishTablesModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<PublishTablesModalProps>,
   UnpublishTablesModal:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<UnpublishTablesModalProps>,
   useGetLibraryCollectionQuery:
+    // Unjustified type cast. FIXME
     (() => []) as unknown as LibraryPlugin["useGetLibraryCollectionQuery"],
   getLibraryCollectionEmptyStateMessages: () => ({
     title: "",

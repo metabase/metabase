@@ -141,6 +141,7 @@ export function createMockCloudAddOns(
           is_default: true,
         },
       ],
+      // Unjustified type cast. FIXME
       product_type: "other" as any, // test unexpected product_type
       self_service: true,
     },

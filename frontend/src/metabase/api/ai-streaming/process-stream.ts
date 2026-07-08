@@ -50,11 +50,13 @@ function parseDataStreamPart(line: string) {
   }
 
   const prefix = line.slice(0, firstSeparatorIndex);
+  // Unjustified type cast. FIXME
   if (!StreamingPartTypes.includes(prefix as StreamingPartType)) {
     console.warn(`Received invalid message code: ${prefix}`);
     return;
   }
 
+  // Unjustified type cast. FIXME
   const code = prefix as StreamingPartType;
   const textValue = line.slice(firstSeparatorIndex + 1);
   const jsonValue: JSONValue = JSON.parse(textValue);

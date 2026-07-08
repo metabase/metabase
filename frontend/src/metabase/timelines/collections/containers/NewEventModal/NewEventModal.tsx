@@ -38,6 +38,7 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
     _collection?: unknown,
     timeline?: Timeline,
   ) => {
+    // Unjustified type cast. FIXME
     await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
     if (timeline) {
       dispatch(push(Urls.timelineInCollection(timeline)));

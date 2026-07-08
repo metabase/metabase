@@ -202,9 +202,11 @@ export function getTestStoreAndWrapper({
     history && routerMiddleware(history),
   ]);
 
+  // Unjustified type cast. FIXME
   const store = getStore(
     reducers,
     initialState,
+    // Unjustified type cast. FIXME
     storeMiddleware as Middleware[],
   ) as unknown as Store<State>;
 
@@ -472,6 +474,7 @@ export function createMockClipboardData(
   opts?: Partial<DataTransfer>,
 ): DataTransfer {
   const clipboardData = { ...opts };
+  // Unjustified type cast. FIXME
   return clipboardData as unknown as DataTransfer;
 }
 

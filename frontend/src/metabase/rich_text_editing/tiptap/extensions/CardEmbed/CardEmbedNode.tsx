@@ -669,6 +669,7 @@ export const CardEmbedComponent = memo(
             ) : (
               <Box className={styles.questionResults}>
                 <ChartSkeleton
+                  // Unjustified type cast. FIXME
                   display={(card?.display as CardDisplayType) || "table"}
                 />
               </Box>

@@ -49,6 +49,7 @@ const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
 ): GroupTableAccessPolicy => {
+  // Unjustified type cast. FIXME
   return {
     ...policy,
     card_id: shouldUseSavedQuestion ? policy.card_id : null,

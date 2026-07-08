@@ -574,6 +574,7 @@ export const getSelectedTabId = createSelector(
     getDashboard,
     (state) => state.dashboard.selectedTabId,
     (state: State) =>
+      // Unjustified type cast. FIXME
       (state as Partial<SdkStoreState>).sdk?.initialDashboardTabId,
   ],
   (isWebApp, siteUrl, dashboard, selectedTabId, sdkInitialDashboardTabId) => {
@@ -714,6 +715,7 @@ export const getParameterMappingsBeforeEditing = createSelector(
         }
 
         map[parameterId][dashcard.id] =
+          // Unjustified type cast. FIXME
           parameterMapping as DashboardParameterMapping;
       }
     }

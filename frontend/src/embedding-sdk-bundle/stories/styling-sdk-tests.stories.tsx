@@ -33,6 +33,7 @@ export const NoStylesError = () => (
   </div>
 );
 
+// Unjustified type cast. FIXME
 export const NoStylesSuccess = () => (
   <div>
     <h1>No styles applied anywhere, should use browser default</h1>
@@ -55,6 +56,7 @@ export const FontFromConfig = () => (
     <ComponentProvider
       authConfig={storybookSdkAuthDefaultConfig}
       theme={{ fontFamily: "Impact" }}
+      // Unjustified type cast. FIXME
     >
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
     </ComponentProvider>

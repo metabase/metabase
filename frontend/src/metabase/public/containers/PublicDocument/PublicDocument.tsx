@@ -58,6 +58,7 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
       dispatch,
       publicApi.endpoints.getPublicDocument,
     );
+    // Unjustified type cast. FIXME
     return doc as Document;
   }, [uuid, dispatch]);
 

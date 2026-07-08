@@ -136,6 +136,7 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     HTMLElement.prototype,
     "offsetHeight",
   ) as number;
+  // Unjustified type cast. FIXME
   const originalOffsetWidth = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype,
     "offsetWidth",

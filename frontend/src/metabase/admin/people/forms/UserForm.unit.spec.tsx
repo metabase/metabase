@@ -47,6 +47,7 @@ const setup = ({
   enterprisePlugins,
   initialValues = USER,
   external = false,
+  // Unjustified type cast. FIXME
   tenants = [] as Tenant[],
   hideNameFields = false,
   hideAttributes = false,
@@ -111,6 +112,7 @@ describe("UserForm", () => {
     });
 
     it("should not show validation errors before fields are touched (UXW-3719)", async () => {
+      // Unjustified type cast. FIXME
       setup({ initialValues: {} as typeof USER });
 
       expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();

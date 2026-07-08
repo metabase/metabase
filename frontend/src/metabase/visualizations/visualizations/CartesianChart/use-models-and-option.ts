@@ -144,6 +144,7 @@ export function useModelsAndOption(
     return getTooltipOption(
       chartModel,
       settings,
+      // Unjustified type cast. FIXME
       card.display as CardDisplayType,
       containerRef,
     );
@@ -161,6 +162,7 @@ export function useModelsAndOption(
     switch (card.display) {
       case "waterfall":
         baseOption = getWaterfallChartOption(
+          // Unjustified type cast. FIXME
           chartModel as WaterfallChartModel,
           width,
           chartLayout,
@@ -173,6 +175,7 @@ export function useModelsAndOption(
         break;
       case "scatter":
         baseOption = getScatterPlotOption(
+          // Unjustified type cast. FIXME
           chartModel as ScatterPlotModel,
           chartLayout,
           timelineEventsModel,
@@ -185,6 +188,7 @@ export function useModelsAndOption(
         break;
       default:
         baseOption = getCartesianChartOption(
+          // Unjustified type cast. FIXME
           chartModel as CartesianChartModel,
           chartLayout,
           timelineEventsModel,

@@ -24,6 +24,7 @@ export type RemappedValueProps = {
   autoLoad?: boolean;
 };
 
+// Unjustified type cast. FIXME
 const defaultRenderNormal: RenderNormal = ({ value }) => (
   <span>{value as ReactNode}</span>
 );
@@ -32,6 +33,7 @@ const defaultRenderRemapped: RenderRemapped = ({
   value,
   displayValue,
   column,
+  // Unjustified type cast. FIXME
 }) => (
   <span>
     <span className={CS.textBold}>{displayValue as ReactNode}</span>

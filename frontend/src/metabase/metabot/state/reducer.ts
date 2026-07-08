@@ -73,6 +73,7 @@ export const metabot = createSlice({
         action: ConvoPayloadAction<Omit<MetabotUserChatMessage, "role">>,
       ) => {
         const { id, message, agentId, ...rest } = action.payload;
+        // Unjustified type cast. FIXME
         convo.messages.push({ id, role: "user", ...rest, message } as any);
         convo.history.push({ id, role: "user", content: message });
       },
@@ -86,6 +87,7 @@ export const metabot = createSlice({
       ) => {
         convo.activeToolCalls = [];
         const externalId = convo.pendingMessageExternalId;
+        // Unjustified type cast. FIXME
         convo.messages.push({
           id: createMessageId(),
           role: "agent",
@@ -319,6 +321,7 @@ export const metabot = createSlice({
       convo.conversationId = conversationId ?? uuid();
       convo.isProcessing = false;
 
+      // Unjustified type cast. FIXME
       state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;
     },
   },

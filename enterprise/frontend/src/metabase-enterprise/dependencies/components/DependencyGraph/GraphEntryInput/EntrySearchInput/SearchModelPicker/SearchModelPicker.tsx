@@ -67,6 +67,7 @@ function SearchModelPopover({
   const items = data ? getSearchModelItems(data) : [];
 
   const handleChange = (value: string[]) => {
+    // Unjustified type cast. FIXME
     onSearchModelsChange(value as SearchModel[]);
   };
 

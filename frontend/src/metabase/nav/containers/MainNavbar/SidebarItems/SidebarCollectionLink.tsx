@@ -98,6 +98,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
     const isRegularCollection =
       PLUGIN_COLLECTIONS.isRegularCollection(collection);
 
+    // Unjustified type cast. FIXME
     const content = (
       <>
         <TreeNode.IconContainer transparent={false}>
@@ -145,6 +146,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
     { item, ...props }: TreeNodeProps,
     ref,
   ) {
+    // Unjustified type cast. FIXME
     const collection = item as unknown as Collection;
 
     const link = (droppableProps?: DroppableProps) => (

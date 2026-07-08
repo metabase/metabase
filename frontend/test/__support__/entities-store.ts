@@ -25,6 +25,7 @@ export function getStore(
   initialState: Partial<State> = {},
   middleware: Middleware[] = [],
 ) {
+  // Unjustified type cast. FIXME
   const reducer = combineReducers({
     entities: entitiesReducer,
     ...reducers,
@@ -32,8 +33,10 @@ export function getStore(
 
   return configureStore({
     reducer,
+    // Unjustified type cast. FIXME
     preloadedState: initialState as State,
 
+    // Unjustified type cast. FIXME
     middleware: ((getDefaultMiddleware: any) =>
       getDefaultMiddleware({
         immutableCheck: false,

@@ -190,6 +190,7 @@ export const AgentSuggestionMessage = ({
       return;
     }
 
+    // Unjustified type cast. FIXME
     dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
   };
 

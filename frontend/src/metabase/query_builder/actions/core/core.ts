@@ -379,6 +379,7 @@ async function reduxCreateQuestion(
 ) {
   const display = question.display();
   const size = getDefaultSize(display);
+  // Unjustified type cast. FIXME
   const card = (await dispatch(
     createQuestionCard({
       ...question.card(),
@@ -403,6 +404,7 @@ async function reduxUpdateQuestion(
 
   const card = _.omit(fullCard, ...keysToOmit);
 
+  // Unjustified type cast. FIXME
   const updatedCard = (await dispatch(
     updateQuestionCard({ id: question.id(), ...card }),
   )) as Card;

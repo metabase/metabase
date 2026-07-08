@@ -232,6 +232,7 @@ describe("sanitizeDashcardSettings", () => {
       "card.title": "Custom Title",
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
       "graph.metrics": { dashboard: false },
@@ -253,6 +254,7 @@ describe("sanitizeDashcardSettings", () => {
       unknownSetting: "value",
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
     } as any;
@@ -271,6 +273,7 @@ describe("sanitizeDashcardSettings", () => {
       "card.description": "Description",
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
       "graph.goal_value": {}, // no dashboard property
@@ -291,6 +294,7 @@ describe("sanitizeDashcardSettings", () => {
       "graph.metrics": ["count"],
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
       "graph.metrics": { dashboard: false },
@@ -303,6 +307,7 @@ describe("sanitizeDashcardSettings", () => {
 
   it("should handle empty settings", () => {
     const settings = {};
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
     } as any;

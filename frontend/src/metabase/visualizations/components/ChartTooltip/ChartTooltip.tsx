@@ -49,6 +49,7 @@ export const ChartTooltipContent = ({
     return null;
   }
   if (!_.isEmpty(hovered.timelineEvents)) {
+    // Unjustified type cast. FIXME
     return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
   }
 

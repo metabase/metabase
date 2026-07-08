@@ -168,6 +168,7 @@ export const executeSlashCommand = createAsyncThunk<
           dispatch(
             setProfileOverride({
               agentId,
+              // Unjustified type cast. FIXME
               profile: args[0] as MetabotProfileId | undefined,
             }),
           );
@@ -429,6 +430,7 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(setNavigateToPath(part.value));
 
                 if (!isEmbeddingSdk()) {
+                  // Unjustified type cast. FIXME
                   dispatch(push(part.value) as UnknownAction);
                 }
                 pushDataPart({ type: "data_part", part });

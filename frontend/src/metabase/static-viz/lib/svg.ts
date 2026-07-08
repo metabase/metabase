@@ -49,6 +49,7 @@ function patchNode(node: ElementContent) {
  * supporting the `dominant-baseline` property.
  */
 export function patchDominantBaseline(svgString: string) {
+  // Unjustified type cast. FIXME
   const svgElem = fromHtml(svgString, { fragment: true, space: "svg" })
     .children[0] as Element;
 

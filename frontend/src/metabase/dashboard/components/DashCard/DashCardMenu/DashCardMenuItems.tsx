@@ -42,6 +42,7 @@ export const DashCardMenuItems = ({
   } = useSdkDashboardContext();
 
   const { dashcardMenu } = useDashboardContext();
+  // Unjustified type cast. FIXME
   const dashcardMenuItems = dashcardMenu as
     | DashboardCardCustomMenuItem
     | undefined;

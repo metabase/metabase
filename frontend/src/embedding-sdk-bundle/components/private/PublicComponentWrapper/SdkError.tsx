@@ -23,6 +23,7 @@ export const SdkError = ({
 
   const errorMessage = useMemo(() => {
     if (error && "code" in error && typeof error.code === "string") {
+      // Unjustified type cast. FIXME
       const docsLink = ERROR_DOC_LINKS[error.code as MetabaseErrorCode];
 
       if (docsLink) {

@@ -83,6 +83,7 @@ export function getScatterPlotOption(
 
   if (chartModel.trendLinesModel) {
     echartsDataset.push({
+      // Unjustified type cast. FIXME
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,

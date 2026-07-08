@@ -191,6 +191,7 @@ const _InteractiveQuestionWrapped = withPublicComponentWrapper(
 );
 
 export const InteractiveQuestion = Object.assign(
+  // Unjustified type cast. FIXME
   _InteractiveQuestionWrapped as FC<InteractiveQuestionProps>,
   subComponents,
   { schema: interactiveQuestionSchema },
@@ -201,6 +202,7 @@ export const InteractiveQuestion = Object.assign(
  * internal `query` prop. This component is intended for internal use only.
  */
 export const InteractiveQuestionInternal = Object.assign(
+  // Unjustified type cast. FIXME
   _InteractiveQuestionWrapped as FC<InteractiveQuestionInternalProps>,
   subComponents,
   { schema: interactiveQuestionSchema },

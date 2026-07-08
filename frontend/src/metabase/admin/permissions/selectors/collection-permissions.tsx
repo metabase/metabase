@@ -342,6 +342,7 @@ export const getCollectionsPermissionEditor = createSelector(
               ),
               warning: getCollectionWarning(
                 group.id,
+                // Unjustified type cast. FIXME
                 collection as ExpandedCollection,
                 permissions,
               ),

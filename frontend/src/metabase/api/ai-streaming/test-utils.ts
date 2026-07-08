@@ -2,6 +2,7 @@ import { defer } from "metabase/utils/promise";
 
 export function createPauses<Count extends number>(count: Count) {
   const pauses = new Array(count).fill(null).map(() => defer());
+  // Unjustified type cast. FIXME
   return pauses as ReturnType<typeof defer>[] & { length: Count };
 }
 
@@ -115,6 +116,7 @@ export function mockStreamedEndpoint(
       };
     }
 
+    // Unjustified type cast. FIXME
     return { status: 202, ok: true, body, headers: new Headers() } as any;
   });
 

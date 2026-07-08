@@ -70,6 +70,7 @@ const getPermissionValue = (
       return getFieldsPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as TableEntityId,
         DataPermission.DATA_MODEL,
       );
@@ -77,6 +78,7 @@ const getPermissionValue = (
       return getTablesPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as SchemaEntityId,
         DataPermission.DATA_MODEL,
       );

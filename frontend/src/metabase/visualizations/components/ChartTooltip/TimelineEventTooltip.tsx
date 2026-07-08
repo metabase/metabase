@@ -13,6 +13,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
   const { hovered } = props;
   const { timelineEvents } = hovered;
 
+  // Unjustified type cast. FIXME
   return (
     <ul className={S.timelineEventList} data-testid="timeline-event-tooltip">
       {timelineEvents.map((event) => (

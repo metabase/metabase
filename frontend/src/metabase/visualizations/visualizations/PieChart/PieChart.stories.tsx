@@ -55,6 +55,7 @@ const Template: StoryFn = (args) => {
       <Box h={500} style={{ backgroundColor }}>
         <Visualization
           {...props}
+          // Unjustified type cast. FIXME
           rawSeries={data.defaultSettings as unknown as Series}
           width={500}
         />
@@ -81,6 +82,7 @@ export const EmbeddedDashcard = {
   },
 };
 
+// Unjustified type cast. FIXME
 export const DarkTheme: StoryFn = () => (
   <VisualizationWrapper displayTheme="dark">
     <Box h={500}>
@@ -98,6 +100,7 @@ export const Watermark: StoryFn = () => (
         }),
       }),
     })}
+    // Unjustified type cast. FIXME
   >
     <Box h={500}>
       <Visualization rawSeries={data.defaultSettings as unknown as Series} />
