@@ -13,7 +13,7 @@
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -239,7 +239,7 @@
    [:run_type [:enum :job :dag :transform]]
    [:id pos-int?]
    [:entity_id [:maybe pos-int?]]
-   [:name [:maybe :string]]
+   [:name [:maybe [:or :string LocalizedString]]]
    [:direction [:maybe [:enum :upstream :downstream]]]
    [:run_method [:maybe :keyword]]
    [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
