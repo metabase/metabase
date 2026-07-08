@@ -21,7 +21,7 @@ import { LensContentProvider } from "../../../../LensContent/LensContentContext"
 import { ComparisonLayout } from "./ComparisonLayout";
 import { type CardGroup, sortGroupsByScore } from "./utils";
 
-jest.mock("metabase/transforms/lib/transforms-inspector", () => ({
+jest.mock("metabase-enterprise/transforms-inspector/lib/transforms-inspector", () => ({
   interestingFields: (
     fields: InspectorField[],
     _visitedFields: unknown,

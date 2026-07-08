@@ -3,8 +3,8 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
-import { OnboardingStepper } from "metabase/common/components/OnboardingStepper";
-import type { OnboardingStepperHandle } from "metabase/common/components/OnboardingStepper/types";
+import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
+import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { AddEndpointStep } from "./AddEndpointStep";
