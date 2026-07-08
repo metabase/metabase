@@ -149,8 +149,8 @@
             ;; the body fn return to close the socket cleanly — aborting here would deny the
             ;; client this very event.
             (try
-              (.write os (.getBytes (self.core/format-error-frames
-                                     {:error (metabot.persistence/throwable->error-payload t)})
+              (.write os (.getBytes ^String (self.core/format-error-frames
+                                             {:error (metabot.persistence/throwable->error-payload t)})
                                     "UTF-8"))
               (.flush os)
               (catch org.eclipse.jetty.io.EofException _
