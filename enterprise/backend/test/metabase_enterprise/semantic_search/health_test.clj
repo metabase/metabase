@@ -144,11 +144,15 @@
     (is (=? {:value 1.0 :health 100} (semantic.health/coverage-result 12 10)))))
 
 (deftest garbage-result-test
-  (is (=? {:value 0.0 :health 100 :message #"No orphaned items.*"} (semantic.health/garbage-result 0 10)))
-  (is (=? {:value 0.2 :health 80 :message #"2 of 10 indexed items are orphaned \(20%\)\."}
-          (semantic.health/garbage-result 2 10)))
-  (testing "an empty index has no garbage"
-    (is (=? {:value 0.0 :health 100} (semantic.health/garbage-result 0 0)))))
+  (testing "zero orphans reads healthy"
+    (is (=? {:value 0 :health 100 :message #"No orphaned items.*"} (semantic.health/garbage-result 0 5 100))))
+  (testing "the value/gauge is the absolute orphan count, not a fraction, and the message states it"
+    (is (=? {:value 42 :message #"42 orphaned item\(s\) in the index\."} (semantic.health/garbage-result 42 5 100))))
+  (testing "health thresholds on the absolute count: 100 at/under warn, 0 at/over crit, linear between"
+    (is (=? {:health 100} (semantic.health/garbage-result 5 5 100)))
+    (is (=? {:health 0}   (semantic.health/garbage-result 100 5 100)))
+    ;; warn 4, crit 100, count 52 -> (100-52)/(100-4) = 0.5
+    (is (=? {:health 50}  (semantic.health/garbage-result 52 4 100)))))
 
 (deftest staleness-result-test
   (testing "at/under warn = healthy and reported current"
@@ -179,10 +183,14 @@
         (is (= [:metabase-ai-index/coverage-ratio {:engine "semantic"}] (butlast (first @calls))))
         (is (Double/isNaN ^double (last (first @calls))) "the labelled series is cleared with NaN, not left stale")))))
 
-(deftest ^:sequential report-repair-orphans!-no-active-index-test
-  (testing "no active index -> no-op (no gauge write, no throw), so the hourly repair hook is always safe"
-    (let [calls (atom [])]
-      (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
-        (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly false)]
-          (is (nil? (semantic.health/report-repair-orphans! 3)))
-          (is (empty? @calls)))))))
+(deftest ^:sequential report-repair-orphans!-test
+  ;; health-inspector disabled (the default) so emit-garbage! skips the appdb persist and we assert on the gauge
+  (mt/with-temporary-setting-values [health-inspector-enabled false]
+    (testing "pushes the absolute orphan count to the labelled garbage-count gauge"
+      (let [calls (atom [])]
+        (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+          (semantic.health/report-repair-orphans! 3))
+        (is (= [[:metabase-ai-index/garbage-count {:engine "semantic"} 3]] @calls))))
+    (testing "never throws -- a metric-sink error must not fail the repair job that calls it"
+      (with-redefs [analytics/set-gauge! (fn [& _] (throw (ex-info "boom" {})))]
+        (is (nil? (semantic.health/report-repair-orphans! 3)))))))

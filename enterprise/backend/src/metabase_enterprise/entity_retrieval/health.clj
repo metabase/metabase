@@ -12,6 +12,7 @@
   Reuses the embedding-service probe and circuit-breaker state from
   [[metabase-enterprise.semantic-search.health]] / [[metabase-enterprise.semantic-search.embedding]]."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [metabase-enterprise.entity-retrieval.core :as entity-retrieval]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
@@ -77,6 +78,10 @@
 
 (def ^:private staleness-warn-seconds     (* 30 60))   ; 30m -- full reconcile runs every 15m; 30m = a missed cycle
 (def ^:private staleness-critical-seconds (* 60 60))   ; 60m -- reconcile clearly stalled
+;; Absolute orphan counts. The curated library is a bounded, small tier, so tolerances are much lower than
+;; semantic search; reconcile GCs orphans every ~15m. Tunable (promotable to settings).
+(def ^:private garbage-warn-count     5)
+(def ^:private garbage-critical-count 100)
 
 (defn- library-datasource
   "pgvector datasource when NLQ library retrieval is licensed, configured, and the index is built for the
@@ -102,29 +107,41 @@
                        [(format "SELECT DISTINCT entity_type, entity_local_id FROM \"%s\"" index-table/*vectors-table*)]
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
-(defn- nlq-coverage []
+(defn- library-and-indexed-classes*
+  "The `{:library <classes> :indexed <classes>}` sets coverage and garbage both need, or nil when N/A."
+  []
   (when-let [ds (library-datasource)]
-    (let [library (entity-class-set (reconcile/library-entity-keys))
-          indexed (indexed-entity-classes ds)]
-      (semantic.health/coverage-result (count (set/intersection library indexed)) (count library)))))
+    {:library (entity-class-set (reconcile/library-entity-keys))
+     :indexed (indexed-entity-classes ds)}))
+
+(def ^:private library-and-indexed-classes
+  "TTL-memoized so coverage and garbage share one library scan + DISTINCT index scan per refresh cycle rather
+  than each recomputing the identical two sets."
+  (memoize/ttl library-and-indexed-classes* :ttl/threshold (* 30 1000)))
+
+(defn- nlq-coverage []
+  (when-let [{:keys [library indexed]} (library-and-indexed-classes)]
+    (semantic.health/coverage-result (count (set/intersection library indexed)) (count library))))
 
 (defn- nlq-garbage []
-  (when-let [ds (library-datasource)]
-    (let [library (entity-class-set (reconcile/library-entity-keys))
-          indexed (indexed-entity-classes ds)]
-      (semantic.health/garbage-result (count (set/difference indexed library)) (count indexed)))))
+  (when-let [{:keys [library indexed]} (library-and-indexed-classes)]
+    (semantic.health/garbage-result (count (set/difference indexed library))
+                                    garbage-warn-count garbage-critical-count)))
 
 (defn- nlq-staleness []
   (when-let [ds (library-datasource)]
     ;; Reconcile-lag: seconds since the last full reconcile verified the index against the appdb. There's no
     ;; per-change gate here (unlike semantic search), so "time since known-fresh" is the honest bound on the
-    ;; undetected membership/name drift that the osi_ai_context write hooks don't catch.
-    (let [row (jdbc/execute-one! ds
-                                 [(format "SELECT EXTRACT(EPOCH FROM (now() - updated_at)) AS age FROM \"%s\" WHERE id = 1"
-                                          index-table/*meta-table*)]
-                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
-      (semantic.health/staleness-result (:age row) staleness-warn-seconds staleness-critical-seconds
-                                        "Membership/name changes not hooked are caught by the ~15m full reconcile."))))
+    ;; undetected membership/name drift that the osi_ai_context write hooks don't catch. reconciled_at is null
+    ;; until the first reconcile after a (re)build, so an empty rebuilt index reads N/A (omitted) rather than
+    ;; falsely fresh -- coverage carries the "index empty" signal in that window.
+    (let [{:keys [age]} (jdbc/execute-one! ds
+                                           [(format "SELECT EXTRACT(EPOCH FROM (now() - reconciled_at)) AS age FROM \"%s\" WHERE id = 1"
+                                                    index-table/*meta-table*)]
+                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (when age
+        (semantic.health/staleness-result age staleness-warn-seconds staleness-critical-seconds
+                                          "Membership/name changes not hooked are caught by the ~15m full reconcile.")))))
 
 (semantic.health/register-index-check! :nlq :coverage  nlq-coverage)
 (semantic.health/register-index-check! :nlq :garbage   nlq-garbage)

@@ -17,7 +17,6 @@
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
@@ -118,10 +117,19 @@
 
 (def ^:private measure->gauge
   {:coverage  :metabase-ai-index/coverage-ratio
-   :garbage   :metabase-ai-index/garbage-ratio
+   :garbage   :metabase-ai-index/garbage-count
    :staleness :metabase-ai-index/staleness-seconds})
 
 (defn- pct [ratio] (Math/round (* 100.0 (double ratio))))
+
+(defn- threshold-health
+  "Map an absolute `value` to 0-100 health against a `warn`/`crit` band: 100 at/under warn, 0 at/over crit,
+  linear between. Shared by the garbage-count and staleness-age measures."
+  [value warn crit]
+  (cond
+    (<= value warn) 100
+    (>= value crit) 0
+    :else           (Math/round (* 100.0 (/ (double (- crit value)) (- crit warn))))))
 
 (defn coverage-result
   "Uniform `{:value :health :message}` for a coverage measure over `indexed`/`expected` item counts.
@@ -133,15 +141,15 @@
      :message (format "%d of %d expected items indexed (%d%%)." indexed expected (pct ratio))}))
 
 (defn garbage-result
-  "Uniform result for a garbage measure: `orphans` of `indexed` rows should not be indexed.
-  Health is 100 minus the garbage percentage."
-  [orphans indexed]
-  (let [ratio (if (pos? indexed) (/ (double orphans) indexed) 0.0)]
-    {:value   ratio
-     :health  (pct (- 1.0 ratio))
-     :message (if (zero? orphans)
-                "No orphaned items in the index."
-                (format "%d of %d indexed items are orphaned (%d%%)." orphans indexed (pct ratio)))}))
+  "Uniform result for a garbage measure. `orphans` is the ABSOLUTE number of indexed items that should not be
+  (an absolute count, not a fraction of the index -- a raw orphan count is what's actionable). Health
+  thresholds on the count via `warn`/`crit`; the count itself feeds the Prometheus gauge."
+  [orphans warn crit]
+  {:value   orphans
+   :health  (threshold-health orphans warn crit)
+   :message (if (zero? orphans)
+              "No orphaned items in the index."
+              (format "%d orphaned item(s) in the index." orphans))})
 
 (defn- describe-age [seconds]
   (let [s (long seconds)]
@@ -155,16 +163,12 @@
   current). `warn`/`crit` (seconds) bound the health scale: 100 at/under warn, 0 at/over crit, linear between.
   `detail` optionally appends a clause (e.g. a backlog size or a detection-bound caveat)."
   [age-seconds warn crit detail]
-  (let [age    (long (or age-seconds 0))
-        health (cond
-                 (<= age warn) 100
-                 (>= age crit) 0
-                 :else         (Math/round (* 100.0 (/ (double (- crit age)) (- crit warn)))))
-        base   (if (zero? age)
-                 "Index current."
-                 (format "Oldest pending change is %s old." (describe-age age)))]
+  (let [age  (long (or age-seconds 0))
+        base (if (zero? age)
+               "Index current."
+               (format "Oldest pending change is %s old." (describe-age age)))]
     {:value   age
-     :health  health
+     :health  (threshold-health age warn crit)
      :message (if detail (str base " " detail) base)}))
 
 (defonce ^:private index-measures
@@ -196,10 +200,10 @@
     (swap! index-measures conj descriptor)))
 
 (defn- emit-garbage!
-  "Set the labelled garbage gauge and persist the (deduplicated) health row (when the inspector is enabled)
-  for `engine`, from an `orphans`/`indexed` count already in hand."
-  [engine orphans indexed]
-  (let [{:keys [value health message]} (garbage-result orphans indexed)]
+  "Set the labelled garbage-count gauge and persist the (deduplicated) health row (when the inspector is
+  enabled) for `engine`, from an absolute `orphans` count already in hand."
+  [engine orphans warn crit]
+  (let [{:keys [value health message]} (garbage-result orphans warn crit)]
     (analytics/set-gauge! (measure->gauge :garbage) {:engine (name engine)} value)
     (when (health-inspector/enabled?)
       (health-inspector/save-check-result! (keyword (str (name engine) "-garbage")) {:health health :message message}))))
@@ -222,8 +226,12 @@
 
 (def ^:private staleness-warn-seconds     (* 60 60))       ; 1h -- indexer backlog under an hour reads healthy
 (def ^:private staleness-critical-seconds (* 6 60 60))     ; 6h -- a backlog this old means the indexer is stuck
+;; Absolute orphan counts. Repair clears garbage hourly, so a handful of in-flight orphans is normal; a large
+;; count means repair isn't keeping up. Tunable (promotable to settings alongside the staleness thresholds).
+(def ^:private garbage-warn-count     50)
+(def ^:private garbage-critical-count 5000)
 
-(defn- active-index
+(defn- active-index*
   "Return `{:pgvector :state}` for the active semantic index, or nil when semantic search is unavailable/
   disabled, there's no active index, or pgvector is unreachable. Never throws -- availability is the
   `:semantic-search-index` check's job; the metrics just skip when there's nothing to measure."
@@ -238,16 +246,26 @@
         (log/debug e "semantic active-index lookup failed for a metric collector")
         nil))))
 
+(def ^:private active-index
+  "TTL-memoized [[active-index*]] so the semantic coverage + staleness collectors (and the repair reporter)
+  share one get-active-index-state per refresh cycle instead of each issuing their own pgvector round-trip."
+  (memoize/ttl active-index* :ttl/threshold (* 30 1000)))
+
 (defn- scalar-row [pgvector sql]
   (jdbc/execute-one! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+
+(defn- row-count [pgvector sql] (or (:n (scalar-row pgvector sql)) 0))
 
 (defn- semantic-coverage []
   (when-let [{:keys [pgvector state]} (active-index)]
     (let [table    (-> state :index :table-name)
-          indexed  (or (:n (scalar-row pgvector [(format "SELECT count(*) AS n FROM \"%s\"" table)])) 0)
-          ;; search-items-count is the indexer's own candidate set (per-model COUNT over each spec's :where);
-          ;; a genuinely-uncovered candidate model reads as coverage < 100, which is the signal we want.
-          expected (search.ingestion/search-items-count)]
+          gate     (:gate-table-name (semantic.env/get-index-metadata))
+          indexed  (row-count pgvector [(format "SELECT count(*) AS n FROM \"%s\"" table)])
+          ;; Denominator: distinct live gate rows (one per should-be-indexed doc; tombstones excluded). That's
+          ;; the indexer's own deduped candidate set, sharing the index's (model,model_id) grain -- unlike
+          ;; search.ingestion/search-items-count, whose per-spec COUNT(*) double-counts join fan-out (a card
+          ;; with several revisions, etc.) and so never reaches 100% on a fully-indexed instance.
+          expected (row-count pgvector [(format "SELECT count(*) AS n FROM \"%s\" WHERE document_hash IS NOT NULL" gate)])]
       (coverage-result indexed expected))))
 
 (defn- semantic-staleness []
@@ -271,12 +289,13 @@
 (register-index-check! :semantic :staleness semantic-staleness)
 
 (defn report-repair-orphans!
-  "Feed the semantic-search garbage measure from the hourly repair job's lost-delete count. Repair already
-  computes the orphan set (find-lost-deletes) as part of its normal work, so this is a push -- far cheaper
-  than the standalone anti-join a pull collector would need, and correct for compound-id models. `orphans` is
-  repair's lost-delete count; the denominator is the live index size. A no-op when there's no active index."
+  "Feed the semantic-search garbage measure from the hourly repair job's active-orphan count. Repair already
+  computes the orphan set as part of its normal work, so this is a push -- far cheaper than the standalone
+  anti-join a pull collector would need, and correct for compound-id models. `orphans` is an absolute count.
+  Never throws: this is a metric side-channel of the repair job (which gates on semantic-search-available?),
+  so a blip here must not make a successful repair look failed."
   [orphans]
-  (when-let [{:keys [pgvector state]} (active-index)]
-    (let [table   (-> state :index :table-name)
-          indexed (or (:n (scalar-row pgvector [(format "SELECT count(*) AS n FROM \"%s\"" table)])) 0)]
-      (emit-garbage! :semantic orphans indexed))))
+  (try
+    (emit-garbage! :semantic orphans garbage-warn-count garbage-critical-count)
+    (catch Throwable e
+      (log/warn e "Failed to report semantic garbage metric"))))

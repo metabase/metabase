@@ -76,7 +76,11 @@
          [:model_name :text :not-null]
          [:vector_dimensions :int :not-null]
          [:schema_version :int :not-null]
-         [:updated_at :timestamp-with-time-zone :not-null]])
+         [:updated_at :timestamp-with-time-zone :not-null]
+         ;; When a full reconcile last verified the index against the appdb. Distinct from updated_at (which
+         ;; write-meta! bumps on an empty create/rebuild), so NLQ staleness isn't reset by a rebuild that
+         ;; hasn't been reconciled yet. Nullable: null = never reconciled since the (re)build.
+         [:reconciled_at :timestamp-with-time-zone]])
       sql-format-quoted))
 
 (defn- create-vectors-table-sql [dims]
@@ -120,11 +124,12 @@
                        sql-format-quoted))))
 
 (defn touch-reconciled-at!
-  "Bump the meta row's `updated_at` to the pgvector clock, recording that a full reconcile just verified the
+  "Set the meta row's `reconciled_at` to the pgvector clock, recording that a full reconcile just verified the
   index against the appdb. Read by the NLQ staleness health metric as a 'time since the index was last
-  confirmed fresh' bound. A no-op before the meta row exists (nothing has been reconciled yet)."
+  confirmed fresh' bound. Deliberately NOT `updated_at`, which write-meta! bumps on an empty create/rebuild --
+  that would read as fresh before anything was reconciled. A no-op before the meta row exists."
   [tx]
-  (jdbc/execute! tx [(format "UPDATE \"%s\" SET updated_at = now() WHERE id = 1" *meta-table*)]))
+  (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = now() WHERE id = 1" *meta-table*)]))
 
 (defn- create-tables! [tx dims]
   (jdbc/execute! tx (create-vectors-table-sql dims)))
@@ -159,6 +164,10 @@
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
     (jdbc/execute! tx (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
     (jdbc/execute! tx (create-meta-table-sql))
+    ;; Backfill reconciled_at onto meta tables created before it existed (create-table IF NOT EXISTS won't add
+    ;; a column to an existing table). Idempotent.
+    (jdbc/execute! tx [(format "ALTER TABLE \"%s\" ADD COLUMN IF NOT EXISTS reconciled_at timestamp with time zone"
+                               *meta-table*)])
     (let [stored  (read-meta tx)
           current (model-identity embedding-model)
           dims    (:vector_dimensions current)]

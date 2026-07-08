@@ -485,8 +485,8 @@
    (prometheus/gauge :metabase-ai-index/coverage-ratio
                      {:description "Fraction (0-1) of the items that should be indexed that actually are, per AI-search engine."
                       :labels      [:engine]})
-   (prometheus/gauge :metabase-ai-index/garbage-ratio
-                     {:description "Fraction (0-1) of indexed items that should NOT be indexed (orphaned / no longer a candidate), per engine."
+   (prometheus/gauge :metabase-ai-index/garbage-count
+                     {:description "Absolute number of indexed items that should NOT be indexed (orphaned / no longer a candidate), per engine."
                       :labels      [:engine]})
    (prometheus/gauge :metabase-ai-index/staleness-seconds
                      {:description "Age in seconds of the oldest known-pending change not yet reflected in the index (indexer/reconcile backlog), per engine."

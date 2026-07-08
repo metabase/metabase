@@ -93,6 +93,13 @@
   (and (premium-features/has-feature? :semantic-search)
        (semantic.db.datasource/pgvector-configured?)))
 
+(defn pgvector-configured?
+  "Whether a pgvector store is configured (read once at boot from MB_PGVECTOR_DB_URL). Periodic tasks gate
+  their *scheduling* on this -- boot-fixed -- so a task survives the license being entered after startup; the
+  task body re-checks [[semantic-search-available?]] each run."
+  []
+  (string? (not-empty semantic.db.datasource/db-url)))
+
 (defn semantic-search-available?
   "Whether semantic search can run on this instance: capable and not disabled by the kill switch.
   Engine selection, hygiene tasks, and metrics key off this."
