@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { getStore, mainReducers } from "__support__/entities-store";
 import { renderWithProviders, screen } from "__support__/ui";

@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, memo, useState } from "react";
 
-
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
