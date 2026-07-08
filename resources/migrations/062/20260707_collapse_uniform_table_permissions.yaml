@@ -68,15 +68,11 @@ databaseChangeLog:
   # finishes (each step is its own changeSet, so a failure resumes from the incomplete step with the staging
   # table still present), and because the table is only truncated — never dropped — its indexes and foreign
   # keys stay in place. The steps are split into one changeSet each because the migration linter allows only
-  # a single change per changeSet (or one per distinct dbms).
-  #
-  # H2 backs only embedded, single-node instances, which never reach the sizes that make the delete
-  # expensive, so there the redundant rows are simply deleted (the last changeSet).
+  # a single change per changeSet.
   - changeSet:
       id: v62.2026-07-07T00:00:01
       author: ranquild
       comment: Stage the surviving data_permissions rows before collapsing the redundant ones (#76077)
-      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
             sql: >-
@@ -95,7 +91,6 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:02
       author: ranquild
       comment: Empty data_permissions before reloading only the surviving rows (#76077)
-      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
             sql: TRUNCATE TABLE data_permissions;
@@ -105,7 +100,6 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:03
       author: ranquild
       comment: Reload the surviving data_permissions rows (#76077)
-      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
             sql: >-
@@ -118,28 +112,7 @@ databaseChangeLog:
       id: v62.2026-07-07T00:00:04
       author: ranquild
       comment: Drop the staging table used to collapse data_permissions (#76077)
-      dbms: postgresql,mysql,mariadb
       changes:
         - sql:
             sql: DROP TABLE data_permissions_collapse_keep;
-      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
-
-  - changeSet:
-      id: v62.2026-07-07T00:00:05
-      author: ranquild
-      comment: On H2, delete the redundant table-level data_permissions rows directly (#76077)
-      dbms: h2
-      changes:
-        - sql:
-            sql: >-
-              DELETE FROM data_permissions
-              WHERE perm_type = 'perms/view-data'
-                AND table_id IS NOT NULL
-                AND EXISTS (
-                  SELECT 1 FROM data_permissions dbp
-                  WHERE dbp.group_id = data_permissions.group_id
-                    AND dbp.db_id = data_permissions.db_id
-                    AND dbp.perm_type = data_permissions.perm_type
-                    AND dbp.perm_value = data_permissions.perm_value
-                    AND dbp.table_id IS NULL);
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
