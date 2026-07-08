@@ -182,6 +182,29 @@
     (let [rw (rewrite "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders" orders->scratch)]
       (is (cannot-test-run? #(resolve/verify :postgres orders->scratch rw))))))
 
+(deftest guard-4-shadowing-cte-case-insensitive-test
+  (testing "a shadowing CTE that differs only in case from a mapped real table is caught (guard 4)"
+    ;; On case-folding drivers `Orders` == `orders`, so `WITH Orders AS (...)` can
+    ;; redirect a reference the user meant for the CTE onto scratch_orders. Guard 4
+    ;; must match the CTE name case-insensitively (consistent with guard 3's
+    ;; lowercased comparison). Feed verify the SQL directly so the CTE survives verbatim.
+    (doseq [cte-name ["Orders" "ORDERS"]]
+      (let [sql (str "WITH " cte-name " AS (SELECT 1 AS id) SELECT * FROM scratch_orders")]
+        (is (cannot-test-run?
+             #(resolve/verify :postgres orders->scratch sql)
+             ::resolve/token-survival)
+            (str "CTE named " cte-name " must trip guard 4"))))))
+
+(deftest guard-3-parse-failure-fails-closed-test
+  (testing "guard 3 fails closed (like guards 1/2) when field-references throws"
+    ;; A field-references parse failure must not silently pass guard 3 by swallowing
+    ;; the throw to an empty error set (fail-open). Force the throw; referenced-tables-raw
+    ;; still succeeds so guards 1/2 pass and guard 3 is the one exercised.
+    (with-redefs [sql-tools/field-references (fn [& _] (throw (ex-info "boom" {})))]
+      (is (cannot-test-run?
+           #(resolve/verify :postgres orders->scratch "SELECT id FROM scratch_orders")
+           ::resolve/token-survival)))))
+
 (deftest case-13-empty-refs-vacuous-pass-blocked-test
   (testing "case 13: empty refs (parse error -> []) must fail guard 1, not pass vacuously"
     ;; referenced-tables-raw returns [] on a parse error. Feed verify a string that

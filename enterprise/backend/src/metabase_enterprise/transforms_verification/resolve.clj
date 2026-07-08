@@ -224,7 +224,14 @@
   [driver sql forbidden-lc]
   (let [errors (try
                  (:errors (sql-tools/field-references driver sql))
-                 (catch Throwable _ #{}))]
+                 (catch Throwable e
+                   ;; Fail closed, like guards 1/2: SQL we cannot parse for field
+                   ;; references is SQL whose dangling qualifiers we cannot rule out;
+                   ;; swallowing to `#{}` here would let guard 3 pass vacuously.
+                   (cannot-test-run!
+                    (str "This transform can't be test-run: the rewritten SQL"
+                         " could not be parsed for qualifier verification. " (ex-message e))
+                    {:guard ::token-survival :sql sql} e)))]
     (into #{}
           (keep (fn [{:keys [type name]}]
                   (when (= type :missing-table-alias)
@@ -239,10 +246,13 @@
   may have redirected references the user meant to hit the CTE;
   `referenced-tables-raw` excludes CTE names, so guards 1-3 cannot see it."
   [^String token ^String sql]
-  (let [pat (re-pattern (str "(?<![A-Za-z0-9_])"
+  ;; Case-insensitive (?i): on case-folding drivers `WITH Orders AS (...)` shadows a
+  ;; stored `orders`, so the CTE-name match folds case too — consistent with guard 3's
+  ;; lowercased comparison.
+  (let [pat (re-pattern (str "(?i)(?<![A-Za-z0-9_])"
                              (java.util.regex.Pattern/quote token)
                              "(?![A-Za-z0-9_])"
-                             "\\s*(?:\\([^)]*\\))?\\s+[Aa][Ss]\\s*\\("))]
+                             "\\s*(?:\\([^)]*\\))?\\s+AS\\s*\\("))]
     (boolean (re-find pat sql))))
 
 (defn verify
@@ -313,7 +323,7 @@
                " still appears as a dangling column qualifier (e.g. `" token ".col`)"
                " in the rewritten SQL.")
           {:guard ::token-survival :surviving-token token :sql final-sql}))
-       (doseq [token forbidden]
+       (doseq [token forbidden-lc]
          (when (token-as-cte-name? token final-sql)
            (cannot-test-run!
             (str "This transform can't be test-run: a CTE in the rewritten SQL is"
