@@ -25,7 +25,7 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;; NOCOMMIT -- decide what to do about native query snippets.
+;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in
                    :out (comp (mi/catch-normalization-exceptions

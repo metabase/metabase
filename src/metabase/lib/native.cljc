@@ -37,12 +37,19 @@
     (merge-template-tags x y)
 
   tags from list `y` are preferred over tags from list `x`."
-  [& template-tags-lists :- [:sequential [:maybe ::lib.schema.template-tag/template-tags]]]
-  (into []
-        (comp cat
-              (m/distinct-by :name))
-        ;; reverse the lists so we keep the versions from args further to the right as with [[clojure.core/merge]]
-        (reverse template-tags-lists)))
+  ([& template-tags-lists :- [:sequential [:maybe ::lib.schema.template-tag/template-tags]]]
+   (let [merged-tag-names (into []
+                                (comp cat (map :name) (distinct))
+                                template-tags-lists)]
+     (transduce
+      (map (fn tags-list->map [tags-list]
+             (into {} (map (juxt :name identity)) tags-list)))
+      (completing merge
+                  (fn merged-map->list [merged-tags-map]
+                    (mapv (partial get merged-tags-map)
+                          merged-tag-names)))
+      {}
+      template-tags-lists))))
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
@@ -96,7 +103,10 @@
                                      (u.humanization/name->human-readable-name :simple new-name)
                                      (:display-name old-tag))]
               (-> old-tag
-                  #_(dissoc :card-id :snippet-name :snippet-id) ; NOCOMMIT
+                  ;; TODO (Cam 2026-07-07) the code previously removed these, but this made the template tags invalid
+                  ;; since these are required depending on tag type; commenting it out doesn't seem to break things as
+                  ;; far as I can tell... so I'm not sure why they were removed in the first place
+                  #_(dissoc :card-id :snippet-name :snippet-id)
                   (assoc :display-name new-display-name
                          :name         new-name))))]
     (mapv (fn [{tag-name :name, :as tag}]
@@ -178,8 +188,8 @@
     query-text            :- ::common/non-blank-string
     existing-tags         :- [:maybe ::lib.schema.template-tag/template-tags]]
    (let [direct-tags        (recognize-template-tags query-text)
-         extracted-tags     (extract-snippet-tags metadata-providerable direct-tags)
-         query-tags         (merge-template-tags extracted-tags direct-tags)
+         tags-from-snippets (extract-snippet-tags metadata-providerable direct-tags)
+         query-tags         (merge-template-tags direct-tags tags-from-snippets)
          query-tag-names    (not-empty (into #{} (map :name) query-tags))
          existing-tag-names (not-empty (into #{} (map :name) existing-tags))]
      (if (or query-tag-names existing-tag-names)
@@ -265,15 +275,15 @@
 (mu/defn with-native-query :- ::lib.schema/query
   "Update the raw native query, the first stage must already be a native type.
    Replaces templates tags"
-  [query :- ::lib.schema/query
-   inner-query :- ::common/non-blank-string]
+  [query      :- ::lib.schema/query
+   query-text :- ::common/non-blank-string]
   (lib.util/update-query-stage
    query 0
    (fn [{existing-tags :template-tags :as stage}]
      (assert-native-stage stage)
      (assoc stage
-            :native inner-query
-            :template-tags (extract-template-tags query inner-query existing-tags)))))
+            :native        query-text
+            :template-tags (extract-template-tags query query-text existing-tags)))))
 
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
 ;;; `with-replaced-template-tags`. It only replaces tags you specify rather then completely setting a new list
@@ -284,9 +294,10 @@
   query with [[native-query]] should populate them automatically by way of [[extract-template-tags]]."
   [query        :- ::lib.schema/query
    ;; this function is used by the frontend, so we'll also support a template tag map as input
-   updated-tags :- ::lib.schema.template-tag/template-tag-map-or-sequence] ; NOCOMMIT - FE only?
+   updated-tags :- ::lib.schema.template-tag/template-tag-map-or-sequence]
   (let [updated-tags (->> (lib.normalize/normalize ::lib.schema.template-tag/template-tags updated-tags)
-                          ;; NOCOMMIT -- do name normalization automatically
+                          ;; TODO (Cam 2026-07-08) -- do name normalization automatically as part of normalizing
+                          ;; template tags. See #77314
                           (mapv (fn [tag]
                                   (update tag :name (some-fn lib.params.parse/match-and-normalize-tag-name identity)))))]
     (letfn [(update-template-tags [existing-tags]

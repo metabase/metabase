@@ -13,6 +13,24 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(deftest ^:parallel merge-template-tags-test
+  (let [t1 {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
+            :name         "var"
+            :display-name "Var"
+            :type         :text}
+        t2 {:type         :snippet
+            :name         "snippet: snippet1"
+            :id           "0e6dbc02-e9f4-4bdf-bf6e-9995afd108e0"
+            :snippet-name "snippet1"
+            :display-name "Snippet: Snippet1"}]
+    (testing "should preserve order"
+      (is (= [t1 t2]
+             (#'lib.native/merge-template-tags [t1] [t2]))))
+    (testing "should prefer changes from second collection like clojure.core/merge"
+      (let [t1' (assoc t1 :type :number)]
+        (is (= [t1' t2]
+               (#'lib.native/merge-template-tags [t1] [t2 t1'])))))))
+
 (deftest ^:parallel variable-tag-test
   (are [exp input] (= exp (into #{} (map :name) (lib.native/extract-template-tags meta/metadata-provider input)))
     #{"foo"} "SELECT * FROM table WHERE {{foo}} AND some_field IS NOT NULL"
@@ -293,6 +311,80 @@
          #"Must be a native query"
          (-> (lib.tu/venues-query)
              (lib/with-native-query "foobar"))))))
+
+(deftest ^:parallel with-native-query-snippet-with-template-tags-test
+  (testing "with-native-query should pull in template tags from referenced snippets"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:native-query-snippets [{:id            1
+                                           :name          "snippet1"
+                                           :type          :snippet
+                                           :content       "{{var}}"
+                                           :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
+                                                                  :name         "var"
+                                                                  :display-name "Var"
+                                                                  :type         :text}}}]})
+          initial-tags [{:snippet-name "snippet1"
+                         :display-name "Snippet: Snippet1"
+                         :type         :snippet
+                         :name         "snippet: snippet1"
+                         :id           "e0616322-eadc-430b-a15b-d26d1615076d"
+                         :snippet-id   1}]
+          expected [{:snippet-name "snippet1"
+                     :display-name "Snippet: Snippet1"
+                     :type         :snippet
+                     :name         "snippet: snippet1"
+                     :id           "e0616322-eadc-430b-a15b-d26d1615076d"
+                     :snippet-id   1}
+                    {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
+                     :name         "var"
+                     :display-name "Var"
+                     :type         :text}]]
+      (testing "Query created with `with-template-tags` should get snippet tags pulled in"
+        (let [query (-> (lib/native-query mp "{{snippet: snippet1}}")
+                        (lib/with-template-tags initial-tags))]
+          (is (= expected
+                 (lib/template-tags query)))))
+      (testing (str "lib.native/with-native-query should update template tags to the same was they'd be if we used"
+                    " `with-template-tags` in the first place")
+        (let [query (-> (lib/native-query mp "{{snippet: snippet1}}")
+                        ;; if we don't manually splice in tags here then `with-native-query` has nothing to update
+                        (lib/update-query-stage 0 assoc :template-tags initial-tags))]
+          (is (= expected
+                 (lib/template-tags (lib.native/with-native-query query "{{snippet: snippet1}}")))))))))
+
+(deftest ^:parallel with-native-query-update-snippet-with-template-tags-test
+  (testing "with-native-query should update template tags when a {{snippet: ...}} tag changes"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:native-query-snippets [{:id            1
+                                           :name          "snippet1"
+                                           :type          :snippet
+                                           :content       "SELECT"}
+                                          {:id            2
+                                           :name          "snippet2"
+                                           :type          :snippet
+                                           :content       "{{var}}"
+                                           :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
+                                                                  :name         "var"
+                                                                  :display-name "Var"
+                                                                  :type         :text}}}]})
+          initial-tags [{:snippet-name "snippet1"
+                         :display-name "Snippet: Snippet1"
+                         :type         :snippet
+                         :name         "snippet: snippet1"
+                         :id           "e0616322-eadc-430b-a15b-d26d1615076d"
+                         :snippet-id   1}]
+          query (-> (lib/native-query mp "{{snippet: snippet1}}")
+                    (lib/with-template-tags initial-tags))]
+      (testing "Initial query (references snippet 1)"
+        (is (=? [{:name "snippet: snippet1"}]
+                (lib/template-tags query))))
+      (testing "updated query (references snippet 2) should update template tags and pull in tags from updated snippet"
+        (let [query' (lib.native/with-native-query query "{{snippet: snippet2}}")]
+          (is (=? [{:name "snippet: snippet2"}
+                   {:name "var"}]
+                  (lib/template-tags query'))))))))
 
 (deftest ^:parallel with-template-tags-test
   (let [query         (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")
