@@ -558,6 +558,63 @@
                    (t2/select-one-fn :external_id :model/MetabotMessage
                                      :conversation_id conversation-id :role "user")))))))))
 
+(deftest start-turn-honors-client-minted-external-ids-test
+  (testing "start-turn! persists the turn's rows under client-supplied external ids"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            user-id         (str (random-uuid))
+            assistant-id    (str (random-uuid))]
+        (is (=? {:user-external-id      user-id
+                 :assistant-external-id assistant-id}
+                (metabot-persistence/start-turn!
+                 conversation-id "internal" {:role "user" :content "hi"}
+                 :user-external-id user-id
+                 :assistant-external-id assistant-id)))
+        (is (= {:user user-id :assistant assistant-id}
+               (t2/select-fn->fn :role :external_id :model/MetabotMessage
+                                 :conversation_id conversation-id)))))))
+
+(deftest retry-turn-honors-client-minted-external-id-test
+  (testing "retry-turn! inserts the fresh placeholder under a client-supplied external id"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            {a-pk :assistant-msg-id} (metabot-persistence/start-turn!
+                                      conversation-id "internal" {:role "user" :content "hi"})
+            _        (metabot-persistence/finalize-assistant-turn!
+                      a-pk [{:type :text :text "reply"}])
+            user-ext (t2/select-one-fn :external_id :model/MetabotMessage
+                                       :conversation_id conversation-id :role "user")
+            retry-id (str (random-uuid))]
+        (is (= retry-id
+               (:assistant-external-id
+                (metabot-persistence/retry-turn! conversation-id "internal" user-ext
+                                                 :assistant-external-id retry-id))))
+        (is (= retry-id (metabot-persistence/leaf-external-id conversation-id)))))))
+
+(deftest start-turn-taken-external-id-trips-unique-constraint-test
+  (testing "a taken client-supplied external id trips uq_metabot_message_external_id —
+            the violation the API layer translates into a 409"
+    (with-rasta-tx
+      (letfn [(conflict? [thunk]
+                (try
+                  (thunk)
+                  false
+                  (catch Exception e
+                    (boolean (some #(re-find #"(?i)uq_metabot_message_external_id" (str (ex-message %)))
+                                   (u/full-exception-chain e))))))]
+        (let [conversation-id (str (random-uuid))
+              {:keys [assistant-msg-id assistant-external-id user-external-id]}
+              (metabot-persistence/start-turn!
+               conversation-id "internal" {:role "user" :content "hi"})]
+          (is (true? (conflict? #(metabot-persistence/start-turn!
+                                  conversation-id "internal" {:role "user" :content "again"}
+                                  :user-external-id user-external-id))))
+          (testing "soft-deleted rows keep their ids reserved"
+            (metabot-persistence/soft-delete-messages! {:id assistant-msg-id} (mt/user->id :rasta))
+            (is (true? (conflict? #(metabot-persistence/start-turn!
+                                    conversation-id "internal" {:role "user" :content "again"}
+                                    :assistant-external-id assistant-external-id))))))))))
+
 (deftest retry-turn-test
   (testing "retry-turn! soft-deletes the old response, keeps the prompt, and inserts a fresh placeholder"
     (t2/with-transaction [_conn nil {:rollback-only true}]

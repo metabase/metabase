@@ -358,6 +358,7 @@ export const metabot = createSlice({
         if (convo) {
           convo.isProcessing = true;
           convo.stateBeforeTurn = convo.state;
+          convo.pendingMessageExternalId = action.meta.arg.assistant_message_id;
         }
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
@@ -379,6 +380,15 @@ export const metabot = createSlice({
           if (action.payload?.type === "abort") {
             if (action.payload?.state) {
               convo.state = { ...action.payload.state };
+            }
+            // an abort means the request (almost certainly) reached the server,
+            // so the turn's rows exist under the client-minted id even when the
+            // start event never arrived — stamp it so retry can target the prompt
+            const lastUserMessage = convo.messages.findLast(
+              (m) => m.role === "user",
+            );
+            if (lastUserMessage && !lastUserMessage.externalId) {
+              lastUserMessage.externalId = action.meta.arg.user_message_id;
             }
             appendAgentTurnAborted(convo);
             if (action.payload.unresolved_tool_calls.length > 0) {

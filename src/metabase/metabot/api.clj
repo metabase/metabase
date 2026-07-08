@@ -56,39 +56,47 @@
   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
-(defn- make-reject-fn
+(defn- make-out-of-sync-fn
   [conversation-id parent-message-id retry-message-id]
-  (fn [reason]
+  (fn [reason & [cause]]
     (log/warn "Rejecting agent-streaming request"
               {:conversation-id   conversation-id
                :parent-message-id parent-message-id
                :retry-message-id  retry-message-id
                :reason            reason})
     (throw (ex-info (tru "This conversation has changed. Reload to see the latest messages.")
-                    {:status-code 409 :reason reason}))))
+                    {:status-code 409 :reason reason}
+                    cause))))
+
+(defn- external-id-conflict?
+  ;; driver-specific violation messages all contain the constraint name; see the
+  ;; opaque-exception caveat on [[metabase.app-db.query/with-conflict-retry]]
+  [e]
+  (boolean (some #(re-find #"(?i)uq_metabot_message_external_id" (str (ex-message %)))
+                 (u/full-exception-chain e))))
 
 (defn- check-retry!
-  [conversation-id retry-message-id reject!]
+  [conversation-id retry-message-id out-of-sync!]
   (let [retry-msg (metabot.persistence/live-message retry-message-id)]
     (cond
-      (nil? retry-msg)                                    (reject! :retry-message-not-found)
-      (not= (:conversation_id retry-msg) conversation-id) (reject! :retry-message-different-conversation)
-      (not= (:role retry-msg) :user)                      (reject! :retry-message-not-user-role)
+      (nil? retry-msg)                                    (out-of-sync! :retry-message-not-found)
+      (not= (:conversation_id retry-msg) conversation-id) (out-of-sync! :retry-message-different-conversation)
+      (not= (:role retry-msg) :user)                      (out-of-sync! :retry-message-not-user-role)
       (not= (:id retry-msg)
             (->> (metabot.persistence/live-messages conversation-id)
                  (filter #(= :user (:role %)))
                  last
-                 :id))                                    (reject! :retry-message-not-last)
+                 :id))                                    (out-of-sync! :retry-message-not-last)
       :else                                               {:action :retry})))
 
 (defn- check-parent-msg!
-  [conversation-id parent-message-id reject!]
+  [conversation-id parent-message-id out-of-sync!]
   (let [parent-msg (when parent-message-id
                      (metabot.persistence/live-message parent-message-id))]
     (cond
-      (and parent-message-id (nil? parent-msg))                             (reject! :parent-message-not-found)
-      (and parent-msg (not= (:conversation_id parent-msg) conversation-id)) (reject! :parent-message-different-conversation)
-      (and parent-msg (not= (:role parent-msg) :assistant))                 (reject! :parent-message-not-agent-role)
+      (and parent-message-id (nil? parent-msg))                             (out-of-sync! :parent-message-not-found)
+      (and parent-msg (not= (:conversation_id parent-msg) conversation-id)) (out-of-sync! :parent-message-different-conversation)
+      (and parent-msg (not= (:role parent-msg) :assistant))                 (out-of-sync! :parent-message-not-agent-role)
       :else
       (let [msgs       (metabot.persistence/live-messages conversation-id)
             tail       (if parent-msg
@@ -99,8 +107,8 @@
           (and (seq assistants) (every? #(some? (:error %)) assistants))
           {:action :replace-failed-turn :message-ids (mapv :id tail)}
 
-          (nil? parent-message-id) (reject! :parent-message-missing)
-          :else                    (reject! :parent-message-stale))))))
+          (nil? parent-message-id) (out-of-sync! :parent-message-missing)
+          :else                    (out-of-sync! :parent-message-stale))))))
 
 (defn- check-turn!
   "Decides how the incoming request continues the conversation:
@@ -114,16 +122,16 @@
   turns that all failed (assistant rows with a recorded error) — the failed rows are
   then handed back for replacement."
   [conversation-id parent-message-id retry-message-id]
-  (let [reject! (make-reject-fn conversation-id parent-message-id retry-message-id)]
+  (let [out-of-sync! (make-out-of-sync-fn conversation-id parent-message-id retry-message-id)]
     (cond
       (some? retry-message-id)
-      (check-retry! conversation-id retry-message-id reject!)
+      (check-retry! conversation-id retry-message-id out-of-sync!)
 
       (= parent-message-id (metabot.persistence/leaf-external-id conversation-id))
       {:action :start}
 
       :else
-      (check-parent-msg! conversation-id parent-message-id reject!))))
+      (check-parent-msg! conversation-id parent-message-id out-of-sync!))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -263,7 +271,8 @@
   it into:
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off."
-  [{:keys [metabot_id profile_id message context conversation_id debug parent_message_id retry_message_id]} request-info]
+  [{:keys [metabot_id profile_id message context conversation_id debug parent_message_id retry_message_id
+           user_message_id assistant_message_id]} request-info]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -275,13 +284,22 @@
         pii-info   (analytics.core/pii-fields-from request-info)]
     (check-conversation-access! conversation_id)
     (let [{:keys [action message-ids]} (check-turn! conversation_id parent_message_id retry_message_id)
+          out-of-sync! (make-out-of-sync-fn conversation_id parent_message_id retry_message_id)
           {:keys [assistant-msg-id assistant-external-id user-external-id]}
-          (if (= action :retry)
-            (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id)
-            (metabot.persistence/start-turn! conversation_id profile-id message
-                                             :hostname hostname
-                                             :pii-info pii-info
-                                             :delete-message-ids message-ids))
+          (try
+            (if (= action :retry)
+              (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
+                                               :assistant-external-id assistant_message_id)
+              (metabot.persistence/start-turn! conversation_id profile-id message
+                                               :hostname hostname
+                                               :pii-info pii-info
+                                               :delete-message-ids message-ids
+                                               :user-external-id user_message_id
+                                               :assistant-external-id assistant_message_id))
+            (catch Exception e
+              (if (external-id-conflict? e)
+                (out-of-sync! :external-id-taken e)
+                (throw e))))
           messages  (metabot.persistence/live-messages conversation_id)
           history   (metabot.persistence/history messages)
           state     (metabot.persistence/conversation-state messages)]
@@ -337,6 +355,8 @@
             [:conversation_id ms/UUIDString]
             [:parent_message_id {:optional true} [:maybe ms/UUIDString]]
             [:retry_message_id {:optional true} [:maybe ms/UUIDString]]
+            [:user_message_id {:optional true} [:maybe ms/UUIDString]]
+            [:assistant_message_id {:optional true} [:maybe ms/UUIDString]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)

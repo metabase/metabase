@@ -17,6 +17,7 @@ import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import { uuid } from "metabase/utils/uuid";
 import type {
   JSONValue,
   MetabotAgentRequest,
@@ -300,6 +301,8 @@ export const submitInput = createAsyncThunk<
         retryMessageId,
       );
       const messageId = createMessageId();
+      const userMessageId = retryMessageId ?? uuid();
+      const assistantMessageId = uuid();
       const promptWithDevMessage = getDeveloperMessage(state, agentId) + prompt;
       dispatch(
         addUserMessage({
@@ -317,6 +320,8 @@ export const submitInput = createAsyncThunk<
           agentId,
           conversation_id: convo.conversationId,
           ...agentMetadata,
+          user_message_id: userMessageId,
+          assistant_message_id: assistantMessageId,
           ...(profile ? { profile_id: profile } : {}),
         }),
       );

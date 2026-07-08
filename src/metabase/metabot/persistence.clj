@@ -237,12 +237,16 @@
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
   - `:delete-message-ids` — pks soft-deleted in the same transaction as the new
      rows; used when this turn replaces trailing failed turns.
+  - `:user-external-id`, `:assistant-external-id` — client-minted `external_id`s
+     for the turn's rows; minted server-side when omitted. An already-taken id
+     surfaces as the unique-constraint violation from the insert.
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
   [conversation-id profile-id user-message
    & {:keys [hostname pii-info
              channel-id slack-msg-id slack-team-id slack-thread-ts
-             user-id ai-proxy? delete-message-ids]}]
+             user-id ai-proxy? delete-message-ids
+             user-external-id assistant-external-id]}]
   (let [;; Originator: explicit `:user-id` wins; otherwise fall back to the
         ;; auth-bound dynamic. Used for both the conversation `user_id` (on
         ;; first insert) and the user-message row's `user_id`.
@@ -250,8 +254,8 @@
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
                                  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
-        user-external-id       (str (random-uuid))
-        assistant-external-id  (str (random-uuid))]
+        user-external-id       (or user-external-id (str (random-uuid)))
+        assistant-external-id  (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
     ;; The user-message and assistant-placeholder rows share `created_at` because
@@ -308,11 +312,14 @@
   after it and inserts a fresh placeholder. The prompt row is reused — no new user
   row is inserted, so each prompt keeps a single live response.
 
+  `:assistant-external-id` is the client-minted `external_id` for the fresh
+  placeholder; minted server-side when omitted.
+
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`;
   throws a 409 when the prompt row is no longer live."
-  [conversation-id profile-id retry-message-external-id]
+  [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id]}]
   (let [ai-proxy?             (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        assistant-external-id (str (random-uuid))]
+        assistant-external-id (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
     (t2/with-transaction [_conn]
