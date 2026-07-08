@@ -385,12 +385,13 @@
 
 (defmethod driver/upload-type->database-type :snowflake
   [_driver upload-type]
-  ;; Data is loaded with multi-row `INSERT ... VALUES` (the generic `:sql-jdbc` path). Snowflake's fast bulk load
-  ;; path (`PUT` + `COPY INTO` from a stage) is intentionally unavailable because `enablePutGet=false` is enforced
-  ;; on every connection as a security measure (see `set-put-get`, originally #73578).
+  ;; Data is loaded with multi-row `INSERT ... VALUES` (the generic `:sql-jdbc` path); Snowflake's fast bulk
+  ;; path (`PUT` + `COPY INTO` from a stage) is unavailable because [[set-put-get]] enforces
+  ;; `enablePutGet=false` on every connection (#73578).
   ;;
-  ;; `TIMESTAMP_NTZ` / `TIMESTAMP_TZ` mirror what `database-type->base-type` reads back, so inferred types round-trip
-  ;; cleanly through sync. `NUMBER IDENTITY(1, 1)` is Snowflake's auto-incrementing PK (a.k.a. `AUTOINCREMENT`).
+  ;; `TIMESTAMP_NTZ` / `TIMESTAMP_TZ` mirror what [[database-type->base-type]] reads back, so inferred
+  ;; types round-trip through sync. `NUMBER IDENTITY(1, 1)` is Snowflake's auto-incrementing PK
+  ;; (a.k.a. `AUTOINCREMENT`).
   (case upload-type
     :metabase.upload/varchar-255              [[:varchar 255]]
     :metabase.upload/text                     [:text]
@@ -403,12 +404,15 @@
     :metabase.upload/offset-datetime          [:timestamp_tz]))
 
 ;; Snowflake's JDBC driver cannot bind `java.time` values: `setObject` handles temporal binds only via the
-;; legacy `java.sql.Date`/`Time`/`Timestamp` classes, and throws on anything else. Converting through
-;; `Timestamp/valueOf` is no better -- `setTimestamp` binds nanos-since-epoch as `TIMESTAMP_LTZ` computed in
-;; the JVM default zone, while the session runs with `TIMEZONE=UTC` (see `connection-details->spec`), so
-;; wall-clock times would shift whenever the JVM zone isn't UTC. String binds sidestep both problems:
-;; Snowflake parses them server-side into the column's type, independent of any timezone. The formats mirror
-;; this driver's temporal-literal inlining in its `sql.qp/->honeysql` methods.
+;; legacy `java.sql.Date`/`Time`/`Timestamp` classes, and throws on anything else.
+;;
+;; Converting through those legacy classes is no better: `setTimestamp` binds nanos-since-epoch as
+;; `TIMESTAMP_LTZ` computed in the JVM default zone, while the session runs with `TIMEZONE=UTC`
+;; (see [[connection-details->spec]]), so wall-clock times would shift whenever the JVM zone isn't UTC.
+;;
+;; String binds sidestep both problems: Snowflake parses them server-side into the column's type, independent
+;; of any timezone. The formats mirror this driver's temporal-literal inlining in its `sql.qp/->honeysql`
+;; methods.
 (defn- temporal-bind->string
   "Convert a temporal upload value to a string bind that Snowflake will coerce to the column type.
   Non-temporal values pass through unchanged."
