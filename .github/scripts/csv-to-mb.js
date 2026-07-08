@@ -42,7 +42,7 @@ async function attemptUpload(url, jsonData, timeoutMs) {
       body: jsonToCsvFormData(jsonData),
       // Without this the request can hang indefinitely on a stalled server,
       // eating the whole job timeout. An abort surfaces below as a retryable
-      // network error, so it retries with backoff instead. 
+      // network error, so it retries with backoff instead.
       signal: AbortSignal.timeout(timeoutMs)
     });
   } catch (networkError) {
