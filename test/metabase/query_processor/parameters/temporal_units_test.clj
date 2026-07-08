@@ -4,12 +4,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt]
-   [medley.core :as m]))
+   [metabase.test :as mt]))
 
 (defn- ->local-date-time [t]
   (as-> t $

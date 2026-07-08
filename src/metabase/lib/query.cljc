@@ -452,7 +452,9 @@
     (apply f q n args)))
 
 (mu/defn- template-tag-stages
-  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map-or-sequence]] ; NOCOMMIT
+  ;; works with either map or sequence of template tags because Native Query Snippets still store them as a map at the
+  ;; time of this writing
+  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map-or-sequence]]
   (let [template-tags (lib.normalize/normalize ::lib.schema.template-tag/template-tags template-tags)]
     (for [{:keys [card-id snippet-id] tag-type :type} template-tags
           :when                                       (#{:card :snippet} tag-type)]
