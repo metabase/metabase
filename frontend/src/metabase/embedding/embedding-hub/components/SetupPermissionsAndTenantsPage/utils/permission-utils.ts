@@ -76,23 +76,19 @@ export function buildPermissionsGraph(
       dbPerms["view-data"] = {};
     }
 
-    const viewData = dbPerms["view-data"] as Record<
-      string,
-      string | Record<TableId, string>
-    >;
+    const viewData = dbPerms["view-data"];
 
     if (!viewData[schema]) {
       viewData[schema] = {};
     }
 
-    (viewData[schema] as Record<TableId, string>)[tableId as TableId] =
-      "sandboxed";
+    (viewData[schema] as Record<TableId, string>)[tableId] = "sandboxed";
   }
 
   // Block non-selected tables and schemas within databases that have sandboxed tables
   if (allSchemaTables) {
     for (const [dbIdStr, schemas] of Object.entries(allSchemaTables)) {
-      const databaseId = Number(dbIdStr) as DatabaseId;
+      const databaseId = Number(dbIdStr);
 
       if (!groupGraph[databaseId]) {
         continue;
@@ -103,10 +99,7 @@ export function buildPermissionsGraph(
         continue;
       }
 
-      const viewData = dbPerms["view-data"] as Record<
-        string,
-        string | Record<TableId, string>
-      >;
+      const viewData = dbPerms["view-data"];
 
       for (const [schema, tableIds] of Object.entries(schemas)) {
         if (!viewData[schema]) {
@@ -114,7 +107,7 @@ export function buildPermissionsGraph(
           viewData[schema] = "blocked";
         } else if (typeof viewData[schema] === "object") {
           // Schema has sandboxed tables — block all non-selected tables
-          const schemaPerms = viewData[schema] as Record<TableId, string>;
+          const schemaPerms = viewData[schema];
           for (const tableId of tableIds) {
             if (!schemaPerms[tableId]) {
               schemaPerms[tableId] = "blocked";

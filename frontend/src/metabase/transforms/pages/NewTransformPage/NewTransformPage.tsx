@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -19,6 +18,7 @@ import {
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Link, type Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";

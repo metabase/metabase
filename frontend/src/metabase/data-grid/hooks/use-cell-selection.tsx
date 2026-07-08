@@ -544,7 +544,7 @@ const getCellValues = (
     return sortedSelectedRows
       .map((row) => {
         try {
-          const selectedCells = rowGroups[row.id]!;
+          const selectedCells = rowGroups[row.id];
           const cellValues = extractRowCellValues(
             row,
             selectedCells,

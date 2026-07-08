@@ -36,7 +36,7 @@ describe("ChartSettingsSidebar", () => {
     },
   });
 
-  it("should hide the title when showSidebarTitle is false", () => {
+  it("hides the gauge options header while keeping formatting sections visible", () => {
     renderWithProviders(
       <ChartSettingsSidebar
         question={table.question().setDisplay("gauge")}
@@ -61,7 +61,7 @@ describe("ChartSettingsSidebar", () => {
     expect(screen.getByText("Ranges")).toBeInTheDocument();
   });
 
-  it("should not hide the title when showSidebarTitle is false", () => {
+  it("shows the number options header for scalar display when showSidebarTitle is true", () => {
     renderWithProviders(
       <ChartSettingsSidebar
         question={table.question().setDisplay("scalar")}

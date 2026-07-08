@@ -2,12 +2,13 @@ import cx from "classnames";
 import type { Location } from "history";
 import { Component } from "react";
 
-import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type { ClearStateProps, FetchProps } from "../reference";
@@ -99,7 +100,9 @@ class FieldDetailContainer extends Component<FieldDetailContainerProps> {
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(FieldDetailContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(FieldDetailContainer as unknown as React.ComponentType<InjectedRouteProps>),
+);

@@ -30,5 +30,5 @@
 }
 
 .shadowed {
-  box-shadow: 0 2px 2px var(--mb-color-shadow);
+  box-shadow: 0 2px 2px var(--mb-color-shadow-default);
 }

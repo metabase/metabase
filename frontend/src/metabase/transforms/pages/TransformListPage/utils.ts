@@ -198,11 +198,11 @@ const COLLECTION_MODEL = "collection" satisfies RemoteSyncEntityModel;
 const PYTHON_LIBRARY_MODEL = "pythonlibrary" satisfies RemoteSyncEntityModel;
 
 const SYNC_STATUS_COLOR: Record<RemoteSyncEntityStatus, ColorName> = {
-  create: "success",
-  update: "warning",
-  touch: "warning",
-  delete: "danger",
-  removed: "danger",
+  create: "feedback-positive",
+  update: "feedback-warning",
+  touch: "feedback-warning",
+  delete: "feedback-negative",
+  removed: "feedback-negative",
 };
 
 export function getSyncColorForEntities(

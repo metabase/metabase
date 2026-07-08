@@ -36,7 +36,7 @@ describe("checkFormIsDirty", () => {
 
   it("should treat null refingerprint as false", () => {
     const initialValues = createMockDatabaseData({
-      refingerprint: null as any,
+      refingerprint: null,
     });
     const currentValues = createMockDatabaseData({ refingerprint: false });
 
@@ -45,7 +45,7 @@ describe("checkFormIsDirty", () => {
 
   it("should treat null auto_run_queries as false", () => {
     const initialValues = createMockDatabaseData({
-      auto_run_queries: null as any,
+      auto_run_queries: null,
     });
     const currentValues = createMockDatabaseData({ auto_run_queries: false });
 

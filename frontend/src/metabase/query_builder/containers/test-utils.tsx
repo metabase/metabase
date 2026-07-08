@@ -2,7 +2,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
-import { IndexRoute, Route } from "react-router";
 
 import {
   setupAdhocQueryMetadataEndpoint,
@@ -37,6 +36,7 @@ import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { createMockState } from "metabase/redux/store/mocks";
+import { IndexRoute, Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";
 import {

@@ -6,13 +6,13 @@ export const APPLICATION_PERMISSIONS_OPTIONS = {
     label: t`Yes`,
     value: "yes",
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
   no: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,
     value: "no",
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
 };

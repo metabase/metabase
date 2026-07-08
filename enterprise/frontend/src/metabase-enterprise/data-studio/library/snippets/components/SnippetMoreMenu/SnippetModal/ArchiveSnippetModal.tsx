@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -6,6 +5,7 @@ import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
+import { Link } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -61,7 +61,7 @@ export function ArchiveSnippetModal(props: ArchiveSnippetModalProps) {
         <Group gap="sm" justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
-            color="error"
+            color="feedback-negative"
             loading={isLoading}
             onClick={handleArchive}
             variant="filled"

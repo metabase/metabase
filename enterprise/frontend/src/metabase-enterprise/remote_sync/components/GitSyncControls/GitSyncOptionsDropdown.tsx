@@ -36,7 +36,7 @@ export const GitSyncOptionsDropdown = ({
     return (
       <Combobox.Dropdown p={0}>
         <Box p="md">
-          <Text size="sm" c="error" ta="center">
+          <Text size="sm" c="feedback-negative" ta="center">
             {t`Failed to check for changes — check your authentication token`}
           </Text>
         </Box>

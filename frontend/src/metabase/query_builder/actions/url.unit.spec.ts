@@ -94,7 +94,7 @@ async function setup({
     qb,
   });
 
-  await updateUrl(question, options)(dispatch, getState as any);
+  await updateUrl(question, options)(dispatch, getState);
 
   return { dispatch };
 }

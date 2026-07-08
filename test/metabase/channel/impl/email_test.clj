@@ -158,7 +158,7 @@
     (mt/with-prometheus-system! [_ system]
       (let [template {:details {:type :email/handlebars-resource
                                 :subject "Test"
-                                :path "metabase/channel/email/notification_card.hbs"}}]
+                                :path "notification_card"}}]
         ;; render-body will throw if the payload doesn't match the template, but the metric
         ;; fires before the render, so we just need to not blow up
         (try (#'email.impl/render-body template {})
