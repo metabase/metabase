@@ -172,12 +172,14 @@
   (atom []))
 
 (defn- run-measure!
-  "Run one measure's collector, set its labelled Prometheus gauge (always -- Prometheus is independent of the
-  inspector setting), and return the `{:health :message}` result, or nil when the collector is N/A."
+  "Run one measure's collector and always write its labelled Prometheus gauge (Prometheus is independent of the
+  inspector setting). An N/A collector (nil) writes NaN so a previously-emitted series doesn't keep exposing a
+  stale healthy value after the feature is turned off; PromQL treats NaN as no-data, so it won't false-alert.
+  Returns the `{:health :message}` result, or nil when N/A (so the health row is omitted)."
   [{:keys [gauge-key engine collect]}]
-  (when-let [{:keys [value health message]} (collect)]
-    (analytics/set-gauge! gauge-key {:engine (name engine)} value)
-    {:health health :message message}))
+  (let [{:keys [value health message]} (collect)]
+    (analytics/set-gauge! gauge-key {:engine (name engine)} (or value ##NaN))
+    (when health {:health health :message message})))
 
 (defn register-index-check!
   "Register an AI-index measure. `engine` is :semantic | :nlq, `measure` is :coverage | :garbage | :staleness,

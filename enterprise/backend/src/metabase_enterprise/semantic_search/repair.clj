@@ -73,6 +73,22 @@
          (group-by :model)
          (m/map-vals #(map :model_id %)))))
 
+(defn count-active-orphans
+  "Count rows in the active index table whose `(model, model_id)` is absent from the repair table (the current
+  candidate set) -- the garbage actually being served. Unlike the gate-based [[find-lost-deletes]] anti-join,
+  this excludes retained tombstones for rows the indexer has already removed, so the count doesn't stay
+  inflated until tombstone cleanup runs."
+  [pgvector index-table-name repair-table-name]
+  (let [count-sql (-> (sql.helpers/select [:%count.* :n])
+                      (sql.helpers/from [(keyword index-table-name) :i])
+                      (sql.helpers/where
+                       [:not [:exists (-> (sql.helpers/select 1)
+                                          (sql.helpers/from [(keyword repair-table-name) :r])
+                                          (sql.helpers/where [:= :r.model :i.model]
+                                                             [:= :r.model_id :i.model_id]))]])
+                      (sql/format :quoted true))]
+    (or (:n (jdbc/execute-one! pgvector count-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})) 0)))
+
 (defn- create-repair-table!
   "Creates an empty temporary table for tracking documents during index repair."
   [pgvector repair-table-name]

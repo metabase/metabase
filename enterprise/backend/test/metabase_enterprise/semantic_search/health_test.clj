@@ -170,12 +170,14 @@
                                                 :engine    :semantic
                                                 :collect   (constantly {:value 0.75 :health 75 :message "ok"})})))
         (is (= [[:metabase-ai-index/coverage-ratio {:engine "semantic"} 0.75]] @calls)))
-      (testing "an N/A collector (nil) sets no gauge and returns nil"
+      (testing "an N/A collector (nil) writes NaN (clearing any stale series) and returns nil"
         (reset! calls [])
         (is (nil? (#'semantic.health/run-measure! {:gauge-key :metabase-ai-index/coverage-ratio
                                                    :engine    :semantic
                                                    :collect   (constantly nil)})))
-        (is (empty? @calls))))))
+        (is (= 1 (count @calls)))
+        (is (= [:metabase-ai-index/coverage-ratio {:engine "semantic"}] (butlast (first @calls))))
+        (is (Double/isNaN ^double (last (first @calls))) "the labelled series is cleared with NaN, not left stale")))))
 
 (deftest ^:sequential report-repair-orphans!-no-active-index-test
   (testing "no active index -> no-op (no gauge write, no throw), so the hourly repair hook is always safe"
