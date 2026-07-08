@@ -11,7 +11,7 @@ on:
         default: "master"
         options:
           - master
-          - 0.63.3-data-apps
+          - 0.63.4-data-apps
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -183,7 +183,7 @@ jobs:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch == '0.63.3-data-apps' && 'custom-data-apps-poc' || inputs.branch }}
+          ref: ${{ inputs.branch == '0.63.4-data-apps' && 'custom-data-apps-poc' || inputs.branch }}
 
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
@@ -204,9 +204,9 @@ jobs:
             const branch = "${{ inputs.branch }}";
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
             const releaseBranch =
-              branch === "0.63.3-data-apps" ? "custom-data-apps-poc" : branch;
+              branch === "0.63.4-data-apps" ? "custom-data-apps-poc" : branch;
 
-            if (branch === "0.63.3-data-apps") {
+            if (branch === "0.63.4-data-apps") {
               return {
                 version: branch,
                 preReleaseLabel: "",
