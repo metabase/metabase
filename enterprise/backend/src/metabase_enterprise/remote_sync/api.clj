@@ -18,7 +18,6 @@
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -41,17 +40,6 @@
                        :current_branch  current})))
     requested-branch))
 
-(defn- check-sync-operation-access
-  "Sync *operations* (import/export/status) are superuser-only, except on a workspace
-  child instance, where data analysts may drive them too: the agent's api-key user is
-  a data analyst there, and the instance is single-purpose and disposable. Sync
-  *configuration* (settings, test-connection, create-branch, stash) stays
-  superuser-only everywhere — repointing the remote from a workspace would be a
-  content-exfiltration path."
-  []
-  (when-not (and (workspaces/workspace-mode?) (api/is-data-analyst?))
-    (api/check-superuser)))
-
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Import Metabase content from configured Remote Sync source.
 
@@ -62,7 +50,7 @@
   If `force=false` (default) and there are unsaved changes in the Remote Sync collection,
   the import returns a 400 response.
 
-  Requires superuser permissions (or data-analyst on a workspace instance)."
+  Requires superuser permissions."
   [_route
    _query
    {:keys [branch force merge expected_branch]}
@@ -73,7 +61,7 @@
        ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
        ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
        [:expected_branch ms/NonBlankString]]]
-  (check-sync-operation-access)
+  (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (check-branch-matches-setting! expected_branch)
   (let [branch-name (or branch (settings/remote-sync-branch))
@@ -92,7 +80,7 @@
   "Check if any remote-synced collection or collection item has local changes that have not been pushed
   to the remote sync source."
   []
-  (check-sync-operation-access)
+  (api/check-superuser)
   {:is_dirty (remote-sync.object/dirty?)})
 
 (api.macros/defendpoint :get "/has-remote-changes" :- remote-sync.schema/HasRemoteChangesResponse
@@ -107,7 +95,7 @@
   [_route-params
    {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
    _body]
-  (check-sync-operation-access)
+  (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
     (cond-> {:has_changes (:has-changes? result)
@@ -120,7 +108,7 @@
   "Return all models with changes that have not been pushed to the remote sync source in any
   remote-synced collection."
   []
-  (check-sync-operation-access)
+  (api/check-superuser)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
                 (remote-sync.object/dirty-objects))})
@@ -136,7 +124,7 @@
   - Commit the changes if possible
   - Sync to the source if possible
 
-  Requires superuser permissions (or data-analyst on a workspace instance)."
+  Requires superuser permissions."
   [_route
    _query
    {:keys [message branch force merge]} :- [:map
@@ -144,7 +132,7 @@
                                             [:branch ms/NonBlankString]
                                             [:force {:optional true} :boolean]
                                             [:merge {:optional true} :boolean]]]
-  (check-sync-operation-access)
+  (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
   (let [branch-name (check-branch-matches-setting! branch)
@@ -173,10 +161,10 @@
     `{:deleted [labels] :overwritten [labels]}`
   - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists
 
-  Requires superuser permissions (or data-analyst on a workspace instance)."
+  Requires superuser permissions."
   [_route
    {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
-  (check-sync-operation-access)
+  (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (check-branch-matches-setting! branch)
         {:keys [diverged? clean? conflicts summary force-push-casualties reason]}
@@ -191,14 +179,14 @@
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
-  (check-sync-operation-access)
+  (api/check-superuser)
   (when-let [task (remote-sync.task/most-recent-task)]
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
   []
-  (check-sync-operation-access)
+  (api/check-superuser)
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
@@ -304,9 +292,9 @@
 
   Returns a JSON object with branch names under the :items key.
 
-  Requires superuser permissions (or data-analyst on a workspace instance)."
+  Requires superuser permissions."
   []
-  (check-sync-operation-access)
+  (api/check-superuser)
   (let [source (source/source-from-settings)]
     (api/check-400 source "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable.")
     (try

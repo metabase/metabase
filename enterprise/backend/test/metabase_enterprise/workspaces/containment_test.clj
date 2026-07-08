@@ -2,23 +2,21 @@
   "GHY-4062: the containment proof suite. This suite IS the answer to \"how can we be
   certain\" — it fails the build when someone widens the hole.
 
-  Three layers:
+  Two layers, both about the parent-side `mb:workspace-manager` OAuth token:
   1. Static allowlist sweep: exactly the intended endpoints carry the
      `mb:workspace-manager` scope tag, and no other loaded namespace does.
-  2. Parent side, workspace-scoped OAuth token: reaches the allowlist, 403s
-     everywhere else (default-deny via `ensure-scopes-checked`).
-  3. Child side, all-users api-key: the admin exfil paths (database connection
-     edit, remote-sync repoint/test-connection) are dead; sync operations work
-     only in workspace mode and only for a data analyst.
+  2. Workspace-scoped OAuth token: reaches the allowlist, 403s everywhere else
+     (default-deny via `ensure-scopes-checked`).
 
   Refresh-cannot-widen is pinned in `metabase.oauth-server.api-test`
-  (token-refresh-cannot-widen-scope-test); full-scope revocation at workspace
-  login in workspace-login-revokes-full-scope-sessions-test."
+  (token-refresh-cannot-widen-scope-test); revocation of other sessions at
+  workspace login in workspace-login-revokes-other-sessions-test.
+
+  Child-side containment is out of scope: the child agent key is an admin key
+  (v0), so there is no child-endpoint allowlist to prove."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.api.workspace-manager]
-   [metabase-enterprise.workspaces.core :as ws-mode]
-   [metabase.api-keys.core :as api-keys]
    [metabase.api.macros :as api.macros]
    [metabase.initialization-status.core :as init-status]
    [metabase.oauth-server.core :as oauth-server]
@@ -26,7 +24,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users-rest.api]
-   [metabase.util.secret :as u.secret]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
 
@@ -121,48 +118,3 @@
               (client/client :get 401 "user/current" (bearer expired))))
           (finally
             (t2/delete! :model/OAuthAccessToken :client_id "containment-suite")))))))
-
-;;; ---------------------------------- 3. child api-key, all-users group ----------------------------------
-
-(defn- api-key-header [k]
-  {:request-options {:headers {"x-api-key" k}}})
-
-(deftest child-api-key-exfil-paths-are-dead-test
-  (mt/with-premium-features #{:workspaces :remote-sync}
-    (let [api-key (mt/with-current-user (mt/user->id :crowberto)
-                    (api-keys/create-api-key-with-new-user! {:key-name "containment agent key"}))
-          k       (u.secret/expose (:unmasked_key api-key))]
-      (try
-        (testing "db-connection-host swap: PUT /api/database/:id is 403 for the all-users key"
-          (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}]
-            (client/client :put 403 (str "database/" db-id) (api-key-header k)
-                           {:details {:db "evil://exfil"}})))
-        (testing "remote-sync repoint: PUT /api/ee/remote-sync/settings is 403"
-          (client/client :put 403 "ee/remote-sync/settings" (api-key-header k)
-                         {:remote-sync-url "https://github.com/evil/exfil.git"}))
-        (testing "remote-sync test-connection (URL probe with stored token) is 403"
-          (client/client :post 403 "ee/remote-sync/test-connection" (api-key-header k) {}))
-        (testing "sync operations: workspace mode + data-analyst required"
-          (mt/with-data-analyst-role! (:user_id api-key)
-            (testing "outside workspace mode: 403 even for a data analyst"
-              (client/client :get 403 "ee/remote-sync/is-dirty" (api-key-header k)))
-            (testing "in workspace mode: is-dirty answers the key"
-              (try
-                (ws-mode/set-instance-workspace! {:name      "containment-ws"
-                                                  :databases {(mt/id) {:input_schemas ["_"]
-                                                                       :output        {:schema "ws_out"}}}})
-                (is (=? {:is_dirty boolean?}
-                        (client/client :get 200 "ee/remote-sync/is-dirty" (api-key-header k))))
-                (finally
-                  (ws-mode/clear-instance-workspace!)))))
-          (testing "workspace mode alone is not enough: non-analyst key user is 403"
-            (try
-              (ws-mode/set-instance-workspace! {:name      "containment-ws"
-                                                :databases {(mt/id) {:input_schemas ["_"]
-                                                                     :output        {:schema "ws_out"}}}})
-              (client/client :get 403 "ee/remote-sync/is-dirty" (api-key-header k))
-              (finally
-                (ws-mode/clear-instance-workspace!)))))
-        (finally
-          (t2/delete! :model/ApiKey :id (:id api-key))
-          (t2/delete! :model/User :id (:user_id api-key)))))))

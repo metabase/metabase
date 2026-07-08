@@ -13,7 +13,6 @@
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   [metabase-enterprise.workspaces.core :as ws]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -810,38 +809,6 @@
   (testing "GET /api/ee/remote-sync/is-dirty requires superuser permissions"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/remote-sync/is-dirty")))))
-
-(deftest sync-operations-workspace-mode-data-analyst-test
-  (testing "on a workspace instance, data analysts may drive sync operations, but sync configuration stays superuser-only"
-    (try
-      (ws/set-instance-workspace! {:name      "test-ws"
-                                   :databases {(mt/id) {:input_schemas ["_"]
-                                                        :output        {:schema "ws_out"}}}})
-      (mt/with-data-analyst-role! (mt/user->id :rasta)
-        (testing "operation endpoint (is-dirty) allowed"
-          (test-helpers/with-clean-object
-            (is (= {:is_dirty false}
-                   (mt/user-http-request :rasta :get 200 "ee/remote-sync/is-dirty")))))
-        (testing "configuration endpoints still 403"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 "ee/remote-sync/settings" {})))
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :post 403 "ee/remote-sync/test-connection" {})))))
-      (finally
-        (ws/clear-instance-workspace!))))
-  (testing "outside workspace mode, data analysts are still rejected from sync operations"
-    (mt/with-data-analyst-role! (mt/user->id :rasta)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "ee/remote-sync/is-dirty")))))
-  (testing "workspace mode alone is not enough — a plain non-analyst user is still rejected"
-    (try
-      (ws/set-instance-workspace! {:name      "test-ws"
-                                   :databases {(mt/id) {:input_schemas ["_"]
-                                                        :output        {:schema "ws_out"}}}})
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "ee/remote-sync/is-dirty")))
-      (finally
-        (ws/clear-instance-workspace!)))))
 
 ;;; ------------------------------------------------- Dirty Models Endpoint -------------------------------------------------
 
