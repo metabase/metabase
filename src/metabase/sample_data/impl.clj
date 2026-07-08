@@ -128,12 +128,7 @@
   (log/infof "Migrating sample database engine from %s to %s in place" (:engine old-sample-db) engine)
   (let [details (try-to-extract-sample-database! engine)]
     (t2/with-transaction [_conn]
-      ;; The Database model's before-update forbids changing a sample database's engine, so set the engine
-      ;; column directly. Details still go through the model so they get encrypted as usual.
-      (t2/query {:update (t2/table-name :model/Database)
-                 :set    {:engine (name engine)}
-                 :where  [:= :id (:id old-sample-db)]})
-      (t2/update! :model/Database (:id old-sample-db) {:details details})
+      (t2/update! :model/Database (:id old-sample-db) {:engine engine, :details details})
       (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)}))
     (sync/sync-database! (t2/select-one :model/Database :id (:id old-sample-db)))))
 

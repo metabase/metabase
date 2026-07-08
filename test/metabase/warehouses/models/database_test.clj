@@ -708,17 +708,19 @@
         (testing ":write_data_details :auth-provider is keywordized"
           (is (keyword? (get-in db [:write_data_details :auth-provider]))))))))
 
-(deftest user-may-not-update-sample-database-test
-  (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
-                                                                    :is_sample true
-                                                                    :name      "Sample Database"
-                                                                    :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
-    (testing " updating the engine of a sample database is not allowed"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"The engine on a sample database cannot be changed."
-           (t2/update! :model/Database id {:engine :sqlite}))))
-    (testing " updating other attributes of a sample database is allowed"
+(deftest sample-database-engine-change-allowed-at-model-layer-test
+  ;; The "sample database may not be edited" policy is enforced at the API layer
+  ;; (see metabase.warehouses-rest.api-test/reject-sample-database-edit-test), NOT in the model. The model
+  ;; must permit engine changes so internally-derived updates - e.g. the sample-DB engine migration in
+  ;; metabase.sample-data.impl - can flip the sample database between H2 and SQLite.
+  (mt/with-temp [:model/Database {:keys [id]} {:engine    :h2
+                                               :is_sample true
+                                               :name      "Sample Database"
+                                               :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+    (testing "changing the engine of a sample database directly through the model is allowed"
+      (t2/update! :model/Database id {:engine :sqlite})
+      (is (= :sqlite (t2/select-one-fn :engine :model/Database :id id))))
+    (testing "other attributes can still be updated too"
       (t2/update! :model/Database id {:name "My New Name"})
       (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
 
