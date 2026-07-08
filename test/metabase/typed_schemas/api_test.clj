@@ -128,6 +128,40 @@
            :display        "table"
            :result-columns [{:name "count", :display_name "Count", :type :number}]}))))
 
+(deftest model-schema-includes-actions-test
+  (with-redefs [typed-schemas.api/model-actions
+                (fn [model]
+                  (is (= 42 (:id model)))
+                  [{:kind "action", :key "create", :id 5}])]
+    (is (= {:kind    "model"
+            :key     "ordersModel"
+            :id      42
+            :name    "Orders model"
+            :actions {"create" {:kind "action", :key "create", :id 5}}}
+           (#'typed-schemas.api/model-schema
+            {:id             42
+             :name           "Orders model"})))))
+
+(deftest model-schemas-includes-actionable-models-test
+  (with-redefs [typed-schemas.api/select-cards
+                (fn [card-type database-ids collection-ids]
+                  (is (= :model card-type))
+                  (is (= #{1} database-ids))
+                  (is (nil? collection-ids))
+                  [{:id 42} {:id 43}])
+                typed-schemas.api/question-details
+                (fn [card]
+                  {:id   (:id card)
+                   :name (str "Model " (:id card))})
+                typed-schemas.api/model-actions
+                (fn [model]
+                  (when (= (:id model) 42)
+                    [{:kind "action", :key "create", :id 5}]))]
+    (is (= #{42}
+           (->> (#'typed-schemas.api/model-schemas #{1})
+                (map :id)
+                set)))))
+
 (deftest metric-source-id-test
   (testing "integer source-table emits sourceTableId but not sourceCardId"
     (let [card {:dataset_query {:query {:source-table 10}}}]
@@ -854,11 +888,11 @@
         (is (= #{10 42} (->> (:tables schema) vals (map :id) set)))
         (is (= #{1} (->> (:metrics schema) vals (map :id) set)))))))
 
-(deftest include-models-schema-includes-all-models-test
+(deftest include-models-schema-includes-actionable-models-test
   (with-redefs [typed-schemas.api/model-schemas
                 (fn [database-ids]
                   (is (nil? database-ids))
-                  [{:kind "model", :key "allModelsModel", :id 100}])
+                  [{:kind "model", :key "actionableModel", :id 100}])
                 typed-schemas.api/question-schemas
                 (fn
                   ([_database-ids]

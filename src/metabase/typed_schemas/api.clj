@@ -590,16 +590,8 @@
 
 (defn- action-schema
   "A pre-existing Metabase action. HTTP actions are filtered upstream because
-  the execute endpoint refuses to run them.
-
-  `model-columns` is the parent model's column-schema list (already rendered
-  by [[column-schema]]). It is NOT re-attached to the action — the action is
-  keyed under its model in the typed schema, so callers can reach the row
-  shape via `schema.models.<m>.columns` directly. The TS helper
-  `ActionResult<TAction, TModel>` threads that into the `row/create`
-  response shape."
-  [_model-columns
-   {:keys [id name description type kind parameters entity_id] :as action}]
+  the execute endpoint refuses to run them."
+  [{:keys [id name description type kind parameters entity_id] :as action}]
   (let [tag-types (query-action-template-tag-types action)
         implicit? (= (->keyword type) :implicit)]
     (assoc-some
@@ -616,11 +608,8 @@
 
 (defn- model-actions
   "Fetches non-archived, non-HTTP actions for a single model and emits each
-  in schema form. Returns nil when the model has no executable actions, so
-  `assoc-some` drops the empty `:actions` field. `model-columns` is the
-  parent model's already-rendered column schemas, passed through to
-  implicit actions for response-row typing."
-  [model model-columns]
+  in schema form. Returns nil when the model has no executable actions."
+  [model]
   (let [raw-actions (raw-model-actions (:id model))
         actions (try
                   (actions/select-actions
@@ -640,7 +629,7 @@
     (when (seq actions)
       (mapv (fn [action]
               (try
-                (action-schema model-columns action)
+                (action-schema action)
                 (catch Exception e
                   (throw (ex-info (model-action-error-message model action (ex-message e))
                                   (assoc (model-action-error-data model action (ex-data e))
@@ -650,23 +639,22 @@
 
 (defn- model-schema
   "A Metabase model (curated dataset). Shape parallels [[question-schema]] —
-  same id/name/columns/etc. — but with `:kind \"model\"` and an extra
-  `:actions` map of pre-existing actions bound to the model
-  (`action.model_id`)."
-  [{:keys [id name description verified display result-columns portable_entity_id] :as model}]
-  (let [columns (mapv column-schema result-columns)
-        action-schemas (model-actions model columns)]
-    (assoc-some
-     {:kind    "model"
-      :key     (generated-key name id)
-      :id      id
-      :name    name
-      :columns columns}
-     :display display
-     :entityId portable_entity_id
-     :description description
-     :verified (when verified true)
-     :actions (some-> action-schemas not-empty keyed-map))))
+  same id/name/etc. — but with `:kind \"model\"` and an extra `:actions` map
+  of pre-existing actions bound to the model (`action.model_id`). Returns nil
+  when the model has no executable actions."
+  [{:keys [id name description verified display portable_entity_id] :as model}]
+  (let [action-schemas (model-actions model)]
+    (when (seq action-schemas)
+      (assoc-some
+       {:kind    "model"
+        :key     (generated-key name id)
+        :id      id
+        :name    name}
+       :display display
+       :entityId portable_entity_id
+       :description description
+       :verified (when verified true)
+       :actions (keyed-map action-schemas)))))
 
 (defn- persisted-dimension->column
   [dimension]
@@ -961,9 +949,10 @@
    (model-schemas database-ids nil))
   ([database-ids collection-ids]
    (for [card (select-cards :model database-ids collection-ids)
-         :let [details (question-details card)]
-         :when details]
-     (model-schema details))))
+         :let [details (question-details card)
+               schema  (some-> details model-schema)]
+         :when schema]
+     schema)))
 
 (defn- metric-schemas
   ([database-ids]

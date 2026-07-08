@@ -47,10 +47,10 @@ Before generating, make sure the user has explicitly chosen the library scope th
 - `includeMetricLibrary=true` for the whole `Library / metrics` tree.
 - `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data or metrics library subcollections.
 - `questionCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific normal collections that contain saved questions.
-- `includeModels=true` for all readable models and their actions. When combined with `database=<name-or-id>`, it includes models for that database only.
+- `includeModels=true` for readable models that have actions. When combined with `database=<name-or-id>`, it includes models with actions for that database only.
 - `database=<name-or-id>` when the app should use tables from one database.
 
-Use `questionCollections` when the app needs generated `schema.questions.*`. Use `includeModels=true` when the app needs generated `schema.models.*` or any saved action under `schema.models.<model>.actions`. It can be combined with `libraryCollections`, `includeDataLibrary`, `includeMetricLibrary`, or `questionCollections` so one schema can include selected tables/metrics/questions plus all relevant models/actions.
+Use `questionCollections` when the app needs generated `schema.questions.*`. Use `includeModels=true` when the app needs any saved action under `schema.models.<model>.actions`; models without executable actions are omitted to keep generated schemas compact. It can be combined with `libraryCollections`, `includeDataLibrary`, `includeMetricLibrary`, or `questionCollections` so one schema can include selected tables/metrics/questions plus all relevant actions.
 
 If the user asks for any mutation-like flow, such as creating, updating, deleting, submitting, approving, executing an action, or running a write operation, include `includeModels=true` in the typed-schema URL. Do this even when the user names one specific model/action, because actions are only discoverable through generated model entries.
 
