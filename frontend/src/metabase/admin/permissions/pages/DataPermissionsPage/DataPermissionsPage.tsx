@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Route } from "react-router";
 import { useAsync } from "react-use";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
@@ -10,6 +9,7 @@ import {
   useListPermissionsGroupsQuery,
 } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
@@ -44,8 +44,7 @@ function DataPermissionsPage({
   const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
   const databases = useSelector(
     (state) =>
-      (getMetadataUnfiltered(state).databasesList() as Database[]) ??
-      EMPTY_DATABASE_LIST,
+      getMetadataUnfiltered(state).databasesList() ?? EMPTY_DATABASE_LIST,
   );
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},

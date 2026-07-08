@@ -171,7 +171,7 @@ export function formatValueRaw(
   ) {
     return renderLinkTextForClick(
       options.click_behavior.linkTextTemplate,
-      getDataFromClicked(options.clicked) as any,
+      getDataFromClicked(options.clicked),
     );
   } else if (
     (isURL(column) && options.view_as == null) ||
@@ -192,7 +192,7 @@ export function formatValueRaw(
     isDate(column) ||
     isDateValue(value) ||
     dayjs.isDayjs(value) ||
-    dayjs(value as string, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
+    dayjs(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {

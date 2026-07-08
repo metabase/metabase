@@ -183,7 +183,7 @@ describe("useDashboardUrlQuery", () => {
         listeners[0]({
           ...location,
           query: { tab: "5-tab-5" },
-        } as unknown as Location);
+        });
       });
 
       // selectTab is the only reducer that sets selectedTabId, so this pins that
@@ -199,7 +199,7 @@ describe("useDashboardUrlQuery", () => {
           ...location,
           pathname: "/dashboard/999",
           query: { tab: "5-tab-5" },
-        } as unknown as Location);
+        });
       });
 
       expect(store.getState().dashboard.selectedTabId).toBe(null);

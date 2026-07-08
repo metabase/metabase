@@ -1315,7 +1315,7 @@
 
 (defn- dispatch-initialized-request [msg token-scopes]
   (let [session-id (str (random-uuid))]
-    (#'mcp.api/dispatch-request msg session-id token-scopes)))
+    (#'mcp.api/dispatch-request msg session-id token-scopes nil)))
 
 (defn- with-scoped-test-resource! [f]
   (let [registry @#'mcp.resources/registry
@@ -1361,7 +1361,8 @@
         (let [response (#'mcp.api/dispatch-request
                         (jsonrpc-request "resources/list")
                         "session-id"
-                        #{"agent:other"})
+                        #{"agent:other"}
+                        nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris construct-query-uri)
               "public construct-query reference is still listed")
@@ -1373,7 +1374,8 @@
         (let [response (#'mcp.api/dispatch-request
                         (jsonrpc-request "resources/list")
                         "session-id"
-                        #{"agent:search"})
+                        #{"agent:search"}
+                        nil)
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris scoped-test-uri)))))))
 

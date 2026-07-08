@@ -217,7 +217,7 @@ export const MetricSearchDropdown = forwardRef<
             libraryMetricsCollection
               ? {
                   model: "collection",
-                  id: libraryMetricsCollection.id as number,
+                  id: libraryMetricsCollection.id,
                 }
               : undefined
           }

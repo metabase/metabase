@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import { setupForgotPasswordEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -7,6 +6,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 
 import { ForgotPassword } from "./ForgotPassword";
 

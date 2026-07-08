@@ -69,7 +69,7 @@ export const MiniBarCell = <TValue,>({
   const resolvedMax = resolveMax(min, max, columnSettings["number_style"]);
   const barPercent =
     (Math.abs(value) / Math.max(Math.abs(min), Math.abs(resolvedMax))) * 100;
-  const barVizColor = isNegative ? color("error") : barColor;
+  const barVizColor = isNegative ? color("feedback-negative") : barColor;
 
   const barStyle = !hasNegative
     ? {
@@ -149,7 +149,7 @@ export const MiniBarCell = <TValue,>({
                 left: "50%",
                 top: 0,
                 bottom: 0,
-                borderLeft: `1px solid ${color("white")}`,
+                borderLeft: `1px solid ${color("core-white")}`,
               }}
             />
           )}

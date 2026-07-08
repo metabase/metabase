@@ -15,6 +15,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.test-spec :as lib.schema.test-spec]
+   [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
@@ -556,3 +557,40 @@
                                                                    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
                                                                    [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
   (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
+
+(api.macros/defendpoint :post "/mcp/seed-tool-call"
+  :- [:map
+      [:session_id ms/NonBlankString]
+      [:tool_name ms/NonBlankString]]
+  "Seed one `mcp_session_log` + one `mcp_tool_call_log` row so the MCP analytics E2E page has a
+  visible tool-call row. Routes through the production `metabase.mcp.usage` recording helpers
+  (rather than hand-rolled inserts) so the seeded rows can't drift from real MCP writes.
+  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id tool_name client_name client_version status error_code error_message duration_ms]}
+   :- [:map
+       [:user_id        ms/PositiveInt]
+       [:tool_name       {:optional true} [:maybe ms/NonBlankString]]
+       [:client_name     {:optional true} [:maybe ms/NonBlankString]]
+       [:client_version  {:optional true} [:maybe ms/NonBlankString]]
+       [:status          {:optional true} [:maybe ms/NonBlankString]]
+       [:error_code      {:optional true} [:maybe :int]]
+       [:error_message   {:optional true} [:maybe ms/NonBlankString]]
+       [:duration_ms     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+  (let [session-id (str "e2e-mcp-" (random-uuid))
+        tool-name  (or tool_name "execute_query")]
+    (mcp.usage/record-mcp-session!
+     {:session-id  session-id
+      :user-id     user_id
+      :client-info {:name    (or client_name "claude")
+                    :version (or client_version "1.0.0")}})
+    (mcp.usage/record-mcp-tool-call!
+     {:tool-name     tool-name
+      :user-id       user_id
+      :session-id    session-id
+      :status        (or status "success")
+      :duration-ms   (or duration_ms 42)
+      :error-code    error_code
+      :error-message error_message})
+    {:session_id session-id :tool_name tool-name}))

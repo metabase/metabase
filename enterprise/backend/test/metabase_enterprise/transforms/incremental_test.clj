@@ -214,7 +214,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- test-drivers []
-  (disj (mt/normal-drivers-with-feature :transforms/table) :redshift :clickhouse :sqlserver))
+  (mt/normal-drivers-with-feature :transforms/table))
 
 (defn- target-table-gen [prefix]
   {:type     :table

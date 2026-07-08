@@ -62,7 +62,7 @@ export const executeRowAction = async ({
     if (shouldToast) {
       dispatch(
         addUndo({
-          toastColor: "success",
+          toastColor: "feedback-positive",
           message,
         }),
       );
@@ -76,7 +76,7 @@ export const executeRowAction = async ({
       dispatch(
         addUndo({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message,
         }),
       );
