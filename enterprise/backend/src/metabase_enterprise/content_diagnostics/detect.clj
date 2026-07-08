@@ -76,10 +76,10 @@
                            (t2/select-pk->fn :common_name :model/User :id [:in ids])
                            {})]
     (for [{:keys [id model last_used_at] entity-name :name} rows
-          :let  [etype (model->entity-type model)]
-          :when etype
+          :let  [entity-type (model->entity-type model)]
+          :when entity-type
           :let  [{:keys [created_at creator_id]} (get entity-attrs [model id])]]
-      {:entity-type         etype
+      {:entity-type         entity-type
        :entity-id           id
        :finding-type        :stale
        ;; freeze the scan-time activity anchor (D17): `last_used_at` for cards, `last_viewed_at` for
@@ -107,11 +107,9 @@
   (into #{} (mapcat :finding-types) checkers))
 
 (defn detect
-  "Run every checker instance-wide and return one realized, de-duplicated vector of finding maps.
-  `m/distinct-by` is a memoized seen-set transducer: it remembers each (entity-type, entity-id,
-  finding-type) tuple and silently drops the second occurrence as it streams through. A checker — or
-  the stale query's one-to-many joins (e.g. a card with several `pulse_card` rows) — can surface the
-  same finding twice; this is the app-layer guarantee that no intra-scan duplicate ever reaches the DB."
+  "Run every checker instance-wide and return a de-duplicated vector of finding maps. De-dupes on
+  (entity-type, entity-id, finding-type): a checker or the stale query's one-to-many joins can emit
+  the same finding twice, and no intra-scan duplicate may reach the DB."
   []
   (into []
         (m/distinct-by (juxt :entity-type :entity-id :finding-type))
@@ -124,8 +122,8 @@
   (transforms have no archived column, so every transform counts) — the denominator for the
   findings/entities topline."
   []
-  (transduce (map (fn [[etype model]]
-                    (if (= etype :transform)
+  (transduce (map (fn [[entity-type model]]
+                    (if (= entity-type :transform)
                       (t2/count model)
                       (t2/count model :archived false))))
              +
@@ -137,13 +135,13 @@
   contribute nothing; an entity at the root maps to nil."
   [findings]
   (into {}
-        (for [[etype fs] (group-by :entity-type findings)
-              :let       [model (entity-type->model etype)]
+        (for [[entity-type findings-for-type] (group-by :entity-type findings)
+              :let       [model (entity-type->model entity-type)]
               :when      model
               :let       [id->coll (t2/select-pk->fn :collection_id [model :id :collection_id]
-                                                     :id [:in (set (map :entity-id fs))])]
-              {:keys [entity-id]} fs]
-          [[etype entity-id] (get id->coll entity-id)])))
+                                                     :id [:in (set (map :entity-id findings-for-type))])]
+              {:keys [entity-id]} findings-for-type]
+          [[entity-type entity-id] (get id->coll entity-id)])))
 
 (defn- attach-scope-collection-ids
   "Stamp each finding with `:scope-collection-id` — the collection the entity lived in at scan time.
@@ -161,9 +159,7 @@
 (defn- insert-findings!
   "Persist findings as independent **chunk-committed** transactions — each chunk is its own transaction,
   so completed chunks are durable even if a later chunk fails (no single all-rows transaction held open
-  for the whole scan). Chunking also keeps each statement under the bind-parameter cap. This is safe to
-  serve mid-write because the serve layer reads latest-per-entity (`active-where` in `api.clj`), so a partial
-  batch degrades gracefully rather than blanking out un-written entities."
+  for the whole scan). Chunking also keeps each statement under the bind-parameter cap."
   [scan-id findings]
   (doseq [chunk (partition-all insert-batch-size findings)]
     (t2/with-transaction [_conn]

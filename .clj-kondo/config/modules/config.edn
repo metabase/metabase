@@ -2983,8 +2983,11 @@
   enterprise/content-diagnostics
   {:team "Gadget"
    :api  #{metabase-enterprise.content-diagnostics.init}
-   :uses #{models
+   :uses #{enterprise/stale
+           models
+           premium-features
            settings
+           task
            util}}
 
   enterprise/content-translation

@@ -5,8 +5,10 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.content-diagnostics.detect :as detect]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
+   [metabase-enterprise.content-diagnostics.task :as cd.task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -18,6 +20,10 @@
 
 (defn- fresh-instant []
   (t/offset-date-time))
+
+(defn- finding-for
+  [rows entity-type entity-id]
+  (m/find-first #(and (= entity-type (:entity_type %)) (= entity-id (:entity_id %))) rows))
 
 (deftest scan-detects-stale-test
   (mt/with-premium-features #{:content-diagnostics}
@@ -57,7 +63,7 @@
             (is (every? found-keys stale-keys))
             (is (empty? (set/intersection found-keys fresh-keys))))
           (testing "persisted findings carry finding_type + scope_collection_id + last_active_at + details"
-            (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
+            (let [row (finding-for rows :card s1)]
               (is (=? {:finding_type        :stale
                        ;; scope_collection_id is stamped at scan time from the entity's collection
                        :scope_collection_id coll-id
@@ -69,18 +75,18 @@
               ;; details holds ONLY the threshold
               (is (= #{:threshold_days} (set (keys (:details row)))))))
           (testing "dashboard finding freezes last_active_at from last_viewed_at (per-entity-type alias)"
-            (let [row (first (filter #(and (= :dashboard (:entity_type %)) (= s4 (:entity_id %))) rows))]
+            (let [row (finding-for rows :dashboard s4)]
               (is (some? (:last_active_at row)))))
           (testing "never-used document (never viewed, created before the cutoff) lands with nil last_active_at"
-            (let [row (first (filter #(and (= :document (:entity_type %)) (= s7 (:entity_id %))) rows))]
+            (let [row (finding-for rows :document s7)]
               (is (some? row))
               (is (nil? (:last_active_at row)))))
           (testing "never-ran transform (created before the cutoff) lands with nil last_active_at"
-            (let [row (first (filter #(and (= :transform (:entity_type %)) (= s8 (:entity_id %))) rows))]
+            (let [row (finding-for rows :transform s8)]
               (is (some? row))
               (is (nil? (:last_active_at row)))))
           (testing "denormalized columns (entity_name/created_at/creator_id/creator_name) are stamped at scan time"
-            (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
+            (let [row (finding-for rows :card s1)]
               (is (=? {:entity_name         some?
                        :entity_created_at   some?
                        :entity_creator_id   some?
@@ -98,7 +104,9 @@
           (t2/update! :model/Card resolved {:last_used_at (fresh-instant)})  ; resolved is now fresh
           (detect/scan!)                                            ; scan 2: only `still` is stale
           (let [active (set (map :entity_id (t2/select :model/ContentDiagnosticsFinding
-                                                       :entity_type :card :invalidated_at nil)))]
+                                                       :entity_type :card
+                                                       :entity_id [:in [resolved still]]
+                                                       :invalidated_at nil)))]
             (testing "the re-flagged card stays active; the resolved one does not"
               (is (contains? active still))
               (is (not (contains? active resolved))))
@@ -106,3 +114,15 @@
               (let [rows (t2/select :model/ContentDiagnosticsFinding :entity_type :card :entity_id resolved)]
                 (is (seq rows))                                     ; not hard-deleted — history retained
                 (is (every? :invalidated_at rows))))))))))
+
+(deftest scan-job-gated-on-premium-feature-test
+  (let [scans (atom 0)]
+    (mt/with-dynamic-fn-redefs [detect/scan! (fn [] (swap! scans inc))]
+      (testing "the scheduled job body no-ops without the :content-diagnostics feature"
+        (mt/with-premium-features #{}
+          (#'cd.task/scan-when-enabled!)
+          (is (zero? @scans))))
+      (testing "the scheduled job body scans when the feature is present"
+        (mt/with-premium-features #{:content-diagnostics}
+          (#'cd.task/scan-when-enabled!)
+          (is (= 1 @scans)))))))
