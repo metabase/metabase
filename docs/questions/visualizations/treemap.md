@@ -38,7 +38,7 @@ When you group a metric by one dimension, the treemap shows a flat set of leaves
 
 When you group a metric by two dimensions, the treemap nests the second dimension inside the first. The first dimension determines the outer rectangles and their colors. The second dimension determines the leaves nested inside the outer rectangles. The value of the metric determines each leaf's size.
 
-Here's the data shape for a treemap of order count by category and vendor:
+Here's the data shape for a treemap of order count by category (the parent categories) and vendor (the leaves):
 
 | Category  | Vendor                     | Count |
 | --------- | -------------------------- | ----- |
@@ -56,7 +56,7 @@ Here's the data shape for a treemap of order count by category and vendor:
 To build a nested treemap:
 
 1. In the query builder, click **Summarize**.
-2. Set a metric, such as **Count of rows**.
+2. Select a metric, such as **Count of rows**.
 3. Group by a first dimension, such as **Category**.
 4. Add a second grouping, such as **Vendor**.
 5. In the visualization picker, select **Treemap**.
@@ -70,7 +70,7 @@ Click a parent category to zoom into that category.
 - **Parent category**: Click a parent category to zoom into that category. To return to the full treemap, click the back arrow.
 - **Leaf**: Click a leaf to view the underlying records, break out by another dimension, view automatic insights, or filter by its value.
 
-Drill-through options are limited for questions written in SQL. For more information, see [drill-through](./drill-through.md).
+[Drill-through](./drill-through.md) options are limited for questions written in SQL.
 
 ## Treemap settings
 
