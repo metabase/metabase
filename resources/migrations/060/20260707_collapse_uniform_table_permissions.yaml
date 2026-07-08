@@ -11,8 +11,10 @@
 ##      carry the value 'blocked' — including rows referencing inactive tables, so collapsing never
 ##      discards a value a reactivated table would otherwise pick back up — and cover every active table
 ##      of the database: insert the equivalent db-level row.
-##   2. Delete every table-level view-data row whose (group_id, db_id, perm_value) matches a db-level
-##      row — such rows are redundant no matter how they came to be.
+##   2. Drop every table-level view-data row whose (group_id, db_id, perm_value) matches a db-level
+##      row — such rows are redundant no matter how they came to be. Because that can be tens of millions
+##      of rows, this is done by rebuilding the table with only the surviving rows rather than a row-by-row
+##      DELETE (which scales super-linearly); see the second changeSet for the per-engine mechanism.
 ##
 ## Restricted to view-data / blocked because:
 ##   - only the least-permissive value is safe to collapse at all: table-level rows are ignored for
@@ -60,32 +62,88 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-07-07T00:00:01
       author: ranquild
-      comment: Delete table-level data_permissions rows made redundant by an equal-value db-level row (#76077)
+      comment: Drop table-level data_permissions rows made redundant by an equal-value db-level row, keeping only the surviving rows (#76077)
       changes:
+        # The rows to keep are every data_permissions row EXCEPT the table-level view-data rows that a
+        # db-level row of the same (group, db, value) has made redundant — the anti-join below. Deleting the
+        # redundant rows directly scales super-linearly on a table ballooned to tens of millions of rows
+        # (each delete maintains six index trees), so instead of a DELETE we retain the few thousand
+        # survivors and discard the rest wholesale.
+        #
+        # Postgres has transactional DDL, so we rebuild the contents in place: stage the survivors, TRUNCATE,
+        # reload. It all runs in the changeSet's transaction, so a failure rolls back and data_permissions is
+        # never left empty. TRUNCATE keeps the id sequence, and the table (hence its indexes and FKs) is
+        # never dropped.
         - sql:
             dbms: postgresql
             sql: >-
-              DELETE FROM data_permissions dp
-              USING data_permissions dbp
-              WHERE dp.perm_type = 'perms/view-data'
-                AND dbp.group_id = dp.group_id
-                AND dbp.db_id = dp.db_id
-                AND dbp.perm_type = dp.perm_type
-                AND dbp.perm_value = dp.perm_value
-                AND dbp.table_id IS NULL
-                AND dp.table_id IS NOT NULL;
+              CREATE TABLE data_permissions_collapse_keep AS
+              SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
+              FROM data_permissions dp
+              LEFT JOIN data_permissions dbp
+                ON dp.perm_type = 'perms/view-data' AND dp.table_id IS NOT NULL
+               AND dbp.group_id = dp.group_id AND dbp.db_id = dp.db_id
+               AND dbp.perm_type = dp.perm_type AND dbp.perm_value = dp.perm_value
+               AND dbp.table_id IS NULL
+              WHERE dbp.id IS NULL;
+        - sql:
+            dbms: postgresql
+            sql: TRUNCATE TABLE data_permissions;
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO data_permissions (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
+              SELECT id, group_id, perm_type, db_id, schema_name, table_id, perm_value
+              FROM data_permissions_collapse_keep;
+        - sql:
+            dbms: postgresql
+            sql: DROP TABLE data_permissions_collapse_keep;
+        # MySQL/MariaDB auto-commit DDL, so an in-place TRUNCATE+reload would expose a window where
+        # data_permissions is empty. Instead build a sibling table of just the survivors and swap it in with
+        # an atomic RENAME, so data_permissions always resolves to a complete table. CREATE TABLE ... LIKE
+        # copies the columns, primary key, indexes and AUTO_INCREMENT base but NOT foreign keys, so the three
+        # FKs are recreated explicitly — dropped from the old table first to free the (schema-unique)
+        # constraint names.
+        - sql:
+            dbms: mysql,mariadb
+            sql: CREATE TABLE data_permissions_collapse_new LIKE data_permissions;
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              DELETE dp FROM data_permissions dp
-              JOIN data_permissions dbp
-                ON dbp.group_id = dp.group_id
-               AND dbp.db_id = dp.db_id
-               AND dbp.perm_type = dp.perm_type
-               AND dbp.perm_value = dp.perm_value
+              INSERT INTO data_permissions_collapse_new
+                (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
+              SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
+              FROM data_permissions dp
+              LEFT JOIN data_permissions dbp
+                ON dp.perm_type = 'perms/view-data' AND dp.table_id IS NOT NULL
+               AND dbp.group_id = dp.group_id AND dbp.db_id = dp.db_id
+               AND dbp.perm_type = dp.perm_type AND dbp.perm_value = dp.perm_value
                AND dbp.table_id IS NULL
-              WHERE dp.perm_type = 'perms/view-data'
-                AND dp.table_id IS NOT NULL;
+              WHERE dbp.id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_permissions
+                DROP FOREIGN KEY fk_data_permissions_ref_permissions_group,
+                DROP FOREIGN KEY fk_data_permissions_ref_db_id,
+                DROP FOREIGN KEY fk_data_permissions_ref_table_id;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_permissions_collapse_new
+                ADD CONSTRAINT fk_data_permissions_ref_permissions_group FOREIGN KEY (group_id) REFERENCES permissions_group (id) ON DELETE CASCADE,
+                ADD CONSTRAINT fk_data_permissions_ref_db_id FOREIGN KEY (db_id) REFERENCES metabase_database (id) ON DELETE CASCADE,
+                ADD CONSTRAINT fk_data_permissions_ref_table_id FOREIGN KEY (table_id) REFERENCES metabase_table (id) ON DELETE CASCADE;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              RENAME TABLE data_permissions TO data_permissions_collapse_old,
+                           data_permissions_collapse_new TO data_permissions;
+        - sql:
+            dbms: mysql,mariadb
+            sql: DROP TABLE data_permissions_collapse_old;
+        # H2 backs only embedded, single-node instances, which never reach the sizes that make the delete
+        # expensive, so keep the straightforward delete.
         - sql:
             dbms: h2
             sql: >-
