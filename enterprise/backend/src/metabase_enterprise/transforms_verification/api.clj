@@ -85,9 +85,19 @@
           (when (and (nil? expected-part) (empty? parsed-assertions))
             (throw (ex-info (tru "One of ''expected'' or ''assertions'' must be provided.")
                             {:status-code 400}))))
+        validate-expected-file!
+        (fn [expected-part]
+          ;; Left unvalidated, a present-but-non-file `expected` (e.g. a text form
+          ;; field, whose value has no `:tempfile`) silently skips the diff and
+          ;; reports a vacuous "passed". Reject it, mirroring the input parts'
+          ;; file-upload check.
+          (when (and (some? expected-part) (not (:tempfile expected-part)))
+            (throw (ex-info (tru "Multipart part ''expected'' must be a file upload.")
+                            {:status-code 400}))))
         expected-part     (get multipart-params "expected")
         parsed-assertions (api-util/parse-assertions (get multipart-params "assertions"))
         _                 (validate-expectations! expected-part parsed-assertions)
+        _                 (validate-expected-file! expected-part)
         expected-file     (when expected-part (:tempfile expected-part))
         source-ids        (api-util/parse-source-ids (get multipart-params "sources"))
         fixtures-by-id    (api-util/parse-input-table-ids multipart-params #{"sources" "assertions"})
