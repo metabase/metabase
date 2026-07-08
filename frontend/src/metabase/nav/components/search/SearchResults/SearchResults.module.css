@@ -1,0 +1,11 @@
+.searchResultsList {
+  overflow: hidden;
+}
+
+.resultsContainer {
+  overflow-y: auto;
+}
+
+.resultsFooter {
+  list-style-type: none;
+}
