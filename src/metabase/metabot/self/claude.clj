@@ -110,10 +110,10 @@
                               :id    @message-id
                               :model @model-name})
            true          (rf)))
-        ([result {t :type :keys [message content_block delta error] :as chunk}]
+        ([result {t :type :keys [message content_block delta error index] :as chunk}]
          (let [block-type (when content_block
                             (keyword (:type content_block)))
-               chunk-id   (or (:id content_block) @current-id (core/mkid))]
+               chunk-id   (or (:id content_block) @current-id (some-> index str) (core/mkid))]
            (cond-> result
              ;; start of message
              (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})

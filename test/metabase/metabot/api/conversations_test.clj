@@ -33,7 +33,7 @@
       (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :summary "legacy"}
                      ;; No :user_id on the message — simulates a legacy row from before user_id stamping.
                      :model/MetabotMessage _ {:conversation_id convo-id
-                                              :data            [{:role "assistant" :content "hello from before user_id stamping"}]}]
+                                              :data            [{:type "text" :text "hello from before user_id stamping"}]}]
         (let [ids (set (map :conversation_id
                             (:data (mt/user-http-request :rasta :get 200 "metabot/conversations"))))]
           (is (contains? ids convo-id)))))))
@@ -72,7 +72,7 @@
                      :model/MetabotMessage _ {:conversation_id convo-id
                                               :user_id         user-id
                                               :role            "user"
-                                              :data            [{:role "user" :content "hello"}]}]
+                                              :data            [{:type "text" :text "hello"}]}]
         (let [response (mt/user-http-request :rasta :get 200
                                              (str "metabot/conversations/" convo-id))]
           (is (= convo-id (:conversation_id response)))

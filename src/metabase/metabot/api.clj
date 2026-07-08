@@ -85,9 +85,10 @@
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
-  Streams AI SDK v4 line protocol to the client in real-time while simultaneously
-  collecting parts for database storage. Text parts are combined before storage
-  to consolidate streaming chunks into single text parts.
+  Streams AI SDK SSE `data: {UIMessageChunk}` events
+  (see [[self.core/parts->aisdk-sse-xf]]) to the client in real-time while
+  simultaneously collecting parts for database storage. Text parts are combined
+  before storage to consolidate streaming chunks into single text parts.
 
   Monitors `canceled-chan` for client disconnection — when the client closes the
   connection, the pipeline stops via `reduced` and collected parts are still persisted.
@@ -97,8 +98,9 @@
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
-  `:external-id` is the assistant row's `external_id`, threaded into the AI-SDK
-  line protocol so the client can correlate streamed messages with feedback."
+  `:external-id` is the assistant row's `external_id`, emitted as the SSE
+  `start` event's `messageId` so the client can correlate streamed messages
+  with feedback."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
            assistant-msg-id external-id]}]
   (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
@@ -113,10 +115,8 @@
             ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
             ;; from a clean success.
             thrown     (volatile! nil)
-            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
-                                                       :external-id external-id}))]
+                             (self.core/parts->aisdk-sse-xf {:message-id external-id}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
