@@ -1,5 +1,5 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import type { TransformId } from "metabase-types/api";
+import type { StructuredIndex, TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -197,7 +197,10 @@ function btreeIndex(name: string, columns: string[]) {
   };
 }
 
-function createIndexRequest(transformId: TransformId, structured: object) {
+function createIndexRequest(
+  transformId: TransformId,
+  structured: StructuredIndex,
+) {
   return cy.request("POST", "/api/index/request", {
     transform_id: transformId,
     structured,
