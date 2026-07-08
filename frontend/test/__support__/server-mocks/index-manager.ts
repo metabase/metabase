@@ -1,7 +1,23 @@
 import fetchMock from "fetch-mock";
 
-import type { TableIndexRequest, TransformId } from "metabase-types/api";
+import type {
+  TableIndexEntry,
+  TableIndexRequest,
+  TransformId,
+} from "metabase-types/api";
 import { createMockTableIndexRequest } from "metabase-types/api/mocks";
+
+export function setupListTableIndexesEndpoint(
+  transformId: TransformId,
+  indexes: TableIndexEntry[] = [],
+) {
+  fetchMock.get({
+    url: `path:/api/index`,
+    query: { "transform-id": transformId },
+    response: { data: indexes },
+    name: `listTableIndexes-${transformId}`,
+  });
+}
 
 export function setupTableIndexEndpoints(
   transformId: TransformId,

@@ -1,9 +1,10 @@
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupGetTransformEndpoint,
+  setupListTableIndexesEndpoint,
   setupUserMetabotPermissionsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
@@ -51,12 +52,8 @@ function setup({
   setupUserMetabotPermissionsEndpoint();
   setupUsersEndpoints(users);
 
-  fetchMock.get(`path:/api/transform/${transform.id}`, transform);
-  fetchMock.get({
-    url: "path:/api/index",
-    query: { "transform-id": transform.id },
-    response: { data: indexes },
-  });
+  setupGetTransformEndpoint(transform);
+  setupListTableIndexesEndpoint(transform.id, indexes);
 
   const initialRoute = Urls.transformIndexes(transform.id);
   const path = initialRoute.replace(`/${transform.id}/`, "/:transformId/");
