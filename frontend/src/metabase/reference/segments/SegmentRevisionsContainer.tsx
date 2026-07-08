@@ -8,6 +8,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import SegmentRevisions from "metabase/reference/segments/SegmentRevisions";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 import type { User } from "metabase-types/api";
 
 import type { ClearStateProps, FetchProps } from "../reference";
@@ -90,7 +91,11 @@ class SegmentRevisionsContainer extends Component<SegmentRevisionsContainerProps
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(SegmentRevisionsContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
+    SegmentRevisionsContainer as unknown as React.ComponentType<InjectedRouteProps>,
+  ),
+);

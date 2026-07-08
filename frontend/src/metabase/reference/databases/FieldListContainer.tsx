@@ -8,6 +8,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldList from "metabase/reference/databases/FieldList";
 import * as actions from "metabase/reference/reference";
+import { type InjectedRouteProps, withRouteProps } from "metabase/router";
 
 import type { ClearStateProps, FetchProps } from "../reference";
 import type {
@@ -92,7 +93,9 @@ class FieldListContainer extends Component<FieldListContainerProps> {
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(FieldListContainer as unknown as React.ComponentType);
+export default withRouteProps(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(FieldListContainer as unknown as React.ComponentType<InjectedRouteProps>),
+);
