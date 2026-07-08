@@ -16,6 +16,7 @@ import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
+import { PushConfigModal } from "../PushConfigModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
 const CONFIG_FILENAME = "config.yml";
@@ -40,6 +41,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
+          <WorkspaceInstanceInfo workspace={workspace} />
           {workspace.databases?.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -66,6 +68,29 @@ function WorkspaceCreatorInfo({ workspace }: WorkspaceCreatorInfoProps) {
       {creator != null
         ? t`Created by ${getUserName(creator)} ${timeAgo}`
         : t`Created ${timeAgo}`}
+    </Box>
+  );
+}
+
+type WorkspaceInstanceInfoProps = {
+  workspace: Workspace;
+};
+
+function WorkspaceInstanceInfo({ workspace }: WorkspaceInstanceInfoProps) {
+  const { instance } = workspace;
+
+  if (instance == null) {
+    return null;
+  }
+
+  return (
+    <Box c="text-secondary" lh="1rem">
+      <Group gap="xs" wrap="nowrap">
+        <FixedSizeIcon name="cloud" aria-hidden />
+        {instance.initialized_at != null
+          ? t`Developed on ${instance.name}`
+          : t`Assigned to ${instance.name} (not set up yet)`}
+      </Group>
     </Box>
   );
 }
@@ -102,6 +127,8 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
     useDisclosure(false);
   const [isDeleteOpen, { open: openDelete, close: closeDelete }] =
     useDisclosure(false);
+  const [isPushOpen, { open: openPush, close: closePush }] =
+    useDisclosure(false);
 
   return (
     <>
@@ -123,6 +150,14 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           >
             {t`Download ${CONFIG_FILENAME}`}
           </Menu.Item>
+          {workspace.instance != null && (
+            <Menu.Item
+              leftSection={<FixedSizeIcon name="cloud" aria-hidden />}
+              onClick={openPush}
+            >
+              {t`Set up the instance`}
+            </Menu.Item>
+          )}
           <Menu.Item
             leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
             onClick={openRename}
@@ -148,6 +183,11 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
         opened={isDeleteOpen}
         onDelete={closeDelete}
         onClose={closeDelete}
+      />
+      <PushConfigModal
+        workspace={workspace}
+        opened={isPushOpen}
+        onClose={closePush}
       />
     </>
   );

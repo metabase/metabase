@@ -3,14 +3,16 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCreateWorkspaceEndpoint,
   setupDatabasesEndpoints,
+  setupListWorkspaceInstancesEndpoint,
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { Workspace } from "metabase-types/api";
+import type { Workspace, WorkspaceInstance } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockWorkspace,
+  createMockWorkspaceInstance,
 } from "metabase-types/api/mocks";
 
 import { WorkspaceListPage } from "./WorkspaceListPage";
@@ -20,10 +22,14 @@ const ELIGIBLE_DATABASE = createMockDatabase({
   settings: { "database-enable-workspaces": true },
 });
 
-function setup({ workspaces = [] as Workspace[] } = {}) {
+function setup({
+  workspaces = [] as Workspace[],
+  instances = [] as WorkspaceInstance[],
+} = {}) {
   setupListWorkspacesEndpoint(workspaces);
   setupDatabasesEndpoints([ELIGIBLE_DATABASE]);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
+  setupListWorkspaceInstancesEndpoint(instances);
 
   renderWithProviders(<Route path="*" component={WorkspaceListPage} />, {
     withRouter: true,
@@ -55,6 +61,49 @@ describe("WorkspaceListPage", () => {
     expect(item).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Workspace options" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers an instance picker in the create modal when a free instance exists", async () => {
+    setup({
+      instances: [
+        createMockWorkspaceInstance({ id: 7, name: "Dev child" }),
+        createMockWorkspaceInstance({ id: 8, name: "Taken", workspace_id: 1 }),
+      ],
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Create a workspace/i }),
+    );
+
+    const picker = await screen.findByLabelText("Instance");
+    await userEvent.click(picker);
+    expect(await screen.findByText("Dev child")).toBeInTheDocument();
+    expect(screen.queryByText("Taken")).not.toBeInTheDocument();
+  });
+
+  it("shows the assigned instance and a set-up action on the workspace card", async () => {
+    const workspace = createMockWorkspace({
+      id: 42,
+      name: "Existing",
+      instance: {
+        id: 7,
+        name: "Dev child",
+        url: "https://child.example.com",
+        initialized_at: null,
+      },
+    });
+    setup({ workspaces: [workspace] });
+
+    expect(
+      await screen.findByText(/Assigned to Dev child/),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace options" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: /Set up the instance/ }),
     ).toBeInTheDocument();
   });
 });

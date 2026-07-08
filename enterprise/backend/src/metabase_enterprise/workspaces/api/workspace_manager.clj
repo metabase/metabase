@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.instances :as ws.instances]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -28,11 +29,13 @@
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
    [:name         ms/NonBlankString]
-   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
+   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]
+   [:instance_id  {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
-   [:name {:optional true} ms/NonBlankString]])
+   [:name        {:optional true} ms/NonBlankString]
+   [:instance_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private WorkspaceDatabaseResponse
   [:map {:closed true}
@@ -57,16 +60,54 @@
    (ms/InstanceOfClass java.time.OffsetDateTime)
    (ms/InstanceOfClass java.time.ZonedDateTime)])
 
+(def ^:private WorkspaceInstanceSummary
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:name           ms/NonBlankString]
+   [:url            ms/NonBlankString]
+   [:initialized_at [:maybe DateTimeWithTimeZone]]])
+
 (def ^:private WorkspaceResponse
   [:map {:closed true}
    [:id          ms/PositiveInt]
    [:name        ms/NonBlankString]
    [:creator     [:maybe CreatorResponse]]
+   [:instance    {:optional true} [:maybe WorkspaceInstanceSummary]]
    [:created_at  DateTimeWithTimeZone]
    [:updated_at  DateTimeWithTimeZone]
    ;; `:databases` is only included when hydrated (i.e. the GET /:id endpoint).
    ;; The list endpoint omits it — clients should treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
+
+(def ^:private CreateInstanceParams
+  [:map {:closed true}
+   [:name    ms/NonBlankString]
+   [:url     ms/NonBlankString]
+   [:api_key ms/NonBlankString]])
+
+(def ^:private UpdateInstanceParams
+  [:map {:closed true}
+   [:name    {:optional true} ms/NonBlankString]
+   [:url     {:optional true} ms/NonBlankString]
+   ;; nil keeps the stored key: the key is never sent back to clients, so edits
+   ;; that don't change it can't echo it
+   [:api_key {:optional true} [:maybe ms/NonBlankString]]])
+
+(def ^:private TestInstanceConnectionParams
+  [:map {:closed true}
+   [:id      {:optional true} [:maybe ms/PositiveInt]]
+   [:url     {:optional true} [:maybe ms/NonBlankString]]
+   [:api_key {:optional true} [:maybe ms/NonBlankString]]])
+
+(def ^:private InstanceResponse
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:name           ms/NonBlankString]
+   [:url            ms/NonBlankString]
+   [:workspace_id   [:maybe ms/PositiveInt]]
+   [:initialized_at [:maybe DateTimeWithTimeZone]]
+   [:created_at     DateTimeWithTimeZone]
+   [:updated_at     DateTimeWithTimeZone]])
 
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
@@ -80,10 +121,20 @@
   (when creator
     (select-keys creator [:id :first_name :last_name :email :common_name])))
 
+(defn- present-instance-summary [instance]
+  (when instance
+    (select-keys instance [:id :name :url :initialized_at])))
+
+(defn- present-instance
+  "Never exposes `:details` — it holds the child's API key."
+  [instance]
+  (select-keys instance [:id :name :url :workspace_id :initialized_at :created_at :updated_at]))
+
 (defn- present-workspace [workspace]
   (some-> workspace
-          (select-keys [:id :name :creator :created_at :updated_at :databases])
+          (select-keys [:id :name :creator :instance :created_at :updated_at :databases])
           (update :creator present-creator)
+          (m/update-existing :instance present-instance-summary)
           (m/update-existing :databases #(mapv present-workspace-database %))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
@@ -104,21 +155,33 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace attached to the given databases (each must be eligible
-   for workspaces) and provision it (blocking)."
+   for workspaces), provision it (blocking), and assign it to the child instance
+   with `instance_id`, if given (404 when the instance doesn't exist, 409 when it
+   already hosts another workspace — checked before any provisioning work)."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (present-workspace
-   (ws/create-workspace!
-    (assoc params :creator_id api/*current-user-id*))))
+  (let [instance-id (:instance_id params)]
+    (when instance-id
+      (ws.instances/check-assignable! instance-id))
+    (let [workspace (ws/create-workspace!
+                     (-> params
+                         (dissoc :instance_id)
+                         (assoc :creator_id api/*current-user-id*)))]
+      (when instance-id
+        (ws.instances/assign-to-workspace! instance-id (:id workspace)))
+      (present-workspace (ws/get-workspace (:id workspace))))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
-  "Update a workspace's name."
+  "Update a workspace's name and/or its assigned child instance (`instance_id`
+   nil releases the current instance)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateWorkspaceParams]
   (api/write-check :model/Workspace id)
   (when (:name params)
     (t2/update! :model/Workspace :id id {:name (:name params)}))
+  (when (contains? params :instance_id)
+    (ws.instances/assign-to-workspace! (:instance_id params) id))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id"
@@ -162,6 +225,58 @@
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
+
+;;; --------------------------------------- Connected instances ---------------------------------------------------
+
+(api.macros/defendpoint :get "/instance" :- [:sequential InstanceResponse]
+  "List all connected child instances."
+  []
+  (api/check-superuser)
+  (mapv present-instance (ws.instances/list-instances)))
+
+(api.macros/defendpoint :post "/instance" :- InstanceResponse
+  "Connect a child instance: register its URL and an admin API key created on it.
+   The key is stored encrypted and never sent back to clients."
+  [_route-params _query-params params :- CreateInstanceParams]
+  (api/check-superuser)
+  (present-instance (ws.instances/create-instance! params)))
+
+(api.macros/defendpoint :put "/instance/:instance-id" :- InstanceResponse
+  "Update a connected child instance's name, URL, and/or API key. Omit `api_key`
+   (or send nil) to keep the stored key."
+  [{:keys [instance-id]} :- [:map [:instance-id ms/PositiveInt]]
+   _query-params
+   params :- UpdateInstanceParams]
+  (api/write-check :model/WorkspaceInstance instance-id)
+  (present-instance (ws.instances/update-instance! instance-id params)))
+
+(api.macros/defendpoint :delete "/instance/:instance-id" :- :nil
+  "Disconnect a child instance. Only removes the registration on this instance —
+   the child itself is not touched."
+  [{:keys [instance-id]} :- [:map [:instance-id ms/PositiveInt]]]
+  (api/write-check :model/WorkspaceInstance instance-id)
+  (ws.instances/delete-instance! instance-id)
+  nil)
+
+(api.macros/defendpoint :post "/instance/test"
+  :- [:map
+      [:ok      :boolean]
+      [:message {:optional true} [:maybe :string]]]
+  "Test that a child instance is reachable and its API key authenticates an admin
+   there. Pass `url` + `api_key` to check unsaved form values, or `id` to fall
+   back to a registered instance's stored credentials for whatever is omitted."
+  [_route-params _query-params params :- TestInstanceConnectionParams]
+  (api/check-superuser)
+  (ws.instances/test-connection params))
+
+(api.macros/defendpoint :post "/:id/push-config" :- InstanceResponse
+  "Push the workspace's config to its assigned child instance, WIPING the child's
+   existing content and re-initializing it from the config (blocking). 400 when
+   the workspace has no assigned instance, 409 when any of its databases is not
+   `:provisioned`, 502 when the child can't be reached or rejects the config."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/write-check :model/Workspace id)
+  (present-instance (ws.instances/push-config! id)))
 
 ;;; ----------------------------------------- Metadata export --------------------------------------------------
 

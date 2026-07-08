@@ -1,0 +1,1 @@
+export { DeleteInstanceModal } from "./DeleteInstanceModal";
