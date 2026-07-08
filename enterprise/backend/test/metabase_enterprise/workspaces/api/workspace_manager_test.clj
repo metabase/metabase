@@ -11,6 +11,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -187,10 +188,11 @@
                   (is (= "/api/v2/mb/workspaces/instances" url))
                   (is (true? (:blocking body)))
                   (is (= (:id ws) (get-in body [:metadata :workspace-id])))
-                  (testing "config.yml rides the POST and includes the api-keys section with the minted key"
-                    (is (string? (:config-yml body)))
-                    (is (str/includes? (:config-yml body) "api-keys"))
-                    (is (str/includes? (:config-yml body) (:api_key ws))))))
+                  (testing "config.yml rides the POST as a Secret (redacts in logs) and includes the api-keys section with the minted key"
+                    (is (u.secret/secret? (:config-yml body)))
+                    (let [yaml (u.secret/expose (:config-yml body))]
+                      (is (str/includes? yaml "api-keys"))
+                      (is (str/includes? yaml (:api_key ws)))))))
               (testing "GET returns the child url but never the key"
                 (let [fetched (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" (:id ws)))]
                   (is (= "https://tutty-fruity.metabaseapp.com" (:url fetched)))

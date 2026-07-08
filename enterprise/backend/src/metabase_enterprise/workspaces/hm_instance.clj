@@ -11,7 +11,8 @@
    [metabase.config.core :as config]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.secret :as u.secret]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +28,9 @@
                                             :metadata   {:parent-instance (str (system/site-uuid))
                                                          :workspace-id    workspace-id}
                                             :mb-version (:tag config/mb-version-info)
-                                            :config-yml config-yml})]
+                                            ;; wrapped so it can never land in a log line; the client
+                                            ;; exposes it only at the JSON-encode boundary
+                                            :config-yml (u.secret/secret config-yml)})]
     (if (= ok? :ok)
       (select-keys (:body resp) [:id :url :status])
       (throw (ex-info (tru "Harbormaster failed to create the workspace instance.")
