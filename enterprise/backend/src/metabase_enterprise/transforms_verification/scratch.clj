@@ -242,28 +242,35 @@
   - `output-spec` — `{:schema :table}` map for the output scratch table, or nil.
 
   Best-effort: logs and continues on per-table errors so that a failure to drop
-  one table doesn't prevent the rest from being cleaned up.
+  one table doesn't prevent the rest from being cleaned up. Failed drops are
+  collected and re-surfaced as a single summary warning (no retry).
 
   Idempotent: `driver/drop-table!` uses `DROP TABLE IF EXISTS` — dropping an
   already-absent table returns `[0]` without error.
 
   Returns nil always."
   [db-id db mapping output-spec]
-  (let [driver (keyword (:engine db))
-        drop   (fn [schema table-name]
-                 (try
-                   ;; drop-table! takes the table name as a schema-qualified keyword
-                   ;; (keyword schema table-name) — not the full table-schema map used
-                   ;; by create-table-from-schema!. Passing the map causes ClassCastException.
-                   (driver/drop-table! driver db-id (keyword schema table-name))
-                   (catch Exception e
-                     (log/warn e "Failed to drop scratch table during cleanup!"
-                               (keyword schema table-name)))))]
+  (let [driver   (keyword (:engine db))
+        failures (atom [])
+        drop!    (fn [schema table-name]
+                   (try
+                     ;; drop-table! takes the table name as a schema-qualified keyword
+                     ;; (keyword schema table-name) — not the full table-schema map used
+                     ;; by create-table-from-schema!. Passing the map causes ClassCastException.
+                     (driver/drop-table! driver db-id (keyword schema table-name))
+                     (catch Exception e
+                       (log/warn e "Failed to drop scratch table during cleanup!"
+                                 (keyword schema table-name))
+                       (swap! failures conj {:table (keyword schema table-name)
+                                             :error (ex-message e)}))))]
     (driver.conn/ensure-connection-type! :transform)
     (doseq [{:keys [schema table]} (vals mapping)]
-      (drop schema table))
+      (drop! schema table))
     (when output-spec
-      (drop (:schema output-spec) (:table output-spec)))
+      (drop! (:schema output-spec) (:table output-spec)))
+    (when (seq @failures)
+      (log/warnf "cleanup! left %d scratch table(s) undropped on database %d: %s"
+                 (count @failures) db-id (pr-str @failures)))
     nil))
 
 ;;; ---------------------------------------------------------------------------
