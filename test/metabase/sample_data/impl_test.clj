@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.permissions.core :as perms]
    [metabase.plugins.impl :as plugins]
+   [metabase.query-processor :as qp]
    [metabase.sample-data.example-content :as example-content]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
@@ -53,6 +54,45 @@
   (t2/select-one :model/Field :name field-name, :table_id (u/the-id (table db table-name))))
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
+
+(deftest migrate-sample-database-engine-in-place-test
+  (testing "Upgrade path: migrating the sample DB from H2 to SQLite in place keeps every Database/Table/Field
+           id, so sample content and user content survive with no remapping and still query correctly."
+    (mt/with-model-cleanup [:model/Database :model/Collection :model/Card :model/Dashboard]
+      ;; Install the pre-upgrade (v62-shape) H2 sample database, its Example content, and a user question.
+      (let [h2-db (t2/insert-returning-instance! :model/Database
+                                                 {:name "Sample Database" :engine :h2 :is_sample true
+                                                  :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+        (sync/sync-database! h2-db)
+        (example-content/recreate-example-content! (:id h2-db))
+        (let [orders-id  (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "ORDERS")
+              total-id   (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
+              user-card  (t2/insert-returning-instance! :model/Card
+                                                        {:name "user q" :database_id (:id h2-db) :table_id orders-id
+                                                         :display "scalar" :visualization_settings {} :creator_id (mt/user->id :rasta)
+                                                         :dataset_query {:database (:id h2-db) :type :query
+                                                                         :query {:source-table orders-id
+                                                                                 :aggregation [[:sum [:field total-id nil]]]}}})
+              before-tables  (t2/select-fn-set :id :model/Table :db_id (:id h2-db))
+              before-fields  (t2/select-fn-set :id :model/Field :table_id [:in before-tables])
+              example-card-id (t2/select-one-pk :model/Card :database_id (:id h2-db) :name [:not= "user q"])]
+          (is (= #{"PUBLIC"} (t2/select-fn-set :schema :model/Table :db_id (:id h2-db)))
+              "precondition: H2 tables live in the PUBLIC schema")
+          ;; ---- the migration under test ----
+          (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id (:id h2-db)))
+          (testing "the database record is now SQLite"
+            (is (= :sqlite (:engine (t2/select-one :model/Database :id (:id h2-db))))))
+          (testing "the same tables remain (no new ones), now with schema = nil"
+            (is (= before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db))))
+            (is (= #{nil} (t2/select-fn-set :schema :model/Table :db_id (:id h2-db)))))
+          (testing "the same fields remain (ids preserved), so embedded query refs stay valid"
+            (is (= before-fields (t2/select-fn-set :id :model/Field :table_id [:in before-tables]))))
+          (testing "sample and user cards survive with their ids and still query the (now SQLite) sample DB"
+            (is (t2/exists? :model/Card :id (:id user-card)))
+            (is (t2/exists? :model/Card :id example-card-id))
+            (let [result (qp/process-query (:dataset_query (t2/select-one :model/Card :id (:id user-card))))]
+              (is (= :completed (:status result)))
+              (is (pos? (count (mt/rows result)))))))))))
 
 (def ^:private extracted-db-path-regex #".*plugins/sample-database\.sqlite$")
 
