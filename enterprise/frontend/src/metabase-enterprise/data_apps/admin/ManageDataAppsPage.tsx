@@ -40,8 +40,8 @@ const PUBLIC_SKILLS_PATH = "/skills";
 // The data-app skills to install. `skills add metabase/metabase` alone would
 // discover *every* skill in the repo, so each is selected explicitly.
 const DATA_APP_SKILLS = [
-  "create-data-app",
-  "add-data-app-routing",
+  "metabase-data-app-setup",
+  "metabase-data-app-routing",
   "metabase-data-app-actions",
   "metabase-data-app-semantic-layer",
 ];
@@ -66,7 +66,7 @@ export function ManageDataAppsPage() {
 
   const isConfigured = status?.configured ?? false;
 
-  // Pin the data-app skills (and the template bundled inside `create-data-app`)
+  // Pin the data-app skills (and the template bundled inside `metabase-data-app-setup`)
   // to the branch matching this instance: `release-x.<major>.x`, or `master` for
   // local/dev builds that have no release branch.
   const { tag } = useSetting("version");
