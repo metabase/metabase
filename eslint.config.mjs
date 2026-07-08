@@ -54,6 +54,10 @@ const baseMetabaseRestrictedConfig = {
       message: "Please import routing from `metabase/router` instead.",
     },
     {
+      name: "react-router-redux",
+      message: "Please import routing from `metabase/router` instead.",
+    },
+    {
       name: "@mantine/core",
       message: "Please import from `metabase/ui` instead.",
     },
@@ -641,6 +645,10 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             {
+              name: "react-router-redux",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
             },
@@ -678,6 +686,10 @@ const configs = [
             },
             {
               name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            {
+              name: "react-router-redux",
               message: "Please import routing from `metabase/router` instead.",
             },
             {
@@ -859,6 +871,10 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             {
+              name: "react-router-redux",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
             },
@@ -933,6 +949,10 @@ const configs = [
           paths: [
             {
               name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            {
+              name: "react-router-redux",
               message: "Please import routing from `metabase/router` instead.",
             },
             {
