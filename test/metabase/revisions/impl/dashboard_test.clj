@@ -157,6 +157,15 @@
       {:cards [{:id 1} {:id 3}]}
       "modified the cards.")))
 
+(deftest ^:parallel diff-dashboards-str-add-card-with-autoplace-test
+  (testing "adding a card should still be reported as \"added a card\" even when auto-placement also
+           repositions an existing card (metabase#6884)"
+    (is (= "added a card."
+           (u/build-sentence
+            (revision/diff-strings :model/Dashboard
+                                   {:cards [{:id 1 :row 0 :col 0}]}
+                                   {:cards [{:id 1 :row 4 :col 0} {:id 2 :row 0 :col 0}]}))))))
+
 (deftest diff-dashboards-str-update-collection-test
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."

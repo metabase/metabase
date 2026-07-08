@@ -1,6 +1,5 @@
 import { useClipboard } from "@mantine/hooks";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -12,6 +11,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Task } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";

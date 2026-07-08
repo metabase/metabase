@@ -64,7 +64,7 @@ export const AdminNavbar = ({
       align="center"
       justify="space-between"
       h={ADMIN_NAVBAR_HEIGHT}
-      bg="admin-navbar"
+      bg="navbar-admin"
       fz="0.85rem"
       px="1rem"
       py="0.5rem"
@@ -156,7 +156,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           pos="fixed"
           top={ADMIN_NAVBAR_HEIGHT}
           right={0}
-          bg="admin-navbar"
+          bg="navbar-admin"
           mah={`calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`}
           bdrs="0 0 0 0.5rem"
           style={{ overflowY: "auto" }}

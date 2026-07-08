@@ -18,7 +18,7 @@ export const CardLink = styled(TextLink)`
   align-items: center;
   padding: 1.25rem;
   background-color: var(--mb-color-background_page-primary);
-  box-shadow: 0 3px 10px var(--mb-color-shadow);
+  box-shadow: 0 3px 10px var(--mb-color-shadow-default);
   border-radius: 6px;
 `;
 

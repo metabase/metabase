@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
@@ -14,6 +12,7 @@ import {
   createMockSetupState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,

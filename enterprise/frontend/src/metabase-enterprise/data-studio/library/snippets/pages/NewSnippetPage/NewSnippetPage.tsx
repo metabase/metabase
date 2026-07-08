@@ -1,6 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
 import { useEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -21,6 +20,7 @@ import {
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { Route } from "metabase/router";
 import { Card, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {

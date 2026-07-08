@@ -2,13 +2,13 @@ import type { Location } from "history";
 import * as React from "react";
 import { type ReactNode, useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
-import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Link, withRouter } from "metabase/router";
 import {
   Button,
   DefaultSelectItem,

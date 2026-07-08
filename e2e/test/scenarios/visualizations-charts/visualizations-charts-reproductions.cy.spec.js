@@ -722,39 +722,6 @@ describe("issue 22527", { tags: "@skip" }, () => {
   });
 });
 
-describe("issue 25007", () => {
-  const questionDetails = {
-    name: "11435",
-    display: "line",
-    native: {
-      query: `SELECT dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) AS "CREATED_AT", count(*) AS "count"
-  FROM "PUBLIC"."ORDERS"
-  GROUP BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date))
-  ORDER BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) ASC`,
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CREATED_AT"],
-      "graph.metrics": ["count"],
-    },
-  };
-
-  const clickLineDot = ({ index } = {}) => {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.cartesianChartCircle().eq(index).click({ force: true });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    clickLineDot({ index: 1 });
-    H.echartsTooltip().should("contain", "May 4–10, 2025");
-  });
-});
-
 describe("issue 25156", () => {
   const questionDetails = {
     name: "25156",

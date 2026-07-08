@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
+import { Link } from "metabase/router";
 import {
   Anchor,
   Box,

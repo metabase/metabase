@@ -177,9 +177,9 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   get properties(): SdkIframeEmbedElementSettings {
     const attributesConverted = this._attributeNames.reduce(
       (acc, attr) => {
-        const attrValue = this.getAttribute(attr as string);
+        const attrValue = this.getAttribute(attr);
         if (attrValue !== null) {
-          const key = attributeToSettingKey(attr as string);
+          const key = attributeToSettingKey(attr);
           acc[key] = parseAttributeValue(attrValue);
         }
         return acc;
@@ -202,7 +202,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     options?: boolean | AddEventListenerOptions,
   ): void {
     if (type === "ready") {
-      const eventType = type as SdkIframeEmbedEvent["type"];
+      const eventType = type;
       const handler = listener as SdkIframeEmbedEventHandler;
       if (!this._eventHandlers.has(eventType)) {
         this._eventHandlers.set(eventType, new Set());
@@ -219,11 +219,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     // Fall back to the native HTMLElement event mechanism for all other events.
-    super.addEventListener(
-      type,
-      listener as EventListenerOrEventListenerObject,
-      options,
-    );
+    super.addEventListener(type, listener, options);
   }
 
   removeEventListener(
@@ -232,7 +228,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     options?: boolean | EventListenerOptions,
   ): void {
     if (type === "ready") {
-      const eventType = type as SdkIframeEmbedEvent["type"];
+      const eventType = type;
       const handler = listener as SdkIframeEmbedEventHandler;
       const handlers = this._eventHandlers.get(eventType);
 
@@ -246,11 +242,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
-    super.removeEventListener(
-      type,
-      listener as EventListenerOrEventListenerObject,
-      options,
-    );
+    super.removeEventListener(type, listener, options);
   }
 
   /**
@@ -327,16 +319,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     const key = attributeToSettingKey(
       attrName,
     ) as keyof SdkIframeEmbedElementSettings;
-    if (
-      (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
-    ) {
+    if ((DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key)) {
       console.error(`${key} cannot be updated after the embed is created`);
       return;
     }
 
     this._updateSettings({
       [key]: parseAttributeValue(newVal),
-    } as Partial<SdkIframeEmbedElementSettings>);
+    });
   }
 
   private _emitEvent(event: SdkIframeEmbedEvent) {
@@ -728,7 +718,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       // synced with the caller's intent.
       this._updateSettings({
         [settingKey]: value,
-      } as Partial<SdkIframeEmbedElementSettings>);
+      });
 
       return;
     }

@@ -113,7 +113,7 @@ describe("formatValue", () => {
           [2, "2"],
           [3, "Three"],
         ]),
-      } as any);
+      });
       setup(1, { column, scale: 100 });
       expect(screen.getByText("One")).toBeInTheDocument();
 
@@ -132,7 +132,7 @@ describe("formatValue", () => {
           [2, "2"],
           [3, "Three"],
         ]),
-      } as any);
+      });
       setup(1, { column, scale: 100 });
       expect(screen.getByText("1j")).toBeInTheDocument();
 
@@ -151,7 +151,7 @@ describe("formatValue", () => {
           [2, "2"],
           [3, "Three"],
         ]),
-      } as any);
+      });
       setup(1, { column, scale: 100 });
       expect(
         screen.getByText("400,000,000,000,000,000,000"),
@@ -251,7 +251,7 @@ describe("formatValue", () => {
       const column = createMockColumn({
         base_type: "type/Integer",
         remapping: new Map([[1, "Value\nwith\nnewlines"]]),
-      } as any);
+      });
       setup(1, {
         column,
         collapseNewlines: true,

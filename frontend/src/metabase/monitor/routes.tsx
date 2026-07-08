@@ -1,5 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import { IndexRoute, Redirect, Route, type RouteComponent } from "react-router";
+
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
@@ -21,6 +21,7 @@ import {
 } from "metabase/monitor/tools/routes";
 import { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import { IndexRoute, Redirect, Route, type RouteComponent } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { MonitorLayout } from "./components/MonitorLayout";

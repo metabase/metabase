@@ -253,7 +253,7 @@ export function UploadSettingsFormView({
               actionFn={handleDisableUploads}
               type="button"
               variant="filled"
-              color="error"
+              color="feedback-negative"
               useLoadingSpinner
             />
           )
@@ -275,7 +275,7 @@ export function UploadSettingsFormView({
       </Flex>
       {!hasValidDatabases && <NoValidDatabasesMessage />}
       {errorMessage && (
-        <Text c="danger" mt="md">
+        <Text c="feedback-negative" mt="md">
           {errorMessage}
         </Text>
       )}

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -7,6 +6,7 @@ import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { WithRouterProps } from "metabase/router";
 import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transform-supported-dbs";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
 import { NoWritableDatabasesEmptyState } from "metabase/transforms/pages/NoWritableDatabasesEmptyState";

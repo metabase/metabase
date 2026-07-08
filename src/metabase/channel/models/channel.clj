@@ -112,7 +112,7 @@
       [:path [:and
               string?
               [:fn {:error/message "invalid template path"}
-               handlebars/valid-template-path?]]]]]
+               handlebars/valid-template-name?]]]]]
     [:email/handlebars-text
      [:map
       [:body string?]]]]])

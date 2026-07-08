@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -12,6 +11,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { useDispatch } from "metabase/redux";
+import { Link } from "metabase/router";
 import {
   Anchor,
   Box,

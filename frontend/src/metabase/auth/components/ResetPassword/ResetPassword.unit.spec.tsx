@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCurrentUserEndpoint,
@@ -9,6 +8,7 @@ import {
   setupResetPasswordEndpoint,
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { ResetPassword } from "./ResetPassword";

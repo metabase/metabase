@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
-import { Route } from "react-router";
 
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -9,6 +8,7 @@ import {
   createMockAdminAppState,
   createMockAdminState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { HelpLinkSetting } from "metabase-types/api";
 import {
   createMockMetabaseInfo,

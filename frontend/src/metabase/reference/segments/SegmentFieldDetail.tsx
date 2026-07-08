@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useFormik } from "formik";
 import { t } from "ttag";
 
-import { List } from "metabase/common/components/List";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
@@ -12,6 +11,7 @@ import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
+import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";

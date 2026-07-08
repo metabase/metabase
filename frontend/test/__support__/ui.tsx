@@ -14,7 +14,6 @@ import { useCallback, useMemo, useState } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { createPortal } from "react-dom";
-import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
@@ -30,7 +29,7 @@ import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { RouterProvider } from "metabase/router";
+import { Route, RouterProvider, useRouterHistory } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
@@ -171,7 +170,7 @@ export function getTestStoreAndWrapper({
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
-    initialState = _.pick(initialState, ...publicReducerNames) as State;
+    initialState = _.pick(initialState, ...publicReducerNames);
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,

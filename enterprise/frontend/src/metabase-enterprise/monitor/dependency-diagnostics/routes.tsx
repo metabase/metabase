@@ -1,4 +1,4 @@
-import { IndexRedirect, Route } from "react-router";
+import { IndexRedirect, Route } from "metabase/router";
 
 import {
   BrokenDependencyDiagnosticsPage,

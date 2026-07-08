@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, memo, useState } from "react";
-import { Route } from "react-router";
+
 
 import {
   setupPropertiesEndpoints,
@@ -10,6 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
 import {

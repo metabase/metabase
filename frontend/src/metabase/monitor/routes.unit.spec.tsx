@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { Route } from "react-router";
+
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { getStore, mainReducers } from "__support__/entities-store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";

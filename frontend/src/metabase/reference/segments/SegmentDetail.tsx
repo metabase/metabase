@@ -3,7 +3,6 @@ import { useFormik } from "formik";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { List } from "metabase/common/components/List";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
@@ -13,6 +12,7 @@ import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import { Formula } from "metabase/reference/components/Formula";
+import { List } from "metabase/reference/components/List";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import {

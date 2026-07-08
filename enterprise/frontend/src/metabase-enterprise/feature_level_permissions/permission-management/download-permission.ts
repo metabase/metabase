@@ -46,7 +46,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`No`,
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   limited: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -67,7 +67,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
 };
 

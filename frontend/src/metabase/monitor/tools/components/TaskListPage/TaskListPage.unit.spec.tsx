@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { Location } from "history";
-import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -18,6 +17,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { createMockLocation } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";

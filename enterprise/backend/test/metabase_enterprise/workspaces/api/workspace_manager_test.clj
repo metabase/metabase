@@ -124,6 +124,37 @@
                                     :with-tables    true
                                     :with-fields    true))))))
 
+(deftest rename-workspace-test
+  (testing "PUT /:id renames a workspace and returns the updated WorkspaceResponse"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "Before"}]
+      (is (=? {:id ws-id :name "After"}
+              (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/" ws-id) {:name "After"})))
+      (is (= "After" (t2/select-one-fn :name :model/Workspace :id ws-id)))
+      (testing "404 for a missing id"
+        (mt/user-http-request :crowberto :put 404 "ee/workspace-manager/13371337" {:name "X"})))))
+
+(deftest download-config-endpoint-test
+  (testing "GET /:id/config"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :postgres :details {}}
+                   :model/Workspace {ws-id :id} {:name "Cfg WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (testing "returns application/x-yaml with an attachment Content-Disposition"
+        (is (=? {:status  200
+                 :headers {"Content-Type"        "application/x-yaml"
+                           "Content-Disposition" "attachment; filename=\"config.yml\""}}
+                (mt/user-http-request-full-response
+                 :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/config")))))
+      (testing "409 when a database is not :provisioned"
+        (t2/update! :model/WorkspaceDatabase :workspace_id ws-id {:status :unprovisioned})
+        (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))
+      (testing "404 for a missing workspace"
+        (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
+
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))
 

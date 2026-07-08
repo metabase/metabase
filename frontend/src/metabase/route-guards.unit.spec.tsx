@@ -1,5 +1,4 @@
 import { type Context, createContext } from "react";
-import { Route } from "react-router";
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
@@ -9,6 +8,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import {

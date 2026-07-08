@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -16,6 +15,7 @@ import {
   type MetabotApiKeyProvider,
 } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
+import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type {
   BedrockCredentials,
@@ -472,8 +472,7 @@ async function setup({
       }
 
       if (key === "llm-metabot-provider") {
-        sessionProperties["llm-metabot-provider"] =
-          (nextValue as string | null) ?? null;
+        sessionProperties["llm-metabot-provider"] = nextValue ?? null;
         sessionProperties["llm-metabot-configured?"] = Boolean(nextValue);
       }
     });
@@ -1734,10 +1733,8 @@ describe("AIProviderSettingsSection", () => {
 
     const callHistory = fetchMock.callHistory.calls();
 
-    expect(
-      callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
-    ).toBeLessThan(
-      callHistory.indexOf(request as (typeof callHistory)[number]),
+    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
+      callHistory.indexOf(request),
     );
   });
 
@@ -1787,10 +1784,8 @@ describe("AIProviderSettingsSection", () => {
 
     const callHistory = fetchMock.callHistory.calls();
 
-    expect(
-      callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
-    ).toBeLessThan(
-      callHistory.indexOf(request as (typeof callHistory)[number]),
+    expect(callHistory.indexOf(removeRequest)).toBeLessThan(
+      callHistory.indexOf(request),
     );
   });
 

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupListBreakingGraphNodesEndpoint,
@@ -13,6 +12,7 @@ import {
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { Route } from "metabase/router";
 import type * as Urls from "metabase/urls";
 import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
