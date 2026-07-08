@@ -185,12 +185,12 @@
                 (try
                   (transforms-base.u/apply-target-indexes! transform)
                   (transforms-base.u/verify-managed-indexes! transform)
-                  (table-index/mark-unverified-running-indexes-failed!
-                   running-indexes
-                   "Index status could not be verified after the transform completed.")
-                  (catch Throwable t
-                    (table-index/mark-unverified-running-indexes-failed! running-indexes (ex-message t))
-                    (throw t)))))
+                  (finally
+                    ;; Fail any request verification couldn't settle -- whether apply/verify threw or just left it
+                    ;; running. On a throw the exception still propagates to the run-level catch.
+                    (table-index/mark-unverified-running-indexes-failed!
+                     running-indexes
+                     "Index status could not be verified after the transform completed.")))))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
             (transform-run/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
