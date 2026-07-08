@@ -12,7 +12,8 @@ import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { TablePermalinkRedirect } from "./TablePermalinkRedirect";
 
 const PERMALINK_PATH =
-  "/browse/databases/:dbName(/schema/:schemaName)/table/:tableName";
+  "/browse/databases/:dbName/schema/:schemaName/table/:tableName";
+const PERMALINK_PATH_NO_SCHEMA = "/browse/databases/:dbName/table/:tableName";
 
 const setup = ({
   databases,
@@ -33,8 +34,17 @@ const setup = ({
   } else {
     fetchMock.get("path:/api/table", tables);
   }
+
+  const noSchema = !initialRoute.includes("/schema/");
+
   return renderWithProviders(
-    <Route path={PERMALINK_PATH} component={TablePermalinkRedirect} />,
+    <>
+      <Route
+        path={noSchema ? PERMALINK_PATH_NO_SCHEMA : PERMALINK_PATH}
+        component={TablePermalinkRedirect}
+      />
+      <Route path="/table/:slug" component={() => <div>Table page</div>} />
+    </>,
     { withRouter: true, initialRoute },
   );
 };
