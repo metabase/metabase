@@ -443,14 +443,17 @@
 
 (defn- clickhouse-can-grant-select?
   "Does the current ClickHouse user hold `SELECT WITH GRANT OPTION` on
-   `db-name`? ClickHouse exposes per-user grants via the `system.grants`
-   system table; `grant_option = 1` means the grant is redelegatable.
-   Wildcards (database NULL = '*') also confer redelegation."
+   `db-name`? ClickHouse exposes grants via the `system.grants` system table;
+   `grant_option = 1` means the grant is redelegatable. Direct grants have
+   `user_name` set; grants carried by roles have `role_name` set instead, so
+   we also match rows for the user's active roles (`enabledRoles()` covers
+   transitively inherited roles). Wildcards (database NULL = '*') also confer
+   redelegation."
   [conn db-name]
   (boolean
    (seq (jdbc/query conn
                     [(str "SELECT 1 FROM system.grants "
-                          "WHERE user_name = currentUser() "
+                          "WHERE (user_name = currentUser() OR has(enabledRoles(), role_name)) "
                           "  AND access_type = 'SELECT' "
                           "  AND grant_option = 1 "
                           "  AND (database = ? OR database IS NULL)")
@@ -478,7 +481,7 @@
     (doseq [schema (set schemas)]
       (when (str/blank? schema)
         (throw (ex-info (tru "ClickHouse workspace input schema is blank")
-                        {:database-id (:id database) :step :grant})))
+                        {:status-code 412 :database-id (:id database) :step :grant})))
       (assert-can-grant-select! check-conn schema))))
 
 (defmethod driver/grant-workspace-read-access! :clickhouse
@@ -494,7 +497,7 @@
     (let [sqls (for [schema schemas
                      :let [_ (when (str/blank? schema)
                                (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
-                                               {:database-id (:id database) :step :grant})))]]
+                                               {:status-code 412 :database-id (:id database) :step :grant})))]]
                  (format "GRANT SELECT ON %s.* TO %s"
                          (quote-schema schema)
                          quoted-user))]

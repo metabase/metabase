@@ -732,7 +732,9 @@
                                  (str/includes? sql "has_schema_privilege")
                                  [{:can_grant false :current_user_name "stats_admin"}]
                                  (str/includes? sql "nspowner")
-                                 [{:owner "mbplayground"}]))]
+                                 [{:owner "mbplayground"}]
+                                 (str/includes? sql "SELECT 1 FROM pg_namespace")
+                                 [{:1 1}]))]
       (try
         (redshift/assert-can-grant-usage! ::stub-conn "dbt_models")
         (is false "expected assert-can-grant-usage! to throw")
@@ -747,18 +749,17 @@
     (with-redefs [jdbc/query (fn [_conn _sql]
                                [{:can_grant true :current_user_name "stats_admin"}])]
       (is (nil? (redshift/assert-can-grant-usage! ::stub-conn "dbt_models")))))
-  (testing "owner falls back to <unknown> when schema absent from pg_namespace"
+  (testing "throws schema-missing 412 when schema does not exist"
     (with-redefs [jdbc/query (fn [_conn [sql & _params]]
-                               (cond
-                                 (str/includes? sql "has_schema_privilege")
-                                 [{:can_grant false :current_user_name "stats_admin"}]
-                                 (str/includes? sql "nspowner")
+                               (when (str/includes? sql "SELECT 1 FROM pg_namespace")
                                  []))]
       (try
         (redshift/assert-can-grant-usage! ::stub-conn "ghost_schema")
         (is false "should have thrown")
         (catch clojure.lang.ExceptionInfo e
-          (is (str/includes? (ex-message e) "owned by <unknown>")))))))
+          (is (= 412 (:status-code (ex-data e))))
+          (is (= :schema-missing (:cause-type (ex-data e))))
+          (is (str/includes? (ex-message e) "Schema \"ghost_schema\" not found")))))))
 ;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
 
 (defn- try-execute!

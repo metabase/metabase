@@ -779,13 +779,25 @@
       first
       :owner))
 
+(declare schema-exists?)
+
 (defn assert-can-grant-usage!
   "Throws when the current admin connection cannot grant USAGE on `schema-name`.
    Same intent as [[metabase.driver.postgres/assert-can-grant-usage!]] but on
    Redshift. Redshift inherits `has_schema_privilege` from its PostgreSQL
    ancestry, so the probe SQL is identical; only the owner lookup differs
-   (Redshift uses `pg_user`, not `pg_roles`)."
+   (Redshift uses `pg_user`, not `pg_roles`).
+
+   Checks schema existence first: `has_schema_privilege` raises on a missing
+   schema, which would surface as a raw JDBC error instead of the intended 412."
   [conn schema-name]
+  (when-not (schema-exists? conn schema-name)
+    (throw (ex-info (format (str "Schema \"%s\" not found on Redshift. Confirm the schema name "
+                                 "and that it exists, then retry workspace provisioning.")
+                            schema-name)
+                    {:status-code 412
+                     :schema      schema-name
+                     :cause-type  :schema-missing})))
   (let [{:keys [can_grant current_user_name]}
         (first (jdbc/query conn
                            ["SELECT has_schema_privilege(current_user, ?, 'USAGE WITH GRANT OPTION') AS can_grant,

@@ -1385,7 +1385,14 @@
    MySQL has no schema 'owner'; grantability is determined by whether the
    admin holds the privilege `WITH GRANT OPTION` (`IS_GRANTABLE = 'YES'` in
    `information_schema`). Either a database-scoped `SELECT WITH GRANT OPTION`
-   on this database, or a global `SELECT WITH GRANT OPTION`, suffices."
+   on this database, or a global `SELECT WITH GRANT OPTION`, suffices.
+
+   Known limitation: `information_schema` only exposes *direct* grants, so an
+   admin whose grant option arrives through an activated role trips a false
+   412 here. The remediation in the error message (a direct grant) still
+   unblocks them; detecting role-carried grants would require parsing
+   `SHOW GRANTS ... USING` or reading `mysql.role_edges`, which needs extra
+   privileges. Revisit if role-based MySQL admin setups show up in the wild."
   [conn db-name]
   (boolean
    (or (seq (jdbc/query conn
@@ -1409,8 +1416,12 @@
    to decode a generic `Access denied` error from MySQL."
   [conn db-name]
   (when-not (can-grant-select-on-db? conn db-name)
-    (let [current-user (:current_user_name (first (jdbc/query conn
-                                                              ["SELECT CURRENT_USER() AS current_user_name"])))]
+    (let [current-user   (:current_user_name (first (jdbc/query conn
+                                                                ["SELECT CURRENT_USER() AS current_user_name"])))
+          ;; CURRENT_USER() returns `user@host` (e.g. `stats_admin@%`), which is
+          ;; not valid account syntax in a GRANT — quote it as `'user'@'host'`
+          ;; so the remediation SQL is copy-pasteable.
+          quoted-account (str "'" (str/replace current-user "@" "'@'") "'")]
       (throw (ex-info (format (str "Workspace admin %s cannot grant SELECT on database `%s`. "
                                    "MySQL requires the granting user to hold SELECT WITH GRANT "
                                    "OPTION on the database (or globally). Run as root or a user "
@@ -1418,7 +1429,7 @@
                                    "    GRANT SELECT ON `%s`.* TO %s WITH GRANT OPTION;\n\n"
                                    "then retry workspace provisioning.")
                               current-user db-name
-                              db-name current-user)
+                              db-name quoted-account)
                       {:status-code 412
                        :schema      db-name
                        :admin-user  current-user})))))

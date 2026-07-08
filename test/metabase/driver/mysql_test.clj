@@ -1089,7 +1089,7 @@
           (is (= 412 (:status-code (ex-data e))))
           (is (= "analytics" (:schema (ex-data e))))
           (is (= "stats_admin@%" (:admin-user (ex-data e))))
-          (is (str/includes? (ex-message e) "GRANT SELECT ON `analytics`.* TO stats_admin@% WITH GRANT OPTION"))))))
+          (is (str/includes? (ex-message e) "GRANT SELECT ON `analytics`.* TO 'stats_admin'@'%' WITH GRANT OPTION"))))))
   (testing "no-op when admin holds DB-scoped SELECT WITH GRANT OPTION"
     (with-redefs [jdbc/query (fn [_conn [sql & _params]]
                                (when (str/includes? sql "SCHEMA_PRIVILEGES")

@@ -1248,12 +1248,15 @@
      fine because db_owner/CONTROL DATABASE covers Azure)
    - db_owner or db_securityadmin db role membership
    - schema ownership (`sys.schemas.principal_id = DATABASE_PRINCIPAL_ID()`)
-   - explicit `SELECT WITH GRANT OPTION` on the schema
+   - explicit `SELECT WITH GRANT OPTION` on the schema (directly or via a
+     database role), read from `sys.database_permissions` `state = 'W'` —
+     `HAS_PERMS_BY_NAME` cannot check grant option (its 4th argument is a
+     sub-securable name, not a modifier)
    - `CONTROL` on the schema (implies grant authority on contained securables)
 
-   `HAS_PERMS_BY_NAME(...,'WITH GRANT OPTION')` only flags *explicit* entries
-   in `sys.database_permissions`, so the implicit cases above need their own
-   OR-chain — without them, sysadmins and schema owners get a false 412."
+   `sys.database_permissions` only holds *explicit* entries, so the implicit
+   cases above need their own OR-chain — without them, sysadmins and schema
+   owners get a false 412."
   [conn-spec schema-name]
   (-> (jdbc/query conn-spec
                   ["SELECT CASE WHEN
@@ -1262,7 +1265,13 @@
                       OR IS_MEMBER('db_securityadmin') = 1
                       OR EXISTS (SELECT 1 FROM sys.schemas
                                   WHERE name = ? AND principal_id = DATABASE_PRINCIPAL_ID())
-                      OR HAS_PERMS_BY_NAME(QUOTENAME(?), 'SCHEMA', 'SELECT', 'WITH GRANT OPTION') = 1
+                      OR EXISTS (SELECT 1 FROM sys.database_permissions p
+                                  WHERE p.class = 3
+                                    AND p.major_id = SCHEMA_ID(?)
+                                    AND p.permission_name = 'SELECT'
+                                    AND p.state = 'W'
+                                    AND (p.grantee_principal_id = DATABASE_PRINCIPAL_ID()
+                                         OR IS_MEMBER(USER_NAME(p.grantee_principal_id)) = 1))
                       OR HAS_PERMS_BY_NAME(QUOTENAME(?), 'SCHEMA', 'CONTROL') = 1
                     THEN 1 ELSE 0 END AS can_grant"
                    schema-name schema-name schema-name])

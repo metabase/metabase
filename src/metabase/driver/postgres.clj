@@ -1619,16 +1619,30 @@
                          quoted-schema quoted-user)]))
             source-schemas)))
 
+(defn- assert-schema-exists!
+  "Throws 412 when `schema-name` does not exist on this connection.
+   `has_schema_privilege` raises on a missing schema, which would surface as a
+   raw JDBC error instead of the intended pre-flight failure."
+  [conn schema-name]
+  (when-not (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name]))
+    (throw (ex-info (format (str "Schema \"%s\" not found on PostgreSQL. Confirm the schema name "
+                                 "and that it exists, then retry workspace provisioning.")
+                            schema-name)
+                    {:status-code 412
+                     :schema      schema-name
+                     :cause-type  :schema-missing}))))
+
 (defmethod driver/check-can-grant-workspace-access! :postgres
   [_driver database schemas]
   (let [unique-schemas (set schemas)]
     (doseq [s unique-schemas]
       (when (str/blank? s)
         (throw (ex-info (tru "PostgreSQL workspace input schema is blank")
-                        {:database-id (:id database) :step :grant}))))
+                        {:status-code 412 :database-id (:id database) :step :grant}))))
     (when (seq unique-schemas)
       (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
         (doseq [s unique-schemas]
+          (assert-schema-exists!                conn s)
           (assert-has-usage-grant-option!       conn s)
           (assert-has-grant-option!             conn s)
           (assert-can-alter-default-privileges! conn s))))))

@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys empty? not-empty mapv])
+  (:refer-clojure :exclude [select-keys empty? not-empty mapv some])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
