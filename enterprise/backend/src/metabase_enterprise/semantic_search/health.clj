@@ -312,6 +312,11 @@
   so a blip here must not make a successful repair look failed."
   [orphans]
   (try
-    (emit-garbage! :semantic orphans garbage-warn-count garbage-critical-count)
+    ;; Gate the push on the same signal refresh-ai-index-metrics!'s clearer uses (active-index = available? +
+    ;; the semantic-search-enabled kill switch + an actual active index). The repair job only checks
+    ;; semantic-search-available?, which ignores the kill switch, so without this it would keep repopulating
+    ;; garbage-count with the feature disabled, fighting the clearer that's NaN-ing it.
+    (when (active-index)
+      (emit-garbage! :semantic orphans garbage-warn-count garbage-critical-count))
     (catch Throwable e
       (log/warn e "Failed to report semantic garbage metric"))))

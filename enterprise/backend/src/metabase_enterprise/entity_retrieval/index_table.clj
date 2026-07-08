@@ -131,6 +131,12 @@
   [tx]
   (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = now() WHERE id = 1" *meta-table*)]))
 
+(defn- clear-reconciled-at!
+  "Null the meta row's `reconciled_at`, marking the index as not-reconciled-since-(re)build. A no-op before the
+  meta row exists (and harmless when already null)."
+  [tx]
+  (jdbc/execute! tx [(format "UPDATE \"%s\" SET reconciled_at = NULL WHERE id = 1" *meta-table*)]))
+
 (defn- create-tables! [tx dims]
   (jdbc/execute! tx (create-vectors-table-sql dims)))
 
@@ -170,23 +176,31 @@
                                *meta-table*)])
     (let [stored  (read-meta tx)
           current (model-identity embedding-model)
-          dims    (:vector_dimensions current)]
-      (cond
-        (nil? stored)
-        (do (create-tables! tx dims)
-            (write-meta! tx embedding-model)
-            :created)
+          dims    (:vector_dimensions current)
+          result  (cond
+                    (nil? stored)
+                    (do (create-tables! tx dims)
+                        (write-meta! tx embedding-model)
+                        :created)
 
-        (not= stored current)
-        (do (jdbc/execute! tx [(format "DROP TABLE IF EXISTS \"%s\"" *vectors-table*)])
-            (create-tables! tx dims)
-            (write-meta! tx embedding-model)
-            :rebuilt)
+                    (not= stored current)
+                    (do (jdbc/execute! tx [(format "DROP TABLE IF EXISTS \"%s\"" *vectors-table*)])
+                        (create-tables! tx dims)
+                        (write-meta! tx embedding-model)
+                        :rebuilt)
 
-        :else
-        ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals itself,
-        ;; and report :created when it had actually gone missing — the recreated table is empty, so a
-        ;; targeted reconcile must repopulate the whole library rather than fill it with one entity.
-        (let [existed? (vectors-table-exists? tx)]
-          (create-tables! tx dims)
-          (if existed? :ok :created))))))
+                    :else
+                    ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals
+                    ;; itself, and report :created when it had actually gone missing — the recreated table is
+                    ;; empty, so a targeted reconcile must repopulate the whole library rather than fill it
+                    ;; with one entity.
+                    (let [existed? (vectors-table-exists? tx)]
+                      (create-tables! tx dims)
+                      (if existed? :ok :created)))]
+      ;; Any empty (re)build invalidates reconciled_at: the table is empty until a full reconcile repopulates
+      ;; it, and neither write-meta! (:rebuilt) nor the heal branch touches reconciled_at, so a prior build's
+      ;; timestamp would linger and make NLQ staleness read fresh over an empty/incomplete index. Clear it;
+      ;; touch-reconciled-at! (converged reconciles only) sets it again once the index is actually verified.
+      (when (not= result :ok)
+        (clear-reconciled-at! tx))
+      result)))

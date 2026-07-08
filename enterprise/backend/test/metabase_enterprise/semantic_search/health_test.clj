@@ -186,13 +186,23 @@
 (deftest ^:sequential report-repair-orphans!-test
   ;; health-inspector disabled (the default) so emit-garbage! skips the appdb persist and we assert on the gauge
   (mt/with-temporary-setting-values [health-inspector-enabled false]
-    (testing "pushes the absolute orphan count to the labelled garbage-count gauge"
+    (testing "with an active index, pushes the absolute orphan count to the labelled garbage-count gauge"
       (let [calls (atom [])]
-        (with-redefs [analytics/set-gauge! (fn [& args] (swap! calls conj (vec args)))]
+        ;; active-index truthy = available? + kill switch on + an actual active index; the repair push gates on it
+        (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
+                      analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
           (semantic.health/report-repair-orphans! 3))
         (is (= [[:metabase-ai-index/garbage-count {:engine "semantic"} 3]] @calls))))
+    (testing "with no active index (kill switch off / feature unavailable), does NOT push -- so it can't
+             repopulate the gauge the refresh clearer just NaN'd"
+      (let [calls (atom [])]
+        (with-redefs [semantic.health/active-index (constantly nil)
+                      analytics/set-gauge!          (fn [& args] (swap! calls conj (vec args)))]
+          (semantic.health/report-repair-orphans! 3))
+        (is (= [] @calls))))
     (testing "never throws -- a metric-sink error must not fail the repair job that calls it"
-      (with-redefs [analytics/set-gauge! (fn [& _] (throw (ex-info "boom" {})))]
+      (with-redefs [semantic.health/active-index (constantly {:pgvector :x :state :y})
+                    analytics/set-gauge!          (fn [& _] (throw (ex-info "boom" {})))]
         (is (nil? (semantic.health/report-repair-orphans! 3)))))))
 
 (deftest ^:sequential refresh-clears-push-garbage-when-disabled-test
