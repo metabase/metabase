@@ -23,5 +23,4 @@ app.post("/api/v1/cell-background-colors", async (c) =>
   ),
 );
 
-// Malformed JSON or a rendering failure — respond without leaking internals.
 app.onError((_err, c) => c.body(null, 500));
