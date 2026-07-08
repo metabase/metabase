@@ -143,31 +143,29 @@ export const calculateLegendRows = ({
   };
 };
 
-function calculateNumRowsCols(
+export function calculateNumRowsCols(
   items: LegendItem[],
   width: number,
   fontSize: number,
   fontWeight: number,
   legendItemMarginRight: number,
 ) {
-  let colWidth: number;
-  let numCols = 2;
-
-  do {
-    if (numCols >= items.length) {
-      return { numRows: 1, numCols: items.length };
-    }
-
-    colWidth = Math.floor(width / ++numCols);
-  } while (
-    items.every(
+  const fitsInColumns = (cols: number) => {
+    const colWidth = Math.floor(width / cols);
+    return items.every(
       (item) =>
         calculateItemWidth(item, fontSize, fontWeight) +
           legendItemMarginRight <=
         colWidth,
-    )
-  );
-  numCols--; // This value failed the test, so we decrement to the last passing value
+    );
+  };
+
+  // Most columns whose width still fits every item without truncation, but at least one -- a box
+  // too narrow for two columns gets one full-width column, not truncated multi-column text.
+  let numCols = 1;
+  while (numCols < items.length && fitsInColumns(numCols + 1)) {
+    numCols++;
+  }
 
   const numRows = Math.ceil(items.length / numCols);
 

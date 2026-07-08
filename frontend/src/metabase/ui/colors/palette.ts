@@ -155,7 +155,10 @@ export const getTextColorForBackground = (
     background.contrast(Color(LIGHT_TEXT_COLOR)) * whiteTextColorPriorityFactor;
   const darkTextContrast = background.contrast(Color(DARK_TEXT_COLOR));
 
-  return lightTextContrast > darkTextContrast
-    ? LIGHT_TEXT_COLOR
-    : DARK_TEXT_COLOR;
+  const textColor =
+    lightTextContrast > darkTextContrast ? LIGHT_TEXT_COLOR : DARK_TEXT_COLOR;
+
+  // Resolve through `getColor` so each medium normalizes the base hsla(): static viz maps it to
+  // hex (Batik can't parse hsla), while the app keeps the semi-transparent text unchanged.
+  return getColor(textColor);
 };
