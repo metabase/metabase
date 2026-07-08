@@ -144,6 +144,99 @@
                 "SELECT * FROM {{snippet:another snippet}}"
                 {"snippet: first snippet" (assoc s1 :id s1-uuid)})))))))
 
+(deftest ^:parallel variable-tag-with-dots-and-underscores-test
+  (testing "dots and underscores are legal in variable names (metabase#15029)"
+    (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
+      #{"number.of.stars"} "select * from products where rating = {{number.of.stars}}"
+      #{"a_b" "c.d"}       "select {{a_b}}, {{c.d}}")))
+
+(deftest ^:parallel snippet-inner-tags-surfaced-test
+  (testing "a snippet's own inner template tags are surfaced onto the outer query"
+    (doseq [[description snippets query expected]
+            [["inner variable tag"
+              [{:id            1
+                :name          "cat-filter"
+                :content       "category = {{category}}"
+                :template-tags {"category" {:name         "category"
+                                            :type         :text
+                                            :display-name "Category"}}}]
+              "select * from products where {{snippet: cat-filter}}"
+              "category"]
+             ["inner card tag"
+              [{:id            1
+                :name          "card-ref"
+                :content       "id in ({{#123}})"
+                :template-tags {"#123" {:name         "#123"
+                                        :type         :card
+                                        :display-name "#123"
+                                        :card-id      123}}}]
+              "select * from products where {{snippet: card-ref}}"
+              "#123"]
+             ["inner table tag"
+              [{:id            1
+                :name          "table-ref"
+                :content       "{{orders}}"
+                :template-tags {"orders" {:name         "orders"
+                                          :type         :table
+                                          :display-name "Orders"
+                                          :table-id     (meta/id :orders)}}}]
+              "select * from {{snippet: table-ref}}"
+              "orders"]
+             ["nested snippet's inner tags"
+              [{:id            1
+                :name          "outer"
+                :content       "{{snippet: inner}}"
+                :template-tags {"snippet: inner" {:name         "snippet: inner"
+                                                  :type         :snippet
+                                                  :display-name "Inner"
+                                                  :snippet-name "inner"}}}
+               {:id            2
+                :name          "inner"
+                :content       "category = {{category}}"
+                :template-tags {"category" {:name         "category"
+                                            :type         :text
+                                            :display-name "Category"}}}]
+              "select * from products where {{snippet: outer}}"
+              "category"]]]
+      (testing description
+        (let [mp (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:native-query-snippets snippets})]
+          (is (contains? (lib.native/extract-template-tags mp query) expected)))))))
+
+(deftest ^:parallel snippet-inner-tag-dedup-test
+  (doseq [[description snippets query expected]
+          [["a local tag and a snippet's surfaced inner tag of the same name collapse to one parameter"
+            [{:id            1
+              :name          "s"
+              :content       "category = {{filter}}"
+              :template-tags {"filter" {:name         "filter"
+                                        :type         :text
+                                        :display-name "Filter"}}}]
+            "select * from products where {{snippet: s}} and x = {{filter}}"
+            "filter"]
+           ["two snippets sharing an inner tag name dedup to a single entry"
+            [{:id            1
+              :name          "s1"
+              :content       "a = {{category2}}"
+              :template-tags {"category2" {:name         "category2"
+                                           :type         :text
+                                           :display-name "Category2"}}}
+             {:id            2
+              :name          "s2"
+              :content       "b = {{category2}}"
+              :template-tags {"category2" {:name         "category2"
+                                           :type         :text
+                                           :display-name "Category2"}}}]
+            "select * from products where {{snippet: s1}} and {{snippet: s2}}"
+            "category2"]]]
+    (testing description
+      (let [mp   (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:native-query-snippets snippets})
+            tags (lib.native/extract-template-tags mp query)]
+        (is (= 1 (count (filter #(= expected %) (keys tags)))))))))
+
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
   Processor.

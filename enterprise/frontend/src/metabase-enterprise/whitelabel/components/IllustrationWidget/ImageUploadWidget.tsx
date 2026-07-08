@@ -87,7 +87,7 @@ export function ImageUploadWidget({
         description={descriptionProp ?? description}
       />
       {errorMessage && (
-        <Text size="sm" c="error" mb="sm">
+        <Text size="sm" c="feedback-negative" mb="sm">
           {errorMessage}
         </Text>
       )}

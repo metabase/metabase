@@ -193,7 +193,7 @@ export const setupSdkDashboard = async ({
   setupNotificationChannelsEndpoints({
     email: { configured: isEmailConfigured },
     slack: { configured: isSlackConfigured },
-  } as any);
+  });
 
   setupDatabasesEndpoints([createMockDatabase()]);
 

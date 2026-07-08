@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupSchemaEndpoints,
@@ -11,6 +9,7 @@ import { renderWithProviders } from "__support__/ui";
 import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
 import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   EnterpriseSettings,

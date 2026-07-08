@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
@@ -45,6 +46,20 @@
               {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
                :value {:type  :string/=
                        :value ["Doohickey"]}}))))))
+
+(deftest ^:parallel field-filter-nil-schema-snippet-test
+  (testing "field-filter snippet omits schema when the field's table has no schema (#29786)"
+    (let [mp (lib.tu/merged-mock-metadata-provider
+              meta/metadata-provider
+              {:tables [{:id (meta/id :venues) :schema nil}]})]
+      (mt/with-metadata-provider mp
+        (is (= {:replacement-snippet     "(\"VENUES\".\"NAME\" = ?)"
+                :prepared-statement-args ["Doohickey"]}
+               (#'sql.params.substitution/field-filter->replacement-snippet-info
+                :h2
+                {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :venues :name))
+                 :value {:type  :string/=
+                         :value ["Doohickey"]}})))))))
 
 (deftest ^:parallel field-filter->replacement-snippet-info-test-2
   (testing "Compound filters should be wrapped in parens"

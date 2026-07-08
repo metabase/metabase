@@ -194,7 +194,6 @@ export function addColumnToFunnel(
     | Draft<VisualizerVizDefinitionWithColumns>
     | VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
   dataset: Dataset,
