@@ -20,7 +20,7 @@ type CacheValue = unknown;
 type CacheMap = Map<unknown, CacheValue | CacheMap>;
 
 const rootCache = new WeakMap<object, CacheMap>();
-const createMap = () => new Map() as CacheMap;
+const createMap = (): CacheMap => new Map();
 
 export function memoize<T extends (...args: any[]) => any>(fn: T): T {
   const memoized = (...args: Parameters<T>): ReturnType<T> => {
