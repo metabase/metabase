@@ -731,13 +731,14 @@
                         ;; with no 'synced' RemoteSyncObject — the unsynced local work the import would delete
                         ;; (an already-synced entity's removal is a normal reconcile, not data loss). Done in SQL
                         ;; so we never materialize a whole collection's worth of rows just to count/sample them.
-                        where        (into [:and] (conj (vec (removal-where-clauses spec synced-collection-ids imported-ids))
-                                                        [:not [:exists {:select [1]
-                                                                        :from   [:remote_sync_object]
-                                                                        :where  [:and
-                                                                                 [:= :remote_sync_object.model_type model-type]
-                                                                                 [:= :remote_sync_object.model_id id-col]
-                                                                                 [:= :remote_sync_object.status "synced"]]}]]))
+                        where        (-> [:and]
+                                         (into (removal-where-clauses spec synced-collection-ids imported-ids))
+                                         (conj [:not [:exists {:select [1]
+                                                               :from   [:remote_sync_object]
+                                                               :where  [:and
+                                                                        [:= :remote_sync_object.model_type model-type]
+                                                                        [:= :remote_sync_object.model_id id-col]
+                                                                        [:= :remote_sync_object.status "synced"]]}]]))
                         n            (t2/count model-key {:where where})]
                   :when (pos? n)]
               {:type     (keyword (str (u/lower-case-en model-type) "-deletion-conflict"))
