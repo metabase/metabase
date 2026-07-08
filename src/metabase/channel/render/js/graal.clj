@@ -85,8 +85,6 @@
 (defn execute-fn-name
   "Executes `js-fn-name` in js context with args"
   ^Value [^Context context js-fn-name & args]
-  ;; TODO: locking context is not ideal, but contexts are currently being shared with all threads and GraalVM doesn't
-  ;; support concurrent execution for js.
   (locking context
     (let [fn-ref (.eval context "js" js-fn-name)
           args   (into-array Object args)]
