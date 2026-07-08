@@ -125,14 +125,7 @@ export const getRoutes = (store: AppStore) => {
         <Route component={IsAuthenticated}>
           {getMetabotRoutes()}
 
-          {/* Data-app host routes — provided by the enterprise data_apps
-              plugin, gated behind the `data-apps` premium feature. Admin-only;
-              the backend bundle endpoint is additionally superuser-only. Path
-              can't be `/app/:name` because the server reserves `/app/*` for
-              static asset serving. */}
-          {PLUGIN_DATA_APPS.isEnabled && (
-            <Route component={IsAdmin}>{PLUGIN_DATA_APPS.getRoutes()}</Route>
-          )}
+          {PLUGIN_DATA_APPS.isEnabled && PLUGIN_DATA_APPS.getRoutes()}
 
           {/* The global all hands routes, things in here are for all the folks */}
           <Route path="/" component={LandingPageRedirect} />

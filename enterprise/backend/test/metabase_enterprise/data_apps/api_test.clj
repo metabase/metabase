@@ -45,7 +45,7 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest non-superuser-is-forbidden-test
+(deftest non-superuser-can-view-but-not-manage-test
   ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
@@ -53,14 +53,17 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp]
         (create-app!)
-        (testing "a non-superuser is forbidden from every data-app endpoint"
+        (testing "a non-superuser can view (open) a data app"
+          (is (=? {:name "demo"}
+                  (mt/user-http-request :rasta :get 200 "data-app/demo")))
+          (is (str/includes?
+               (str (mt/user-real-request :rasta :get 200 "data-app/demo/bundle"))
+               "BUNDLE")))
+        (testing "but is still forbidden from managing data apps"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "data-app")))
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "data-app/repo-status")))
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "data-app/demo")))
-          (mt/user-real-request :rasta :get 403 "data-app/demo/bundle")
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "data-app/demo" {:enabled false}))))))))
 

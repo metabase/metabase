@@ -120,7 +120,6 @@
    respond
    raise]
   (try
-    (api/check-superuser)
     (let [row  (api/read-check (data-app/select-one-non-blob :name slug :enabled true))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
