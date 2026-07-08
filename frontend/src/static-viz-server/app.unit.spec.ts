@@ -7,49 +7,6 @@ import {
 
 import { app } from "./app";
 
-// Exercises the real HTTP app end to end — actual chart/color rendering, no stubs.
-
-const rawSeries: RawSeries = [
-  {
-    card: createMockCard({
-      display: "bar",
-      visualization_settings: {
-        "graph.dimensions": ["x"],
-        "graph.metrics": ["y"],
-      },
-    }),
-    data: createMockDatasetData({
-      cols: [
-        createMockColumn({
-          name: "x",
-          display_name: "x",
-          base_type: "type/Text",
-        }),
-        createMockColumn({
-          name: "y",
-          display_name: "y",
-          base_type: "type/Integer",
-        }),
-      ],
-      rows: [
-        ["a", 1],
-        ["b", 2],
-      ],
-    }),
-  },
-];
-
-const chartRequest = {
-  rawSeries,
-  dashcardSettings: {},
-  options: {
-    applicationColors: {},
-    customFormatting: {},
-    startOfWeek: 1,
-    tokenFeatures: {},
-  },
-};
-
 function post(path: string, body: unknown) {
   return app.request(path, {
     method: "POST",
@@ -60,21 +17,63 @@ function post(path: string, body: unknown) {
 
 describe("static-viz-server app", () => {
   it("GET /api/v1/health returns ok", async () => {
-    const res = await app.request("/api/v1/health");
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ status: "ok" });
+    const response = await app.request("/api/v1/health");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "ok" });
   });
 
   it("POST /api/v1/chart renders an SVG", async () => {
-    const res = await post("/api/v1/chart", chartRequest);
-    expect(res.status).toBe(200);
-    const body = await res.json();
+    const rawSeries: RawSeries = [
+      {
+        card: createMockCard({
+          display: "bar",
+          visualization_settings: {
+            "graph.dimensions": ["x"],
+            "graph.metrics": ["y"],
+          },
+        }),
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "x",
+              display_name: "x",
+              base_type: "type/Text",
+            }),
+            createMockColumn({
+              name: "y",
+              display_name: "y",
+              base_type: "type/Integer",
+            }),
+          ],
+          rows: [
+            ["a", 1],
+            ["b", 2],
+          ],
+        }),
+      },
+    ];
+
+    const request = {
+      rawSeries,
+      dashcardSettings: {},
+      options: {
+        applicationColors: {},
+        customFormatting: {},
+        startOfWeek: 1,
+        tokenFeatures: {},
+      },
+    };
+
+    const response = await post("/api/v1/chart", request);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
     expect(body.type).toBe("svg");
     expect(body.content).toContain("<svg");
   });
 
   it("POST /api/v1/cell-background-colors returns one color per cell", async () => {
-    const res = await post("/api/v1/cell-background-colors", {
+    const request = {
       rows: [
         ["a", 1],
         ["b", 2],
@@ -95,23 +94,25 @@ describe("static-viz-server app", () => {
         [1, 0, "y"],
         [2, 1, "y"],
       ],
-    });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual([null, "rgba(255, 0, 0, 0.65)"]);
+    };
+
+    const response = await post("/api/v1/cell-background-colors", request);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([null, "rgba(255, 0, 0, 0.65)"]);
   });
 
   it("returns 404 for an unknown route", async () => {
-    const res = await post("/api/v1/nope", {});
-    expect(res.status).toBe(404);
+    const response = await post("/api/v1/nope", {});
+    expect(response.status).toBe(404);
   });
 
   it("returns 404 for the wrong method", async () => {
-    const res = await app.request("/api/v1/chart");
-    expect(res.status).toBe(404);
+    const response = await app.request("/api/v1/chart");
+    expect(response.status).toBe(404);
   });
 
   it("returns 500 on malformed JSON", async () => {
-    const res = await post("/api/v1/chart", "not json");
-    expect(res.status).toBe(500);
+    const response = await post("/api/v1/chart", "not json");
+    expect(response.status).toBe(500);
   });
 });

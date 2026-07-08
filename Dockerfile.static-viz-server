@@ -25,11 +25,11 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 COPY --from=builder \
   /app/target/static-viz-server/static-viz-server.bundle.js \
-  ./static-viz-server.bundle.js
+  ./server.js
 
 ENV PORT=3000 \
     HOST=0.0.0.0
 EXPOSE 3000
 USER node
 
-CMD ["node", "static-viz-server.bundle.js"]
+CMD ["node", "server.js"]
