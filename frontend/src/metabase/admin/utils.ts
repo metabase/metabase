@@ -1,27 +1,20 @@
 import { useLayoutEffect } from "react";
-import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
-import { connect, metabaseReduxContext } from "metabase/redux";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { AdminPath } from "metabase/redux/store/admin";
-import { push, replace, routerActions } from "metabase/router";
+import { push, replace } from "metabase/router";
+import { createRedirectGuard } from "metabase/router/guards";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getSetting } from "metabase/selectors/settings";
 
-export const createAdminRouteGuard = (routeKey: string) => {
-  const Wrapper = connectedReduxRedirect<any, State>({
-    wrapperDisplayName: `CanAccess(${routeKey})`,
-    redirectPath: "/unauthorized",
-    allowRedirectBack: false,
-    authenticatedSelector: (state) =>
+export const createAdminRouteGuard = (routeKey: string) =>
+  createRedirectGuard(
+    (state) =>
       getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
-    redirectAction: routerActions.replace,
-    context: metabaseReduxContext,
-  });
-
-  return Wrapper(({ children }) => children);
-};
+    "/unauthorized",
+  );
 
 const mapStateToProps = (state: State, props: { location: Location }) => ({
   adminItems: getAdminPaths(state),
@@ -54,17 +47,10 @@ export const RedirectToAllowedSettings = connect(
   mapDispatchToProps,
 )(RedirectToAllowedSettingsInner);
 
-export const createTenantsRouteGuard = () => {
-  const Wrapper = connectedReduxRedirect<any, State>({
-    wrapperDisplayName: "CanAccessTenants",
-    redirectPath: "/admin/people",
-    allowRedirectBack: false,
-    authenticatedSelector: (state) =>
+export const createTenantsRouteGuard = () =>
+  createRedirectGuard(
+    (state) =>
       getAdminPaths(state)?.find((path) => path.key === "people") != null &&
       (getSetting(state, "use-tenants") || shouldShowTenantsUpsell(state)),
-    redirectAction: routerActions.replace,
-    context: metabaseReduxContext,
-  });
-
-  return Wrapper(({ children }) => children);
-};
+    "/admin/people",
+  );
