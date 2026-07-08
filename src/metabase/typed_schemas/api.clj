@@ -390,6 +390,65 @@
     :card-type (:type card)}
    :status-code (:status-code m)))
 
+(defn- model-action-error-message
+  ([model error-message]
+   (format "Failed to build action schemas for model \"%s\" (card %s): %s"
+           (or (:name model) "Untitled")
+           (:id model)
+           (or error-message "unknown error")))
+  ([model action error-message]
+   (format "Failed to build action schema for action \"%s\" (action %s, type %s) on model \"%s\" (card %s): %s"
+           (or (:name action) "Untitled")
+           (:id action)
+           (or (some-> (:type action) name) "unknown")
+           (or (:name model) "Untitled")
+           (:id model)
+           (or error-message "unknown error"))))
+
+(defn- model-action-error-data
+  ([model m]
+   (assoc-some
+    {:model-id   (:id model)
+     :model-name (:name model)}
+    :status-code (:status-code m)))
+  ([model action m]
+   (assoc-some
+    (assoc (model-action-error-data model m)
+           :action-id   (:id action)
+           :action-name (:name action)
+           :action-type (:type action))
+    :status-code (:status-code m))))
+
+(defn- raw-model-actions
+  [model-id]
+  (t2/select :model/Action
+             :model_id model-id
+             :archived false
+             :type [:not= "http"]))
+
+(defn- dropped-actions
+  [raw-actions actions]
+  (let [action-ids (set (map :id actions))]
+    (not-empty
+     (remove #(contains? action-ids (:id %)) raw-actions))))
+
+(defn- dropped-actions-message
+  [model dropped-actions]
+  (format "Failed to build action schemas for model \"%s\" (card %s): selected actions were dropped while normalizing action details: %s"
+          (or (:name model) "Untitled")
+          (:id model)
+          (str/join ", "
+                    (for [action dropped-actions]
+                      (format "%s (action %s, type %s)"
+                              (or (:name action) "Untitled")
+                              (:id action)
+                              (or (some-> (:type action) name) "unknown"))))))
+
+(defn- dropped-actions-data
+  [model dropped-actions]
+  (assoc (model-action-error-data model nil)
+         :dropped-actions (mapv #(select-keys % [:id :name :type]) dropped-actions)))
+
 (defn- question-details
   [card]
   (let [response (try
@@ -556,23 +615,42 @@
   `assoc-some` drops the empty `:actions` field. `model-columns` is the
   parent model's already-rendered column schemas, passed through to
   implicit actions for response-row typing."
-  [model-id model-columns]
-  (let [actions (actions/select-actions
-                 nil
-                 :model_id model-id
-                 :archived false
-                 :type [:not= "http"])]
+  [model model-columns]
+  (let [raw-actions (raw-model-actions (:id model))
+        actions (try
+                  (actions/select-actions
+                   nil
+                   :model_id (:id model)
+                   :archived false
+                   :type [:not= "http"])
+                  (catch Exception e
+                    (throw (ex-info (model-action-error-message model (ex-message e))
+                                    (assoc (model-action-error-data model (ex-data e))
+                                           :cause-message (ex-message e))
+                                    e))))
+        dropped (dropped-actions raw-actions actions)]
+    (when dropped
+      (throw (ex-info (dropped-actions-message model dropped)
+                      (dropped-actions-data model dropped))))
     (when (seq actions)
-      (mapv #(action-schema model-columns %) actions))))
+      (mapv (fn [action]
+              (try
+                (action-schema model-columns action)
+                (catch Exception e
+                  (throw (ex-info (model-action-error-message model action (ex-message e))
+                                  (assoc (model-action-error-data model action (ex-data e))
+                                         :cause-message (ex-message e))
+                                  e)))))
+            actions))))
 
 (defn- model-schema
   "A Metabase model (curated dataset). Shape parallels [[question-schema]] —
   same id/name/columns/etc. — but with `:kind \"model\"` and an extra
   `:actions` map of pre-existing actions bound to the model
   (`action.model_id`)."
-  [{:keys [id name description verified display result-columns portable_entity_id]}]
+  [{:keys [id name description verified display result-columns portable_entity_id] :as model}]
   (let [columns (mapv column-schema result-columns)
-        action-schemas (model-actions id columns)]
+        action-schemas (model-actions model columns)]
     (assoc-some
      {:kind    "model"
       :key     (generated-key name id)
