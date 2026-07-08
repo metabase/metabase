@@ -9,6 +9,10 @@ import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
+// Must stay imported after "@cypress/code-coverage/support": its afterEach
+// computes per-test coverage deltas and has to run after the plugin's own
+// afterEach has drained window.__coverage__.
+import "./per-test-capture";
 
 const isCI = Cypress.expose("CI");
 const isNetworkThrottlingEnabled = Cypress.expose("ENABLE_NETWORK_THROTTLING");
@@ -20,6 +24,10 @@ const isFailFastEnabled = Cypress.expose("FAIL_FAST");
 if (Cypress.expose("codeCoverageTasksRegistered") === true) {
   before(() => {
     cy.task("resetCoverage", { isInteractive: true }, { log: false });
+    // Companion reset for the per-test capture state (per-test-capture.js);
+    // headless runs also reset it in after:spec, but that event doesn't fire
+    // between interactive re-runs.
+    cy.task("resetTestCapture", null, { log: false });
   });
 }
 

@@ -27,19 +27,67 @@ export function fileExceedsBaseline(specFileCov, baselineFileCov) {
   return false;
 }
 
-// Repo-relative paths of files a spec exercised beyond baseline.
-//
-// Paths are relativized because Istanbul keys are absolute to the machine that
-// produced them (the nightly CI runner) and must resolve against a PR
-// checkout's repo root at selection time. Files outside the repo are dropped.
-export function discriminatingFiles(coverage, baselineCov, repoRoot) {
-  return Object.entries(coverage)
-    .filter(([file, fileCov]) =>
-      fileExceedsBaseline(fileCov, baselineCov?.[file]),
-    )
-    .map(([file]) =>
+// Istanbul keys are absolute to the machine that produced them (the nightly
+// CI runner) and must resolve against a PR checkout's repo root at selection
+// time. Files outside the repo are dropped.
+function toRepoRelative(files, repoRoot) {
+  return files
+    .map((file) =>
       path.isAbsolute(file) ? path.relative(repoRoot, file) : file,
     )
     .filter((rel) => !rel.startsWith(".."))
     .sort();
+}
+
+// Repo-relative paths of files a spec exercised beyond baseline.
+export function discriminatingFiles(coverage, baselineCov, repoRoot) {
+  return toRepoRelative(
+    Object.entries(coverage)
+      .filter(([file, fileCov]) =>
+        fileExceedsBaseline(fileCov, baselineCov?.[file]),
+      )
+      .map(([file]) => file),
+    repoRoot,
+  );
+}
+
+// Per-test variant of discriminatingFiles. `testDeltas` and `baselineDeltas`
+// are sparse {file: {fnIdx: firedCount}} maps as recorded by the
+// recordTestCapture task — counter deltas for a single test, not cumulative
+// totals. A file survives when some function fired more times during the test
+// than during the baseline spec's boot-and-visit test, so single-visit boot
+// noise cancels out just like at the spec level.
+export function discriminatingFilesForTest(
+  testDeltas,
+  baselineDeltas,
+  repoRoot,
+) {
+  return toRepoRelative(
+    Object.entries(testDeltas || {})
+      .filter(([file, deltas]) =>
+        Object.entries(deltas).some(
+          ([idx, count]) => count > (baselineDeltas?.[file]?.[idx] || 0),
+        ),
+      )
+      .map(([file]) => file),
+    repoRoot,
+  );
+}
+
+// Merges the baseline spec's per-test entries into a single per-visit noise
+// map. The baseline spec has one test; retried attempts merge by max so the
+// subtraction stays strict.
+export function baselinePerTestDeltas(baselineEntry) {
+  const merged = {};
+  for (const test of baselineEntry?.tests || []) {
+    for (const [file, deltas] of Object.entries(test.f || {})) {
+      const fileMax = (merged[file] ??= {});
+      for (const [idx, count] of Object.entries(deltas)) {
+        if (count > (fileMax[idx] || 0)) {
+          fileMax[idx] = count;
+        }
+      }
+    }
+  }
+  return merged;
 }

@@ -56,12 +56,71 @@ const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
-// Persists raw __coverage__ counters per spec. The manifest builder reads
-// these later, applies baseline subtraction, and maps surviving files to
-// modules. We delete .nyc_output/out.json between specs so each entry
-// reflects only that spec's execution — @cypress/code-coverage otherwise
-// accumulates.
+// Per-test capture state, fed by the recordTestCapture task that the
+// support-file afterEach calls (e2e/support/per-test-capture.js). Each entry
+// is one test attempt: { title, f: {file: {fnIdx: firedCount}}, routes }.
+// `prevFunctionCounts` snapshots the accumulated counters after the previous
+// test so the next diff yields only what fired during the current one.
+let perTestEntries = [];
+let prevFunctionCounts = null;
+
+function readAccumulatedFunctionCounts() {
+  if (!fs.existsSync(NYC_OUTPUT_FILE)) {
+    return {};
+  }
+  const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
+  const counts = {};
+  for (const [file, fileCov] of Object.entries(coverage)) {
+    counts[file] = fileCov.f || {};
+  }
+  return counts;
+}
+
+const perTestCaptureTasks = {
+  // Runs after @cypress/code-coverage's afterEach has merged the test's
+  // window coverage into .nyc_output/out.json, so the accumulated counters
+  // include everything up to and including this test. Functions whose count
+  // grew since the previous snapshot fired during this test.
+  recordTestCapture({ title, routes }) {
+    const current = readAccumulatedFunctionCounts();
+    const f = {};
+    for (const [file, counts] of Object.entries(current)) {
+      const prev = prevFunctionCounts?.[file] || {};
+      let fileDeltas = null;
+      for (const [idx, count] of Object.entries(counts)) {
+        const delta = count - (prev[idx] || 0);
+        if (delta > 0) {
+          (fileDeltas ??= {})[idx] = delta;
+        }
+      }
+      if (fileDeltas) {
+        f[file] = fileDeltas;
+      }
+    }
+    prevFunctionCounts = current;
+    perTestEntries.push({ title, f, routes });
+    return null;
+  },
+
+  resetTestCapture() {
+    perTestEntries = [];
+    prevFunctionCounts = null;
+    return null;
+  },
+};
+
+// Persists raw __coverage__ counters per spec, plus the per-test breakdown
+// (function deltas and API routes). The manifest builder reads these later,
+// applies baseline subtraction, and maps surviving files to modules. We
+// delete .nyc_output/out.json between specs so each entry reflects only that
+// spec's execution — @cypress/code-coverage otherwise accumulates.
 function writeSpecCoverageEntry(spec) {
+  // Consume the per-test state up front so a missing/corrupt out.json can't
+  // leak one spec's tests into the next spec's entry.
+  const tests = perTestEntries;
+  perTestEntries = [];
+  prevFunctionCounts = null;
+
   if (!fs.existsSync(NYC_OUTPUT_FILE)) {
     return;
   }
@@ -83,7 +142,7 @@ function writeSpecCoverageEntry(spec) {
   const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
   fs.writeFileSync(
     path.join(COVERAGE_MANIFEST_RAW_DIR, entryName),
-    JSON.stringify({ spec: spec.relative, coverage: trimmed }),
+    JSON.stringify({ spec: spec.relative, coverage: trimmed, tests }),
   );
 
   fs.unlinkSync(NYC_OUTPUT_FILE);
@@ -215,6 +274,7 @@ const defaultConfig = {
       stopMockLlmServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
+      ...perTestCaptureTasks,
     });
 
     /********************************************************************
