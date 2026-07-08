@@ -79,7 +79,7 @@ export function useExternalDragOverlay({
     }
     // Check if we're dropping on a container itself (droppable area)
     else if (over.id === "left" || over.id === "right") {
-      to = over.id as ContainerId;
+      to = over.id;
       overIndexInTo = -1; // Append to end when dropping on container
     }
 
@@ -121,10 +121,10 @@ export function useExternalDragOverlay({
       return;
     }
 
-    const nextFrom = fromList.slice() as string[];
+    const nextFrom = fromList.slice();
     nextFrom.splice(fromIndex, 1);
 
-    const nextTo = toCurrent.slice() as string[];
+    const nextTo = toCurrent.slice();
     const insertIndex = overIndexInTo === -1 ? nextTo.length : overIndexInTo;
     nextTo.splice(insertIndex, 0, activeId);
 

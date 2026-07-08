@@ -516,7 +516,7 @@ function createCustomVizWrapper(
       width,
       height,
       series: series as unknown as GenericVizPluginProps["series"],
-      settings: settings as unknown as GenericVizPluginProps["settings"],
+      settings,
       colorScheme: resolvedColorScheme,
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,

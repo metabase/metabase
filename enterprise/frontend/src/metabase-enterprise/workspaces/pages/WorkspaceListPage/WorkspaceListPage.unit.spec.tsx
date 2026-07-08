@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupCreateWorkspaceEndpoint,
@@ -7,6 +6,7 @@ import {
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { Workspace } from "metabase-types/api";
 import {
   createMockDatabase,

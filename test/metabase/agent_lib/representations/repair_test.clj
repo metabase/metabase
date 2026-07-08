@@ -1862,13 +1862,17 @@
       (is (not (contains? opts "base-type"))))))
 
 (deftest ^:parallel cross-stage-field-type-unknown-column-name-test
-  (testing "If the referenced name isn't produced by the previous stage, leave the clause
-           alone (the resolver will surface :unknown-column or similar with a better message)."
+  (testing "A cross-stage ref to a name no previous stage produces raises an :agent-error?
+           that names the bad column and lists the valid ones, rather than passing a typeless
+           ref through into a non-runnable query."
     (let [q (assoc-in multi-stage-base-query
                       ["stages" 1 "filters" 0 2 2] "no_such_column")
-          out (repair/repair mp-fks q)
-          opts (get-in out ["stages" 1 "filters" 0 2 1])]
-      (is (not (contains? opts "base-type"))))))
+          e (try (repair/repair mp-fks q) nil (catch clojure.lang.ExceptionInfo ex ex))]
+      (is (some? e))
+      (is (true? (:agent-error? (ex-data e))))
+      (is (= :unresolved-cross-stage-field (:error (ex-data e))))
+      (is (= ["ID" "count"] (:available (ex-data e))))
+      (is (re-find #"no_such_column" (ex-message e))))))
 
 (deftest ^:parallel cross-stage-field-type-strips-surrounding-double-quotes-test
   (testing (str "BOT-1587: when the LLM quotes a cross-stage column name like a SQL identifier\n"
@@ -1887,17 +1891,16 @@
         (is (= "type/Integer" (get opts "base-type")))
         (is (= "type/Integer" (get opts "effective-type")))))))
 
-(deftest ^:parallel cross-stage-field-type-unmatched-quoted-name-left-alone-test
+(deftest ^:parallel cross-stage-field-type-unmatched-quoted-name-raises-test
   (testing (str "Quote-stripping only rewrites when the stripped name matches a real column.\n"
-                "A quoted name whose stripped form still isn't produced by the previous stage is\n"
-                "left verbatim (the resolver surfaces the real error with a better message).")
-    (let [q   (assoc-in multi-stage-base-query
-                        ["stages" 1 "filters" 0 2 2] "\"no_such_column\"")
-          out (repair/repair mp-fks q)
-          field-clause (get-in out ["stages" 1 "filters" 0 2])
-          opts (nth field-clause 1)]
-      (is (= "\"no_such_column\"" (nth field-clause 2)) "name left untouched")
-      (is (not (contains? opts "base-type"))))))
+                "A quoted name whose stripped form still isn't produced by the previous stage\n"
+                "raises an :agent-error? listing the valid columns.")
+    (let [q (assoc-in multi-stage-base-query
+                      ["stages" 1 "filters" 0 2 2] "\"no_such_column\"")
+          e (try (repair/repair mp-fks q) nil (catch clojure.lang.ExceptionInfo ex ex))]
+      (is (some? e))
+      (is (true? (:agent-error? (ex-data e))))
+      (is (= ["ID" "count"] (:available (ex-data e)))))))
 
 (deftest ^:parallel cross-stage-field-type-idempotent-test
   (testing "cross-stage field-type inference is idempotent"
@@ -1933,24 +1936,56 @@
         (is (contains? (nth field-clause 1) "base-type")))
       (testing "idempotent"
         (is (= out (repair/repair mp-fks out))))))
-  (testing "a loose key matching no real column is left untouched for the resolver"
-    (let [out (repair/repair mp-fks
-                             (assoc-in multi-stage-base-query
-                                       ["stages" 1 "filters" 0 2 2] "totally-unknown"))]
-      (is (= "totally-unknown" (get-in out ["stages" 1 "filters" 0 2 2])))))
-  (testing "a loose key colliding with two columns is left for the resolver (the hits>1 guard)"
-    ;; `normalize-col-key` folds case and hyphen/space to underscore, so `Count Where` and
-    ;; `count-where` both normalize to `count_where`. Real lib output names don't collide like this,
-    ;; so exercise the guard directly on the private matcher.
+  (testing "a loose key matching no real column raises an :agent-error? listing valid names"
+    (let [e (try (repair/repair mp-fks
+                                (assoc-in multi-stage-base-query
+                                          ["stages" 1 "filters" 0 2 2] "totally-unknown"))
+                 nil (catch clojure.lang.ExceptionInfo ex ex))]
+      (is (some? e))
+      (is (true? (:agent-error? (ex-data e))))
+      (is (= ["ID" "count"] (:available (ex-data e))))))
+  (testing "a loose key colliding with two columns is left unmatched (the hits>1 guard)"
+    ;; `normalize-col-key` folds case and hyphen/space to underscore, so both descriptors'
+    ;; names AND display-names collide on `count_where`; neither the name nor the display-name
+    ;; layer can pick a single column, so the matcher returns nil. Real lib output names don't
+    ;; collide like this, so exercise the guard directly on the private matcher.
     (is (nil? (#'repair/match-cross-stage-column
-               {"Count Where" {"base-type" "type/Integer"}
-                "count-where" {"base-type" "type/Integer"}}
+               [{:name "Count Where" :display-name "Count Where" :types {"base-type" "type/Integer"}}
+                {:name "count-where" :display-name "count-where" :types {"base-type" "type/Integer"}}]
                "count_where")))
     (testing "but a single loose hit still resolves"
       (is (= ["count_where" {"base-type" "type/Integer"}]
              (#'repair/match-cross-stage-column
-              {"count_where" {"base-type" "type/Integer"}}
+              [{:name "count_where" :display-name "Count Where" :types {"base-type" "type/Integer"}}]
               "Count-Where"))))))
+
+(deftest ^:parallel cross-stage-field-type-recovers-display-name-test
+  (testing (str "BOT-1442: a cross-stage ref written with an aggregation column's UI display\n"
+                "label (`Max of ID`) instead of its machine name (`max`) is recovered - the ref\n"
+                "is rewritten to the machine name and `base-type` stamped - so the query stays\n"
+                "runnable instead of silently breaking the notebook editor.")
+    (let [stage0 {"lib/type"     "mbql.stage/mbql"
+                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                  "aggregation"  [["max" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]]
+                  "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]
+      (doseq [label ["Max of ID"   ; exact display label
+                     "max of id"]] ; folded variant, mirroring the Cynthia ref's casing
+        (testing (str "ref written as " (pr-str label))
+          (let [q   {"lib/type" "mbql/query"
+                     "database" "Sample"
+                     "stages"   [stage0
+                                 {"lib/type"    "mbql.stage/mbql"
+                                  "breakout"    [["field" {} label]]
+                                  "aggregation" [["count" {}]]}]}
+                out          (repair/repair mp-fks q)
+                field-clause (get-in out ["stages" 1 "breakout" 0])
+                opts         (nth field-clause 1)]
+            (testing "the display label is rewritten to the machine name"
+              (is (= "max" (nth field-clause 2))))
+            (testing "base-type is stamped so the ref is schema-valid"
+              (is (= "type/Integer" (get opts "base-type"))))
+            (testing "idempotent"
+              (is (= out (repair/repair mp-fks out))))))))))
 
 (deftest ^:parallel cross-stage-field-type-end-to-end-resolve-test
   (testing (str "End-to-end: a multi-stage YAML with a stage-1 cross-stage ref lacking\n"

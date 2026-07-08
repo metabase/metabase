@@ -123,17 +123,30 @@
         (when (lib/native-only-query? normalized-query)
           normalized-query)))))
 
+(defn- table-stub
+  "Reference to a table used by a viewing-context item.
+
+  Excludes columns. [[metabase.metabot.agent.user-context/format-entity]] only reads `:type` and `:id` and calculates
+  column details via [[metabase.metabot.tools.entity-details/get-table-details]], so fetching columns here is wasted
+  work. On large, highly-connected schemas it can contribute to heap exhaustion (metabase#76493).
+  `:name`/`:database_schema`/`:description` are kept for the `format-simple-entity` fallback"
+  [{:keys [id name schema description]}]
+  {:id id
+   :type :table
+   :name name
+   :database_schema schema
+   :description description})
+
 (defn- database-tables-for-context
-  "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
-   Removes duplicate tables by id while preserving first occurrence order."
+  "Get database tables formatted for metabot context. Only includes tables used in the query.
+  Removes duplicate tables by id while preserving first occurrence order."
   [{:keys [query]}]
   (try
     (if query
-      (let [used-tables (table-utils/used-tables query)
-            tables (table-utils/enhanced-database-tables (:database query)
-                                                         {:priority-tables used-tables
-                                                          :all-tables-limit (count used-tables)})]
-        (m/distinct-by :id tables))
+      (into []
+            (comp (m/distinct-by :id)
+                  (map table-stub))
+            (table-utils/used-tables query))
       [])
     (catch Exception e
       (log/error e "Error getting database tables for context")
@@ -154,10 +167,7 @@
   [{:keys [database-id table-ids]}]
   (try
     (when (and database-id (seq table-ids))
-      (when-let [tables (not-empty (table-utils/used-tables-from-ids database-id table-ids))]
-        (table-utils/enhanced-database-tables database-id
-                                              {:priority-tables tables
-                                               :all-tables-limit (count tables)})))
+      (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
     (catch Exception e
       (log/error e "Error getting Python transform tables for context")
       [])))
@@ -179,7 +189,7 @@
         [database-id table-ids]))))
 
 (defn- mbql-source-tables-for-context
-  "Get source tables for an MBQL query, formatted for metabot context (with :type, :display_name, :fields, etc.).
+  "Get source tables for an MBQL query, formatted for metabot context.
 
   Uses a direct table lookup without native-query permission checks. The user is already
   viewing these tables in the notebook editor, so they have at least query-builder access.
@@ -187,16 +197,15 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables (t2/select [:model/Table :id :name :schema]
+    (let [raw-tables (t2/select [:model/Table :id :name :schema :description]
                                 :db_id database-id
                                 :id [:in table-ids]
                                 :active true
-                                :visibility_type nil)
-          tables     (when (seq raw-tables)
-                       (table-utils/enhanced-database-tables database-id
-                                                             {:priority-tables  raw-tables
-                                                              :all-tables-limit (count raw-tables)}))]
-      (m/distinct-by :id tables))
+                                :visibility_type nil)]
+      (into []
+            (comp (m/distinct-by :id)
+                  (map table-stub))
+            raw-tables))
     (catch Exception e
       (log/error e "Error getting MBQL source tables for context")
       nil)))

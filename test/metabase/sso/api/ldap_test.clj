@@ -69,3 +69,13 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ldap/settings"
                                      (assoc (ldap-test-details) :ldap-port "" :ldap-enabled false))))))))
+
+(deftest ldap-settings-reset-test
+  (testing "PUT /api/ldap/settings clearing the settings disables LDAP and clears the host"
+    (ldap.test/with-ldap-server!
+      (mt/user-http-request :crowberto :put 200 "ldap/settings" (ldap-test-details))
+      (is (sso.settings/ldap-enabled))
+      (mt/with-dynamic-fn-redefs [ldap/test-ldap-connection (constantly {:status :SUCCESS})]
+        (mt/user-http-request :crowberto :put 200 "ldap/settings" {:ldap-host nil :ldap-enabled false}))
+      (is (not (sso.settings/ldap-enabled)))
+      (is (nil? (sso.settings/ldap-host))))))

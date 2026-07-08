@@ -72,7 +72,7 @@ const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
     aggregation: [["count"]],
   },
   display: "scalar",
-  collection_id: FIRST_COLLECTION_ID as number,
+  collection_id: FIRST_COLLECTION_ID,
 };
 
 const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {

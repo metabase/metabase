@@ -1,4 +1,3 @@
-import { type WithRouterProps, withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -7,6 +6,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useDispatch } from "metabase/redux";
+import { type WithRouterProps, withRouter } from "metabase/router";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

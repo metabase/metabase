@@ -347,4 +347,8 @@ function buildEnforcedRules(elements, rules) {
 
 const enforcedRules = buildEnforcedRules(elements, rules);
 
-export { elements, rules, enforcedRules };
+function getFeatureModules(els = elements) {
+  return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
+}
+
+export { elements, rules, enforcedRules, getFeatureModules };

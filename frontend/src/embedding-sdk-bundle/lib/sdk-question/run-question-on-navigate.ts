@@ -71,5 +71,5 @@ export const runQuestionOnNavigateSdk =
       dispatch,
     });
 
-    return state as SdkQuestionState;
+    return state;
   };

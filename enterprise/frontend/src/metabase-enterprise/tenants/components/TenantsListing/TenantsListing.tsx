@@ -153,7 +153,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
         </Menu.Item>
         {tenant.is_active ? (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.deactivateTenant(tenant.id)}
           >
@@ -161,7 +161,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
           </Menu.Item>
         ) : (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.reactivateTenant(tenant.id)}
           >
