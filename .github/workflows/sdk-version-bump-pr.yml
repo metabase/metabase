@@ -1,0 +1,202 @@
+# UNVERIFIED (EMB-1518 scaffold): this workflow has not been run or reviewed
+# by the embedding team (Nicolo/Roman) yet. See the sdk-release-trigger label
+# and .github/workflows/release-embedding-sdk.yml for the other half of the
+# two-step release process this sets up.
+#
+# Step 1 of the new SDK release process: bump the version (and the
+# sdkRelease metadata that controls the npm dist-tag / `latest` promotion)
+# in package.template.json, then open a PR labeled `sdk-release-trigger` for
+# human review. Merging that PR is what actually triggers a release, via the
+# `pull_request` trigger on release-embedding-sdk.yml.
+name: SDK Version Bump PR
+run-name: Bump Embedding SDK version (${{ inputs.release_type }}) on ${{ inputs.branch }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to bump the SDK version on (e.g. master, release-x.59.x, or any other branch for an on-demand/manual release)"
+        type: string
+        required: true
+        default: "master"
+      release_type:
+        description: "Release type, passed to `npm version` (alpha/beta bump the prerelease identifier; patch/minor graduate or bump a stable version)"
+        type: choice
+        required: true
+        options:
+          - alpha
+          - beta
+          - patch
+          - minor
+
+concurrency:
+  # one version-bump in flight per branch at a time, to avoid racing PRs
+  group: ${{ github.workflow }}-${{ inputs.branch }}
+  cancel-in-progress: false
+
+jobs:
+  bump-version:
+    name: Bump SDK version and open review PR
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      package_template: enterprise/frontend/src/embedding-sdk-package/package.template.json
+    steps:
+      - name: Check out the code using the provided branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.branch }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Setup git user
+        run: |
+          git config --global user.email "github-automation@metabase.com"
+          git config --global user.name "Metabase Automation"
+
+      - name: Read current SDK version
+        id: current
+        run: |
+          VERSION=$(jq -r .version "$package_template")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version with npm version
+        id: bump
+        run: |
+          # `npm version` only operates on a file literally named package.json in
+          # the current directory, so we temporarily rename the template, bump it,
+          # then rename it back. `--no-git-tag-version` stops npm from creating its
+          # own commit/tag - we commit ourselves below, alongside the sdkRelease block.
+          cp "$package_template" "$package_template.bak"
+          mv "$package_template" "$(dirname "$package_template")/package.json"
+          pushd "$(dirname "$package_template")" > /dev/null
+
+          RELEASE_TYPE="${{ inputs.release_type }}"
+          case "$RELEASE_TYPE" in
+            alpha|beta)
+              NEW_VERSION=$(npm version prerelease --preid="$RELEASE_TYPE" --no-git-tag-version)
+              ;;
+            patch|minor)
+              NEW_VERSION=$(npm version "$RELEASE_TYPE" --no-git-tag-version)
+              ;;
+            *)
+              echo "::error::Unsupported release_type: $RELEASE_TYPE"
+              exit 1
+              ;;
+          esac
+          # npm prints the new version prefixed with "v" (e.g. v0.64.0-alpha.0)
+          NEW_VERSION="${NEW_VERSION#v}"
+
+          popd > /dev/null
+          mv "$(dirname "$package_template")/package.json" "$package_template"
+          rm -f "$package_template.bak"
+
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "major_version=$(echo "$NEW_VERSION" | cut -d. -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Compute sensible sdkRelease defaults
+        id: sdk-release
+        run: |
+          # TODO (Kelvin 2026-07-09) these are sensible starting defaults, not
+          # a policy decision - the whole point of this PR is that a human
+          # reviews/edits distTag and tagAsLatest before merging. In
+          # particular `tagAsLatest` always defaults to false here because
+          # this workflow has no reliable way to know whether the branch
+          # being released is the current "latest" major - that determination
+          # is left to the reviewer.
+          #
+          # OPEN QUESTION (Kelvin 2026-07-09) for Nicolo/Roman: what should
+          # distTag mean for a stable/patch/minor release? Today's workflow
+          # only ever publishes under `alpha`/`nightly`/`latest` npm dist-tags
+          # (see the old compute-tag step this replaced) - "<major>-stable"
+          # is not a real npm dist-tag today, only a git tag
+          # (embedding-sdk-<major>-stable). The Notion proposal's own example
+          # pairs an alpha version with a "59-stable" distTag, which reads
+          # like a *new* concept: letting consumers `npm install
+          # @metabase/embedding-sdk-react@59-stable` to pin a major line,
+          # not just a channel name. I've defaulted patch/minor to
+          # "<major>-stable" (leaning into that reading) and alpha/beta to
+          # the plain channel name - review and correct before relying on
+          # this in production; it's the one part of the whole proposal I
+          # couldn't resolve from the ticket/proposal text alone.
+          RELEASE_TYPE="${{ inputs.release_type }}"
+          MAJOR_VERSION="${{ steps.bump.outputs.major_version }}"
+
+          case "$RELEASE_TYPE" in
+            alpha|beta)
+              DIST_TAG="$RELEASE_TYPE"
+              ;;
+            patch|minor)
+              DIST_TAG="${MAJOR_VERSION}-stable"
+              ;;
+          esac
+
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Write sdkRelease metadata block
+        run: |
+          jq --arg distTag "${{ steps.sdk-release.outputs.dist_tag }}" \
+             '.sdkRelease.distTag = $distTag | .sdkRelease.tagAsLatest = (.sdkRelease.tagAsLatest // false)' \
+             "$package_template" > "$package_template.tmp"
+          mv "$package_template.tmp" "$package_template"
+
+      - name: Append workflow summary
+        run: |
+          tee -a "$GITHUB_STEP_SUMMARY" << EOF
+          **SDK version bump:**
+
+          - \`branch\`: ${{ inputs.branch }}
+          - \`release_type\`: ${{ inputs.release_type }}
+          - \`previous_version\`: ${{ steps.current.outputs.version }}
+          - \`new_version\`: ${{ steps.bump.outputs.new_version }}
+          - \`distTag\` (default, review before merging): ${{ steps.sdk-release.outputs.dist_tag }}
+
+          triggered by: @${{ github.event.sender.login }}
+          EOF
+
+      - name: Ensure sdk-release-trigger label exists
+        run: |
+          gh label create sdk-release-trigger \
+            --color 5319e7 \
+            --description "Merging this PR triggers an Embedding SDK release (see release-embedding-sdk.yml)" \
+            || true
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Commit version bump
+        run: |
+          git checkout -b sdk-version-bump-${{ steps.bump.outputs.new_version }}
+          git add "$package_template"
+          git commit -m "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }} (${{ inputs.release_type }})"
+          git push origin HEAD
+
+      - name: Open version-bump PR (using GitHub Metabase Automation account)
+        id: open-pr
+        run: |
+          gh pr create --base "${{ inputs.branch }}" \
+                       --assignee "${GITHUB_ACTOR}" \
+                       --label sdk-release-trigger \
+                       --title "chore(sdk): bump SDK version to ${{ steps.bump.outputs.new_version }}" \
+                       --body "$(cat <<'BODY'
+          Bumps the Embedding SDK version from `${{ steps.current.outputs.version }}` to `${{ steps.bump.outputs.new_version }}` (`${{ inputs.release_type }}`) and updates the `sdkRelease` metadata in `package.template.json`.
+
+          **Review before merging:**
+          - `sdkRelease.distTag` currently defaults to `${{ steps.sdk-release.outputs.dist_tag }}` - override it here if this release should publish under a different npm dist-tag.
+          - `sdkRelease.tagAsLatest` defaults to `false` - flip it to `true` only if this release should become the `latest` tag on npm.
+
+          Merging this PR (with the `sdk-release-trigger` label) triggers [release-embedding-sdk.yml](../actions/workflows/release-embedding-sdk.yml), which builds, publishes to npm, and tags the release.
+
+          _Opened by the [SDK Version Bump PR workflow](../actions/workflows/sdk-version-bump-pr.yml), triggered by @${{ github.event.sender.login }}._
+          BODY
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Request review from code owners (using GitHub Actions account)
+        # metabase/embedding team is added automatically as code owner of package.template.json
+        run: |
+          gh pr edit --add-label no-backport
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

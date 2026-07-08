@@ -4,8 +4,8 @@ function update_readme() {
   sed -i -E 's|(http://downloads.metabase.com/sdk/v)[0-9.]+|\1'"$1"'|' enterprise/frontend/src/embedding-sdk-package/README.md
 }
 
-function update_package_json_template() {
-  sed -i -E 's/("version": ").*"/\1'"$1"'"/' enterprise/frontend/src/embedding-sdk-package/package.template.json
-}
+# Version bumps now go through .github/workflows/sdk-version-bump-pr.yml
+# (via `npm version`), not this sed-based helper - removed as dead code
+# (EMB-1518).
 
 $1 $2
