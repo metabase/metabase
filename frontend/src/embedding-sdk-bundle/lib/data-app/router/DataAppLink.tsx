@@ -1,5 +1,6 @@
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
-import { browserHistory } from "react-router";
+
+import { browserHistory } from "metabase/router";
 
 import { getBasename } from "./DataAppRouter";
 
