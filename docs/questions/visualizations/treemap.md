@@ -5,7 +5,7 @@ summary: Visualize hierarchical data as nested rectangles, where a metric sets t
 
 # Treemaps
 
-Treemap visualizations display hierarchical data as nested rectangles. The value of a metric determines the size of each rectangle, called a leaf. Larger values take up more area than smaller values.
+Treemap visualizations display hierarchical data (a tree) as nested rectangles. The rectangles at the lowest level of the hierarchy are called leaves. The value of a metric determines the size of each leaf. Larger values take up more area than smaller values.
 
 When you group by two dimensions, the first dimension determines the parent categories. The second dimension nests inside the parent categories as leaves.
 
@@ -25,7 +25,7 @@ Treemaps are a weaker choice for comparing categories against each other, becaus
 
 To create a treemap, create a question that returns a single metric grouped by one or two dimensions.
 
-When you group a metric by one dimension, a treemap shows one leaf per value. Here's the data shape for a treemap of order count by category:
+When you group a metric by one dimension, the treemap shows a flat set of leaves with no parent categories. Here's the data shape for a treemap of order count by category:
 
 | Category  | Count |
 | --------- | ----- |
@@ -92,5 +92,5 @@ In chart settings, click the **Display** tab to show or hide labels and values. 
 
 - Treemaps display a single metric grouped by one or two dimensions. If your query returns more than one metric, the treemap uses the metric you select in the **Value** slot.
 - When a query returns more than two dimensions, the treemap uses the dimensions in the **Grouping** and **Sub-grouping** slots and combines any unused dimensions into each leaf. A treemap doesn't nest beyond two levels.
-- When one leaf is far larger than the other leaves, the small leaves can become too small to see or select. If your values span a wide range, consider a [bar chart](./line-bar-and-area-charts.md) instead.
-- To show a single level of part-to-whole composition, use a [pie chart](./pie-or-donut-chart.md) instead.
+- When one leaf is far larger than the other leaves, the small leaves can become too small to see or select.
+- Treemaps favor part-to-whole comparison. To compare category values against each other, use a [bar chart](./line-bar-and-area-charts.md), or use a [pie chart](./pie-or-donut-chart.md) for a small number of categories.
