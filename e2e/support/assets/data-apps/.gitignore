@@ -1,5 +1,5 @@
 # Each test app under this directory commits ONLY its `src/`. At test setup we
-# copy the `skills/create-data-app/template` base (everything except its `src/`)
+# copy the `skills/metabase-data-app-setup/template` base (everything except its `src/`)
 # into the app dir and build the bundle with the Vite API — all of that is
 # generated, so it's ignored here.
 /*/*
