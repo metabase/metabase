@@ -13,8 +13,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.json :as json])
   (:import
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -23,7 +22,7 @@
    (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
    (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
    (org.apache.batik.transcoder.image PNGTranscoder)
-   (org.graalvm.polyglot Context)
+   (org.graalvm.polyglot Context PolyglotException)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -106,39 +105,74 @@
   [binding-name & body]
   `(do-with-static-viz-context (fn [~binding-name] ~@body)))
 
-(defn- warm-untrusted-source-cache!
-  "Parse the static-viz bundle + interface once into an isolate context with a generous CPU budget
-  ([[js.engine/warmup-max-cpu-time]]), populating the shared engine's parsed-source cache, then dispose the
-  context. The parsed-source cache lives on the shared engine and survives context disposal, so subsequent
-  per-render contexts get a cache-hit parse (~3s) that fits the tight per-render budget instead of paying the
-  >10s cold parse of the ~16MB bundle on every render. Best-effort: warm-up failures are logged and swallowed
-  so rendering still proceeds (parsing cold on the raised per-render budget)."
-  []
-  (try
-    (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context js.engine/warmup-max-cpu-time))]
-      (try (.close context true) (catch Throwable _)))
-    (catch Throwable e
-      (log/warn e "Failed to warm untrusted static-viz source cache; custom-viz renders will parse the bundle cold"))))
+(def ^:private ^Pool untrusted-static-viz-context-pool
+  "Pool of `SandboxPolicy/UNTRUSTED` isolate contexts for rendering untrusted custom-viz plugin JS. Mirrors
+  [[static-viz-context-pool]] but for the isolate path. Pooling is the whole point: the ~16MB static-viz bundle
+  is parsed *once* per pooled context (a >10s cold parse, far worse on CPU-throttled hardware) and reused across
+  renders, instead of the old unpooled path that re-parsed on every render (the 55s pulse-test regression).
 
-(defonce ^:private untrusted-source-cache-warmed
-  ;; Realized lazily on the first custom-viz render (not at ns-load) so tests and servers that never render
-  ;; custom viz don't pay the cost, and the `load-viz-bundle` bundle-built guard still fires under test init.
-  (delay (warm-untrusted-source-cache!)))
+  Capped at 1 context: each holds the bundle plus up to a 512MB isolate heap, and native isolate memory is what
+  previously OOM-killed the server, so we keep exactly one and let `execute-fn-name`'s per-context lock serialize
+  renders. Contexts expire after 10 minutes (Truffle can leak) and are recycled; a context whose cumulative
+  `sandbox.MaxCPUTime` ([[js.engine/pool-max-cpu-time]]) is exhausted is cancelled and disposed by
+  [[do-with-untrusted-static-viz-context]] so the pool regenerates a fresh one.
+
+  Trade-off vs. the previous fresh-context-per-render design: reused contexts share JS global state across
+  renders (acceptable — the isolate still fully contains plugins from the host), and there is no tight per-render
+  CPU bound (only the coarse cumulative one)."
+  (let [base-controller (Pools/utilizationController 1.0 1 1)]
+    (Pool. (reify IPool$Generator
+             (generate [_ _]
+               [(load-viz-bundle (js.engine/untrusted-plugin-context js.engine/pool-max-cpu-time))
+                (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
+             (destroy [_ _ [^Context ctx _expiry]]
+               (try
+                 (.close ctx true) ;; force close - can't wait for running code
+                 (catch Exception _))))
+           (reify IPool$Controller
+             (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))
+             (adjustment [_ stats]
+               (let [adj         (.adjustment base-controller stats)
+                     n           (some-> ^Stats (:engines stats) .getNumWorkers)
+                     engines-adj (:engines adj)]
+                 (if (and n engines-adj (<= (+ n engines-adj) 0))
+                   {}
+                   adj))))
+           65000
+           25
+           10000
+           TimeUnit/MILLISECONDS)))
 
 (defn do-with-untrusted-static-viz-context
-  "Impl for [[with-untrusted-static-viz-context]]. Loads the static-viz bundle into a fresh
-  `SandboxPolicy/UNTRUSTED` isolate context ([[js.engine/untrusted-plugin-context]]), runs `f`, then disposes it.
-  Unpooled unlike [[do-with-static-viz-context]] — each render gets a clean context (no tainting), and the
-  isolate's VM-enforced CPU/heap limits replace the old manual render timeout. The one-time cold parse of the
-  ~16MB bundle is warmed off the render path (see [[warm-untrusted-source-cache!]]) so the shared engine's
-  parsed-source cache keeps per-render bundle reloads cheap."
+  "Impl for [[with-untrusted-static-viz-context]]. Acquires a pooled `SandboxPolicy/UNTRUSTED` isolate context
+  ([[untrusted-static-viz-context-pool]]) with the static-viz bundle already loaded, runs `f`, then releases it
+  back to the pool. In dev, uses a fresh context each time (mirrors [[do-with-static-viz-context]]). A context
+  cancelled by exhausting its cumulative `sandbox.MaxCPUTime` is disposed (not released) so the pool regenerates."
   [f]
-  @untrusted-source-cache-warmed
-  (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context))]
-    (try
-      (f context)
-      (finally
-        (try (.close context true) (catch Throwable _))))))
+  (if config/is-dev?
+    (let [^Context context (load-viz-bundle (js.engine/untrusted-plugin-context))]
+      (try
+        (f context)
+        (finally
+          (try (.close context true) (catch Throwable _)))))
+    (loop []
+      (let [[^Context context expiry-ts :as tuple] (.acquire untrusted-static-viz-context-pool :engines)]
+        (if (>= (System/nanoTime) expiry-ts)
+          (do (.dispose untrusted-static-viz-context-pool :engines tuple)
+              (recur))
+          (let [disposed? (volatile! false)]
+            (try
+              (f context)
+              (catch PolyglotException e
+                ;; A cancelled / resource-exhausted context is permanently unusable; dispose it so the pool
+                ;; regenerates a fresh one rather than handing a dead context to the next render.
+                (when (or (.isCancelled e) (.isResourceExhausted e))
+                  (vreset! disposed? true)
+                  (.dispose untrusted-static-viz-context-pool :engines tuple))
+                (throw e))
+              (finally
+                (when-not @disposed?
+                  (.release untrusted-static-viz-context-pool :engines tuple))))))))))
 
 (defmacro with-untrusted-static-viz-context
   "Like [[with-static-viz-context]] but binds `binding-name` to a sandboxed UNTRUSTED isolate context for

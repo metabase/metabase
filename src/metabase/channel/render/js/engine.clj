@@ -103,26 +103,28 @@
   (delay (new-untrusted-plugin-engine)))
 
 (def render-max-cpu-time
-  "Per-render guest CPU budget for untrusted custom-viz plugin execution. Must cover a *warm* static-viz bundle
-  load (parsed-source cache hit, ~3s) plus the chart + plugin render, with headroom for slow / CPU-throttled
-  hardware (coredev/containers run well under one core). The one-time *cold* parse of the ~16MB static-viz
-  bundle (>10s of guest CPU) is charged to [[warmup-max-cpu-time]] instead, at cache warm-up, so it does not
-  have to fit inside this per-render budget."
+  "`sandbox.MaxCPUTime` for a *non-pooled* untrusted context (the dev fresh-context path). Covers a cold parse
+  of the static-viz bundle plus a single render on dev hardware. Prod uses a pooled context with the larger,
+  cumulative [[pool-max-cpu-time]] instead — see `metabase.channel.render.js.svg`."
   "30s")
 
-(def warmup-max-cpu-time
-  "One-time budget for the cold parse of the ~16MB static-viz bundle into the isolate at cache warm-up
-  (see `metabase.channel.render.js.svg`). Generous because a cold parse is >10s of guest CPU even on fast
-  hardware and considerably more on a throttled container; it runs once per process, off the render path."
-  "120s")
+(def pool-max-cpu-time
+  "`sandbox.MaxCPUTime` for a *pooled*, long-lived untrusted context (the prod path). MaxCPUTime is a
+  *cumulative* per-context lifetime budget, not per-render: it must cover the one-time cold parse of the ~16MB
+  bundle at pool generation (>10s of guest CPU) plus the many renders the context then serves before the pool
+  recycles it. When exceeded the context is cancelled — the pool disposes and regenerates it. Sized generously
+  so, under normal load, the 10-minute pool expiry recycles a context before this cumulative cap does; it still
+  bounds a runaway plugin (to this many seconds of accumulated CPU) without a per-render cap. Trade-off of
+  pooling for speed: there is no tight per-render CPU bound, only this coarse cumulative one plus MaxHeapMemory."
+  "180s")
 
 (defn untrusted-plugin-context
   "Create a `SandboxPolicy/UNTRUSTED` GraalVM isolate `Context` for running untrusted custom-viz plugin JS.
   The guest runs in a separate isolate heap with VM-enforced CPU/heap/AST limits; like [[context]] it has no
   host access and no IO, so data must cross the boundary as JSON strings. Requires `js-isolate-community` on
   the classpath. The `sandbox.*` limits below are all mandatory under `UNTRUSTED` — the context fails to build
-  if any is unset. `max-cpu-time` is the `sandbox.MaxCPUTime` budget (default [[render-max-cpu-time]]); the
-  warm-up path passes [[warmup-max-cpu-time]] for the one-time cold bundle parse."
+  if any is unset. `max-cpu-time` is the `sandbox.MaxCPUTime` budget (default [[render-max-cpu-time]] for the
+  dev fresh-context path; the pool passes the larger cumulative [[pool-max-cpu-time]])."
   (^Context [] (untrusted-plugin-context render-max-cpu-time))
   (^Context [^String max-cpu-time]
    (.. (Context/newBuilder (into-array String ["js"]))

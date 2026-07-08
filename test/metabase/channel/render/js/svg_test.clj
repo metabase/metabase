@@ -114,3 +114,15 @@
       (testing (format "(cold=%.0fms warm=%.0fms)" cold warm)
         ;; Observed ~2x cheaper; assert a generous 25% floor so the timing test stays robust to noise.
         (is (< warm (* 0.75 cold)))))))
+
+(deftest ^:mb/slow untrusted-static-viz-context-is-pooled-test
+  (testing "pooled untrusted isolate contexts are reused across renders (bundle parsed once, not per render)"
+    ;; Regression guard: the previous fresh-context-per-render path re-parsed the ~16MB bundle every render
+    ;; (a 55s pulse-test regression). The pool loads the bundle once and hands the same context to each render.
+    ;; Tests run in :test mode (config/is-dev? false), so do-with-untrusted... takes the pooled branch.
+    (let [ids (atom [])]
+      (dotimes [_ 3]
+        (js.svg/do-with-untrusted-static-viz-context
+         (fn [^Context ctx] (swap! ids conj (System/identityHashCode ctx)))))
+      (is (= 1 (count (distinct @ids)))
+          "the same pooled isolate context should serve every render"))))
