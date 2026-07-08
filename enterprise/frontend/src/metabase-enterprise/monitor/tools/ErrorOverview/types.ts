@@ -1,3 +1,4 @@
+import type { Sorting } from "metabase/utils/sorting";
 import type { CardId } from "metabase-types/api";
 
 export type ErroringQuestion = {
@@ -37,7 +38,4 @@ export const SORT_COLUMNS = [
 
 export type ErroringQuestionsSortColumn = (typeof SORT_COLUMNS)[number];
 
-export type ErroringQuestionsSorting = {
-  column: ErroringQuestionsSortColumn;
-  direction: "asc" | "desc";
-};
+export type ErroringQuestionsSorting = Sorting<ErroringQuestionsSortColumn>;

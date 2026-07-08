@@ -1,5 +1,3 @@
-import type { SortingState } from "@tanstack/react-table";
-
 import {
   type QueryParam,
   type UrlStateConfig,
@@ -7,12 +5,10 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import type { Dataset, DatasetQuery, RowValue } from "metabase-types/api";
 
-import {
-  type ErroringQuestion,
-  type ErroringQuestionsFilters,
-  type ErroringQuestionsSortColumn,
-  type ErroringQuestionsSorting,
-  SORT_COLUMNS,
+import type {
+  ErroringQuestion,
+  ErroringQuestionsFilters,
+  ErroringQuestionsSorting,
 } from "./types";
 
 export const PAGE_SIZE = 50;
@@ -103,34 +99,4 @@ function asText(value: RowValue | undefined): string | null {
 
 function asCount(value: RowValue | undefined): number | null {
   return typeof value === "number" ? value : null;
-}
-
-export function getSortingState({
-  column,
-  direction,
-}: ErroringQuestionsSorting): SortingState {
-  return [{ id: column, desc: direction === "desc" }];
-}
-
-export function getSorting(
-  sortingState: SortingState,
-  currentSorting: ErroringQuestionsSorting,
-): ErroringQuestionsSorting {
-  const [firstSort] = sortingState;
-
-  if (firstSort != null && isSortColumn(firstSort.id)) {
-    return {
-      column: firstSort.id,
-      direction: firstSort.desc ? "desc" : "asc",
-    };
-  }
-
-  return {
-    column: currentSorting.column,
-    direction: currentSorting.direction === "desc" ? "asc" : "desc",
-  };
-}
-
-function isSortColumn(id: string): id is ErroringQuestionsSortColumn {
-  return SORT_COLUMNS.some((column) => column === id);
 }

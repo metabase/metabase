@@ -3,11 +3,18 @@ import {
   type UrlStateConfig,
   getFirstParamValue,
 } from "metabase/common/hooks/use-url-state";
+import { isSortColumn } from "metabase/utils/sorting";
 import type {
   ListTasksSortColumn,
   SortDirection,
   TaskStatus,
 } from "metabase-types/api";
+
+export const TASK_SORT_COLUMNS = [
+  "started_at",
+  "ended_at",
+  "duration",
+] satisfies readonly ListTasksSortColumn[];
 
 const DEFAULT_SORT_COLUMN: ListTasksSortColumn = "started_at";
 const DEFAULT_SORT_DIRECTION = "desc";
@@ -46,11 +53,9 @@ function parsePage(param: QueryParam): UrlState["page"] {
 
 function parseSortColumn(param: QueryParam): UrlState["sort_column"] {
   const value = getFirstParamValue(param);
-  return value && isSortColumn(value) ? value : DEFAULT_SORT_COLUMN;
-}
-
-function isSortColumn(value: string): value is ListTasksSortColumn {
-  return ["started_at", "ended_at", "duration"].includes(value);
+  return value && isSortColumn(value, TASK_SORT_COLUMNS)
+    ? value
+    : DEFAULT_SORT_COLUMN;
 }
 
 function parseSortDirection(param: QueryParam): UrlState["sort_direction"] {

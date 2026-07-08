@@ -23,9 +23,13 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { getSorting, getSortingState } from "metabase/utils/sorting";
 
-import type { ErroringQuestion, ErroringQuestionsSorting } from "./types";
-import { getSorting, getSortingState } from "./utils";
+import {
+  type ErroringQuestion,
+  type ErroringQuestionsSorting,
+  SORT_COLUMNS,
+} from "./types";
 
 const COLUMN_WIDTHS = [
   0.14, 0.16, 0.1, 0.08, 0.06, 0.08, 0.09, 0.06, 0.06, 0.09, 0.08,
@@ -72,7 +76,7 @@ export const ErroringQuestionsTable = ({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingChange(getSorting(newSortingState, sorting));
+      onSortingChange(getSorting(newSortingState, SORT_COLUMNS, sorting));
     },
     [sortingState, sorting, onSortingChange],
   );
