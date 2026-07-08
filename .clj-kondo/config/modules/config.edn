@@ -2520,7 +2520,8 @@
            models
            system
            util}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Database
                     :model/Field
