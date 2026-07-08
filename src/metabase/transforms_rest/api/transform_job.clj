@@ -300,27 +300,6 @@
    [:created_at :any]
    [:updated_at :any]])
 
-(def ^:private TransformRunForJobRunResponse
-  [:map {:closed true}
-   [:id pos-int?]
-   [:transform_id [:maybe pos-int?]]
-   [:job_run_id [:maybe pos-int?]]
-   [:dag_run_id {:optional true} [:maybe pos-int?]]
-   [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
-   [:is_active [:maybe :boolean]]
-   [:start_time :any]
-   [:end_time {:optional true} [:maybe :any]]
-   [:message [:maybe :string]]
-   [:user_id [:maybe pos-int?]]
-   [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]
-   [:transform {:optional true} [:maybe :map]]
-   [:metered_as {:optional true} [:maybe :string]]
-   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
-   [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
-
 (api.macros/defendpoint :get "/:job-id/runs" :- [:map {:closed true}
                                                  [:data [:sequential JobRunResponse]]
                                                  [:limit pos-int?]
@@ -341,7 +320,7 @@
                                              :limit  (request/limit)))
       (update :data #(map transforms-base.u/present-run %))))
 
-(api.macros/defendpoint :get "/:job-id/runs/:run-id/transform-runs" :- [:sequential TransformRunForJobRunResponse]
+(api.macros/defendpoint :get "/:job-id/runs/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
   "Get the transform runs that made up a specific job run."
   [{:keys [job-id run-id]} :- [:map
                                [:job-id ms/PositiveInt]

@@ -7,6 +7,29 @@
 
 (set! *warn-on-reflection* true)
 
+(def MemberTransformRunResponse
+  "Response schema for a member transform run of a coordinated (job or DAG) run, hydrated with its
+  transform. Exactly one of `job_run_id`/`dag_run_id` is set, naming the coordinating run."
+  [:map {:closed true}
+   [:id pos-int?]
+   [:transform_id [:maybe pos-int?]]
+   [:job_run_id [:maybe pos-int?]]
+   [:dag_run_id [:maybe pos-int?]]
+   [:run_method :keyword]
+   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]
+   [:transform_name {:optional true} [:maybe :string]]
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:transform {:optional true} [:maybe :map]]
+   [:metered_as {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+
 (defn async-run-response
   "Launch `start!` — a fn of a start-promise — on a virtual thread and respond `202` as soon as the
   run row exists, without waiting for the run to finish. `start!` must deliver the promise

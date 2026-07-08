@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -17,30 +18,7 @@
   "The DAG traversal directions a reprocess run can take."
   [:upstream :downstream])
 
-(def DagRunTransformRunResponse
-  "A member transform run of a DAG run, hydrated with its transform — the same shape as a job run's
-  member runs."
-  [:map {:closed true}
-   [:id pos-int?]
-   [:transform_id [:maybe pos-int?]]
-   [:job_run_id [:maybe pos-int?]]
-   [:dag_run_id [:maybe pos-int?]]
-   [:run_method :keyword]
-   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
-   [:is_active [:maybe :boolean]]
-   [:start_time :any]
-   [:end_time {:optional true} [:maybe :any]]
-   [:message [:maybe :string]]
-   [:user_id [:maybe pos-int?]]
-   [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]
-   [:transform {:optional true} [:maybe :map]]
-   [:metered_as {:optional true} [:maybe :string]]
-   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
-   [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
-
-(api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential DagRunTransformRunResponse]
+(api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
   "Get the transform runs that made up a specific DAG run."
   [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
   (api/check-data-analyst)

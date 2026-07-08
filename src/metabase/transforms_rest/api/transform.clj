@@ -217,7 +217,7 @@
    [:map
     [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags" "duration"]]
     [:sort-direction {:optional true} [:enum "asc" "desc"]]
-    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:transform-tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
@@ -268,7 +268,7 @@
     [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
-    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
     [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
     [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
   (api/check-data-analyst)
