@@ -1364,6 +1364,80 @@
         (is (= 2 (count dashcards)))
         (is (= 2 (count (set positions))) "Each dashcard should have a unique row/col")))))
 
+(deftest update-dashboard-dashcards-add-heading-test
+  (testing "Add a heading - a full-width virtual dashcard with no backing card"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Heading Target"}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add_heading" :text "Revenue"}]})]
+        (is (= 1 (count (:dashcard_ids resp))))
+        (is (=? {:card_id                nil
+                 :row                    0
+                 :col                    0
+                 :size_x                 24
+                 :size_y                 1
+                 :visualization_settings {:virtual_card         {:display "heading"}
+                                          :text                 "Revenue"
+                                          :dashcard.background  false}}
+                (t2/select-one :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest update-dashboard-dashcards-add-text-test
+  (testing "Add a Markdown text card - a virtual dashcard with no backing card"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Text Target"}]
+      (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                       {:dashcards [{:action "add_text" :text "Orders *grew 12%*."}]})]
+        (is (= 1 (count (:dashcard_ids resp))))
+        (is (=? {:card_id                nil
+                 :size_x                 12
+                 :size_y                 3
+                 :visualization_settings {:virtual_card {:display "text"}
+                                          :text         "Orders *grew 12%*."}}
+                (t2/select-one :model/DashboardCard :dashboard_id dash-id))))))
+  (testing "display_size overrides the default text-card size"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Text Size Target"}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_text" :text "Full width" :display_size "full"}]})
+      (is (=? {:size_x 24 :size_y 9}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id))))))
+
+(deftest update-dashboard-dashcards-narrative-layout-test
+  (testing "Interleaved heading + card + text mutations autoplace in order without overlap"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Narrative Layout"}
+                   :model/Card      {card-id :id} {:name          "Chart"
+                                                   :dataset_query (orders-count-query)
+                                                   :display       :table}]
+      (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text "Section 1"}
+                                         {:action "add" :card_id card-id}
+                                         {:action "add_text" :text "Narrative under the chart."}]})
+      (let [dashcards (t2/select :model/DashboardCard :dashboard_id dash-id {:order-by [[:row :asc]]})
+            heading   (first dashcards)
+            chart     (second dashcards)]
+        (is (= 3 (count dashcards)))
+        ;; heading sits on top, the chart starts below it
+        (is (= 0 (:row heading)))
+        (is (>= (:row chart) (+ (:row heading) (:size_y heading))))
+        ;; no two dashcards share a position
+        (is (= 3 (count (set (map (juxt :row :col) dashcards)))))))))
+
+(deftest update-dashboard-dashcards-virtual-card-validation-test
+  (testing "add_text and add_heading require non-blank text"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Text Validation"}]
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_text"}]})
+      (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dash-id)
+                            {:dashcards [{:action "add_heading" :text ""}]})
+      (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id)))))))
+
+(deftest update-dashboard-dashcards-remove-virtual-card-test
+  (testing "A text card can be removed by dashcard_id like any other dashcard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Remove Text Card"}]
+      (let [resp        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                                              {:dashcards [{:action "add_text" :text "temporary"}]})
+            dashcard-id (first (:dashcard_ids resp))]
+        (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
+                              {:dashcards [{:action "remove" :dashcard_id dashcard-id}]})
+        (is (zero? (count (t2/select :model/DashboardCard :dashboard_id dash-id))))))))
+
 (deftest update-dashboard-dashcards-remove-test
   (testing "Remove a dashcard"
     (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Phase B Remove"}

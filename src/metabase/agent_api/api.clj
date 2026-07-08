@@ -1211,6 +1211,8 @@
                              "Cards are auto-positioned on the dashboard grid. "
                              "If you omit collection_id it's saved to the user's personal collection; "
                              "pass an explicit null to save it to the root collection. "
+                             "To add section headings or narrative text cards, follow up with "
+                             "update_dashboard. "
                              "Report the saved location from the response `collection_path`. "
                              "Returns the dashboard URL.")}}
   [_route-params
@@ -1260,21 +1262,30 @@
 
 (mr/def ::dashcard-mutation
   "One dashcard mutation. Discriminated on `:action`:
-   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").
-   - `remove` : requires `dashcard_id`.
-   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\")."
+   - `add`         : requires `card_id`. Auto-positioned. Optional `display_size` (\"wide\", \"tall\", or \"full\").
+   - `add_heading` : requires `text`. Adds a full-width section heading.
+   - `add_text`    : requires `text` (Markdown). Adds a text card. Optional `display_size`.
+   - `remove`      : requires `dashcard_id`.
+   - `move`        : requires `dashcard_id` and `position` (\"top\" or \"bottom\")."
   [:multi {:dispatch :action}
-   ["add"    [:map
-              [:action       [:= "add"]]
-              [:card_id      ms/PositiveInt]
-              [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
-   ["remove" [:map
-              [:action      [:= "remove"]]
-              [:dashcard_id ms/PositiveInt]]]
-   ["move"   [:map
-              [:action      [:= "move"]]
-              [:dashcard_id ms/PositiveInt]
-              [:position    [:enum "top" "bottom"]]]]])
+   ["add"         [:map
+                   [:action       [:= "add"]]
+                   [:card_id      ms/PositiveInt]
+                   [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
+   ["add_heading" [:map
+                   [:action [:= "add_heading"]]
+                   [:text   ms/NonBlankString]]]
+   ["add_text"    [:map
+                   [:action       [:= "add_text"]]
+                   [:text         ms/NonBlankString]
+                   [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]]]
+   ["remove"      [:map
+                   [:action      [:= "remove"]]
+                   [:dashcard_id ms/PositiveInt]]]
+   ["move"        [:map
+                   [:action      [:= "move"]]
+                   [:dashcard_id ms/PositiveInt]
+                   [:position    [:enum "top" "bottom"]]]]])
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
@@ -1307,6 +1318,37 @@
     "full"    {:width 24 :height 9}
     nil))
 
+(defn- autoplaced-position
+  "Grid position for a new dashcard: the LLM's explicit `display-size` if given, otherwise the
+   default size for `display`."
+  [placed display display-size]
+  (if-let [{:keys [width height]} (size-override display-size)]
+    (autoplace/get-position-for-new-dashcard placed width height autoplace/default-grid-width)
+    (autoplace/get-position-for-new-dashcard placed display)))
+
+(defn- virtual-card-settings
+  "`visualization_settings` for a virtual dashcard (text or heading — no backing card). Mirrors the
+   shape the frontend saves; see `createVirtualCard` in frontend/src/metabase/dashboard/utils.ts."
+  [display text]
+  (cond-> {:virtual_card {:name                   nil
+                          :display                display
+                          :dataset_query          {}
+                          :visualization_settings {}
+                          :archived               false}
+           :text         text}
+    ;; headings render without a card background, matching the frontend default
+    (= display "heading") (assoc :dashcard.background false)))
+
+(defn- insert-new-dashcard!
+  "Insert a new dashcard at `position-fields` and record it in the mutation `state`."
+  [state dashboard-id position-fields columns]
+  (let [new-dashcard (t2/insert-returning-instance!
+                      :model/DashboardCard
+                      (merge position-fields {:dashboard_id dashboard-id} columns))]
+    (swap! state #(-> %
+                      (update :placed conj position-fields)
+                      (update :added conj new-dashcard)))))
+
 (defn- apply-dashcard-mutations!
   "Apply a sequence of LLM-friendly dashcard mutations. Returns {:added [...] :removed [...] :moved [...]}.
 
@@ -1321,28 +1363,26 @@
                        :added   []
                        :removed []
                        :moved   []})]
-    (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position] :as mutation}]
+    (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text] :as mutation}]
             (map-indexed vector mutations)]
       (try
         (case action
           "add"
-          (let [card     (api/read-check :model/Card card_id)
-                display  (or (:display card) :table)
-                override (size-override display_size)
-                position-fields (if override
-                                  (autoplace/get-position-for-new-dashcard
-                                   (:placed @state) (:width override) (:height override)
-                                   autoplace/default-grid-width)
-                                  (autoplace/get-position-for-new-dashcard
-                                   (:placed @state) display))
-                new-dashcard (first (t2/insert-returning-instances!
-                                     :model/DashboardCard
-                                     (merge position-fields
-                                            {:dashboard_id dashboard-id
-                                             :card_id      card_id})))]
-            (swap! state #(-> %
-                              (update :placed conj position-fields)
-                              (update :added conj new-dashcard))))
+          (let [card    (api/read-check :model/Card card_id)
+                display (or (:display card) :table)]
+            (insert-new-dashcard! state dashboard-id
+                                  (autoplaced-position (:placed @state) display display_size)
+                                  {:card_id card_id}))
+
+          "add_heading"
+          (insert-new-dashcard! state dashboard-id
+                                (autoplaced-position (:placed @state) :heading nil)
+                                {:visualization_settings (virtual-card-settings "heading" text)})
+
+          "add_text"
+          (insert-new-dashcard! state dashboard-id
+                                (autoplaced-position (:placed @state) :text display_size)
+                                {:visualization_settings (virtual-card-settings "text" text)})
 
           "remove"
           (let [existing (api/check-404
@@ -1398,15 +1438,22 @@
   "Update a dashboard. Patch semantics - only fields you pass are changed.
 
   Metadata: `name`, `description`, `collection_id`, `archived`. Dashcard mutations
-  are submitted under `dashcards` as a list of `{action: add|remove|move, ...}`
-  entries applied in order. `add` requires `card_id`; `remove` and `move` require
-  `dashcard_id`."
+  are submitted under `dashcards` as a list of
+  `{action: add|add_heading|add_text|remove|move, ...}` entries applied in order.
+  `add` requires `card_id`; `add_heading` and `add_text` require `text` (Markdown
+  for text cards); `remove` and `move` require `dashcard_id`."
   {:scope metabot/agent-dashboard-update
    :tool  {:name "update_dashboard"
            :description (str "Update a dashboard. Patch semantics - only fields you pass are changed. "
                              "Set collection_id to move it. Set archived true to archive. "
                              "Use dashcards to add, remove, or move cards: "
                              "[{\"action\":\"add\",\"card_id\":42},{\"action\":\"remove\",\"dashcard_id\":101}]. "
+                             "add_heading adds a full-width section heading and add_text adds a "
+                             "Markdown text card, both from a \"text\" field: "
+                             "[{\"action\":\"add_heading\",\"text\":\"Revenue\"},"
+                             "{\"action\":\"add_text\",\"text\":\"Orders *grew 12%* this quarter.\"}]. "
+                             "Mutations apply in order, so interleave headings and text with card "
+                             "adds to build a narrative layout. "
                              "Get dashcard_ids by reading metabase://dashboard/{id}/items via read_resource.")}}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params

@@ -522,9 +522,21 @@ Response:
 
 ### PUT /v1/dashboard/{id}
 
-Update a dashboard's metadata. Patch semantics. Setting `collection_id`
-moves the dashboard (and its cards). Setting `archived: true` archives the
-dashboard and cascades to its cards.
+Update a dashboard's metadata and cards. Patch semantics. Setting
+`collection_id` moves the dashboard (and its cards). Setting `archived: true`
+archives the dashboard and cascades to its cards.
+
+Dashcard mutations go under `dashcards` and are applied in order:
+
+- `add` adds a saved question by `card_id` (optional `display_size`:
+  `"wide"`, `"tall"`, or `"full"`)
+- `add_heading` adds a full-width section heading from `text`
+- `add_text` adds a Markdown text card from `text` (optional `display_size`)
+- `remove` removes a dashcard by `dashcard_id`
+- `move` moves a dashcard by `dashcard_id` to `position` `"top"` or `"bottom"`
+
+New cards are auto-positioned below existing content, so interleaving
+headings and text with card adds builds a top-to-bottom narrative layout.
 
 Request:
 
@@ -533,7 +545,13 @@ Request:
   "name": "Renamed Dashboard",
   "description": "...",
   "collection_id": 7,
-  "archived": false
+  "archived": false,
+  "dashcards": [
+    { "action": "add_heading", "text": "Revenue" },
+    { "action": "add", "card_id": 42 },
+    { "action": "add_text", "text": "Orders *grew 12%* this quarter." },
+    { "action": "remove", "dashcard_id": 101 }
+  ]
 }
 ```
 
