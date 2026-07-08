@@ -176,7 +176,7 @@
                                 (when library-conflict [library-conflict]))]
     {:first-import-conflicts (vec first-import-conflicts)
      :deletion-conflicts     (into (spec/check-deletion-conflicts imported-data)
-                                   (spec/check-collection-deletion-conflicts imported-data))}))
+                                   (spec/check-content-deletion-conflicts imported-data))}))
 
 (def app-db-batch-size
   "Max rows per select/update batch, to keep IN-lists and CASE expressions bounded."

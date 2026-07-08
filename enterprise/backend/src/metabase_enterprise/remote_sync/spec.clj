@@ -713,15 +713,15 @@
    a whole collection's worth of content would be swept. The :count field always holds the true total."
   100)
 
-(defn check-collection-deletion-conflicts
-  "Detects unsynced local entities in synced collections that an import would delete because they are absent
-   from it. Covers collection-scoped content (Cards/metrics, Dashboards, Documents, Timelines) —
-   [[check-deletion-conflicts]] does not, since these are not all-or-nothing setting-gated models.
+(defn check-content-deletion-conflicts
+  "Detects unsynced local content an import would delete because it is absent from the import, but which
+   holds unsaved local work — it has no RemoteSyncObject in 'synced' status, so its removal is data loss
+   (unlike an already-synced entity's, which is a normal reconcile against the remote source of truth).
 
-   An entity is a conflict when it lives in a syncable collection, its entity_id is not in the import, and it
-   has no RemoteSyncObject in 'synced' status (i.e. it holds local work not safely on any remote). Mirrors the
-   WHERE clause [[metabase-enterprise.remote-sync.impl/remove-unsynced!]] uses, so the count matches what the
-   import would actually delete.
+   Covers the entity-id content models [[check-deletion-conflicts]] does not (that one handles only the
+   all-or-nothing, setting-gated transform family): Cards/metrics, Dashboards, Documents, Timelines, and
+   NativeQuerySnippets. Collection is excluded — it is structural, its deletion cascades, and its contents
+   are already covered here. The count matches what an import would actually delete.
 
    Takes imported-data from [[extract-imported-entities]]. Returns a vector of conflict maps
    ({:type :category :model :count :names :message}), one per affected model type."
@@ -730,9 +730,8 @@
     (cond-> []
       (seq synced-collection-ids)
       (into (for [[model-key spec] (specs-for-deletion)
-                  :let [scope-key (get-in spec [:removal :scope-key])]
-                  :when (and (= :collection_id scope-key)
-                             (not (get-in spec [:removal :all-on-setting-disable])))
+                  :when (and (not (get-in spec [:removal :all-on-setting-disable]))
+                             (not= :model/Collection model-key))
                   :let [model-type   (:model-type spec)
                         imported-ids (get by-entity-id model-type #{})
                         ;; Same base predicate remove-unsynced! deletes by, plus an anti-join keeping only the
