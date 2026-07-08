@@ -13,8 +13,8 @@
 ##      of the database: insert the equivalent db-level row.
 ##   2. Drop every table-level view-data row whose (group_id, db_id, perm_value) matches a db-level
 ##      row — such rows are redundant no matter how they came to be. Because that can be tens of millions
-##      of rows, this is done by rebuilding the table with only the surviving rows rather than a row-by-row
-##      DELETE (which scales super-linearly); see the second changeSet for the per-engine mechanism.
+##      of rows, this is done by staging the surviving rows, truncating the table, and reloading them,
+##      rather than a row-by-row DELETE (which scales super-linearly); see the second changeSet.
 ##
 ## Restricted to view-data / blocked because:
 ##   - only the least-permissive value is safe to collapse at all: table-level rows are ignored for
@@ -67,15 +67,16 @@ databaseChangeLog:
         # The rows to keep are every data_permissions row EXCEPT the table-level view-data rows that a
         # db-level row of the same (group, db, value) has made redundant — the anti-join below. Deleting the
         # redundant rows directly scales super-linearly on a table ballooned to tens of millions of rows
-        # (each delete maintains six index trees), so instead of a DELETE we retain the few thousand
-        # survivors and discard the rest wholesale.
+        # (each delete maintains six index trees), so instead of a DELETE we stage the few thousand
+        # survivors, empty the table, and reload them.
         #
-        # Postgres has transactional DDL, so we rebuild the contents in place: stage the survivors, TRUNCATE,
-        # reload. It all runs in the changeSet's transaction, so a failure rolls back and data_permissions is
-        # never left empty. TRUNCATE keeps the id sequence, and the table (hence its indexes and FKs) is
-        # never dropped.
+        # Migrations run before the instance serves traffic, so the brief window in which data_permissions is
+        # empty is never observed, and the survivors are safe in the staging table until the reload finishes.
+        # Because the table is only truncated (never dropped) its indexes and foreign keys stay in place, so
+        # no schema is rebuilt. On Postgres, where DDL is transactional, the whole changeSet also runs
+        # atomically and TRUNCATE keeps the id sequence.
         - sql:
-            dbms: postgresql
+            dbms: postgresql,mysql,mariadb
             sql: >-
               CREATE TABLE data_permissions_collapse_keep AS
               SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
@@ -87,61 +88,17 @@ databaseChangeLog:
                AND dbp.table_id IS NULL
               WHERE dbp.id IS NULL;
         - sql:
-            dbms: postgresql
+            dbms: postgresql,mysql,mariadb
             sql: TRUNCATE TABLE data_permissions;
         - sql:
-            dbms: postgresql
+            dbms: postgresql,mysql,mariadb
             sql: >-
               INSERT INTO data_permissions (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
               SELECT id, group_id, perm_type, db_id, schema_name, table_id, perm_value
               FROM data_permissions_collapse_keep;
         - sql:
-            dbms: postgresql
+            dbms: postgresql,mysql,mariadb
             sql: DROP TABLE data_permissions_collapse_keep;
-        # MySQL/MariaDB auto-commit DDL, so an in-place TRUNCATE+reload would expose a window where
-        # data_permissions is empty. Instead build a sibling table of just the survivors and swap it in with
-        # an atomic RENAME, so data_permissions always resolves to a complete table. CREATE TABLE ... LIKE
-        # copies the columns, primary key, indexes and AUTO_INCREMENT base but NOT foreign keys, so the three
-        # FKs are recreated explicitly — dropped from the old table first to free the (schema-unique)
-        # constraint names.
-        - sql:
-            dbms: mysql,mariadb
-            sql: CREATE TABLE data_permissions_collapse_new LIKE data_permissions;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              INSERT INTO data_permissions_collapse_new
-                (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
-              SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
-              FROM data_permissions dp
-              LEFT JOIN data_permissions dbp
-                ON dp.perm_type = 'perms/view-data' AND dp.table_id IS NOT NULL
-               AND dbp.group_id = dp.group_id AND dbp.db_id = dp.db_id
-               AND dbp.perm_type = dp.perm_type AND dbp.perm_value = dp.perm_value
-               AND dbp.table_id IS NULL
-              WHERE dbp.id IS NULL;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              ALTER TABLE data_permissions
-                DROP FOREIGN KEY fk_data_permissions_ref_permissions_group,
-                DROP FOREIGN KEY fk_data_permissions_ref_db_id,
-                DROP FOREIGN KEY fk_data_permissions_ref_table_id;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              ALTER TABLE data_permissions_collapse_new
-                ADD CONSTRAINT fk_data_permissions_ref_permissions_group FOREIGN KEY (group_id) REFERENCES permissions_group (id) ON DELETE CASCADE,
-                ADD CONSTRAINT fk_data_permissions_ref_db_id FOREIGN KEY (db_id) REFERENCES metabase_database (id) ON DELETE CASCADE,
-                ADD CONSTRAINT fk_data_permissions_ref_table_id FOREIGN KEY (table_id) REFERENCES metabase_table (id) ON DELETE CASCADE;
-        - sql:
-            dbms: mysql,mariadb
-            sql: >-
-              RENAME TABLE data_permissions TO data_permissions_collapse_old,
-                           data_permissions_collapse_new TO data_permissions;
-        - sql:
-            dbms: mysql,mariadb
-            sql: DROP TABLE data_permissions_collapse_old;
         # H2 backs only embedded, single-node instances, which never reach the sizes that make the delete
         # expensive, so keep the straightforward delete.
         - sql:
