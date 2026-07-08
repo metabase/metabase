@@ -2,24 +2,11 @@
   (:require
    [metabase.indexes.models.table-index :as table-index]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
    [metabase.transforms.query-impl :as transforms.query-impl]))
 
 (set! *warn-on-reflection* true)
-
-(defn- select-transform-index-requests
-  [transform]
-  (vec (table-index/select-applicable-for-transform (:id transform))))
-
-(defn hydrate-transform-indexes
-  "Structured index defs for `transform`, read from its managed `TableIndex` rows (ordered by name)."
-  [transform]
-  (mapv :structured (select-transform-index-requests transform)))
-
-(defn hydrate-transform-index-ids
-  "Applicable index request ids for `transform`, hydrated with the target at execution start."
-  [transform]
-  (mapv :id (select-transform-index-requests transform)))
 
 (defn- resolve-target
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
@@ -37,14 +24,17 @@
   known DB id to look up `db-workspace-namespace`.
 
   Also hydrates the declared indexes and their request ids onto the target so the base reads them off
-  `(:indexes target)` and `(:index-request-ids target)` at every table-creation seam."
+  `(:indexes target)` and `(:index-request-ids target)` at every table-creation seam, and stashes
+  `:full-incremental-run?` so that (DB-backed) decision is made once and stays stable for the whole run."
   [transform]
-  (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
-        (assoc transform :target
-               (transforms.query-impl/resolve-transform-target db-id (:target transform)))
-        transform)
-      (assoc-in [:target :indexes] (vec (hydrate-transform-indexes transform)))
-      (assoc-in [:target :index-request-ids] (vec (hydrate-transform-index-ids transform)))))
+  (let [requests (table-index/select-applicable-for-transform (:id transform))]
+    (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
+          (assoc transform :target
+                 (transforms.query-impl/resolve-transform-target db-id (:target transform)))
+          transform)
+        (assoc-in [:target :indexes] (mapv :structured requests))
+        (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
+        (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
 
 (defn execute!
   "Run `transform` and sync its target table.

@@ -10,9 +10,18 @@
 
 (set! *warn-on-reflection* true)
 
+(mr/def ::index-name
+  "Free-form user input, inlined (quoted and escaped) into DDL. 63 is the Postgres identifier limit, the tightest
+  engine we support."
+  [:string {:min 1 :max 63}])
+
+(mr/def ::column-name
+  ;; looser than ::index-name: column names must match real warehouse columns, and some engines allow up to 255
+  [:string {:min 1 :max 255}])
+
 (mr/def ::column
   [:map
-   [:name :string]
+   [:name ::column-name]
    [:direction {:optional true} [:enum :asc :desc]]])
 
 (mr/def ::classical-index
@@ -20,9 +29,9 @@
   [:map
    [:kind [:enum :btree :hash :gin :gist :brin :spgist :fulltext :spatial
            :clustered :nonclustered :columnstore]]
-   [:name :string]
+   [:name ::index-name]
    [:columns [:vector {:min 1} ::column]]
-   [:include {:optional true} [:vector :string]]
+   [:include {:optional true} [:vector ::column-name]]
    [:unique {:optional true} :boolean]])
 
 (mr/def ::sortkey
@@ -46,7 +55,7 @@
   "Snowflake (standalone) / BigQuery (inline) clustering. `:name` is required for the standalone form."
   [:map
    [:kind [:= :clustering]]
-   [:name {:optional true} :string]
+   [:name {:optional true} ::index-name]
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::order-by
@@ -60,25 +69,10 @@
   can't supply yet."
   [:map
    [:kind [:= :skip-index]]
-   [:name :string]
+   [:name ::index-name]
    [:columns [:vector {:min 1} ::column]]
    [:type [:enum :minmax :bloom_filter]]
    [:granularity {:optional true} pos-int?]])
-
-(mr/def ::index-structured
-  "A single structured index definition, dispatched on `:kind`. The shape stored in
-  `metabase_table_indexes.structured` and handed to the driver index multimethods."
-  [:multi {:dispatch :kind}
-   [:btree ::classical-index] [:hash ::classical-index] [:gin ::classical-index]
-   [:gist ::classical-index] [:brin ::classical-index] [:spgist ::classical-index]
-   [:fulltext ::classical-index] [:spatial ::classical-index]
-   [:clustered ::classical-index] [:nonclustered ::classical-index] [:columnstore ::classical-index]
-   [:sortkey ::sortkey] [:distkey ::distkey] [:clustering ::clustering]
-   [:order-by ::order-by] [:skip-index ::skip-index]])
-
-(def statuses
-  "Valid lifecycle states for a table index request."
-  #{:create-pending :update-pending :delete-pending :running :succeeded :failed})
 
 (defn keywordize-structured
   "Re-keywordize the structured map's enum-valued fields after JSON storage flattened them to strings."
@@ -89,3 +83,19 @@
     (:type structured)    (update :type keyword)
     (:columns structured) (update :columns (fn [cols]
                                              (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
+
+(mr/def ::index-structured
+  "A single structured index definition, dispatched on `:kind`. The shape stored in
+  `metabase_table_indexes.structured` and handed to the driver index multimethods."
+  ;; :decode/normalize runs before the :multi dispatch, so API input with string-valued enum fields decodes cleanly.
+  [:multi {:dispatch :kind, :decode/normalize keywordize-structured}
+   [:btree ::classical-index] [:hash ::classical-index] [:gin ::classical-index]
+   [:gist ::classical-index] [:brin ::classical-index] [:spgist ::classical-index]
+   [:fulltext ::classical-index] [:spatial ::classical-index]
+   [:clustered ::classical-index] [:nonclustered ::classical-index] [:columnstore ::classical-index]
+   [:sortkey ::sortkey] [:distkey ::distkey] [:clustering ::clustering]
+   [:order-by ::order-by] [:skip-index ::skip-index]])
+
+(def statuses
+  "Valid lifecycle states for a table index request."
+  #{:create-pending :update-pending :delete-pending :running :succeeded :failed})

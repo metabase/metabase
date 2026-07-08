@@ -148,8 +148,7 @@
       (try
         (let [source-range-params (transforms-base.u/get-source-range-params transform)
               full-incremental?   (transforms-base.u/full-incremental-run? transform)
-              full-create?        (or (= :table (keyword (:type (:target transform))))
-                                      full-incremental?)
+              full-create?        (transforms-base.u/full-create-run? transform)
               ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
               ;; rows-affected count can be trusted. On drivers that declare
               ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus

@@ -45,42 +45,20 @@
 (def ^:private defaults
   {:status :create-pending})
 
-(defn- reset-incremental-checkpoint!
-  [transform-id]
-  (when (= :table-incremental
-           (some-> (t2/select-one-fn :target :model/Transform :id transform-id)
-                   :type
-                   keyword))
-    ;; Indexes are applied only when a transform recreates its target table. Resetting the checkpoint makes the next
-    ;; incremental run perform that rebuild, matching the existing checkpoint-strategy change behavior.
-    (t2/update! :model/Transform transform-id {:last_checkpoint_value nil})))
-
 (defn- pending-status-for-changes
   [changes]
   (cond
     (contains? changes :structured) :update-pending
     (contains? pending-statuses (:status changes)) (:status changes)))
 
-(defn- transform-id
-  [idx]
-  (or (:transform_id idx)
-      (:transform_id (t2/original idx))))
-
 (t2/define-before-insert :model/TableIndex
   [req]
   (merge defaults req))
-
-(t2/define-after-insert :model/TableIndex
-  [idx]
-  (reset-incremental-checkpoint! (:transform_id idx))
-  idx)
 
 (t2/define-before-update :model/TableIndex
   [idx]
   (let [changes (t2/changes idx)
         status  (pending-status-for-changes changes)]
-    (when status
-      (reset-incremental-checkpoint! (transform-id idx)))
     (cond-> idx
       status (assoc :status status
                     :error_message nil))))
@@ -100,10 +78,10 @@
 (defn select-applicable-for-transform
   "Rows whose structured definitions should be applied to `transform-id`'s target table."
   [transform-id]
-  (filter applicable?
-          (t2/select :model/TableIndex
-                     :transform_id transform-id
-                     {:order-by [[:index_name :asc]]})))
+  (t2/select :model/TableIndex
+             :transform_id transform-id
+             :status [:not= :delete-pending]
+             {:order-by [[:index_name :asc]]}))
 
 (defn select-for-verification
   "Rows the current execution can update while verifying indexes.
@@ -127,16 +105,14 @@
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."
   [id]
-  (some-> (t2/select-one :model/TableIndex :id id)
-          (as-> idx (when (applicable? idx) idx))))
+  (t2/select-one :model/TableIndex :id id :status [:not= :delete-pending]))
 
 (defn pending-changes-for-transform?
   "True when `transform-id` has index changes that require a full rebuild to apply."
   [transform-id]
   (boolean
    (when transform-id
-     (some #(contains? pending-statuses (:status %))
-           (t2/select :model/TableIndex :transform_id transform-id)))))
+     (t2/exists? :model/TableIndex :transform_id transform-id :status [:in pending-statuses]))))
 
 (defn mark-runnable-indexes-running!
   "Mark hydrated index requests that this run will apply as running.

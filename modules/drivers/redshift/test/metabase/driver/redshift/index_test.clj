@@ -141,7 +141,7 @@
                 ;; unique per-case table names so the two seams (and parallel runs) don't collide in the shared schema
                 (let [ctas-table   (tx/db-qualified-table-name (:name database) "sk_ctas")
                       create-table (tx/db-qualified-table-name (:name database) "sk_create")
-                      drop!        (fn [t] (jdbc/execute! spec (format "DROP TABLE IF EXISTS \"%s\".\"%s\"" schema t)))]
+                      drop!        (fn [t] (jdbc/execute! spec [(format "DROP TABLE IF EXISTS \"%s\".\"%s\"" schema t)]))]
                   (testing "CTAS seam (compile-transform): run the rendered CTAS, read the sortkey back"
                     (drop! ctas-table)
                     (try

@@ -31,7 +31,7 @@
    [metabase.glossary.api]
    [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
-   [metabase.indexes.api]
+   [metabase.indexes-rest.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
@@ -98,7 +98,7 @@
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
-         metabase.indexes.api/keep-me
+         metabase.indexes-rest.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
@@ -199,7 +199,7 @@
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/health-inspector"     (+auth 'metabase.health-inspector.api)
-   "/index"                (+auth 'metabase.indexes.api)
+   "/index"                (+auth 'metabase.indexes-rest.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)

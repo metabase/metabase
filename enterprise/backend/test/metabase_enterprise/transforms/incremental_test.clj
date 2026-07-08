@@ -725,16 +725,56 @@
                                                                     target transform-type checkpoint-config)
                         schema  (:schema target)]
                     (mt/with-temp [:model/Transform transform payload]
-                      (with-redefs [transforms.execute/hydrate-transform-indexes (constantly indexes)]
-                        (testing "first (full) run creates the declared indexes"
-                          (execute-transform-with-ordering! transform transform-type checkpoint-field
-                                                            {:run-method :manual})
-                          (transforms.tu/wait-for-table table-name 10000)
-                          (is (= expected (physical-indexes (mt/db) schema table-name))))
-                        (testing "append run preserves the indexes"
-                          (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
-                                                        :price 379.99 :created-at "2024-01-20T10:00:00"}]
-                            (let [transform (t2/select-one :model/Transform (:id transform))]
-                              (execute-transform-with-ordering! transform transform-type checkpoint-field
-                                                                {:run-method :manual})
-                              (is (= expected (physical-indexes (mt/db) schema table-name))))))))))))))))))
+                      (t2/insert! :model/TableIndex (for [index indexes]
+                                                      {:transform_id (:id transform)
+                                                       :index_name   (or (:name index) (name (:kind index)))
+                                                       :structured   index}))
+                      (testing "first (full) run creates the declared indexes"
+                        (execute-transform-with-ordering! transform transform-type checkpoint-field
+                                                          {:run-method :manual})
+                        (transforms.tu/wait-for-table table-name 10000)
+                        (is (= expected (physical-indexes (mt/db) schema table-name))))
+                      (testing "append run preserves the indexes"
+                        (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
+                                                      :price 379.99 :created-at "2024-01-20T10:00:00"}]
+                          (let [transform (t2/select-one :model/Transform (:id transform))]
+                            (execute-transform-with-ordering! transform transform-type checkpoint-field
+                                                              {:run-method :manual})
+                            (is (= expected (physical-indexes (mt/db) schema table-name)))))))))))))))))
+
+(deftest ^:synchronized index-added-mid-lifecycle-forces-rebuild-test
+  (testing "an index request created after the watermark is set forces the next run to rebuild and apply it"
+    ;; Nothing resets the watermark here: the pending TableIndex row alone must flip `full-incremental-run?`, so a
+    ;; broken pending-changes gate would leave this run an append and the index would never reach the warehouse.
+    (mt/test-drivers (incremental-index-test-drivers)
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [{:keys [expected physical-indexes]} (index-util/driver-cases driver/*driver*)
+                checkpoint-config (:integer checkpoint-configs)
+                checkpoint-field  (:field-name checkpoint-config)]
+            ;; name-set catalogs only (postgres/mysql); other drivers report shapes this test can't extend generically
+            (when (set? expected)
+              (with-transform-cleanup! [{table-name :name :as target} (target-table-gen "incremental_midrun_idx")]
+                (mt/with-temp [:model/Transform transform (make-incremental-transform-payload
+                                                           "Mid-lifecycle Index Transform"
+                                                           target :mbql checkpoint-config)]
+                  (testing "a first run establishes the watermark"
+                    (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
+                    (transforms.tu/wait-for-table table-name 10000)
+                    (is (some? (get-checkpoint-value (:id transform)))))
+                  (t2/insert! :model/TableIndex {:transform_id (:id transform)
+                                                 :index_name   "mid_run_idx"
+                                                 :structured   {:kind :btree :name "mid_run_idx"
+                                                                :columns [{:name "price"}]}})
+                  (testing "the watermark survives the request untouched"
+                    (is (some? (get-checkpoint-value (:id transform)))))
+                  (testing "the next run rebuilds and the index lands in the warehouse"
+                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (execute-transform-with-ordering! transform :mbql checkpoint-field {:run-method :manual})
+                      (is (contains? (physical-indexes (mt/db) (:schema target) table-name) "mid_run_idx"))
+                      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex
+                                                          :transform_id (:id transform)
+                                                          :index_name "mid_run_idx")))))
+                  (testing "once settled, the run after that appends again"
+                    (let [transform (t2/select-one :model/Transform (:id transform))]
+                      (is (not (transforms-base.u/full-incremental-run? transform))))))))))))))

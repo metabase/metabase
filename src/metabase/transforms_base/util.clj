@@ -71,6 +71,11 @@
   [transform]
   (type-is? (:source transform) :python))
 
+(defn table-target?
+  "True if `transform` writes to a plain table, recreated on every run."
+  [transform]
+  (type-is? (:target transform) :table))
+
 (defn incremental-target?
   "True if `transform` writes to an incremental table."
   [transform]
@@ -97,11 +102,24 @@
   "True when an incremental transform should drop-and-recreate the target rather than append.
   Fires when `last_checkpoint_value` is nil (first run, or after the before-update hook clears the watermark on
   a `checkpoint-filter-field-id` change), or when pending index changes require rebuilding the table to apply
-  physical index state."
+  physical index state.
+
+  The pending-changes check reads the app DB, so execution computes this once
+  (see [[metabase.transforms.execute]]) and stashes it as `:full-incremental-run?` on the transform; when that
+  key is present it is returned as-is, keeping the answer stable for the whole run."
   [{:keys [id] :as transform}]
-  (and (incremental-target? transform)
-       (or (nil? (:last_checkpoint_value transform))
-           (table-index/pending-changes-for-transform? id))))
+  (if (contains? transform :full-incremental-run?)
+    (:full-incremental-run? transform)
+    (and (incremental-target? transform)
+         (or (nil? (:last_checkpoint_value transform))
+             (table-index/pending-changes-for-transform? id)))))
+
+(defn full-create-run?
+  "True when this run (re)creates the target table -- a plain `:table` run or a full-reset incremental run -- so
+  index requests are applied and verified."
+  [transform]
+  (or (table-target? transform)
+      (full-incremental-run? transform)))
 
 ;;; ------------------------------------------------- Table Template Tags -------------------------------------------------
 
@@ -632,12 +650,6 @@
               (mark-index-failed! transform-id index t)
               (throw t))))))))
 
-(defn- full-create-run?
-  "True when this run recreates the target table (a `:table` run or a full-reset incremental run), so its indexes are (re)applied."
-  [transform]
-  (or (= :table (keyword (:type (:target transform))))
-      (full-incremental-run? transform)))
-
 (defn apply-target-indexes!
   "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
   recreates the table; appends keep the live table and its indexes). Runs before the run is marked succeeded, so a
@@ -675,8 +687,13 @@
                 (if (= :delete-row status)
                   (t2/delete! :model/TableIndex :id [:in (map :id rows)])
                   (t2/update! :model/TableIndex :id [:in (map :id rows)]
-                              {:status           status
-                               :last_executed_at :%now}))))
+                              ;; keep error_message in step with the status transition
+                              (cond-> {:status           status
+                                       :last_executed_at :%now}
+                                (= status :succeeded)
+                                (assoc :error_message nil)
+                                (= status :failed)
+                                (assoc :error_message "Index was not found on the target table after the transform ran."))))))
             (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s; leaving %d request(s) unchanged"
                        schema table-name (count managed))))))))
 

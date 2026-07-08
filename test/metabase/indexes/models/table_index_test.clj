@@ -140,3 +140,19 @@
                                                                     :columns [{:name "c"}]}}]
     (is (= #{running-id deleted-id}
            (set (map :id (table-index/select-for-verification transform-id [running-id pending-id])))))))
+
+(deftest select-applicable-for-transform-test
+  (testing "returns the transform's rows ordered by name, excluding delete-pending"
+    (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)
+                   :model/TableIndex {b-id :id} {:transform_id transform-id
+                                                 :index_name   "b_idx"
+                                                 :structured   {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
+                   :model/TableIndex {a-id :id} {:transform_id transform-id
+                                                 :index_name   "a_idx"
+                                                 :structured   {:kind :btree :name "a_idx" :columns [{:name "y"}]}}
+                   :model/TableIndex _ {:transform_id transform-id
+                                        :index_name   "deleted_idx"
+                                        :status       :delete-pending
+                                        :structured   {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}]
+      (is (= [a-id b-id]
+             (map :id (table-index/select-applicable-for-transform transform-id)))))))
