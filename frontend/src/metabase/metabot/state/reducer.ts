@@ -207,11 +207,8 @@ export const metabot = createSlice({
         }
       },
     ),
-    // NOTE: this reducer fn should be made smarter if/when we want to have
-    // metabot's `state` object be able to remove / forget values. currently
-    // we do not rewind the state to the point in time of the original prompt
-    // so if / when this becomes expected, we'll need to do some extra work here
-    // NOTE: this doesn't work in non-streaming contexts right now
+    // only the last turn is rewindable (retry), so a single pre-turn snapshot
+    // is enough to roll `state` back; the server reconstructs it independently
     rewindStateToMessageId: convoReducer(
       (convo, action: ConvoPayloadAction<{ messageId: string }>) => {
         convo.isProcessing = false;
@@ -220,6 +217,10 @@ export const metabot = createSlice({
         const messageIndex = convo.messages.findLastIndex((m) => id === m.id);
         if (messageIndex > -1) {
           convo.messages = convo.messages.slice(0, messageIndex);
+        }
+
+        if (convo.stateBeforeTurn) {
+          convo.state = convo.stateBeforeTurn;
         }
       },
     ),
@@ -356,12 +357,15 @@ export const metabot = createSlice({
         const convo = getRequestConversation(state, action);
         if (convo) {
           convo.isProcessing = true;
+          convo.stateBeforeTurn = convo.state;
         }
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
         const convo = getRequestConversation(state, action);
         if (convo) {
-          convo.state = { ...(action.payload?.state ?? {}) };
+          if (action.payload?.state) {
+            convo.state = { ...action.payload.state };
+          }
           convo.activeToolCalls = [];
           convo.isProcessing = false;
           convo.experimental.developerMessage = "";
@@ -373,7 +377,9 @@ export const metabot = createSlice({
         if (convo) {
           // aborted requests needs special state adjustments
           if (action.payload?.type === "abort") {
-            convo.state = { ...(action.payload?.state ?? {}) };
+            if (action.payload?.state) {
+              convo.state = { ...action.payload.state };
+            }
             appendAgentTurnAborted(convo);
             if (action.payload.unresolved_tool_calls.length > 0) {
               // update message state so that unresolved tools are marked as ended

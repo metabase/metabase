@@ -13,6 +13,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
@@ -144,16 +145,6 @@
   "Sequence of messages in the conversation."
   [:sequential ::message])
 
-(mr/def ::state
-  "Agent state containing queries, charts, chart-configs, todos, transforms, and link-registry."
-  [:map
-   [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
-   [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
-   [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
-   [:todos {:optional true} [:sequential :map]]
-   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]
-   [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]])
-
 (mr/def ::context
   "Context information for the agent."
   [:map-of :keyword :any])
@@ -279,7 +270,7 @@
          (filter #(and (:query-id %) (:query %))))
    (completing
     (fn [mem {:keys [query-id query]}]
-      (memory/remember-query mem query-id query)))
+      (memory/set-query mem query-id query)))
    memory
    parts))
 
@@ -292,12 +283,12 @@
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
     (fn [mem {:keys [chart-id query-id chart-type query]}]
-      (memory/store-chart mem
-                          chart-id
-                          {:chart_id chart-id
-                           :query_id query-id
-                           :queries [query]
-                           :visualization_settings {:chart_type chart-type}})))
+      (memory/set-chart mem
+                        chart-id
+                        {:chart_id chart-id
+                         :query_id query-id
+                         :queries [query]
+                         :visualization_settings {:chart_type chart-type}})))
    memory
    parts))
 
@@ -418,7 +409,8 @@
 
 (defn- init-agent
   "Initialize agent state."
-  [{:keys [messages state metabot-id profile-id context tracking-opts]}]
+  [{:keys [messages state metabot-id profile-id context tracking-opts]
+    external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
         ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
@@ -430,13 +422,8 @@
                          (seed-state context)
                          (seed-chart-configs context)
                          (seed-charts context))
-        memory       (-> (memory/initialize messages seeded context)
-                         (memory/load-queries-from-state seeded)
-                         (memory/load-charts-from-state seeded)
-                         (memory/load-transforms-from-state seeded)
-                         (memory/load-todos-from-state seeded)
-                         (memory/load-link-registry-from-state seeded))
-        memory-atom  (atom memory)
+        memory       (memory/initialize messages seeded context)
+        memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
@@ -515,7 +502,7 @@
           result'            (reduce (xf rf) result llm-call)
           parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
-      (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
+      (swap! memory-atom memory/set-link-registry @link-registry-atom)
       ;; Capture response for debug log
       (when *debug-log*
         (debug-log! {:iteration iteration
@@ -609,10 +596,11 @@
             [:messages ::messages]
             [:profile-id ::profile-id]
             [:metabot-id {:optional true} [:maybe :string]]
-            [:state {:optional true} [:maybe ::state]]
+            [:state {:optional true} [:maybe ::metabot.schema/state]]
             [:context {:optional true} [:maybe ::context]]
             [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
-            [:debug? {:optional true} [:maybe :boolean]]]]
+            [:debug? {:optional true} [:maybe :boolean]]
+            [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}

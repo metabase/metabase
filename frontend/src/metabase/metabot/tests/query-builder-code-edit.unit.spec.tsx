@@ -156,7 +156,6 @@ describe("query builder code edits from omnibot", () => {
             current_time_with_timezone: "2026-03-04T00:00:00Z",
             capabilities: [],
           },
-          state: {},
         }),
       );
     });

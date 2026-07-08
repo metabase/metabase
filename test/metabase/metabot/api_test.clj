@@ -171,7 +171,7 @@
                               http/post                                      (fn [url opts]
                                                                                (real-http-post url (assoc opts :decompress-body false)))
                               metabot.context/create-context                 (fn [ctx & _] ctx)
-                              metabot.persistence/finalize-assistant-turn!   (fn [_conv-id _pk parts & kwargs]
+                              metabot.persistence/finalize-assistant-turn!   (fn [_pk parts & kwargs]
                                                                                (reset! stored-parts parts)
                                                                                (reset! stored-kwargs (apply hash-map kwargs)))
                               sr/async-cancellation-poll-interval-ms         5]
@@ -228,7 +228,7 @@
                           (throw (ex-info "agent setup exploded"
                                           {:status 503 :provider :test})))
                         metabot.persistence/finalize-assistant-turn!
-                        (fn [_conv-id _pk parts & kwargs]
+                        (fn [_pk parts & kwargs]
                           (reset! stored-parts parts)
                           (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
@@ -1053,6 +1053,57 @@
               (is (not-any? (fn [[_ text]] (str/includes? (str text) "superseded-reply")) msgs)
                   "the superseded reply is excluded from the reconstructed history"))))))))
 
+(deftest agent-streaming-reconstructs-state-from-db-test
+  (testing "the loop is seeded from DB-reconstructed state — no client echo — and a retry rewinds it"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [seeded-states (atom [])
+              turn-states   (atom [{:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
+                                   {:queries {"q_1" {:database 1} "q_2" {:database 2}} :todos [{:id "b" :status "done"}]}
+                                   nil])]
+          (with-redefs [agent/run-agent-loop
+                        (fn [{:keys [state memory-atom]}]
+                          (swap! seeded-states conj state)
+                          (let [[turn-state] @turn-states]
+                            (swap! turn-states subvec 1)
+                            ;; mirror the real loop: populate the caller's atom so
+                            ;; finalize can persist this turn's state
+                            (some-> memory-atom
+                                    (reset! {:turn-state (or turn-state {})}))
+                            (cond-> [{:type :start :id "msg-1"}
+                                     {:type :text :text "ok"}]
+                              turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
+            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+              (let [conversation-id (str (random-uuid))
+                    turn-1-state    {:queries {:q_1 {:database 1}} :todos [{:id "a" :status "pending"}]}
+                    first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                          {:message         "make a query"
+                                                           :context         {}
+                                                           :conversation_id conversation-id})
+                    parent-id       (streamed-message-id first-response)
+                    user-ext-id     (streamed-user-message-id first-response)
+                    second-response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                          {:message           "another"
+                                                           :context           {}
+                                                           :conversation_id   conversation-id
+                                                           :parent_message_id parent-id})
+                    second-user-id  (streamed-user-message-id second-response)]
+                (is (string? user-ext-id))
+                (is (= {} (first @seeded-states))
+                    "a new conversation seeds the loop with empty state")
+                (is (= turn-1-state (second @seeded-states))
+                    "the follow-up turn is seeded from the DB partial, keywordized — no client echo")
+                (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                      {:message          "another"
+                                       :context          {}
+                                       :conversation_id  conversation-id
+                                       :retry_message_id second-user-id})
+                (is (= turn-1-state (nth @seeded-states 2))
+                    "retrying the last prompt rewinds state to before its superseded reply")
+                (is (= turn-1-state (metabot.persistence/conversation-state
+                                     (metabot.persistence/live-messages conversation-id)))
+                    "reconstruction excludes the soft-deleted turn's state")))))))))
+
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
     (is (= {"gpt-4" {:prompt 250 :completion 50}}
@@ -1114,7 +1165,7 @@
                                             conv-id "internal"
                                             {:role "user" :content "hi"})]
             (metabot.persistence/finalize-assistant-turn!
-             conv-id assistant-msg-id
+             assistant-msg-id
              [{:type :start :id "msg-1"}
               {:type :text :text "Hello"}
               ;; SSE usage parts carry bare model names (from provider API response)
@@ -1140,7 +1191,7 @@
              (:usage msg))))))
 
 (deftest finalize-assistant-turn-data-part-filtering-test
-  (testing "persistable data parts land in MetabotMessage.data; state is salvaged to conversation and excluded from data"
+  (testing "persistable data parts land in MetabotMessage.data; the turn-state lands on the row and is excluded from data"
     (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
       (let [conv-id (str (random-uuid))]
         (try
@@ -1149,7 +1200,7 @@
                                               conv-id "internal"
                                               {:role "user" :content "hi"})]
               (metabot.persistence/finalize-assistant-turn!
-               conv-id assistant-msg-id
+               assistant-msg-id
                [{:type :start :id "msg-1"}
                 {:type :text :text "Hi"}
                 {:type :data :data-type "navigate_to" :data "/question/1"}
@@ -1160,9 +1211,9 @@
                 {:type :data :data-type "static_viz" :version 1 :data {:entity_id 1}}
                 {:type :data :data-type "state" :data {:step 1}}
                 {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 1 :completionTokens 1}}
-                {:type :finish}])
+                {:type :finish}]
+               :turn-state {:step 1})
               (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
-                    conv       (t2/select-one :model/MetabotConversation :id conv-id)
                     part-types (into #{} (map :type) (:data msg))
                     data-types (into #{}
                                      (keep #(when (str/starts-with? % "data-") (subs % 5)))
@@ -1174,8 +1225,8 @@
                     "text parts survive")
                 (is (not-any? part-types #{"start" "usage" "finish"})
                     "stream metadata is dropped")
-                (is (= {:step 1} (:state conv))
-                    "state value is salvaged to MetabotConversation.state"))))
+                (is (= {:step 1} (:state msg))
+                    "the turn's partial state lands on the message row"))))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
             (t2/delete! :model/MetabotConversation :id conv-id)))))))

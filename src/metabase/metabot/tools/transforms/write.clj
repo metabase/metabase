@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.util.log :as log]))
 
@@ -159,7 +160,7 @@ def transform():
                               database_id (assoc-in [:source :database] database_id))]
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)
-      (swap! memory-atom assoc-in [:state :transforms (str transform_id)] suggested-transform))
+      (swap! memory-atom memory/set-transform transform_id suggested-transform))
     (log/debug "SQL transform written" {:transform-id transform_id
                                         :sql-length (count new-sql)})
     {:structured-output {:transform suggested-transform

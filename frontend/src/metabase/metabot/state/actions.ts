@@ -23,6 +23,7 @@ import type {
   MetabotAgentResponse,
   MetabotChatContext,
   MetabotCodeEditorBufferContext,
+  MetabotStateContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
 
@@ -394,7 +395,7 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { agentId, ...request } = payload;
 
-    let state = {};
+    let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
     try {
       // store error object streamed across the wire
@@ -576,8 +577,7 @@ export const sendAgentRequest = createAsyncThunk<
           conversation_id: request.conversation_id,
           unresolved_tool_calls:
             response?.toolCalls.filter((tc) => tc.state === "call") ?? [],
-          // reuse new state if we recieved it
-          state: Object.keys(state).length === 0 ? request.state : state,
+          state,
           shouldRetry: false,
         });
       }

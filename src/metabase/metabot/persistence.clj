@@ -5,6 +5,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
@@ -92,7 +93,8 @@
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to the v2 at-rest
   format. Stream metadata (`:usage`/`:finish`/`:error`) and `state` data parts
-  (salvaged separately into `MetabotConversation.state`) carry no history value."
+  (the turn's state is persisted separately into the row's `state` column) carry
+  no history value."
   [parts]
   (->> parts
        (remove #(#{:usage :finish :error} (:type %)))
@@ -336,10 +338,25 @@
            :assistant-external-id assistant-external-id
            :user-external-id      retry-message-external-id})))))
 
+;;; ---------------------------------------- Conversation state ----------------------------------------
+
+(defn- replayable-assistant-row?
+  [{:keys [role error finished]}]
+  (and (= :assistant role)
+       (nil? error)
+       (some? finished)))
+
+(defn conversation-state
+  "Merge state values of all replayable messages"
+  [messages]
+  (->> messages
+       (filter replayable-assistant-row?)
+       (keep :state)
+       (reduce memory/merge-states {})))
+
 (defn finalize-assistant-turn!
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final
-  streamed parts. Also writes a fresh `state` value to the conversation row when
-  a state data part is present in `parts`.
+  streamed parts.
 
   `parts` should be the post-[[combine-text-parts-xf]] parts vector. Stream metadata
   (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
@@ -355,41 +372,38 @@
      turns; either way the placeholder's `:finished` flips from NULL to a
      concrete boolean so it stops being filtered as in-flight.
   - `:error` — JSON-serializable error payload; encoded into the `error` column.
+  - `:turn-state` — the state this turn produced; stored in the `state` column
+     when non-empty.
   - `:slack-msg-id`, `:channel-id` — backfill onto the assistant row when known
      at completion (Slack response posts mid-stream)."
-  [conversation-id assistant-msg-id parts
-   & {:keys [profile-id finished? error slack-msg-id channel-id]
+  [assistant-msg-id parts
+   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state]
       :or   {finished? true}}]
-  (let [state-part (u/seek #(and (= :data (:type %))
-                                 (= "state" (:data-type %)))
-                           parts)
-        usage      (extract-usage parts)
+  (let [turn-state    (not-empty turn-state)
+        usage         (extract-usage parts)
         ;; used-table extraction needs the raw internal parts before conversion trims
         ;; tool outputs, so it can see keys the stored format discards, e.g. `:transform`
-        kept-parts (->> parts
-                        (remove #(#{:start :usage :finish :error} (:type %)))
-                        (filter streaming/persistable-data-part?))
-        content    (parts->storable-content parts)]
+        kept-parts    (->> parts
+                           (remove #(#{:start :usage :finish :error} (:type %)))
+                           (filter streaming/persistable-data-part?))
+        content       (parts->storable-content parts)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
-    (t2/with-transaction [_conn]
-      (when state-part
-        (t2/update! :model/MetabotConversation conversation-id
-                    {:state (:data state-part)}))
-      (t2/update! :model/MetabotMessage assistant-msg-id
-                  (cond-> {:data         content
-                           :data_version schema.v2/current-data-version
-                           :usage        usage
-                           :total_tokens (->> (vals usage)
-                                              (map #(+ (:prompt %) (:completion %)))
-                                              (reduce + 0))
-                           :finished     (boolean finished?)
-                           :error        (safe-encode-error error)}
-                    slack-msg-id (assoc :slack_msg_id slack-msg-id)
-                    channel-id   (assoc :channel_id channel-id))))
+    (t2/update! :model/MetabotMessage assistant-msg-id
+                (cond-> {:data         content
+                         :data_version schema.v2/current-data-version
+                         :usage        usage
+                         :total_tokens (->> (vals usage)
+                                            (map #(+ (:prompt %) (:completion %)))
+                                            (reduce + 0))
+                         :finished     (boolean finished?)
+                         :error        (safe-encode-error error)}
+                  turn-state   (assoc :state turn-state)
+                  slack-msg-id (assoc :slack_msg_id slack-msg-id)
+                  channel-id   (assoc :channel_id channel-id)))
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
-    ;; UPDATE transaction commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
+    ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
     (used-tables/record-used-tables! assistant-msg-id kept-parts)))
 
@@ -437,13 +451,6 @@
            :tool_call_id toolCallId
            :content      content}])))))
 
-(defn- replayable-assistant-row?
-  "Drops errored replies and in-flight placeholders (`finished` nil); keeps
-  successful and aborted (`finished` false) replies."
-  [{:keys [error finished]}]
-  (and (nil? error)
-       (some? finished)))
-
 (defn- user-row->llm-message
   [{:keys [data]}]
   {:role    :user
@@ -484,12 +491,13 @@
 
 (mu/defn history :- ::metabot.schema/messages
   "Reconstruct a conversation's LLM message history from its live
-  `metabot_message` rows: errored and in-flight turns are dropped, aborted
-  turns replay their partial content."
-  [conversation-id :- :string]
+  `metabot_message` `messages` (in reader order, e.g. from [[live-messages]]):
+  errored and in-flight turns are dropped, aborted turns replay their partial
+  content."
+  [messages :- [:sequential :map]]
   (into []
         (mapcat turn->llm-messages)
-        (rows->turns (live-messages conversation-id))))
+        (rows->turns messages)))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."
@@ -682,13 +690,10 @@
   "Conversation-with-chat-messages snapshot. Nil if not found."
   [conversation-id]
   (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
-    {:conversation_id (:id conv)
-     :created_at      (:created_at conv)
-     :summary         (:summary conv)
-     :user_id         (:user_id conv)
-     :chat_messages   (messages->chat-messages
-                       (t2/select :model/MetabotMessage
-                                  {:where    [:and
-                                              [:= :conversation_id conversation-id]
-                                              [:= :deleted_at nil]]
-                                   :order-by [[:created_at :asc] [:id :asc]]}))}))
+    (let [messages (live-messages conversation-id)]
+      {:conversation_id (:id conv)
+       :created_at      (:created_at conv)
+       :summary         (:summary conv)
+       :user_id         (:user_id conv)
+       :state           (conversation-state messages)
+       :chat_messages   (messages->chat-messages messages)})))

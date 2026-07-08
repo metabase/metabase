@@ -24,10 +24,10 @@
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
-  skipped because their value is salvaged separately into MetabotConversation.state;
-  duplicating the blob in every message would bloat storage. Non-data parts are
-  always persistable here; the caller is responsible for filtering stream-level
-  metadata (`:start`, `:usage`, `:finish`) separately."
+  skipped because their value is diffed separately into MetabotMessage.state;
+  duplicating the full blob in the message data would bloat storage. Non-data
+  parts are always persistable here; the caller is responsible for filtering
+  stream-level metadata (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
             (= state-type (:data-type part)))))

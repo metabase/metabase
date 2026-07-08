@@ -2,7 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
-import { getMetabotConversation } from "metabase/metabot/state";
+import {
+  getMetabotConversation,
+  getMetabotRequestState,
+} from "metabase/metabot/state";
 
 import {
   chatMessages,
@@ -129,6 +132,58 @@ describe("metabot > retry", () => {
     expect(afterMessages).not.toHaveTextContent(/Let me think.../);
     expect(afterMessages).not.toHaveTextContent(/You, but don't tell anyone./);
     expect(afterMessages).toHaveTextContent(/The answer is always you./);
+  });
+
+  it("should rewind convo state to before the retried turn", async () => {
+    const { store } = setup();
+    const getConvoReqState = () =>
+      getMetabotRequestState(store.getState(), "omnibot");
+
+    mockAgentEndpoint({
+      events: [
+        ...turnEvents({
+          messageId: "msg_1",
+          userMessageId: "user_msg_1",
+          text: "first reply",
+        }).slice(0, -1),
+        { type: "data-state", data: { todos: [{ id: "a" }] } },
+        { type: "finish", finishReason: "stop" },
+      ],
+    });
+    await enterChatMessage("first prompt");
+    expect(await screen.findByText("first reply")).toBeInTheDocument();
+    expect(getConvoReqState()).toEqual({ todos: [{ id: "a" }] });
+
+    mockAgentEndpoint({
+      events: [
+        ...turnEvents({
+          messageId: "msg_2",
+          userMessageId: "user_msg_2",
+          text: "second reply",
+        }).slice(0, -1),
+        { type: "data-state", data: { todos: [{ id: "b" }] } },
+        { type: "finish", finishReason: "stop" },
+      ],
+    });
+    await enterChatMessage("second prompt");
+    expect(await screen.findByText("second reply")).toBeInTheDocument();
+    expect(getConvoReqState()).toEqual({ todos: [{ id: "b" }] });
+
+    // the retried turn's response carries no state part, so the pre-turn
+    // snapshot is what the convo is left with
+    mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_3",
+        userMessageId: "user_msg_2",
+        text: "regenerated reply",
+      }),
+    });
+    const messages = await chatMessages();
+    await userEvent.click(
+      await within(messages.at(-1)!).findByTestId("metabot-chat-message-retry"),
+    );
+    expect(await screen.findByText("regenerated reply")).toBeInTheDocument();
+    expect(getConvoReqState()).toEqual({ todos: [{ id: "a" }] });
   });
 
   it("should stamp the user message with the start event's userMessageId", async () => {
