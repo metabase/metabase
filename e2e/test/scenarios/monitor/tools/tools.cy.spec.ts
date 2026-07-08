@@ -386,7 +386,7 @@ describe("monitor > tools > erroring questions ", () => {
   };
 
   function fixQuestion(name: string) {
-    cy.findByTestId("visualization-root").findByText(name).click();
+    cy.findByTestId("erroring-questions-table").findByText(name).click();
 
     cy.findByText("Open Editor").click();
 
@@ -402,7 +402,7 @@ describe("monitor > tools > erroring questions ", () => {
 
   function selectQuestion(name: string) {
     cy.findByText(name)
-      .closest("tr")
+      .closest('[data-testid="erroring-question"]')
       .within(() => {
         cy.findByRole("checkbox").click().should("be.checked");
       });
@@ -419,7 +419,6 @@ describe("monitor > tools > erroring questions ", () => {
 
     describe("without broken questions", () => {
       it("should render the Monitor nav and navigate to Erroring questions by clicking on it", () => {
-        // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
         cy.visit("/monitor");
 
         cy.findByTestId("monitor-nav")
@@ -429,11 +428,12 @@ describe("monitor > tools > erroring questions ", () => {
 
         cy.log("test no results state");
 
-        cy.findByTestId("visualization-root").findByText("No results");
-        cy.button("Rerun Selected").should("be.disabled");
-        cy.findByPlaceholderText("Error contents").should("be.disabled");
-        cy.findByPlaceholderText("DB name").should("be.disabled");
-        cy.findByPlaceholderText("Collection name").should("be.disabled");
+        cy.findByTestId("erroring-questions-table").findByText("No results");
+        // nothing selected -> the bulk action bar (and its button) is hidden
+        cy.button("Rerun Selected").should("not.exist");
+        cy.findByPlaceholderText("Error contents").should("be.enabled");
+        cy.findByPlaceholderText("DB name").should("be.enabled");
+        cy.findByPlaceholderText("Collection name").should("be.enabled");
       });
     });
 
@@ -456,20 +456,21 @@ describe("monitor > tools > erroring questions ", () => {
         cy.wait("@dataset");
 
         // The question is still there because we didn't fix it
-        cy.findByTestId("visualization-root").findByText(
+        cy.findByTestId("erroring-questions-table").findByText(
           brokenQuestionDetails.name,
         );
-        cy.button("Rerun Selected").should("be.disabled");
+        // rerunning clears the selection, so the bulk action bar closes
+        cy.button("Rerun Selected").should("not.exist");
 
-        cy.findByPlaceholderText("Error contents").should("not.be.disabled");
-        cy.findByPlaceholderText("DB name").should("not.be.disabled");
+        cy.findByPlaceholderText("Error contents").should("be.enabled");
+        cy.findByPlaceholderText("DB name").should("be.enabled");
         cy.findByPlaceholderText("Collection name")
-          .should("not.be.disabled")
+          .should("be.enabled")
           .type("foo");
 
         cy.wait("@dataset");
 
-        cy.findByTestId("visualization-root").findByText("No results");
+        cy.findByTestId("erroring-questions-table").findByText("No results");
 
         cy.findByPlaceholderText("Collection name").clear();
 
@@ -483,7 +484,7 @@ describe("monitor > tools > erroring questions ", () => {
 
         cy.wait("@dataset");
 
-        cy.findByTestId("visualization-root").findByText("No results");
+        cy.findByTestId("erroring-questions-table").findByText("No results");
       });
     });
   });
