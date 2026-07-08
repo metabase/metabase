@@ -9,6 +9,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations.metric-joins :as repr.metric-joins]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
@@ -16,7 +17,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.query-processor.middleware.metrics :as metrics]))
 
 (set! *warn-on-reflection* true)
 
@@ -1116,6 +1118,35 @@
               redo-q   (:query (:structured-output redo))]
           (is (= exported (get-in redo [:structured-output :query-json])))
           (is (= 1 (count (get-in redo-q [:stages 0 :joins]))) "still exactly one join after round-trip"))))))
+
+(deftest metric-join-inheritance-dedupes-at-execution-test
+  (testing (str "when the query processor re-expands the metric at execution, its implicit-join "
+                "splicer adds NO second join: the join construct inherited carries the same "
+                "[fk-field-id alias] as the metric's own join, so re-expansion is a no-op rather "
+                "than producing two joins (BOT-1612)")
+    (with-metric-mp-and-stubs!
+      (fn []
+        (let [constructed  (:query (:structured-output
+                                    (construct/execute-representations-query
+                                     (metric-query-with-joined-breakout))))
+              metric-query (repr.metric-joins/metric-definition-query mp-with-metric 700)
+              inherited    (get-in constructed [:stages 0 :joins])
+              ;; `#'metrics/include-implicit-joins` is the exact query-processor code that splices a
+              ;; referenced metric's joins into the consuming stage at execution time. Running it
+              ;; against the already-constructed query proves the inherited join deduplicates rather
+              ;; than doubling - which is what the metric-expansion middleware does end to end.
+              re-expanded  (#'metrics/include-implicit-joins constructed 0 metric-query)]
+          (testing "construction inherited exactly one join, targeting CAMPAIGNS"
+            (is (= 1 (count inherited)))
+            (is (= 30 (get-in (first inherited) [:stages 0 :source-table]))))
+          (testing "the inherited join matches the metric definition's join on [fk-field-id alias]"
+            (let [metric-join (first (lib/joins metric-query -1))]
+              (is (= [(:fk-field-id metric-join) (:alias metric-join)]
+                     [(:fk-field-id (first inherited)) (:alias (first inherited))])
+                  "the QP dedupes joins by [fk-field-id alias]; these must match")))
+          (testing "the QP's implicit-join splicer adds no second join - re-expansion is a no-op"
+            (is (= 1 (count (lib/joins re-expanded 0)))
+                "still exactly one join after the query processor re-splices the metric")))))))
 
 (deftest joined-breakout-without-metric-still-errors-test
   (testing "metric-join deferral is metric-gated: a joined-table breakout without a metric still errors :no-fk-path"

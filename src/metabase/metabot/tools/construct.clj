@@ -390,26 +390,36 @@
   query processor's inheritance helper, which dedupes so re-expansion at execution is a no-op) and
   stamp the matching `:join-alias` onto the field. Only fires when the consumer query actually
   references a foreign table — a plain metric aggregation inherits nothing. Best-effort: metrics
-  that can't be inherited (multi-stage, model-sourced, base-table mismatch) are skipped."
+  that can't be inherited (multi-stage, model-sourced, base-table mismatch) are skipped.
+
+  Returns early for any stage with no `[:metric …]` aggregation, detected by scanning the raw
+  aggregation data before touching a schema-validating `lib` fn. That early exit matters: this runs
+  before the downstream `canRun`/`:query-not-runnable` gate, and under Malli instrumentation the
+  `lib` accessors below would THROW on a not-yet-runnable query (e.g. an `offset` misplaced in
+  `expressions:`) — pre-empting that gate's humanized error. A metric-free query has nothing to
+  inherit anyway, so we hand it straight to the gate untouched."
   [query mp]
-  (let [stage-index        0
-        query-source-table (lib/primary-source-table-id query)
-        needed-tables      (when query-source-table
-                             (bare-foreign-field-table-ids query mp stage-index query-source-table))]
-    (if (empty? needed-tables)
+  (let [stage-index 0
+        metric-ids  (aggregation-metric-ids (get-in query [:stages stage-index :aggregation]))]
+    (if (empty? metric-ids)
       query
-      (reduce
-       (fn [q metric-id]
-         (if-let [mq (metric-base-query mp metric-id)]
-           (if (= (lib/primary-source-table-id mq) query-source-table)
-             (let [before-aliases (into #{} (map :alias) (lib/joins q stage-index))
-                   q'             (repr.metric-joins/include-implicit-joins q stage-index mq)
-                   added-joins    (remove (comp before-aliases :alias) (lib/joins q' stage-index))]
-               (stamp-metric-join-aliases q' mp stage-index added-joins))
-             q)
-           q))
-       query
-       (aggregation-metric-ids (lib/aggregations query stage-index))))))
+      (let [query-source-table (lib/primary-source-table-id query)
+            needed-tables      (when query-source-table
+                                 (bare-foreign-field-table-ids query mp stage-index query-source-table))]
+        (if (empty? needed-tables)
+          query
+          (reduce
+           (fn [q metric-id]
+             (if-let [mq (metric-base-query mp metric-id)]
+               (if (= (lib/primary-source-table-id mq) query-source-table)
+                 (let [before-aliases (into #{} (map :alias) (lib/joins q stage-index))
+                       q'             (repr.metric-joins/include-implicit-joins q stage-index mq)
+                       added-joins    (remove (comp before-aliases :alias) (lib/joins q' stage-index))]
+                   (stamp-metric-join-aliases q' mp stage-index added-joins))
+                 q)
+               q))
+           query
+           metric-ids))))))
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
