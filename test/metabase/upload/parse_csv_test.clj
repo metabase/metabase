@@ -45,7 +45,20 @@
   (testing "whitespace-only cells → nil"
     (let [{:keys [rows]} (upload/parse-csv "n\n   \n"
                                            (cols->header-fn [{:name "n" :base-type :type/Integer}]))]
-      (is (= [[nil]] rows)))))
+      (is (= [[nil]] rows))))
+  (testing "the boolean parser accepts yes/no"
+    (let [{:keys [rows]} (upload/parse-csv "b\ntrue\nfalse\nyes\nno\n"
+                                           (cols->header-fn [{:name "b" :base-type :type/Boolean}]))]
+      (is (= [[true] [false] [true] [false]] rows))))
+  (testing "zero and false are values, not blanks — never nil"
+    (let [{:keys [rows]} (upload/parse-csv "count,flag\n0,false\n"
+                                           (cols->header-fn [{:name "count" :base-type :type/Integer}
+                                                             {:name "flag"  :base-type :type/Boolean}]))]
+      (is (= [[(biginteger 0) false]] rows))))
+  (testing ":type/BigInteger parses to BigInteger"
+    (let [{:keys [rows]} (upload/parse-csv "n\n42\n"
+                                           (cols->header-fn [{:name "n" :base-type :type/BigInteger}]))]
+      (is (instance? BigInteger (ffirst rows))))))
 
 (deftest parse-csv-file-source-bom-test
   (testing "File source: UTF-8 BOM is stripped before the header is read"
@@ -78,6 +91,11 @@
                                                 (reset! header* header)
                                                 []))]
       (is (nil? @header*))
+      (is (= [] rows))))
+  (testing "header-only source → empty :rows"
+    (let [{:keys [rows]} (upload/parse-csv "a,b\n"
+                                           (cols->header-fn [{:name "a" :base-type :type/Integer}
+                                                             {:name "b" :base-type :type/Text}]))]
       (is (= [] rows))))
   (testing "a throw from header->columns propagates unchanged, before any parsing"
     (let [e (is (thrown? clojure.lang.ExceptionInfo

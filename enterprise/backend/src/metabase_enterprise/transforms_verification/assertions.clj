@@ -105,11 +105,10 @@
   Returns `{<name-str> <count-long> ...}`."
   [db-id sql]
   (log/debug "Executing combined assertion statement" {:db-id db-id})
-  (let [result (qp/process-query (execute/native-query db-id sql))]
-    (when (not= :completed (:status result))
-      (throw (errors/ex ::errors/assertion-execution-failed
-                        (str "Combined assertion query failed: QP returned " (pr-str (:status result)))
-                        {:qp-status (:status result)})))
+  (let [result (execute/run-native! (execute/native-query db-id sql)
+                                    ::errors/assertion-execution-failed
+                                    "Combined assertion query failed"
+                                    {})]
     ;; Result rows: [assertion-name failing-count]
     (into {}
           (map (fn [[assertion-name failing-count]]

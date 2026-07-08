@@ -50,6 +50,17 @@
    ;; assertions-parse-error fires at request-parse time (malformed JSON / missing fields).
    ::errors/assertions-parse-error      400})
 
+(defn- throw-400!
+  "Throw an untyped 400 `ex-info` carrying `message` and `ex-data`."
+  [message ex-data]
+  (throw (ex-info message (merge {:status-code 400} ex-data))))
+
+(defn- check!
+  "[[throw-400!]] with `message` and `ex-data` unless `ok?`."
+  [ok? message ex-data]
+  (when-not ok?
+    (throw-400! message ex-data)))
+
 (defn- part->json
   "Slurp a multipart part (a ring multipart map, a `java.io.File`, or a string)
   and decode it as JSON with `decode-fn`. On invalid JSON throws a 400 carrying
@@ -60,8 +71,7 @@
     (try
       (decode-fn text)
       (catch Exception _
-        (throw (ex-info error-msg
-                        (merge {:status-code 400 :raw-text text} extra-ex-data)))))))
+        (throw-400! error-msg (merge {:raw-text text} extra-ex-data))))))
 
 (defn parse-source-ids
   "Parse the `sources` multipart part — a JSON array of selected source transform
@@ -70,11 +80,9 @@
   Throws 400 on malformed JSON or a non-positive-int element."
   [sources-part]
   (let [validate-ids! (fn [ids]
-                        (when-not (and (sequential? ids)
-                                       (every? pos-int? ids))
-                          (throw (ex-info (tru "''sources'' must be a JSON array of positive transform ids.")
-                                          {:status-code 400
-                                           :sources     ids}))))]
+                        (check! (and (sequential? ids) (every? pos-int? ids))
+                                (tru "''sources'' must be a JSON array of positive transform ids.")
+                                {:sources ids}))]
     (if (nil? sources-part)
       #{}
       (let [ids (part->json sources-part json/decode
@@ -87,17 +95,15 @@
   (fn parse-kv [acc k v]
     (let [validate-table-id!
           (fn [table-id]
-            (when-not (and table-id (pos? table-id))
-              (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
-                              {:status-code 400
-                               :part-name   k}))))
+            (check! (and table-id (pos? table-id))
+                    (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
+                    {:part-name k}))
           validate-tempfile!
           (fn [tempfile]
             ;; A plain form field has no :tempfile; letting nil through NPEs at CSV-read time.
-            (when (nil? tempfile)
-              (throw (ex-info (tru "Multipart part ''{0}'' must be a file upload." k)
-                              {:status-code 400
-                               :part-name   k}))))]
+            (check! (some? tempfile)
+                    (tru "Multipart part ''{0}'' must be a file upload." k)
+                    {:part-name k}))]
       (cond
         ;; Reserved keys handled separately — skip.
         (contains? reserved k)
@@ -114,9 +120,8 @@
 
         ;; Anything else is unknown.
         :else
-        (throw (ex-info (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
-                        {:status-code 400
-                         :part-name   k}))))))
+        (throw-400! (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
+                    {:part-name k})))))
 
 (defn parse-input-table-ids
   "Extract input fixture files from the multipart params.
@@ -139,9 +144,8 @@
   [options-part]
   (let [validate-keys! (fn [opts]
                          (when-let [unknown (seq (remove #{:ignore_columns} (keys opts)))]
-                           (throw (ex-info (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
-                                           {:status-code  400
-                                            :unknown-keys unknown}))))]
+                           (throw-400! (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
+                                       {:unknown-keys unknown})))]
     (if (nil? options-part)
       {}
       (let [opts (part->json options-part json/decode+kw

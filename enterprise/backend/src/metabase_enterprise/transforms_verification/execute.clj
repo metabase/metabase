@@ -24,6 +24,18 @@
    (cond-> (lib/native-query (lib-be/application-database-metadata-provider db-id) sql)
      (seq params) (lib/update-query-stage 0 assoc :params params))))
 
+(defn run-native!
+  "Execute `query` via the QP; return the full result map. Throws `error-type`
+  on any non-`:completed` status — message is `failure-msg` suffixed with the
+  QP status, ex-data is `ex-data-map` plus `:qp-status`."
+  [query error-type failure-msg ex-data-map]
+  (let [result (qp/process-query query)]
+    (when (not= :completed (:status result))
+      (throw (errors/ex error-type
+                        (str failure-msg ": QP returned " (pr-str (:status result)))
+                        (assoc ex-data-map :qp-status (:status result)))))
+    result))
+
 (defn assert-all-test-tables!
   "Assert that every table name in `names-to-check` satisfies
   `scratch/test-table-name?`; throws `::errors/pre-execution-guard-failed` on any failure.
@@ -70,19 +82,14 @@
   `driver` is the driver keyword; `output-target` is a `{:schema :table :db}` spec
   as returned by `scratch-output-target`."
   [db-id driver output-target]
-  (let [sql    (str "SELECT * FROM " (scratch/spec->sql-ref driver output-target))
-        ;; format-rows renders temporals as report-timezone-shifted strings, which
-        ;; would spuriously mismatch the fixtures' UTC-canonicalized wall times on
-        ;; any non-UTC instance. Raw java.time objects canonicalize TZ-safely.
-        result (qp/process-query (assoc (native-query db-id sql)
-                                        :middleware {:format-rows? false}))]
-    (when (not= :completed (:status result))
-      (throw (errors/ex ::errors/execution-failed
-                        (str "Failed to read back scratch output table " (pr-str (:table output-target))
-                             ": QP returned " (pr-str (:status result)))
-                        {:qp-status    (:status result)
-                         :output-table (:table output-target)})))
-    result))
+  (let [sql (str "SELECT * FROM " (scratch/spec->sql-ref driver output-target))]
+    ;; format-rows renders temporals as report-timezone-shifted strings, which
+    ;; would spuriously mismatch the fixtures' UTC-canonicalized wall times on
+    ;; any non-UTC instance. Raw java.time objects canonicalize TZ-safely.
+    (run-native! (assoc (native-query db-id sql) :middleware {:format-rows? false})
+                 ::errors/execution-failed
+                 (str "Failed to read back scratch output table " (pr-str (:table output-target)))
+                 {:output-table (:table output-target)})))
 
 (defn actual->schema
   "Derive the `parse-fixture` target-schema shape (`{:name :base-type :nullable?}`) from QP result cols.

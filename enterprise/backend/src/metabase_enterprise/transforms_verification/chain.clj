@@ -32,7 +32,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.core :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -208,15 +207,11 @@
   (log/debug "Running card query under scratch override" {:db-id db-id :driver driver})
   ;; Report-TZ-shifted temporal strings would spuriously mismatch the fixtures;
   ;; keep rows as java.time objects.
-  (let [result (qp/process-query (assoc (execute/native-query db-id card-sql)
-                                        :middleware {:format-rows? false}))]
-    (when (not= :completed (:status result))
-      (throw (errors/ex ::errors/execution-failed
-                        (str "Card query failed during test run: QP returned "
-                             (pr-str (:status result)))
-                        {:qp-status (:status result)
-                         :card-id   card-id})))
-    result))
+  (execute/run-native! (assoc (execute/native-query db-id card-sql)
+                              :middleware {:format-rows? false})
+                       ::errors/execution-failed
+                       "Card query failed during test run"
+                       {:card-id card-id}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Shared run frame

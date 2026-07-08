@@ -457,7 +457,7 @@
   metabase-enterprise.transforms-verification.chain-test/with-single-native-transform           clojure.core/let
   metabase-enterprise.transforms-verification.chain-test/with-enrich-card                       clojure.core/fn
   metabase-enterprise.transforms-verification.chain-test/with-enrich-mbql-card                  clojure.core/fn
-  metabase-enterprise.transforms-verification.card-chain-test/with-enrich-topology              clojure.core/fn
+  metabase-enterprise.transforms-verification.card-chain-test/with-card-chain                   clojure.core/fn
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
