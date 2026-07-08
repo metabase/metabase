@@ -1,5 +1,6 @@
 // NOTE: this file is used on the frontend and backend and there are some
-// limitations. See frontend/src/metabase-shared/color_selector for details
+// limitations. On the backend it is bundled into the static-viz bundle and
+// called via getCellBackgroundColors; see frontend/src/metabase/static-viz/host-api.ts.
 
 import Color from "color";
 

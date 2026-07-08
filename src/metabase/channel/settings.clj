@@ -337,3 +337,25 @@
   :getter     (fn [] (boolean (slack-app-token)))
   :export?    false
   :setter     :none)
+
+(defsetting static-viz-renderer-mode
+  "How static visualizations (subscription/alert charts and pulse table cell colors) are rendered:
+  `graalvm` runs the JavaScript in-process on a pooled GraalVM context (default), or `remote` makes HTTP
+  calls to an external static-viz service (see static-viz-renderer-remote-url)."
+  :type       :keyword
+  :visibility :internal
+  :default    :graalvm
+  :export?    false
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:graalvm :remote} (keyword new-value))
+                          "Invalid static-viz-renderer-mode! Only values of graalvm and remote are allowed."))
+                (setting/set-value-of-type! :keyword :static-viz-renderer-mode new-value)))
+
+(defsetting static-viz-renderer-remote-url
+  "Base URL of the external static-viz service used when static-viz-renderer-mode is `remote`, e.g.
+  `http://localhost:3001`."
+  :type       :string
+  :encryption :no
+  :visibility :internal
+  :export?    false)

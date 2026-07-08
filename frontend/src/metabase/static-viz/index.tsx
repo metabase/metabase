@@ -1,4 +1,4 @@
-import "./mock-environment";
+import "./environment";
 import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";
@@ -22,6 +22,7 @@ import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import {
   createDataSource,
   getVisualizationColumns,
@@ -38,6 +39,7 @@ import type {
   FormattingSettings,
   GeoJSONData,
   RawSeries,
+  RowValue,
   SettingKey,
   TokenFeatures,
   VisualizerDataSourceId,
@@ -68,10 +70,7 @@ type RenderChartDashcardSettings = DashCardVisualizationSettings & {
 /**
  * @deprecated use RenderChart instead
  */
-export function LegacyRenderChart(
-  type: LegacyStaticChartType,
-  options: unknown,
-) {
+function LegacyRenderChart(type: LegacyStaticChartType, options: unknown) {
   return ReactDOMServer.renderToStaticMarkup(
     <LegacyStaticChart type={type} options={options} />,
   );
@@ -125,7 +124,7 @@ function getVisualizerRawSeries(
   ];
 }
 
-export function RenderChart(
+function RenderChart(
   rawSeries: RawSeries,
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
@@ -217,5 +216,80 @@ export function RenderChart(
       height={options.height}
       fitWithinBounds={options.fitWithinBounds}
     />,
+  );
+}
+
+// Host-facing API — the surface the JVM backends call, via GraalVM (MetabaseStaticViz.<fn>) or the
+// remote HTTP server (metabase-static-viz/app.ts). Every argument is a JSON string and every return
+// value is a string.
+
+// Renders any visualization. Most display types go through the isomorphic RenderChart; legacy funnel
+// and gauge are folded in here via LegacyRenderChart (the isomorphic renderer can't render gauge, and
+// its `funnel` is a different chart). The request's `kind` selects the path. Always returns a JSON
+// `{type, content}` string.
+export function visualization(requestJSON: string): string {
+  const request = JSON.parse(requestJSON);
+  let content: string;
+  switch (request.kind) {
+    case "funnel":
+      content = LegacyRenderChart("funnel", {
+        data: request.data,
+        settings: request.settings,
+        tokenFeatures: request.tokenFeatures,
+      });
+      break;
+    case "gauge":
+      content = LegacyRenderChart("gauge", {
+        card: request.card,
+        data: request.data,
+        tokenFeatures: request.tokenFeatures,
+      });
+      break;
+    default:
+      content = RenderChart(
+        request.rawSeries,
+        request.dashcardSettings,
+        request.options,
+      );
+  }
+  const type = content.startsWith("<svg") ? "svg" : "html";
+  return JSON.stringify({ type, content });
+}
+
+function buildCellBackgroundGetter(
+  rowsJSON: string,
+  colsJSON: string,
+  settingsJSON: string,
+) {
+  const rows = JSON.parse(rowsJSON);
+  const cols = JSON.parse(colsJSON);
+  const settings = settingsJSON ? JSON.parse(settingsJSON) : {};
+  try {
+    return makeCellBackgroundGetter(
+      rows,
+      cols,
+      settings?.["table.column_formatting"] ?? [],
+      settings?.["table.pivot"],
+    );
+  } catch (e) {
+    console.error("Error building cell background getter", e);
+    return () => null;
+  }
+}
+
+// Colors many cells in one call; `cellsJSON` is an array of [value, rowIndex, colName] triples, and the
+// result is a JSON array of color strings (or null), positionally.
+export function getCellBackgroundColors(
+  rowsJSON: string,
+  colsJSON: string,
+  settingsJSON: string,
+  cellsJSON: string,
+): string {
+  const getter = buildCellBackgroundGetter(rowsJSON, colsJSON, settingsJSON);
+  const cells = JSON.parse(cellsJSON);
+  return JSON.stringify(
+    cells.map((cell: [RowValue, number, string]) =>
+      getter(cell[0], cell[1], cell[2]),
+    ),
   );
 }
