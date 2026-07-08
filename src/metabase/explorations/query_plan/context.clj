@@ -264,7 +264,9 @@
   [ref-clause col]
   (let [target  (or col ref-clause)
         unit    (lib/raw-temporal-bucket ref-clause)
-        binning (lib/binning ref-clause)]
+        ;; Use raw options from the click ref — [[lib/binning]] enriches with a :metadata-fn that
+        ;; cannot be Nippy-frozen when the filtered query is cached.
+        binning (:binning (lib/options ref-clause))]
     (cond
       unit    (lib/with-temporal-bucket target unit)
       binning (lib/with-binning target binning)
