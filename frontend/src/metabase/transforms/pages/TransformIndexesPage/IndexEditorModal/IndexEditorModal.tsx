@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
@@ -11,12 +12,10 @@ import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { FormProvider } from "metabase/forms";
-import { type ComboboxItem, Modal } from "metabase/ui";
+import { type ComboboxItem, Modal, Text } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type {
-  IndexField,
   IndexKind,
-  RequestableIndexes,
   Table,
   TableIndexEntry,
   Transform,
@@ -43,7 +42,7 @@ export function IndexEditorModal({
   onClose,
 }: IndexEditorModalProps) {
   const request = index?.request;
-  const isEditing = request != null;
+  const isEditing = request !== undefined;
   const tableId = transform.table?.id;
   const requestableIndexes = transform.requestable_indexes;
   const kinds = requestableIndexes ? getObjectKeys(requestableIndexes) : [];
@@ -55,8 +54,8 @@ export function IndexEditorModal({
       description: method?.description ?? null,
     };
   });
-  const [kind, setKind] = useState<IndexKind>(
-    request?.structured.kind ? request?.structured.kind : kinds[0],
+  const [kind, setKind] = useState<IndexKind | undefined>(
+    request?.structured.kind ?? kinds[0],
   );
 
   const {
@@ -64,11 +63,12 @@ export function IndexEditorModal({
     isLoading,
     error,
   } = useGetTableQueryMetadataQuery(
-    tableId != null ? { id: tableId } : skipToken,
+    tableId !== undefined ? { id: tableId } : skipToken,
   );
 
+  const method = kind !== undefined ? requestableIndexes?.[kind] : undefined;
   const columnOptions = getColumnOptions(table);
-  const fields = getFields(kind, requestableIndexes);
+  const fields = method?.fields ?? [];
   const initialValues = buildInitialValues(fields, request?.structured);
   const validationSchema = buildValidationSchema(fields);
   const [createTableIndex] = useCreateTableIndexMutation();
@@ -76,6 +76,9 @@ export function IndexEditorModal({
   const [sendToast] = useToast();
 
   async function handleSubmit(values: IndexFormValues) {
+    if (kind === undefined) {
+      return;
+    }
     const structured = toStructured(kind, fields, values);
     try {
       if (isEditing) {
@@ -105,8 +108,19 @@ export function IndexEditorModal({
       padding="xl"
       onClose={onClose}
     >
-      {isLoading || error != null ? (
+      {isLoading || error !== undefined ? (
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      ) : kind === undefined ||
+        method === undefined ||
+        tableId === undefined ? (
+        <Text c="text-secondary">
+          {match(tableId)
+            .with(
+              undefined,
+              () => t`Run the transform before editing its indexes.`,
+            )
+            .otherwise(() => t`This index type is no longer available.`)}
+        </Text>
       ) : (
         <FormProvider
           key={kind}
@@ -128,13 +142,6 @@ export function IndexEditorModal({
       )}
     </Modal>
   );
-}
-
-function getFields(
-  kind: IndexKind,
-  requestableIndexes: RequestableIndexes | null | undefined,
-): IndexField[] {
-  return requestableIndexes?.[kind]?.fields ?? [];
 }
 
 function getColumnOptions(table: Table | undefined): ComboboxItem[] {

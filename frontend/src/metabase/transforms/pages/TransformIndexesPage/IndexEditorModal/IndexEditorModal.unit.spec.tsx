@@ -4,7 +4,12 @@ import fetchMock from "fetch-mock";
 import { setupTableIndexEndpoints } from "__support__/server-mocks/index-manager";
 import { setupTableQueryMetadataEndpoint } from "__support__/server-mocks/table";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { StructuredIndex, TableIndexEntry } from "metabase-types/api";
+import type {
+  RequestableIndexes,
+  StructuredIndex,
+  Table,
+  TableIndexEntry,
+} from "metabase-types/api";
 import {
   createMockField,
   createMockRequestableIndexes,
@@ -24,11 +29,19 @@ const TABLE = createMockTable({
   ],
 });
 
-function setup({ index }: { index?: TableIndexEntry } = {}) {
+function setup({
+  index,
+  table = TABLE,
+  requestableIndexes = createMockRequestableIndexes(),
+}: {
+  index?: TableIndexEntry;
+  table?: Table | null;
+  requestableIndexes?: RequestableIndexes;
+} = {}) {
   const transform = createMockTransform({
     id: 1,
-    table: TABLE,
-    requestable_indexes: createMockRequestableIndexes(),
+    table,
+    requestable_indexes: requestableIndexes,
   });
 
   setupTableQueryMetadataEndpoint(TABLE);
@@ -177,6 +190,40 @@ describe("IndexEditorModal", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Success" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a message instead of a form when the transform has no target table", async () => {
+    const index = createMockTableIndexEntry({
+      request: createMockTableIndexRequest({
+        structured: { kind: "btree", name: "idx", columns: [{ name: "city" }] },
+      }),
+    });
+
+    setup({ index, table: null });
+
+    expect(
+      await screen.findByText("Run the transform before editing its indexes."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Give your index a name"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a message when the index kind is no longer requestable", async () => {
+    const index = createMockTableIndexEntry({
+      request: createMockTableIndexRequest({
+        structured: { kind: "btree", name: "idx", columns: [{ name: "city" }] },
+      }),
+    });
+
+    setup({ index, requestableIndexes: {} });
+
+    expect(
+      await screen.findByText("This index type is no longer available."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Give your index a name"),
     ).not.toBeInTheDocument();
   });
 });
