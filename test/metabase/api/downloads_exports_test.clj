@@ -250,7 +250,7 @@
    {:dashcard-download (card-download card-or-dashcard opts)
     :public-dashcard-download (public-dashcard-download card-or-dashcard opts)}))
 
-(def ^:private ^:const ^long normalize-num-str-precision
+(def ^:private ^:const normalize-num-str-precision
   "Decimal precision used by [[normalize-num-str]]. 4 is deep enough to absorb IEEE-754 noise on Postgres
   double sums (order-of `1e-14`) and to handle Postgres `NUMERIC(20,16)` avg output (`100.0000000000000000`),
   without over-truncating values whose expected precision is 2–4 decimals."
@@ -265,7 +265,9 @@
   [s]
   (or (when (string? s)
         (when-let [d (parse-double s)]
-          (let [rounded  (-> (bigdec d) (.setScale normalize-num-str-precision java.math.RoundingMode/HALF_UP) .toPlainString)
+          (let [rounded  (-> ^java.math.BigDecimal (bigdec d)
+                             (.setScale (int normalize-num-str-precision) java.math.RoundingMode/HALF_UP)
+                             .toPlainString)
                 stripped (if (str/includes? rounded ".")
                            (str/replace rounded #"0+$" "")
                            rounded)]
@@ -309,12 +311,13 @@
 
 (def ^:private pivot-rows-query
   ;; Quote the aliases so identifier case is preserved on Postgres (which downcases unquoted identifiers).
+  ;; Also alias every FROM/CROSS JOIN subquery — Postgres requires it, H2 tolerates it.
   "SELECT *
-         FROM (SELECT 'AA' AS \"A\" UNION ALL SELECT 'AB' UNION ALL SELECT 'AC' UNION ALL SELECT 'AD')
-   CROSS JOIN (SELECT 'BA' AS \"B\" UNION ALL SELECT 'BB' UNION ALL SELECT 'BC' UNION ALL SELECT 'BD')
-   CROSS JOIN (SELECT 'CA' AS \"C\" UNION ALL SELECT 'CB' UNION ALL SELECT 'CC' UNION ALL SELECT 'CD')
-   CROSS JOIN (SELECT 'DA' AS \"D\" UNION ALL SELECT 'DB' UNION ALL SELECT 'DC' UNION ALL SELECT 'DD')
-   CROSS JOIN (SELECT 1 AS \"MEASURE\")")
+         FROM (SELECT 'AA' AS \"A\" UNION ALL SELECT 'AB' UNION ALL SELECT 'AC' UNION ALL SELECT 'AD') AS \"src_a\"
+   CROSS JOIN (SELECT 'BA' AS \"B\" UNION ALL SELECT 'BB' UNION ALL SELECT 'BC' UNION ALL SELECT 'BD') AS \"src_b\"
+   CROSS JOIN (SELECT 'CA' AS \"C\" UNION ALL SELECT 'CB' UNION ALL SELECT 'CC' UNION ALL SELECT 'CD') AS \"src_c\"
+   CROSS JOIN (SELECT 'DA' AS \"D\" UNION ALL SELECT 'DB' UNION ALL SELECT 'DC' UNION ALL SELECT 'DD') AS \"src_d\"
+   CROSS JOIN (SELECT 1 AS \"MEASURE\") AS \"src_m\"")
 
 (def ^:private pivot-fields
   [[:field "A" {:base-type :type/Text}]
@@ -503,10 +506,10 @@
   (testing "A pivot table with multiple pivot columns and no row totals can export correctly (#54530)"
     (mt/test-drivers #{:h2 :postgres}
       (let [pivot-rows-query "SELECT *
-                              FROM (SELECT 4 AS \"A\" UNION ALL SELECT 3)
-                              CROSS JOIN (SELECT 'BA' AS \"B\")
-                              CROSS JOIN (SELECT 3 AS \"C\" UNION ALL SELECT 4)
-                              CROSS JOIN (SELECT 1 AS \"MEASURE\")"]
+                              FROM (SELECT 4 AS \"A\" UNION ALL SELECT 3) AS \"src_a\"
+                              CROSS JOIN (SELECT 'BA' AS \"B\") AS \"src_b\"
+                              CROSS JOIN (SELECT 3 AS \"C\" UNION ALL SELECT 4) AS \"src_c\"
+                              CROSS JOIN (SELECT 1 AS \"MEASURE\") AS \"src_m\""]
         (mt/dataset test-data
           (mt/with-temp [:model/Card {pivot-data-card-id :id}
                          {:dataset_query {:database (mt/id)
@@ -716,10 +719,10 @@
     (mt/test-drivers #{:h2 :postgres}
       (testing "Other aggregations will produce the correct values in Totals rows."
         (let [pivot-rows-query "SELECT *
-                                FROM (SELECT 4 AS \"A\" UNION ALL SELECT 3)
-                                CROSS JOIN (SELECT 'BA' AS \"B\")
-                                CROSS JOIN (SELECT 3 AS \"C\" UNION ALL SELECT 4)
-                                CROSS JOIN (SELECT 1 AS \"MEASURE\")"]
+                                FROM (SELECT 4 AS \"A\" UNION ALL SELECT 3) AS \"src_a\"
+                                CROSS JOIN (SELECT 'BA' AS \"B\") AS \"src_b\"
+                                CROSS JOIN (SELECT 3 AS \"C\" UNION ALL SELECT 4) AS \"src_c\"
+                                CROSS JOIN (SELECT 1 AS \"MEASURE\") AS \"src_m\""]
           (mt/dataset test-data
             (mt/with-temp [:model/Card {pivot-data-card-id :id}
                            {:dataset_query {:database (mt/id)
@@ -1466,7 +1469,7 @@
              WHEN \"A\" = 2 THEN NULL
              ELSE \"A\"
            END AS \"MEASURE\"
-         FROM ( SELECT 1 AS \"A\" UNION ALL SELECT 2 UNION ALL SELECT 3 )"]
+         FROM ( SELECT 1 AS \"A\" UNION ALL SELECT 2 UNION ALL SELECT 3 ) AS \"src\""]
         (mt/dataset test-data
           (mt/with-temp [:model/Card {pivot-data-card-id :id}
                          {:dataset_query {:database (mt/id)
@@ -1511,7 +1514,7 @@
                   SELECT 3, 3, 3 UNION ALL
                   SELECT 4, 4, 4  UNION ALL
                   SELECT 5, 5, 5
-               )"]
+               ) AS \"src\""]
         (mt/dataset test-data
           (mt/with-temp [:model/Card {pivot-data-card-id :id}
                          {:dataset_query {:database (mt/id)
@@ -1604,7 +1607,7 @@
                   SELECT 5, 33 UNION ALL
                   SELECT 5, 44 UNION ALL
                   SELECT 5, 55
-               )"]
+               ) AS \"src\""]
         (mt/dataset test-data
           (mt/with-temp [:model/Card {pivot-data-card-id :id}
                          {:dataset_query {:database (mt/id)

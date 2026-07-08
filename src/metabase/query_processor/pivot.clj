@@ -636,7 +636,7 @@
    (or (:lib/metadata query)
        (lib-be/application-database-metadata-provider (:database query)))))
 
-(def ^:private ^:const ^long float-compare-decimals
+(def ^:private ^:const float-compare-decimals
   "Decimal scale used when quantising fractional numbers for cross-path pivot row comparison. 6 is well below
   meaningful precision for pivot aggregates (SUM/AVG typically report 2–4 decimals) but well above the noise
   produced by different summation orders on doubles (order-of `10⁻¹⁴`)."
@@ -649,8 +649,8 @@
   each path returned."
   [x]
   (cond
-    (float? x)   (.setScale ^java.math.BigDecimal (bigdec x) float-compare-decimals java.math.RoundingMode/HALF_UP)
-    (decimal? x) (.setScale ^java.math.BigDecimal x          float-compare-decimals java.math.RoundingMode/HALF_UP)
+    (float? x)   (.setScale ^java.math.BigDecimal (bigdec x) (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
+    (decimal? x) (.setScale ^java.math.BigDecimal x          (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
     :else        x))
 
 (defn- pivot-rows-equivalent?
