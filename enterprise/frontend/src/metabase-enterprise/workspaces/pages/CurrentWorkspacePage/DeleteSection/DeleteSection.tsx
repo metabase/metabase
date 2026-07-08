@@ -20,7 +20,7 @@ export function DeleteSection() {
         <Code key="config">{CONFIG_FILENAME}</Code>
       )} will remain — you can re-enter the workspace at any time by uploading it again.`,
       confirmButtonText: t`Leave workspace`,
-      confirmButtonProps: { color: "danger" },
+      confirmButtonProps: { color: "feedback-negative" },
       onConfirm: async () => {
         await deleteInstance().unwrap();
         trackWorkspaceInstanceLeave();
@@ -38,7 +38,11 @@ export function DeleteSection() {
           <Text maw="40rem">
             {t`Stop remapping transform tables on this instance.`}
           </Text>
-          <Button color="error" variant="filled" onClick={handleClick}>
+          <Button
+            color="feedback-negative"
+            variant="filled"
+            onClick={handleClick}
+          >
             {t`Leave workspace`}
           </Button>
         </Group>

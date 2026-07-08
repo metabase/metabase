@@ -172,7 +172,7 @@
                                    ;; `::strip` is handled in `metabase.serialization`
                                    (circular path)    (assoc ::serdes/strip (keys-to-strip ingested)))
               ;; we need less deps when trying to load "stripped" data
-              deps               (->> (serdes/dependencies (apply dissoc ingested (::serdes/strip ingested)))
+              deps               (->> (serdes/deserialization-dependencies (apply dissoc ingested (::serdes/strip ingested)))
                                       (remove seen))
               _                  (when (seq deps)
                                    (log/debug "Loading dependencies"

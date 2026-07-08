@@ -1,9 +1,9 @@
 .dangerItem {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }
 
 /* double classname for specificity */
 .dangerItem.dangerItem:hover {
-  background-color: var(--mb-color-error);
+  background-color: var(--mb-color-feedback-negative);
   color: var(--mb-color-text-primary-inverse);
 }

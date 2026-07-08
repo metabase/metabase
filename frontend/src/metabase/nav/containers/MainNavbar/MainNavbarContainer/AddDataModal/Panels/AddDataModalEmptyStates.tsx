@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Alert,

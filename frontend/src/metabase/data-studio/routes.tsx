@@ -1,5 +1,4 @@
 import type { Store } from "@reduxjs/toolkit";
-import { IndexRoute, Route, type RouteComponent } from "react-router";
 
 import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
 import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
@@ -11,6 +10,7 @@ import {
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import { IndexRoute, Route, type RouteComponent } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";

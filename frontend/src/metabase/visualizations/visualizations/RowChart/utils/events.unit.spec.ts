@@ -14,7 +14,7 @@ import type {
   RemappingHydratedDatasetColumn,
   TooltipRowModel,
 } from "metabase/visualizations/types";
-import type { SeriesSettings, VisualizationSettings } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockNumericColumn,
@@ -119,7 +119,7 @@ describe("events utils", () => {
           series_settings: {
             [chartColumns.metrics[0].column.name]: {
               title: "my custom label",
-            } as SeriesSettings,
+            },
           },
         },
         {

@@ -4,19 +4,24 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.parameters.shared :as shared.params]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -507,6 +512,62 @@
                                        :verbatim true}}
                                {:type "section" :text {:type "plain_text" :text "1,000"}}]}
                     message)))))}})))
+
+(deftest dashboard-filter-with-empty-default-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard (update pulse.test-util/test-dashboard :parameters
+                       (fn [params]
+                         (for [param params]
+                           (cond-> param
+                             (= "State" (:name param)) (assoc :default [])))))}
+   "Dashboard subscription whose text filter had its default value cleared to [] still sends (#76854)"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [_ thunk]
+      (thunk))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "The subscription is delivered and the empty filter is left out"
+         (is (some? email))
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs"      true
+                                                   "Quarter and Year" true
+                                                   "State"            false}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email
+                                                     #"Aviary KPIs"
+                                                     #"Quarter and Year"
+                                                     #"State")))))}}))
+
+(deftest filter-render-failure-doesnt-fail-subscription-test
+  (tests!
+   {:pulse     {:skip_if_empty false}
+    :dashboard pulse.test-util/test-dashboard}
+   "A filter that fails to render is skipped instead of failing the whole subscription"
+   {:card (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [_ thunk]
+      (with-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
+        (thunk)))
+
+    :assert
+    {:email
+     (fn [_ [email]]
+       (testing "email is still delivered, with the broken filters left out"
+         (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
+                                                   "State"       false}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email #"Aviary KPIs" #"State")))))
+
+     :slack
+     (fn [_ [message]]
+       (testing "slack message is still delivered, with the broken filters left out"
+         (is (some? message))
+         (is (not (str/includes? (pr-str message) "*State*")))))}}))
 
 (deftest dashboard-with-header-filters-test
   (tests!
@@ -1229,6 +1290,45 @@
                                                 pulse.test-util/png-attachment]})
               (mt/summarize-multipart-single-email email
                                                    #"Aviary KPIs"))))}}))
+
+(deftest dashboard-sub-pivot-csv-attachment-test
+  (testing "PulseCard.pivot_results true produces a pivoted (not flat) CSV attachment (#49525)"
+    (let [{:keys [dataset_query visualization_settings]} (api.pivots/pivot-card)
+          header-col-count (fn [pivot?]
+                             (let [col-count (atom nil)]
+                               (do-test!
+                                {:card       {:dataset_query          dataset_query
+                                              :display                :pivot
+                                              :visualization_settings visualization_settings}
+                                 :dashcard   {:visualization_settings visualization_settings}
+                                 :pulse-card {:include_csv   true
+                                              :pivot_results pivot?}
+                                 :assert
+                                 {:email
+                                  (fn [_ [email]]
+                                    (let [csv-part (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
+                                      (reset! col-count (-> csv-part :content slurp str/split-lines first (str/split #",") count))))}})
+                               @col-count))]
+      (is (not= (header-col-count true) (header-col-count false))
+          "the pivoted CSV header shape must differ from the flat CSV header shape"))))
+
+(deftest dashboard-subscription-email-branding-respects-whitelabel-test
+  (testing "the 'Made with Metabase' footer in dashboard subscription emails respects the :whitelabel premium feature"
+    (let [mp            (mt/metadata-provider)
+          query         (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          has-branding? (fn [email] (str/includes? (-> email :message first :content) "Made with"))]
+      (mt/with-premium-features #{}
+        (do-test!
+         {:card   {:dataset_query query}
+          :assert {:email (fn [_ [email]] (is (true? (has-branding? email))))}}))
+      ;; Whitelabeling is only wired up in EE builds (`enable-whitelabeling?` is gated on
+      ;; `config/ee-available?`), so `:whitelabel` can never hide the footer on OSS builds.
+      ;; The EE app-db jobs run this same file with EE on the classpath and cover the hidden case.
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:whitelabel}
+         (do-test!
+          {:card   {:dataset_query query}
+           :assert {:email (fn [_ [email]] (is (false? (has-branding? email))))}}))))))
 
 (deftest multi-series-test
   (mt/with-temp

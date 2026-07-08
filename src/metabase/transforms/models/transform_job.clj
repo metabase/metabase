@@ -222,7 +222,7 @@
                :created_at (serdes/date)
                :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :created_at)} opts))}})
 
-(defmethod serdes/dependencies "TransformJob"
+(defmethod serdes/deserialization-dependencies "TransformJob"
   [{:keys [job_tags]}]
   (set
    (for [{tag-id :tag_id} job_tags]

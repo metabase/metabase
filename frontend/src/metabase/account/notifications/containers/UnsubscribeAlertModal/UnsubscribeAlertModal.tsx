@@ -45,7 +45,7 @@ export const UnsubscribeAlertModal = ({
     if (result.error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`An error occurred`,
       });
       return;

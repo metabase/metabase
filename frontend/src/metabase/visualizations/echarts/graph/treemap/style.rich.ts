@@ -7,7 +7,7 @@ export function getLeafLabelStyle(
   renderingContext: RenderingContext,
   textColor?: string,
 ) {
-  const color = textColor ?? renderingContext.getColor("white");
+  const color = textColor ?? renderingContext.getColor("core-white");
   return {
     color,
     rich: getRichLeafLabel(renderingContext, textColor),
@@ -18,7 +18,7 @@ export function getRichLeafLabel(
   renderingContext: RenderingContext,
   textColor?: string,
 ) {
-  const color = textColor ?? renderingContext.getColor("white");
+  const color = textColor ?? renderingContext.getColor("core-white");
   const base = {
     fontFamily: renderingContext.fontFamily,
     color,

@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -27,6 +26,7 @@ import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import type { WithRouterProps } from "metabase/router";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -46,7 +46,7 @@ import {
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
-import { type NamedUser, getUserName } from "metabase/utils/user";
+import { getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -216,7 +216,7 @@ export const TransformListPage = ({
           const hasUserName = owner?.first_name || owner?.last_name;
 
           if (hasUserName) {
-            const displayName = getUserName(owner as NamedUser);
+            const displayName = getUserName(owner);
             return <Ellipsified>{displayName}</Ellipsified>;
           }
 

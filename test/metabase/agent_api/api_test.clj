@@ -728,7 +728,15 @@
                     :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
       (is (re-find #"takes parameters"
                    (str (mt/user-http-request :crowberto :post 400
-                                              (format "agent/v1/question/%d/query" card-id))))))))
+                                              (format "agent/v1/question/%d/query" card-id)))))))
+  (testing "Read-check runs before the parameterized rejection, so an unreadable parameterized card is 403 — it does not leak that the card exists or is parameterized"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "No-Read Coll"}
+                     :model/Card       {card-id :id} {:collection_id coll-id
+                                                      :dataset_query (orders-limit-query 5)
+                                                      :parameters    [{:id "p1" :name "Category" :slug "category" :type :category}]}]
+        (mt/user-http-request :rasta :post 403
+                              (format "agent/v1/question/%d/query" card-id))))))
 
 (deftest create-question-explicit-null-collection-test
   (testing "An explicit null collection_id saves to the root collection, not the personal default"

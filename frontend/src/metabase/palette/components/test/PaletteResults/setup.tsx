@@ -1,6 +1,5 @@
 import { VisualState, useKBar } from "kbar";
 import { useEffect } from "react";
-import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -19,6 +18,7 @@ import {
   createMockAdminState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route, type WithRouterProps, withRouter } from "metabase/router";
 import type { RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
