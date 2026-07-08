@@ -999,7 +999,7 @@
                              {:status :completed
                               :data   {:cols [] :rows []}})]
       (mt/with-temp [:model/Database db {:engine :postgres}]
-        (with-redefs [qp.core/process-query fake-process]
+        (mt/with-dynamic-fn-redefs [qp.core/process-query fake-process]
           (mt/with-driver :postgres
             (test-run.execute/read-back-output
              (:id db) :postgres {:schema "pub'lic" :table "mb_transform_temp_table_test_abc_xyz_out"}))))

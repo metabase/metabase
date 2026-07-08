@@ -142,11 +142,11 @@
   [engine driver output-target]
   (let [captured (atom nil)]
     (mt/with-temp [:model/Database db {:engine engine}]
-      (with-redefs [qp/process-query
-                    (fn [q]
-                      (reset! captured q)
-                      {:status :completed
-                       :data   {:cols [] :rows []}})]
+      (mt/with-dynamic-fn-redefs [qp/process-query
+                                  (fn [q]
+                                    (reset! captured q)
+                                    {:status :completed
+                                     :data   {:cols [] :rows []}})]
         (execute/read-back-output (:id db) driver output-target)))
     (lib/raw-native-query @captured)))
 

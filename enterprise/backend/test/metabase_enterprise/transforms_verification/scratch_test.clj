@@ -538,7 +538,7 @@
                                    :rows []}})]
       ;; A real Database row: the query is built against its metadata.
       (mt/with-temp [:model/Database db {:engine :postgres}]
-        (with-redefs [qp/process-query fake-process]
+        (mt/with-dynamic-fn-redefs [qp/process-query fake-process]
           ;; cleanup-all-test-tables! calls list-tables-in-schema internally.
           ;; Use a schema string with a single quote — this is the injection vector.
           (scratch/cleanup-all-test-tables! (:id db) db "pub'lic" {})))
