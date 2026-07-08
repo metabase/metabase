@@ -411,16 +411,16 @@
 ;; (see [[connection-details->spec]]), so wall-clock times would shift whenever the JVM zone isn't UTC.
 ;;
 ;; String binds sidestep both problems: Snowflake parses them server-side into the column's type, independent
-;; of any timezone. The formats mirror this driver's temporal-literal inlining in its `sql.qp/->honeysql`
-;; methods.
+;; of any timezone. Nine fractional digits keep full nanosecond precision -- the CSV parser accepts arbitrary
+;; sub-second precision and Snowflake timestamps store up to 9 digits.
 (defn- temporal-bind->string
   "Convert a temporal upload value to a string bind that Snowflake will coerce to the column type.
   Non-temporal values pass through unchanged."
   [v]
   (condp instance? v
     LocalDate      (u.date/format v)
-    LocalDateTime  (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" v)
-    OffsetDateTime (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xx" v)
+    LocalDateTime  (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS" v)
+    OffsetDateTime (u.date/format "yyyy-MM-dd HH:mm:ss.SSSSSSSSS xx" v)
     v))
 
 (defmethod driver/insert-into! :snowflake

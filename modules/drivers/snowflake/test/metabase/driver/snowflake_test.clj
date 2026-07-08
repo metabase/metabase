@@ -1766,3 +1766,15 @@
         (is (str/includes? sql "\"created\" TIMESTAMP_NTZ"))
         (is (str/includes? sql "PRIMARY KEY(\"_mb_row_id\")")
             "auto-pk is declared as the primary key")))))
+
+(deftest temporal-bind->string-test
+  (testing "temporal upload binds keep full nanosecond precision"
+    ;; The CSV parser accepts arbitrary sub-second precision, so formatting with fewer than 9 fractional
+    ;; digits would silently truncate values on upload.
+    (are [v expected] (= expected (#'driver.snowflake/temporal-bind->string v))
+      #t "2026-07-08"                                            "2026-07-08"
+      #t "2026-07-08T01:02:03.123456789"                         "2026-07-08 01:02:03.123456789"
+      (t/offset-date-time 2026 7 8 1 2 3 123456789
+                          (t/zone-offset "+02:00"))              "2026-07-08 01:02:03.123456789 +0200"
+      "not temporal"                                             "not temporal"
+      42                                                         42)))
