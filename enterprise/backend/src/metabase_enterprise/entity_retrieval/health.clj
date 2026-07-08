@@ -36,10 +36,15 @@
   map: healthy when the curated index can serve queries and the embedding service is reachable; degraded
   (naming the cause) whenever the agent would silently fall back to general search."
   []
-  (let [{:keys [pgvector? licensed? index-compatible? populated?]} (entity-retrieval/retrieval-status)]
+  (let [{:keys [pgvector? licensed? index-compatible? populated? probe-error]} (entity-retrieval/retrieval-status)]
     (cond
       (not (and pgvector? licensed?))
       nil ;; not enabled — nothing to check (omitted rather than reported as healthy)
+
+      ;; A thrown probe is a pgvector-connectivity fault, not a model mismatch: report it as such rather than
+      ;; misdirecting the operator to a rebuild (mirrors the semantic-search check's "pgvector unreachable").
+      probe-error
+      (degraded (str "pgvector store unreachable: " probe-error " — NLQ curated retrieval unavailable."))
 
       (not index-compatible?)
       (degraded (str "NLQ curated index not built for the current embedding model (rebuild pending) — "
@@ -83,16 +88,21 @@
 (def ^:private garbage-warn-count     5)
 (def ^:private garbage-critical-count 100)
 
-(defn- library-datasource
+(defn- library-datasource*
   "pgvector datasource when NLQ library retrieval is licensed, configured, and the index is built for the
   current model; else nil (the metric skips -- availability is the `:nlq-retrieval` check's job). An
   empty-but-compatible index is still measured (coverage reads 0%), so this gates on compatibility, not
-  population."
+  population -- and passes `probe-populated? false` so it doesn't run the population query it would discard."
   []
-  (let [{:keys [pgvector? licensed? index-compatible?]} (entity-retrieval/retrieval-status)]
+  (let [{:keys [pgvector? licensed? index-compatible?]} (entity-retrieval/retrieval-status false)]
     (when (and pgvector? licensed? index-compatible?)
       (try (semantic.datasource/ensure-initialized-data-source!)
            (catch Throwable _ nil)))))
+
+(def ^:private library-datasource
+  "TTL-memoized so coverage, garbage, and staleness share one retrieval-status probe + datasource resolve per
+  refresh cycle rather than each re-running it (staleness previously called this on its own path)."
+  (memoize/ttl library-datasource* :ttl/threshold (* 30 1000)))
 
 (defn- entity-class-set
   "Set of entity classes for `pairs` of `[entity_type entity_local_id]`, normalised so a relabelled entity

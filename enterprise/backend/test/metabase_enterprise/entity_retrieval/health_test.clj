@@ -30,6 +30,14 @@
     (is (=? {:health 0 :message #".*not built for the current embedding model.*fallback\."}
             (check (assoc ready-status :index-compatible? false))))))
 
+(deftest pgvector-unreachable-is-degraded-test
+  (testing "a thrown probe (pgvector down) -> degraded naming connectivity, not a misleading rebuild"
+    ;; a store outage sets :probe-error and leaves compatible?/populated? false; the probe-error branch must
+    ;; win so the operator isn't told to rebuild a model when the real fault is pgvector connectivity.
+    (is (=? {:health 0 :message #"pgvector store unreachable: connection refused.*unavailable\."}
+            (check (assoc ready-status :index-compatible? false :populated? false
+                          :probe-error "connection refused"))))))
+
 (deftest empty-index-is-degraded-test
   (testing "compatible but empty -> degraded, names the pending first reconcile"
     (is (=? {:health 0 :message #".*index empty.*fallback\."}

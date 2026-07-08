@@ -20,7 +20,7 @@
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
    [dev.failsafe CircuitBreakerOpenException FailsafeException]
-   [java.net ConnectException]))
+   [java.net ConnectException SocketTimeoutException]))
 
 (set! *warn-on-reflection* true)
 
@@ -207,6 +207,23 @@
 (def ^:private embedder-circuit-breaker-delay-ms
   "How long the breaker stays open before it allows a half-open trial call." 30000)
 
+(defn- embedder-outage?
+  "Whether an embedding-call failure reflects the service being unreachable or server-erroring -- the only
+  failures that should trip the breaker. A caller/config error (a 4xx on over-long or malformed input, a
+  missing premium-embedding-token, a decode error) would recur regardless of the breaker and must NOT open
+  the circuit, or one poison indexing batch would fast-fail every unrelated query for the open window.
+  Signature is diehard's `:fail-if` bipredicate `[result exception]`; result is ignored (only throws count)."
+  [_result ^Throwable e]
+  (boolean
+   (when e
+     (let [status (:status (ex-data e))
+           root   (or (ex-cause e) e)]
+       (or (instance? ConnectException root)
+           (instance? SocketTimeoutException root)
+           ;; 5xx (incl. the wrapped 502 the connection-refused path throws) = service-side failure; a 4xx is
+           ;; the caller's bad request and stays off the breaker.
+           (and (integer? status) (>= (long status) 500)))))))
+
 (defn- on-embedder-circuit-state-change!
   "Persist the embedder-dependent health checks the moment the breaker changes state, so an outage or its
   recovery shows up within minutes instead of at the next daily report."
@@ -226,6 +243,8 @@
    {:failure-threshold embedder-circuit-breaker-failure-threshold
     :success-threshold embedder-circuit-breaker-success-threshold
     :delay-ms          embedder-circuit-breaker-delay-ms
+    ;; Only genuine service outages count toward opening; a 4xx / config error propagates but doesn't trip.
+    :fail-if      embedder-outage?
     :on-open      (fn [_] (on-embedder-circuit-state-change! :open))
     :on-half-open (fn [_] (on-embedder-circuit-state-change! :half-open))
     :on-close     (fn [_] (on-embedder-circuit-state-change! :closed))}))
@@ -251,8 +270,9 @@
 (defn- call-through-embedder-breaker
   "Run `thunk` under the embedder circuit breaker, unless it is bypassed (probe) or disabled (kill switch).
   An open circuit throws a 502 `ex-info` with `:cause :embedder/circuit-open`; any other failure propagates
-  unwrapped."
-  [thunk]
+  unwrapped. `endpoint` (optional) is echoed into the circuit-open ex-data so it carries the same `:endpoint`
+  the connection-refused path does (there is no wrapped cause on a short-circuit -- nothing was called)."
+  [thunk & {:keys [endpoint]}]
   (if (or *bypass-circuit-breaker*
           (not (semantic-settings/semantic-search-embedder-circuit-breaker-enabled)))
     (thunk)
@@ -261,7 +281,8 @@
       (catch CircuitBreakerOpenException _
         ;; Mirror the connection-refused 502 shape so callers already handling embedder-down keep working.
         (throw (ex-info "embedding service unavailable (circuit open)"
-                        {:status 502 :cause :embedder/circuit-open})))
+                        (cond-> {:status 502 :cause :embedder/circuit-open}
+                          endpoint (assoc :endpoint endpoint)))))
       ;; Diehard wraps a thunk failure in FailsafeException; unwrap so callers see the original.
       (catch FailsafeException e
         (throw (or (.getCause e) e))))))
@@ -355,7 +376,8 @@
   "Circuit-breaker-guarded entry point to the OpenAI-compatible embeddings call (see
   [[openai-compatible-get-embeddings-batch*]] for the argument contract)."
   [opts]
-  (call-through-embedder-breaker #(openai-compatible-get-embeddings-batch* opts)))
+  (call-through-embedder-breaker #(openai-compatible-get-embeddings-batch* opts)
+                                 :endpoint (:endpoint opts)))
 
 ;;;; Embedding-service provider
 

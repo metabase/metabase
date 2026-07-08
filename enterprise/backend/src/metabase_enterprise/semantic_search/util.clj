@@ -98,7 +98,7 @@
   their *scheduling* on this -- boot-fixed -- so a task survives the license being entered after startup; the
   task body re-checks [[semantic-search-available?]] each run."
   []
-  (string? (not-empty semantic.db.datasource/db-url)))
+  (semantic.db.datasource/pgvector-configured?))
 
 (defn semantic-search-available?
   "Whether semantic search can run on this instance: capable and not disabled by the kill switch.

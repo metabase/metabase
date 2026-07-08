@@ -360,11 +360,13 @@
         to-delete   (cond->> orphans
                       (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! conn to-delete)
-    ;; Record freshness only when the run fully converged -- every desired doc actually inserted. A caught
-    ;; batch failure or a doc skipped for exceeding the token limit leaves desired docs missing, so both drive
-    ;; `inserted` below `(count to-insert)`; marking the index fresh then would make NLQ staleness read healthy
-    ;; while the index is still behind. Leave the timestamp so staleness keeps growing until a clean run.
-    (when (= inserted (count to-insert))
+    ;; Record freshness when the run converged as far as it can -- no *transient* batch failure this run
+    ;; (@failed is populated only by a caught insert exception). A doc silently dropped for exceeding the
+    ;; per-item token limit is a permanent, expected shortfall (`inserted` < `(count to-insert)` forever), so
+    ;; gating on the insert count instead would freeze reconciled_at the moment one un-embeddable doc enters
+    ;; the library -- NLQ staleness would then climb to critical (or stay NaN) even though every reconcile is
+    ;; doing all it can. Gate on the absence of retryable failures, not on full insertion.
+    (when (empty? @failed)
       (index-table/touch-reconciled-at! conn))
     ;; index-size after the writes feeds the document/entity gauges (full reconcile only).
     (merge (diff-result desired to-insert inserted (count to-delete))

@@ -276,7 +276,16 @@
   (when-let [{:keys [pgvector state]} (active-index)]
     (let [table    (-> state :index :table-name)
           gate     (:gate-table-name (semantic.env/get-index-metadata))
-          indexed  (row-count pgvector [(format "SELECT count(*) AS n FROM \"%s\"" table)])
+          ;; Numerator: index rows that are *expected* -- present in the live gate. Counting raw index rows
+          ;; instead would let orphans (garbage) inflate the numerator and mask missing docs (M missing + G>=M
+          ;; orphans reads 100%); coverage must measure the should-be-indexed set only. Garbage is its own
+          ;; measure. Same (model,model_id) grain on both sides.
+          indexed  (row-count pgvector
+                              [(format (str "SELECT count(*) AS n FROM \"%s\" i "
+                                            "WHERE EXISTS (SELECT 1 FROM \"%s\" g "
+                                            "WHERE g.model = i.model AND g.model_id = i.model_id "
+                                            "AND g.document_hash IS NOT NULL)")
+                                       table gate)])
           ;; Denominator: distinct live gate rows (one per should-be-indexed doc; tombstones excluded). That's
           ;; the indexer's own deduped candidate set, sharing the index's (model,model_id) grain -- unlike
           ;; search.ingestion/search-items-count, whose per-spec COUNT(*) double-counts join fan-out (a card
@@ -309,14 +318,15 @@
   computes the orphan set as part of its normal work, so this is a push -- far cheaper than the standalone
   anti-join a pull collector would need, and correct for compound-id models. `orphans` is an absolute count.
   Never throws: this is a metric side-channel of the repair job (which gates on semantic-search-available?),
-  so a blip here must not make a successful repair look failed."
+  so a blip here must not make a successful repair look failed. `orphans` may be nil (the count query failed);
+  the push is then skipped, leaving the last value to age out rather than pushing a bogus reading."
   [orphans]
   (try
     ;; Gate the push on the same signal refresh-ai-index-metrics!'s clearer uses (active-index = available? +
     ;; the semantic-search-enabled kill switch + an actual active index). The repair job only checks
     ;; semantic-search-available?, which ignores the kill switch, so without this it would keep repopulating
     ;; garbage-count with the feature disabled, fighting the clearer that's NaN-ing it.
-    (when (active-index)
+    (when (and (some? orphans) (active-index))
       (emit-garbage! :semantic orphans garbage-warn-count garbage-critical-count))
     (catch Throwable e
       (log/warn e "Failed to report semantic garbage metric"))))

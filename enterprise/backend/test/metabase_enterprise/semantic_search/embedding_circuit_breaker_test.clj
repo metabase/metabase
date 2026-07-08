@@ -10,8 +10,38 @@
 
 (def ^:private call-through   #'semantic.embedding/call-through-embedder-breaker)
 (def ^:private circuit-state  semantic.embedding/embedder-circuit-state)
+;; deref'd to the fn value (not the var): diehard's :fail-if spec requires fn?, which a var fails
+(def ^:private outage?        @#'semantic.embedding/embedder-outage?)
 
 (defn- boom [] (throw (ex-info "embedder down" {:kind :boom})))
+
+(deftest embedder-outage?-test
+  (testing "service-down / server-error failures count toward opening the breaker"
+    (are [e] (true? (outage? nil e))
+      (java.net.ConnectException. "connection refused")
+      (java.net.SocketTimeoutException. "read timed out")
+      (ex-info "ai-service unavailable (connection refused)" {:status 502} (java.net.ConnectException.))
+      (ex-info "server error" {:status 503})))
+  (testing "caller/config errors do NOT trip the breaker (they'd recur regardless of breaker state)"
+    (are [e] (false? (outage? nil e))
+      (ex-info "bad request" {:status 400})
+      (ex-info "Premium embedding token not set" {:provider "ai-service"})
+      (RuntimeException. "json decode failure")
+      nil)))
+
+(deftest ^:sequential fail-if-limits-breaker-to-outages-test
+  (testing "with the production :fail-if, a 4xx propagates but doesn't open the breaker; an outage opens it"
+    (with-redefs [semantic.embedding/embedder-circuit-breaker
+                  (dh.cb/circuit-breaker {:failure-threshold 2 :success-threshold 1 :delay-ms 60000
+                                          :fail-if outage?})]
+      (testing "two caller-errors leave the breaker closed"
+        (dotimes [_ 2]
+          (is (thrown? Exception (call-through #(throw (ex-info "bad input" {:status 400}))))))
+        (is (= :closed (circuit-state))))
+      (testing "two outages trip it open"
+        (dotimes [_ 2]
+          (is (thrown? Exception (call-through #(throw (ex-info "service down" {:status 503}))))))
+        (is (= :open (circuit-state)))))))
 
 (deftest ^:sequential opens-after-threshold-and-fast-fails-test
   (testing "consecutive failures trip the breaker; while open, calls fast-fail with the mapped 502 ex-info"

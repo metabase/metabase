@@ -77,17 +77,24 @@
   "Count rows in the active index table whose `(model, model_id)` is absent from the repair table (the current
   candidate set) -- the garbage actually being served. Unlike the gate-based [[find-lost-deletes]] anti-join,
   this excludes retained tombstones for rows the indexer has already removed, so the count doesn't stay
-  inflated until tombstone cleanup runs."
+  inflated until tombstone cleanup runs.
+  Returns nil if the count query fails: this feeds only the garbage health metric, and (like
+  [[find-lost-deletes]]) a metric-read blip must not fail the repair run whose real work already committed."
   [pgvector index-table-name repair-table-name]
-  (let [count-sql (-> (sql.helpers/select [:%count.* :n])
-                      (sql.helpers/from [(keyword index-table-name) :i])
-                      (sql.helpers/where
-                       [:not [:exists (-> (sql.helpers/select 1)
-                                          (sql.helpers/from [(keyword repair-table-name) :r])
-                                          (sql.helpers/where [:= :r.model :i.model]
-                                                             [:= :r.model_id :i.model_id]))]])
-                      (sql/format :quoted true))]
-    (or (:n (jdbc/execute-one! pgvector count-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})) 0)))
+  (try
+    (let [count-sql (-> (sql.helpers/select [:%count.* :n])
+                        (sql.helpers/from [(keyword index-table-name) :i])
+                        (sql.helpers/where
+                         [:not [:exists (-> (sql.helpers/select 1)
+                                            (sql.helpers/from [(keyword repair-table-name) :r])
+                                            (sql.helpers/where [:= :r.model :i.model]
+                                                               [:= :r.model_id :i.model_id]))]])
+                        (sql/format :quoted true))]
+      (or (:n (jdbc/execute-one! pgvector count-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})) 0))
+    (catch Exception e
+      (log/errorf e "Error counting active orphans in index table %s against repair table %s"
+                  index-table-name repair-table-name)
+      nil)))
 
 (defn- create-repair-table!
   "Creates an empty temporary table for tracking documents during index repair."

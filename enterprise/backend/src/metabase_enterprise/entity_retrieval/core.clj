@@ -63,26 +63,34 @@
 (defn retrieval-status
   "Decomposed availability of the library entity index -- the single source of truth behind
   [[entity-retrieval-available?]] and the health check.
-  Returns `{:pgvector? :licensed? :index-compatible? :populated?}`:
+  Returns `{:pgvector? :licensed? :index-compatible? :populated? :probe-error}`:
   `:pgvector?` / `:licensed?` are the enablement conditions ([[available?]] is their conjunction);
   `:index-compatible?` (meta row matches the configured model + schema version) and `:populated?`
-  (>= 1 document) are the readiness conditions, probed only when enabled.
-  A missing table or query error reads as not-compatible / not-populated."
-  []
-  (let [pgvector? (pgvector-configured?)
-        licensed? (premium-features/has-feature? :semantic-search)]
-    (if-not (and pgvector? licensed?)
-      {:pgvector? pgvector? :licensed? licensed? :index-compatible? false :populated? false}
-      ;; An incompatible meta row is a model/dimension/format change whose rebuild hasn't run; the vectors
-      ;; table would answer with nothing (or error), so such an index must not be offered.
-      (let [{:keys [compatible? populated?]}
-            (try
-              (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
-                {:compatible? (boolean (index-table/index-compatible? ds (embedding/get-configured-model)))
-                 :populated?  (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1"
-                                                                       index-table/*vectors-table*)])))})
-              (catch Throwable _ {:compatible? false :populated? false}))]
-        {:pgvector? true :licensed? true :index-compatible? compatible? :populated? populated?}))))
+  (>= 1 document) are the readiness conditions, probed against pgvector only when enabled.
+  `:probe-error` is the message of a pgvector failure during that probe (else nil) -- it distinguishes a
+  store that is unreachable (probe threw) from an index that is genuinely absent/incompatible (probe
+  succeeded, answer negative), so a health check can name connectivity vs a pending rebuild.
+  `probe-populated?` false skips the `:populated?` query for callers that only need compatibility (it then
+  reads nil); a probe error still surfaces via `:probe-error`."
+  ([] (retrieval-status true))
+  ([probe-populated?]
+   (let [pgvector? (pgvector-configured?)
+         licensed? (premium-features/has-feature? :semantic-search)]
+     (if-not (and pgvector? licensed?)
+       {:pgvector? pgvector? :licensed? licensed? :index-compatible? false :populated? false :probe-error nil}
+       ;; An incompatible meta row is a model/dimension/format change whose rebuild hasn't run; the vectors
+       ;; table would answer with nothing (or error), so such an index must not be offered. A thrown probe is
+       ;; kept distinct (:probe-error) from a negative-but-successful one so pgvector-down isn't mislabelled.
+       (let [{:keys [compatible? populated? probe-error]}
+             (try
+               (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
+                 {:compatible? (boolean (index-table/index-compatible? ds (embedding/get-configured-model)))
+                  :populated?  (when probe-populated?
+                                 (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1"
+                                                                          index-table/*vectors-table*)]))))})
+               (catch Throwable e {:compatible? false :populated? false :probe-error (ex-message e)}))]
+         {:pgvector? true :licensed? true :index-compatible? compatible? :populated? populated?
+          :probe-error probe-error})))))
 
 ;; OSS-callable surface used to decide whether to OFFER the retrieve_library_entities tool: it must
 ;; be able to actually answer, so beyond config + license the index has to be built for the current model and
