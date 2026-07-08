@@ -666,6 +666,14 @@
     (:row_count r1)     (= (:row_count r1) (:row_count r2))
     :else               true))
 
+(defn- ensure-pivot-clause
+  "Return `query` unchanged when its last stage already carries `:pivot`; otherwise attach a default `:pivot`
+  clause so the SQL compiler emits every subset of breakouts as its own grouping set (the powerset)."
+  [query]
+  (cond-> query
+    (not (lib.pivot/has-pivot? query))
+    (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
+
 (defn- run-native-pivot-query
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
@@ -676,6 +684,7 @@
     (-> query
         apply-legacy-pivot-keys
         (apply-pivot-viz-settings viz-settings)
+        ensure-pivot-clause
         (assoc-in [:middleware :pivot-options] pivot-opts)
         (cond-> (seq (:info query)) qp/userland-query)
         (qp/process-query rff))))
