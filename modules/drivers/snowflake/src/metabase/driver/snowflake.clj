@@ -402,6 +402,29 @@
     :metabase.upload/datetime                 [:timestamp_ntz]
     :metabase.upload/offset-datetime          [:timestamp_tz]))
 
+;; Snowflake's JDBC driver cannot bind `java.time` values: `setObject` handles temporal binds only via the
+;; legacy `java.sql.Date`/`Time`/`Timestamp` classes, and throws on anything else. Converting through
+;; `Timestamp/valueOf` is no better -- `setTimestamp` binds nanos-since-epoch as `TIMESTAMP_LTZ` computed in
+;; the JVM default zone, while the session runs with `TIMEZONE=UTC` (see `connection-details->spec`), so
+;; wall-clock times would shift whenever the JVM zone isn't UTC. String binds sidestep both problems:
+;; Snowflake parses them server-side into the column's type, independent of any timezone. The formats mirror
+;; this driver's temporal-literal inlining in its `sql.qp/->honeysql` methods.
+(defn- temporal-bind->string
+  "Convert a temporal upload value to a string bind that Snowflake will coerce to the column type.
+  Non-temporal values pass through unchanged."
+  [v]
+  (condp instance? v
+    LocalDate      (u.date/format v)
+    LocalDateTime  (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" v)
+    OffsetDateTime (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xx" v)
+    v))
+
+(defmethod driver/insert-into! :snowflake
+  [driver db-id table-name column-names values]
+  ((get-method driver/insert-into! :sql-jdbc)
+   driver db-id table-name column-names
+   (map #(mapv temporal-bind->string %) values)))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])

@@ -1737,15 +1737,8 @@
 
 (deftest upload-type->database-type-test
   (testing "upload types map to Snowflake DDL specs"
-    ;; Two specs have load-bearing shapes:
-    ;;   - `[[:varchar 255]]` is double-nested so it renders as `VARCHAR(255)`; a single-nested
-    ;;     `[:varchar 255]` would wrongly render as `VARCHAR 255`.
-    ;;   - `[:number [:identity 1 1]]` renders as `NUMBER IDENTITY(1, 1)`, Snowflake's auto-incrementing PK
-    ;;     (a.k.a. AUTOINCREMENT). `TIMESTAMP_NTZ` / `TIMESTAMP_TZ` mirror what `database-type->base-type`
-    ;;     reads back, so inferred types round-trip cleanly through sync.
-    ;;
-    ;; This is a pure unit test (no live Snowflake); the end-to-end create/append/replace/delete paths are
-    ;; covered by the shared `metabase.upload.impl-test` suite, which runs against any :uploads driver.
+    ;; `[[:varchar 255]]` is double-nested so it renders as `VARCHAR(255)`; single-nested `[:varchar 255]`
+    ;; would render as `VARCHAR 255`. End-to-end behavior is covered by [[metabase.upload.impl-test]].
     (are [upload-type expected] (= expected
                                    (driver/upload-type->database-type :snowflake upload-type))
       :metabase.upload/varchar-255              [[:varchar 255]]
