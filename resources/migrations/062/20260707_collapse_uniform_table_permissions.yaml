@@ -72,11 +72,31 @@ databaseChangeLog:
   - changeSet:
       id: v62.2026-07-07T00:00:01
       author: ranquild
+      comment: Create the staging table that will hold the surviving data_permissions rows (#76077)
+      changes:
+        # A createTable change (rather than a raw CREATE TABLE ... AS SELECT) so Liquibase renders it per
+        # engine and, on MySQL/MariaDB, appends the ENGINE/CHARACTER SET/COLLATE clause the app-db expects.
+        - createTable:
+            tableName: data_permissions_collapse_keep
+            remarks: Transient staging table holding the data_permissions rows to keep while the table is collapsed; dropped at the end of this migration
+            columns:
+              - column: {name: id, type: int, remarks: Copy of data_permissions.id}
+              - column: {name: group_id, type: int, remarks: Copy of data_permissions.group_id}
+              - column: {name: perm_type, type: varchar(64), remarks: Copy of data_permissions.perm_type}
+              - column: {name: db_id, type: int, remarks: Copy of data_permissions.db_id}
+              - column: {name: schema_name, type: varchar(254), remarks: Copy of data_permissions.schema_name}
+              - column: {name: table_id, type: int, remarks: Copy of data_permissions.table_id}
+              - column: {name: perm_value, type: varchar(64), remarks: Copy of data_permissions.perm_value}
+      rollback: # not necessary; the collapsed representation is understood by all versions >= 49
+
+  - changeSet:
+      id: v62.2026-07-07T00:00:02
+      author: ranquild
       comment: Stage the surviving data_permissions rows before collapsing the redundant ones (#76077)
       changes:
         - sql:
             sql: >-
-              CREATE TABLE data_permissions_collapse_keep AS
+              INSERT INTO data_permissions_collapse_keep (id, group_id, perm_type, db_id, schema_name, table_id, perm_value)
               SELECT dp.id, dp.group_id, dp.perm_type, dp.db_id, dp.schema_name, dp.table_id, dp.perm_value
               FROM data_permissions dp
               LEFT JOIN data_permissions dbp
@@ -88,7 +108,7 @@ databaseChangeLog:
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
   - changeSet:
-      id: v62.2026-07-07T00:00:02
+      id: v62.2026-07-07T00:00:03
       author: ranquild
       comment: Empty data_permissions before reloading only the surviving rows (#76077)
       changes:
@@ -97,7 +117,7 @@ databaseChangeLog:
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
   - changeSet:
-      id: v62.2026-07-07T00:00:03
+      id: v62.2026-07-07T00:00:04
       author: ranquild
       comment: Reload the surviving data_permissions rows (#76077)
       changes:
@@ -109,7 +129,7 @@ databaseChangeLog:
       rollback: # not necessary; the collapsed representation is understood by all versions >= 49
 
   - changeSet:
-      id: v62.2026-07-07T00:00:04
+      id: v62.2026-07-07T00:00:05
       author: ranquild
       comment: Drop the staging table used to collapse data_permissions (#76077)
       changes:
