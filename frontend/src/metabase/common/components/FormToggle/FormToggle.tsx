@@ -9,7 +9,7 @@ import { Switch } from "metabase/ui";
 
 export interface FormToggleProps extends Omit<
   SwitchProps,
-  "value" | "onBlur" | "style"
+  "value" | "onBlur" | "style" | "onChange"
 > {
   name: string;
   title?: string;
@@ -28,7 +28,6 @@ export const FormToggle = forwardRef(function FormToggle(
     title,
     actions,
     description,
-    onChange,
     optional,
     nullable: _nullable,
     ...props
@@ -41,9 +40,8 @@ export const FormToggle = forwardRef(function FormToggle(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setValue(event.currentTarget.checked);
-      onChange?.(event);
     },
-    [setValue, onChange],
+    [setValue],
   );
 
   return (
