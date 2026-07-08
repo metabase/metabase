@@ -34,7 +34,6 @@ import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
@@ -43,14 +42,12 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
-  PLUGIN_LANDING_PAGE,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import type { State } from "metabase/redux/store";
-import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
@@ -70,7 +67,6 @@ import { SearchApp } from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
-import { trackPageView } from "./analytics";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -81,50 +77,37 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import {
+  CardHashRedirect,
+  LandingPageRedirect,
+  LoadCurrentUser,
+  QuestionHashRedirect,
+  RedirectIfSetup,
+  SsoReload,
+} from "./route-lifecycle";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
-import { getSetting } from "./selectors/settings";
 
 type AppStore = Store<State> & {
   dispatch: ThunkDispatch<State, void, UnknownAction>;
 };
 
 export const getRoutes = (store: AppStore) => {
-  const hasUserSetup = getSetting(store.getState(), "has-user-setup");
-
   return (
     <Route component={App}>
       {/* SETUP */}
-      <Route
-        path="/setup"
-        component={Setup}
-        onEnter={(nextState, replace) => {
-          if (hasUserSetup) {
-            replace("/");
-          }
-          trackPageView(location.pathname);
-        }}
-        onChange={(prevState, nextState) => {
-          trackPageView(nextState.location.pathname);
-        }}
-        props={{ disableCommandPalette: true }}
-      />
+      <Route component={RedirectIfSetup}>
+        <Route
+          path="/setup"
+          component={Setup}
+          props={{ disableCommandPalette: true }}
+        />
+      </Route>
 
       {/* For compatibility: use the standard setup for embedding */}
       <Redirect from="/setup/embedding" to="/setup" />
 
       {/* APP */}
-      <Route
-        onEnter={async (nextState, replace, done) => {
-          await store.dispatch(loadCurrentUser());
-          trackPageView(nextState.location.pathname);
-          done?.();
-        }}
-        onChange={(prevState, nextState) => {
-          if (nextState.location.pathname !== prevState.location.pathname) {
-            trackPageView(nextState.location.pathname);
-          }
-        }}
-      >
+      <Route component={LoadCurrentUser}>
         {/* AUTH */}
         <Route path="/auth">
           <IndexRedirect to="/auth/login" />
@@ -137,11 +120,8 @@ export const getRoutes = (store: AppStore) => {
           <Route path="reset_password/:token" component={ResetPassword} />
           {/* FE routes can sometimes be prioritized over BE
               reloading will correctly pick the SSO flow back up from the BE  */}
-          <Route path="sso" onEnter={() => window.location.reload()} />
-          <Route
-            path="sso/:provider"
-            onEnter={() => window.location.reload()}
-          />
+          <Route path="sso" component={SsoReload} />
+          <Route path="sso/:provider" component={SsoReload} />
         </Route>
 
         {/* MAIN */}
@@ -149,19 +129,7 @@ export const getRoutes = (store: AppStore) => {
           {getMetabotRoutes()}
 
           {/* The global all hands routes, things in here are for all the folks */}
-          <Route
-            path="/"
-            component={HomePage}
-            onEnter={(nextState, replace) => {
-              const page = PLUGIN_LANDING_PAGE.getLandingPage();
-              if (page && page !== "/") {
-                replace({
-                  pathname: page.startsWith("/") ? page : `/${page}`,
-                  state: { preserveNavbarState: true },
-                });
-              }
-            }}
-          />
+          <Route path="/" component={LandingPageRedirect} />
 
           <Route path="getting-started" component={CanAccessOnboarding}>
             <IndexRoute component={Onboarding} />
@@ -393,7 +361,6 @@ export const getRoutes = (store: AppStore) => {
 
           {/* DATA STUDIO */}
           {getDataStudioRoutes(
-            store,
             CanAccessDataStudio,
             CanAccessDataModel,
             CanAccessTransforms,
@@ -404,21 +371,8 @@ export const getRoutes = (store: AppStore) => {
 
       {/* DEPRECATED */}
       {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
-      <Route
-        path="/q"
-        onEnter={({ location }, replace) =>
-          replace({ pathname: "/question", hash: location.hash })
-        }
-      />
-      <Route
-        path="/card/:slug"
-        onEnter={({ location, params }, replace) =>
-          replace({
-            pathname: `/question/${params.slug}`,
-            hash: location.hash,
-          })
-        }
-      />
+      <Route path="/q" component={QuestionHashRedirect} />
+      <Route path="/card/:slug" component={CardHashRedirect} />
       <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
       <Redirect
         from="/collections/permissions"
