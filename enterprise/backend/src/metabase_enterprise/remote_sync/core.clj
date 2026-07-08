@@ -1,6 +1,9 @@
 (ns metabase-enterprise.remote-sync.core
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.remote-sync.guards :as guards]
+   [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-object]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -20,6 +23,29 @@
  [source]
  [source.p
   ->ingestable])
+
+(defn reset-and-import!
+  "Clear all remote-sync tracking state, then start an async full import from the
+  configured branch. Returns the created RemoteSyncTask, or nil when remote sync
+  (or its branch) is not configured."
+  []
+  (let [branch (settings/remote-sync-branch)]
+    (when (and (settings/remote-sync-enabled)
+               (not (str/blank? branch)))
+      (t2/delete! :model/RemoteSyncObject)
+      (impl/async-import! branch true {}
+                          :on-success (fn [task-id _result]
+                                        (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                                  {:branch branch :auto true} nil))))))
+
+(defn connection-settings
+  "The git connection this instance syncs with, as `{:url ..., :token ..., :branch ...}`.
+  Returns nil when remote sync is not configured. `:token` is the raw (unobfuscated) value."
+  []
+  (when (settings/remote-sync-enabled)
+    {:url    (settings/remote-sync-url)
+     :token  (settings/remote-sync-token)
+     :branch (settings/remote-sync-branch)}))
 
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.

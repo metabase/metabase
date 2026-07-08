@@ -188,6 +188,27 @@
           (is (not (contains? by-name "stub-test-audit")))
           (is (not (contains? by-name "stub-test-target"))))))))
 
+(deftest build-workspace-config-remote-sync-settings-test
+  (testing "When the parent has remote sync configured, :settings carries the git connection
+            plus :read-write type so the child can push its changes"
+    (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/acme/metabase-content.git"
+                                       remote-sync-token  "ghp_secret"
+                                       remote-sync-branch "main"]
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name       "with-remote-sync"
+                                                   :creator_id (mt/user->id :crowberto)}]
+        (is (= {:remote-sync-url    "https://github.com/acme/metabase-content.git"
+                :remote-sync-token  "ghp_secret"
+                :remote-sync-branch "main"
+                :remote-sync-type   "read-write"}
+               (-> (config/build-workspace-config ws-id) :config :settings)))))))
+
+(deftest build-workspace-config-omits-settings-without-remote-sync-test
+  (testing "Without remote sync configured on the parent, no :settings section is emitted"
+    (mt/with-temporary-setting-values [remote-sync-url nil]
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name       "without-remote-sync"
+                                                   :creator_id (mt/user->id :crowberto)}]
+        (is (not (contains? (-> (config/build-workspace-config ws-id) :config) :settings)))))))
+
 (deftest build-workspace-config-missing-workspace-returns-nil-test
   (testing "A missing workspace returns nil"
     (mt/with-model-cleanup [:model/Workspace]
