@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Route } from "react-router";
 import { replace } from "react-router-redux";
 
 import {
@@ -7,6 +6,7 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
+import { Route } from "metabase/router";
 import { Loader } from "metabase/ui";
 
 export const getMetabotQuickLinks = () => {

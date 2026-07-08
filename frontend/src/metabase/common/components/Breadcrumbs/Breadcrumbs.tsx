@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { MouseEventHandler, ReactNode } from "react";
-import { Link } from "react-router";
 
+import { Link } from "metabase/router";
 import { Ellipsified, Icon } from "metabase/ui";
 
 import S from "./Breadcrumbs.module.css";

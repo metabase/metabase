@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { getIn } from "icepick";
 import { memo } from "react";
-import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -13,6 +12,7 @@ import {
   SemanticTypePicker,
 } from "metabase/metadata/components";
 import { getFieldCurrency } from "metabase/metadata/utils/field";
+import { Link } from "metabase/router";
 import { Box, Icon } from "metabase/ui";
 import { isTypeCurrency, isTypeFK } from "metabase-lib/v1/types/utils/isa";
 import type {

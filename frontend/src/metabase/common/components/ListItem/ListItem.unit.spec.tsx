@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import { ListItem, type ListItemProps } from "./ListItem";
 

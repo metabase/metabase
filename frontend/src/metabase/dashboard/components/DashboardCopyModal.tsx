@@ -1,7 +1,6 @@
 import type { Location } from "history";
 import { dissoc } from "icepick";
 import { useState } from "react";
-import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -10,6 +9,7 @@ import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { useDispatch, useSelector } from "metabase/redux";
+import { withRouter } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
