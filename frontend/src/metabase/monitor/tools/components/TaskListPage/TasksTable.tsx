@@ -31,7 +31,7 @@ import type {
   Task,
 } from "metabase-types/api";
 
-import { TASK_SORT_COLUMNS } from "./utils";
+import { DEFAULT_SORTING, TASK_SORT_COLUMNS } from "./utils";
 
 const COLUMN_WIDTHS = [0.25, 0.15, 0.12, 0.16, 0.16, 0.1, 0.06];
 
@@ -94,15 +94,12 @@ export const TasksTable = ({
         typeof updater === "function" ? updater(sortingState) : updater;
       onSortingOptionsChange(
         toSortingOptions(
-          getSorting(
-            newSortingState,
-            TASK_SORT_COLUMNS,
-            toSorting(sortingOptions),
-          ),
+          getSorting(newSortingState, TASK_SORT_COLUMNS) ??
+            toSorting(DEFAULT_SORTING),
         ),
       );
     },
-    [sortingState, sortingOptions, onSortingOptionsChange],
+    [sortingState, onSortingOptionsChange],
   );
 
   const treeTableInstance = useTreeTableInstance<Task>({
@@ -192,7 +189,7 @@ function getColumns(
       width: "auto",
       minWidth: 150,
       enableSorting: true,
-      sortDescFirst: false,
+      sortDescFirst: true,
       accessorFn: (task) => task.started_at,
       cell: ({ row }) => (
         <Ellipsified

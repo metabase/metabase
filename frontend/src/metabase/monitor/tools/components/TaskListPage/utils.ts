@@ -7,6 +7,7 @@ import { isSortColumn } from "metabase/utils/sorting";
 import type {
   ListTasksSortColumn,
   SortDirection,
+  SortingOptions,
   TaskStatus,
 } from "metabase-types/api";
 
@@ -18,6 +19,11 @@ export const TASK_SORT_COLUMNS = [
 
 const DEFAULT_SORT_COLUMN: ListTasksSortColumn = "started_at";
 const DEFAULT_SORT_DIRECTION = "desc";
+
+export const DEFAULT_SORTING: SortingOptions<ListTasksSortColumn> = {
+  sort_column: DEFAULT_SORT_COLUMN,
+  sort_direction: DEFAULT_SORT_DIRECTION,
+};
 
 type UrlState = {
   page: number;

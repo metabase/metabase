@@ -30,6 +30,7 @@ import {
   type ErroringQuestionsSorting,
   SORT_COLUMNS,
 } from "./types";
+import { DEFAULT_SORTING } from "./utils";
 
 const COLUMN_WIDTHS = [
   0.14, 0.16, 0.1, 0.08, 0.06, 0.08, 0.09, 0.06, 0.06, 0.09, 0.08,
@@ -76,9 +77,11 @@ export const ErroringQuestionsTable = ({
     (updater: Updater<SortingState>) => {
       const newSortingState =
         typeof updater === "function" ? updater(sortingState) : updater;
-      onSortingChange(getSorting(newSortingState, SORT_COLUMNS, sorting));
+      onSortingChange(
+        getSorting(newSortingState, SORT_COLUMNS) ?? DEFAULT_SORTING,
+      );
     },
-    [sortingState, sorting, onSortingChange],
+    [sortingState, onSortingChange],
   );
 
   const treeTableInstance = useTreeTableInstance<ErroringQuestion>({
@@ -226,7 +229,7 @@ function getColumns(): TreeTableColumnDef<ErroringQuestion>[] {
       width: "auto",
       minWidth: 130,
       enableSorting: true,
-      sortDescFirst: false,
+      sortDescFirst: true,
       accessorFn: (question) => question.lastRunAt,
       cell: ({ row }) =>
         row.original.lastRunAt != null ? (

@@ -231,7 +231,7 @@ describe("ErrorOverview", () => {
     });
   });
 
-  it("sorts by column with asc/desc toggle", async () => {
+  it("sorts by column with asc/desc toggle, reverting to the default sort on the 3rd click", async () => {
     await setup();
     await screen.findByTestId("erroring-question");
 
@@ -256,7 +256,7 @@ describe("ErrorOverview", () => {
     );
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
-      expect(query.args.slice(3)).toEqual(["card_name", "asc"]);
+      expect(query.args.slice(3)).toEqual(["last_run_at", "desc"]);
     });
   });
 
