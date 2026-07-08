@@ -54,7 +54,7 @@ const SlackConnectionStatus = ({
           <Badge
             circle
             size="12"
-            bg={isValid ? "success" : "error"}
+            bg={isValid ? "feedback-positive" : "feedback-negative"}
             style={{ flexShrink: 0 }}
           />
           <Text>
@@ -85,7 +85,10 @@ const SlackConnectionStatus = ({
           )}
         </Flex>
 
-        <Button c="danger" onClick={handleOpen}>{t`Disconnect`}</Button>
+        <Button
+          c="feedback-negative"
+          onClick={handleOpen}
+        >{t`Disconnect`}</Button>
       </Flex>
       <ConfirmModal
         opened={isOpened}

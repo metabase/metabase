@@ -124,7 +124,7 @@ function DataComplexityCard({
           </Stack>
         ) : (
           <Stack gap={4} my="sm">
-            <Text c="error" fw={700}>{t`Score unavailable`}</Text>
+            <Text c="feedback-negative" fw={700}>{t`Score unavailable`}</Text>
             <Text c="text-secondary">{t`Open for component details.`}</Text>
           </Stack>
         )}
@@ -306,7 +306,7 @@ function DataComplexityComponentItem({
         </Text>
         {match(component)
           .with({ error: P.nonNullable }, ({ error }) => (
-            <Text c="error" size="sm" role="alert">
+            <Text c="feedback-negative" size="sm" role="alert">
               {error}
             </Text>
           ))
@@ -383,7 +383,7 @@ function ScoreDisplayInline({
 } & MantineStyleProps) {
   return match(score)
     .with({ score: P.nullish }, { error: P.nonNullable }, () => (
-      <Text c="error" fw={700} lh="1rem" ml="auto" {...rest}>
+      <Text c="feedback-negative" fw={700} lh="1rem" ml="auto" {...rest}>
         {withTitle ? t`Complexity score unavailable` : t`Unavailable`}
       </Text>
     ))

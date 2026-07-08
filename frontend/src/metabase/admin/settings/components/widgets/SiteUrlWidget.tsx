@@ -57,7 +57,7 @@ export function SiteUrlWidget() {
           placeholder={"http://example.com"}
         />
         {errorMessage && (
-          <Text size="sm" color="danger" mt="sm">
+          <Text size="sm" color="feedback-negative" mt="sm">
             {errorMessage}
           </Text>
         )}

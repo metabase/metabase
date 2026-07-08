@@ -665,9 +665,8 @@ function renderOptions({
       } else if (loadingState === "LOADED" && isFiltered) {
         return (
           <NoMatchState
-            fields={fields.map(
-              (field) =>
-                field.searchField(disablePKRemappingForSearch) as Field | null,
+            fields={fields.map((field) =>
+              field.searchField(disablePKRemappingForSearch),
             )}
           />
         );

@@ -6,7 +6,7 @@ import { Text } from "metabase/ui";
 export const ReadOnlyBanner = () => {
   return (
     <Banner
-      bg="warning"
+      bg="feedback-warning"
       body={
         <Text fw="bold" c="text-primary">
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- correct usage */}

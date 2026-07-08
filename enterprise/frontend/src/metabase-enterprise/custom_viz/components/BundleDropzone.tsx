@@ -80,7 +80,7 @@ export function BundleDropzone({ name = "file" }: { name?: string }) {
         )}
       </Box>
       {(rejectionMessage || showError) && (
-        <Text c="error" size="sm">
+        <Text c="feedback-negative" size="sm">
           {rejectionMessage ?? error}
         </Text>
       )}

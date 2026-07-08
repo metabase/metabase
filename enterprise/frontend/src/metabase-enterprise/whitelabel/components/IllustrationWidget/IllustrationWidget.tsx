@@ -182,7 +182,7 @@ export function IllustrationWidget({
     <Box data-testid={`${name}-setting`}>
       <SettingHeader id={name} title={title} description={description} />
       {errorMessage && (
-        <Text size="sm" c="error" mb="sm">
+        <Text size="sm" c="feedback-negative" mb="sm">
           {errorMessage}
         </Text>
       )}

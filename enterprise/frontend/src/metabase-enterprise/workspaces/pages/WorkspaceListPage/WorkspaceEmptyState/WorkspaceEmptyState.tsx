@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
+import { Link } from "metabase/router";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,

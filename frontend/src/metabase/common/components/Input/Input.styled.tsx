@@ -86,7 +86,7 @@ export const InputField = styled.input<InputProps>`
   ${(props) =>
     props.hasError &&
     css`
-      border-color: var(--mb-color-error);
+      border-color: var(--mb-color-feedback-negative);
     `};
 
   ${(props) =>

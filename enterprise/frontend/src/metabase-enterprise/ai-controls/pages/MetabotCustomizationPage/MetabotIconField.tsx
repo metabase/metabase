@@ -87,7 +87,7 @@ export function MetabotIconField() {
         {t`Upload a custom icon for the AI agent. For best results, use an SVG or PNG with a transparent background.`}
       </Text>
       {iconError && (
-        <Text fz="sm" c="error" mt="xs">
+        <Text fz="sm" c="feedback-negative" mt="xs">
           {iconError}
         </Text>
       )}

@@ -1,12 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
-import {
-  type InjectedRouter,
-  Link,
-  Route,
-  type WithRouterProps,
-  withRouter,
-} from "react-router";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
@@ -16,7 +9,14 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/redux";
-import type { DashboardState, State } from "metabase/redux/store";
+import type { DashboardState } from "metabase/redux/store";
+import {
+  type InjectedRouter,
+  Link,
+  Route,
+  type WithRouterProps,
+  withRouter,
+} from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
@@ -115,8 +115,7 @@ function setup({
     },
   );
   return {
-    getDashcards: () =>
-      Object.values((store.getState() as unknown as State).dashboard.dashcards),
+    getDashcards: () => Object.values(store.getState().dashboard.dashcards),
   };
 }
 
