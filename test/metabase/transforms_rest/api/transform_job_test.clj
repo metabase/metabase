@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
    [metabase.transforms.models.transform-tag]
@@ -308,15 +309,42 @@
             (mt/user-http-request :lucky :delete 404 "transform-job/999999")))))))
 
 (deftest execute-job-test
-  (testing "POST /api/transform-job/:id/execute"
+  (testing "POST /api/transform-job/:id/run"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
       (mt/with-premium-features #{:transforms-basic}
-        (mt/with-temp [:model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}]
-          (testing "Returns stub run response"
-            (let [response (mt/user-http-request :lucky :post 200 (str "transform-job/" (:id job) "/run"))]
-              (is (= "Job run started" (:message response)))
-              (is (string? (:job_run_id response)))
-              (is (re-matches #"stub-\d+-\d+" (:job_run_id response))))))))))
+        (testing "returns the created run id"
+          (mt/with-model-cleanup [:model/TransformJobRun]
+            (mt/with-temp [:model/TransformTag tag {:name "execute-test-tag"}
+                           :model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}
+                           :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                           :model/Transform transform {:name "To Run"}
+                           :model/TransformTransformTag _ {:transform_id (:id transform) :tag_id (:id tag) :position 0}]
+              ;; with-redefs (not with-dynamic-fn-redefs) because the job executes on a server-spawned
+              ;; thread that does not inherit the test thread's bindings; the `called` promise keeps
+              ;; the redef scope alive until the stub has actually run
+              (let [called (promise)]
+                #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                (with-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                     (deliver called run-id)
+                                                     {::jobs/status :succeeded})]
+                  (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]
+                    (is (= "Job run started" (:message response)))
+                    (is (pos-int? (:job_run_id response)))
+                    (is (= (:job_run_id response) (deref called 5000 ::timed-out)))
+                    (is (= (:id job) (t2/select-one-fn :job_id :model/TransformJobRun :id (:job_run_id response))))))))))
+        (testing "returns a nil run id when the job has no transforms"
+          (mt/with-temp [:model/TransformJob job {:name "Empty Job" :schedule "0 0 0 * * ?"}]
+            (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]
+              (is (nil? (:job_run_id response))))))
+        (testing "returns a nil run id when the job is already running"
+          (mt/with-temp [:model/TransformJob job {:name "Busy Job" :schedule "0 0 0 * * ?"}
+                         :model/TransformJobRun _ {:job_id     (:id job)
+                                                   :status     "started"
+                                                   :is_active  true
+                                                   :run_method "manual"
+                                                   :start_time (parse-instant "2025-09-01T10:00:00")}]
+            (let [response (mt/user-http-request :lucky :post 202 (str "transform-job/" (:id job) "/run"))]
+              (is (nil? (:job_run_id response))))))))))
 
 (deftest permissions-test
   (testing "All endpoints require transform permissions"

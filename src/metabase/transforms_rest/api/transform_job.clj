@@ -7,10 +7,10 @@
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -216,27 +216,28 @@
   (transforms.core/delete-job! job-id)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/:job-id/run" :- [:map {:closed true}
-                                                 [:message :string]
-                                                 [:job_run_id :string]]
-  "Run a transform job manually. By default, fresh pulled-in dependencies are skipped; pass `run_all`
-  to force-refresh the whole plan."
+(api.macros/defendpoint :post "/:job-id/run" :- [:map
+                                                 [:status [:= 202]]
+                                                 [:body [:map {:closed true}
+                                                         [:message :any]
+                                                         [:job_run_id [:maybe pos-int?]]]]]
+  "Run a transform job manually. Returns a 202 with the created `job_run_id`, or a nil `job_run_id`
+  when nothing was run (the job is already running, or has no transforms). By default, fresh
+  pulled-in dependencies are skipped; pass `run_all` to force-refresh the whole plan."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
    _query-params
    {:keys [run_all]} :- [:map
                          [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
   (api/write-check (t2/select-one :model/TransformJob :id job-id))
-  (u.jvm/in-virtual-thread*
-   (try
+  (transforms-rest.api.u/async-run-response
+   (deferred-tru "Job run started")
+   :job_run_id
+   (fn [start-promise]
      (transforms.core/run-job! job-id {:run-method       :manual
                                        :user-id          api/*current-user-id*
-                                       :skip-fresh-deps? (not run_all)})
-     (catch Throwable t
-       (log/error "Error executing transform job" job-id)
-       (log/error t))))
-  {:message "Job run started"
-   :job_run_id (str "stub-" job-id "-" (System/currentTimeMillis))})
+                                       :skip-fresh-deps? (not run_all)
+                                       :start-promise    start-promise}))))
 
 (api.macros/defendpoint :get "/:job-id" :- TransformJobResponse
   "Get a transform job by ID."

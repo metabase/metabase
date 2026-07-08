@@ -144,8 +144,7 @@
             :label             (format "DAG run for transform %s" (pr-str transform-id))}))))
     (catch Throwable t
       ;; a pre-start failure (before the row was created) — unblock any caller waiting on the promise
-      (when (and start-promise (not (realized? start-promise)))
-        (deliver start-promise t))
+      (when start-promise (deliver start-promise t))
       (throw t))))
 
 (defn cancel-dag-run!

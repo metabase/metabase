@@ -9,14 +9,13 @@
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
+   [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -345,27 +344,27 @@
   (t2/update! :model/Transform id {:last_checkpoint_value nil})
   nil)
 
-(defn run-transform!
-  "Run a transform. Returns a 202 response with run_id.
-   The transform must already be fetched and validated."
+(defn- check-feature-and-lock!
+  "Check that the transform's premium features are enabled and that transforms are not locked by the
+  trial quota."
   [transform]
   (transforms.core/check-feature-enabled! transform)
   (api/check (not (transforms.core/transform-locked? transform))
              [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
-                   :error-code "metabase_transforms_locked"}])
-  (let [start-promise (promise)]
-    (u.jvm/in-virtual-thread*
+                   :error-code "metabase_transforms_locked"}]))
+
+(defn run-transform!
+  "Run a transform. Returns a 202 response with run_id.
+   The transform must already be fetched and validated."
+  [transform]
+  (check-feature-and-lock! transform)
+  (transforms-rest.api.u/async-run-response
+   (deferred-tru "Transform run started")
+   :run_id
+   (fn [start-promise]
      (transforms.core/execute! transform {:start-promise start-promise
-                                          :run-method :manual
-                                          :user-id api/*current-user-id*}))
-    (when (instance? Throwable @start-promise)
-      (throw @start-promise))
-    (let [result @start-promise
-          run-id (when (and (vector? result) (= (first result) :started))
-                   (second result))]
-      (-> (response/response {:message (deferred-tru "Transform run started")
-                              :run_id run-id})
-          (assoc :status 202)))))
+                                          :run-method    :manual
+                                          :user-id       api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/:id/run" :- [:map
                                              [:status [:= 202]]
@@ -395,25 +394,15 @@
    {:keys [direction skip_fresh_deps]} :- [:map
                                            [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]
                                            [:skip_fresh_deps {:default false} :boolean]]]
-  (let [transform (api/write-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (api/check (not (transforms.core/transform-locked? transform))
-               [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
-                     :error-code "metabase_transforms_locked"}])
-    (let [start-promise (promise)]
-      (u.jvm/in-virtual-thread*
-       (transforms.core/run-dag! id {:direction        direction
-                                     :user-id          api/*current-user-id*
-                                     :skip-fresh-deps? skip_fresh_deps
-                                     :start-promise    start-promise}))
-      (when (instance? Throwable @start-promise)
-        (throw @start-promise))
-      (let [result     @start-promise
-            dag-run-id (when (and (vector? result) (= (first result) :started))
-                         (second result))]
-        (-> (response/response {:message    (deferred-tru "DAG run started")
-                                :dag_run_id dag-run-id})
-            (assoc :status 202))))))
+  (check-feature-and-lock! (api/write-check :model/Transform id))
+  (transforms-rest.api.u/async-run-response
+   (deferred-tru "DAG run started")
+   :dag_run_id
+   (fn [start-promise]
+     (transforms.core/run-dag! id {:direction        direction
+                                   :user-id          api/*current-user-id*
+                                   :skip-fresh-deps? skip_fresh_deps
+                                   :start-promise    start-promise}))))
 
 (api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
                                                                     [:id pos-int?]

@@ -557,34 +557,51 @@
                                               failures)}))))
 
 (defn run-job!
-  "Runs all transforms for a given job and their dependencies."
-  [job-id {:keys [run-method] :as opts}]
-  (if (transforms.job-run/running-run-for-job-id job-id)
-    (log/info "Not executing transform job" (pr-str job-id) "because it is already running")
-    (let [transforms (job-transform-ids job-id)]
-      (if (empty? transforms)
-        (log/info "Skipping transform job" (pr-str job-id) "because it has no transforms to run")
-        (run-coordinated!
-         {:start-run!        #(transforms.job-run/start-run! job-id run-method)
-          :transform-ids     transforms
-          :run-opts          (assoc opts :parent-run-type :job :active-runs-atom active-runs)
-          :add-run-activity! transforms.job-run/add-run-activity!
-          :span              ["task.transform.run-job" {:transform.job/id         job-id
-                                                        :transform.job/run-method (name run-method)
-                                                        :transform.job/count      (count transforms)}]
-          :wrap              (fn [thunk]
-                               (transforms.instrumentation/with-job-timing [job-id run-method]
-                                 (thunk)))
-          :succeed!          transforms.job-run/succeed-started-run!
-          :fail!             transforms.job-run/fail-started-run!
-          :label             (format "Transform job run for job %s" (pr-str job-id))
-          :on-failed         (when (= :cron run-method)
-                               #(notify-transform-failures job-id %))
-          ;; catastrophic (= cron) job failures are included in the digest
-          :on-crash          (fn [t]
-                               (when (and (::transform-failure (ex-data t))
-                                          (= :cron run-method))
-                                 (notify-transform-failures job-id (::failures (ex-data t)))))})))))
+  "Runs all transforms for a given job and their dependencies.
+
+  `:start-promise`, if provided, is delivered `[:started run-id]` once the run row is created, `nil`
+  if nothing was run (already running / no transforms), or a Throwable on a pre-start failure.
+  Returns the run id, or nil if nothing was executed."
+  [job-id {:keys [run-method start-promise] :as opts}]
+  (try
+    (if (transforms.job-run/running-run-for-job-id job-id)
+      (do (log/info "Not executing transform job" (pr-str job-id) "because it is already running")
+          (when start-promise (deliver start-promise nil))
+          nil)
+      (let [transforms (job-transform-ids job-id)]
+        (if (empty? transforms)
+          (do (log/info "Skipping transform job" (pr-str job-id) "because it has no transforms to run")
+              (when start-promise (deliver start-promise nil))
+              nil)
+          (run-coordinated!
+           {:start-run!        #(transforms.job-run/start-run! job-id run-method)
+            :transform-ids     transforms
+            :start-promise     start-promise
+            :run-opts          (-> opts
+                                   (dissoc :start-promise)
+                                   (assoc :parent-run-type :job :active-runs-atom active-runs))
+            :add-run-activity! transforms.job-run/add-run-activity!
+            :span              ["task.transform.run-job" {:transform.job/id         job-id
+                                                          :transform.job/run-method (name run-method)
+                                                          :transform.job/count      (count transforms)}]
+            :wrap              (fn [thunk]
+                                 (transforms.instrumentation/with-job-timing [job-id run-method]
+                                   (thunk)))
+            :succeed!          transforms.job-run/succeed-started-run!
+            :fail!             transforms.job-run/fail-started-run!
+            :label             (format "Transform job run for job %s" (pr-str job-id))
+            :on-failed         (when (= :cron run-method)
+                                 #(notify-transform-failures job-id %))
+            ;; catastrophic (= cron) job failures are included in the digest
+            :on-crash          (fn [t]
+                                 (when (and (::transform-failure (ex-data t))
+                                            (= :cron run-method))
+                                   (notify-transform-failures job-id (::failures (ex-data t)))))}))))
+    (catch Throwable t
+      ;; a pre-start failure (before the row was created) — unblock any caller waiting on the promise
+      ;; (no-op if the [:started run-id] delivery already happened)
+      (when start-promise (deliver start-promise t))
+      (throw t))))
 
 (defn cancel-job-run!
   "Cancel an in-progress job run and request cancellation of its still-running member transform runs.
