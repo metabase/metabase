@@ -18,13 +18,23 @@ const THEME_CASES = [
   // V1 themes
   {
     themeName: "V1 light theme",
-    theme: { preset: "light" as const },
+    theme: {
+      colors: {
+        background: "#ffffff",
+        "text-primary": "#111111",
+      },
+    },
     expectedColor: LIGHT_EXAMPLE_VALUE,
     unexpectedColor: DARK_EXAMPLE_VALUE,
   },
   {
     themeName: "V1 dark theme",
-    theme: { preset: "dark" as const },
+    theme: {
+      colors: {
+        background: "#111111",
+        "text-primary": "#ffffff",
+      },
+    },
     expectedColor: DARK_EXAMPLE_VALUE,
     unexpectedColor: LIGHT_EXAMPLE_VALUE,
   },
