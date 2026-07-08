@@ -137,9 +137,14 @@ jobs:
         env:
           PREV_MANIFEST: ${{ steps.prev.outputs.found == 'true' && 'prev-manifest/spec-file-manifest.json' || '' }}
         run: node e2e/coverage/build-coverage-manifest.mjs
-      - name: Upload manifest
+      # Both files share one artifact so the per-test manifest always travels
+      # with the spec manifest it was built from (backfill and PR-side
+      # resolution read them as siblings).
+      - name: Upload manifests
         uses: actions/upload-artifact@v7
         with:
           name: spec-file-manifest
-          path: e2e/coverage/spec-file-manifest.json
+          path: |
+            e2e/coverage/spec-file-manifest.json
+            e2e/coverage/spec-test-manifest.json
           retention-days: 30
