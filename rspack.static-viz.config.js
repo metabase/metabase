@@ -76,8 +76,8 @@ module.exports = (env) => {
                   },
                 },
 
-                sourceMaps: true,
-                minify: false, // produces same bundle size, but cuts 1s locally
+                sourceMaps: false,
+                minify: true,
                 env: {
                   targets: ["defaults"],
                 },
@@ -138,7 +138,7 @@ module.exports = (env) => {
       },
     },
     optimization: {
-      minimize: false,
+      minimize: true,
     },
     plugins: [
       new rspack.EnvironmentPlugin({
