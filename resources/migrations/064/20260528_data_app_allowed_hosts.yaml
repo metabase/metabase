@@ -1,16 +1,15 @@
 ## Adds data_app.allowed_hosts — a JSON array of origins the app's sandboxed
 ## bundle may fetch/XHR (NULL/empty means none).
 ##
-## Split into its own file rather than appended to 20260528_data_app.yaml: an
-## instance already ran the earlier branch state, so we keep the released table
-## migration untouched. The changeset id and `logicalFilePath` are unchanged, so
-## Liquibase recognizes this as the same, already-applied changeset on that
-## instance (no re-run) and applies it normally on fresh installs.
+## Split into its own file rather than appended to 20260528_data_app.yaml so the
+## table-creation migration stays self-contained. The changeset is guarded with
+## `onFail: MARK_RAN` on `not columnExists`, so an instance that already added
+## this column under the earlier branch state fails the precondition and is
+## marked as ran (no re-run); fresh installs apply it normally.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/062_update_migrations.yaml
   - changeSet:
-      id: v63.2026-05-28T00:00:03
+      id: v64.2026-05-28T00:00:03
       author: timofei
       comment: >-
         Add data_app.allowed_hosts. A JSON array of origins the app's sandboxed
