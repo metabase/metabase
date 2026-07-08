@@ -30,12 +30,15 @@ function defaultFieldValue(field: IndexField): IndexFieldValue {
 export function buildInitialValues(
   fields: IndexField[],
   structured?: StructuredIndex,
+  carriedValues?: IndexFormValues,
 ): IndexFormValues {
   const source = structured as Record<string, IndexFieldValue> | undefined;
   return Object.fromEntries(
     fields.map((field) => [
       field.name,
-      source?.[field.name] ?? defaultFieldValue(field),
+      carriedValues?.[field.name] ??
+        source?.[field.name] ??
+        defaultFieldValue(field),
     ]),
   );
 }

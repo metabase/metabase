@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { t } from "ttag";
 
 import { Form, FormSubmitButton } from "metabase/forms";
@@ -14,6 +15,7 @@ import type { IndexField, IndexKind } from "metabase-types/api";
 import { IndexFieldInput } from "./IndexFieldInput";
 import { getIndexTypeDescription } from "./constants";
 import type { IndexKindOption } from "./types";
+import type { IndexFormValues } from "./utils";
 
 type IndexEditorFormProps = {
   kind: IndexKind;
@@ -22,7 +24,7 @@ type IndexEditorFormProps = {
   columnOptions: ComboboxItem[];
   isEditing: boolean;
   submitLabel: string;
-  onKindChange: (kind: IndexKind) => void;
+  onKindChange: (kind: IndexKind, currentValues: IndexFormValues) => void;
   onClose: () => void;
 };
 
@@ -36,6 +38,7 @@ export function IndexEditorForm({
   onKindChange,
   onClose,
 }: IndexEditorFormProps) {
+  const { values } = useFormikContext<IndexFormValues>();
   // The order of fields in the form is driven by the BE schema
   const [firstField, ...restFields] = fields;
 
@@ -57,7 +60,7 @@ export function IndexEditorForm({
           description={getIndexTypeDescription()}
           data={kindOptions}
           value={kind}
-          onChange={(value) => value && onKindChange(value)}
+          onChange={(value) => value && onKindChange(value, values)}
           disabled={isEditing}
           allowDeselect={false}
           renderOption={({ option }) => {

@@ -57,6 +57,12 @@ export function IndexEditorModal({
   const [kind, setKind] = useState<IndexKind | undefined>(
     request?.structured.kind ?? kinds[0],
   );
+  const [carriedValues, setCarriedValues] = useState<IndexFormValues>({});
+
+  function handleKindChange(nextKind: IndexKind, values: IndexFormValues) {
+    setCarriedValues(values);
+    setKind(nextKind);
+  }
 
   const {
     data: table,
@@ -69,7 +75,11 @@ export function IndexEditorModal({
   const method = kind !== undefined ? requestableIndexes?.[kind] : undefined;
   const columnOptions = getColumnOptions(table);
   const fields = method?.fields ?? [];
-  const initialValues = buildInitialValues(fields, request?.structured);
+  const initialValues = buildInitialValues(
+    fields,
+    request?.structured,
+    carriedValues,
+  );
   const validationSchema = buildValidationSchema(fields);
   const [createTableIndex] = useCreateTableIndexMutation();
   const [updateTableIndex] = useUpdateTableIndexMutation();
@@ -135,7 +145,7 @@ export function IndexEditorModal({
             columnOptions={columnOptions}
             isEditing={isEditing}
             submitLabel={isEditing ? t`Update index` : t`Create index`}
-            onKindChange={setKind}
+            onKindChange={handleKindChange}
             onClose={onClose}
           />
         </FormProvider>

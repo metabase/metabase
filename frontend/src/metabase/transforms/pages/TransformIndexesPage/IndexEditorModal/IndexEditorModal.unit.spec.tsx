@@ -131,6 +131,41 @@ describe("IndexEditorModal", () => {
     });
   });
 
+  it("retains the name and selected columns when changing the index type", async () => {
+    setup();
+
+    await userEvent.type(
+      await screen.findByLabelText("Give your index a name"),
+      "shared_idx",
+    );
+
+    await userEvent.click(screen.getByPlaceholderText("Select columns"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "City name" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Country" }),
+    );
+
+    await userEvent.click(screen.getByLabelText("Index type"));
+    await userEvent.click(await screen.findByRole("option", { name: /GIN/ }));
+
+    expect(screen.getByLabelText("Give your index a name")).toHaveValue(
+      "shared_idx",
+    );
+    expect(screen.getByText("City name")).toBeInTheDocument();
+    expect(screen.getByText("Country")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Create index" }));
+
+    const body = await waitForBody("createTableIndex");
+    expect(body.structured).toEqual({
+      kind: "gin",
+      name: "shared_idx",
+      columns: [{ name: "city" }, { name: "country" }],
+    });
+  });
+
   it("blocks submitting without a required name", async () => {
     setup();
 
