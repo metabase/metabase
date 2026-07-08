@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
@@ -22,6 +23,25 @@
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
+
+(defn- openrouter-usage->aisdk-usage
+  "Convert an OpenRouter Chat Completions `usage` block into the AISDK `:usage` shape.
+
+  OpenRouter normalizes usage to the OpenAI shape regardless of the upstream
+  provider: `prompt_tokens` is the total input count, and the cache buckets are
+  a subset breakdown of it under `prompt_tokens_details`:
+
+      cached_tokens      — input tokens read from the provider cache
+      cache_write_tokens — input tokens written to the provider cache;
+                           Anthropic models only. OpenAI caching is
+                           automatic, its writes are free and reported
+                           as 0 (or omitted entirely)."
+  [u]
+  (let [details (:prompt_tokens_details u)]
+    {:promptTokens        (:prompt_tokens u 0)
+     :completionTokens    (:completion_tokens u 0)
+     :cacheCreationTokens (or (:cache_write_tokens details) 0)
+     :cacheReadTokens     (or (:cached_tokens details) 0)}))
 
 ;;; AISDK parts → Chat Completions messages
 
@@ -285,12 +305,59 @@
                                                                @current-type (close!))
              ;; Usage (often on a separate final chunk with empty choices)
              (some? usage)                                    (rf {:type  :usage
-                                                                   :usage {:promptTokens     (:prompt_tokens usage 0)
-                                                                           :completionTokens (:completion_tokens usage 0)}
+                                                                   :usage (openrouter-usage->aisdk-usage usage)
                                                                    :id    @message-id
                                                                    :model @model-name}))))))))
 
 ;;; HTTP request
+
+(defn- anthropic-model?
+  "Whether an OpenRouter model id routes to Anthropic (e.g. `anthropic/claude-haiku-4.5`)."
+  [model]
+  (str/starts-with? (str model) "anthropic/"))
+
+(defn- system->cc-message
+  "Build the Chat Completions system message for `system`.
+
+  Anthropic models get explicit prompt-cache breakpoints: the content becomes
+  Anthropic-style text blocks with `cache_control` markers (see
+  [[claude/system->cached-content-blocks]]), which OpenRouter passes through to
+  Anthropic unchanged. Anthropic's cache prefix orders tools before system, so a
+  breakpoint on the system blocks caches the tool definitions too; OpenRouter
+  doesn't document `cache_control` on tool definitions, so unlike claude.clj we
+  don't put a separate breakpoint there.
+
+  Other models (OpenAI) get a plain string system message: OpenAI prompt caching
+  is automatic server-side and takes no request markup."
+  [system model]
+  {:role    "system"
+   :content (cond-> system
+              (anthropic-model? model) claude/system->cached-content-blocks)})
+
+(mu/defn openrouter-request-body
+  "Build the Chat Completions request body for an LLM request."
+  [{:keys [model system input tools temperature max-tokens tool_choice schema]
+    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
+  (let [messages  (cond-> (parts->cc-messages input)
+                    system (as-> msgs (into [(system->cc-message system model)] msgs)))
+        all-tools (or (when schema
+                        ;; Structured output: force a tool call with the given JSON schema
+                        [{:type     "function"
+                          :function {:name        "structured_output"
+                                     :description "Output structured data"
+                                     :parameters  schema}}])
+                      (seq (mapv tool->openai-chat tools)))]
+    (cond-> {:model             model
+             :stream            true
+             :stream_options    {:include_usage true}
+             :messages          messages}
+      all-tools   (assoc :tools       (vec all-tools)
+                         :tool_choice (cond
+                                        schema      "required"
+                                        tool_choice tool_choice
+                                        :else       "auto"))
+      temperature (assoc :temperature temperature)
+      max-tokens  (assoc :max_tokens max-tokens))))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
@@ -298,34 +365,15 @@
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [model system input tools temperature max-tokens tool_choice schema ai-proxy?]
+  [{:keys [model tools ai-proxy?] :as opts
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
-  (let [messages  (cond-> (parts->cc-messages input)
-                    system (as-> msgs (into [{:role "system" :content system}] msgs)))
-        all-tools (or (when schema
-                        ;; Structured output: force a tool call with the given JSON schema
-                        [{:type     "function"
-                          :function {:name        "structured_output"
-                                     :description "Output structured data"
-                                     :parameters  schema}}])
-                      (seq (mapv tool->openai-chat tools)))
-        req       (cond-> {:model             model
-                           :stream            true
-                           :stream_options    {:include_usage true}
-                           :messages          messages}
-                    all-tools   (assoc :tools       (vec all-tools)
-                                       :tool_choice (cond
-                                                      schema      "required"
-                                                      tool_choice tool_choice
-                                                      :else       "auto"))
-                    temperature (assoc :temperature temperature)
-                    max-tokens  (assoc :max_tokens max-tokens))]
-    (log/debug "OpenRouter request" {:model model :msg-count (count messages) :tools (count (or tools []))})
+  (let [req (openrouter-request-body opts)]
+    (log/debug "OpenRouter request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
     (with-span :info {:name       :metabot.openrouter/request
                       :model      model
-                      :msg-count  (count messages)
+                      :msg-count  (count (:messages req))
                       :tool-count (count (or tools []))}
       (try
         (let [api-key  (not-empty (llm/llm-openrouter-api-key))

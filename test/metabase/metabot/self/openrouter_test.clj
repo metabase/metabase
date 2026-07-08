@@ -89,6 +89,52 @@
               {:type :text :text "It's 2:00 PM in Kyiv."}])))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; openrouter-request-body prompt-caching tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel request-body-anthropic-system-cached-block-test
+  (testing "anthropic models wrap the system prompt in a single cache_control content block"
+    (let [body (openrouter/openrouter-request-body
+                {:model  "anthropic/claude-haiku-4.5"
+                 :system "You are a helpful assistant."
+                 :input  [{:role :user :content "hi"}]})]
+      (is (= {:role    "system"
+              :content [{:type          "text"
+                         :text          "You are a helpful assistant."
+                         :cache_control {:type "ephemeral"}}]}
+             (-> body :messages first))))))
+
+(deftest ^:parallel request-body-anthropic-system-sentinel-split-test
+  (testing "anthropic models split the system prompt at the sentinel into cached prefix + uncached suffix"
+    (let [body (openrouter/openrouter-request-body
+                {:model  "anthropic/claude-haiku-4.5"
+                 :system "Stable prefix content.\n\n<<<METABOT_CACHE_BREAKPOINT>>>\n\nDynamic suffix content."
+                 :input  [{:role :user :content "hi"}]})]
+      (is (= {:role    "system"
+              :content [{:type          "text"
+                         :text          "Stable prefix content."
+                         :cache_control {:type "ephemeral"}}
+                        {:type "text"
+                         :text "Dynamic suffix content."}]}
+             (-> body :messages first))))))
+
+(deftest ^:parallel request-body-openai-system-plain-string-test
+  (testing "openai models get a plain string system message with no cache markup"
+    (let [body (openrouter/openrouter-request-body
+                {:model  "openai/gpt-5.4"
+                 :system "You are a helpful assistant."
+                 :input  [{:role :user :content "hi"}]})]
+      (is (= {:role "system" :content "You are a helpful assistant."}
+             (-> body :messages first))))))
+
+(deftest ^:parallel request-body-no-system-message-test
+  (testing "no system message is added when system is not provided"
+    (let [body (openrouter/openrouter-request-body
+                {:model "anthropic/claude-haiku-4.5"
+                 :input [{:role :user :content "hi"}]})]
+      (is (= ["user"] (map :role (:messages body)))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -184,6 +230,51 @@
                 :usage {:promptTokens pos-int? :completionTokens pos-int?}}]
               (remove #(= (:type %) :text) res)))
       (is (< 10 (count (filter #(= (:type %) :text) res)))))))
+
+(deftest ^:parallel openrouter-usage-cache-tokens-test
+  (testing "cache read/write counts are extracted from prompt_tokens_details"
+    (let [chunks [{:id      "gen-1"
+                   :model   "anthropic/claude-haiku-4.5"
+                   :choices [{:delta {:role "assistant" :content "Hello"}}]}
+                  {:choices [{:delta {} :finish_reason "stop"}]}
+                  ;; OpenRouter reports usage on a final chunk with empty choices.
+                  ;; prompt_tokens is the total input; the cache buckets are a
+                  ;; subset breakdown, so no summing happens on our side.
+                  {:choices []
+                   :usage   {:prompt_tokens         5000
+                             :completion_tokens     7
+                             :total_tokens          5007
+                             :prompt_tokens_details {:cached_tokens      4200
+                                                     :cache_write_tokens 250
+                                                     :audio_tokens       0}}}]
+          usage  (->> (into [] (openrouter/openrouter->aisdk-chunks-xf) chunks)
+                      (filter #(= :usage (:type %)))
+                      first)]
+      (is (=? {:type  :usage
+               :id    "gen-1"
+               :model "anthropic/claude-haiku-4.5"
+               :usage {:promptTokens        5000
+                       :completionTokens    7
+                       :cacheCreationTokens 250
+                       :cacheReadTokens     4200}}
+              usage)))))
+
+(deftest ^:parallel openrouter-usage-missing-cache-details-test
+  (testing "missing prompt_tokens_details (or missing cache fields) default to 0"
+    (let [chunks [{:id      "gen-2"
+                   :model   "openai/gpt-5.4"
+                   :choices [{:delta {:role "assistant" :content "Hi"}}]}
+                  {:choices [{:delta {} :finish_reason "stop"}]}
+                  {:choices []
+                   :usage   {:prompt_tokens 10 :completion_tokens 3 :total_tokens 13}}]
+          usage  (->> (into [] (openrouter/openrouter->aisdk-chunks-xf) chunks)
+                      (filter #(= :usage (:type %)))
+                      first)]
+      (is (= {:promptTokens        10
+              :completionTokens    3
+              :cacheCreationTokens 0
+              :cacheReadTokens     0}
+             (:usage usage))))))
 
 (deftest openrouter-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}

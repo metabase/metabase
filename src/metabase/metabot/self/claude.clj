@@ -252,7 +252,7 @@
   by other provider adapters."
   "<<<METABOT_CACHE_BREAKPOINT>>>")
 
-(defn- system->cached-content-blocks
+(defn system->cached-content-blocks
   "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
 
   If `system` contains the cache breakpoint sentinel, split it into two content
