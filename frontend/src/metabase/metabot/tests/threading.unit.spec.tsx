@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
+import { isUuid } from "metabase/utils/uuid";
 
 import {
   createMockSSEStream,
@@ -22,6 +23,45 @@ describe("metabot > threading", () => {
     await enterChatMessage("Who is your favorite?");
     const reqBody = await lastReqBody(agentSpy);
     expect(reqBody?.parent_message_id).toBeUndefined();
+  });
+
+  it("should mint uuid user_message_id and assistant_message_id on every request", async () => {
+    setup();
+
+    const agentSpy = mockAgentEndpoint({ events: [] });
+    await enterChatMessage("Who is your favorite?");
+    const reqBody = await lastReqBody(agentSpy);
+    expect(isUuid(reqBody?.user_message_id)).toBe(true);
+    expect(isUuid(reqBody?.assistant_message_id)).toBe(true);
+  });
+
+  it("should send the minted assistant id as parent_message_id when aborted before the start event", async () => {
+    setup();
+
+    const [pause] = createPauses(1);
+    const firstSpy = mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield* [];
+          await pause.promise;
+        })(),
+      ),
+    });
+    await enterChatMessage("Who is your favorite?");
+    await userEvent.click(await stopResponseButton());
+    pause.resolve();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-stop-response"),
+      ).not.toBeInTheDocument();
+    });
+    const firstReqBody = await lastReqBody(firstSpy);
+
+    const agentSpy = mockAgentEndpoint({ events: [] });
+    await enterChatMessage("Nevermind, hi!");
+    const reqBody = await lastReqBody(agentSpy);
+    expect(isUuid(firstReqBody?.assistant_message_id)).toBe(true);
+    expect(reqBody?.parent_message_id).toBe(firstReqBody?.assistant_message_id);
   });
 
   it("should send parent_message_id matching the previous turn's external id", async () => {

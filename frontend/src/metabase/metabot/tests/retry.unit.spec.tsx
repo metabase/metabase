@@ -6,6 +6,7 @@ import {
   getMetabotConversation,
   getMetabotRequestState,
 } from "metabase/metabot/state";
+import { isUuid } from "metabase/utils/uuid";
 
 import {
   chatMessages,
@@ -235,6 +236,7 @@ describe("metabot > retry", () => {
 
     const body = await lastReqBody(retrySpy);
     expect(body.retry_message_id).toBe("user_msg_2");
+    expect(body.user_message_id).toBe("user_msg_2");
     expect(body.parent_message_id).toBeUndefined();
     expect(body.message).toBe("second prompt");
   });
@@ -297,6 +299,37 @@ describe("metabot > retry", () => {
 
     const body = await lastReqBody(retrySpy);
     expect(body.retry_message_id).toBe("user_msg_aborted");
+  });
+
+  it("should retry with the minted user id when aborted before the start event", async () => {
+    setup();
+    const [pause] = createPauses(1);
+    const firstSpy = mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield* [];
+          await pause.promise;
+        })(),
+      ),
+    });
+    await enterChatMessage("first prompt");
+    await userEvent.click(await stopResponseButton());
+    pause.resolve();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-stop-response"),
+      ).not.toBeInTheDocument();
+    });
+    const firstReqBody = await lastReqBody(firstSpy);
+
+    const retrySpy = mockAgentEndpoint({ events: [] });
+    await userEvent.click(
+      (await screen.findAllByTestId("metabot-chat-message-retry"))[0],
+    );
+
+    const body = await lastReqBody(retrySpy);
+    expect(isUuid(firstReqBody.user_message_id)).toBe(true);
+    expect(body.retry_message_id).toBe(firstReqBody.user_message_id);
   });
 
   it("should fall back to a plain send when the failed turn has no userMessageId", async () => {

@@ -970,6 +970,49 @@
                  (t2/select-one-fn :external_id :model/MetabotMessage
                                    :conversation_id conversation-id :role "user"))))))))
 
+(deftest agent-streaming-honors-client-minted-message-ids-test
+  (testing "rows persist under client-sent ids, the start event echoes them, and a retry honors its fresh assistant id"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              user-id         (str (random-uuid))
+              assistant-id    (str (random-uuid))
+              response        (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "first"
+                                                                   :user_message_id user-id
+                                                                   :assistant_message_id assistant-id))]
+          (is (= assistant-id (streamed-message-id response)))
+          (is (= user-id (streamed-user-message-id response)))
+          (is (= {:user user-id :assistant assistant-id}
+                 (t2/select-fn->fn :role :external_id :model/MetabotMessage
+                                   :conversation_id conversation-id)))
+          (let [retry-assistant-id (str (random-uuid))]
+            (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                  (agent-request conversation-id "first"
+                                                 :retry_message_id user-id
+                                                 :assistant_message_id retry-assistant-id))
+            (is (= retry-assistant-id
+                   (metabot.persistence/leaf-external-id conversation-id)))))))))
+
+(deftest agent-streaming-rejects-taken-client-minted-id-test
+  (testing "a client-sent id colliding with an existing message 409s"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [conversation-id (str (random-uuid))
+              first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                    (agent-request conversation-id "first"))
+              parent-id       (streamed-message-id first-response)]
+          (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
+                                (agent-request conversation-id "second"
+                                               :parent_message_id parent-id
+                                               :assistant_message_id parent-id)))))))
+
+(deftest agent-streaming-rejects-malformed-client-minted-id-test
+  (testing "a non-uuid client-sent id fails request validation"
+    (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
+                          (agent-request (str (random-uuid)) "first"
+                                         :assistant_message_id "not-a-uuid"))))
+
 (deftest agent-streaming-replaces-trailing-failed-turn-test
   (testing "a resubmit whose parent points before a mid-stream-errored turn replaces the failed pair"
     (with-mock-streaming-provider!
@@ -1425,6 +1468,7 @@
       (mt/with-dynamic-fn-redefs [metabot.config/check-metabot-enabled! (constantly nil)
                                   api/check-conversation-access!        (constantly nil)
                                   metabot.persistence/leaf-external-id  (constantly nil)
+                                  metabot.persistence/live-messages     (constantly [])
                                   metabot.persistence/history           (constantly [])
                                   metabot.persistence/start-turn!       (fn [& _]
                                                                           {:assistant-msg-id 1

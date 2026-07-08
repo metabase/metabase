@@ -151,6 +151,8 @@ export type MetabotAgentRequest = {
   conversation_id: string; // uuid
   parent_message_id?: string;
   retry_message_id?: string;
+  user_message_id?: string; // uuid
+  assistant_message_id?: string; // uuid
   metabot_id?: string;
   profile_id?: string;
 };
