@@ -798,25 +798,18 @@
         col-indexes [2]
         val-indexes [4]
         col-settings [{} {} {} {} {}]
-        last-row-grand-total? (fn [result]
-                                (let [row-tree (lists-to-vecs-recursively (:row-tree result))]
-                                  (= true (:isGrandTotal (last row-tree)))))]
+        row-tree (:row-tree (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {} col-settings))
+        last-row-grand-total? (fn [settings]
+                                (let [with-totals (lists-to-vecs-recursively
+                                                    (#'pivot/maybe-add-grand-totals-row row-tree settings))]
+                                  (= true (:isGrandTotal (last with-totals)))))]
     (testing "Grand totals row is present by default (show_column_totals defaults true)"
-      (let [result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes {} col-settings)]
-        (is (last-row-grand-total? result))))
+      (is (last-row-grand-total? {})))
     (testing "Grand totals row is present when both show_column_totals and show_grand_totals are true"
-      (let [settings {:pivot.show_column_totals true :pivot.show_grand_totals true}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-        (is (last-row-grand-total? result))))
+      (is (last-row-grand-total? {:pivot.show_column_totals true :pivot.show_grand_totals true})))
     (testing "Grand totals row is absent when show_grand_totals is false (even with show_column_totals true)"
-      (let [settings {:pivot.show_column_totals true :pivot.show_grand_totals false}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-        (is (not (last-row-grand-total? result)))))
+      (is (not (last-row-grand-total? {:pivot.show_column_totals true :pivot.show_grand_totals false}))))
     (testing "Grand totals row is absent when show_column_totals is false"
-      (let [settings {:pivot.show_column_totals false}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-        (is (not (last-row-grand-total? result)))))
+      (is (not (last-row-grand-total? {:pivot.show_column_totals false}))))
     (testing "Grand totals row is absent when both show_column_totals and show_grand_totals are false"
-      (let [settings {:pivot.show_column_totals false :pivot.show_grand_totals false}
-            result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
-        (is (not (last-row-grand-total? result))))))))
+      (is (not (last-row-grand-total? {:pivot.show_column_totals false :pivot.show_grand_totals false})))))))

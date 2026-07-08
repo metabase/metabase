@@ -297,6 +297,15 @@ describe("Visualizations > PivotTable > PivotTable", () => {
 });
 
 describe("Visualizations > PivotTable > Grand Totals", () => {
+  const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetHeight",
+  ) as number;
+  const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetWidth",
+  ) as number;
+
   beforeAll(() => {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
       configurable: true,
@@ -306,6 +315,19 @@ describe("Visualizations > PivotTable > Grand Totals", () => {
       configurable: true,
       value: 500,
     });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetHeight",
+      originalOffsetHeight,
+    );
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetWidth",
+      originalOffsetWidth,
+    );
   });
 
   it("should show Grand totals row by default", async () => {
