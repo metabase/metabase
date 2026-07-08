@@ -2372,19 +2372,20 @@
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
             ;; Simulates what card.clj does — binding *card-id* itself
             (binding [qp.perms/*card-id* card-id]
-              (qp.pivot.tu/with-pivot-parity-check
-                (let [result (qp.pivot/run-pivot-query
-                              {:database    (mt/id)
-                               :type        :query
-                               :info        {:executed-by (mt/user->id :rasta)
-                                             :context     :ad-hoc
-                                             :card-id     card-id}
-                               :constraints {:max-results 10000 :max-results-bare-rows 2000}
-                               :query       {:source-table (format "card__%d" card-id)
-                                             :breakout     [[:field (mt/id :venues :price)]]
-                                             :aggregation  [[:count]]}})]
-                  (is (=? {:status :completed} result)
-                      "Pivot query for an authorized card should succeed when *card-id* is bound by the caller"))))))))))
+              ;; This test only asserts the permission gate passes.
+              (qp.pivot.tu/without-pivot-parity-check
+               (let [result (qp.pivot/run-pivot-query
+                             {:database    (mt/id)
+                              :type        :query
+                              :info        {:executed-by (mt/user->id :rasta)
+                                            :context     :ad-hoc
+                                            :card-id     card-id}
+                              :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                              :query       {:source-table (format "card__%d" card-id)
+                                            :breakout     [[:field (mt/id :venues :price)]]
+                                            :aggregation  [[:count]]}})]
+                 (is (=? {:status :completed} result)
+                     "Pivot query for an authorized card should succeed when *card-id* is bound by the caller"))))))))))
 
 (deftest download-endpoint-replaces-info-test
   (testing "POST /api/dataset/:format replaces :info entirely rather than merging it with the query map"

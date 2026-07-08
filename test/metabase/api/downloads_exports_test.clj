@@ -250,7 +250,7 @@
    {:dashcard-download (card-download card-or-dashcard opts)
     :public-dashcard-download (public-dashcard-download card-or-dashcard opts)}))
 
-(def ^:private ^:const normalize-num-str-precision
+(def ^:private ^:const ^long normalize-num-str-precision
   "Decimal precision used by [[normalize-num-str]]. 4 is deep enough to absorb IEEE-754 noise on Postgres
   double sums (order-of `1e-14`) and to handle Postgres `NUMERIC(20,16)` avg output (`100.0000000000000000`),
   without over-truncating values whose expected precision is 2–4 decimals."
