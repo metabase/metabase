@@ -1,0 +1,177 @@
+## Content Diagnostics — detected findings snapshot (scan-snapshot, latest-wins).
+## Persisted table: `content_diagnostics_finding`.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.ryvrr3
+      author: yb
+      comment: Content Diagnostics — content_diagnostics_finding (scan snapshot)
+      changes:
+        - createTable:
+            tableName: content_diagnostics_finding
+            remarks: One detected problem for one entity, from one scan run.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scan_id
+                  type: varchar(36)
+                  remarks: Groups all rows from one scan run (UUID). API serves the newest scan.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: Polymorphic — card/dashboard/document/collection/transform. No FK.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: Polymorphic id of the flagged entity (no FK; paired with entity_type).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finding_type
+                  type: varchar(32)
+                  remarks: stale/duplicated/empty/crowded/sparse/slow/trash-not-emptied
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope_collection_id
+                  type: int
+                  remarks: collection the entity lived in at scan time (filter/sort); no FK
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: JSON evidence — e.g. {threshold_days, last_active_at}
+              - column:
+                  name: detected_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When this finding was detected (per-finding freshness signal).
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invalidated_at
+                  type: ${timestamp_type}
+                  remarks: stamped when invalidated/superseded; null = active (drives the served-set filter)
+              - column:
+                  name: last_active_at
+                  type: ${timestamp_type}
+                  remarks: Entity's last activity at scan time (card last_used_at / dashboard last_viewed_at); null = never used/ran. Frozen verdict evidence; powers the threshold-days serve filter.
+              - column:
+                  name: entity_name
+                  type: varchar(254)
+                  remarks: Entity's name at scan time. Denormalized sort key (display still hydrates the live name).
+              - column:
+                  name: entity_created_at
+                  type: ${timestamp_type}
+                  remarks: Entity's created_at (immutable). Denormalized for sort + display.
+              - column:
+                  name: entity_creator_id
+                  type: int
+                  remarks: Entity's creator_id at scan time; no FK (polymorphic, mirrors entity_id). Sort key (groups by creator).
+              - column:
+                  name: entity_creator_name
+                  type: varchar(254)
+                  remarks: Creator's common_name at scan time (resolved from creator_id). Sort key for created-by + served in details.creator; display prefers this over live hydration.
+
+  - changeSet:
+      id: v64.zncpq7
+      author: yb
+      comment: Content Diagnostics — unique finding per scan (dedup)
+      changes:
+        - addUniqueConstraint:
+            tableName: content_diagnostics_finding
+            columnNames: scan_id, entity_type, entity_id, finding_type
+            constraintName: idx_uniq_cd_finding
+
+  - changeSet:
+      id: v64.k0fbrf
+      author: yb
+      comment: Content Diagnostics — index findings by scan + finding_type
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_scan
+            columns:
+              - column:
+                  name: scan_id
+              - column:
+                  name: finding_type
+
+  - changeSet:
+      id: v64.dc6ryp
+      author: yb
+      comment: Content Diagnostics — index findings by entity
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_entity
+            columns:
+              - column:
+                  name: entity_type
+              - column:
+                  name: entity_id
+
+  - changeSet:
+      id: v64.wvauho
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_name
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_name
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_name
+
+  - changeSet:
+      id: v64.4g0zeg
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_created_at
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_created
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_created_at
+
+  - changeSet:
+      id: v64.w9kr30
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + last_active_at
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_active
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: last_active_at
+
+  - changeSet:
+      id: v64.s23vc8
+      author: yb
+      comment: Content Diagnostics — index findings by finding_type + entity_creator_name
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_creator
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_creator_name

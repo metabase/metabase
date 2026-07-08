@@ -14,9 +14,15 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private ignored-entity-id-table-names
-  "Legacy (V1) Metrics are no longer supported, and all their code has been removed. However the Tables are still in the
-  app DB (for now)... ignore them."
-  #{"metric" "METRIC" "metric_important_field" "METRIC_IMPORTANT_FIELD"})
+  "Tables whose `entity_id` column is not a serdes NanoID.
+
+  Legacy (V1) Metrics are no longer supported, and all their code has been removed. However the Tables are still in the
+  app DB (for now)... ignore them.
+
+  `content_diagnostics_finding` uses `entity_id` as a polymorphic integer reference to the flagged entity (paired with
+  `entity_type`), not as a serdes NanoID."
+  #{"metric" "METRIC" "metric_important_field" "METRIC_IMPORTANT_FIELD"
+    "content_diagnostics_finding" "CONTENT_DIAGNOSTICS_FINDING"})
 
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding
